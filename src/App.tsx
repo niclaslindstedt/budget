@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ListChecks } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ListChecks, Settings } from "lucide-react";
 
 import { BulkActionBar } from "./components/BulkActionBar";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
@@ -15,7 +15,9 @@ import {
 } from "./components/EditEntryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
 import { MoveCopyModal } from "./components/MoveCopyModal";
+import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
+import { UnlockScreen } from "./components/UnlockScreen";
 import {
   createEmptyRow,
   findColumnByType,
@@ -26,7 +28,18 @@ import {
   shiftIsoToMonth,
 } from "./data/sheet";
 import type { Budget, Category, CellValue, Row, Sheet } from "./data/types";
-import { localAdapter } from "./storage/local-adapter";
+import type { StorageAdapter } from "./storage/adapter";
+import {
+  decryptEnvelope,
+  encryptText,
+  isEncryptedEnvelope,
+} from "./storage/crypto";
+import { withEncryption } from "./storage/encrypting-adapter";
+import {
+  localAdapter,
+  readRawStorage,
+  writeRawStorage,
+} from "./storage/local-adapter";
 import { useBudgetStorage } from "./storage/useBudgetStorage";
 
 type SheetAction =
@@ -343,8 +356,119 @@ type EditPrompt = { kind: "edit"; row: Row };
 type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 
+type AuthState =
+  | { kind: "plain" }
+  | { kind: "locked" }
+  | { kind: "unlocked"; password: string };
+
+function detectInitialAuth(): AuthState {
+  const raw = readRawStorage();
+  if (raw && isEncryptedEnvelope(raw)) return { kind: "locked" };
+  return { kind: "plain" };
+}
+
 export function App() {
-  const { budget, dispatch } = useBudgetStorage(localAdapter, reducer);
+  const [auth, setAuth] = useState<AuthState>(detectInitialAuth);
+
+  // Mutable holder consumed by the encryption wrapper. Using a ref
+  // means the password can change at runtime (settings toggle, unlock
+  // success) without re-creating the adapter — the wrapped instance
+  // just reads `passwordRef.current` on its next save / load.
+  const passwordRef = useRef<string | null>(
+    auth.kind === "unlocked" ? auth.password : null,
+  );
+
+  const adapter = useMemo<StorageAdapter>(() => {
+    // `passwordRef` is a ref (stable across renders), so only `auth.kind`
+    // decides which adapter shape (plain vs. encrypted wrapper) we hand
+    // to the storage hook.
+    if (auth.kind === "unlocked")
+      return withEncryption(localAdapter, passwordRef);
+    return localAdapter;
+  }, [auth.kind]);
+
+  const handleUnlock = useCallback(
+    async (password: string) => {
+      const raw = readRawStorage();
+      if (!raw || !isEncryptedEnvelope(raw)) {
+        // No envelope to decrypt — drop straight back to plain.
+        passwordRef.current = null;
+        setAuth({ kind: "plain" });
+        return;
+      }
+      // Decrypt to verify the password matches; the wrapped adapter
+      // will repeat the decrypt during its initial load.
+      await decryptEnvelope(raw, password);
+      passwordRef.current = password;
+      setAuth({ kind: "unlocked", password });
+    },
+    [passwordRef],
+  );
+
+  const handleEnableEncryption = useCallback(
+    async (password: string) => {
+      // Re-encrypt whatever is already on disk before switching
+      // adapters so a power-loss between this call and the next save
+      // can't leave plaintext sitting in storage.
+      const raw = readRawStorage();
+      if (raw && !isEncryptedEnvelope(raw)) {
+        writeRawStorage(await encryptText(raw, password));
+      }
+      passwordRef.current = password;
+      setAuth({ kind: "unlocked", password });
+    },
+    [passwordRef],
+  );
+
+  const handleDisableEncryption = useCallback(
+    async (password: string) => {
+      const raw = readRawStorage();
+      if (raw && isEncryptedEnvelope(raw)) {
+        // decryptEnvelope throws on a wrong password — the modal
+        // catches that and shows it to the user.
+        const plain = await decryptEnvelope(raw, password);
+        writeRawStorage(plain);
+      }
+      passwordRef.current = null;
+      setAuth({ kind: "plain" });
+    },
+    [passwordRef],
+  );
+
+  if (auth.kind === "locked") {
+    return <UnlockScreen onUnlock={handleUnlock} />;
+  }
+
+  return (
+    <BudgetView
+      adapter={adapter}
+      encryptionEnabled={auth.kind === "unlocked"}
+      getEncryptionPassword={() => passwordRef.current}
+      onEnableEncryption={handleEnableEncryption}
+      onDisableEncryption={handleDisableEncryption}
+    />
+  );
+}
+
+type BudgetViewProps = {
+  adapter: StorageAdapter;
+  encryptionEnabled: boolean;
+  // Returns the active encryption password, or null when encryption is
+  // off. Read lazily so a future password change doesn't require
+  // re-passing props.
+  getEncryptionPassword: () => string | null;
+  onEnableEncryption: (password: string) => Promise<void>;
+  onDisableEncryption: (password: string) => Promise<void>;
+};
+
+function BudgetView({
+  adapter,
+  encryptionEnabled,
+  getEncryptionPassword,
+  onEnableEncryption,
+  onDisableEncryption,
+}: BudgetViewProps) {
+  const { budget, dispatch } = useBudgetStorage(adapter, reducer);
   const [complexOpen, setComplexOpen] = useState(false);
   const [complexSeedDate, setComplexSeedDate] = useState("");
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
@@ -359,6 +483,7 @@ export function App() {
   const [moveCopyPrompt, setMoveCopyPrompt] = useState<MoveCopyPrompt | null>(
     null,
   );
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const activeSheet =
     budget.sheets.find((s) => s.id === budget.activeSheetId) ??
@@ -621,7 +746,12 @@ export function App() {
           budget
         </span>
         <div className="ml-auto inline-flex items-center gap-2">
-          <ImportExportControls budget={budget} onImport={onImport} />
+          <ImportExportControls
+            budget={budget}
+            onImport={onImport}
+            encryptionEnabled={encryptionEnabled}
+            getEncryptionPassword={getEncryptionPassword}
+          />
           <button
             type="button"
             onClick={onToggleSelectMode}
@@ -635,6 +765,15 @@ export function App() {
             }`}
           >
             <ListChecks size={18} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Open settings"
+            title="Settings"
+            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
+            <Settings size={18} aria-hidden focusable={false} />
           </button>
         </div>
       </header>
@@ -724,6 +863,13 @@ export function App() {
         } will be permanently removed.`}
         actions={bulkDeleteActions}
         onCancel={() => setBulkDeletePrompt(null)}
+      />
+      <SettingsModal
+        open={settingsOpen}
+        encryptionEnabled={encryptionEnabled}
+        onClose={() => setSettingsOpen(false)}
+        onEnableEncryption={onEnableEncryption}
+        onDisableEncryption={onDisableEncryption}
       />
     </div>
   );

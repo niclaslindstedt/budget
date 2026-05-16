@@ -31,6 +31,14 @@ function writeRaw(text: string): void {
   }
 }
 
+export function readRawStorage(): string | null {
+  return readRaw();
+}
+
+export function writeRawStorage(text: string): void {
+  writeRaw(text);
+}
+
 export const localAdapter: StorageAdapter = {
   id: "local",
   label: "This device",
