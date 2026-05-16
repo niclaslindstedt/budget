@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, EyeOff, Lock, Upload, X } from "lucide-react";
 
 import type { UserData } from "../data/types";
+import type { EncryptionMode } from "../storage/backend-preference";
 import {
   decryptEnvelope,
   encryptText,
@@ -17,9 +18,13 @@ import {
 type Props = {
   data: UserData;
   onImport: (data: UserData) => void;
-  // Returns the active account password so exports can be wrapped in
-  // the same encryption envelope the localStorage adapter writes —
-  // re-importing the file surfaces the password prompt automatically.
+  // Whether the active backend wraps bytes in the encryption envelope.
+  // Exports follow the same mode so the file on disk matches what
+  // sits in storage — re-importing an encrypted export surfaces the
+  // password prompt, a plaintext export imports straight in.
+  encryption: EncryptionMode;
+  // Returns the active account password so encrypted exports can be
+  // wrapped in the same envelope the storage adapter uses.
   getEncryptionPassword: () => string | null;
 };
 
@@ -34,6 +39,7 @@ const iconButton =
 export function ImportExportControls({
   data,
   onImport,
+  encryption,
   getEncryptionPassword,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -42,25 +48,31 @@ export function ImportExportControls({
 
   async function handleExport() {
     const plaintext = serializeUserData(data);
-    const password = getEncryptionPassword();
-    if (!password) {
-      setStatus({
-        kind: "error",
-        message: "No account password held in memory — sign in again.",
-      });
-      return;
-    }
     let body: string;
-    try {
-      body = await encryptText(plaintext, password);
-    } catch (err) {
-      setStatus({
-        kind: "error",
-        message: `Encryption failed: ${(err as Error).message}`,
-      });
-      return;
+    let filename: string;
+    if (encryption === "encrypted") {
+      const password = getEncryptionPassword();
+      if (!password) {
+        setStatus({
+          kind: "error",
+          message: "No account password held in memory — sign in again.",
+        });
+        return;
+      }
+      try {
+        body = await encryptText(plaintext, password);
+      } catch (err) {
+        setStatus({
+          kind: "error",
+          message: `Encryption failed: ${(err as Error).message}`,
+        });
+        return;
+      }
+      filename = suggestFilename().replace(/\.json$/, ".enc.json");
+    } else {
+      body = plaintext;
+      filename = suggestFilename();
     }
-    const filename = suggestFilename().replace(/\.json$/, ".enc.json");
     const blob = new Blob([body], { type: FILE_MIME_TYPE });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -70,7 +82,11 @@ export function ImportExportControls({
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    setStatus({ kind: "ok", message: "Exported (encrypted)." });
+    setStatus({
+      kind: "ok",
+      message:
+        encryption === "encrypted" ? "Exported (encrypted)." : "Exported.",
+    });
   }
 
   function finishImport(text: string) {
@@ -142,8 +158,12 @@ export function ImportExportControls({
         onClick={() => {
           void handleExport();
         }}
-        aria-label="Export budget as encrypted JSON"
-        title="Export (encrypted)"
+        aria-label={
+          encryption === "encrypted"
+            ? "Export budget as encrypted JSON"
+            : "Export budget as JSON"
+        }
+        title={encryption === "encrypted" ? "Export (encrypted)" : "Export"}
       >
         <Download size={18} aria-hidden focusable={false} />
       </button>

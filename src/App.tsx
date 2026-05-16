@@ -46,11 +46,14 @@ import type {
 import type { StorageAdapter } from "./storage/adapter";
 import {
   type BackendId,
+  type EncryptionMode,
   clearDropboxToken,
   getBackend,
   getDropboxToken,
+  getEncryption,
   setBackend,
   setDropboxToken,
+  setEncryption,
 } from "./storage/backend-preference";
 import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
 import {
@@ -506,16 +509,20 @@ export function App() {
   // can rebuild when the user flips the choice from Settings.
   const [backend, setBackendState] = useState<BackendId>("local");
   const [dropboxToken, setDropboxTokenState] = useState<string | null>(null);
+  const [encryption, setEncryptionState] =
+    useState<EncryptionMode>("encrypted");
 
   // Sync state with the active user every time auth flips.
   useEffect(() => {
     if (auth.kind !== "signed-in") {
       setBackendState("local");
       setDropboxTokenState(null);
+      setEncryptionState("encrypted");
       return;
     }
     setBackendState(getBackend(auth.user.id));
     setDropboxTokenState(getDropboxToken(auth.user.id));
+    setEncryptionState(getEncryption(auth.user.id));
   }, [auth]);
 
   // Complete the Dropbox OAuth round-trip when the redirect lands
@@ -559,8 +566,13 @@ export function App() {
       backend === "dropbox" && dropboxToken
         ? createDropboxAdapter(dropboxToken)
         : createLocalAdapter(userDataKey(auth.user.id));
-    return withEncryption(inner, passwordRef);
-  }, [auth, backend, dropboxToken]);
+    // Skip the encryption wrapper entirely when the user has opted
+    // out — keeps `loadSync` available on local and writes plaintext
+    // bytes to whichever inner backend is active (including Dropbox).
+    return encryption === "plaintext"
+      ? inner
+      : withEncryption(inner, passwordRef);
+  }, [auth, backend, dropboxToken, encryption]);
 
   const handleConnectDropbox = useCallback(() => {
     void startDropboxAuth();
@@ -575,28 +587,26 @@ export function App() {
   const handleDisconnectDropbox = useCallback(async () => {
     if (auth.kind !== "signed-in") return;
     const userId = auth.user.id;
-    // Pull the latest Dropbox snapshot through the encrypting adapter
-    // so the bytes that land in localStorage match what was up there,
-    // then drop the token and flip back to local. Failing to fetch
-    // is tolerated — the in-memory state has just been auto-saved
-    // there moments ago, so worst case the user loses the few
-    // minutes between the last sync and the disconnect.
+    // Pull the latest Dropbox snapshot — through the encrypting
+    // wrapper when the user keeps storage encrypted, raw otherwise —
+    // so the bytes that land in localStorage match what was up there.
+    // Failing to fetch is tolerated: the in-memory state has just
+    // been auto-saved there moments ago, so worst case the user
+    // loses the few minutes between the last sync and the disconnect.
     if (dropboxToken) {
       try {
-        const cloud = withEncryption(
-          createDropboxAdapter(dropboxToken),
-          passwordRef,
-        );
+        const cloudInner = createDropboxAdapter(dropboxToken);
+        const cloud =
+          encryption === "plaintext"
+            ? cloudInner
+            : withEncryption(cloudInner, passwordRef);
         const snap = await cloud.load();
         if (snap) {
-          // Persist whatever we just decrypted into the local slot.
-          // We round-trip through the encrypting adapter to write
-          // the *encrypted* envelope to localStorage (matching the
-          // shape the local adapter normally sees).
-          const local = withEncryption(
-            createLocalAdapter(userDataKey(userId)),
-            passwordRef,
-          );
+          const localInner = createLocalAdapter(userDataKey(userId));
+          const local =
+            encryption === "plaintext"
+              ? localInner
+              : withEncryption(localInner, passwordRef);
           await local.save(snap.text);
         }
       } catch (err) {
@@ -607,7 +617,47 @@ export function App() {
     setBackend(userId, "local");
     setDropboxTokenState(null);
     setBackendState("local");
-  }, [auth, dropboxToken]);
+  }, [auth, dropboxToken, encryption]);
+
+  // Flip the per-user encryption preference, re-wrapping the bytes
+  // already in the active backend so the next load isn't reading the
+  // wrong envelope. Reads through the *current* preference and writes
+  // through the *new* one. Backend choice (local vs Dropbox) is
+  // independent — encryption is just whether the adapter wraps with
+  // `withEncryption` on top.
+  const handleSetEncryption = useCallback(
+    async (next: EncryptionMode) => {
+      if (auth.kind !== "signed-in") return;
+      if (next === encryption) return;
+      const userId = auth.user.id;
+      const innerForCurrent: StorageAdapter =
+        backend === "dropbox" && dropboxToken
+          ? createDropboxAdapter(dropboxToken)
+          : createLocalAdapter(userDataKey(userId));
+      const innerForNext: StorageAdapter =
+        backend === "dropbox" && dropboxToken
+          ? createDropboxAdapter(dropboxToken)
+          : createLocalAdapter(userDataKey(userId));
+      const current =
+        encryption === "plaintext"
+          ? innerForCurrent
+          : withEncryption(innerForCurrent, passwordRef);
+      const target =
+        next === "plaintext"
+          ? innerForNext
+          : withEncryption(innerForNext, passwordRef);
+      try {
+        const snap = await current.load();
+        if (snap) await target.save(snap.text);
+      } catch (err) {
+        console.error("Encryption toggle: failed to re-wrap bytes", err);
+        return;
+      }
+      setEncryption(userId, next);
+      setEncryptionState(next);
+    },
+    [auth, backend, dropboxToken, encryption],
+  );
 
   const persistRegistry = useCallback(
     (nextUsers: StoredUser[], activeUserId: string | null) => {
@@ -729,6 +779,7 @@ export function App() {
       hasOtherUsers={users.length > 1}
       backend={backend}
       dropboxConnected={dropboxToken !== null}
+      encryption={encryption}
       getEncryptionPassword={() => passwordRef.current}
       onSignOut={handleSignOut}
       onSwitchUser={handleSwitchUser}
@@ -737,6 +788,7 @@ export function App() {
       onConnectDropbox={handleConnectDropbox}
       onDisconnectDropbox={handleDisconnectDropbox}
       onSelectLocal={handleSelectLocal}
+      onSetEncryption={handleSetEncryption}
     />
   );
 }
@@ -750,6 +802,7 @@ type BudgetViewProps = {
   hasOtherUsers: boolean;
   backend: BackendId;
   dropboxConnected: boolean;
+  encryption: EncryptionMode;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
   // adapter uses.
@@ -761,6 +814,7 @@ type BudgetViewProps = {
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
   onSelectLocal: () => void;
+  onSetEncryption: (mode: EncryptionMode) => void;
 };
 
 function BudgetView({
@@ -770,6 +824,7 @@ function BudgetView({
   hasOtherUsers,
   backend,
   dropboxConnected,
+  encryption,
   getEncryptionPassword,
   onSignOut,
   onSwitchUser,
@@ -778,6 +833,7 @@ function BudgetView({
   onConnectDropbox,
   onDisconnectDropbox,
   onSelectLocal,
+  onSetEncryption,
 }: BudgetViewProps) {
   const { data, dispatch, status, dirty, saveNow } = useUserDataStorage(
     adapter,
@@ -1193,6 +1249,7 @@ function BudgetView({
           <ImportExportControls
             data={data}
             onImport={onImport}
+            encryption={encryption}
             getEncryptionPassword={getEncryptionPassword}
           />
           <button
@@ -1325,11 +1382,13 @@ function BudgetView({
         settings={data.settings}
         backend={backend}
         dropboxConnected={dropboxConnected}
+        encryption={encryption}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
         onConnectDropbox={onConnectDropbox}
         onDisconnectDropbox={onDisconnectDropbox}
         onSelectLocal={onSelectLocal}
+        onSetEncryption={onSetEncryption}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}

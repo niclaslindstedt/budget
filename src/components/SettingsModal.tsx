@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, X } from "lucide-react";
+import { ShieldAlert, ShieldCheck, X } from "lucide-react";
 
 import {
   DATE_FORMATS,
@@ -16,7 +16,7 @@ import type {
   ShortDateFormat,
   ThousandsSeparator,
 } from "../data/types";
-import type { BackendId } from "../storage/backend-preference";
+import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
 import { BackendPicker } from "./BackendPicker";
 
@@ -25,11 +25,13 @@ type Props = {
   settings: Settings;
   backend: BackendId;
   dropboxConnected: boolean;
+  encryption: EncryptionMode;
   onClose: () => void;
   onSave: (next: Settings) => void;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
   onSelectLocal: () => void;
+  onSetEncryption: (mode: EncryptionMode) => void;
 };
 
 function presetIdFor(settings: Settings): string {
@@ -50,11 +52,13 @@ export function SettingsModal({
   settings,
   backend,
   dropboxConnected,
+  encryption,
   onClose,
   onSave,
   onConnectDropbox,
   onDisconnectDropbox,
   onSelectLocal,
+  onSetEncryption,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
@@ -142,12 +146,14 @@ export function SettingsModal({
             draft={draft}
             backend={backend}
             dropboxConnected={dropboxConnected}
+            encryption={encryption}
             onUpdate={update}
             onApplyNumberFormat={applyNumberFormat}
             onApplyDecimal={applyDecimal}
             onConnectDropbox={onConnectDropbox}
             onDisconnectDropbox={onDisconnectDropbox}
             onSelectLocal={onSelectLocal}
+            onSetEncryption={onSetEncryption}
           />
         </div>
 
@@ -185,22 +191,26 @@ function MainView({
   draft,
   backend,
   dropboxConnected,
+  encryption,
   onUpdate,
   onApplyNumberFormat,
   onApplyDecimal,
   onConnectDropbox,
   onDisconnectDropbox,
   onSelectLocal,
+  onSetEncryption,
 }: {
   draft: Settings;
   backend: BackendId;
   dropboxConnected: boolean;
+  encryption: EncryptionMode;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   onApplyNumberFormat: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
   onSelectLocal: () => void;
+  onSetEncryption: (mode: EncryptionMode) => void;
 }) {
   const numberPreviewSample = 1234567.89;
   const datePreviewIso = "2026-05-16";
@@ -429,20 +439,53 @@ function MainView({
 
       <Section title="Security">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 text-success">
-            <ShieldCheck size={20} aria-hidden focusable={false} />
+          <div
+            className={`mt-0.5 ${
+              encryption === "encrypted" ? "text-success" : "text-danger"
+            }`}
+          >
+            {encryption === "encrypted" ? (
+              <ShieldCheck size={20} aria-hidden focusable={false} />
+            ) : (
+              <ShieldAlert size={20} aria-hidden focusable={false} />
+            )}
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-bold text-fg-bright">
-              Encrypted local storage
+              {encryption === "encrypted"
+                ? "Encrypted storage"
+                : "Unencrypted storage"}
             </h3>
             <p className="mt-1 text-xs text-muted">
-              Your budget is encrypted on this device with AES-GCM and a
-              PBKDF2-derived key from your account password. Sign out from the
-              account menu to lock it; signing back in re-derives the key.
+              {encryption === "encrypted"
+                ? "Your budget is wrapped in AES-GCM with a PBKDF2-derived key from your account password before being written — whether the bytes land in this browser or in your Dropbox app folder."
+                : "Your budget is written as plain JSON — to this browser, or to your Dropbox app folder if connected. Anyone with access to those bytes can read it without your password."}
             </p>
           </div>
         </div>
+        <Field label="Encrypt stored bytes">
+          <div className="inline-flex overflow-hidden rounded border border-line">
+            {(["encrypted", "plaintext"] as EncryptionMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onSetEncryption(m)}
+                aria-pressed={encryption === m}
+                className={`cursor-pointer border-0 px-3 py-1.5 font-mono text-sm ${
+                  encryption === m
+                    ? "bg-accent/15 text-accent"
+                    : "bg-surface-2 text-fg hover:bg-surface-3"
+                }`}
+              >
+                {m === "encrypted" ? "On" : "Off"}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted">
+            Applies to the active backend and any cloud sync. Switching re-wraps
+            the bytes already in storage. Exports follow this setting too.
+          </p>
+        </Field>
         <Field label="Session timeout">
           <select
             value={draft.sessionTimeoutMinutes}
