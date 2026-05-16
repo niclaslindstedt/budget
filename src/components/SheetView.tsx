@@ -29,6 +29,11 @@ type Props = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function SheetView({
   sheet,
   categories,
@@ -62,6 +67,8 @@ export function SheetView({
     () => currentFiscalMonthKey(settings.startOfMonth),
     [settings.startOfMonth],
   );
+
+  const today = todayIso();
 
   const visibleMonths = useMemo(() => {
     const keys = new Set(monthGroups.keys());
@@ -105,8 +112,9 @@ export function SheetView({
           const monthRows = dateCol
             ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
             : [];
-          const seedDate = monthKey === "undated" ? "" : `${monthKey}-01`;
           const isCurrent = monthKey === currentMonth;
+          const seedDate =
+            monthKey === "undated" ? "" : isCurrent ? today : `${monthKey}-01`;
           return (
             <div
               key={monthKey}
