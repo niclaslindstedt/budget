@@ -74,16 +74,26 @@ export function formatNumber(
   return `${intPart}${settings.decimalSeparator}${fracPartRaw}`;
 }
 
-export function formatAmount(n: number, settings: Settings): string {
-  const body = formatNumber(n, settings);
+// Wraps a pre-formatted numeric body with the user's currency symbol,
+// honouring position + spacing. Returns the body unchanged when
+// `showCurrency` is off so the same call site covers both states.
+export function withCurrency(body: string, settings: Settings): string {
   if (!settings.showCurrency) return body;
-  return `${body} ${settings.currency}`;
+  const sep = settings.currencySpace ? " " : "";
+  return settings.currencyPosition === "before"
+    ? `${settings.currency}${sep}${body}`
+    : `${body}${sep}${settings.currency}`;
+}
+
+export function formatAmount(n: number, settings: Settings): string {
+  return withCurrency(formatNumber(n, settings), settings);
 }
 
 export function formatBalance(n: number, settings: Settings): string {
-  const body = formatNumber(n, settings, { alwaysTwoFractionDigits: true });
-  if (!settings.showCurrency) return body;
-  return `${body} ${settings.currency}`;
+  return withCurrency(
+    formatNumber(n, settings, { alwaysTwoFractionDigits: true }),
+    settings,
+  );
 }
 
 // Strip the thousands separator from input and snap whichever decimal

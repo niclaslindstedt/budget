@@ -129,6 +129,13 @@ export type Settings = {
   // is on. Defaults to "kr" (SEK). Not validated against a list — users
   // are free to type "$", "€", "USD", etc.
   currency: string;
+  // Whether the currency symbol renders before ("$10") or after ("10 kr")
+  // the amount. Independent of `currencySpace` so all four combinations
+  // are reachable.
+  currencyPosition: "before" | "after";
+  // Whether a single space separates the symbol from the amount. Off
+  // renders "$10" / "10kr"; on renders "$ 10" / "10 kr".
+  currencySpace: boolean;
   decimalSeparator: DecimalSeparator;
   thousandsSeparator: ThousandsSeparator;
   // Display toggles. `formatNumbers` controls whether amounts/balances

@@ -16,6 +16,7 @@ import type {
   ShortDateFormat,
   ThousandsSeparator,
 } from "../data/types";
+import { withCurrency } from "../utils/format";
 
 type Props = {
   open: boolean;
@@ -252,6 +253,34 @@ function MainView({
             &quot;£&quot;, or any short label.
           </p>
         </Field>
+
+        <Field label="Position">
+          <div className="inline-flex overflow-hidden rounded border border-line">
+            {(["before", "after"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onUpdate("currencyPosition", p)}
+                aria-pressed={draft.currencyPosition === p}
+                className={`cursor-pointer border-0 px-3 py-1.5 font-mono text-sm ${
+                  draft.currencyPosition === p
+                    ? "bg-accent/15 text-accent"
+                    : "bg-surface-2 text-fg hover:bg-surface-3"
+                }`}
+              >
+                {p === "before" ? "Before" : "After"}
+              </button>
+            ))}
+          </div>
+          <Preview>{withCurrency("1 234", draft)}</Preview>
+        </Field>
+
+        <ToggleRow
+          label="Space between symbol and amount"
+          hint='Off renders "$10" / "10kr"; on renders "$ 10" / "10 kr".'
+          checked={draft.currencySpace}
+          onChange={(v) => onUpdate("currencySpace", v)}
+        />
       </Section>
 
       <Section title="Numbers">
