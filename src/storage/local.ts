@@ -1,14 +1,16 @@
 import { DEFAULT_SETTINGS } from "../data/constants";
-import { createDefaultSheet } from "../data/sheet";
+import { createDefaultSheet, newId } from "../data/sheet";
 import type { UserData } from "../data/types";
 import { parseUserData } from "./file";
 
 export function freshUserData(): UserData {
-  const sheet = createDefaultSheet();
+  const accountId = newId();
+  const sheet = createDefaultSheet("Sheet 1", accountId);
   return {
-    version: 4,
+    version: 5,
     sheets: [sheet],
     activeSheetId: sheet.id,
+    accounts: [{ id: accountId, name: "Default" }],
     categories: [],
     settings: { ...DEFAULT_SETTINGS },
   };

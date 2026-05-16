@@ -57,11 +57,41 @@ export type Category = {
   icon: CategoryIcon;
 };
 
+// A real-world account (a bank account, credit card, cash envelope, …)
+// that a budget tracks. Accounts live at the UserData level so the same
+// account can be referenced from multiple sheets and a future roll-up
+// view can sum balances across the whole user.
+export type Account = {
+  id: string;
+  name: string;
+};
+
+// One block on a sheet that budgets a single Account: a typed spreadsheet
+// with columns (date, description, amount, balance, …) and rows. The
+// `accountId` ties the block to its Account so balances and forecasts
+// can be computed per account.
+export type AccountBudget = {
+  id: string;
+  type: "accountBudget";
+  accountId: string;
+  columns: Column[];
+  rows: Row[];
+};
+
+// Discriminated union of everything a sheet can hold. Currently the
+// only variant is `AccountBudget`; future variants (Graph, Note, …)
+// slot in as additional cases without a migration of the existing
+// data because old blocks still match their own variant.
+export type SheetItem = AccountBudget;
+
+// A named tab inside the workspace. A sheet is a container of one or
+// more `SheetItem`s — the current UI renders a single AccountBudget,
+// but the shape supports stacking blocks (e.g. an AccountBudget plus a
+// Graph of the same account) without another migration later.
 export type Sheet = {
   id: string;
   name: string;
-  columns: Column[];
-  rows: Row[];
+  items: SheetItem[];
 };
 
 // User-facing display and entry preferences. Persisted as part of the
@@ -111,9 +141,10 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 4;
+  version: 5;
   sheets: Sheet[];
   activeSheetId: string;
+  accounts: Account[];
   categories: Category[];
   settings: Settings;
 };
