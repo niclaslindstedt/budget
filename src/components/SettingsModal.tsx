@@ -212,17 +212,19 @@ function EnableView({
         manager.
       </p>
 
-      {/* A stable hidden identifier helps password managers attach the
-          credential to this form so the same entry surfaces on the
-          unlock screen. */}
+      {/* Stable identifier so the password manager can attach a
+          credential to this form and surface the same entry on the
+          unlock screen. Visually hidden via `sr-only` rather than the
+          HTML `hidden` attribute — most password managers skip
+          `display:none` fields because they look like CSRF tokens. */}
       <input
         type="text"
         name="username"
         autoComplete="username"
         value="budget"
         readOnly
-        hidden
-        aria-hidden="true"
+        tabIndex={-1}
+        className="sr-only"
       />
 
       <label className="flex flex-col gap-1">
@@ -327,8 +329,8 @@ function DisableView({
         autoComplete="username"
         value="budget"
         readOnly
-        hidden
-        aria-hidden="true"
+        tabIndex={-1}
+        className="sr-only"
       />
 
       <label className="flex flex-col gap-1">

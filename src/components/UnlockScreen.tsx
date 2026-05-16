@@ -53,17 +53,20 @@ export function UnlockScreen({ onUnlock }: Props) {
           continue.
         </p>
 
-        {/* Stable hidden identifier so password managers attach the
-            credential to this form and surface the same entry that was
-            saved during setup. */}
+        {/* Stable identifier so the password manager attaches the
+            credential to this form and surfaces the same entry that
+            was saved during setup. Visually hidden via `sr-only`
+            rather than the HTML `hidden` attribute — most password
+            managers skip `display:none` fields because they look like
+            CSRF tokens. */}
         <input
           type="text"
           name="username"
           autoComplete="username"
           value="budget"
           readOnly
-          hidden
-          aria-hidden="true"
+          tabIndex={-1}
+          className="sr-only"
         />
 
         <label className="flex flex-col gap-1">
