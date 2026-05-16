@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Minus } from "lucide-react";
 
 import type { CellValue, Column } from "../data/types";
 
@@ -49,31 +49,7 @@ export function Cell({ column, value, computedBalance, onChange }: Props) {
       );
 
     case "amount": {
-      const display =
-        typeof value === "number"
-          ? String(value)
-          : value == null
-            ? ""
-            : String(value);
-      return (
-        <td className={CELL_BASE}>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            className={`${INPUT_BASE} text-right tabular-nums`}
-            value={display}
-            onChange={(e) => {
-              const text = e.target.value;
-              if (text === "") onChange(null);
-              else {
-                const n = Number(text);
-                onChange(Number.isFinite(n) ? n : null);
-              }
-            }}
-          />
-        </td>
-      );
+      return <AmountCell value={value} onChange={onChange} />;
     }
 
     case "balance": {
@@ -109,6 +85,63 @@ export function Cell({ column, value, computedBalance, onChange }: Props) {
       );
     }
   }
+}
+
+function parseAmount(text: string): number | null {
+  if (text === "" || text === "-") return null;
+  const n = Number(text.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function AmountCell({
+  value,
+  onChange,
+}: {
+  value: CellValue;
+  onChange: (value: CellValue) => void;
+}) {
+  const externalText = typeof value === "number" ? String(value) : "";
+  const [text, setText] = useState(externalText);
+
+  // Skip resync while local text represents the same number, so in-progress
+  // input like "-" or "12," is not clobbered by a parent rerender.
+  useEffect(() => {
+    if (parseAmount(text) === value) return;
+    setText(externalText);
+  }, [value, externalText, text]);
+
+  const commit = (next: string) => {
+    setText(next);
+    onChange(parseAmount(next));
+  };
+
+  const toggleSign = () => {
+    commit(text.startsWith("-") ? text.slice(1) : "-" + text);
+  };
+
+  return (
+    <td className={CELL_BASE}>
+      <div className="relative flex items-stretch">
+        <button
+          type="button"
+          onClick={toggleSign}
+          aria-label="Toggle sign"
+          tabIndex={-1}
+          className="absolute inset-y-0 left-0 z-10 flex w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-fg"
+        >
+          <Minus size={14} aria-hidden focusable={false} />
+        </button>
+        <input
+          type="text"
+          inputMode="decimal"
+          pattern="-?[0-9]*[.,]?[0-9]*"
+          className={`${INPUT_BASE} pl-6 text-right tabular-nums`}
+          value={text}
+          onChange={(e) => commit(e.target.value)}
+        />
+      </div>
+    </td>
+  );
 }
 
 function DateCell({
