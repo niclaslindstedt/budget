@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Minus } from "lucide-react";
+import { Check, Minus, Plus } from "lucide-react";
 
 import type { Category, CellValue, Column } from "../data/types";
 import { CategoryPicker } from "./CategoryPicker";
@@ -65,7 +65,7 @@ export function Cell({
       return (
         <td
           className={`${CELL_BASE} bg-surface-3 px-2.5 py-2 text-right tabular-nums whitespace-nowrap ${
-            n < 0 ? "text-danger" : "text-meta"
+            n < 0 ? "text-negative" : "text-positive"
           }`}
           aria-readonly="true"
         >
@@ -151,6 +151,9 @@ function AmountCell({
   const parsed = parseAmount(text);
   const isNegative = parsed !== null && parsed < 0;
   const isPositive = parsed !== null && parsed > 0;
+  // Icon mirrors the current sign of the entry: + for positive or empty,
+  // − for negative. Tapping it flips the sign in place.
+  const showMinus = text.startsWith("-");
 
   return (
     <td className={CELL_BASE}>
@@ -158,18 +161,28 @@ function AmountCell({
         <button
           type="button"
           onClick={toggleSign}
-          aria-label="Toggle sign"
+          aria-label={showMinus ? "Make positive" : "Make negative"}
           tabIndex={-1}
-          className="absolute inset-y-0 left-0 z-10 flex w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
+          className={`absolute inset-y-0 left-0 z-10 flex w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
+            showMinus ? "text-negative" : "text-positive"
+          }`}
         >
-          <Minus size={14} aria-hidden focusable={false} />
+          {showMinus ? (
+            <Minus size={14} aria-hidden focusable={false} />
+          ) : (
+            <Plus size={14} aria-hidden focusable={false} />
+          )}
         </button>
         <input
           type="text"
           inputMode="decimal"
           pattern="-?[0-9]*[.,]?[0-9]*"
           className={`${INPUT_BASE} pl-6 text-right tabular-nums ${
-            isNegative ? "text-danger" : isPositive ? "text-meta" : "text-fg"
+            isNegative
+              ? "text-negative"
+              : isPositive
+                ? "text-positive"
+                : "text-fg"
           }`}
           value={text}
           onChange={(e) => commit(e.target.value)}

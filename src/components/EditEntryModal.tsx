@@ -209,9 +209,9 @@ export function EditEntryModal({
                     onChange={(e) => setAmount(e.target.value)}
                     className={`field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
                       parsedAmount !== null && parsedAmount < 0
-                        ? "text-danger"
+                        ? "text-negative"
                         : parsedAmount !== null && parsedAmount > 0
-                          ? "text-meta"
+                          ? "text-positive"
                           : "text-fg"
                     }`}
                   />

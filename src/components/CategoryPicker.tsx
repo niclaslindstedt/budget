@@ -1,9 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
 import { CATEGORY_COLORS, CATEGORY_ICON_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
 import { CategoryIconGlyph } from "./icons";
+
+const DROPDOWN_MIN_WIDTH = 224; // matches min-w-[14rem]
+const VIEWPORT_MARGIN = 8;
+
+type Position = { top: number; left: number; minWidth: number };
+
+function computePosition(rect: DOMRect): Position {
+  // Prefer aligning the dropdown's right edge with the trigger's right
+  // edge so it opens "down and to the left" of narrow chip cells, but
+  // clamp into the viewport so it never goes off-screen.
+  const minWidth = Math.max(DROPDOWN_MIN_WIDTH, rect.width);
+  let left = rect.right - minWidth;
+  const maxLeft = window.innerWidth - VIEWPORT_MARGIN - minWidth;
+  if (left > maxLeft) left = maxLeft;
+  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
+  return { top: rect.bottom + 4, left, minWidth };
+}
 
 type Props = {
   categories: Category[];
@@ -25,17 +43,29 @@ export function CategoryPicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [position, setPosition] = useState<Position | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selected = categories.find((c) => c.id === selectedId) ?? null;
 
+  useLayoutEffect(() => {
+    if (!open || !rootRef.current) return;
+    setPosition(computePosition(rootRef.current.getBoundingClientRect()));
+  }, [open, creating]);
+
   useEffect(() => {
     if (!open) return;
+    function updatePosition() {
+      if (!rootRef.current) return;
+      setPosition(computePosition(rootRef.current.getBoundingClientRect()));
+    }
     function handlePointer(e: PointerEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setCreating(false);
-      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setOpen(false);
+      setCreating(false);
     }
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -45,9 +75,14 @@ export function CategoryPicker({
     }
     document.addEventListener("pointerdown", handlePointer);
     document.addEventListener("keydown", handleKey);
+    window.addEventListener("resize", updatePosition);
+    // Capture phase catches scrolls on any ancestor (e.g. the page).
+    window.addEventListener("scroll", updatePosition, true);
     return () => {
       document.removeEventListener("pointerdown", handlePointer);
       document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
   }, [open]);
 
@@ -110,67 +145,78 @@ export function CategoryPicker({
         )}
       </button>
 
-      {open && (
-        <div className="absolute top-full right-0 left-0 z-30 mt-1 min-w-[14rem] rounded border border-line bg-surface-2 shadow-lg">
-          {creating ? (
-            <CategoryCreator
-              onCancel={() => setCreating(false)}
-              onSubmit={handleCreated}
-            />
-          ) : (
-            <ul role="listbox" className="max-h-72 overflow-auto py-1">
-              {categories.length === 0 && (
-                <li className="px-3 py-2 text-xs text-muted">
-                  No categories yet.
-                </li>
-              )}
-              {categories.map((cat) => (
-                <li key={cat.id}>
+      {open &&
+        position &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-50 rounded border border-line bg-surface-2 shadow-lg"
+            style={{
+              top: position.top,
+              left: position.left,
+              minWidth: position.minWidth,
+            }}
+          >
+            {creating ? (
+              <CategoryCreator
+                onCancel={() => setCreating(false)}
+                onSubmit={handleCreated}
+              />
+            ) : (
+              <ul role="listbox" className="max-h-72 overflow-auto py-1">
+                {categories.length === 0 && (
+                  <li className="px-3 py-2 text-xs text-muted">
+                    No categories yet.
+                  </li>
+                )}
+                {categories.map((cat) => (
+                  <li key={cat.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={cat.id === selectedId}
+                      onClick={() => handlePick(cat.id)}
+                      className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    >
+                      <CategoryChip category={cat} compact />
+                      {cat.id === selectedId && (
+                        <Check
+                          size={14}
+                          className="ml-auto text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                      )}
+                    </button>
+                  </li>
+                ))}
+                {selectedId && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handlePick(null)}
+                      className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    >
+                      <X size={12} aria-hidden focusable={false} />
+                      Clear category
+                    </button>
+                  </li>
+                )}
+                <li className="mt-1 border-t border-line">
                   <button
                     type="button"
-                    role="option"
-                    aria-selected={cat.id === selectedId}
-                    onClick={() => handlePick(cat.id)}
-                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    onClick={() => setCreating(true)}
+                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                   >
-                    <CategoryChip category={cat} compact />
-                    {cat.id === selectedId && (
-                      <Check
-                        size={14}
-                        className="ml-auto text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                    )}
+                    <Plus size={14} aria-hidden focusable={false} />
+                    New category
                   </button>
                 </li>
-              ))}
-              {selectedId && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => handlePick(null)}
-                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                  >
-                    <X size={12} aria-hidden focusable={false} />
-                    Clear category
-                  </button>
-                </li>
-              )}
-              <li className="mt-1 border-t border-line">
-                <button
-                  type="button"
-                  onClick={() => setCreating(true)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <Plus size={14} aria-hidden focusable={false} />
-                  New category
-                </button>
-              </li>
-            </ul>
-          )}
-        </div>
-      )}
+              </ul>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
