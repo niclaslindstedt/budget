@@ -1,3 +1,4 @@
+import { DATE_FORMATS, DEFAULT_SETTINGS } from "./constants";
 import { LATEST_VERSION } from "./migrations";
 import type {
   Budget,
@@ -6,9 +7,19 @@ import type {
   CellValue,
   Column,
   ColumnType,
+  DateFormat,
+  DecimalSeparator,
   Row,
+  Settings,
   Sheet,
+  ThousandsSeparator,
 } from "./types";
+
+const DATE_FORMAT_SET: ReadonlySet<DateFormat> = new Set(DATE_FORMATS);
+const DECIMAL_SEPARATORS: ReadonlySet<DecimalSeparator> =
+  new Set<DecimalSeparator>([".", ","]);
+const THOUSANDS_SEPARATORS: ReadonlySet<ThousandsSeparator> =
+  new Set<ThousandsSeparator>([" ", ".", ",", ""]);
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -167,6 +178,61 @@ function validateCategory(raw: unknown, path: string): Result<Category> {
   };
 }
 
+// Soft-recovering settings validator: each field falls back to its
+// default when missing or invalid so a stray hand-edit can't lock the
+// user out of the app. The settings are display preferences, not data
+// — silently snapping back to sensible defaults is the right trade.
+function validateSettings(raw: unknown): Settings {
+  if (!isObject(raw)) return { ...DEFAULT_SETTINGS };
+  const startOfMonth =
+    typeof raw.startOfMonth === "number" &&
+    Number.isInteger(raw.startOfMonth) &&
+    raw.startOfMonth >= 1 &&
+    raw.startOfMonth <= 28
+      ? raw.startOfMonth
+      : DEFAULT_SETTINGS.startOfMonth;
+  const dateFormat =
+    typeof raw.dateFormat === "string" &&
+    DATE_FORMAT_SET.has(raw.dateFormat as DateFormat)
+      ? (raw.dateFormat as DateFormat)
+      : DEFAULT_SETTINGS.dateFormat;
+  const currency =
+    typeof raw.currency === "string" && raw.currency.length > 0
+      ? raw.currency
+      : DEFAULT_SETTINGS.currency;
+  const decimalSeparator =
+    typeof raw.decimalSeparator === "string" &&
+    DECIMAL_SEPARATORS.has(raw.decimalSeparator as DecimalSeparator)
+      ? (raw.decimalSeparator as DecimalSeparator)
+      : DEFAULT_SETTINGS.decimalSeparator;
+  let thousandsSeparator: ThousandsSeparator =
+    typeof raw.thousandsSeparator === "string" &&
+    THOUSANDS_SEPARATORS.has(raw.thousandsSeparator as ThousandsSeparator)
+      ? (raw.thousandsSeparator as ThousandsSeparator)
+      : DEFAULT_SETTINGS.thousandsSeparator;
+  // Thousands and decimal can never be the same character; fall back
+  // to "no thousands separator" if they collide so display logic isn't
+  // fighting ambiguous input.
+  if (thousandsSeparator === decimalSeparator) thousandsSeparator = "";
+  const formatNumbers =
+    typeof raw.formatNumbers === "boolean"
+      ? raw.formatNumbers
+      : DEFAULT_SETTINGS.formatNumbers;
+  const showCurrency =
+    typeof raw.showCurrency === "boolean"
+      ? raw.showCurrency
+      : DEFAULT_SETTINGS.showCurrency;
+  return {
+    startOfMonth,
+    dateFormat,
+    currency,
+    decimalSeparator,
+    thousandsSeparator,
+    formatNumbers,
+    showCurrency,
+  };
+}
+
 export function validateBudget(raw: unknown): Result<Budget> {
   if (!isObject(raw)) return fail("root", "expected an object");
   if (raw.version !== LATEST_VERSION)
@@ -207,8 +273,16 @@ export function validateBudget(raw: unknown): Result<Budget> {
     ? raw.activeSheetId
     : sheets[0].id;
 
+  const settings = validateSettings(raw.settings);
+
   return {
     ok: true,
-    value: { version: LATEST_VERSION, sheets, activeSheetId, categories },
+    value: {
+      version: LATEST_VERSION,
+      sheets,
+      activeSheetId,
+      categories,
+      settings,
+    },
   };
 }

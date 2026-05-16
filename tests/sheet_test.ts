@@ -5,6 +5,7 @@ import {
   budgetWithSavableRows,
   computeBalances,
   createDefaultSheet,
+  currentFiscalMonthKey,
   findColumnByType,
   getMonthKey,
   groupRowsByMonth,
@@ -41,6 +42,31 @@ describe("getMonthKey", () => {
     expect(getMonthKey(null)).toBe("undated");
     expect(getMonthKey("")).toBe("undated");
     expect(getMonthKey("abc")).toBe("undated");
+  });
+  it("shifts to the previous calendar month when day < startOfMonth", () => {
+    expect(getMonthKey("2026-05-24", 25)).toBe("2026-04");
+    expect(getMonthKey("2026-05-25", 25)).toBe("2026-05");
+    expect(getMonthKey("2026-06-24", 25)).toBe("2026-05");
+    expect(getMonthKey("2026-06-25", 25)).toBe("2026-06");
+  });
+  it("rolls year backward when shifting January days into December", () => {
+    expect(getMonthKey("2026-01-10", 25)).toBe("2025-12");
+    expect(getMonthKey("2026-01-25", 25)).toBe("2026-01");
+  });
+  it("collapses to calendar month when startOfMonth is 1", () => {
+    expect(getMonthKey("2026-05-01", 1)).toBe("2026-05");
+    expect(getMonthKey("2026-05-31", 1)).toBe("2026-05");
+  });
+});
+
+describe("currentFiscalMonthKey", () => {
+  it("returns the calendar month when day >= startOfMonth", () => {
+    expect(currentFiscalMonthKey(25, new Date(2026, 4, 25))).toBe("2026-05");
+    expect(currentFiscalMonthKey(25, new Date(2026, 4, 31))).toBe("2026-05");
+  });
+  it("returns the previous month when day < startOfMonth", () => {
+    expect(currentFiscalMonthKey(25, new Date(2026, 4, 24))).toBe("2026-04");
+    expect(currentFiscalMonthKey(25, new Date(2026, 0, 1))).toBe("2025-12");
   });
 });
 

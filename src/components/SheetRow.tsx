@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
-import type { Category, CellValue, Column, Row } from "../data/types";
+import type { Category, CellValue, Column, Row, Settings } from "../data/types";
 import { Cell } from "./Cell";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   categories: Category[];
+  settings: Settings;
   selectMode: boolean;
   selected: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
@@ -26,6 +27,7 @@ export function SheetRow({
   columns,
   balances,
   categories,
+  settings,
   selectMode,
   selected,
   onUpdateCell,
@@ -138,6 +140,7 @@ export function SheetRow({
             col.type === "balance" ? balances.get(row.id) : undefined
           }
           categories={categories}
+          settings={settings}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
           onCreateCategory={onCreateCategory}
         />

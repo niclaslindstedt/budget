@@ -38,23 +38,66 @@ export function findColumnByType(
   return columns.find((c) => c.type === type);
 }
 
-export function getMonthKey(value: CellValue): string {
-  if (typeof value !== "string" || value.length < 7) return "undated";
-  return value.slice(0, 7);
+export function getMonthKey(
+  value: CellValue,
+  startOfMonth: number = 1,
+): string {
+  if (typeof value !== "string" || value.length < 10) {
+    // Fall back to the YYYY-MM prefix when we can't read a full ISO
+    // date (the fiscal-month shift only matters when we know the day).
+    if (typeof value === "string" && value.length >= 7)
+      return value.slice(0, 7);
+    return "undated";
+  }
+  const y = Number(value.slice(0, 4));
+  const m = Number(value.slice(5, 7));
+  const d = Number(value.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return "undated";
+  }
+  // Fiscal month: every day from `startOfMonth` onward belongs to the
+  // current calendar month's fiscal period; earlier days belong to the
+  // previous one. With startOfMonth=1 this collapses to the calendar
+  // month, which is the legacy behaviour.
+  let fy = y;
+  let fm = m;
+  if (d < startOfMonth) {
+    fm -= 1;
+    if (fm < 1) {
+      fm = 12;
+      fy -= 1;
+    }
+  }
+  return `${String(fy).padStart(4, "0")}-${String(fm).padStart(2, "0")}`;
 }
 
 export function groupRowsByMonth(
   rows: Row[],
   dateColumnId: string,
+  startOfMonth: number = 1,
 ): Map<string, Row[]> {
   const groups = new Map<string, Row[]>();
   for (const row of rows) {
-    const key = getMonthKey(row.cells[dateColumnId]);
+    const key = getMonthKey(row.cells[dateColumnId], startOfMonth);
     const list = groups.get(key);
     if (list) list.push(row);
     else groups.set(key, [row]);
   }
   return groups;
+}
+
+// Fiscal-month key for "today" given a `startOfMonth`. Used to pick the
+// month that should scroll into view on load and to enforce that the
+// current month is always rendered even when it has no rows yet.
+export function currentFiscalMonthKey(
+  startOfMonth: number = 1,
+  now: Date = new Date(),
+): string {
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const d = now.getDate();
+  const iso = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  return getMonthKey(iso, startOfMonth);
 }
 
 export function sortMonthKeys(keys: Iterable<string>): string[] {

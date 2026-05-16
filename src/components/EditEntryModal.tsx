@@ -3,7 +3,12 @@ import { X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Column, Row } from "../data/types";
+import type { Category, Column, Row, Settings } from "../data/types";
+import {
+  formatAmountForInput,
+  normalizeAmountInput,
+  parseAmount,
+} from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 
@@ -12,6 +17,7 @@ type Props = {
   row: Row | null;
   columns: Column[];
   categories: Category[];
+  settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.
   lastSeriesDate: string | null;
@@ -31,17 +37,12 @@ export type EditScope =
   | { kind: "just-this" }
   | { kind: "future"; untilIso: string | null };
 
-function parseAmount(text: string): number | null {
-  if (text.trim() === "" || text.trim() === "-") return null;
-  const n = Number(text.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-}
-
 export function EditEntryModal({
   open,
   row,
   columns,
   categories,
+  settings,
   lastSeriesDate,
   onClose,
   onConvertToRecurring,
@@ -68,7 +69,15 @@ export function EditEntryModal({
       : "";
   const initialAmountText =
     amountCol && row && typeof row.cells[amountCol.id] === "number"
-      ? String(row.cells[amountCol.id])
+      ? // Preserve sign when seeding the input — unlike the inline
+        // AmountCell, this modal lets the user type a signed value
+        // directly so the displayed sign matches the stored value.
+        (row.cells[amountCol.id] as number) < 0
+        ? `-${formatAmountForInput(
+            Math.abs(row.cells[amountCol.id] as number),
+            settings,
+          )}`
+        : formatAmountForInput(row.cells[amountCol.id] as number, settings)
       : "";
   const initialCategoryId =
     categoryCol && row && typeof row.cells[categoryCol.id] === "string"
@@ -133,6 +142,10 @@ export function EditEntryModal({
 
   const parsedAmount = parseAmount(amount);
   const amountTouched = amount !== initialAmountText;
+
+  function handleAmountChange(next: string) {
+    setAmount(normalizeAmountInput(next, settings));
+  }
 
   function handleSaveEdit() {
     if (!row) return;
@@ -206,7 +219,7 @@ export function EditEntryModal({
                     type="text"
                     inputMode="decimal"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => handleAmountChange(e.target.value)}
                     className={`field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
                       parsedAmount !== null && parsedAmount < 0
                         ? "text-negative"

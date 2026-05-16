@@ -1,18 +1,20 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import {
   computeBalances,
+  currentFiscalMonthKey,
   findColumnByType,
   groupRowsByMonth,
   sortMonthKeys,
   sortRowsByDate,
 } from "../data/sheet";
-import type { Category, CellValue, Row, Sheet } from "../data/types";
+import type { Category, CellValue, Row, Settings, Sheet } from "../data/types";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
   sheet: Sheet;
   categories: Category[];
+  settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   showName?: boolean;
@@ -27,14 +29,10 @@ type Props = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
-function currentMonthKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export function SheetView({
   sheet,
   categories,
+  settings,
   selectMode,
   selectedIds,
   showName = true,
@@ -57,14 +55,41 @@ export function SheetView({
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
-    return groupRowsByMonth(sheet.rows, dateCol.id);
-  }, [sheet.rows, dateCol]);
+    return groupRowsByMonth(sheet.rows, dateCol.id, settings.startOfMonth);
+  }, [sheet.rows, dateCol, settings.startOfMonth]);
+
+  const currentMonth = useMemo(
+    () => currentFiscalMonthKey(settings.startOfMonth),
+    [settings.startOfMonth],
+  );
 
   const visibleMonths = useMemo(() => {
     const keys = new Set(monthGroups.keys());
-    keys.add(currentMonthKey());
+    keys.add(currentMonth);
     return sortMonthKeys(keys);
-  }, [monthGroups]);
+  }, [monthGroups, currentMonth]);
+
+  // Scroll the current fiscal month into view on first mount and any time
+  // the user changes `startOfMonth` (which shifts which month "current"
+  // resolves to). The ref guards against re-running after the user has
+  // scrolled away on their own — we only auto-scroll for sheet+month
+  // identity changes, not on every render.
+  const scrollTargetRef = useRef<HTMLDivElement | null>(null);
+  const lastScrolledKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${sheet.id}:${currentMonth}`;
+    if (lastScrolledKey.current === key) return;
+    lastScrolledKey.current = key;
+    // Defer to the next frame so layout has settled (tables render
+    // synchronously but the sticky month headers establish their height
+    // on commit, which can offset the calculated scroll position).
+    requestAnimationFrame(() => {
+      scrollTargetRef.current?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
+    });
+  }, [sheet.id, currentMonth]);
 
   return (
     <section>
@@ -81,26 +106,33 @@ export function SheetView({
             ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
             : [];
           const seedDate = monthKey === "undated" ? "" : `${monthKey}-01`;
+          const isCurrent = monthKey === currentMonth;
           return (
-            <MonthTable
+            <div
               key={monthKey}
-              monthKey={monthKey}
-              rows={monthRows}
-              columns={sheet.columns}
-              balances={balances}
-              categories={categories}
-              selectMode={selectMode}
-              selectedIds={selectedIds}
-              onUpdateCell={onUpdateCell}
-              onAddRow={() => onAddRow(seedDate)}
-              onAddComplex={() => onAddComplex(seedDate)}
-              onDeleteRequest={onDeleteRequest}
-              onEditRequest={onEditRequest}
-              onReorderColumns={onReorderColumns}
-              onToggleSelect={onToggleSelect}
-              onToggleSelectMonth={onToggleSelectMonth}
-              onCreateCategory={onCreateCategory}
-            />
+              ref={isCurrent ? scrollTargetRef : null}
+              data-month-key={monthKey}
+            >
+              <MonthTable
+                monthKey={monthKey}
+                rows={monthRows}
+                columns={sheet.columns}
+                balances={balances}
+                categories={categories}
+                settings={settings}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                onUpdateCell={onUpdateCell}
+                onAddRow={() => onAddRow(seedDate)}
+                onAddComplex={() => onAddComplex(seedDate)}
+                onDeleteRequest={onDeleteRequest}
+                onEditRequest={onEditRequest}
+                onReorderColumns={onReorderColumns}
+                onToggleSelect={onToggleSelect}
+                onToggleSelectMonth={onToggleSelectMonth}
+                onCreateCategory={onCreateCategory}
+              />
+            </div>
           );
         })}
       </div>

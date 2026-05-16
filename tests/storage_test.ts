@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_SETTINGS } from "../src/data/constants";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { Budget } from "../src/data/types";
@@ -27,10 +28,11 @@ function sampleBudget(): Budget {
     },
   ];
   return {
-    version: 3,
+    version: 4,
     sheets: [a, b],
     activeSheetId: b.id,
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
+    settings: { ...DEFAULT_SETTINGS },
   };
 }
 
@@ -63,6 +65,7 @@ describe("serializeBudget", () => {
         id: s.id,
       })),
       categories: b.categories,
+      settings: b.settings,
       version: b.version,
     } as Budget;
     expect(serializeBudget(reordered)).toBe(text1);
@@ -75,9 +78,10 @@ describe("serializeBudget", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 4)).toEqual([
+    expect(topKeys.slice(0, 5)).toEqual([
       "activeSheetId",
       "categories",
+      "settings",
       "sheets",
       "version",
     ]);
@@ -166,6 +170,42 @@ describe("validateBudget — soft recovery", () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.categories).toEqual([]);
   });
+
+  it("defaults settings to DEFAULT_SETTINGS when missing", () => {
+    const b = sampleBudget();
+    const withoutSettings: Record<string, unknown> = { ...b };
+    delete withoutSettings.settings;
+    const r = validateBudget(withoutSettings);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("snaps individual invalid settings back to their default", () => {
+    const b = sampleBudget();
+    const raw = JSON.parse(serializeBudget(b));
+    raw.settings.startOfMonth = 99;
+    raw.settings.dateFormat = "wat";
+    raw.settings.decimalSeparator = "_";
+    raw.settings.thousandsSeparator = "X";
+    raw.settings.currency = "";
+    raw.settings.formatNumbers = "yes";
+    const r = validateBudget(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("clears thousands separator when it collides with the decimal", () => {
+    const b = sampleBudget();
+    const raw = JSON.parse(serializeBudget(b));
+    raw.settings.decimalSeparator = ".";
+    raw.settings.thousandsSeparator = ".";
+    const r = validateBudget(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.settings.decimalSeparator).toBe(".");
+      expect(r.value.settings.thousandsSeparator).toBe("");
+    }
+  });
 });
 
 describe("migrate", () => {
@@ -247,7 +287,38 @@ describe("migrate", () => {
     expect(sheet.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
   });
 
-  it("v2 → v3: bumps version, preserves data, keeps existing seriesIds", () => {
+  it("v3 → v4: adds settings with defaults, preserves data", () => {
+    const v3 = {
+      version: 3,
+      activeSheetId: "s1",
+      categories: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Old",
+          columns: [
+            { id: "c1", type: "date", label: "Date" },
+            { id: "c2", type: "description", label: "Description" },
+            { id: "c3", type: "category", label: "Category" },
+            { id: "c4", type: "amount", label: "Amount" },
+            { id: "c5", type: "balance", label: "Balance" },
+            { id: "c6", type: "completed", label: "Done" },
+          ],
+          rows: [{ id: "r1", cells: { c1: "2026-05-01", c4: 100 } }],
+        },
+      ],
+    };
+    const { budget, migrated } = migrate(v3);
+    expect(migrated).toBe(true);
+    expect(budget.version).toBe(LATEST_VERSION);
+    expect(budget.settings).toEqual(DEFAULT_SETTINGS);
+    const sheet = (budget.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
+    expect(sheet.rows[0].id).toBe("r1");
+    const validated = validateBudget(budget);
+    expect(validated.ok).toBe(true);
+  });
+
+  it("v2 → v3 → v4: bumps version, preserves data, keeps existing seriesIds", () => {
     const v2 = {
       version: 2,
       activeSheetId: "s1",

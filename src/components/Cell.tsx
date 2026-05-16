@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { Check, Minus, Plus } from "lucide-react";
 
-import type { Category, CellValue, Column } from "../data/types";
+import type { Category, CellValue, Column, Settings } from "../data/types";
+import {
+  formatAmountForInput,
+  formatBalance,
+  formatDate,
+  normalizeAmountInput,
+  parseAmount,
+} from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
 
@@ -10,16 +17,10 @@ type Props = {
   value: CellValue;
   computedBalance?: number;
   categories?: Category[];
+  settings: Settings;
   onChange: (value: CellValue) => void;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
-
-// Balance column is a derived sum — keep it compact so the column doesn't
-// dominate on mobile. No thousands separators; round to two decimal
-// places so floating-point drift doesn't print a 12-digit tail.
-function formatBalance(n: number): string {
-  return String(Math.round(n * 100) / 100);
-}
 
 function dayFromIso(value: CellValue): string {
   if (typeof value !== "string" || value.length < 10) return "";
@@ -36,12 +37,13 @@ export function Cell({
   value,
   computedBalance,
   categories,
+  settings,
   onChange,
   onCreateCategory,
 }: Props) {
   switch (column.type) {
     case "date": {
-      return <DateCell value={value} onChange={onChange} />;
+      return <DateCell value={value} settings={settings} onChange={onChange} />;
     }
 
     case "description":
@@ -58,7 +60,9 @@ export function Cell({
       );
 
     case "amount": {
-      return <AmountCell value={value} onChange={onChange} />;
+      return (
+        <AmountCell value={value} settings={settings} onChange={onChange} />
+      );
     }
 
     case "balance": {
@@ -70,7 +74,7 @@ export function Cell({
           }`}
           aria-readonly="true"
         >
-          {formatBalance(n)}
+          {formatBalance(n, settings)}
         </td>
       );
     }
@@ -117,22 +121,20 @@ export function Cell({
   }
 }
 
-function parseAbsAmount(text: string): number | null {
-  if (text === "") return null;
-  const n = Number(text.replace(",", "."));
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
-
 function AmountCell({
   value,
+  settings,
   onChange,
 }: {
   value: CellValue;
+  settings: Settings;
   onChange: (value: CellValue) => void;
 }) {
   const externalNumber = typeof value === "number" ? value : null;
   const externalAbsText =
-    externalNumber !== null ? String(Math.abs(externalNumber)) : "";
+    externalNumber !== null
+      ? formatAmountForInput(Math.abs(externalNumber), settings)
+      : "";
   const [text, setText] = useState(externalAbsText);
   const [negative, setNegative] = useState(
     externalNumber !== null && externalNumber < 0,
@@ -141,27 +143,32 @@ function AmountCell({
   // Skip resync while local state already represents the same number, so
   // in-progress input like "12," is not clobbered by a parent rerender.
   useEffect(() => {
-    const localAbs = parseAbsAmount(text);
+    const localAbs = parseAmount(text);
     const localSigned =
       localAbs === null ? null : negative ? -localAbs : localAbs;
     if (localSigned === externalNumber) return;
     setText(externalAbsText);
     setNegative(externalNumber !== null && externalNumber < 0);
-  }, [externalNumber, externalAbsText, text, negative]);
+  }, [externalNumber, externalAbsText, text, negative, settings]);
 
   const commit = (nextText: string, nextNegative: boolean) => {
     // Sign lives on the toggle button — strip any minus the keyboard or a
     // paste produces so the input only ever shows the absolute value.
-    const cleaned = nextText.replace(/-/g, "");
+    // Then snap the alternate decimal char to the configured one so the
+    // visible text agrees with settings as the user types.
+    const stripped = nextText.replace(/-/g, "");
+    const cleaned = normalizeAmountInput(stripped, settings);
     setText(cleaned);
     setNegative(nextNegative);
-    const abs = parseAbsAmount(cleaned);
-    onChange(abs === null ? null : nextNegative ? -abs : abs);
+    const abs = parseAmount(cleaned);
+    onChange(
+      abs === null ? null : nextNegative ? -Math.abs(abs) : Math.abs(abs),
+    );
   };
 
   const toggleSign = () => commit(text, !negative);
 
-  const parsed = parseAbsAmount(text);
+  const parsed = parseAmount(text);
   const hasValue = parsed !== null && parsed > 0;
 
   return (
@@ -191,12 +198,13 @@ function AmountCell({
           className="invisible px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre"
         >
           {text || "0"}
+          {settings.showCurrency ? ` ${settings.currency}` : ""}
         </span>
         <input
           type="text"
           inputMode="decimal"
           pattern="[0-9]*[.,]?[0-9]*"
-          className={`${INPUT_BASE} absolute inset-0 pl-6 text-right tabular-nums ${
+          className={`${INPUT_BASE} absolute inset-0 ${settings.showCurrency ? "pr-8" : ""} pl-6 text-right tabular-nums ${
             hasValue
               ? negative
                 ? "text-negative"
@@ -206,6 +214,14 @@ function AmountCell({
           value={text}
           onChange={(e) => commit(e.target.value, negative)}
         />
+        {settings.showCurrency && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-2 flex items-center font-mono text-xs text-muted"
+          >
+            {settings.currency}
+          </span>
+        )}
       </div>
     </td>
   );
@@ -213,14 +229,17 @@ function AmountCell({
 
 function DateCell({
   value,
+  settings,
   onChange,
 }: {
   value: CellValue;
+  settings: Settings;
   onChange: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
   const day = dayFromIso(value);
   const iso = typeof value === "string" ? value : "";
+  const formatted = iso ? formatDate(iso, settings.dateFormat) : "";
 
   return (
     <td className={`${CELL_BASE} relative p-0`}>
@@ -229,7 +248,7 @@ function DateCell({
         className={`block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-mono tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
           day ? "text-path" : "text-muted"
         }`}
-        aria-label={iso ? `Change date (${iso})` : "Pick a date"}
+        aria-label={iso ? `Change date (${formatted})` : "Pick a date"}
         onClick={() => setOpen(true)}
       >
         {day || "—"}
