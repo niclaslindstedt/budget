@@ -17,11 +17,9 @@ import {
 type Props = {
   budget: Budget;
   onImport: (budget: Budget) => void;
-  // When true, exports are wrapped in an encrypted envelope using the
-  // password returned by `getEncryptionPassword`. The same envelope
-  // shape the localStorage adapter writes, so re-importing the file
-  // surfaces the password prompt automatically.
-  encryptionEnabled: boolean;
+  // Returns the active account password so exports can be wrapped in
+  // the same encryption envelope the localStorage adapter writes —
+  // re-importing the file surfaces the password prompt automatically.
   getEncryptionPassword: () => string | null;
 };
 
@@ -36,7 +34,6 @@ const iconButton =
 export function ImportExportControls({
   budget,
   onImport,
-  encryptionEnabled,
   getEncryptionPassword,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -45,28 +42,25 @@ export function ImportExportControls({
 
   async function handleExport() {
     const plaintext = serializeBudget(budget);
-    let body = plaintext;
-    let filename = suggestFilename();
-    if (encryptionEnabled) {
-      const password = getEncryptionPassword();
-      if (!password) {
-        setStatus({
-          kind: "error",
-          message: "Encryption is on but no password is set. Re-unlock first.",
-        });
-        return;
-      }
-      try {
-        body = await encryptText(plaintext, password);
-        filename = suggestFilename().replace(/\.json$/, ".enc.json");
-      } catch (err) {
-        setStatus({
-          kind: "error",
-          message: `Encryption failed: ${(err as Error).message}`,
-        });
-        return;
-      }
+    const password = getEncryptionPassword();
+    if (!password) {
+      setStatus({
+        kind: "error",
+        message: "No account password held in memory — sign in again.",
+      });
+      return;
     }
+    let body: string;
+    try {
+      body = await encryptText(plaintext, password);
+    } catch (err) {
+      setStatus({
+        kind: "error",
+        message: `Encryption failed: ${(err as Error).message}`,
+      });
+      return;
+    }
+    const filename = suggestFilename().replace(/\.json$/, ".enc.json");
     const blob = new Blob([body], { type: FILE_MIME_TYPE });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -76,10 +70,7 @@ export function ImportExportControls({
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    setStatus({
-      kind: "ok",
-      message: encryptionEnabled ? "Exported (encrypted)." : "Exported.",
-    });
+    setStatus({ kind: "ok", message: "Exported (encrypted)." });
   }
 
   function finishImport(text: string) {
@@ -151,8 +142,8 @@ export function ImportExportControls({
         onClick={() => {
           void handleExport();
         }}
-        aria-label="Export budget as JSON"
-        title={encryptionEnabled ? "Export (encrypted)" : "Export"}
+        aria-label="Export budget as encrypted JSON"
+        title="Export (encrypted)"
       >
         <Download size={18} aria-hidden focusable={false} />
       </button>

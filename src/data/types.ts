@@ -111,3 +111,27 @@ export type Budget = {
   categories: Category[];
   settings: Settings;
 };
+
+// User account record persisted in the device-wide registry. The
+// password is stored as a PBKDF2-SHA256 digest with a per-user salt
+// and the iteration count it was computed under. The same plaintext
+// password also derives the AES-GCM key used to encrypt that user's
+// budget bytes (via a separate salt inside the envelope) so there is
+// only ever one password per account.
+export type StoredUser = {
+  id: string;
+  username: string;
+  passwordHash: string;
+  passwordSalt: string;
+  iterations: number;
+  hash: "SHA-256";
+  createdAt: number;
+};
+
+export type UsersFile = {
+  version: 1;
+  users: StoredUser[];
+  // Id of the user whose budget the app should try to load on the
+  // next launch. Null if the user explicitly signed out.
+  activeUserId: string | null;
+};

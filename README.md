@@ -6,8 +6,10 @@
 
 A local-first budget app. Your data lives in your browser's local
 storage; you can export it to a file at any time and re-import it on
-another device. There is no backend, no account, and no third-party
-service in the loop.
+another device. Each device holds one or more local accounts —
+username + password, hashed and stored on the device only — that keep
+separate budgets and settings apart. There is no backend and no
+third-party service in the loop.
 
 > Live at **[budget.niclaslindstedt.se](https://budget.niclaslindstedt.se/)**.
 
@@ -25,8 +27,9 @@ whole budget through a JSON file. Multiple sheets come next.
 
 ## Why
 
-- **Local-first.** No backend means no signups, no syncing surprises,
-  no privacy footnotes.
+- **Local-first.** No backend means no remote signups, no syncing
+  surprises, no privacy footnotes. Accounts are kept on the device
+  and the budget is encrypted with the account password at rest.
 - **Portable data.** Save your budget as a file, copy it to another
   device, import it. The data shape is JSON you can read in any text
   editor.
