@@ -1,6 +1,8 @@
 import { LATEST_VERSION } from "./migrations";
 import type {
   Budget,
+  Category,
+  CategoryIcon,
   CellValue,
   Column,
   ColumnType,
@@ -16,6 +18,35 @@ const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
   "amount",
   "balance",
   "completed",
+  "category",
+]);
+
+const CATEGORY_ICONS: ReadonlySet<CategoryIcon> = new Set<CategoryIcon>([
+  "tag",
+  "home",
+  "car",
+  "shopping-bag",
+  "shopping-cart",
+  "utensils",
+  "coffee",
+  "pizza",
+  "heart",
+  "gift",
+  "music",
+  "film",
+  "plane",
+  "briefcase",
+  "graduation-cap",
+  "stethoscope",
+  "pill",
+  "receipt",
+  "banknote",
+  "credit-card",
+  "piggy-bank",
+  "wallet",
+  "zap",
+  "sparkles",
+  "star",
 ]);
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -116,6 +147,23 @@ function validateSheet(raw: unknown, path: string): Result<Sheet> {
   };
 }
 
+function validateCategory(raw: unknown, path: string): Result<Category> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, color, icon } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  if (typeof color !== "string" || color === "")
+    return fail(`${path}.color`, "expected a non-empty string");
+  if (typeof icon !== "string" || !CATEGORY_ICONS.has(icon as CategoryIcon))
+    return fail(`${path}.icon`, `unknown category icon "${String(icon)}"`);
+  return {
+    ok: true,
+    value: { id, name, color, icon: icon as CategoryIcon },
+  };
+}
+
 export function validateBudget(raw: unknown): Result<Budget> {
   if (!isObject(raw)) return fail("root", "expected an object");
   if (raw.version !== LATEST_VERSION)
@@ -127,6 +175,18 @@ export function validateBudget(raw: unknown): Result<Budget> {
     return fail("sheets", "expected a non-empty array");
   if (typeof raw.activeSheetId !== "string")
     return fail("activeSheetId", "expected a string");
+
+  const rawCategories = Array.isArray(raw.categories) ? raw.categories : [];
+  const categories: Category[] = [];
+  const seenCategoryIds = new Set<string>();
+  for (let i = 0; i < rawCategories.length; i++) {
+    const r = validateCategory(rawCategories[i], `categories[${i}]`);
+    if (!r.ok) return r;
+    if (seenCategoryIds.has(r.value.id))
+      return fail(`categories[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenCategoryIds.add(r.value.id);
+    categories.push(r.value);
+  }
 
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
@@ -146,6 +206,6 @@ export function validateBudget(raw: unknown): Result<Budget> {
 
   return {
     ok: true,
-    value: { version: LATEST_VERSION, sheets, activeSheetId },
+    value: { version: LATEST_VERSION, sheets, activeSheetId, categories },
   };
 }

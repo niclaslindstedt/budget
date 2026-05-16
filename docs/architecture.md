@@ -14,11 +14,17 @@ src/
 │   ├── MonthTable.tsx             # one month's table
 │   ├── ColumnHeader.tsx           # draggable column header
 │   ├── Cell.tsx                   # per-type cell editor
+│   ├── SheetRow.tsx               # row body — swipe-to-delete + cell wiring
+│   ├── AddRowButton.tsx           # `+` with long-press / right-click hatch
+│   ├── ComplexEntryModal.tsx      # recurring + categorised entry form
+│   ├── CategoryPicker.tsx         # custom dropdown + inline category creator
+│   ├── icons.tsx                  # column-type + category-icon registries
 │   └── ImportExportControls.tsx   # file download + file picker
 ├── data/
-│   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
-│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
+│   ├── types.ts          # Budget, Sheet, Column, Row, Category, CellValue
+│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, palette, icon list
 │   ├── sheet.ts          # pure helpers (group, sort, balances, reorder)
+│   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
 │   ├── migrations.ts     # forward-only schema migration runner
 │   └── validate.ts       # boundary validator: unknown → Result<Budget>
 └── storage/
@@ -47,13 +53,15 @@ src/
 ## Data model
 
 The persistent state is a single JSON document stored under the
-`localStorage` key `budget.v1`. Top-level shape:
+`localStorage` key `budget.v1` (the key is fixed; the document
+carries its own `version` field). Top-level shape:
 
 ```ts
 type Budget = {
-  version: 1;
+  version: 2;
   sheets: Sheet[];
   activeSheetId: string;
+  categories: Category[];
 };
 
 type Sheet = {
@@ -66,7 +74,13 @@ type Sheet = {
 
 type Column = {
   id: string;
-  type: "date" | "description" | "amount" | "balance" | "completed";
+  type:
+    | "date"
+    | "description"
+    | "amount"
+    | "balance"
+    | "completed"
+    | "category";
   label: string;
 };
 
@@ -74,7 +88,18 @@ type Row = {
   id: string;
   cells: Record<string /* column id */, string | number | boolean | null>;
 };
+
+type Category = {
+  id: string;
+  name: string;
+  color: string; // hex
+  icon: CategoryIcon; // one of a fixed allowlist
+};
 ```
+
+A row's category is stored in the `category`-typed column's cell as
+the category id (string). The category record itself lives on the
+budget so renaming or recolouring updates every row at once.
 
 Cells are keyed by column id (not column type) so the model supports
 adding multiple columns of the same type without ambiguity. The
@@ -103,8 +128,26 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Today only `version: 1` exists, so the migration chain is empty. The
-scaffolding is in place so the next bump is a single entry.
+Current `LATEST_VERSION` is `2`. The chain has one step:
+
+- **v1 → v2** — introduces top-level `categories: []` and inserts a
+  `category` column into every sheet (just after the description
+  column) so existing rows can be tagged without re-arranging.
+
+## Complex entries
+
+`src/data/recurrence.ts` defines `RecurrenceRule` — a discriminated
+union covering one-off dates, an arbitrary list of dates, an
+every-N-days cadence, and an every-N-months cadence with an anchor
+`dayOfMonth` and signed `offsetDays`. Monthly / quarterly / yearly
+are presets over the `everyNMonths` rule (`intervalMonths` of 1, 3,
+or 12). `expandRecurrence(rule)` returns a sorted, de-duplicated
+list of ISO `YYYY-MM-DD` strings clamped to `[start, end]`.
+
+The `ComplexEntryModal` collects a description, amount, category,
+and a recurrence rule; on submit it expands the rule and dispatches
+one row per emitted date. Generated rows are ordinary rows —
+edit and delete behave the same as for manually-added rows.
 
 ## Import / export
 

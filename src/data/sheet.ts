@@ -11,6 +11,7 @@ export function createDefaultSheet(name = "Sheet 1"): Sheet {
   const columns: Column[] = [
     { id: newId(), type: "date", label: "Date" },
     { id: newId(), type: "description", label: "Description" },
+    { id: newId(), type: "category", label: "Category" },
     { id: newId(), type: "amount", label: "Amount" },
     { id: newId(), type: "balance", label: "Balance" },
     { id: newId(), type: "completed", label: "Done" },

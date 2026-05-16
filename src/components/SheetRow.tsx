@@ -2,15 +2,17 @@ import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
-import type { CellValue, Column, Row } from "../data/types";
+import type { Category, CellValue, Column, Row } from "../data/types";
 import { Cell } from "./Cell";
 
 type Props = {
   row: Row;
   columns: Column[];
   balances: Map<string, number>;
+  categories: Category[];
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onDeleteRow: (rowId: string) => void;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 const SWIPE_THRESHOLD = 40;
@@ -19,8 +21,10 @@ export function SheetRow({
   row,
   columns,
   balances,
+  categories,
   onUpdateCell,
   onDeleteRow,
+  onCreateCategory,
 }: Props) {
   const [swiped, setSwiped] = useState(false);
   const startX = useRef<number | null>(null);
@@ -79,7 +83,9 @@ export function SheetRow({
           computedBalance={
             col.type === "balance" ? balances.get(row.id) : undefined
           }
+          categories={categories}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
+          onCreateCategory={onCreateCategory}
         />
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">

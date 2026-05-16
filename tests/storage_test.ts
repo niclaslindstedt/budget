@@ -27,7 +27,12 @@ function sampleBudget(): Budget {
       cells: { [dateCol.id]: "2026-05-15", [amountCol.id]: -10 },
     },
   ];
-  return { version: 1, sheets: [a, b], activeSheetId: b.id };
+  return {
+    version: 2,
+    sheets: [a, b],
+    activeSheetId: b.id,
+    categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
+  };
 }
 
 describe("serializeBudget", () => {
@@ -59,6 +64,7 @@ describe("serializeBudget", () => {
         })),
         id: s.id,
       })),
+      categories: b.categories,
       version: b.version,
     } as Budget;
     expect(serializeBudget(reordered)).toBe(text1);
@@ -71,7 +77,12 @@ describe("serializeBudget", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 3)).toEqual(["activeSheetId", "sheets", "version"]);
+    expect(topKeys.slice(0, 4)).toEqual([
+      "activeSheetId",
+      "categories",
+      "sheets",
+      "version",
+    ]);
   });
 
   it("ends with a trailing newline", () => {
@@ -117,6 +128,15 @@ describe("parseBudget — error paths", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/duplicate id/);
   });
+
+  it("rejects unknown category icon", () => {
+    const b = sampleBudget();
+    const raw = JSON.parse(serializeBudget(b));
+    raw.categories[0].icon = "not-an-icon";
+    const r = parseBudget(JSON.stringify(raw));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/unknown category icon/);
+  });
 });
 
 describe("validateBudget — soft recovery", () => {
@@ -139,6 +159,15 @@ describe("validateBudget — soft recovery", () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.activeSheetId).toBe(b.sheets[0].id);
   });
+
+  it("defaults categories to an empty array when missing", () => {
+    const b = sampleBudget();
+    const withoutCategories: Record<string, unknown> = { ...b };
+    delete withoutCategories.categories;
+    const r = validateBudget(withoutCategories);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.categories).toEqual([]);
+  });
 });
 
 describe("migrate", () => {
@@ -152,13 +181,81 @@ describe("migrate", () => {
   it("throws for a version newer than supported", () => {
     expect(() => migrate({ version: LATEST_VERSION + 1 })).toThrow();
   });
+
+  it("v1 → v2: adds categories array and a category column to every sheet", () => {
+    const v1 = {
+      version: 1,
+      activeSheetId: "s1",
+      sheets: [
+        {
+          id: "s1",
+          name: "Old",
+          openingBalance: 0,
+          rows: [],
+          columns: [
+            { id: "c1", type: "date", label: "Date" },
+            { id: "c2", type: "description", label: "Description" },
+            { id: "c3", type: "amount", label: "Amount" },
+            { id: "c4", type: "balance", label: "Balance" },
+            { id: "c5", type: "completed", label: "Done" },
+          ],
+        },
+      ],
+    };
+    const { budget, migrated } = migrate(v1);
+    expect(migrated).toBe(true);
+    expect(budget.version).toBe(2);
+    expect(budget.categories).toEqual([]);
+    const sheet = (
+      budget.sheets as Array<{ columns: Array<{ type: string }> }>
+    )[0];
+    const types = sheet.columns.map((c) => c.type);
+    // category sits right after description
+    expect(types).toEqual([
+      "date",
+      "description",
+      "category",
+      "amount",
+      "balance",
+      "completed",
+    ]);
+    // Migrated budget validates cleanly under the latest validator.
+    const validated = validateBudget(budget);
+    expect(validated.ok).toBe(true);
+  });
+
+  it("v1 → v2: leaves an already-present category column alone", () => {
+    const v1 = {
+      version: 1,
+      activeSheetId: "s1",
+      sheets: [
+        {
+          id: "s1",
+          name: "Old",
+          openingBalance: 0,
+          rows: [],
+          columns: [
+            { id: "c1", type: "date", label: "Date" },
+            { id: "cx", type: "category", label: "Bucket" },
+            { id: "c2", type: "description", label: "Description" },
+          ],
+        },
+      ],
+    };
+    const { budget } = migrate(v1);
+    const sheet = (
+      budget.sheets as Array<{ columns: Array<{ id: string }> }>
+    )[0];
+    expect(sheet.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
+  });
 });
 
 describe("readBudgetFromText", () => {
   it("returns a fresh budget when input is null", () => {
     const b = readBudgetFromText(null);
-    expect(b.version).toBe(1);
+    expect(b.version).toBe(LATEST_VERSION);
     expect(b.sheets).toHaveLength(1);
+    expect(b.categories).toEqual([]);
   });
 
   it("falls back to a fresh budget on garbage input", () => {

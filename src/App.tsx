@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 
+import {
+  ComplexEntryModal,
+  type ComplexEntryDraft,
+} from "./components/ComplexEntryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
 import { SheetView } from "./components/SheetView";
-import { createEmptyRow, findColumnByType, moveColumn } from "./data/sheet";
-import type { Budget, CellValue, Row } from "./data/types";
+import {
+  createEmptyRow,
+  findColumnByType,
+  moveColumn,
+  newId,
+} from "./data/sheet";
+import type { Budget, Category, CellValue, Row } from "./data/types";
 import { loadBudget, saveBudget } from "./storage/local";
 
 type SheetAction =
@@ -15,11 +24,19 @@ type SheetAction =
       value: CellValue;
     }
   | { type: "addRow"; sheetId: string; date: string }
+  | {
+      type: "addRowsFromComplex";
+      sheetId: string;
+      draft: ComplexEntryDraft;
+    }
   | { type: "deleteRow"; sheetId: string; rowId: string }
   | { type: "reorderColumns"; sheetId: string; fromId: string; toId: string }
   | { type: "setOpeningBalance"; sheetId: string; value: number };
 
-type Action = SheetAction | { type: "replace"; budget: Budget };
+type Action =
+  | SheetAction
+  | { type: "replace"; budget: Budget }
+  | { type: "addCategory"; category: Category };
 
 function reduceSheet(
   sheet: Budget["sheets"][number],
@@ -45,6 +62,20 @@ function reduceSheet(
       return { ...sheet, rows: [...sheet.rows, newRow] };
     }
 
+    case "addRowsFromComplex": {
+      const { draft } = action;
+      const newRows: Row[] = draft.dates.map((date) =>
+        createEmptyRow(sheet.columns, {
+          date,
+          description: draft.description,
+          amount: draft.amount,
+          category: draft.categoryId,
+          completed: false,
+        }),
+      );
+      return { ...sheet, rows: [...sheet.rows, ...newRows] };
+    }
+
     case "deleteRow":
       return {
         ...sheet,
@@ -64,6 +95,9 @@ function reduceSheet(
 
 function reducer(state: Budget, action: Action): Budget {
   if (action.type === "replace") return action.budget;
+  if (action.type === "addCategory") {
+    return { ...state, categories: [...state.categories, action.category] };
+  }
   return {
     ...state,
     sheets: state.sheets.map((sheet) =>
@@ -74,6 +108,8 @@ function reducer(state: Budget, action: Action): Budget {
 
 export function App() {
   const [budget, dispatch] = useReducer(reducer, undefined, loadBudget);
+  const [complexOpen, setComplexOpen] = useState(false);
+  const [complexSeedDate, setComplexSeedDate] = useState("");
 
   useEffect(() => {
     saveBudget(budget);
@@ -94,6 +130,10 @@ export function App() {
     (date: string) => dispatch({ type: "addRow", sheetId, date }),
     [sheetId],
   );
+  const onAddComplex = useCallback((date: string) => {
+    setComplexSeedDate(date);
+    setComplexOpen(true);
+  }, []);
   const onDeleteRow = useCallback(
     (rowId: string) => dispatch({ type: "deleteRow", sheetId, rowId }),
     [sheetId],
@@ -110,6 +150,21 @@ export function App() {
   const onImport = useCallback(
     (next: Budget) => dispatch({ type: "replace", budget: next }),
     [],
+  );
+  const onCreateCategory = useCallback(
+    (draft: Omit<Category, "id">): Category => {
+      const category: Category = { id: newId(), ...draft };
+      dispatch({ type: "addCategory", category });
+      return category;
+    },
+    [],
+  );
+  const onComplexSubmit = useCallback(
+    (draft: ComplexEntryDraft) => {
+      dispatch({ type: "addRowsFromComplex", sheetId, draft });
+      setComplexOpen(false);
+    },
+    [sheetId],
   );
 
   return (
@@ -130,12 +185,15 @@ export function App() {
       <main className="flex-1">
         <SheetView
           sheet={activeSheet}
+          categories={budget.categories}
           showName={budget.sheets.length > 1}
           onUpdateCell={onUpdateCell}
           onAddRow={onAddRow}
+          onAddComplex={onAddComplex}
           onDeleteRow={onDeleteRow}
           onReorderColumns={onReorderColumns}
           onSetOpeningBalance={onSetOpeningBalance}
+          onCreateCategory={onCreateCategory}
         />
       </main>
       <footer className="mt-12 border-t border-line pt-4 text-xs text-muted">
@@ -146,6 +204,14 @@ export function App() {
           Source
         </a>
       </footer>
+      <ComplexEntryModal
+        open={complexOpen}
+        initialDate={complexSeedDate}
+        categories={budget.categories}
+        onClose={() => setComplexOpen(false)}
+        onCreate={onComplexSubmit}
+        onCreateCategory={onCreateCategory}
+      />
     </div>
   );
 }
