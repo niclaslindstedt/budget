@@ -51,7 +51,12 @@ import {
   readRawStorage,
   writeRawStorage,
 } from "./storage/local-adapter";
-import { clearSession, loadSession, saveSession } from "./storage/session";
+import {
+  clearSession,
+  loadSession,
+  saveSession,
+  SESSION_TTL_MS,
+} from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
 import {
   createUser,
@@ -419,19 +424,15 @@ type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 //   "signed-in"   — a user is active and their decrypted budget is
 //                   being edited; the password lives in `passwordRef`
 //                   so the encrypting adapter can encrypt every save.
-// `expiresAt` carries the wall-clock deadline of the cached password
-// in sessionStorage so a single timer can flip the state back to
-// signed-out when the cache lapses.
 // The state is also persisted in `budget.users.v1` so a reload lands
 // the user on the sign-in form for the same account they last used.
+// The session-storage cache (see `src/storage/session.ts`) carries the
+// rolling-window deadline; an idle-tracking effect below extends it
+// while the user is active and signs the user out once activity has
+// been idle for longer than `SESSION_TTL_MS`.
 type AuthState =
   | { kind: "signed-out"; lastUsername: string | null }
-  | {
-      kind: "signed-in";
-      user: StoredUser;
-      password: string;
-      expiresAt: number;
-    };
+  | { kind: "signed-in"; user: StoredUser; password: string };
 
 // Resolve the auth state to land on at boot. If sessionStorage still
 // holds a non-expired password for a known user, jump straight back
@@ -444,12 +445,7 @@ function readBootAuth(): { users: StoredUser[]; auth: AuthState } {
     if (user) {
       return {
         users: file.users,
-        auth: {
-          kind: "signed-in",
-          user,
-          password: session.password,
-          expiresAt: session.expiresAt,
-        },
+        auth: { kind: "signed-in", user, password: session.password },
       };
     }
     // Session points at a user that no longer exists locally — sweep
@@ -516,13 +512,8 @@ export function App() {
       if (!ok) throw new Error("Wrong password");
       passwordRef.current = password;
       persistRegistry(users, user.id);
-      const session = saveSession(user.id, password);
-      setAuth({
-        kind: "signed-in",
-        user,
-        password,
-        expiresAt: session.expiresAt,
-      });
+      saveSession(user.id, password);
+      setAuth({ kind: "signed-in", user, password });
     },
     [users, persistRegistry],
   );
@@ -551,13 +542,8 @@ export function App() {
       setUsers(nextUsers);
       persistRegistry(nextUsers, user.id);
       passwordRef.current = password;
-      const session = saveSession(user.id, password);
-      setAuth({
-        kind: "signed-in",
-        user,
-        password,
-        expiresAt: session.expiresAt,
-      });
+      saveSession(user.id, password);
+      setAuth({ kind: "signed-in", user, password });
     },
     [users, persistRegistry],
   );
@@ -613,23 +599,51 @@ export function App() {
     [auth, users, persistRegistry],
   );
 
-  // Auto sign-out when the cached password TTL elapses. We schedule a
-  // single timer keyed off the absolute deadline so it stays accurate
-  // across re-renders; a ref to `handleSignOut` keeps the timer from
-  // resetting just because the callback identity changed.
+  // Idle-tracked sign-out. Every user input bumps a ref; a periodic
+  // tick (a) signs the user out if no input has landed inside the TTL
+  // window, and (b) re-stamps sessionStorage with a fresh deadline so
+  // a reload mid-session sees the rolling window, not the deadline
+  // from when the password was first cached. The ref to `handleSignOut`
+  // keeps the effect from re-subscribing every time the callback's
+  // identity changes (it depends on `users`).
   const signOutRef = useRef(handleSignOut);
   signOutRef.current = handleSignOut;
-  const expiresAt = auth.kind === "signed-in" ? auth.expiresAt : null;
+  const lastActivityRef = useRef<number>(Date.now());
+  const signedInUserId = auth.kind === "signed-in" ? auth.user.id : null;
+  const signedInPassword = auth.kind === "signed-in" ? auth.password : null;
   useEffect(() => {
-    if (expiresAt === null) return;
-    const remaining = expiresAt - Date.now();
-    if (remaining <= 0) {
-      signOutRef.current();
-      return;
+    if (signedInUserId === null || signedInPassword === null) return;
+    // Treat sign-in (and the initial render after a session restore)
+    // as activity so the rolling window starts now, and persist a
+    // fresh deadline immediately so a reload right after sign-in
+    // doesn't risk being a few seconds inside the next tick.
+    lastActivityRef.current = Date.now();
+    saveSession(signedInUserId, signedInPassword);
+
+    const bump = () => {
+      lastActivityRef.current = Date.now();
+    };
+    const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    for (const e of events) {
+      window.addEventListener(e, bump, { passive: true });
     }
-    const timer = window.setTimeout(() => signOutRef.current(), remaining);
-    return () => window.clearTimeout(timer);
-  }, [expiresAt]);
+
+    // 30s tick — small enough that the sign-out is accurate to within
+    // half a minute, large enough that the writes to sessionStorage
+    // don't churn.
+    const tick = window.setInterval(() => {
+      if (Date.now() - lastActivityRef.current >= SESSION_TTL_MS) {
+        signOutRef.current();
+        return;
+      }
+      saveSession(signedInUserId, signedInPassword);
+    }, 30_000);
+
+    return () => {
+      for (const e of events) window.removeEventListener(e, bump);
+      window.clearInterval(tick);
+    };
+  }, [signedInUserId, signedInPassword]);
 
   if (auth.kind === "signed-out" || adapter === null) {
     return (
