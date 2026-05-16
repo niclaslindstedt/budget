@@ -52,7 +52,29 @@ export const DEFAULT_SETTINGS: Settings = {
   formatNumbers: true,
   showCurrency: true,
   showDecimals: false,
+  sessionTimeoutMinutes: 15,
 };
+
+// Bounds for the session timeout setting. One minute is the floor so a
+// fat-finger 0 doesn't lock the user out instantly; 1440 minutes is a
+// full day, which is the longest a tab-scoped cache is meaningful.
+export const MIN_SESSION_TIMEOUT_MINUTES = 1;
+export const MAX_SESSION_TIMEOUT_MINUTES = 24 * 60;
+
+// Presets exposed in the settings UI. Stored independently of the bound
+// constants so a future custom-value input can keep working alongside.
+export const SESSION_TIMEOUT_PRESETS: readonly {
+  minutes: number;
+  label: string;
+}[] = [
+  { minutes: 5, label: "5 minutes" },
+  { minutes: 15, label: "15 minutes" },
+  { minutes: 30, label: "30 minutes" },
+  { minutes: 60, label: "1 hour" },
+  { minutes: 4 * 60, label: "4 hours" },
+  { minutes: 8 * 60, label: "8 hours" },
+  { minutes: 24 * 60, label: "24 hours" },
+];
 
 // Allowed date formats, in the order the settings UI lists them.
 export const DATE_FORMATS: readonly DateFormat[] = [

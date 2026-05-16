@@ -1,6 +1,8 @@
 import {
   DATE_FORMATS,
   DEFAULT_SETTINGS,
+  MAX_SESSION_TIMEOUT_MINUTES,
+  MIN_SESSION_TIMEOUT_MINUTES,
   SHORT_DATE_FORMATS,
 } from "./constants";
 import { LATEST_VERSION } from "./migrations";
@@ -308,6 +310,13 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.showDecimals === "boolean"
       ? raw.showDecimals
       : DEFAULT_SETTINGS.showDecimals;
+  const sessionTimeoutMinutes =
+    typeof raw.sessionTimeoutMinutes === "number" &&
+    Number.isFinite(raw.sessionTimeoutMinutes) &&
+    raw.sessionTimeoutMinutes >= MIN_SESSION_TIMEOUT_MINUTES &&
+    raw.sessionTimeoutMinutes <= MAX_SESSION_TIMEOUT_MINUTES
+      ? Math.round(raw.sessionTimeoutMinutes)
+      : DEFAULT_SETTINGS.sessionTimeoutMinutes;
   return {
     startOfMonth,
     dateFormat,
@@ -318,6 +327,7 @@ function validateSettings(raw: unknown): Settings {
     formatNumbers,
     showCurrency,
     showDecimals,
+    sessionTimeoutMinutes,
   };
 }
 

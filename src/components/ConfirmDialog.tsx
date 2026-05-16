@@ -15,6 +15,11 @@ type Props = {
   title: string;
   description?: React.ReactNode;
   actions: ConfirmAction[];
+  // Hide the bottom Cancel button when the action set already covers
+  // dismissal (e.g. an idle-warning modal whose only action is "stay
+  // signed in", which is what cancelling means too). The X close
+  // button, Escape, and click-outside still trigger `onCancel`.
+  hideCancel?: boolean;
   onCancel: () => void;
 };
 
@@ -27,6 +32,7 @@ export function ConfirmDialog({
   title,
   description,
   actions,
+  hideCancel,
   onCancel,
 }: Props) {
   useEffect(() => {
@@ -89,13 +95,15 @@ export function ConfirmDialog({
               {action.label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={onCancel}
-            className="cursor-pointer rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
-          >
-            Cancel
-          </button>
+          {!hideCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="cursor-pointer rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   NUMBER_FORMATS,
   SHORT_DATE_FORMATS,
   type NumberFormatPreset,
+  SESSION_TIMEOUT_PRESETS,
 } from "../data/constants";
 import type {
   DateFormat,
@@ -338,6 +339,26 @@ function MainView({
             </p>
           </div>
         </div>
+        <Field label="Session timeout">
+          <select
+            value={draft.sessionTimeoutMinutes}
+            onChange={(e) =>
+              onUpdate("sessionTimeoutMinutes", Number(e.target.value))
+            }
+            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
+          >
+            {SESSION_TIMEOUT_PRESETS.map((p) => (
+              <option key={p.minutes} value={p.minutes}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted">
+            Sign you out after this long without input. The clock resets on
+            every click or keystroke, and you&apos;ll see a warning a minute
+            before the deadline.
+          </p>
+        </Field>
       </Section>
     </div>
   );

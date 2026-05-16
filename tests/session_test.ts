@@ -90,6 +90,16 @@ describe("saveSession / loadSession / clearSession", () => {
     expect(loadSession()).toEqual(session);
   });
 
+  it("honors a caller-supplied TTL when stamping the deadline", () => {
+    const customTtl = 60 * 60_000;
+    const before = Date.now();
+    const session = saveSession("user-1", "hunter2", customTtl);
+    expect(session.expiresAt).toBeGreaterThanOrEqual(before + customTtl);
+    // The default 15-minute deadline should NOT be applied when the
+    // caller passed a longer window.
+    expect(session.expiresAt).toBeGreaterThan(Date.now() + SESSION_TTL_MS);
+  });
+
   it("loadSession sweeps an expired payload", () => {
     storage.setItem(
       SESSION_KEY,

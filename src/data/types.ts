@@ -138,6 +138,11 @@ export type Settings = {
   formatNumbers: boolean;
   showCurrency: boolean;
   showDecimals: boolean;
+  // Minutes the decrypted password may sit in the tab's sessionStorage
+  // before the user is auto-signed-out. The clock resets on every user
+  // input, so this is an idle timeout, not a hard ceiling. Bounded
+  // 1..1440 (one minute to 24 hours).
+  sessionTimeoutMinutes: number;
 };
 
 // Top-level persisted blob for one signed-in user. Holds everything

@@ -51,12 +51,7 @@ import {
   readRawStorage,
   writeRawStorage,
 } from "./storage/local-adapter";
-import {
-  clearSession,
-  loadSession,
-  saveSession,
-  SESSION_TTL_MS,
-} from "./storage/session";
+import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
 import {
   createUser,
@@ -427,9 +422,9 @@ type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 // The state is also persisted in `budget.users.v1` so a reload lands
 // the user on the sign-in form for the same account they last used.
 // The session-storage cache (see `src/storage/session.ts`) carries the
-// rolling-window deadline; an idle-tracking effect below extends it
-// while the user is active and signs the user out once activity has
-// been idle for longer than `SESSION_TTL_MS`.
+// rolling-window deadline; an idle-tracking effect inside BudgetView
+// extends it while the user is active and signs the user out once
+// activity has been idle for longer than the user's chosen TTL.
 type AuthState =
   | { kind: "signed-out"; lastUsername: string | null }
   | { kind: "signed-in"; user: StoredUser; password: string };
@@ -599,52 +594,6 @@ export function App() {
     [auth, users, persistRegistry],
   );
 
-  // Idle-tracked sign-out. Every user input bumps a ref; a periodic
-  // tick (a) signs the user out if no input has landed inside the TTL
-  // window, and (b) re-stamps sessionStorage with a fresh deadline so
-  // a reload mid-session sees the rolling window, not the deadline
-  // from when the password was first cached. The ref to `handleSignOut`
-  // keeps the effect from re-subscribing every time the callback's
-  // identity changes (it depends on `users`).
-  const signOutRef = useRef(handleSignOut);
-  signOutRef.current = handleSignOut;
-  const lastActivityRef = useRef<number>(Date.now());
-  const signedInUserId = auth.kind === "signed-in" ? auth.user.id : null;
-  const signedInPassword = auth.kind === "signed-in" ? auth.password : null;
-  useEffect(() => {
-    if (signedInUserId === null || signedInPassword === null) return;
-    // Treat sign-in (and the initial render after a session restore)
-    // as activity so the rolling window starts now, and persist a
-    // fresh deadline immediately so a reload right after sign-in
-    // doesn't risk being a few seconds inside the next tick.
-    lastActivityRef.current = Date.now();
-    saveSession(signedInUserId, signedInPassword);
-
-    const bump = () => {
-      lastActivityRef.current = Date.now();
-    };
-    const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
-    for (const e of events) {
-      window.addEventListener(e, bump, { passive: true });
-    }
-
-    // 30s tick — small enough that the sign-out is accurate to within
-    // half a minute, large enough that the writes to sessionStorage
-    // don't churn.
-    const tick = window.setInterval(() => {
-      if (Date.now() - lastActivityRef.current >= SESSION_TTL_MS) {
-        signOutRef.current();
-        return;
-      }
-      saveSession(signedInUserId, signedInPassword);
-    }, 30_000);
-
-    return () => {
-      for (const e of events) window.removeEventListener(e, bump);
-      window.clearInterval(tick);
-    };
-  }, [signedInUserId, signedInPassword]);
-
   if (auth.kind === "signed-out" || adapter === null) {
     return (
       <AuthScreen
@@ -661,6 +610,7 @@ export function App() {
     <BudgetView
       adapter={adapter}
       user={auth.user}
+      password={auth.password}
       hasOtherUsers={users.length > 1}
       getEncryptionPassword={() => passwordRef.current}
       onSignOut={handleSignOut}
@@ -674,6 +624,9 @@ export function App() {
 type BudgetViewProps = {
   adapter: StorageAdapter;
   user: StoredUser;
+  // The active user's password — handed to the idle tracker so it can
+  // re-stamp `sessionStorage` with the user's chosen TTL on each tick.
+  password: string;
   hasOtherUsers: boolean;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
@@ -688,6 +641,7 @@ type BudgetViewProps = {
 function BudgetView({
   adapter,
   user,
+  password,
   hasOtherUsers,
   getEncryptionPassword,
   onSignOut,
@@ -747,6 +701,76 @@ function BudgetView({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
+
+  // Idle-tracked sign-out. Every user input bumps `lastActivityRef`;
+  // a 1 s tick decides whether to surface the "about to sign out"
+  // warning, sign the user out, or just re-stamp sessionStorage so a
+  // reload mid-session inherits the rolling deadline. The save is
+  // throttled to once every 30 s; the warning starts 60 s before the
+  // deadline. Stashing `onSignOut` in a ref keeps the effect from
+  // re-subscribing every render.
+  const ttlMs = data.settings.sessionTimeoutMinutes * 60_000;
+  const signOutRef = useRef(onSignOut);
+  signOutRef.current = onSignOut;
+  const lastActivityRef = useRef<number>(Date.now());
+  const lastSaveAtRef = useRef<number>(0);
+  const [warningSecondsLeft, setWarningSecondsLeft] = useState<number | null>(
+    null,
+  );
+  useEffect(() => {
+    // Treat the start of every signed-in session (and every TTL
+    // change) as activity so the rolling window restarts from now;
+    // re-stamp sessionStorage immediately so a reload right after a
+    // setting change picks up the new deadline.
+    lastActivityRef.current = Date.now();
+    lastSaveAtRef.current = Date.now();
+    saveSession(user.id, password, ttlMs);
+    setWarningSecondsLeft(null);
+
+    const bump = () => {
+      lastActivityRef.current = Date.now();
+    };
+    const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    for (const e of events) {
+      window.addEventListener(e, bump, { passive: true });
+    }
+
+    // Aim for a 60 s heads-up, but never more than half the window so
+    // a hand-edited 1-minute TTL doesn't fire the warning the moment
+    // the user pauses to read.
+    const WARNING_LEAD_MS = Math.min(60_000, Math.floor(ttlMs / 2));
+    const SAVE_INTERVAL_MS = 30_000;
+    const tick = window.setInterval(() => {
+      const now = Date.now();
+      const idleMs = now - lastActivityRef.current;
+      if (idleMs >= ttlMs) {
+        signOutRef.current();
+        return;
+      }
+      const remainingMs = ttlMs - idleMs;
+      if (remainingMs <= WARNING_LEAD_MS) {
+        setWarningSecondsLeft(Math.max(1, Math.ceil(remainingMs / 1000)));
+      } else {
+        setWarningSecondsLeft((prev) => (prev === null ? prev : null));
+        if (now - lastSaveAtRef.current >= SAVE_INTERVAL_MS) {
+          saveSession(user.id, password, ttlMs);
+          lastSaveAtRef.current = now;
+        }
+      }
+    }, 1000);
+
+    return () => {
+      for (const e of events) window.removeEventListener(e, bump);
+      window.clearInterval(tick);
+    };
+  }, [user.id, password, ttlMs]);
+
+  const onStaySignedIn = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    lastSaveAtRef.current = Date.now();
+    saveSession(user.id, password, ttlMs);
+    setWarningSecondsLeft(null);
+  }, [user.id, password, ttlMs]);
 
   // Drop ids that no longer exist (e.g. after an import) so the toolbar
   // never claims a stale count.
@@ -1168,6 +1192,20 @@ function BudgetView({
         settings={data.settings}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
+      />
+      <ConfirmDialog
+        open={warningSecondsLeft !== null}
+        title="About to sign out"
+        description={
+          warningSecondsLeft !== null
+            ? `For your security, you'll be signed out in ${warningSecondsLeft} ${
+                warningSecondsLeft === 1 ? "second" : "seconds"
+              } unless you stay signed in.`
+            : null
+        }
+        actions={[{ label: "Stay signed in", onSelect: onStaySignedIn }]}
+        hideCancel
+        onCancel={onStaySignedIn}
       />
     </div>
   );

@@ -6,8 +6,11 @@
 // Stored in `sessionStorage`, not `localStorage`: the cache is scoped
 // to the browser tab and evaporates the moment the tab closes, which
 // is the closest the platform offers to "in memory". An explicit
-// `expiresAt` adds a 15-minute lifetime on top so an idle tab left
+// `expiresAt` adds an idle timeout on top so an inactive tab left
 // open all day doesn't leave the key sitting around indefinitely.
+// The TTL is configurable via `Settings.sessionTimeoutMinutes`; the
+// default below applies before the user's settings have loaded (e.g.
+// the very first `saveSession` on sign-in).
 
 const SESSION_KEY = "budget.session.v1";
 
@@ -57,11 +60,15 @@ export function loadSession(): Session | null {
   }
 }
 
-export function saveSession(userId: string, password: string): Session {
+export function saveSession(
+  userId: string,
+  password: string,
+  ttlMs: number = SESSION_TTL_MS,
+): Session {
   const session: Session = {
     userId,
     password,
-    expiresAt: Date.now() + SESSION_TTL_MS,
+    expiresAt: Date.now() + ttlMs,
   };
   try {
     if (typeof sessionStorage !== "undefined") {
