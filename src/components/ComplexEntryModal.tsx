@@ -35,7 +35,7 @@ export function ComplexEntryModal({
 }: Props) {
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
-  const [negative, setNegative] = useState(false);
+  const [negative, setNegative] = useState(true);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [dates, setDates] = useState<string[]>([]);
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
@@ -45,7 +45,7 @@ export function ComplexEntryModal({
     if (!open) return;
     setDescription("");
     setAmountText("");
-    setNegative(false);
+    setNegative(true);
     setCategoryId(null);
     setDates([]);
     setResetKey((k) => k + 1);
