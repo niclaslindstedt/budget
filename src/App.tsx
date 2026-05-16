@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
 
 import { BulkActionBar } from "./components/BulkActionBar";
@@ -26,7 +26,8 @@ import {
   shiftIsoToMonth,
 } from "./data/sheet";
 import type { Budget, Category, CellValue, Row, Sheet } from "./data/types";
-import { loadBudget, saveBudget } from "./storage/local";
+import { localAdapter } from "./storage/local-adapter";
+import { useBudgetStorage } from "./storage/useBudgetStorage";
 
 type SheetAction =
   | {
@@ -343,7 +344,7 @@ type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 
 export function App() {
-  const [budget, dispatch] = useReducer(reducer, undefined, loadBudget);
+  const { budget, dispatch } = useBudgetStorage(localAdapter, reducer);
   const [complexOpen, setComplexOpen] = useState(false);
   const [complexSeedDate, setComplexSeedDate] = useState("");
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
@@ -358,10 +359,6 @@ export function App() {
   const [moveCopyPrompt, setMoveCopyPrompt] = useState<MoveCopyPrompt | null>(
     null,
   );
-
-  useEffect(() => {
-    saveBudget(budget);
-  }, [budget]);
 
   const activeSheet =
     budget.sheets.find((s) => s.id === budget.activeSheetId) ??
@@ -387,11 +384,11 @@ export function App() {
   const onUpdateCell = useCallback(
     (rowId: string, columnId: string, value: CellValue) =>
       dispatch({ type: "updateCell", sheetId, rowId, columnId, value }),
-    [sheetId],
+    [dispatch, sheetId],
   );
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, date }),
-    [sheetId],
+    [dispatch, sheetId],
   );
   const onAddComplex = useCallback((date: string) => {
     setComplexSeedDate(date);
@@ -406,11 +403,11 @@ export function App() {
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
       dispatch({ type: "reorderColumns", sheetId, fromId, toId }),
-    [sheetId],
+    [dispatch, sheetId],
   );
   const onImport = useCallback(
     (next: Budget) => dispatch({ type: "replace", budget: next }),
-    [],
+    [dispatch],
   );
   const onCreateCategory = useCallback(
     (draft: Omit<Category, "id">): Category => {
@@ -418,14 +415,14 @@ export function App() {
       dispatch({ type: "addCategory", category });
       return category;
     },
-    [],
+    [dispatch],
   );
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
       dispatch({ type: "addRowsFromComplex", sheetId, draft });
       setComplexOpen(false);
     },
-    [sheetId],
+    [dispatch, sheetId],
   );
   const onConvertToRecurring = useCallback(
     (rowId: string, futureDates: string[]) => {
@@ -437,14 +434,14 @@ export function App() {
       });
       setEditPrompt(null);
     },
-    [sheetId],
+    [dispatch, sheetId],
   );
   const onEditSeries = useCallback(
     (rowId: string, patch: EditPatch, scope: EditScope) => {
       dispatch({ type: "editSeries", sheetId, rowId, patch, scope });
       setEditPrompt(null);
     },
-    [sheetId],
+    [dispatch, sheetId],
   );
 
   const onToggleSelect = useCallback((rowId: string) => {
@@ -546,7 +543,7 @@ export function App() {
         },
       },
     ];
-  }, [deletePrompt, activeSheet.rows, dateCol, sheetId]);
+  }, [deletePrompt, activeSheet.rows, dateCol, dispatch, sheetId]);
 
   const bulkDeleteActions: ConfirmAction[] = useMemo(() => {
     if (!bulkDeletePrompt) return [];
@@ -562,7 +559,7 @@ export function App() {
         },
       },
     ];
-  }, [bulkDeletePrompt, sheetId, onCancelSelect]);
+  }, [bulkDeletePrompt, dispatch, sheetId, onCancelSelect]);
 
   const onBulkEdit = useCallback(() => setBulkEditOpen(true), []);
   const onBulkDelete = useCallback(() => {
@@ -579,7 +576,7 @@ export function App() {
     (rowIds: string[], patch: BulkPatch) => {
       dispatch({ type: "bulkUpdate", sheetId, rowIds, patch });
     },
-    [sheetId],
+    [dispatch, sheetId],
   );
   const onApplyBulkRecurring = useCallback(
     (rowIds: string[], futureDates: string[]) => {
@@ -590,7 +587,7 @@ export function App() {
         futureDates,
       });
     },
-    [sheetId],
+    [dispatch, sheetId],
   );
   const handleMoveCopySubmit = useCallback(
     (targetMonths: string[]) => {
@@ -614,7 +611,7 @@ export function App() {
       setMoveCopyPrompt(null);
       onCancelSelect();
     },
-    [moveCopyPrompt, sheetId, onCancelSelect],
+    [dispatch, moveCopyPrompt, sheetId, onCancelSelect],
   );
 
   return (
