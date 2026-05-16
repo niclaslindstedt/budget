@@ -112,6 +112,11 @@ export type DateFormat =
   | "DD.MM.YYYY"
   | "D MMM YYYY";
 
+// Year-less variant used by in-cell date renderings. Decoupled from
+// `DateFormat` so the user can read sheet cells as a compact "16/5"
+// while keeping a long-form like "YYYY-MM-DD" elsewhere.
+export type ShortDateFormat = "DD/MM" | "MM/DD" | "DD.MM" | "MM-DD" | "D MMM";
+
 export type Settings = {
   // Day-of-month the fiscal month rolls over on. Defaults to 25 because
   // the typical Swedish payday is the 25th, so the budget month aligns
@@ -119,6 +124,7 @@ export type Settings = {
   // the chosen day.
   startOfMonth: number;
   dateFormat: DateFormat;
+  shortDateFormat: ShortDateFormat;
   // Free-form currency token shown next to amounts when `showCurrency`
   // is on. Defaults to "kr" (SEK). Not validated against a list — users
   // are free to type "$", "€", "USD", etc.

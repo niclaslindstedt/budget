@@ -237,7 +237,7 @@ function DateCell({
 }) {
   const [open, setOpen] = useState(false);
   const iso = typeof value === "string" ? value : "";
-  const short = iso ? formatShortDate(iso, settings.dateFormat) : "";
+  const short = iso ? formatShortDate(iso, settings.shortDateFormat) : "";
   const formatted = iso ? formatDate(iso, settings.dateFormat) : "";
 
   return (

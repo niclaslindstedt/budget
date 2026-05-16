@@ -5,12 +5,14 @@ import {
   DATE_FORMATS,
   DEFAULT_SETTINGS,
   NUMBER_FORMATS,
+  SHORT_DATE_FORMATS,
   type NumberFormatPreset,
 } from "../data/constants";
 import type {
   DateFormat,
   DecimalSeparator,
   Settings,
+  ShortDateFormat,
   ThousandsSeparator,
 } from "../data/types";
 
@@ -209,6 +211,29 @@ function MainView({
           <Preview>
             {formatDatePreview(datePreviewIso, draft.dateFormat)}
           </Preview>
+        </Field>
+
+        <Field label="Short date format">
+          <select
+            value={draft.shortDateFormat}
+            onChange={(e) =>
+              onUpdate("shortDateFormat", e.target.value as ShortDateFormat)
+            }
+            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
+          >
+            {SHORT_DATE_FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+          <Preview>
+            {formatShortDatePreview(datePreviewIso, draft.shortDateFormat)}
+          </Preview>
+          <p className="text-xs text-muted">
+            Shown in the date column of each month table. Leading zeros are
+            stripped, so 1 May renders as &quot;1/5&quot;.
+          </p>
         </Field>
       </Section>
 
@@ -434,5 +459,36 @@ function formatDatePreview(iso: string, format: DateFormat): string {
       return `${d}.${m}.${y}`;
     case "D MMM YYYY":
       return `${Number(d)} ${months[Number(m) - 1]} ${y}`;
+  }
+}
+
+function formatShortDatePreview(iso: string, format: ShortDateFormat): string {
+  const monthNum = Number(iso.slice(5, 7));
+  const dayNum = Number(iso.slice(8, 10));
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  switch (format) {
+    case "DD/MM":
+      return `${dayNum}/${monthNum}`;
+    case "MM/DD":
+      return `${monthNum}/${dayNum}`;
+    case "DD.MM":
+      return `${dayNum}.${monthNum}`;
+    case "MM-DD":
+      return `${monthNum}-${dayNum}`;
+    case "D MMM":
+      return `${dayNum} ${months[monthNum - 1]}`;
   }
 }
