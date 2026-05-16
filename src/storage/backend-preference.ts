@@ -14,8 +14,14 @@ import {
 
 export type BackendId = "local" | "dropbox";
 
+// Whether stored bytes are wrapped in the AES-GCM envelope before being
+// handed to the adapter. Defaults to "encrypted" for every existing user
+// so opting out is an explicit action taken from Settings.
+export type EncryptionMode = "encrypted" | "plaintext";
+
 const BACKEND_PREFIX = "budget.backend.";
 const DROPBOX_TOKEN_PREFIX = "budget.dropbox.token.";
+const ENCRYPTION_PREFIX = "budget.encryption.";
 
 function backendKey(userId: string): string {
   return `${BACKEND_PREFIX}${userId}`;
@@ -23,6 +29,10 @@ function backendKey(userId: string): string {
 
 function dropboxTokenKey(userId: string): string {
   return `${DROPBOX_TOKEN_PREFIX}${userId}`;
+}
+
+function encryptionKey(userId: string): string {
+  return `${ENCRYPTION_PREFIX}${userId}`;
 }
 
 export function getBackend(userId: string): BackendId {
@@ -44,4 +54,13 @@ export function setDropboxToken(userId: string, token: string): void {
 
 export function clearDropboxToken(userId: string): void {
   clearRawStorage(dropboxTokenKey(userId));
+}
+
+export function getEncryption(userId: string): EncryptionMode {
+  const raw = readRawStorage(encryptionKey(userId));
+  return raw === "plaintext" ? "plaintext" : "encrypted";
+}
+
+export function setEncryption(userId: string, mode: EncryptionMode): void {
+  writeRawStorage(mode, encryptionKey(userId));
 }
