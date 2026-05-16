@@ -12,10 +12,16 @@ const DRAG_MIME = "application/x-budget-column";
 
 export function ColumnHeader({ column, onReorder }: Props) {
   const [dragOver, setDragOver] = useState(false);
+  // Numeric columns render their cells right-aligned; mirror that here so
+  // the column label sits over the rightmost digit instead of drifting
+  // out to the left edge of a wide value.
+  const isNumeric = column.type === "amount" || column.type === "balance";
 
   return (
     <th
-      className={`cursor-grab border-r border-b border-line bg-surface-3 text-left text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
+      className={`cursor-grab border-r border-b border-line bg-surface-3 ${
+        isNumeric ? "text-right" : "text-left"
+      } text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
         dragOver ? "outline outline-2 -outline-offset-2 outline-accent" : ""
       }`}
       draggable
@@ -37,7 +43,11 @@ export function ColumnHeader({ column, onReorder }: Props) {
         if (fromId && fromId !== column.id) onReorder(fromId, column.id);
       }}
     >
-      <span className="flex items-center justify-center gap-1.5 px-2.5 py-2 md:justify-start md:gap-2">
+      <span
+        className={`flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2 ${
+          isNumeric ? "md:justify-end" : "md:justify-start"
+        }`}
+      >
         <ColumnIcon
           type={column.type}
           className="shrink-0 text-accent md:text-accent"
