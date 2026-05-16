@@ -345,23 +345,27 @@ export function RecurrenceForm({
                 placeholder="-2"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>Start month</span>
-              <input
-                type="month"
-                value={monthlyStartMonth}
-                onChange={(e) => setMonthlyStartMonth(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>End month</span>
-              <input
-                type="month"
-                value={monthlyEndMonth}
-                onChange={(e) => setMonthlyEndMonth(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
-              />
+            <label className="flex flex-col gap-1 text-xs text-muted sm:col-span-2">
+              <span>Range</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={monthlyStartMonth}
+                  onChange={(e) => setMonthlyStartMonth(e.target.value)}
+                  aria-label="Start month"
+                  className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
+                />
+                <span aria-hidden className="text-muted">
+                  –
+                </span>
+                <input
+                  type="month"
+                  value={monthlyEndMonth}
+                  onChange={(e) => setMonthlyEndMonth(e.target.value)}
+                  aria-label="End month"
+                  className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
+                />
+              </div>
             </label>
           </div>
         )}
