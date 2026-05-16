@@ -9,6 +9,7 @@ import {
   sortRowsByDate,
 } from "../data/sheet";
 import type { Category, CellValue, Row, Settings, Sheet } from "../data/types";
+import { formatAmountForInput, formatBalance } from "../utils/format";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
@@ -57,6 +58,35 @@ export function SheetView({
   );
 
   const balances = useMemo(() => computeBalances(sheet), [sheet]);
+
+  // Each month renders as its own CSS grid, so amount/balance columns
+  // sized with `max-content` end up different widths per month. Compute
+  // the longest formatted value across the whole sheet here and pass it
+  // down so every month aligns on the same column widths.
+  const colWidths = useMemo(() => {
+    const amountCol = findColumnByType(sheet.columns, "amount");
+    const balanceCol = findColumnByType(sheet.columns, "balance");
+    let amountChars = 0;
+    let balanceChars = 0;
+    if (amountCol) {
+      for (const row of sheet.rows) {
+        const v = row.cells[amountCol.id];
+        if (typeof v !== "number") continue;
+        const body = formatAmountForInput(Math.abs(v), settings);
+        const full = settings.showCurrency
+          ? `${body} ${settings.currency}`
+          : body;
+        if (full.length > amountChars) amountChars = full.length;
+      }
+    }
+    if (balanceCol) {
+      for (const b of balances.values()) {
+        const text = formatBalance(b, settings);
+        if (text.length > balanceChars) balanceChars = text.length;
+      }
+    }
+    return { amountChars, balanceChars };
+  }, [sheet.rows, sheet.columns, balances, settings]);
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
@@ -130,6 +160,8 @@ export function SheetView({
                 settings={settings}
                 selectMode={selectMode}
                 selectedIds={selectedIds}
+                amountChars={colWidths.amountChars}
+                balanceChars={colWidths.balanceChars}
                 onUpdateCell={onUpdateCell}
                 onAddRow={() => onAddRow(seedDate)}
                 onAddComplex={() => onAddComplex(seedDate)}

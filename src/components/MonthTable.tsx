@@ -12,6 +12,8 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
+  amountChars: number;
+  balanceChars: number;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
   onAddComplex: () => void;
@@ -44,6 +46,8 @@ export function MonthTable({
   settings,
   selectMode,
   selectedIds,
+  amountChars,
+  balanceChars,
   onUpdateCell,
   onAddRow,
   onAddComplex,
@@ -68,6 +72,12 @@ export function MonthTable({
         className={`overflow-hidden rounded border border-line bg-surface md:overflow-x-auto ${
           selectMode ? "sheet-table-selecting" : ""
         }`}
+        style={
+          {
+            "--amount-col-ch": amountChars,
+            "--balance-col-ch": balanceChars,
+          } as React.CSSProperties
+        }
       >
         <table
           className={`sheet-table w-full border-collapse text-sm md:text-[13px] ${
