@@ -54,8 +54,7 @@ type SheetAction =
       sheetId: string;
       rowIds: string[];
     }
-  | { type: "reorderColumns"; sheetId: string; fromId: string; toId: string }
-  | { type: "setOpeningBalance"; sheetId: string; value: number };
+  | { type: "reorderColumns"; sheetId: string; fromId: string; toId: string };
 
 type Action =
   | SheetAction
@@ -199,9 +198,6 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
         ...sheet,
         columns: moveColumn(sheet.columns, action.fromId, action.toId),
       };
-
-    case "setOpeningBalance":
-      return { ...sheet, openingBalance: action.value };
   }
 }
 
@@ -260,10 +256,6 @@ export function App() {
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
       dispatch({ type: "reorderColumns", sheetId, fromId, toId }),
-    [sheetId],
-  );
-  const onSetOpeningBalance = useCallback(
-    (value: number) => dispatch({ type: "setOpeningBalance", sheetId, value }),
     [sheetId],
   );
   const onImport = useCallback(
@@ -362,13 +354,8 @@ export function App() {
   return (
     <div className="mx-auto flex min-h-screen max-w-full flex-col px-3 pt-3 pb-10 md:px-5 md:pt-4">
       <header className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line pb-4">
-        <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-          <span aria-hidden="true" className="font-bold text-accent">
-            $
-          </span>
-          <span className="text-base font-bold tracking-wide text-fg-bright">
-            budget
-          </span>
+        <span className="text-base font-bold tracking-wide text-fg-bright">
+          budget
         </span>
         <div className="ml-auto">
           <ImportExportControls budget={budget} onImport={onImport} />
@@ -385,18 +372,9 @@ export function App() {
           onDeleteRequest={onDeleteRequest}
           onEditRequest={onEditRequest}
           onReorderColumns={onReorderColumns}
-          onSetOpeningBalance={onSetOpeningBalance}
           onCreateCategory={onCreateCategory}
         />
       </main>
-      <footer className="mt-12 border-t border-line pt-4 text-xs text-muted">
-        <a
-          href="https://github.com/niclaslindstedt/budget"
-          className="underline decoration-dotted hover:text-fg"
-        >
-          Source
-        </a>
-      </footer>
       <ComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}

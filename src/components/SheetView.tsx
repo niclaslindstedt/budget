@@ -20,7 +20,6 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
-  onSetOpeningBalance: (value: number) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
@@ -39,7 +38,6 @@ export function SheetView({
   onDeleteRequest,
   onEditRequest,
   onReorderColumns,
-  onSetOpeningBalance,
   onCreateCategory,
 }: Props) {
   const dateCol = useMemo(
@@ -62,29 +60,13 @@ export function SheetView({
 
   return (
     <section>
-      <header className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
-        {showName && (
+      {showName && (
+        <header className="mb-4">
           <h2 className="m-0 text-base font-bold text-fg-bright">
-            <span aria-hidden="true" className="text-pipe">
-              #{" "}
-            </span>
             {sheet.name}
           </h2>
-        )}
-        <label className="inline-flex items-center gap-2 text-sm text-muted">
-          <span className="text-flag">--opening-balance</span>
-          <input
-            type="number"
-            step="0.01"
-            className="field-input w-[12ch] rounded border border-line bg-surface px-2 py-0.5 text-right tabular-nums text-meta"
-            value={sheet.openingBalance}
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              onSetOpeningBalance(Number.isFinite(n) ? n : 0);
-            }}
-          />
-        </label>
-      </header>
+        </header>
+      )}
       <div className="flex flex-col gap-6">
         {visibleMonths.map((monthKey) => {
           const monthRows = dateCol

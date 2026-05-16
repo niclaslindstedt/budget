@@ -46,12 +46,8 @@ export function MonthTable({
 }: Props) {
   return (
     <section>
-      <h3 className="sticky top-0 z-10 mb-2 bg-page-bg py-1.5 text-xs font-bold tracking-wider text-muted uppercase">
-        <span aria-hidden="true" className="text-accent">
-          ${" "}
-        </span>
-        <span className="text-path">cd</span>{" "}
-        <span className="text-fg-bright">{formatMonth(monthKey)}</span>
+      <h3 className="sticky top-0 z-10 mb-2 bg-page-bg py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase">
+        {formatMonth(monthKey)}
       </h3>
       <div className="overflow-hidden rounded border border-line bg-surface md:overflow-x-auto">
         <table className="sheet-table w-full border-collapse text-sm md:text-[13px]">
@@ -89,7 +85,7 @@ export function MonthTable({
             <tr>
               <td
                 colSpan={columns.length + 1}
-                className="border-r-0 bg-surface-3 p-0 text-center"
+                className="border-r-0 bg-surface-3 p-0"
               >
                 <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
               </td>

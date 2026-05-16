@@ -108,7 +108,7 @@ function validateRow(
 
 function validateSheet(raw: unknown, path: string): Result<Sheet> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, name, columns, rows, openingBalance } = raw;
+  const { id, name, columns, rows } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (typeof name !== "string")
@@ -116,8 +116,6 @@ function validateSheet(raw: unknown, path: string): Result<Sheet> {
   if (!Array.isArray(columns))
     return fail(`${path}.columns`, "expected an array");
   if (!Array.isArray(rows)) return fail(`${path}.rows`, "expected an array");
-  if (typeof openingBalance !== "number" || !Number.isFinite(openingBalance))
-    return fail(`${path}.openingBalance`, "expected a finite number");
 
   const validatedColumns: Column[] = [];
   const seenColumnIds = new Set<string>();
@@ -148,7 +146,6 @@ function validateSheet(raw: unknown, path: string): Result<Sheet> {
       name,
       columns: validatedColumns,
       rows: validatedRows,
-      openingBalance,
     },
   };
 }

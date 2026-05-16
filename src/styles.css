@@ -116,6 +116,14 @@ body {
     outline: none;
   }
 
+  /* iOS long-press would select the icon and pop the share/copy callout
+     on the add-row button; suppress both since long-press is reserved for
+     opening the recurring-entry modal. */
+  .add-row-button {
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
   /* Mobile: convert table to block + per-row grid for full-width layout
      and to make swipe-to-delete possible inside table rows */
   @media (max-width: 720px) {

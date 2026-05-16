@@ -62,7 +62,6 @@ export type Sheet = {
   name: string;
   columns: Column[];
   rows: Row[];
-  openingBalance: number;
 };
 
 export type Budget = {

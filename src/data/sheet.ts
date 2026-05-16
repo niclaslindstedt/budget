@@ -21,7 +21,6 @@ export function createDefaultSheet(name = "Sheet 1"): Sheet {
     name,
     columns,
     rows: [],
-    openingBalance: 0,
   };
 }
 
@@ -77,7 +76,7 @@ export function computeBalances(sheet: Sheet): Map<string, number> {
   const amountCol = findColumnByType(sheet.columns, "amount");
   if (!dateCol || !amountCol) return result;
   const sorted = sortRowsByDate(sheet.rows, dateCol.id);
-  let running = sheet.openingBalance;
+  let running = 0;
   for (const row of sorted) {
     const raw = row.cells[amountCol.id];
     const amount = typeof raw === "number" ? raw : Number(raw) || 0;
