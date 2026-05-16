@@ -209,15 +209,20 @@ describe("formatDate", () => {
 
 describe("formatShortDate", () => {
   it("renders day + month for each supported format, no leading zeros", () => {
-    expect(formatShortDate("2026-05-16", "YYYY-MM-DD")).toBe("5-16");
-    expect(formatShortDate("2026-05-16", "DD/MM/YYYY")).toBe("16/5");
-    expect(formatShortDate("2026-05-16", "MM/DD/YYYY")).toBe("5/16");
-    expect(formatShortDate("2026-05-16", "DD.MM.YYYY")).toBe("16.5");
-    expect(formatShortDate("2026-05-16", "D MMM YYYY")).toBe("16 May");
+    expect(formatShortDate("2026-05-16", "DD/MM")).toBe("16/5");
+    expect(formatShortDate("2026-05-16", "MM/DD")).toBe("5/16");
+    expect(formatShortDate("2026-05-16", "DD.MM")).toBe("16.5");
+    expect(formatShortDate("2026-05-16", "MM-DD")).toBe("5-16");
+    expect(formatShortDate("2026-05-16", "D MMM")).toBe("16 May");
+  });
+
+  it("strips leading zeros from both day and month", () => {
+    expect(formatShortDate("2026-05-01", "DD/MM")).toBe("1/5");
+    expect(formatShortDate("2026-12-31", "DD/MM")).toBe("31/12");
   });
 
   it("returns an empty string for malformed input", () => {
-    expect(formatShortDate("", "YYYY-MM-DD")).toBe("");
-    expect(formatShortDate("abc", "YYYY-MM-DD")).toBe("");
+    expect(formatShortDate("", "DD/MM")).toBe("");
+    expect(formatShortDate("abc", "DD/MM")).toBe("");
   });
 });

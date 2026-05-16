@@ -1,4 +1,9 @@
-import type { DateFormat, Settings, ThousandsSeparator } from "./types";
+import type {
+  DateFormat,
+  Settings,
+  ShortDateFormat,
+  ThousandsSeparator,
+} from "./types";
 
 // Maximum visual width of a column before its content wraps. Used to cap
 // auto-sizing in the CSS via a custom property. Will become a per-sheet
@@ -40,6 +45,7 @@ export const PASSWORD_SALT_BYTES = 16;
 export const DEFAULT_SETTINGS: Settings = {
   startOfMonth: 25,
   dateFormat: "YYYY-MM-DD",
+  shortDateFormat: "DD/MM",
   currency: "kr",
   decimalSeparator: ",",
   thousandsSeparator: " ",
@@ -55,6 +61,17 @@ export const DATE_FORMATS: readonly DateFormat[] = [
   "MM/DD/YYYY",
   "DD.MM.YYYY",
   "D MMM YYYY",
+];
+
+// Year-less formats used by in-cell date renderings inside month
+// tables. Leading zeros are stripped at format time, so "DD/MM"
+// renders 1 May as "1/5" and 31 December as "31/12".
+export const SHORT_DATE_FORMATS: readonly ShortDateFormat[] = [
+  "DD/MM",
+  "MM/DD",
+  "DD.MM",
+  "MM-DD",
+  "D MMM",
 ];
 
 // Pre-baked number-format combinations. Each entry pairs a thousands

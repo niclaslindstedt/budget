@@ -1,4 +1,8 @@
-import { DATE_FORMATS, DEFAULT_SETTINGS } from "./constants";
+import {
+  DATE_FORMATS,
+  DEFAULT_SETTINGS,
+  SHORT_DATE_FORMATS,
+} from "./constants";
 import { LATEST_VERSION } from "./migrations";
 import type {
   Account,
@@ -14,11 +18,15 @@ import type {
   Settings,
   Sheet,
   SheetItem,
+  ShortDateFormat,
   ThousandsSeparator,
   UserData,
 } from "./types";
 
 const DATE_FORMAT_SET: ReadonlySet<DateFormat> = new Set(DATE_FORMATS);
+const SHORT_DATE_FORMAT_SET: ReadonlySet<ShortDateFormat> = new Set(
+  SHORT_DATE_FORMATS,
+);
 const DECIMAL_SEPARATORS: ReadonlySet<DecimalSeparator> =
   new Set<DecimalSeparator>([".", ","]);
 const THOUSANDS_SEPARATORS: ReadonlySet<ThousandsSeparator> =
@@ -265,6 +273,11 @@ function validateSettings(raw: unknown): Settings {
     DATE_FORMAT_SET.has(raw.dateFormat as DateFormat)
       ? (raw.dateFormat as DateFormat)
       : DEFAULT_SETTINGS.dateFormat;
+  const shortDateFormat =
+    typeof raw.shortDateFormat === "string" &&
+    SHORT_DATE_FORMAT_SET.has(raw.shortDateFormat as ShortDateFormat)
+      ? (raw.shortDateFormat as ShortDateFormat)
+      : DEFAULT_SETTINGS.shortDateFormat;
   const currency =
     typeof raw.currency === "string" && raw.currency.length > 0
       ? raw.currency
@@ -298,6 +311,7 @@ function validateSettings(raw: unknown): Settings {
   return {
     startOfMonth,
     dateFormat,
+    shortDateFormat,
     currency,
     decimalSeparator,
     thousandsSeparator,

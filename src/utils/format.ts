@@ -1,4 +1,4 @@
-import type { DateFormat, Settings } from "../data/types";
+import type { DateFormat, Settings, ShortDateFormat } from "../data/types";
 
 // Shared formatting + parsing helpers driven by the user's settings.
 // `formatAmount` / `formatBalance` handle display (thousands grouping,
@@ -165,24 +165,25 @@ export function formatDate(iso: string, format: DateFormat): string {
   }
 }
 
-// Short date for in-row cells: day and month only, no year, with leading
-// zeros stripped. Order and separator mirror `dateFormat` so a user who
-// configured DD/MM/YYYY sees "16/5" and one on MM/DD/YYYY sees "5/16".
-export function formatShortDate(iso: string, format: DateFormat): string {
+// Short date for in-row cells: day and month only, no year, with
+// leading zeros stripped. Configured independently of `dateFormat`
+// so users can read sheet cells as "16/5" while keeping a long-form
+// like "YYYY-MM-DD" elsewhere.
+export function formatShortDate(iso: string, format: ShortDateFormat): string {
   if (typeof iso !== "string" || iso.length < 10) return "";
   const monthNum = Number(iso.slice(5, 7));
   const dayNum = Number(iso.slice(8, 10));
   if (!Number.isFinite(monthNum) || !Number.isFinite(dayNum)) return "";
   switch (format) {
-    case "YYYY-MM-DD":
-      return `${monthNum}-${dayNum}`;
-    case "DD/MM/YYYY":
+    case "DD/MM":
       return `${dayNum}/${monthNum}`;
-    case "MM/DD/YYYY":
+    case "MM/DD":
       return `${monthNum}/${dayNum}`;
-    case "DD.MM.YYYY":
+    case "DD.MM":
       return `${dayNum}.${monthNum}`;
-    case "D MMM YYYY":
+    case "MM-DD":
+      return `${monthNum}-${dayNum}`;
+    case "D MMM":
       return `${dayNum} ${MONTH_SHORT[monthNum - 1]}`;
   }
 }
