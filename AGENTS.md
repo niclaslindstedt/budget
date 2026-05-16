@@ -131,6 +131,15 @@ that way.
   first, then relative, separated by a blank line.
 - **Commit style**: Conventional Commits (`feat:`, `fix:`, `chore:`,
   …) per `OSS_SPEC.md` §8.1.
+- **Visual style**: monospaced face, One Dark / One Light palette, and
+  a few syntax-coloured accents for sheet content (dates, amounts,
+  completion). That is the whole "terminal" budget — don't dress
+  modals, form labels, headers, or buttons up as a CLI. No `$` prompts
+  in modal titles, no `--flag`-style field labels, no `command --flag`
+  headings. Modal titles are plain sentences ("New entry", "Delete
+  row"); form labels are plain words ("Description", "Amount"). The
+  `text-flag` / `text-path` / `text-pipe` utilities exist for sheet
+  cells and similar data tokens, not for chrome.
 - **PR conventions**: PR titles must follow Conventional Commits
   because the title becomes the squash-merge commit on `main`.
   Squash-merge is the only permitted merge strategy. **Rebase on

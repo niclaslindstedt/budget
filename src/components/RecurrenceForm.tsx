@@ -177,7 +177,7 @@ export function RecurrenceForm({
       <div className="mt-3 rounded border border-line bg-surface-3 p-3">
         {mode === "once" && (
           <label className="flex flex-col gap-1 text-xs text-muted">
-            <span className="text-flag">--date</span>
+            <span>Date</span>
             <input
               type="date"
               value={onceDate}
@@ -189,7 +189,7 @@ export function RecurrenceForm({
 
         {mode === "dates" && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs text-flag">--dates</span>
+            <span className="text-xs text-muted">Dates</span>
             {datesList.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
@@ -234,7 +234,7 @@ export function RecurrenceForm({
         {mode === "everyNDays" && (
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--start</span>
+              <span>Start</span>
               <input
                 type="date"
                 value={everyNStart}
@@ -243,7 +243,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--every-days</span>
+              <span>Every N days</span>
               <input
                 type="number"
                 min={1}
@@ -253,7 +253,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--end</span>
+              <span>End</span>
               <input
                 type="date"
                 value={everyNEnd}
@@ -267,7 +267,7 @@ export function RecurrenceForm({
         {mode === "monthly" && (
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs text-muted sm:col-span-2">
-              <span className="text-flag">--cadence</span>
+              <span>Cadence</span>
               <div className="flex flex-wrap gap-1.5">
                 {(
                   [
@@ -291,7 +291,7 @@ export function RecurrenceForm({
                   </button>
                 ))}
                 <label className="inline-flex items-center gap-1 text-xs text-muted">
-                  <span className="text-flag">--every-months</span>
+                  <span>Every N months</span>
                   <input
                     type="number"
                     min={1}
@@ -303,7 +303,7 @@ export function RecurrenceForm({
               </div>
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--day-of-month</span>
+              <span>Day of month</span>
               <input
                 type="number"
                 min={1}
@@ -314,7 +314,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--offset-days</span>
+              <span>Offset days</span>
               <input
                 type="number"
                 value={monthlyOffset}
@@ -324,7 +324,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--start</span>
+              <span>Start</span>
               <input
                 type="date"
                 value={monthlyStart}
@@ -333,7 +333,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span className="text-flag">--end</span>
+              <span>End</span>
               <input
                 type="date"
                 value={monthlyEnd}
@@ -347,8 +347,7 @@ export function RecurrenceForm({
 
       <div className="mt-4 rounded border border-line bg-surface-3 p-3 text-xs">
         <div className="mb-1 text-muted">
-          <span className="text-pipe">|</span>{" "}
-          <span className="text-flag">preview</span>{" "}
+          Preview{" "}
           <span className="text-fg-bright">
             {dates.length} {dates.length === 1 ? "entry" : "entries"}
           </span>

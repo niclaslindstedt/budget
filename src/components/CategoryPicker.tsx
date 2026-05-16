@@ -232,7 +232,7 @@ function CategoryCreator({
   return (
     <div className="flex flex-col gap-2 p-3">
       <label className="flex flex-col gap-1 text-xs text-muted">
-        <span className="text-flag">--name</span>
+        <span>Name</span>
         <input
           ref={nameRef}
           type="text"
@@ -249,7 +249,7 @@ function CategoryCreator({
         />
       </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span className="text-flag">--color</span>
+        <span>Color</span>
         <div className="flex flex-wrap gap-1.5">
           {CATEGORY_COLORS.map((c) => (
             <button
@@ -267,7 +267,7 @@ function CategoryCreator({
         </div>
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span className="text-flag">--icon</span>
+        <span>Icon</span>
         <div className="grid grid-cols-8 gap-1">
           {CATEGORY_ICON_NAMES.map((name) => (
             <button

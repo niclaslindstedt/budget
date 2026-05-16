@@ -56,11 +56,7 @@ export function ConfirmDialog({
             id="confirm-dialog-title"
             className="text-sm font-bold tracking-wide text-fg-bright"
           >
-            <span aria-hidden="true" className="text-accent">
-              ${" "}
-            </span>
-            <span className="text-path">confirm</span>{" "}
-            <span className="text-fg-bright">{title}</span>
+            {title}
           </h2>
           <button
             type="button"
