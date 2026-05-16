@@ -5,7 +5,31 @@ import type { DateFormat, Settings, ThousandsSeparator } from "./types";
 // setting once the UI exists for it.
 export const MAX_COLUMN_CHARS = 60;
 
+// Legacy single-user bucket. Read only on first launch so a budget
+// from before user accounts existed can be migrated into the first
+// account that gets created; otherwise unused.
 export const STORAGE_KEY = "budget.v1";
+
+// Registry of all accounts on this device, plus the id of whichever
+// one is currently active. Plain JSON — usernames and password hashes
+// (PBKDF2) are not secrets in the cryptographic sense.
+export const USERS_KEY = "budget.users.v1";
+
+// Per-user budget bytes live under their own key so a delete leaves
+// other users untouched and a future "switch account" stays a pure
+// pointer flip.
+export function userBudgetKey(userId: string): string {
+  return `budget.user.${userId}`;
+}
+
+// PBKDF2 parameters for the login password hash. Matches the data
+// encryption module's iterations so an attacker sees no cheaper
+// attack path; the salt is per-user, the iteration count is
+// persisted on each user so a future bump can coexist with old
+// records.
+export const PASSWORD_HASH_ITERATIONS = 600_000;
+export const PASSWORD_HASH_BITS = 256;
+export const PASSWORD_SALT_BYTES = 16;
 
 // Defaults are Sweden-leaning: salary on the 25th drives the fiscal
 // month, "kr" is SEK, and the number format is the Swedish convention

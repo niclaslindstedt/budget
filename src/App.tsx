@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
+import { AuthScreen } from "./components/AuthScreen";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
 import {
@@ -18,7 +19,8 @@ import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
-import { UnlockScreen } from "./components/UnlockScreen";
+import { UserMenu } from "./components/UserMenu";
+import { STORAGE_KEY, userBudgetKey } from "./data/constants";
 import {
   budgetWithSavableRows,
   createEmptyRow,
@@ -37,21 +39,24 @@ import type {
   Row,
   Settings,
   Sheet,
+  StoredUser,
 } from "./data/types";
 import type { StorageAdapter } from "./storage/adapter";
-import {
-  decryptEnvelope,
-  encryptText,
-  isEncryptedEnvelope,
-} from "./storage/crypto";
+import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
 import { withEncryption } from "./storage/encrypting-adapter";
 import {
   clearRawStorage,
-  localAdapter,
+  createLocalAdapter,
   readRawStorage,
   writeRawStorage,
 } from "./storage/local-adapter";
 import { useBudgetStorage } from "./storage/useBudgetStorage";
+import {
+  createUser,
+  loadUsersFile,
+  saveUsersFile,
+  verifyPassword,
+} from "./storage/users";
 
 type SheetAction =
   | {
@@ -371,123 +376,194 @@ type EditPrompt = { kind: "edit"; row: Row };
 type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 
+// Auth is rooted in the per-device user registry. Three states:
+//   "signed-out"  — no active user; the auth screen is shown with the
+//                   sign-in form (or sign-up if the registry is empty).
+//   "signed-in"   — a user is active and their decrypted budget is
+//                   being edited; the password lives in `passwordRef`
+//                   so the encrypting adapter can encrypt every save.
+// The state is also persisted in `budget.users.v1` so a reload lands
+// the user on the sign-in form for the same account they last used.
 type AuthState =
-  | { kind: "plain" }
-  | { kind: "locked" }
-  | { kind: "unlocked"; password: string };
-
-function detectInitialAuth(): AuthState {
-  const raw = readRawStorage();
-  if (raw && isEncryptedEnvelope(raw)) return { kind: "locked" };
-  return { kind: "plain" };
-}
+  | { kind: "signed-out"; lastUsername: string | null }
+  | { kind: "signed-in"; user: StoredUser; password: string };
 
 export function App() {
-  const [auth, setAuth] = useState<AuthState>(detectInitialAuth);
+  const [users, setUsers] = useState<StoredUser[]>(() => loadUsersFile().users);
 
-  // Mutable holder consumed by the encryption wrapper. Using a ref
-  // means the password can change at runtime (settings toggle, unlock
-  // success) without re-creating the adapter — the wrapped instance
-  // just reads `passwordRef.current` on its next save / load.
-  const passwordRef = useRef<string | null>(
-    auth.kind === "unlocked" ? auth.password : null,
+  const [auth, setAuth] = useState<AuthState>(() => {
+    const file = loadUsersFile();
+    const last = file.activeUserId
+      ? (file.users.find((u) => u.id === file.activeUserId) ?? null)
+      : null;
+    return { kind: "signed-out", lastUsername: last?.username ?? null };
+  });
+
+  // Whether any plaintext pre-account data is sitting in the legacy
+  // `STORAGE_KEY` bucket. Detected once at mount and offered to the
+  // first account that gets created. Encrypted legacy envelopes are
+  // ignored — we don't have the old password to unwrap them, so the
+  // user has to recover that data via Import after signing in.
+  const legacyBudgetAvailable = useMemo(() => {
+    const legacy = readRawStorage(STORAGE_KEY);
+    return Boolean(legacy && !isEncryptedEnvelope(legacy));
+  }, []);
+
+  // Held password for the active user. Read by the encrypting adapter
+  // on every save / load; cleared whenever auth flips to signed-out.
+  const passwordRef = useRef<string | null>(null);
+
+  const adapter = useMemo<StorageAdapter | null>(() => {
+    if (auth.kind !== "signed-in") return null;
+    return withEncryption(
+      createLocalAdapter(userBudgetKey(auth.user.id)),
+      passwordRef,
+    );
+  }, [auth]);
+
+  const persistRegistry = useCallback(
+    (nextUsers: StoredUser[], activeUserId: string | null) => {
+      saveUsersFile({ version: 1, users: nextUsers, activeUserId });
+    },
+    [],
   );
 
-  const adapter = useMemo<StorageAdapter>(() => {
-    // `passwordRef` is a ref (stable across renders), so only `auth.kind`
-    // decides which adapter shape (plain vs. encrypted wrapper) we hand
-    // to the storage hook.
-    if (auth.kind === "unlocked")
-      return withEncryption(localAdapter, passwordRef);
-    return localAdapter;
-  }, [auth.kind]);
-
-  const handleUnlock = useCallback(
-    async (password: string) => {
-      const raw = readRawStorage();
-      if (!raw || !isEncryptedEnvelope(raw)) {
-        // No envelope to decrypt — drop straight back to plain.
-        passwordRef.current = null;
-        setAuth({ kind: "plain" });
-        return;
-      }
-      // Decrypt to verify the password matches; the wrapped adapter
-      // will repeat the decrypt during its initial load.
-      await decryptEnvelope(raw, password);
+  const handleSignIn = useCallback(
+    async (user: StoredUser, password: string) => {
+      const ok = await verifyPassword(user, password);
+      if (!ok) throw new Error("Wrong password");
       passwordRef.current = password;
-      setAuth({ kind: "unlocked", password });
+      persistRegistry(users, user.id);
+      setAuth({ kind: "signed-in", user, password });
     },
-    [passwordRef],
+    [users, persistRegistry],
   );
 
-  const handleEnableEncryption = useCallback(
-    async (password: string) => {
-      // Re-encrypt whatever is already on disk before switching
-      // adapters so a power-loss between this call and the next save
-      // can't leave plaintext sitting in storage.
-      const raw = readRawStorage();
-      if (raw && !isEncryptedEnvelope(raw)) {
-        writeRawStorage(await encryptText(raw, password));
+  const handleCreateAccount = useCallback(
+    async (username: string, password: string, importLegacy: boolean) => {
+      const user = await createUser(username, password);
+      const nextUsers = [...users, user];
+      // Seed the new user's storage slot. If asked, lift the legacy
+      // anonymous budget into it so existing data is preserved on the
+      // first migration. The bytes are re-encrypted with the new
+      // password so the rest of the app sees a normal encrypted
+      // envelope from the first read.
+      if (importLegacy && users.length === 0) {
+        const legacy = readRawStorage(STORAGE_KEY);
+        // Only migrate plaintext legacy data — an encrypted envelope
+        // would need the old password to decrypt and our migration
+        // doesn't have it. The user can recover that data later via
+        // the Import button, which prompts for it.
+        if (legacy && !isEncryptedEnvelope(legacy)) {
+          const envelope = await encryptText(legacy, password);
+          writeRawStorage(envelope, userBudgetKey(user.id));
+          clearRawStorage(STORAGE_KEY);
+        }
       }
+      setUsers(nextUsers);
+      persistRegistry(nextUsers, user.id);
       passwordRef.current = password;
-      setAuth({ kind: "unlocked", password });
+      setAuth({ kind: "signed-in", user, password });
     },
-    [passwordRef],
+    [users, persistRegistry],
   );
 
-  const handleDisableEncryption = useCallback(
-    async (password: string) => {
-      const raw = readRawStorage();
-      if (raw && isEncryptedEnvelope(raw)) {
-        // decryptEnvelope throws on a wrong password — the modal
-        // catches that and shows it to the user.
-        const plain = await decryptEnvelope(raw, password);
-        writeRawStorage(plain);
-      }
-      passwordRef.current = null;
-      setAuth({ kind: "plain" });
-    },
-    [passwordRef],
-  );
-
-  const handleWipe = useCallback(() => {
-    clearRawStorage();
+  const handleSignOut = useCallback(() => {
     passwordRef.current = null;
-    setAuth({ kind: "plain" });
-  }, [passwordRef]);
+    setAuth((prev) => {
+      const lastUsername =
+        prev.kind === "signed-in"
+          ? prev.user.username
+          : prev.kind === "signed-out"
+            ? prev.lastUsername
+            : null;
+      return { kind: "signed-out", lastUsername };
+    });
+    persistRegistry(users, null);
+  }, [users, persistRegistry]);
 
-  if (auth.kind === "locked") {
-    return <UnlockScreen onUnlock={handleUnlock} onWipe={handleWipe} />;
+  const handleSwitchUser = useCallback(() => {
+    // Same as sign-out but explicitly clears the "last user" hint so
+    // the picker comes up blank instead of pre-filling the just-left
+    // account.
+    passwordRef.current = null;
+    setAuth({ kind: "signed-out", lastUsername: null });
+    persistRegistry(users, null);
+  }, [users, persistRegistry]);
+
+  const handleStartCreateAccountFromMenu = useCallback(() => {
+    // The auth screen detects an empty username hint and lands on the
+    // sign-up form when no users exist; we surface that affordance
+    // here too by signing out + setting the hint to null.
+    passwordRef.current = null;
+    setAuth({ kind: "signed-out", lastUsername: null });
+    persistRegistry(users, null);
+  }, [users, persistRegistry]);
+
+  const handleDeleteAccount = useCallback(
+    async (password: string) => {
+      if (auth.kind !== "signed-in") return;
+      const ok = await verifyPassword(auth.user, password);
+      if (!ok) throw new Error("Wrong password");
+      const remaining = users.filter((u) => u.id !== auth.user.id);
+      clearRawStorage(userBudgetKey(auth.user.id));
+      setUsers(remaining);
+      persistRegistry(remaining, null);
+      passwordRef.current = null;
+      setAuth({ kind: "signed-out", lastUsername: null });
+    },
+    [auth, users, persistRegistry],
+  );
+
+  if (auth.kind === "signed-out" || adapter === null) {
+    return (
+      <AuthScreen
+        users={users}
+        initialUsername={auth.kind === "signed-out" ? auth.lastUsername : null}
+        legacyBudgetAvailable={legacyBudgetAvailable && users.length === 0}
+        onSignIn={handleSignIn}
+        onCreateAccount={handleCreateAccount}
+      />
+    );
   }
 
   return (
     <BudgetView
       adapter={adapter}
-      encryptionEnabled={auth.kind === "unlocked"}
+      user={auth.user}
+      hasOtherUsers={users.length > 1}
       getEncryptionPassword={() => passwordRef.current}
-      onEnableEncryption={handleEnableEncryption}
-      onDisableEncryption={handleDisableEncryption}
+      onSignOut={handleSignOut}
+      onSwitchUser={handleSwitchUser}
+      onCreateAccount={handleStartCreateAccountFromMenu}
+      onDeleteAccount={handleDeleteAccount}
     />
   );
 }
 
 type BudgetViewProps = {
   adapter: StorageAdapter;
-  encryptionEnabled: boolean;
-  // Returns the active encryption password, or null when encryption is
-  // off. Read lazily so a future password change doesn't require
-  // re-passing props.
+  user: StoredUser;
+  hasOtherUsers: boolean;
+  // Returns the active user's password — used by the export flow to
+  // wrap downloaded files in the same envelope shape the storage
+  // adapter uses.
   getEncryptionPassword: () => string | null;
-  onEnableEncryption: (password: string) => Promise<void>;
-  onDisableEncryption: (password: string) => Promise<void>;
+  onSignOut: () => void;
+  onSwitchUser: () => void;
+  onCreateAccount: () => void;
+  onDeleteAccount: (password: string) => Promise<void>;
 };
 
 function BudgetView({
   adapter,
-  encryptionEnabled,
+  user,
+  hasOtherUsers,
   getEncryptionPassword,
-  onEnableEncryption,
-  onDisableEncryption,
+  onSignOut,
+  onSwitchUser,
+  onCreateAccount,
+  onDeleteAccount,
 }: BudgetViewProps) {
   const { budget, dispatch, dirty, saveNow } = useBudgetStorage(
     adapter,
@@ -805,7 +881,6 @@ function BudgetView({
           <ImportExportControls
             budget={budget}
             onImport={onImport}
-            encryptionEnabled={encryptionEnabled}
             getEncryptionPassword={getEncryptionPassword}
           />
           <button
@@ -831,6 +906,14 @@ function BudgetView({
           >
             <SettingsIcon size={18} aria-hidden focusable={false} />
           </button>
+          <UserMenu
+            user={user}
+            hasOtherUsers={hasOtherUsers}
+            onSignOut={onSignOut}
+            onSwitchUser={onSwitchUser}
+            onCreateAccount={onCreateAccount}
+            onDeleteAccount={onDeleteAccount}
+          />
         </div>
       </header>
       <main className="flex-1">
@@ -927,11 +1010,8 @@ function BudgetView({
       <SettingsModal
         open={settingsOpen}
         settings={budget.settings}
-        encryptionEnabled={encryptionEnabled}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
-        onEnableEncryption={onEnableEncryption}
-        onDisableEncryption={onDisableEncryption}
       />
     </div>
   );
