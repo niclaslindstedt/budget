@@ -15,7 +15,9 @@ export function ColumnHeader({ column, onReorder }: Props) {
 
   return (
     <th
-      className={`col-header col-${column.type}${dragOver ? " is-drop-target" : ""}`}
+      className={`cursor-grab border-r border-b border-line bg-surface-3 text-left font-semibold whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
+        dragOver ? "outline outline-2 -outline-offset-2 outline-accent" : ""
+      }`}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData(DRAG_MIME, column.id);
@@ -35,9 +37,12 @@ export function ColumnHeader({ column, onReorder }: Props) {
         if (fromId && fromId !== column.id) onReorder(fromId, column.id);
       }}
     >
-      <span className="col-header-content">
-        <ColumnIcon type={column.type} className="col-header-icon" />
-        <span className="col-header-label">{column.label}</span>
+      <span className="flex items-center gap-1.5 px-2.5 py-1.5 md:gap-2">
+        <ColumnIcon
+          type={column.type}
+          className="shrink-0 text-fg md:text-muted"
+        />
+        <span className="hidden md:inline">{column.label}</span>
       </span>
     </th>
   );

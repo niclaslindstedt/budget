@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { CellValue, Column, Row } from "../data/types";
 import { Cell } from "./Cell";
-import { IconTrash } from "./icons";
 
 type Props = {
   row: Row;
@@ -58,7 +58,6 @@ export function SheetRow({
   };
 
   const rowClass = [
-    "row",
     swiped ? "is-swiped" : "",
     isCompleted ? "is-completed" : "",
   ]
@@ -83,14 +82,14 @@ export function SheetRow({
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
         />
       ))}
-      <td className="cell cell-actions">
+      <td className="action-cell border-r border-b border-line bg-surface-2 p-0 text-center last:border-r-0">
         <button
           type="button"
-          className="row-delete"
+          className="inline-flex h-full w-full items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface md:hover:text-danger"
           aria-label="Delete row"
           onClick={() => onDeleteRow(row.id)}
         >
-          <IconTrash />
+          <Trash2 size={18} aria-hidden focusable={false} />
         </button>
       </td>
     </tr>

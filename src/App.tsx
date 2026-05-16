@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useReducer } from "react";
 
 import { SheetView } from "./components/SheetView";
-import { MAX_COLUMN_CHARS } from "./data/constants";
 import { createEmptyRow, findColumnByType, moveColumn } from "./data/sheet";
 import type { Budget, CellValue, Row } from "./data/types";
 import { loadBudget, saveBudget } from "./storage/local";
@@ -106,15 +105,8 @@ export function App() {
   );
 
   return (
-    <main
-      className="app"
-      style={
-        {
-          "--max-column-chars": `${MAX_COLUMN_CHARS}ch`,
-        } as React.CSSProperties
-      }
-    >
-      <h1 className="app-title">Budget</h1>
+    <main className="mx-auto max-w-full px-3 pt-3 pb-10 md:px-5 md:pt-4">
+      <h1 className="mb-4 text-xl font-semibold">Budget</h1>
       <SheetView
         sheet={activeSheet}
         showName={budget.sheets.length > 1}

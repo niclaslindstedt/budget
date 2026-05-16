@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -6,6 +7,6 @@ import { defineConfig } from "vite";
 // ever removed and the app falls back to niclaslindstedt.github.io/budget/,
 // switch base to "/budget/" for production builds.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   base: "/",
 });

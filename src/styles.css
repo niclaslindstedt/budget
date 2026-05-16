@@ -1,495 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-md: 720px;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-line: var(--line);
+}
+
 :root {
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --surface-3: #eaeef2;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --accent: #0969da;
+  --danger: #cf222e;
+  --success: #1a7f37;
+  --line: #d0d7de;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #0d1117;
+    --surface-2: #161b22;
+    --surface-3: #1c2128;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --danger: #ff7b72;
+    --success: #3fb950;
+    --line: #30363d;
+  }
+}
+
+html {
   color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--fg);
   font-family:
     system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
     sans-serif;
-  --border: #d0d7de;
-  --border-strong: #afb8c1;
-  --bg: #ffffff;
-  --bg-alt: #f6f8fa;
-  --bg-header: #eaeef2;
-  --text: #1f2328;
-  --muted: #57606a;
-  --accent: #0969da;
-  --negative: #cf222e;
-  --positive: #1a7f37;
-  --row-done-bg: rgba(26, 127, 55, 0.08);
-  --row-swiped-bg: rgba(207, 34, 46, 0.12);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --border: #30363d;
-    --border-strong: #444c56;
-    --bg: #0d1117;
-    --bg-alt: #161b22;
-    --bg-header: #1c2128;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --accent: #58a6ff;
-    --negative: #ff7b72;
-    --positive: #3fb950;
-    --row-done-bg: rgba(63, 185, 80, 0.12);
-    --row-swiped-bg: rgba(255, 123, 114, 0.18);
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-}
-
-.app {
-  padding: 16px 20px 40px;
-  max-width: 100%;
-}
-
-.app-title {
-  margin: 0 0 16px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.sheet-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.opening-balance {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.opening-balance input {
-  width: 10ch;
-  padding: 2px 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-}
-
-.sheet-months {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.month-heading {
-  margin: 0 0 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.month-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-}
-
-.sheet-table {
-  border-collapse: collapse;
-  table-layout: auto;
-  font-size: 13px;
-  width: max-content;
-  min-width: 100%;
-}
-
-.sheet-table th,
-.sheet-table td {
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  padding: 0;
-  vertical-align: top;
-  max-width: var(--max-column-chars, 60ch);
-}
-
-.sheet-table th:last-child,
-.sheet-table td:last-child {
-  border-right: none;
-}
-
-.sheet-table tbody tr:last-child td {
-  border-bottom: 1px solid var(--border);
-}
-
-.col-header {
-  background: var(--bg-header);
-  font-weight: 600;
-  text-align: left;
-  cursor: grab;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.col-header:active {
-  cursor: grabbing;
-}
-
-.col-header-content {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-}
-
-.col-header-icon {
-  flex: 0 0 auto;
-  color: var(--muted);
-}
-
-.col-header-label {
-  display: inline;
-}
-
-.col-header.is-drop-target {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.col-actions {
-  width: 32px;
-  background: var(--bg-header);
-}
-
-.cell {
-  background: var(--bg);
-}
-
-.cell input,
-.cell textarea {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  padding: 6px 10px;
-  outline: none;
-}
-
-.cell input:focus,
-.cell textarea:focus {
-  background: var(--bg-alt);
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-
-.cell-date {
-  position: relative;
-}
-
-.date-button {
-  display: block;
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  padding: 6px 10px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-
-.date-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.date-input-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-
-.cell-description {
-  max-width: var(--max-column-chars, 60ch);
-}
-
-.cell-description textarea {
-  resize: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  field-sizing: content;
-  min-height: 1.6em;
-  line-height: 1.4;
-}
-
-.cell-amount input,
-.cell-balance {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.cell-balance {
-  padding: 6px 10px;
-  background: var(--bg-alt);
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.cell-balance.is-negative {
-  color: var(--negative);
-}
-
-.cell-completed {
-  text-align: center;
-  padding: 0;
-}
-
-.done-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 32px;
-  height: 100%;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 6px;
-}
-
-.done-toggle:hover {
-  background: var(--bg-alt);
-}
-
-.done-toggle.is-done {
-  color: var(--positive);
-}
-
-.done-toggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.row.is-completed > td {
-  background: var(--row-done-bg);
-}
-
-.row.is-completed .cell-balance {
-  background: var(--row-done-bg);
-}
-
-.cell-actions {
-  text-align: center;
-  background: var(--bg-alt);
-  padding: 0;
-  width: 40px;
-}
-
-.row-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  line-height: 1;
-  padding: 6px 8px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.row-delete:hover {
-  color: var(--negative);
-  background: var(--bg);
-}
-
-.month-footer {
-  padding: 0;
-  background: var(--bg-alt);
-  border-right: none;
-  text-align: center;
-}
-
-.row-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  padding: 10px;
-  cursor: pointer;
-  border-radius: 999px;
-}
-
-.row-add:hover {
-  background: var(--bg);
-}
-
-.row-add:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* ---------- Mobile layout ---------- */
-@media (max-width: 720px) {
-  .app {
-    padding: 12px 12px 40px;
+@layer components {
+  /* Shared focus state for editable cell fields */
+  .field-input:focus {
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 2px var(--accent);
+    outline: none;
   }
 
-  .month-scroll {
-    overflow-x: hidden;
+  /* Mobile: convert table to block + per-row grid for full-width layout
+     and to make swipe-to-delete possible inside table rows */
+  @media (max-width: 720px) {
+    .sheet-table,
+    .sheet-table > thead,
+    .sheet-table > tbody,
+    .sheet-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .sheet-table > thead > tr,
+    .sheet-table > tbody > tr {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 72px 84px 44px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sheet-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .sheet-table th,
+    .sheet-table td {
+      display: flex;
+      align-items: stretch;
+      max-width: none;
+    }
+    .sheet-table th > *,
+    .sheet-table td > *:not(.date-picker-hidden) {
+      width: 100%;
+    }
+
+    /* Row swipe: shift content left, slide action cell in from the right */
+    .sheet-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
+      transform: translateX(-64px);
+      background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+    }
+    .sheet-table > thead > tr > .action-cell,
+    .sheet-table > tbody > tr > .action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 64px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--danger);
+      border: 0;
+      z-index: 2;
+      align-items: center;
+      justify-content: center;
+    }
+    .sheet-table > tbody > tr.is-swiped > .action-cell {
+      transform: translateX(0);
+    }
+
+    /* Done state tint applies on every cell so the entire row reads green */
+    .sheet-table
+      > tbody
+      > tr.is-completed:not(.is-swiped)
+      > td:not(.action-cell) {
+      background: color-mix(in srgb, var(--success) 10%, var(--surface));
+    }
   }
 
-  .sheet-table {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    font-size: 14px;
-  }
-
-  .sheet-table > thead,
-  .sheet-table > tbody,
-  .sheet-table > tfoot {
-    display: block;
-    width: 100%;
-  }
-
-  .sheet-table > thead > tr,
-  .sheet-table > tbody > tr {
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) 72px 84px 44px;
-    position: relative;
-    overflow: hidden;
-    width: 100%;
-  }
-
-  .sheet-table > tfoot > tr {
-    display: block;
-    width: 100%;
-  }
-
-  .sheet-table th,
-  .sheet-table td {
-    display: flex;
-    align-items: stretch;
-    border-right: 1px solid var(--border);
-    max-width: none;
-  }
-
-  .sheet-table th > *,
-  .sheet-table td > *:not(.date-input-hidden) {
-    width: 100%;
-  }
-
-  .sheet-table th:last-of-type,
-  .sheet-table td:last-of-type {
-    border-right: none;
-  }
-
-  /* Hide labels in headers — keep icons */
-  .col-header-content {
-    justify-content: center;
-    padding: 8px 4px;
-  }
-  .col-header-label {
-    display: none;
-  }
-  .col-header-icon {
-    color: var(--text);
-  }
-
-  /* Center cell content vertically on mobile */
-  .cell input,
-  .cell textarea,
-  .cell-balance,
-  .date-button {
-    padding: 10px 8px;
-  }
-
-  .cell-amount input {
-    padding-right: 8px;
-  }
-
-  /* The actions cell becomes a swipe-revealed overlay */
-  .sheet-table > thead > tr > .col-actions,
-  .sheet-table > tbody > tr > .cell-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 64px;
-    transform: translateX(100%);
-    transition: transform 200ms ease;
-    background: var(--negative);
-    border: none;
-    z-index: 2;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .sheet-table > tbody > tr.is-swiped > .cell-actions {
-    transform: translateX(0);
-  }
-
-  .sheet-table > tbody > tr.is-swiped {
-    background: var(--row-swiped-bg);
-  }
-
-  .sheet-table > tbody > tr.is-swiped > td:not(.cell-actions) {
-    transform: translateX(-64px);
-    transition: transform 200ms ease;
-    background: var(--row-swiped-bg);
-  }
-
-  .sheet-table > tbody > tr > td:not(.cell-actions) {
-    transition: transform 200ms ease;
-  }
-
-  .row-delete {
-    color: #fff;
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-  }
-  .row-delete:hover {
-    color: #fff;
-    background: transparent;
-  }
-
-  /* Completed row tint takes precedence visually unless swiped */
-  .sheet-table > tbody > tr.is-completed:not(.is-swiped) > td {
-    background: var(--row-done-bg);
-  }
-
-  /* Date column: just a day number, centered */
-  .date-button {
-    text-align: center;
-    padding: 10px 4px;
-    font-variant-numeric: tabular-nums;
+  /* Desktop completed row tint */
+  @media (min-width: 720px) {
+    .sheet-table > tbody > tr.is-completed > td {
+      background: color-mix(in srgb, var(--success) 8%, var(--surface));
+    }
   }
 }
