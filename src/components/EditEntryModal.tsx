@@ -175,13 +175,7 @@ export function EditEntryModal({
             id="edit-entry-title"
             className="text-sm font-bold tracking-wide text-fg-bright"
           >
-            <span aria-hidden="true" className="text-accent">
-              ${" "}
-            </span>
-            <span className="text-path">{isSeries ? "edit" : "promote"}</span>{" "}
-            <span className="text-flag">
-              {isSeries ? "--recurring-entry" : "--to-recurring"}
-            </span>
+            {isSeries ? "Edit recurring entry" : "Promote to recurring"}
           </h2>
           <button
             type="button"
@@ -198,7 +192,7 @@ export function EditEntryModal({
             <>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 sm:col-span-2">
-                  <span className="text-xs text-flag">--description</span>
+                  <span className="text-xs text-muted">Description</span>
                   <input
                     type="text"
                     value={description}
@@ -207,7 +201,7 @@ export function EditEntryModal({
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs text-flag">--amount</span>
+                  <span className="text-xs text-muted">Amount</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -223,7 +217,7 @@ export function EditEntryModal({
                   />
                 </label>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-flag">--category</span>
+                  <span className="text-xs text-muted">Category</span>
                   <CategoryPicker
                     variant="field"
                     categories={categories}
@@ -235,7 +229,7 @@ export function EditEntryModal({
               </div>
 
               <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
-                <legend className="px-1 text-xs text-flag">--scope</legend>
+                <legend className="px-1 text-xs text-muted">Scope</legend>
                 <div className="flex flex-col gap-2 text-sm text-fg">
                   <label className="inline-flex cursor-pointer items-center gap-2">
                     <input

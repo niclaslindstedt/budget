@@ -4,14 +4,13 @@
   --breakpoint-md: 720px;
 }
 
-/* Palette inspired by One Dark / One Light — the same shell-syntax-highlighter
-   roles used by blog.niclaslindstedt.se's fallback view. Each text token maps
-   to a recognisable zsh / oh-my-zsh colour so cells read like a real terminal
-   rather than a monochrome spreadsheet: green for completion / prompts, cyan
-   for paths and dates, yellow for strings and numbers, red for negatives, blue
-   for links. Default is dark; `prefers-color-scheme: light` rebinds the
-   variables and every Tailwind utility resolved through `@theme inline`
-   follows. */
+/* Palette inspired by One Dark / One Light. A monospaced face plus a few
+   syntax-style accents (green for completion, cyan for dates, yellow for
+   numbers, red for negatives, blue for links) give the sheet a quietly
+   technical feel without dressing the UI up as a terminal — chrome like
+   modals and form labels should read as plain UI, not as a CLI. Default
+   is dark; `prefers-color-scheme: light` rebinds the variables and every
+   Tailwind utility resolved through `@theme inline` follows. */
 @theme inline {
   --color-page-bg: var(--page-bg);
   --color-surface: var(--surface);
