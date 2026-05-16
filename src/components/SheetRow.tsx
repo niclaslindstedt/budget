@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Repeat, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
@@ -153,7 +153,7 @@ export function SheetRow({
             aria-label={isSeries ? "Edit recurring entry" : "Make recurring"}
             onClick={() => onEditRequest(row)}
           >
-            <Pencil size={16} aria-hidden focusable={false} />
+            <Repeat size={16} aria-hidden focusable={false} />
           </button>
           <button
             type="button"

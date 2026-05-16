@@ -8,6 +8,7 @@ import {
   formatBalance,
   formatDate,
   formatNumber,
+  formatShortDate,
   normalizeAmountInput,
   parseAmount,
 } from "../src/utils/format";
@@ -203,5 +204,20 @@ describe("formatDate", () => {
   it("returns an empty string for malformed input", () => {
     expect(formatDate("", "YYYY-MM-DD")).toBe("");
     expect(formatDate("abc", "YYYY-MM-DD")).toBe("");
+  });
+});
+
+describe("formatShortDate", () => {
+  it("renders day + month for each supported format, no leading zeros", () => {
+    expect(formatShortDate("2026-05-16", "YYYY-MM-DD")).toBe("5-16");
+    expect(formatShortDate("2026-05-16", "DD/MM/YYYY")).toBe("16/5");
+    expect(formatShortDate("2026-05-16", "MM/DD/YYYY")).toBe("5/16");
+    expect(formatShortDate("2026-05-16", "DD.MM.YYYY")).toBe("16.5");
+    expect(formatShortDate("2026-05-16", "D MMM YYYY")).toBe("16 May");
+  });
+
+  it("returns an empty string for malformed input", () => {
+    expect(formatShortDate("", "YYYY-MM-DD")).toBe("");
+    expect(formatShortDate("abc", "YYYY-MM-DD")).toBe("");
   });
 });
