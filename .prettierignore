@@ -5,3 +5,7 @@ CHANGELOG.md
 coverage
 test-results
 playwright-report
+
+# Vendored from upstream — keep verbatim so diffs against
+# https://github.com/niclaslindstedt/oss-spec stay meaningful.
+OSS_SPEC.md
