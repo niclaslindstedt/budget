@@ -7,17 +7,20 @@ import {
   sortMonthKeys,
   sortRowsByDate,
 } from "../data/sheet";
-import type { CellValue, Row, Sheet } from "../data/types";
+import type { Category, CellValue, Row, Sheet } from "../data/types";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
   sheet: Sheet;
+  categories: Category[];
   showName?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
+  onAddComplex: (date: string) => void;
   onDeleteRow: (rowId: string) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onSetOpeningBalance: (value: number) => void;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 function currentMonthKey(): string {
@@ -27,12 +30,15 @@ function currentMonthKey(): string {
 
 export function SheetView({
   sheet,
+  categories,
   showName = true,
   onUpdateCell,
   onAddRow,
+  onAddComplex,
   onDeleteRow,
   onReorderColumns,
   onSetOpeningBalance,
+  onCreateCategory,
 }: Props) {
   const dateCol = useMemo(
     () => findColumnByType(sheet.columns, "date"),
@@ -82,6 +88,7 @@ export function SheetView({
           const monthRows = dateCol
             ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
             : [];
+          const seedDate = monthKey === "undated" ? "" : `${monthKey}-01`;
           return (
             <MonthTable
               key={monthKey}
@@ -89,12 +96,13 @@ export function SheetView({
               rows={monthRows}
               columns={sheet.columns}
               balances={balances}
+              categories={categories}
               onUpdateCell={onUpdateCell}
-              onAddRow={() =>
-                onAddRow(monthKey === "undated" ? "" : `${monthKey}-01`)
-              }
+              onAddRow={() => onAddRow(seedDate)}
+              onAddComplex={() => onAddComplex(seedDate)}
               onDeleteRow={onDeleteRow}
               onReorderColumns={onReorderColumns}
+              onCreateCategory={onCreateCategory}
             />
           );
         })}

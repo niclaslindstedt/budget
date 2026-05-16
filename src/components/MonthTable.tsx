@@ -1,6 +1,5 @@
-import { Plus } from "lucide-react";
-
-import type { CellValue, Column, Row } from "../data/types";
+import type { Category, CellValue, Column, Row } from "../data/types";
+import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
 import { SheetRow } from "./SheetRow";
 
@@ -9,10 +8,13 @@ type Props = {
   rows: Row[];
   columns: Column[];
   balances: Map<string, number>;
+  categories: Category[];
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
+  onAddComplex: () => void;
   onDeleteRow: (rowId: string) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 const monthFormat = new Intl.DateTimeFormat(undefined, {
@@ -32,10 +34,13 @@ export function MonthTable({
   rows,
   columns,
   balances,
+  categories,
   onUpdateCell,
   onAddRow,
+  onAddComplex,
   onDeleteRow,
   onReorderColumns,
+  onCreateCategory,
 }: Props) {
   return (
     <section>
@@ -70,8 +75,10 @@ export function MonthTable({
                 row={row}
                 columns={columns}
                 balances={balances}
+                categories={categories}
                 onUpdateCell={onUpdateCell}
                 onDeleteRow={onDeleteRow}
+                onCreateCategory={onCreateCategory}
               />
             ))}
           </tbody>
@@ -81,14 +88,7 @@ export function MonthTable({
                 colSpan={columns.length + 1}
                 className="border-r-0 bg-surface-3 p-0 text-center"
               >
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center justify-center rounded-full p-2.5 text-accent hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  onClick={onAddRow}
-                  aria-label="Add row"
-                >
-                  <Plus size={22} aria-hidden focusable={false} />
-                </button>
+                <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
               </td>
             </tr>
           </tfoot>

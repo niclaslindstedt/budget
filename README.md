@@ -78,8 +78,12 @@ import/export format are documented in
 ## Examples
 
 A single sheet renders at the root route. It is grouped into one
-table per month; rows carry a date, description, amount, derived
-balance, and completion flag. See
+table per month; rows carry a date, description, category, amount,
+derived balance, and completion flag. The per-month `+` button adds
+a blank row; long-press (or right-click) opens a modal for complex
+entries — recurring payments (specific dates, every N days, or
+monthly / quarterly / yearly with day-of-month + offset) and
+category assignment. See
 [`src/components/SheetView.tsx`](src/components/SheetView.tsx).
 
 ## Troubleshooting

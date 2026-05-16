@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Minus } from "lucide-react";
 
-import type { CellValue, Column } from "../data/types";
+import type { Category, CellValue, Column } from "../data/types";
+import { CategoryPicker } from "./CategoryPicker";
 
 type Props = {
   column: Column;
   value: CellValue;
   computedBalance?: number;
+  categories?: Category[];
   onChange: (value: CellValue) => void;
+  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
 
 const moneyFormat = new Intl.NumberFormat(undefined, {
@@ -29,7 +32,14 @@ const CELL_BASE = "border-r border-b border-line bg-surface last:border-r-0";
 const INPUT_BASE =
   "field-input w-full border-0 bg-transparent px-2.5 py-2 font-mono text-inherit outline-none";
 
-export function Cell({ column, value, computedBalance, onChange }: Props) {
+export function Cell({
+  column,
+  value,
+  computedBalance,
+  categories,
+  onChange,
+  onCreateCategory,
+}: Props) {
   switch (column.type) {
     case "date": {
       return <DateCell value={value} onChange={onChange} />;
@@ -81,6 +91,27 @@ export function Cell({ column, value, computedBalance, onChange }: Props) {
           >
             {checked && <Check size={18} aria-hidden focusable={false} />}
           </button>
+        </td>
+      );
+    }
+
+    case "category": {
+      const selectedId = typeof value === "string" ? value : null;
+      return (
+        <td className={`${CELL_BASE} p-0`}>
+          <CategoryPicker
+            categories={categories ?? []}
+            selectedId={selectedId}
+            onSelect={(id) => onChange(id)}
+            onCreate={
+              onCreateCategory ??
+              ((draft) => ({
+                id: `tmp-${Math.random().toString(36).slice(2)}`,
+                ...draft,
+              }))
+            }
+            variant="chip"
+          />
         </td>
       );
     }

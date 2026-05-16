@@ -47,9 +47,10 @@ describe("moveColumn", () => {
     // date moves from index 0 to index 3
     expect(order).toEqual([
       "description",
+      "category",
       "amount",
-      "balance",
       "date",
+      "balance",
       "completed",
     ]);
   });

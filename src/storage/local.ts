@@ -5,7 +5,12 @@ import { parseBudget } from "./file";
 
 export function freshBudget(): Budget {
   const sheet = createDefaultSheet();
-  return { version: 1, sheets: [sheet], activeSheetId: sheet.id };
+  return {
+    version: 2,
+    sheets: [sheet],
+    activeSheetId: sheet.id,
+    categories: [],
+  };
 }
 
 // Pure: given the raw stored text (or null), produce a Budget. Falls back
