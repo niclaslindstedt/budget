@@ -17,8 +17,10 @@ Single-page TypeScript app — Vite + React — that reads and writes a
 JSON document in `localStorage`. The whole bundle is static; deploys
 ship to GitHub Pages.
 
-The current commit is a hello-world skeleton. The actual budgeting
-features (categories, transactions, import/export) come next.
+The first piece of UI is a spreadsheet-style sheet (rows × typed
+columns) grouped by month and year. Columns support drag-to-reorder,
+auto-size up to a configurable max width, and a derived running
+balance. Import/export and multiple sheets come next.
 
 ## Why
 
@@ -73,8 +75,10 @@ the data shape will be documented under [`docs/`](docs/).
 
 ## Examples
 
-There is one rendered page so far — the hello-world entry. See
-[`src/App.tsx`](src/App.tsx).
+A single sheet renders at the root route. It is grouped into one
+table per month; rows carry a date, description, amount, derived
+balance, and completion flag. See
+[`src/components/SheetView.tsx`](src/components/SheetView.tsx).
 
 ## Troubleshooting
 

@@ -6,67 +6,107 @@ The shape of the codebase today, and where it is heading.
 
 ```
 src/
-├── main.tsx        # React 18 entry, mounts <App /> into #root
-└── App.tsx         # hello-world placeholder
+├── main.tsx              # React 18 entry, mounts <App /> into #root
+├── App.tsx               # owns the budget reducer + persistence wiring
+├── styles.css            # global styles + sheet layout
+├── components/
+│   ├── SheetView.tsx     # one sheet — month grouping + opening balance
+│   ├── MonthTable.tsx    # one month's table
+│   ├── ColumnHeader.tsx  # draggable column header
+│   └── Cell.tsx          # per-type cell editor
+├── data/
+│   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
+│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
+│   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
+└── storage/
+    └── local.ts          # localStorage adapter (load + save)
 ```
-
-The current commit is the deploy skeleton — Vite, React, TypeScript
-strict mode, ESLint, Prettier, Vitest, GitHub Pages, OSS_SPEC
-scaffolding. No app logic yet.
 
 ## Planned shape
 
 ```
 src/
-├── main.tsx           # React 18 entry
-├── App.tsx            # composes sections / routes
-├── components/        # one file per UI section
+├── main.tsx
+├── App.tsx
+├── components/           # UI sections (sheets, dialogs, navigation)
 ├── storage/
-│   ├── local.ts       # localStorage adapter (load / save / clear)
-│   └── file.ts        # JSON file export + import (Blob, FileReader)
+│   ├── local.ts          # localStorage adapter (load / save / clear)
+│   └── file.ts           # JSON file export + import (Blob, FileReader)
 ├── data/
-│   ├── types.ts       # Budget, Category, Transaction
-│   └── schema.ts      # runtime guards / migrations
-└── utils/
-    ├── money.ts       # currency formatting
-    └── date.ts        # period helpers (month, year)
+│   ├── types.ts          # Budget, Sheet, Column, Row + future shapes
+│   ├── sheet.ts          # sheet-level pure helpers
+│   ├── migrations.ts     # schema migrations on load
+│   └── forecasting/      # savings, loans, leave planning (TBD)
+└── utils/                # money formatting, date helpers, …
 ```
 
-## Storage model
+## Data model
 
-Persistent state lives in a single key in `localStorage`. The value is
-a JSON document with a top-level schema version:
+The persistent state is a single JSON document stored under the
+`localStorage` key `budget.v1`. Top-level shape:
 
-```json
-{
-  "version": 1,
-  "budgets": [...],
-  "categories": [...],
-  "transactions": [...]
-}
+```ts
+type Budget = {
+  version: 1;
+  sheets: Sheet[];
+  activeSheetId: string;
+};
+
+type Sheet = {
+  id: string;
+  name: string;
+  columns: Column[]; // ordered; drag-and-drop reorders this array
+  rows: Row[]; // flat list; month grouping is derived in the view
+  openingBalance: number;
+};
+
+type Column = {
+  id: string;
+  type: "date" | "description" | "amount" | "balance" | "completed";
+  label: string;
+};
+
+type Row = {
+  id: string;
+  cells: Record<string /* column id */, string | number | boolean | null>;
+};
 ```
 
-A version bump triggers a migration in `src/storage/local.ts` before
-the data reaches components.
+Cells are keyed by column id (not column type) so the model supports
+adding multiple columns of the same type without ambiguity. The
+`balance` column is **derived** — its value is computed by
+`computeBalances()` from the row's date and amount, as a running total
+from the sheet's `openingBalance` across all rows in chronological
+order. It is never written to row cells.
 
-## Import / export
+Month grouping is a view concern: `groupRowsByMonth()` buckets rows
+by the `YYYY-MM` prefix of their date cell. Changing a date moves a
+row between buckets automatically on the next render.
 
-The user can:
+### Migrations
 
-- **Export** — `src/storage/file.ts` serialises the in-memory state to
-  a `Blob`, triggers a download as `budget-YYYY-MM-DD.json`.
-- **Import** — the user picks a file; `FileReader` parses it, the
-  schema guards reject malformed input, the new state replaces (or
-  merges with — TBD) the current `localStorage` document.
+A version bump (e.g. `version: 1` → `version: 2`) triggers a migration
+in `src/storage/local.ts` before the data reaches components. Today
+there is only `version: 1` and the loader rejects shapes it does not
+recognise, falling back to a fresh budget.
+
+## Import / export (planned)
+
+- **Export** — `src/storage/file.ts` will serialise the in-memory
+  state to a `Blob` and trigger a download as
+  `budget-YYYY-MM-DD.json`.
+- **Import** — the user picks a file; `FileReader` parses it, schema
+  guards reject malformed input, and the new state replaces (or merges
+  with — TBD) the current `localStorage` document.
 
 No network. No third party. The file is the user's data, in plain
 JSON, in their hands.
 
 ## Dependency direction
 
-Components depend on `data/` and `storage/`. Nothing in `data/` or
-`storage/` imports from `components/`. The two storage modules are
-the only places that touch `localStorage` or `FileReader` directly —
+`components/` depend on `data/` and `storage/`. Nothing in `data/` or
+`storage/` imports from `components/`. The storage modules are the
+only places that touch `localStorage` or `FileReader` directly —
 components consume a small typed API.
 
 ## Why GitHub Pages
