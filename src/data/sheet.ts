@@ -1,4 +1,11 @@
-import type { CellValue, Column, ColumnType, Row, Sheet } from "./types";
+import type {
+  Budget,
+  CellValue,
+  Column,
+  ColumnType,
+  Row,
+  Sheet,
+} from "./types";
 
 export function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -125,6 +132,54 @@ export function shiftIsoToMonth(iso: string, targetMonth: string): string {
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const clamped = Math.min(Math.max(1, day), lastDay);
   return `${targetMonth}-${String(clamped).padStart(2, "0")}`;
+}
+
+// A row only earns a slot in persisted storage once it carries the
+// fields the sheet exists to record: a description and an amount.
+// Rows that are blank or half-filled stay in memory while the user is
+// editing them but never reach `localStorage`, so a refresh discards
+// transient placeholders instead of resurrecting them.
+export function isRowSavable(row: Row, columns: Column[]): boolean {
+  const desc = findColumnByType(columns, "description");
+  const amount = findColumnByType(columns, "amount");
+  if (!desc || !amount) return true;
+  return (
+    hasText(row.cells[desc.id]) && typeof row.cells[amount.id] === "number"
+  );
+}
+
+// True when the row has one of description/amount but not both — the
+// user has typed something they would lose on refresh.
+export function isRowHalfDone(row: Row, columns: Column[]): boolean {
+  const desc = findColumnByType(columns, "description");
+  const amount = findColumnByType(columns, "amount");
+  if (!desc || !amount) return false;
+  const hasDesc = hasText(row.cells[desc.id]);
+  const hasAmount = typeof row.cells[amount.id] === "number";
+  return hasDesc !== hasAmount;
+}
+
+function hasText(value: CellValue): boolean {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+// Strip rows that aren't savable so the on-disk snapshot only ever
+// holds rows the user has finished entering. Used as a pre-serialize
+// transform by the storage hook.
+export function budgetWithSavableRows(budget: Budget): Budget {
+  return {
+    ...budget,
+    sheets: budget.sheets.map((s) => ({
+      ...s,
+      rows: s.rows.filter((r) => isRowSavable(r, s.columns)),
+    })),
+  };
+}
+
+export function budgetHasHalfDoneRows(budget: Budget): boolean {
+  return budget.sheets.some((s) =>
+    s.rows.some((r) => isRowHalfDone(r, s.columns)),
+  );
 }
 
 // Rows in the same series with a date >= `anchor`'s date (anchor included).

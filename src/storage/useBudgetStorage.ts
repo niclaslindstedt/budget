@@ -3,6 +3,7 @@ import {
   type Reducer,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -26,15 +27,34 @@ export type SaveStatus =
   | { kind: "conflict"; remote: Budget }
   | { kind: "error"; message: string };
 
+export type BudgetStorageOptions = {
+  // Pre-serialize transform applied to the in-memory budget before
+  // the auto-save effect writes it. Used to strip transient state
+  // (e.g. half-filled rows) so storage always reflects a clean
+  // snapshot. `saveNow` deliberately bypasses this — a user clicking
+  // the save button is asking for the in-memory state as-is.
+  beforeSerialize?: (budget: Budget) => Budget;
+};
+
 export type BudgetStorage<Action> = {
   budget: Budget;
   dispatch: Dispatch<Action>;
   status: SaveStatus;
+  // True when the in-memory budget differs from the last bytes
+  // written to storage. With a `beforeSerialize` filter active, this
+  // also captures rows the auto-save deliberately omits (e.g.
+  // half-filled rows), so callers can prompt before unload and light
+  // up an explicit-save affordance.
+  dirty: boolean;
+  // Save the current in-memory budget as-is — skipping any
+  // `beforeSerialize` filter and the debounce timer.
+  saveNow: () => void;
 };
 
 export function useBudgetStorage<Action>(
   adapter: StorageAdapter,
   reducer: Reducer<Budget, Action>,
+  { beforeSerialize }: BudgetStorageOptions = {},
 ): BudgetStorage<Action> {
   // Synchronous fast path: if the adapter can hand back data before
   // the first paint (localStorage can; cloud cannot), seed the
@@ -56,6 +76,12 @@ export function useBudgetStorage<Action>(
 
   const [budget, setBudget] = useState<Budget>(initial[0].budget);
   const [status, setStatus] = useState<SaveStatus>(initial[0].status);
+  // Last bytes successfully written to (or loaded from) storage.
+  // Drives the `dirty` flag below.
+  const [lastSavedText, setLastSavedText] = useState<string | null>(() => {
+    const snap = adapter.loadSync?.() ?? null;
+    return snap?.text ?? null;
+  });
 
   // Track the last snapshot we either loaded or successfully saved.
   // The revision flows back into the next save so a remote that
@@ -69,11 +95,53 @@ export function useBudgetStorage<Action>(
   // revision token. We guard with a ref that the loader flips.
   const skipNextSave = useRef<boolean>(false);
 
+  // Stash `beforeSerialize` in a ref so the save effect closes over
+  // the latest transform without re-running every time the caller
+  // passes an inline function.
+  const beforeSerializeRef = useRef(beforeSerialize);
+  beforeSerializeRef.current = beforeSerialize;
+
+  // Handle to the pending debounced save, so `saveNow` can cancel
+  // it before issuing its own immediate write.
+  const pendingTimerRef = useRef<number | null>(null);
+
   const dispatch: Dispatch<Action> = useCallback(
     (action) => {
       setBudget((prev) => reducer(prev, action));
     },
     [reducer],
+  );
+
+  // Shared write path used by both the debounced auto-save and the
+  // explicit `saveNow`. Owns status reporting, conflict surfacing,
+  // and the lastSnapshot bookkeeping in one place. The
+  // `isStale` predicate lets a debounced caller bail out if the
+  // effect was cleaned up while the request was in flight.
+  const performSave = useCallback(
+    async (text: string, isStale: () => boolean): Promise<void> => {
+      if (isStale()) return;
+      setStatus({ kind: "saving" });
+      try {
+        const next = await adapter.save(text, lastSnapshot.current?.revision);
+        if (isStale()) return;
+        lastSnapshot.current = next;
+        setLastSavedText(next.text);
+        setStatus({ kind: "saved", at: Date.now() });
+      } catch (err) {
+        if (isStale()) return;
+        if (err instanceof ConflictError) {
+          const remote = readBudgetFromText(err.remote.text);
+          lastSnapshot.current = err.remote;
+          setStatus({ kind: "conflict", remote });
+          return;
+        }
+        setStatus({
+          kind: "error",
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+    [adapter],
   );
 
   // Async load. Skipped when `loadSync` already handed us data.
@@ -88,6 +156,7 @@ export function useBudgetStorage<Action>(
         lastSnapshot.current = snap;
         skipNextSave.current = true;
         setBudget(snap ? readBudgetFromText(snap.text) : freshBudget());
+        setLastSavedText(snap?.text ?? null);
         setStatus({ kind: "idle" });
       })
       .catch((err: unknown) => {
@@ -112,38 +181,36 @@ export function useBudgetStorage<Action>(
     const delay = adapter.saveDebounceMs ?? 0;
     let cancelled = false;
     const timer = window.setTimeout(() => {
+      pendingTimerRef.current = null;
       void runSave();
     }, delay);
+    pendingTimerRef.current = timer;
 
     async function runSave() {
       if (cancelled) return;
-      setStatus({ kind: "saving" });
-      const text = serializeBudget(budget);
-      try {
-        const next = await adapter.save(text, lastSnapshot.current?.revision);
-        if (cancelled) return;
-        lastSnapshot.current = next;
-        setStatus({ kind: "saved", at: Date.now() });
-      } catch (err) {
-        if (cancelled) return;
-        if (err instanceof ConflictError) {
-          const remote = readBudgetFromText(err.remote.text);
-          lastSnapshot.current = err.remote;
-          setStatus({ kind: "conflict", remote });
-          return;
-        }
-        setStatus({
-          kind: "error",
-          message: err instanceof Error ? err.message : String(err),
-        });
-      }
+      const transform = beforeSerializeRef.current;
+      const text = serializeBudget(transform ? transform(budget) : budget);
+      await performSave(text, () => cancelled);
     }
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      if (pendingTimerRef.current === timer) pendingTimerRef.current = null;
     };
-  }, [adapter, budget]);
+  }, [adapter, budget, performSave]);
+
+  // Save the current in-memory budget verbatim. Used by the explicit
+  // "save" button — bypasses `beforeSerialize` so the user can persist
+  // half-filled rows when they ask for it.
+  const saveNow = useCallback(() => {
+    if (pendingTimerRef.current !== null) {
+      window.clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
+    }
+    const text = serializeBudget(budget);
+    void performSave(text, () => false);
+  }, [budget, performSave]);
 
   // Remote-change subscription. Cloud adapters call this when
   // another device pushes; local adapters typically don't supply it.
@@ -153,9 +220,13 @@ export function useBudgetStorage<Action>(
       lastSnapshot.current = snap;
       skipNextSave.current = true;
       setBudget(readBudgetFromText(snap.text));
+      setLastSavedText(snap.text);
       setStatus({ kind: "idle" });
     });
   }, [adapter]);
 
-  return { budget, dispatch, status };
+  const currentText = useMemo(() => serializeBudget(budget), [budget]);
+  const dirty = lastSavedText !== null && currentText !== lastSavedText;
+
+  return { budget, dispatch, status, dirty, saveNow };
 }
