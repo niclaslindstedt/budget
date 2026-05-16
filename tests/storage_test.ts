@@ -210,6 +210,43 @@ describe("validateUserData — soft recovery", () => {
     if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
   });
 
+  it("accepts an in-range sessionTimeoutMinutes and rounds it", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.settings.sessionTimeoutMinutes = 60.4;
+    const r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.settings.sessionTimeoutMinutes).toBe(60);
+  });
+
+  it("snaps an out-of-range sessionTimeoutMinutes back to the default", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.settings.sessionTimeoutMinutes = 0;
+    let r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value.settings.sessionTimeoutMinutes).toBe(
+        DEFAULT_SETTINGS.sessionTimeoutMinutes,
+      );
+
+    raw.settings.sessionTimeoutMinutes = 99999;
+    r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value.settings.sessionTimeoutMinutes).toBe(
+        DEFAULT_SETTINGS.sessionTimeoutMinutes,
+      );
+
+    raw.settings.sessionTimeoutMinutes = "fifteen";
+    r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value.settings.sessionTimeoutMinutes).toBe(
+        DEFAULT_SETTINGS.sessionTimeoutMinutes,
+      );
+  });
+
   it("clears thousands separator when it collides with the decimal", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));

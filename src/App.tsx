@@ -51,6 +51,7 @@ import {
   readRawStorage,
   writeRawStorage,
 } from "./storage/local-adapter";
+import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
 import {
   createUser,
@@ -420,20 +421,52 @@ type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 //                   so the encrypting adapter can encrypt every save.
 // The state is also persisted in `budget.users.v1` so a reload lands
 // the user on the sign-in form for the same account they last used.
+// The session-storage cache (see `src/storage/session.ts`) carries the
+// rolling-window deadline; an idle-tracking effect inside BudgetView
+// extends it while the user is active and signs the user out once
+// activity has been idle for longer than the user's chosen TTL.
 type AuthState =
   | { kind: "signed-out"; lastUsername: string | null }
   | { kind: "signed-in"; user: StoredUser; password: string };
 
-export function App() {
-  const [users, setUsers] = useState<StoredUser[]>(() => loadUsersFile().users);
+// Resolve the auth state to land on at boot. If sessionStorage still
+// holds a non-expired password for a known user, jump straight back
+// into the signed-in state — that's the whole point of the cache.
+function readBootAuth(): { users: StoredUser[]; auth: AuthState } {
+  const file = loadUsersFile();
+  const session = loadSession();
+  if (session) {
+    const user = file.users.find((u) => u.id === session.userId);
+    if (user) {
+      return {
+        users: file.users,
+        auth: { kind: "signed-in", user, password: session.password },
+      };
+    }
+    // Session points at a user that no longer exists locally — sweep
+    // the orphan and fall through to the regular signed-out flow.
+    clearSession();
+  }
+  const last = file.activeUserId
+    ? (file.users.find((u) => u.id === file.activeUserId) ?? null)
+    : null;
+  return {
+    users: file.users,
+    auth: { kind: "signed-out", lastUsername: last?.username ?? null },
+  };
+}
 
-  const [auth, setAuth] = useState<AuthState>(() => {
-    const file = loadUsersFile();
-    const last = file.activeUserId
-      ? (file.users.find((u) => u.id === file.activeUserId) ?? null)
-      : null;
-    return { kind: "signed-out", lastUsername: last?.username ?? null };
-  });
+export function App() {
+  // Compute boot state exactly once — the result feeds `useState` and
+  // `useRef` initial values below, and we don't want to re-read
+  // sessionStorage on every render.
+  const bootRef = useRef<ReturnType<typeof readBootAuth> | null>(null);
+  if (bootRef.current === null) bootRef.current = readBootAuth();
+  const boot = bootRef.current;
+
+  const [users, setUsers] = useState<StoredUser[]>(boot.users);
+
+  const [auth, setAuth] = useState<AuthState>(boot.auth);
 
   // Whether any plaintext pre-account data is sitting in the legacy
   // `STORAGE_KEY` bucket. Detected once at mount and offered to the
@@ -447,7 +480,11 @@ export function App() {
 
   // Held password for the active user. Read by the encrypting adapter
   // on every save / load; cleared whenever auth flips to signed-out.
-  const passwordRef = useRef<string | null>(null);
+  // Seeded from the boot session so the encrypting adapter can decrypt
+  // straight away after a refresh that restored a cached password.
+  const passwordRef = useRef<string | null>(
+    boot.auth.kind === "signed-in" ? boot.auth.password : null,
+  );
 
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
@@ -470,6 +507,7 @@ export function App() {
       if (!ok) throw new Error("Wrong password");
       passwordRef.current = password;
       persistRegistry(users, user.id);
+      saveSession(user.id, password);
       setAuth({ kind: "signed-in", user, password });
     },
     [users, persistRegistry],
@@ -499,6 +537,7 @@ export function App() {
       setUsers(nextUsers);
       persistRegistry(nextUsers, user.id);
       passwordRef.current = password;
+      saveSession(user.id, password);
       setAuth({ kind: "signed-in", user, password });
     },
     [users, persistRegistry],
@@ -506,6 +545,7 @@ export function App() {
 
   const handleSignOut = useCallback(() => {
     passwordRef.current = null;
+    clearSession();
     setAuth((prev) => {
       const lastUsername =
         prev.kind === "signed-in"
@@ -523,6 +563,7 @@ export function App() {
     // the picker comes up blank instead of pre-filling the just-left
     // account.
     passwordRef.current = null;
+    clearSession();
     setAuth({ kind: "signed-out", lastUsername: null });
     persistRegistry(users, null);
   }, [users, persistRegistry]);
@@ -532,6 +573,7 @@ export function App() {
     // sign-up form when no users exist; we surface that affordance
     // here too by signing out + setting the hint to null.
     passwordRef.current = null;
+    clearSession();
     setAuth({ kind: "signed-out", lastUsername: null });
     persistRegistry(users, null);
   }, [users, persistRegistry]);
@@ -546,6 +588,7 @@ export function App() {
       setUsers(remaining);
       persistRegistry(remaining, null);
       passwordRef.current = null;
+      clearSession();
       setAuth({ kind: "signed-out", lastUsername: null });
     },
     [auth, users, persistRegistry],
@@ -567,6 +610,7 @@ export function App() {
     <BudgetView
       adapter={adapter}
       user={auth.user}
+      password={auth.password}
       hasOtherUsers={users.length > 1}
       getEncryptionPassword={() => passwordRef.current}
       onSignOut={handleSignOut}
@@ -580,6 +624,9 @@ export function App() {
 type BudgetViewProps = {
   adapter: StorageAdapter;
   user: StoredUser;
+  // The active user's password — handed to the idle tracker so it can
+  // re-stamp `sessionStorage` with the user's chosen TTL on each tick.
+  password: string;
   hasOtherUsers: boolean;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
@@ -594,6 +641,7 @@ type BudgetViewProps = {
 function BudgetView({
   adapter,
   user,
+  password,
   hasOtherUsers,
   getEncryptionPassword,
   onSignOut,
@@ -653,6 +701,76 @@ function BudgetView({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
+
+  // Idle-tracked sign-out. Every user input bumps `lastActivityRef`;
+  // a 1 s tick decides whether to surface the "about to sign out"
+  // warning, sign the user out, or just re-stamp sessionStorage so a
+  // reload mid-session inherits the rolling deadline. The save is
+  // throttled to once every 30 s; the warning starts 60 s before the
+  // deadline. Stashing `onSignOut` in a ref keeps the effect from
+  // re-subscribing every render.
+  const ttlMs = data.settings.sessionTimeoutMinutes * 60_000;
+  const signOutRef = useRef(onSignOut);
+  signOutRef.current = onSignOut;
+  const lastActivityRef = useRef<number>(Date.now());
+  const lastSaveAtRef = useRef<number>(0);
+  const [warningSecondsLeft, setWarningSecondsLeft] = useState<number | null>(
+    null,
+  );
+  useEffect(() => {
+    // Treat the start of every signed-in session (and every TTL
+    // change) as activity so the rolling window restarts from now;
+    // re-stamp sessionStorage immediately so a reload right after a
+    // setting change picks up the new deadline.
+    lastActivityRef.current = Date.now();
+    lastSaveAtRef.current = Date.now();
+    saveSession(user.id, password, ttlMs);
+    setWarningSecondsLeft(null);
+
+    const bump = () => {
+      lastActivityRef.current = Date.now();
+    };
+    const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    for (const e of events) {
+      window.addEventListener(e, bump, { passive: true });
+    }
+
+    // Aim for a 60 s heads-up, but never more than half the window so
+    // a hand-edited 1-minute TTL doesn't fire the warning the moment
+    // the user pauses to read.
+    const WARNING_LEAD_MS = Math.min(60_000, Math.floor(ttlMs / 2));
+    const SAVE_INTERVAL_MS = 30_000;
+    const tick = window.setInterval(() => {
+      const now = Date.now();
+      const idleMs = now - lastActivityRef.current;
+      if (idleMs >= ttlMs) {
+        signOutRef.current();
+        return;
+      }
+      const remainingMs = ttlMs - idleMs;
+      if (remainingMs <= WARNING_LEAD_MS) {
+        setWarningSecondsLeft(Math.max(1, Math.ceil(remainingMs / 1000)));
+      } else {
+        setWarningSecondsLeft((prev) => (prev === null ? prev : null));
+        if (now - lastSaveAtRef.current >= SAVE_INTERVAL_MS) {
+          saveSession(user.id, password, ttlMs);
+          lastSaveAtRef.current = now;
+        }
+      }
+    }, 1000);
+
+    return () => {
+      for (const e of events) window.removeEventListener(e, bump);
+      window.clearInterval(tick);
+    };
+  }, [user.id, password, ttlMs]);
+
+  const onStaySignedIn = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    lastSaveAtRef.current = Date.now();
+    saveSession(user.id, password, ttlMs);
+    setWarningSecondsLeft(null);
+  }, [user.id, password, ttlMs]);
 
   // Drop ids that no longer exist (e.g. after an import) so the toolbar
   // never claims a stale count.
@@ -1074,6 +1192,20 @@ function BudgetView({
         settings={data.settings}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
+      />
+      <ConfirmDialog
+        open={warningSecondsLeft !== null}
+        title="About to sign out"
+        description={
+          warningSecondsLeft !== null
+            ? `For your security, you'll be signed out in ${warningSecondsLeft} ${
+                warningSecondsLeft === 1 ? "second" : "seconds"
+              } unless you stay signed in.`
+            : null
+        }
+        actions={[{ label: "Stay signed in", onSelect: onStaySignedIn }]}
+        hideCancel
+        onCancel={onStaySignedIn}
       />
     </div>
   );
