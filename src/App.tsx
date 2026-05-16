@@ -24,6 +24,7 @@ import {
   createEmptyRow,
   findColumnByType,
   getMonthKey,
+  isRowSavable,
   moveColumn,
   newId,
   rowsInSeriesFrom,
@@ -557,9 +558,18 @@ function BudgetView({
     setComplexSeedDate(date);
     setComplexOpen(true);
   }, []);
-  const onDeleteRequest = useCallback((row: Row) => {
-    setDeletePrompt({ kind: "delete", row });
-  }, []);
+  const onDeleteRequest = useCallback(
+    (row: Row) => {
+      // A row that hasn't been persisted yet (no description + amount) is
+      // a transient placeholder — discard it without prompting.
+      if (!isRowSavable(row, activeSheet.columns)) {
+        dispatch({ type: "deleteRows", sheetId, rowIds: [row.id] });
+        return;
+      }
+      setDeletePrompt({ kind: "delete", row });
+    },
+    [activeSheet.columns, dispatch, sheetId],
+  );
   const onEditRequest = useCallback((row: Row) => {
     setEditPrompt({ kind: "edit", row });
   }, []);
