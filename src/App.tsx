@@ -117,6 +117,7 @@ export function App() {
       <h1 className="app-title">Budget</h1>
       <SheetView
         sheet={activeSheet}
+        showName={budget.sheets.length > 1}
         onUpdateCell={onUpdateCell}
         onAddRow={onAddRow}
         onDeleteRow={onDeleteRow}

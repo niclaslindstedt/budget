@@ -1,6 +1,7 @@
 import type { CellValue, Column, Row } from "../data/types";
-import { Cell } from "./Cell";
 import { ColumnHeader } from "./ColumnHeader";
+import { IconPlus } from "./icons";
+import { SheetRow } from "./SheetRow";
 
 type Props = {
   monthKey: string;
@@ -53,42 +54,27 @@ export function MonthTable({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr className="row-empty">
-                <td colSpan={columns.length + 1}>No rows yet.</td>
-              </tr>
-            )}
             {rows.map((row) => (
-              <tr key={row.id}>
-                {columns.map((col) => (
-                  <Cell
-                    key={col.id}
-                    column={col}
-                    value={row.cells[col.id] ?? null}
-                    computedBalance={
-                      col.type === "balance" ? balances.get(row.id) : undefined
-                    }
-                    onChange={(value) => onUpdateCell(row.id, col.id, value)}
-                  />
-                ))}
-                <td className="cell cell-actions">
-                  <button
-                    type="button"
-                    className="row-delete"
-                    aria-label="Delete row"
-                    onClick={() => onDeleteRow(row.id)}
-                  >
-                    ×
-                  </button>
-                </td>
-              </tr>
+              <SheetRow
+                key={row.id}
+                row={row}
+                columns={columns}
+                balances={balances}
+                onUpdateCell={onUpdateCell}
+                onDeleteRow={onDeleteRow}
+              />
             ))}
           </tbody>
           <tfoot>
             <tr>
               <td colSpan={columns.length + 1} className="month-footer">
-                <button type="button" className="row-add" onClick={onAddRow}>
-                  + Add row
+                <button
+                  type="button"
+                  className="row-add"
+                  onClick={onAddRow}
+                  aria-label="Add row"
+                >
+                  <IconPlus />
                 </button>
               </td>
             </tr>

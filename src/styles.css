@@ -15,6 +15,9 @@
   --muted: #57606a;
   --accent: #0969da;
   --negative: #cf222e;
+  --positive: #1a7f37;
+  --row-done-bg: rgba(26, 127, 55, 0.08);
+  --row-swiped-bg: rgba(207, 34, 46, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,6 +31,9 @@
     --muted: #8b949e;
     --accent: #58a6ff;
     --negative: #ff7b72;
+    --positive: #3fb950;
+    --row-done-bg: rgba(63, 185, 80, 0.12);
+    --row-swiped-bg: rgba(255, 123, 114, 0.18);
   }
 }
 
@@ -145,9 +151,20 @@ body {
   cursor: grabbing;
 }
 
-.col-header-label {
-  display: block;
+.col-header-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 10px;
+}
+
+.col-header-icon {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.col-header-label {
+  display: inline;
 }
 
 .col-header.is-drop-target {
@@ -181,12 +198,40 @@ body {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-.cell-date input {
+.cell-date {
+  position: relative;
+}
+
+.date-button {
+  display: block;
   width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 6px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.date-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.date-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+  padding: 0;
+  margin: 0;
 }
 
 .cell-description {
-  /* allow column to grow to content but cap by the shared max */
   max-width: var(--max-column-chars, 60ch);
 }
 
@@ -194,7 +239,6 @@ body {
   resize: none;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  /* progressive enhancement: auto-grow vertically with content */
   field-sizing: content;
   min-height: 1.6em;
   line-height: 1.4;
@@ -219,26 +263,60 @@ body {
 
 .cell-completed {
   text-align: center;
+  padding: 0;
 }
 
-.cell-completed input {
-  width: auto;
+.done-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 32px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
   padding: 6px;
+}
+
+.done-toggle:hover {
+  background: var(--bg-alt);
+}
+
+.done-toggle.is-done {
+  color: var(--positive);
+}
+
+.done-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.row.is-completed > td {
+  background: var(--row-done-bg);
+}
+
+.row.is-completed .cell-balance {
+  background: var(--row-done-bg);
 }
 
 .cell-actions {
   text-align: center;
   background: var(--bg-alt);
   padding: 0;
+  width: 40px;
 }
 
 .row-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: var(--muted);
-  font-size: 16px;
   line-height: 1;
-  padding: 4px 8px;
+  padding: 6px 8px;
   cursor: pointer;
   border-radius: 4px;
 }
@@ -252,26 +330,166 @@ body {
   padding: 0;
   background: var(--bg-alt);
   border-right: none;
+  text-align: center;
 }
 
 .row-add {
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: var(--accent);
   font: inherit;
-  text-align: left;
-  padding: 8px 10px;
+  padding: 10px;
   cursor: pointer;
+  border-radius: 999px;
 }
 
 .row-add:hover {
   background: var(--bg);
 }
 
-.row-empty td {
-  padding: 10px;
-  color: var(--muted);
-  font-style: italic;
-  text-align: center;
+.row-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Mobile layout ---------- */
+@media (max-width: 720px) {
+  .app {
+    padding: 12px 12px 40px;
+  }
+
+  .month-scroll {
+    overflow-x: hidden;
+  }
+
+  .sheet-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .sheet-table > thead,
+  .sheet-table > tbody,
+  .sheet-table > tfoot {
+    display: block;
+    width: 100%;
+  }
+
+  .sheet-table > thead > tr,
+  .sheet-table > tbody > tr {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 72px 84px 44px;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .sheet-table > tfoot > tr {
+    display: block;
+    width: 100%;
+  }
+
+  .sheet-table th,
+  .sheet-table td {
+    display: flex;
+    align-items: stretch;
+    border-right: 1px solid var(--border);
+    max-width: none;
+  }
+
+  .sheet-table th > *,
+  .sheet-table td > *:not(.date-input-hidden) {
+    width: 100%;
+  }
+
+  .sheet-table th:last-of-type,
+  .sheet-table td:last-of-type {
+    border-right: none;
+  }
+
+  /* Hide labels in headers — keep icons */
+  .col-header-content {
+    justify-content: center;
+    padding: 8px 4px;
+  }
+  .col-header-label {
+    display: none;
+  }
+  .col-header-icon {
+    color: var(--text);
+  }
+
+  /* Center cell content vertically on mobile */
+  .cell input,
+  .cell textarea,
+  .cell-balance,
+  .date-button {
+    padding: 10px 8px;
+  }
+
+  .cell-amount input {
+    padding-right: 8px;
+  }
+
+  /* The actions cell becomes a swipe-revealed overlay */
+  .sheet-table > thead > tr > .col-actions,
+  .sheet-table > tbody > tr > .cell-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 64px;
+    transform: translateX(100%);
+    transition: transform 200ms ease;
+    background: var(--negative);
+    border: none;
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sheet-table > tbody > tr.is-swiped > .cell-actions {
+    transform: translateX(0);
+  }
+
+  .sheet-table > tbody > tr.is-swiped {
+    background: var(--row-swiped-bg);
+  }
+
+  .sheet-table > tbody > tr.is-swiped > td:not(.cell-actions) {
+    transform: translateX(-64px);
+    transition: transform 200ms ease;
+    background: var(--row-swiped-bg);
+  }
+
+  .sheet-table > tbody > tr > td:not(.cell-actions) {
+    transition: transform 200ms ease;
+  }
+
+  .row-delete {
+    color: #fff;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  .row-delete:hover {
+    color: #fff;
+    background: transparent;
+  }
+
+  /* Completed row tint takes precedence visually unless swiped */
+  .sheet-table > tbody > tr.is-completed:not(.is-swiped) > td {
+    background: var(--row-done-bg);
+  }
+
+  /* Date column: just a day number, centered */
+  .date-button {
+    text-align: center;
+    padding: 10px 4px;
+    font-variant-numeric: tabular-nums;
+  }
 }

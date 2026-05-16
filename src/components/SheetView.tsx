@@ -12,6 +12,7 @@ import { MonthTable } from "./MonthTable";
 
 type Props = {
   sheet: Sheet;
+  showName?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onDeleteRow: (rowId: string) => void;
@@ -26,6 +27,7 @@ function currentMonthKey(): string {
 
 export function SheetView({
   sheet,
+  showName = true,
   onUpdateCell,
   onAddRow,
   onDeleteRow,
@@ -53,7 +55,7 @@ export function SheetView({
   return (
     <section className="sheet">
       <header className="sheet-header">
-        <h2>{sheet.name}</h2>
+        {showName && <h2>{sheet.name}</h2>}
         <label className="opening-balance">
           <span>Opening balance</span>
           <input

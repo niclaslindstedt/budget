@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { Column } from "../data/types";
+import { ColumnIcon } from "./icons";
 
 type Props = {
   column: Column;
@@ -34,7 +35,10 @@ export function ColumnHeader({ column, onReorder }: Props) {
         if (fromId && fromId !== column.id) onReorder(fromId, column.id);
       }}
     >
-      <span className="col-header-label">{column.label}</span>
+      <span className="col-header-content">
+        <ColumnIcon type={column.type} className="col-header-icon" />
+        <span className="col-header-label">{column.label}</span>
+      </span>
     </th>
   );
 }
