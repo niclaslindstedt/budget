@@ -39,6 +39,15 @@ export function writeRawStorage(text: string): void {
   writeRaw(text);
 }
 
+export function clearRawStorage(): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // disabled / blocked storage — silent fail
+  }
+}
+
 export const localAdapter: StorageAdapter = {
   id: "local",
   label: "This device",
