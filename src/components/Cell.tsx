@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Minus, Plus } from "lucide-react";
+import { Check, Minus, Plus, Repeat } from "lucide-react";
 
 import type { Category, CellValue, Column, Settings } from "../data/types";
 import {
@@ -19,6 +19,7 @@ type Props = {
   computedBalance?: number;
   categories?: Category[];
   settings: Settings;
+  isRecurring?: boolean;
   onChange: (value: CellValue) => void;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
@@ -33,6 +34,7 @@ export function Cell({
   computedBalance,
   categories,
   settings,
+  isRecurring,
   onChange,
   onCreateCategory,
 }: Props) {
@@ -43,14 +45,31 @@ export function Cell({
 
     case "description":
       return (
-        <td className={`${CELL_BASE} text-fg md:w-full`}>
-          <textarea
-            className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em]`}
-            value={typeof value === "string" ? value : ""}
-            onChange={(e) => onChange(e.target.value)}
-            rows={1}
-            placeholder="…"
-          />
+        <td
+          className={`${CELL_BASE} md:w-full ${
+            isRecurring ? "text-flag" : "text-fg"
+          }`}
+        >
+          <div className="flex items-start">
+            {isRecurring && (
+              <span
+                aria-label="Recurring entry"
+                title="Recurring entry"
+                className="flex shrink-0 items-center pt-2 pl-2 text-flag"
+              >
+                <Repeat size={12} aria-hidden focusable={false} />
+              </span>
+            )}
+            <textarea
+              className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
+                isRecurring ? "pl-1.5" : ""
+              }`}
+              value={typeof value === "string" ? value : ""}
+              onChange={(e) => onChange(e.target.value)}
+              rows={1}
+              placeholder="…"
+            />
+          </div>
         </td>
       );
 
