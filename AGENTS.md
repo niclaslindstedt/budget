@@ -177,7 +177,17 @@ app has a public surface beyond the hello-world placeholder.
 
 ## Maintenance skills
 
-None yet. When the app gains real features, agent-driven maintenance
-playbooks live under `.agent/skills/<name>/SKILL.md` per
-`OSS_SPEC.md` §21, with a registry in this section listing every skill
-and its run order.
+Agent-driven maintenance playbooks live under
+`.agent/skills/<name>/SKILL.md` per `OSS_SPEC.md` §21. Tool-specific
+discovery paths (`.claude/skills/`) are symlinks to `.agent/skills/`
+so every tool sees the same canonical set.
+
+| Skill           | Run when                                                                                                                                            | Run order |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero. | last      |
+
+Additional per-artifact `update-*` skills and the `maintenance`
+umbrella skill (§21.5, §21.6) will land as real features arrive and
+produce drift-prone surfaces. New skills go in this table in the
+order they should run — upstream fixes first, downstream mirrors
+last; `sync-oss-spec` always runs last to catch residual violations.
