@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { USERS_KEY } from "../src/data/constants";
+import { DEFAULT_USERNAME, USERS_KEY } from "../src/data/constants";
 import {
   clearUsersFile,
+  createDefaultUser,
   createUser,
+  findDefaultUser,
   findUserByUsername,
   loadUsersFile,
   normalizeUsername,
@@ -75,6 +77,23 @@ describe("normalizeUsername / findUserByUsername", () => {
   });
 });
 
+describe("createDefaultUser / findDefaultUser", () => {
+  it("creates a guest user with the reserved username and isDefault=true", () => {
+    const user = createDefaultUser();
+    expect(user.isDefault).toBe(true);
+    expect(user.username).toBe(DEFAULT_USERNAME);
+    expect(user.passwordHash).toBe("");
+    expect(user.passwordSalt).toBe("");
+  });
+
+  it("findDefaultUser returns the guest, ignoring real accounts", async () => {
+    const guest = createDefaultUser();
+    const alice = await createUser("alice", "pw-12345");
+    expect(findDefaultUser([alice, guest])?.id).toBe(guest.id);
+    expect(findDefaultUser([alice])).toBeUndefined();
+  });
+});
+
 describe("parseUsersFile", () => {
   it("returns an empty registry for null", () => {
     expect(parseUsersFile(null)).toEqual({
@@ -112,6 +131,37 @@ describe("parseUsersFile", () => {
     expect(file.users).toHaveLength(1);
     expect(file.users[0].id).toBe("b");
     expect(file.activeUserId).toBe("b");
+  });
+
+  it("preserves the isDefault flag on guest users round-tripped through JSON", () => {
+    const guest = createDefaultUser();
+    const raw = JSON.stringify({
+      users: [guest],
+      activeUserId: guest.id,
+    });
+    const file = parseUsersFile(raw);
+    expect(file.users).toHaveLength(1);
+    expect(file.users[0].isDefault).toBe(true);
+    expect(file.activeUserId).toBe(guest.id);
+  });
+
+  it("rejects records whose isDefault field is the wrong type", () => {
+    const raw = JSON.stringify({
+      users: [
+        {
+          id: "a",
+          username: "x",
+          passwordHash: "h",
+          passwordSalt: "s",
+          iterations: 1,
+          hash: "SHA-256",
+          createdAt: 0,
+          isDefault: "yes", // not a boolean
+        },
+      ],
+      activeUserId: "a",
+    });
+    expect(parseUsersFile(raw).users).toHaveLength(0);
   });
 
   it("nulls activeUserId when it does not match a known user", () => {

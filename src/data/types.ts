@@ -173,6 +173,12 @@ export type UserData = {
 // password also derives the AES-GCM key used to encrypt that user's
 // budget bytes (via a separate salt inside the envelope) so there is
 // only ever one password per account.
+//
+// `isDefault` marks the no-password "guest" account created by the
+// "Continue without account" flow on the auth screen. Default users
+// have empty password fields, can only exist alone (no other accounts
+// on the device), and are consumed by the first real account that
+// gets created — see `handleCreateAccount` in `App.tsx`.
 export type StoredUser = {
   id: string;
   username: string;
@@ -181,6 +187,7 @@ export type StoredUser = {
   iterations: number;
   hash: "SHA-256";
   createdAt: number;
+  isDefault?: boolean;
 };
 
 export type UsersFile = {

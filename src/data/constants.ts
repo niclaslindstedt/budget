@@ -39,6 +39,11 @@ export const PASSWORD_HASH_ITERATIONS = 600_000;
 export const PASSWORD_HASH_BITS = 256;
 export const PASSWORD_SALT_BYTES = 16;
 
+// Display name of the no-password "guest" account behind the
+// "Continue without account" flow. Reserved — real accounts can't
+// be created under this name while a default user is around.
+export const DEFAULT_USERNAME = "Guest";
+
 // Defaults are Sweden-leaning: salary on the 25th drives the fiscal
 // month, "kr" is SEK, and the number format is the Swedish convention
 // (space as thousands separator, comma as decimal).

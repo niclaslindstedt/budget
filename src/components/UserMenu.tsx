@@ -14,15 +14,17 @@ import type { StoredUser } from "../data/types";
 
 type Props = {
   user: StoredUser;
-  // True when there is more than one account on the device, so the
-  // menu offers a "Switch user" affordance that signs out and lands
-  // on the picker form.
+  // True when there is more than one real (non-guest) account on the
+  // device, so the menu offers a "Switch user" affordance that signs
+  // out and lands on the picker form.
   hasOtherUsers: boolean;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
   // Verifies the password then deletes the account + its budget. The
-  // dialog catches the rejection and shows the message verbatim.
+  // dialog catches the rejection and shows the message verbatim. The
+  // guest account has no password — the menu skips the prompt and
+  // calls this with an empty string.
   onDeleteAccount: (password: string) => Promise<void>;
 };
 
@@ -65,6 +67,11 @@ export function UserMenu({
     if (!open) setView("main");
   }, [open]);
 
+  const isGuest = user.isDefault === true;
+  const buttonTitle = isGuest
+    ? "Using guest mode — no account"
+    : `Signed in as ${user.username}`;
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -72,8 +79,8 @@ export function UserMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account menu (signed in as ${user.username})`}
-        title={`Signed in as ${user.username}`}
+        aria-label={`Account menu (${buttonTitle.toLowerCase()})`}
+        title={buttonTitle}
         className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
           open
             ? "border-pipe bg-pipe/15 text-pipe"
@@ -91,6 +98,7 @@ export function UserMenu({
           {view === "main" ? (
             <MainView
               user={user}
+              isGuest={isGuest}
               hasOtherUsers={hasOtherUsers}
               onSignOut={() => {
                 setOpen(false);
@@ -109,6 +117,7 @@ export function UserMenu({
           ) : (
             <DeleteView
               username={user.username}
+              isGuest={isGuest}
               onCancel={() => setView("main")}
               onConfirm={async (password) => {
                 await onDeleteAccount(password);
@@ -124,6 +133,7 @@ export function UserMenu({
 
 function MainView({
   user,
+  isGuest,
   hasOtherUsers,
   onSignOut,
   onSwitchUser,
@@ -131,6 +141,7 @@ function MainView({
   onAskDelete,
 }: {
   user: StoredUser;
+  isGuest: boolean;
   hasOtherUsers: boolean;
   onSignOut: () => void;
   onSwitchUser: () => void;
@@ -140,16 +151,25 @@ function MainView({
   return (
     <div className="flex flex-col">
       <div className="border-b border-line bg-surface-3 px-3 py-3">
-        <p className="text-xs text-muted">Signed in as</p>
-        <p className="truncate text-sm font-bold text-fg-bright">
-          {user.username}
+        <p className="text-xs text-muted">
+          {isGuest ? "Using guest mode" : "Signed in as"}
         </p>
+        <p className="truncate text-sm font-bold text-fg-bright">
+          {isGuest ? "No account" : user.username}
+        </p>
+        {isGuest && (
+          <p className="mt-1 text-xs text-muted">
+            Create an account to lock your budget behind a password.
+          </p>
+        )}
       </div>
-      <MenuItem
-        icon={<LogOut size={16} aria-hidden focusable={false} />}
-        label="Sign out"
-        onClick={onSignOut}
-      />
+      {!isGuest && (
+        <MenuItem
+          icon={<LogOut size={16} aria-hidden focusable={false} />}
+          label="Sign out"
+          onClick={onSignOut}
+        />
+      )}
       {hasOtherUsers && (
         <MenuItem
           icon={<Users size={16} aria-hidden focusable={false} />}
@@ -159,13 +179,13 @@ function MainView({
       )}
       <MenuItem
         icon={<UserPlus size={16} aria-hidden focusable={false} />}
-        label="Create another account"
+        label={isGuest ? "Create account" : "Create another account"}
         onClick={onCreateAccount}
       />
       <div className="border-t border-line">
         <MenuItem
           icon={<Trash2 size={16} aria-hidden focusable={false} />}
-          label="Delete this account"
+          label={isGuest ? "Clear data" : "Delete this account"}
           danger
           onClick={onAskDelete}
         />
@@ -202,10 +222,12 @@ function MenuItem({
 
 function DeleteView({
   username,
+  isGuest,
   onCancel,
   onConfirm,
 }: {
   username: string;
+  isGuest: boolean;
   onCancel: () => void;
   onConfirm: (password: string) => Promise<void>;
 }) {
@@ -214,20 +236,22 @@ function DeleteView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canSubmit = !busy && (isGuest || password.length > 0);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (busy || password.length === 0) return;
+      if (!canSubmit) return;
       setBusy(true);
       setError(null);
       try {
-        await onConfirm(password);
+        await onConfirm(isGuest ? "" : password);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         setBusy(false);
       }
     },
-    [busy, password, onConfirm],
+    [canSubmit, isGuest, password, onConfirm],
   );
 
   return (
@@ -235,39 +259,52 @@ function DeleteView({
       <div className="flex items-start gap-2 text-danger">
         <AlertTriangle size={16} aria-hidden focusable={false} />
         <div className="flex-1">
-          <p className="text-sm font-bold text-fg-bright">Delete account?</p>
+          <p className="text-sm font-bold text-fg-bright">
+            {isGuest ? "Clear guest data?" : "Delete account?"}
+          </p>
           <p className="mt-1 text-xs text-muted">
-            This permanently removes <strong>{username}</strong> and the budget
-            data stored under it on this device.
+            {isGuest ? (
+              <>
+                This permanently removes the budget stored in this
+                browser&apos;s guest session.
+              </>
+            ) : (
+              <>
+                This permanently removes <strong>{username}</strong> and the
+                budget data stored under it on this device.
+              </>
+            )}
           </p>
         </div>
       </div>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">Confirm with password</span>
-        <div className="relative flex items-center">
-          <input
-            type={show ? "text" : "password"}
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoFocus
-            className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
-          />
-          <button
-            type="button"
-            onClick={() => setShow((v) => !v)}
-            aria-label={show ? "Hide password" : "Show password"}
-            className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
-          >
-            {show ? (
-              <EyeOff size={14} aria-hidden focusable={false} />
-            ) : (
-              <Eye size={14} aria-hidden focusable={false} />
-            )}
-          </button>
-        </div>
-      </label>
+      {!isGuest && (
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted">Confirm with password</span>
+          <div className="relative flex items-center">
+            <input
+              type={show ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+              className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              aria-label={show ? "Hide password" : "Show password"}
+              className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
+            >
+              {show ? (
+                <EyeOff size={14} aria-hidden focusable={false} />
+              ) : (
+                <Eye size={14} aria-hidden focusable={false} />
+              )}
+            </button>
+          </div>
+        </label>
+      )}
 
       {error && <p className="text-xs text-danger">{error}</p>}
 
@@ -282,10 +319,17 @@ function DeleteView({
         </button>
         <button
           type="submit"
-          disabled={busy || password.length === 0}
+          disabled={!canSubmit}
+          autoFocus={isGuest}
           className="cursor-pointer rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-xs font-bold text-danger hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy ? "Deleting…" : "Delete account"}
+          {busy
+            ? isGuest
+              ? "Clearing…"
+              : "Deleting…"
+            : isGuest
+              ? "Clear data"
+              : "Delete account"}
         </button>
       </div>
     </form>

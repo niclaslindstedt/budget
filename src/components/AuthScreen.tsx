@@ -16,28 +16,47 @@ type Props = {
   // True when the legacy `budget.v1` bucket still has data the first
   // account can absorb. The sign-up view shows a checkbox in that case.
   legacyBudgetAvailable: boolean;
+  // True when a no-password "guest" account already exists. Used to
+  // re-label the sign-up form ("your guest data will move into this
+  // account") and to keep the "Continue without account" button live
+  // post-sign-out.
+  guestAvailable: boolean;
   // Resolves on success, rejects with a user-visible Error message.
   onSignIn: (user: StoredUser, password: string) => Promise<void>;
-  // `importLegacy` is honoured only when this is the first account
-  // being created — the parent ignores it otherwise.
+  // `importLegacy` is honoured only when this is the first real
+  // account being created — the parent ignores it otherwise.
   onCreateAccount: (
     username: string,
     password: string,
     importLegacy: boolean,
   ) => Promise<void>;
+  // Sign in to the no-password "guest" account, creating it if it
+  // doesn't exist yet. Rejects with a user-visible Error message.
+  onContinueWithoutAccount: () => Promise<void>;
 };
 
 export function AuthScreen({
   users,
   initialUsername,
   legacyBudgetAvailable,
+  guestAvailable,
   onSignIn,
   onCreateAccount,
+  onContinueWithoutAccount,
 }: Props) {
-  // No accounts yet: the first thing the user has to do is set one
-  // up. Subsequent visits default to the sign-in view.
+  // Guest accounts don't count toward "there's someone to sign in
+  // as" — they have no password, so the sign-in form has nothing to
+  // pair with their username. Use real-user count to pick the
+  // default form, suppress the "I already have an account" link, and
+  // gate the username-taken check.
+  const realUsers = useMemo(() => users.filter((u) => !u.isDefault), [users]);
+  const noRealUsers = realUsers.length === 0;
+
+  // No real accounts yet: the first thing the user has to do is set
+  // one up (or continue as guest). Subsequent visits default to the
+  // sign-in view.
   const [mode, setMode] = useState<Mode>(() =>
-    users.length === 0 ? "sign-up" : "sign-in",
+    noRealUsers ? "sign-up" : "sign-in",
   );
 
   return (
@@ -45,7 +64,7 @@ export function AuthScreen({
       <div className="w-full max-w-sm">
         {mode === "sign-in" ? (
           <SignInForm
-            users={users}
+            users={realUsers}
             initialUsername={initialUsername}
             onSignIn={onSignIn}
             onSwitchToSignUp={() => setMode("sign-up")}
@@ -53,14 +72,15 @@ export function AuthScreen({
         ) : (
           <SignUpForm
             usernameAlreadyTaken={(name) =>
-              findUserByUsername(users, name) !== undefined
+              findUserByUsername(realUsers, name) !== undefined
             }
-            legacyBudgetAvailable={legacyBudgetAvailable && users.length === 0}
-            firstAccount={users.length === 0}
+            legacyBudgetAvailable={legacyBudgetAvailable && noRealUsers}
+            guestAvailable={guestAvailable && noRealUsers}
+            firstAccount={noRealUsers}
+            showGuestOption={noRealUsers}
             onCreate={onCreateAccount}
-            onSwitchToSignIn={
-              users.length === 0 ? null : () => setMode("sign-in")
-            }
+            onContinueWithoutAccount={onContinueWithoutAccount}
+            onSwitchToSignIn={noRealUsers ? null : () => setMode("sign-in")}
           />
         )}
       </div>
@@ -174,18 +194,28 @@ function SignInForm({
 function SignUpForm({
   usernameAlreadyTaken,
   legacyBudgetAvailable,
+  guestAvailable,
   firstAccount,
+  showGuestOption,
   onCreate,
+  onContinueWithoutAccount,
   onSwitchToSignIn,
 }: {
   usernameAlreadyTaken: (name: string) => boolean;
   legacyBudgetAvailable: boolean;
+  // True when a no-password guest account already exists. Drives the
+  // "your guest session will be carried into this account" line.
+  guestAvailable: boolean;
   firstAccount: boolean;
+  // Whether to surface the "Continue without account" link below the
+  // form. Hidden once a real account exists on the device.
+  showGuestOption: boolean;
   onCreate: (
     username: string,
     password: string,
     importLegacy: boolean,
   ) => Promise<void>;
+  onContinueWithoutAccount: () => Promise<void>;
   onSwitchToSignIn: (() => void) | null;
 }) {
   const [username, setUsername] = useState("");
@@ -195,6 +225,8 @@ function SignUpForm({
   const [importLegacy, setImportLegacy] = useState(legacyBudgetAvailable);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestBusy, setGuestBusy] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
 
   const trimmed = username.trim();
   const taken = trimmed.length > 0 && usernameAlreadyTaken(trimmed);
@@ -224,6 +256,18 @@ function SignUpForm({
     [canSubmit, trimmed, password, importLegacy, onCreate],
   );
 
+  const handleGuest = useCallback(async () => {
+    if (guestBusy) return;
+    setGuestBusy(true);
+    setGuestError(null);
+    try {
+      await onContinueWithoutAccount();
+    } catch (err) {
+      setGuestError(err instanceof Error ? err.message : String(err));
+      setGuestBusy(false);
+    }
+  }, [guestBusy, onContinueWithoutAccount]);
+
   return (
     <form
       id="budget-sign-up"
@@ -240,6 +284,12 @@ function SignUpForm({
         Pick a username and a strong password — at least {MIN_PASSWORD_LENGTH}{" "}
         characters. Your budget is encrypted with this password; if you forget
         it the data on this device cannot be recovered.
+        {guestAvailable && (
+          <>
+            {" "}
+            Your guest session&apos;s budget will be moved into this account.
+          </>
+        )}
       </p>
 
       <label className="flex flex-col gap-1">
@@ -319,6 +369,30 @@ function SignUpForm({
       >
         {busy ? "Creating…" : "Create account"}
       </button>
+
+      {showGuestOption && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              void handleGuest();
+            }}
+            disabled={guestBusy}
+            className="-mt-1 cursor-pointer text-center text-xs text-link hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {guestBusy
+              ? "Loading…"
+              : guestAvailable
+                ? "Continue as guest"
+                : "Continue without account"}
+          </button>
+          {guestError && (
+            <p className="-mt-2 text-center text-xs text-danger">
+              {guestError}
+            </p>
+          )}
+        </>
+      )}
 
       {onSwitchToSignIn && (
         <button

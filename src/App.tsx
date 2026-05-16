@@ -71,7 +71,9 @@ import {
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
 import {
+  createDefaultUser,
   createUser,
+  findDefaultUser,
   loadUsersFile,
   saveUsersFile,
   verifyPassword,
@@ -449,6 +451,8 @@ type AuthState =
 // Resolve the auth state to land on at boot. If sessionStorage still
 // holds a non-expired password for a known user, jump straight back
 // into the signed-in state — that's the whole point of the cache.
+// The no-password "guest" account skips the auth screen entirely
+// whenever it's the only account on the device.
 function readBootAuth(): { users: StoredUser[]; auth: AuthState } {
   const file = loadUsersFile();
   const session = loadSession();
@@ -463,6 +467,13 @@ function readBootAuth(): { users: StoredUser[]; auth: AuthState } {
     // Session points at a user that no longer exists locally — sweep
     // the orphan and fall through to the regular signed-out flow.
     clearSession();
+  }
+  const defaultUser = findDefaultUser(file.users);
+  if (defaultUser && file.users.length === 1) {
+    return {
+      users: file.users,
+      auth: { kind: "signed-in", user: defaultUser, password: "" },
+    };
   }
   const last = file.activeUserId
     ? (file.users.find((u) => u.id === file.activeUserId) ?? null)
@@ -512,7 +523,10 @@ export function App() {
   const [encryption, setEncryptionState] =
     useState<EncryptionMode>("encrypted");
 
-  // Sync state with the active user every time auth flips.
+  // Sync state with the active user every time auth flips. The
+  // default (no-password) user is pinned to plaintext storage — there
+  // is no password to derive a key from, and the user explicitly
+  // opted out of accounts.
   useEffect(() => {
     if (auth.kind !== "signed-in") {
       setBackendState("local");
@@ -522,7 +536,9 @@ export function App() {
     }
     setBackendState(getBackend(auth.user.id));
     setDropboxTokenState(getDropboxToken(auth.user.id));
-    setEncryptionState(getEncryption(auth.user.id));
+    setEncryptionState(
+      auth.user.isDefault ? "plaintext" : getEncryption(auth.user.id),
+    );
   }, [auth]);
 
   // Complete the Dropbox OAuth round-trip when the redirect lands
@@ -628,6 +644,9 @@ export function App() {
   const handleSetEncryption = useCallback(
     async (next: EncryptionMode) => {
       if (auth.kind !== "signed-in") return;
+      // The default (no-password) user has no key to derive — pin to
+      // plaintext and ignore any toggle attempts.
+      if (auth.user.isDefault) return;
       if (next === encryption) return;
       const userId = auth.user.id;
       const innerForCurrent: StorageAdapter =
@@ -673,6 +692,9 @@ export function App() {
       passwordRef.current = password;
       persistRegistry(users, user.id);
       saveSession(user.id, password);
+      setBackendState(getBackend(user.id));
+      setDropboxTokenState(getDropboxToken(user.id));
+      setEncryptionState(getEncryption(user.id));
       setAuth({ kind: "signed-in", user, password });
     },
     [users, persistRegistry],
@@ -681,13 +703,23 @@ export function App() {
   const handleCreateAccount = useCallback(
     async (username: string, password: string, importLegacy: boolean) => {
       const user = await createUser(username, password);
-      const nextUsers = [...users, user];
-      // Seed the new user's storage slot. If asked, lift the legacy
-      // anonymous budget into it so existing data is preserved on the
-      // first migration. The bytes are re-encrypted with the new
-      // password so the rest of the app sees a normal encrypted
-      // envelope from the first read.
-      if (importLegacy && users.length === 0) {
+      const existingDefault = findDefaultUser(users);
+      const realUsers = users.filter((u) => !u.isDefault);
+      // The first real account always absorbs the guest session's data
+      // — that's the whole "first user consumes the default user" rule.
+      // Bytes live in plaintext under `userDataKey(defaultUser.id)`;
+      // re-wrap them under the new account's password so the rest of
+      // the app sees a normal encrypted envelope from the first read.
+      // Falls back to the legacy pre-account `STORAGE_KEY` migration
+      // when no default user is around and the user opted in.
+      if (existingDefault) {
+        const guestBytes = readRawStorage(userDataKey(existingDefault.id));
+        if (guestBytes) {
+          const envelope = await encryptText(guestBytes, password);
+          writeRawStorage(envelope, userDataKey(user.id));
+        }
+        clearRawStorage(userDataKey(existingDefault.id));
+      } else if (importLegacy && realUsers.length === 0) {
         const legacy = readRawStorage(STORAGE_KEY);
         // Only migrate plaintext legacy data — an encrypted envelope
         // would need the old password to decrypt and our migration
@@ -699,14 +731,44 @@ export function App() {
           clearRawStorage(STORAGE_KEY);
         }
       }
+      const nextUsers = [...realUsers, user];
       setUsers(nextUsers);
       persistRegistry(nextUsers, user.id);
       passwordRef.current = password;
       saveSession(user.id, password);
+      // Sync the per-user backend / encryption preferences in the
+      // same batch as the auth flip so the adapter useMemo rebuilds
+      // with the right wrappers on the very first post-flip render.
+      // Skipping this leaves a flash where the new user's encrypted
+      // bytes are read through a plaintext adapter (from the guest
+      // session's state) and momentarily render as a fresh budget.
+      setBackendState(getBackend(user.id));
+      setDropboxTokenState(getDropboxToken(user.id));
+      setEncryptionState(getEncryption(user.id));
       setAuth({ kind: "signed-in", user, password });
     },
     [users, persistRegistry],
   );
+
+  const handleContinueWithoutAccount = useCallback(async () => {
+    // Re-use an existing guest account if one is already in the
+    // registry (e.g. user signed out then changed their mind). Only
+    // mint a new one when there isn't one — keeps the data intact
+    // across "sign out → continue without account" round trips.
+    const existing = findDefaultUser(users);
+    const user = existing ?? createDefaultUser();
+    const nextUsers = existing ? users : [...users, user];
+    if (!existing) {
+      setUsers(nextUsers);
+    }
+    persistRegistry(nextUsers, user.id);
+    passwordRef.current = "";
+    saveSession(user.id, "");
+    setBackendState("local");
+    setDropboxTokenState(null);
+    setEncryptionState("plaintext");
+    setAuth({ kind: "signed-in", user, password: "" });
+  }, [users, persistRegistry]);
 
   const handleSignOut = useCallback(() => {
     passwordRef.current = null;
@@ -746,8 +808,13 @@ export function App() {
   const handleDeleteAccount = useCallback(
     async (password: string) => {
       if (auth.kind !== "signed-in") return;
-      const ok = await verifyPassword(auth.user, password);
-      if (!ok) throw new Error("Wrong password");
+      // Default (no-password) users skip verification — there's no
+      // password to check, and the menu omits the password prompt
+      // for them anyway. Real accounts still require their password.
+      if (!auth.user.isDefault) {
+        const ok = await verifyPassword(auth.user, password);
+        if (!ok) throw new Error("Wrong password");
+      }
       const remaining = users.filter((u) => u.id !== auth.user.id);
       clearRawStorage(userDataKey(auth.user.id));
       setUsers(remaining);
@@ -760,23 +827,34 @@ export function App() {
   );
 
   if (auth.kind === "signed-out" || adapter === null) {
+    const realUsers = users.filter((u) => !u.isDefault);
+    const guestAvailable = findDefaultUser(users) !== undefined;
     return (
       <AuthScreen
         users={users}
         initialUsername={auth.kind === "signed-out" ? auth.lastUsername : null}
-        legacyBudgetAvailable={legacyBudgetAvailable && users.length === 0}
+        legacyBudgetAvailable={legacyBudgetAvailable && realUsers.length === 0}
+        guestAvailable={guestAvailable}
         onSignIn={handleSignIn}
         onCreateAccount={handleCreateAccount}
+        onContinueWithoutAccount={handleContinueWithoutAccount}
       />
     );
   }
+
+  // Real (non-guest) users on the device. Guest accounts never coexist
+  // with real ones at steady state, but filtering keeps "Switch user"
+  // honest mid-flow.
+  const otherRealUsers = users.filter(
+    (u) => !u.isDefault && u.id !== auth.user.id,
+  );
 
   return (
     <BudgetView
       adapter={adapter}
       user={auth.user}
       password={auth.password}
-      hasOtherUsers={users.length > 1}
+      hasOtherUsers={otherRealUsers.length > 0}
       backend={backend}
       dropboxConnected={dropboxToken !== null}
       encryption={encryption}
@@ -895,6 +973,10 @@ function BudgetView({
   // throttled to once every 30 s; the warning starts 60 s before the
   // deadline. Stashing `onSignOut` in a ref keeps the effect from
   // re-subscribing every render.
+  //
+  // The default (no-password) user skips this entirely — there is no
+  // key sitting in memory worth expiring, and "Continue without
+  // account" implies a stay-signed-in experience.
   const ttlMs = data.settings.sessionTimeoutMinutes * 60_000;
   const signOutRef = useRef(onSignOut);
   signOutRef.current = onSignOut;
@@ -903,7 +985,9 @@ function BudgetView({
   const [warningSecondsLeft, setWarningSecondsLeft] = useState<number | null>(
     null,
   );
+  const isGuest = user.isDefault === true;
   useEffect(() => {
+    if (isGuest) return;
     // Treat the start of every signed-in session (and every TTL
     // change) as activity so the rolling window restarts from now;
     // re-stamp sessionStorage immediately so a reload right after a
@@ -949,7 +1033,7 @@ function BudgetView({
       for (const e of events) window.removeEventListener(e, bump);
       window.clearInterval(tick);
     };
-  }, [user.id, password, ttlMs]);
+  }, [isGuest, user.id, password, ttlMs]);
 
   const onStaySignedIn = useCallback(() => {
     lastActivityRef.current = Date.now();
@@ -1383,6 +1467,7 @@ function BudgetView({
         backend={backend}
         dropboxConnected={dropboxConnected}
         encryption={encryption}
+        isGuest={isGuest}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
         onConnectDropbox={onConnectDropbox}
