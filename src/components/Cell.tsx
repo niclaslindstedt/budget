@@ -136,7 +136,7 @@ function AmountCell({
       : "";
   const [text, setText] = useState(externalAbsText);
   const [negative, setNegative] = useState(
-    externalNumber !== null && externalNumber < 0,
+    externalNumber !== null ? externalNumber < 0 : true,
   );
 
   // Skip resync while local state already represents the same number, so
@@ -147,7 +147,7 @@ function AmountCell({
       localAbs === null ? null : negative ? -localAbs : localAbs;
     if (localSigned === externalNumber) return;
     setText(externalAbsText);
-    setNegative(externalNumber !== null && externalNumber < 0);
+    setNegative(externalNumber !== null ? externalNumber < 0 : true);
   }, [externalNumber, externalAbsText, text, negative, settings]);
 
   const commit = (nextText: string, nextNegative: boolean) => {
