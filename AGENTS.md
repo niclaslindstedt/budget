@@ -179,10 +179,52 @@ in).
   `vite.config.ts` (to `"/<repo>/"`) and the README live-site URL,
   and remove `public/CNAME`.
 
-## Website staleness pointer
+## OSS*SPEC.md exceptions — the website \_is* the project
 
-See `OSS_SPEC.md` §11.2 for the website-content invariants once the
-app has a public surface beyond the hello-world placeholder.
+`OSS_SPEC.md` is written for a hypothetical project shape where the
+deliverable is a library, CLI, or SDK and the `website/` is a
+**showcase** for that deliverable — a separate marketing site with a
+hero, feature grid, hosted docs, and an SEO surface tuned for new
+visitors discovering the product. **This project is not that shape.**
+The deployed GitHub Pages bundle at `budget.niclaslindstedt.se` _is_
+the budget app: it is the entire user-facing deliverable, served as a
+single-page React SPA, with no marketing layer wrapped around it. The
+"site" and the "product" are the same artifact.
+
+That mismatch makes several spec rules either inapplicable or
+actively counter-productive here. The bash validator
+(`scripts/validate.sh` from `niclaslindstedt/oss-spec`) cannot model
+this distinction and will keep emitting the violations below — they
+are intentional and must **not** be "fixed" by inventing the missing
+surfaces. Agents running `sync-oss-spec` should compare against this
+list before touching anything.
+
+| Spec section                                                                                 | Why it does not apply here                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §10.3 release pipeline (`version-bump.yml`, `release.yml`, `scripts/`)                       | There is nothing to "release". The single deliverable is a static bundle that GitHub Pages redeploys on every push to `main` (see `pages.yml`). No registry publishes — no npm, no crates, no PyPI — and therefore no need for trusted publishing, OIDC, version bumps, `CHANGELOG.md` regeneration, or matrix release builds. `CHANGELOG.md` exists as a courtesy stub but is not driven by a workflow. |
+| §10.5 release toolchain pin file beyond `.nvmrc`                                             | Node is the only toolchain. `.nvmrc` already pins it and `ci.yml` / `pages.yml` read from it.                                                                                                                                                                                                                                                                                                            |
+| §11.2 `website/` directory + source-extraction script                                        | There is no separate website to keep in sync with the product — the product IS the website. The source-extraction pattern (`website/scripts/extract-source-data.*` emitting `website/src/generated/sourceData.*`) exists to prevent a showcase from drifting out of sync with the thing it showcases; here there is nothing to mirror.                                                                   |
+| §11.3 SEO scaffolding (Open Graph, Twitter Card, JSON-LD, sitemap.xml, robots.txt, llms.txt) | The app is a private financial tool — users put their own ledger into `localStorage`. There is no per-page content for crawlers to index and no audience-acquisition story that SEO would serve. Adding the scaffolding would be cargo-culted noise. The single `index.html` is allowed to ship without per-route head splicing, JSON-LD blocks, or social-card images.                                  |
+| §11.3.10 `seo.yml` + `lighthouse.yml` workflows                                              | Quality-gate CI for a marketing site. Not relevant when there is no marketing surface. Page-weight discipline (§11.3.9) is still a worthwhile habit — the dev should keep the bundle small — but it is not gated in CI.                                                                                                                                                                                  |
+| §12 CLI obligations (`--help-agent`, `--debug-agent`, `commands`, `man/`)                    | Not a CLI. The user interacts with a UI in their browser.                                                                                                                                                                                                                                                                                                                                                |
+| §13 `examples/` directory                                                                    | No CLI / SDK surface to exemplify. The app itself is the example.                                                                                                                                                                                                                                                                                                                                        |
+| §13.5 `prompts/` directory                                                                   | This project does not ship versioned AI prompts. (`prompts/<name>/<v>.md` is for repos that publish prompts as a product — e.g. `oss-spec` itself.)                                                                                                                                                                                                                                                      |
+| §19 logging + §19.4 central output module                                                    | There is no terminal, no log file, and no `~/.local/state/<project>/` to write into — the app runs entirely in a browser tab. Production error reporting, if it ever lands, will use a thin in-app helper rather than the `src/output.{ts,rs,…}` pattern the spec describes. Add such a helper only when there is a real call site for it.                                                               |
+| §21.5 `update-manpages`, `update-website` skills                                             | Required only when the corresponding artifact (`man/`, `website/`) exists. Neither does. See the registry in `.agent/skills/maintenance/SKILL.md`.                                                                                                                                                                                                                                                       |
+
+Everything else in `OSS_SPEC.md` does apply. In particular: the
+README / CONTRIBUTING / CODE_OF_CONDUCT / SECURITY trio (§2–§6), the
+single-source-of-truth symlinks for tool-specific guidance (§7.1),
+Conventional Commits + squash-merge (§8), the `Makefile` target set
+(§9), `ci.yml` + `pages.yml` (§10.1 / §10.4), `docs/` (§11.1), test
+layout and naming (§20), the source-file size cap (§20.5), and the
+agent-skills structure (§21.2–§21.4, §21.6, §21.8) are all in scope
+and must stay healthy.
+
+If the project later grows a real marketing site, a CLI companion, or
+a published SDK, revisit this table and delete the corresponding row.
+The exceptions exist because the surface is absent, not because the
+spec is wrong.
 
 ## Maintenance skills
 
@@ -193,10 +235,15 @@ so every tool sees the same canonical set.
 
 | Skill           | Run when                                                                                                                                            | Run order |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `update-docs`   | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table.                                           | 1         |
+| `update-readme` | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                  | 2         |
 | `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero. | last      |
+| `maintenance`   | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.            | umbrella  |
 
-Additional per-artifact `update-*` skills and the `maintenance`
-umbrella skill (§21.5, §21.6) will land as real features arrive and
-produce drift-prone surfaces. New skills go in this table in the
-order they should run — upstream fixes first, downstream mirrors
-last; `sync-oss-spec` always runs last to catch residual violations.
+`update-manpages` and `update-website` are listed in `OSS_SPEC.md`
+§21.5 but are intentionally omitted here — see the "OSS_SPEC.md
+exceptions" section above. New skills go in this table in the order
+they should run — upstream fixes first, downstream mirrors last;
+`sync-oss-spec` always runs last to catch residual violations, and
+the `maintenance` umbrella reflects the same order in its own
+registry.
