@@ -39,10 +39,10 @@
 }
 
 :root {
-  /* Height of the sticky page header — pt-3 + h-9 button + pb-4 + 1px
+  /* Height of the sticky page header — pt-3 + h-9 button + pb-3 + 1px
      border. Month-name headers stick just below this. The md override
-     accounts for the wider pt-4 used at the same breakpoint. */
-  --app-header-h: 65px;
+     accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
+  --app-header-h: 61px;
 
   /* One Dark — default. */
   --page-bg: #1d2027;
@@ -159,23 +159,25 @@ body {
          --balance-col-ch, set per-sheet from the longest formatted value
          across every month so each month aligns on the same column
          widths instead of sizing independently. Padding is folded into
-         the calc so the cell content has room to breathe. */
+         the calc so the cell content has room to breathe. The category
+         and completed tracks are kept narrow (icon-only on mobile) so
+         the description column gets as much of the row as possible. */
       grid-template-columns:
-        40px minmax(0, 1fr) 56px
+        40px minmax(0, 1fr) 40px
         minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 2.25rem))
-        minmax(80px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem))
+        minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 1rem))
         40px;
       position: relative;
       overflow: hidden;
     }
-    /* In select mode, prepend a 32px checkbox column. The grid takes one
+    /* In select mode, prepend a 30px checkbox column. The grid takes one
        more leading track so the rest of the layout doesn't reflow. */
     .sheet-table.is-selecting > thead > tr,
     .sheet-table.is-selecting > tbody > tr {
       grid-template-columns:
-        32px 40px minmax(0, 1fr) 56px
+        30px 40px minmax(0, 1fr) 40px
         minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 2.25rem))
-        minmax(80px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem))
+        minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 1rem))
         40px;
     }
     /* Highlight the row in select mode and tint the selected ones. */

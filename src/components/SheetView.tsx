@@ -153,7 +153,7 @@ export function SheetView({
           </h2>
         </header>
       )}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 md:gap-6">
         {visibleMonths.map((monthKey) => {
           const monthRows = dateCol
             ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
