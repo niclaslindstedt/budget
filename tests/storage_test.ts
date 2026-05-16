@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/data/constants";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
-import type { Budget } from "../src/data/types";
-import { validateBudget } from "../src/data/validate";
+import type { UserData } from "../src/data/types";
+import { validateUserData } from "../src/data/validate";
 import {
-  parseBudget,
-  serializeBudget,
+  parseUserData,
+  serializeUserData,
   suggestFilename,
 } from "../src/storage/file";
-import { readBudgetFromText } from "../src/storage/local";
+import { readUserDataFromText } from "../src/storage/local";
 
-function sampleBudget(): Budget {
+function sampleData(): UserData {
   const a = createDefaultSheet("First");
   const b = createDefaultSheet("Second");
   const dateCol = a.columns.find((c) => c.type === "date")!;
@@ -36,21 +36,21 @@ function sampleBudget(): Budget {
   };
 }
 
-describe("serializeBudget", () => {
-  it("round-trips through parseBudget", () => {
-    const b = sampleBudget();
-    const result = parseBudget(serializeBudget(b));
+describe("serializeUserData", () => {
+  it("round-trips through parseUserData", () => {
+    const b = sampleData();
+    const result = parseUserData(serializeUserData(b));
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.budget).toEqual(b);
+      expect(result.data).toEqual(b);
       expect(result.migrated).toBe(false);
     }
   });
 
   it("is byte-stable regardless of source key order", () => {
-    const b = sampleBudget();
-    const text1 = serializeBudget(b);
-    // Rebuild the same budget with keys inserted in a different order at
+    const b = sampleData();
+    const text1 = serializeUserData(b);
+    // Rebuild the same value with keys inserted in a different order at
     // every level. The serializer should erase that difference.
     const reordered = {
       activeSheetId: b.activeSheetId,
@@ -67,13 +67,13 @@ describe("serializeBudget", () => {
       categories: b.categories,
       settings: b.settings,
       version: b.version,
-    } as Budget;
-    expect(serializeBudget(reordered)).toBe(text1);
+    } as UserData;
+    expect(serializeUserData(reordered)).toBe(text1);
   });
 
   it("sorts object keys recursively", () => {
-    const b = sampleBudget();
-    const text = serializeBudget(b);
+    const b = sampleData();
+    const text = serializeUserData(b);
     // Top-level keys appear in alphabetical order.
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
@@ -88,25 +88,25 @@ describe("serializeBudget", () => {
   });
 
   it("ends with a trailing newline", () => {
-    expect(serializeBudget(sampleBudget()).endsWith("\n")).toBe(true);
+    expect(serializeUserData(sampleData()).endsWith("\n")).toBe(true);
   });
 });
 
-describe("parseBudget — error paths", () => {
+describe("parseUserData — error paths", () => {
   it("rejects malformed JSON", () => {
-    const r = parseBudget("{not json");
+    const r = parseUserData("{not json");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/Invalid JSON/);
   });
 
   it("rejects missing version", () => {
-    const r = parseBudget(JSON.stringify({ sheets: [], activeSheetId: "x" }));
+    const r = parseUserData(JSON.stringify({ sheets: [], activeSheetId: "x" }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/version/);
   });
 
   it("rejects newer-than-supported version with a clear message", () => {
-    const r = parseBudget(
+    const r = parseUserData(
       JSON.stringify({ version: LATEST_VERSION + 5, sheets: [] }),
     );
     expect(r.ok).toBe(false);
@@ -114,39 +114,39 @@ describe("parseBudget — error paths", () => {
   });
 
   it("rejects unknown column type", () => {
-    const b = sampleBudget();
-    const raw = JSON.parse(serializeBudget(b));
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
     raw.sheets[0].columns[0].type = "color";
-    const r = parseBudget(JSON.stringify(raw));
+    const r = parseUserData(JSON.stringify(raw));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/unknown column type/);
   });
 
   it("rejects duplicate sheet ids", () => {
-    const b = sampleBudget();
-    const raw = JSON.parse(serializeBudget(b));
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
     raw.sheets[1].id = raw.sheets[0].id;
-    const r = parseBudget(JSON.stringify(raw));
+    const r = parseUserData(JSON.stringify(raw));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/duplicate id/);
   });
 
   it("rejects unknown category icon", () => {
-    const b = sampleBudget();
-    const raw = JSON.parse(serializeBudget(b));
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
     raw.categories[0].icon = "not-an-icon";
-    const r = parseBudget(JSON.stringify(raw));
+    const r = parseUserData(JSON.stringify(raw));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/unknown category icon/);
   });
 });
 
-describe("validateBudget — soft recovery", () => {
+describe("validateUserData — soft recovery", () => {
   it("drops cells referencing missing columns rather than failing", () => {
-    const b = sampleBudget();
+    const b = sampleData();
     const sheet = b.sheets[0];
     sheet.rows[0].cells["ghost-column-id"] = "stray";
-    const r = validateBudget(b);
+    const r = validateUserData(b);
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(
@@ -156,50 +156,50 @@ describe("validateBudget — soft recovery", () => {
   });
 
   it("recovers a dangling activeSheetId to the first sheet", () => {
-    const b = sampleBudget();
-    const r = validateBudget({ ...b, activeSheetId: "does-not-exist" });
+    const b = sampleData();
+    const r = validateUserData({ ...b, activeSheetId: "does-not-exist" });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.activeSheetId).toBe(b.sheets[0].id);
   });
 
   it("defaults categories to an empty array when missing", () => {
-    const b = sampleBudget();
+    const b = sampleData();
     const withoutCategories: Record<string, unknown> = { ...b };
     delete withoutCategories.categories;
-    const r = validateBudget(withoutCategories);
+    const r = validateUserData(withoutCategories);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.categories).toEqual([]);
   });
 
   it("defaults settings to DEFAULT_SETTINGS when missing", () => {
-    const b = sampleBudget();
+    const b = sampleData();
     const withoutSettings: Record<string, unknown> = { ...b };
     delete withoutSettings.settings;
-    const r = validateBudget(withoutSettings);
+    const r = validateUserData(withoutSettings);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
   });
 
   it("snaps individual invalid settings back to their default", () => {
-    const b = sampleBudget();
-    const raw = JSON.parse(serializeBudget(b));
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
     raw.settings.startOfMonth = 99;
     raw.settings.dateFormat = "wat";
     raw.settings.decimalSeparator = "_";
     raw.settings.thousandsSeparator = "X";
     raw.settings.currency = "";
     raw.settings.formatNumbers = "yes";
-    const r = validateBudget(raw);
+    const r = validateUserData(raw);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
   });
 
   it("clears thousands separator when it collides with the decimal", () => {
-    const b = sampleBudget();
-    const raw = JSON.parse(serializeBudget(b));
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
     raw.settings.decimalSeparator = ".";
     raw.settings.thousandsSeparator = ".";
-    const r = validateBudget(raw);
+    const r = validateUserData(raw);
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.settings.decimalSeparator).toBe(".");
@@ -210,10 +210,10 @@ describe("validateBudget — soft recovery", () => {
 
 describe("migrate", () => {
   it("is a no-op for the current version", () => {
-    const b = sampleBudget();
-    const { budget, migrated } = migrate(b);
+    const b = sampleData();
+    const { data, migrated } = migrate(b);
     expect(migrated).toBe(false);
-    expect(budget).toEqual(b);
+    expect(data).toEqual(b);
   });
 
   it("throws for a version newer than supported", () => {
@@ -240,12 +240,12 @@ describe("migrate", () => {
         },
       ],
     };
-    const { budget, migrated } = migrate(v1);
+    const { data, migrated } = migrate(v1);
     expect(migrated).toBe(true);
-    expect(budget.version).toBe(LATEST_VERSION);
-    expect(budget.categories).toEqual([]);
+    expect(data.version).toBe(LATEST_VERSION);
+    expect(data.categories).toEqual([]);
     const sheet = (
-      budget.sheets as Array<{ columns: Array<{ type: string }> }>
+      data.sheets as Array<{ columns: Array<{ type: string }> }>
     )[0];
     const types = sheet.columns.map((c) => c.type);
     // category sits right after description
@@ -257,8 +257,8 @@ describe("migrate", () => {
       "balance",
       "completed",
     ]);
-    // Migrated budget validates cleanly under the latest validator.
-    const validated = validateBudget(budget);
+    // Migrated data validates cleanly under the latest validator.
+    const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });
 
@@ -280,10 +280,8 @@ describe("migrate", () => {
         },
       ],
     };
-    const { budget } = migrate(v1);
-    const sheet = (
-      budget.sheets as Array<{ columns: Array<{ id: string }> }>
-    )[0];
+    const { data } = migrate(v1);
+    const sheet = (data.sheets as Array<{ columns: Array<{ id: string }> }>)[0];
     expect(sheet.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
   });
 
@@ -308,13 +306,13 @@ describe("migrate", () => {
         },
       ],
     };
-    const { budget, migrated } = migrate(v3);
+    const { data, migrated } = migrate(v3);
     expect(migrated).toBe(true);
-    expect(budget.version).toBe(LATEST_VERSION);
-    expect(budget.settings).toEqual(DEFAULT_SETTINGS);
-    const sheet = (budget.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
+    expect(data.version).toBe(LATEST_VERSION);
+    expect(data.settings).toEqual(DEFAULT_SETTINGS);
+    const sheet = (data.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
     expect(sheet.rows[0].id).toBe("r1");
-    const validated = validateBudget(budget);
+    const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });
 
@@ -345,10 +343,10 @@ describe("migrate", () => {
         },
       ],
     };
-    const { budget, migrated } = migrate(v2);
+    const { data, migrated } = migrate(v2);
     expect(migrated).toBe(true);
-    expect(budget.version).toBe(LATEST_VERSION);
-    const sheet = (budget.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
+    expect(data.version).toBe(LATEST_VERSION);
+    const sheet = (data.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
     expect(sheet.rows).toHaveLength(1);
     expect(sheet.rows[0].id).toBe("r1");
   });
@@ -356,49 +354,49 @@ describe("migrate", () => {
 
 describe("seriesId field on rows", () => {
   it("round-trips through serialize/parse", () => {
-    const b = sampleBudget();
+    const b = sampleData();
     b.sheets[0].rows[0].seriesId = "series-1";
     b.sheets[0].rows[1].seriesId = "series-1";
-    const r = parseBudget(serializeBudget(b));
+    const r = parseUserData(serializeUserData(b));
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.budget.sheets[0].rows[0].seriesId).toBe("series-1");
-      expect(r.budget.sheets[0].rows[1].seriesId).toBe("series-1");
+      expect(r.data.sheets[0].rows[0].seriesId).toBe("series-1");
+      expect(r.data.sheets[0].rows[1].seriesId).toBe("series-1");
     }
   });
 
   it("is omitted from JSON when undefined", () => {
-    const b = sampleBudget();
-    const text = serializeBudget(b);
+    const b = sampleData();
+    const text = serializeUserData(b);
     expect(text.includes("seriesId")).toBe(false);
   });
 
   it("rejects empty-string seriesId", () => {
-    const b = sampleBudget();
-    const raw = JSON.parse(serializeBudget(b));
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
     raw.sheets[0].rows[0].seriesId = "";
-    const r = parseBudget(JSON.stringify(raw));
+    const r = parseUserData(JSON.stringify(raw));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/seriesId/);
   });
 });
 
-describe("readBudgetFromText", () => {
-  it("returns a fresh budget when input is null", () => {
-    const b = readBudgetFromText(null);
+describe("readUserDataFromText", () => {
+  it("returns fresh data when input is null", () => {
+    const b = readUserDataFromText(null);
     expect(b.version).toBe(LATEST_VERSION);
     expect(b.sheets).toHaveLength(1);
     expect(b.categories).toEqual([]);
   });
 
-  it("falls back to a fresh budget on garbage input", () => {
-    const b = readBudgetFromText("not valid json at all");
+  it("falls back to fresh data on garbage input", () => {
+    const b = readUserDataFromText("not valid json at all");
     expect(b.sheets).toHaveLength(1);
   });
 
-  it("returns the stored budget when input is valid", () => {
-    const original = sampleBudget();
-    const restored = readBudgetFromText(JSON.stringify(original));
+  it("returns the stored data when input is valid", () => {
+    const original = sampleData();
+    const restored = readUserDataFromText(JSON.stringify(original));
     expect(restored).toEqual(original);
   });
 });

@@ -2,15 +2,15 @@
 // instead of `localStorage` directly so cloud-drive backends (Dropbox,
 // Google Drive, …) can slot in without touching the reducer or the UI.
 //
-// Adapters speak bytes, not `Budget` values: migration, validation,
+// Adapters speak bytes, not `UserData` values: migration, validation,
 // and pretty-printing all live in `./file.ts` and run on every load
 // and save regardless of which backend is active. That keeps each
 // adapter small and prevents a backend from accidentally bypassing
 // the parse / migrate / validate pipeline.
 
 export type Snapshot = {
-  // The serialized budget JSON, exactly as produced by
-  // `serializeBudget` in `./file.ts`. Includes the trailing newline.
+  // The serialized UserData JSON, exactly as produced by
+  // `serializeUserData` in `./file.ts`. Includes the trailing newline.
   text: string;
 
   // Opaque, adapter-defined token used for optimistic concurrency.

@@ -1,9 +1,9 @@
 import { DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
-import type { Budget } from "../data/types";
-import { parseBudget } from "./file";
+import type { UserData } from "../data/types";
+import { parseUserData } from "./file";
 
-export function freshBudget(): Budget {
+export function freshUserData(): UserData {
   const sheet = createDefaultSheet();
   return {
     version: 4,
@@ -14,12 +14,12 @@ export function freshBudget(): Budget {
   };
 }
 
-// Pure: given the raw stored text (or null), produce a Budget. Falls back
-// to a fresh budget on any failure so a corrupt entry never traps the
-// user. Consumed by both the local adapter and the storage hook so every
-// load path shares the same parse / migrate / validate pipeline.
-export function readBudgetFromText(raw: string | null): Budget {
-  if (!raw) return freshBudget();
-  const result = parseBudget(raw);
-  return result.ok ? result.budget : freshBudget();
+// Pure: given the raw stored text (or null), produce a UserData. Falls
+// back to a fresh value on any failure so a corrupt entry never traps
+// the user. Consumed by both the local adapter and the storage hook so
+// every load path shares the same parse / migrate / validate pipeline.
+export function readUserDataFromText(raw: string | null): UserData {
+  if (!raw) return freshUserData();
+  const result = parseUserData(raw);
+  return result.ok ? result.data : freshUserData();
 }

@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  budgetHasHalfDoneRows,
-  budgetWithSavableRows,
   computeBalances,
   createDefaultSheet,
   currentFiscalMonthKey,
@@ -17,8 +15,10 @@ import {
   shiftIsoToMonth,
   sortMonthKeys,
   sortRowsByDate,
+  userDataHasHalfDoneRows,
+  userDataWithSavableRows,
 } from "../src/data/sheet";
-import type { Budget, Row } from "../src/data/types";
+import type { Row, UserData } from "../src/data/types";
 
 function seedRow(
   dateColId: string,
@@ -304,8 +304,8 @@ describe("isRowSavable / isRowHalfDone", () => {
   });
 });
 
-describe("budgetWithSavableRows / budgetHasHalfDoneRows", () => {
-  function build(): { budget: Budget; descId: string; amountId: string } {
+describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
+  function build(): { data: UserData; descId: string; amountId: string } {
     const sheet = createDefaultSheet();
     const descId = findColumnByType(sheet.columns, "description")!.id;
     const amountId = findColumnByType(sheet.columns, "amount")!.id;
@@ -315,41 +315,41 @@ describe("budgetWithSavableRows / budgetHasHalfDoneRows", () => {
       { id: "empty", cells: {} },
     ];
     return {
-      budget: {
+      data: {
         version: 3,
         sheets: [sheet],
         activeSheetId: sheet.id,
         categories: [],
-      },
+      } as unknown as UserData,
       descId,
       amountId,
     };
   }
 
   it("filters out half-done and empty rows from the snapshot", () => {
-    const { budget } = build();
-    const filtered = budgetWithSavableRows(budget);
+    const { data } = build();
+    const filtered = userDataWithSavableRows(data);
     expect(filtered.sheets[0].rows.map((r) => r.id)).toEqual(["complete"]);
   });
 
-  it("does not mutate the input budget", () => {
-    const { budget } = build();
-    const before = budget.sheets[0].rows.length;
-    budgetWithSavableRows(budget);
-    expect(budget.sheets[0].rows.length).toBe(before);
+  it("does not mutate the input data", () => {
+    const { data } = build();
+    const before = data.sheets[0].rows.length;
+    userDataWithSavableRows(data);
+    expect(data.sheets[0].rows.length).toBe(before);
   });
 
   it("reports half-done rows so callers can prompt or light up the save button", () => {
-    const { budget } = build();
-    expect(budgetHasHalfDoneRows(budget)).toBe(true);
+    const { data } = build();
+    expect(userDataHasHalfDoneRows(data)).toBe(true);
   });
 
   it("returns false when every row is either complete or fully blank", () => {
-    const { budget, descId, amountId } = build();
-    budget.sheets[0].rows = [
+    const { data, descId, amountId } = build();
+    data.sheets[0].rows = [
       { id: "complete", cells: { [descId]: "Rent", [amountId]: -1000 } },
       { id: "empty", cells: {} },
     ];
-    expect(budgetHasHalfDoneRows(budget)).toBe(false);
+    expect(userDataHasHalfDoneRows(data)).toBe(false);
   });
 });

@@ -2,19 +2,19 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { STORAGE_KEY } from "../src/data/constants";
 import { createDefaultSheet } from "../src/data/sheet";
-import type { Budget } from "../src/data/types";
+import type { UserData } from "../src/data/types";
 import { ConflictError } from "../src/storage/adapter";
-import { serializeBudget } from "../src/storage/file";
+import { serializeUserData } from "../src/storage/file";
 import { localAdapter } from "../src/storage/local-adapter";
 
-function sampleBudget(): Budget {
+function sampleData(): UserData {
   const sheet = createDefaultSheet("Tests");
   return {
     version: 3,
     sheets: [sheet],
     activeSheetId: sheet.id,
     categories: [],
-  };
+  } as unknown as UserData;
 }
 
 // Drop-in localStorage shim for the test environment. Vitest runs under
@@ -56,22 +56,22 @@ describe("localAdapter", () => {
     expect(localAdapter.loadSync?.()).toBeNull();
   });
 
-  it("round-trips a budget through save + loadSync", async () => {
-    const text = serializeBudget(sampleBudget());
+  it("round-trips data through save + loadSync", async () => {
+    const text = serializeUserData(sampleData());
     await localAdapter.save(text);
     expect(storage.getItem(STORAGE_KEY)).toBe(text);
     expect(localAdapter.loadSync?.()).toEqual({ text });
   });
 
   it("async load mirrors loadSync", async () => {
-    const text = serializeBudget(sampleBudget());
+    const text = serializeUserData(sampleData());
     await localAdapter.save(text);
     const snap = await localAdapter.load();
     expect(snap).toEqual({ text });
   });
 
   it("save resolves to a snapshot containing the written text", async () => {
-    const text = serializeBudget(sampleBudget());
+    const text = serializeUserData(sampleData());
     const snap = await localAdapter.save(text);
     expect(snap.text).toBe(text);
     // Local has no revision — nothing else writes the same key.
@@ -85,7 +85,7 @@ describe("localAdapter", () => {
   it("does not throw when localStorage is unavailable", async () => {
     delete (globalThis as unknown as { localStorage?: MemoryStorage })
       .localStorage;
-    const text = serializeBudget(sampleBudget());
+    const text = serializeUserData(sampleData());
     await expect(localAdapter.save(text)).resolves.toEqual({ text });
     await expect(localAdapter.load()).resolves.toBeNull();
   });

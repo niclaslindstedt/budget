@@ -5,9 +5,10 @@ import type { DateFormat, Settings, ThousandsSeparator } from "./types";
 // setting once the UI exists for it.
 export const MAX_COLUMN_CHARS = 60;
 
-// Legacy single-user bucket. Read only on first launch so a budget
-// from before user accounts existed can be migrated into the first
-// account that gets created; otherwise unused.
+// Legacy single-user bucket. Read only on first launch so data from
+// before user accounts existed can be migrated into the first account
+// that gets created; otherwise unused. The string value keeps its
+// historical "budget.v1" prefix so existing installs still find it.
 export const STORAGE_KEY = "budget.v1";
 
 // Registry of all accounts on this device, plus the id of whichever
@@ -15,10 +16,12 @@ export const STORAGE_KEY = "budget.v1";
 // (PBKDF2) are not secrets in the cryptographic sense.
 export const USERS_KEY = "budget.users.v1";
 
-// Per-user budget bytes live under their own key so a delete leaves
+// Per-user data bytes live under their own key so a delete leaves
 // other users untouched and a future "switch account" stays a pure
-// pointer flip.
-export function userBudgetKey(userId: string): string {
+// pointer flip. The key value retains the "budget.user." prefix for
+// backwards compatibility with installs created before the type was
+// renamed from Budget to UserData.
+export function userDataKey(userId: string): string {
   return `budget.user.${userId}`;
 }
 

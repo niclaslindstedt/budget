@@ -104,7 +104,13 @@ export type Settings = {
   showDecimals: boolean;
 };
 
-export type Budget = {
+// Top-level persisted blob for one signed-in user. Holds everything
+// that user owns: their sheets, the categories they've defined, and
+// their display preferences. The user account itself (id, username,
+// password hash) lives in the device-wide registry — see `StoredUser`
+// and `UsersFile` below — so a UserData snapshot can be exported and
+// imported across devices without dragging credentials along.
+export type UserData = {
   version: 4;
   sheets: Sheet[];
   activeSheetId: string;

@@ -1,10 +1,10 @@
 import type {
-  Budget,
   CellValue,
   Column,
   ColumnType,
   Row,
   Sheet,
+  UserData,
 } from "./types";
 
 export function newId(): string {
@@ -222,18 +222,18 @@ function hasText(value: CellValue): boolean {
 // Strip rows that aren't savable so the on-disk snapshot only ever
 // holds rows the user has finished entering. Used as a pre-serialize
 // transform by the storage hook.
-export function budgetWithSavableRows(budget: Budget): Budget {
+export function userDataWithSavableRows(data: UserData): UserData {
   return {
-    ...budget,
-    sheets: budget.sheets.map((s) => ({
+    ...data,
+    sheets: data.sheets.map((s) => ({
       ...s,
       rows: s.rows.filter((r) => isRowSavable(r, s.columns)),
     })),
   };
 }
 
-export function budgetHasHalfDoneRows(budget: Budget): boolean {
-  return budget.sheets.some((s) =>
+export function userDataHasHalfDoneRows(data: UserData): boolean {
+  return data.sheets.some((s) =>
     s.rows.some((r) => isRowHalfDone(r, s.columns)),
   );
 }

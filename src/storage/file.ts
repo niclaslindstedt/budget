@@ -1,24 +1,24 @@
 import { migrate, type Versioned } from "../data/migrations";
-import type { Budget } from "../data/types";
-import { validateBudget } from "../data/validate";
+import type { UserData } from "../data/types";
+import { validateUserData } from "../data/validate";
 
 export const FILE_MIME_TYPE = "application/json";
 
-// Pretty-printed with sorted keys: two exports of equal budgets produce
-// byte-identical files, which keeps diffs (if a user version-controls
-// their exports) clean and review-friendly.
-export function serializeBudget(budget: Budget): string {
-  return stableStringify(budget, 2) + "\n";
+// Pretty-printed with sorted keys: two exports of equal UserData blobs
+// produce byte-identical files, which keeps diffs (if a user
+// version-controls their exports) clean and review-friendly.
+export function serializeUserData(data: UserData): string {
+  return stableStringify(data, 2) + "\n";
 }
 
 export type ImportResult =
-  | { ok: true; budget: Budget; migrated: boolean }
+  | { ok: true; data: UserData; migrated: boolean }
   | { ok: false; error: string };
 
-// Single entry point for "raw text → Budget". Used by file import and by
-// the localStorage loader so both paths share the same parse / migrate /
-// validate pipeline.
-export function parseBudget(text: string): ImportResult {
+// Single entry point for "raw text → UserData". Used by file import
+// and by the localStorage loader so both paths share the same parse /
+// migrate / validate pipeline.
+export function parseUserData(text: string): ImportResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -34,9 +34,9 @@ export function parseBudget(text: string): ImportResult {
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
-  const validated = validateBudget(migrated.budget);
+  const validated = validateUserData(migrated.data);
   if (!validated.ok) return { ok: false, error: validated.error };
-  return { ok: true, budget: validated.value, migrated: migrated.migrated };
+  return { ok: true, data: validated.value, migrated: migrated.migrated };
 }
 
 export function suggestFilename(now: Date = new Date()): string {

@@ -1,7 +1,6 @@
 import { DATE_FORMATS, DEFAULT_SETTINGS } from "./constants";
 import { LATEST_VERSION } from "./migrations";
 import type {
-  Budget,
   Category,
   CategoryIcon,
   CellValue,
@@ -13,6 +12,7 @@ import type {
   Settings,
   Sheet,
   ThousandsSeparator,
+  UserData,
 } from "./types";
 
 const DATE_FORMAT_SET: ReadonlySet<DateFormat> = new Set(DATE_FORMATS);
@@ -238,7 +238,7 @@ function validateSettings(raw: unknown): Settings {
   };
 }
 
-export function validateBudget(raw: unknown): Result<Budget> {
+export function validateUserData(raw: unknown): Result<UserData> {
   if (!isObject(raw)) return fail("root", "expected an object");
   if (raw.version !== LATEST_VERSION)
     return fail(
