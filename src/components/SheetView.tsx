@@ -4,6 +4,7 @@ import {
   computeBalances,
   currentFiscalMonthKey,
   findColumnByType,
+  fiscalMonthSeedIso,
   groupRowsByMonth,
   sortMonthKeys,
   sortRowsByDate,
@@ -144,7 +145,11 @@ export function SheetView({
             : [];
           const isCurrent = monthKey === currentMonth;
           const seedDate =
-            monthKey === "undated" ? "" : isCurrent ? today : `${monthKey}-01`;
+            monthKey === "undated"
+              ? ""
+              : isCurrent
+                ? today
+                : fiscalMonthSeedIso(monthKey, settings.startOfMonth);
           return (
             <div
               key={monthKey}
