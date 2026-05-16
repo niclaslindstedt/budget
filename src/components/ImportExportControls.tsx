@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, EyeOff, Lock, Upload, X } from "lucide-react";
 
-import type { Budget } from "../data/types";
+import type { UserData } from "../data/types";
 import {
   decryptEnvelope,
   encryptText,
@@ -9,14 +9,14 @@ import {
 } from "../storage/crypto";
 import {
   FILE_MIME_TYPE,
-  parseBudget,
-  serializeBudget,
+  parseUserData,
+  serializeUserData,
   suggestFilename,
 } from "../storage/file";
 
 type Props = {
-  budget: Budget;
-  onImport: (budget: Budget) => void;
+  data: UserData;
+  onImport: (data: UserData) => void;
   // Returns the active account password so exports can be wrapped in
   // the same encryption envelope the localStorage adapter writes —
   // re-importing the file surfaces the password prompt automatically.
@@ -32,7 +32,7 @@ const iconButton =
   "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line bg-transparent hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg";
 
 export function ImportExportControls({
-  budget,
+  data,
   onImport,
   getEncryptionPassword,
 }: Props) {
@@ -41,7 +41,7 @@ export function ImportExportControls({
   const [pendingEnvelope, setPendingEnvelope] = useState<string | null>(null);
 
   async function handleExport() {
-    const plaintext = serializeBudget(budget);
+    const plaintext = serializeUserData(data);
     const password = getEncryptionPassword();
     if (!password) {
       setStatus({
@@ -74,13 +74,13 @@ export function ImportExportControls({
   }
 
   function finishImport(text: string) {
-    const result = parseBudget(text);
+    const result = parseUserData(text);
     if (!result.ok) {
       setStatus({ kind: "error", message: `Import failed — ${result.error}` });
       return;
     }
-    onImport(result.budget);
-    const sheetCount = result.budget.sheets.length;
+    onImport(result.data);
+    const sheetCount = result.data.sheets.length;
     const suffix = result.migrated ? " (migrated to current version)" : "";
     setStatus({
       kind: "ok",
@@ -116,7 +116,7 @@ export function ImportExportControls({
       setPendingEnvelope(null);
       finishImport(plain);
     },
-    // finishImport closes over budget/onImport which are stable enough
+    // finishImport closes over data/onImport which are stable enough
     // here; we intentionally don't list every transitive dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pendingEnvelope],

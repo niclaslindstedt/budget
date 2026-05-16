@@ -8,10 +8,10 @@ import {
   useState,
 } from "react";
 
-import type { Budget } from "../data/types";
+import type { UserData } from "../data/types";
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
-import { serializeBudget } from "./file";
-import { freshBudget, readBudgetFromText } from "./local";
+import { serializeUserData } from "./file";
+import { freshUserData, readUserDataFromText } from "./local";
 
 // Orchestrates a `StorageAdapter` against a React reducer. The
 // reducer keeps its existing shape — pure `(state, action) => state`
@@ -24,57 +24,57 @@ export type SaveStatus =
   | { kind: "loading" }
   | { kind: "saving" }
   | { kind: "saved"; at: number }
-  | { kind: "conflict"; remote: Budget }
+  | { kind: "conflict"; remote: UserData }
   | { kind: "error"; message: string };
 
-export type BudgetStorageOptions = {
-  // Pre-serialize transform applied to the in-memory budget before
-  // the auto-save effect writes it. Used to strip transient state
-  // (e.g. half-filled rows) so storage always reflects a clean
-  // snapshot. `saveNow` deliberately bypasses this — a user clicking
-  // the save button is asking for the in-memory state as-is.
-  beforeSerialize?: (budget: Budget) => Budget;
+export type UserDataStorageOptions = {
+  // Pre-serialize transform applied to the in-memory state before the
+  // auto-save effect writes it. Used to strip transient state (e.g.
+  // half-filled rows) so storage always reflects a clean snapshot.
+  // `saveNow` deliberately bypasses this — a user clicking the save
+  // button is asking for the in-memory state as-is.
+  beforeSerialize?: (data: UserData) => UserData;
 };
 
-export type BudgetStorage<Action> = {
-  budget: Budget;
+export type UserDataStorage<Action> = {
+  data: UserData;
   dispatch: Dispatch<Action>;
   status: SaveStatus;
-  // True when the in-memory budget differs from the last bytes
-  // written to storage. With a `beforeSerialize` filter active, this
-  // also captures rows the auto-save deliberately omits (e.g.
-  // half-filled rows), so callers can prompt before unload and light
-  // up an explicit-save affordance.
+  // True when the in-memory state differs from the last bytes written
+  // to storage. With a `beforeSerialize` filter active, this also
+  // captures rows the auto-save deliberately omits (e.g. half-filled
+  // rows), so callers can prompt before unload and light up an
+  // explicit-save affordance.
   dirty: boolean;
-  // Save the current in-memory budget as-is — skipping any
+  // Save the current in-memory state as-is — skipping any
   // `beforeSerialize` filter and the debounce timer.
   saveNow: () => void;
 };
 
-export function useBudgetStorage<Action>(
+export function useUserDataStorage<Action>(
   adapter: StorageAdapter,
-  reducer: Reducer<Budget, Action>,
-  { beforeSerialize }: BudgetStorageOptions = {},
-): BudgetStorage<Action> {
+  reducer: Reducer<UserData, Action>,
+  { beforeSerialize }: UserDataStorageOptions = {},
+): UserDataStorage<Action> {
   // Synchronous fast path: if the adapter can hand back data before
   // the first paint (localStorage can; cloud cannot), seed the
-  // reducer with the real budget right away. Otherwise we start
+  // reducer with the real state right away. Otherwise we start
   // empty and the async load below replaces it.
-  const initial = useState<{ budget: Budget; status: SaveStatus }>(() => {
+  const initial = useState<{ data: UserData; status: SaveStatus }>(() => {
     const snap = adapter.loadSync?.() ?? null;
     if (snap) {
       return {
-        budget: readBudgetFromText(snap.text),
+        data: readUserDataFromText(snap.text),
         status: { kind: "idle" },
       };
     }
     return {
-      budget: freshBudget(),
+      data: freshUserData(),
       status: adapter.loadSync ? { kind: "idle" } : { kind: "loading" },
     };
   });
 
-  const [budget, setBudget] = useState<Budget>(initial[0].budget);
+  const [data, setData] = useState<UserData>(initial[0].data);
   const [status, setStatus] = useState<SaveStatus>(initial[0].status);
   // Last bytes successfully written to (or loaded from) storage.
   // Drives the `dirty` flag below.
@@ -107,7 +107,7 @@ export function useBudgetStorage<Action>(
 
   const dispatch: Dispatch<Action> = useCallback(
     (action) => {
-      setBudget((prev) => reducer(prev, action));
+      setData((prev) => reducer(prev, action));
     },
     [reducer],
   );
@@ -130,7 +130,7 @@ export function useBudgetStorage<Action>(
       } catch (err) {
         if (isStale()) return;
         if (err instanceof ConflictError) {
-          const remote = readBudgetFromText(err.remote.text);
+          const remote = readUserDataFromText(err.remote.text);
           lastSnapshot.current = err.remote;
           setStatus({ kind: "conflict", remote });
           return;
@@ -155,7 +155,7 @@ export function useBudgetStorage<Action>(
         if (cancelled) return;
         lastSnapshot.current = snap;
         skipNextSave.current = true;
-        setBudget(snap ? readBudgetFromText(snap.text) : freshBudget());
+        setData(snap ? readUserDataFromText(snap.text) : freshUserData());
         setLastSavedText(snap?.text ?? null);
         setStatus({ kind: "idle" });
       })
@@ -171,7 +171,7 @@ export function useBudgetStorage<Action>(
     };
   }, [adapter]);
 
-  // Debounced save. Each budget change schedules a write; subsequent
+  // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
   useEffect(() => {
     if (skipNextSave.current) {
@@ -189,7 +189,7 @@ export function useBudgetStorage<Action>(
     async function runSave() {
       if (cancelled) return;
       const transform = beforeSerializeRef.current;
-      const text = serializeBudget(transform ? transform(budget) : budget);
+      const text = serializeUserData(transform ? transform(data) : data);
       await performSave(text, () => cancelled);
     }
 
@@ -198,9 +198,9 @@ export function useBudgetStorage<Action>(
       window.clearTimeout(timer);
       if (pendingTimerRef.current === timer) pendingTimerRef.current = null;
     };
-  }, [adapter, budget, performSave]);
+  }, [adapter, data, performSave]);
 
-  // Save the current in-memory budget verbatim. Used by the explicit
+  // Save the current in-memory state verbatim. Used by the explicit
   // "save" button — bypasses `beforeSerialize` so the user can persist
   // half-filled rows when they ask for it.
   const saveNow = useCallback(() => {
@@ -208,9 +208,9 @@ export function useBudgetStorage<Action>(
       window.clearTimeout(pendingTimerRef.current);
       pendingTimerRef.current = null;
     }
-    const text = serializeBudget(budget);
+    const text = serializeUserData(data);
     void performSave(text, () => false);
-  }, [budget, performSave]);
+  }, [data, performSave]);
 
   // Remote-change subscription. Cloud adapters call this when
   // another device pushes; local adapters typically don't supply it.
@@ -219,14 +219,14 @@ export function useBudgetStorage<Action>(
     return adapter.watch((snap) => {
       lastSnapshot.current = snap;
       skipNextSave.current = true;
-      setBudget(readBudgetFromText(snap.text));
+      setData(readUserDataFromText(snap.text));
       setLastSavedText(snap.text);
       setStatus({ kind: "idle" });
     });
   }, [adapter]);
 
-  const currentText = useMemo(() => serializeBudget(budget), [budget]);
+  const currentText = useMemo(() => serializeUserData(data), [data]);
   const dirty = lastSavedText !== null && currentText !== lastSavedText;
 
-  return { budget, dispatch, status, dirty, saveNow };
+  return { data, dispatch, status, dirty, saveNow };
 }

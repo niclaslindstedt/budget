@@ -20,9 +20,8 @@ import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
 import { UserMenu } from "./components/UserMenu";
-import { STORAGE_KEY, userBudgetKey } from "./data/constants";
+import { STORAGE_KEY, userDataKey } from "./data/constants";
 import {
-  budgetWithSavableRows,
   createEmptyRow,
   findColumnByType,
   getMonthKey,
@@ -31,15 +30,16 @@ import {
   newId,
   rowsInSeriesFrom,
   shiftIsoToMonth,
+  userDataWithSavableRows,
 } from "./data/sheet";
 import type {
-  Budget,
   Category,
   CellValue,
   Row,
   Settings,
   Sheet,
   StoredUser,
+  UserData,
 } from "./data/types";
 import type { StorageAdapter } from "./storage/adapter";
 import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
@@ -50,7 +50,7 @@ import {
   readRawStorage,
   writeRawStorage,
 } from "./storage/local-adapter";
-import { useBudgetStorage } from "./storage/useBudgetStorage";
+import { useUserDataStorage } from "./storage/useUserDataStorage";
 import {
   createUser,
   loadUsersFile,
@@ -118,7 +118,7 @@ type SheetAction =
 
 type Action =
   | SheetAction
-  | { type: "replace"; budget: Budget }
+  | { type: "replace"; data: UserData }
   | { type: "addCategory"; category: Category }
   | { type: "updateSettings"; settings: Settings };
 
@@ -355,8 +355,8 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
   }
 }
 
-function reducer(state: Budget, action: Action): Budget {
-  if (action.type === "replace") return action.budget;
+function reducer(state: UserData, action: Action): UserData {
+  if (action.type === "replace") return action.data;
   if (action.type === "addCategory") {
     return { ...state, categories: [...state.categories, action.category] };
   }
@@ -416,7 +416,7 @@ export function App() {
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
     return withEncryption(
-      createLocalAdapter(userBudgetKey(auth.user.id)),
+      createLocalAdapter(userDataKey(auth.user.id)),
       passwordRef,
     );
   }, [auth]);
@@ -456,7 +456,7 @@ export function App() {
         // the Import button, which prompts for it.
         if (legacy && !isEncryptedEnvelope(legacy)) {
           const envelope = await encryptText(legacy, password);
-          writeRawStorage(envelope, userBudgetKey(user.id));
+          writeRawStorage(envelope, userDataKey(user.id));
           clearRawStorage(STORAGE_KEY);
         }
       }
@@ -506,7 +506,7 @@ export function App() {
       const ok = await verifyPassword(auth.user, password);
       if (!ok) throw new Error("Wrong password");
       const remaining = users.filter((u) => u.id !== auth.user.id);
-      clearRawStorage(userBudgetKey(auth.user.id));
+      clearRawStorage(userDataKey(auth.user.id));
       setUsers(remaining);
       persistRegistry(remaining, null);
       passwordRef.current = null;
@@ -565,10 +565,10 @@ function BudgetView({
   onCreateAccount,
   onDeleteAccount,
 }: BudgetViewProps) {
-  const { budget, dispatch, dirty, saveNow } = useBudgetStorage(
+  const { data, dispatch, dirty, saveNow } = useUserDataStorage(
     adapter,
     reducer,
-    { beforeSerialize: budgetWithSavableRows },
+    { beforeSerialize: userDataWithSavableRows },
   );
   const [complexOpen, setComplexOpen] = useState(false);
   const [complexSeedDate, setComplexSeedDate] = useState("");
@@ -587,8 +587,7 @@ function BudgetView({
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const activeSheet =
-    budget.sheets.find((s) => s.id === budget.activeSheetId) ??
-    budget.sheets[0];
+    data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
 
   const sheetId = activeSheet.id;
 
@@ -655,7 +654,7 @@ function BudgetView({
     [dispatch, sheetId],
   );
   const onImport = useCallback(
-    (next: Budget) => dispatch({ type: "replace", budget: next }),
+    (next: UserData) => dispatch({ type: "replace", data: next }),
     [dispatch],
   );
   const onCreateCategory = useCallback(
@@ -743,14 +742,11 @@ function BudgetView({
     if (!dateCol) return new Set();
     const set = new Set<string>();
     for (const r of selectedRows) {
-      const key = getMonthKey(
-        r.cells[dateCol.id],
-        budget.settings.startOfMonth,
-      );
+      const key = getMonthKey(r.cells[dateCol.id], data.settings.startOfMonth);
       if (key !== "undated") set.add(key);
     }
     return set;
-  }, [selectedRows, dateCol, budget.settings.startOfMonth]);
+  }, [selectedRows, dateCol, data.settings.startOfMonth]);
 
   // Last ISO date in the candidate series — defaults the "until" picker.
   const editLastSeriesDate = useMemo<string | null>(() => {
@@ -879,7 +875,7 @@ function BudgetView({
         <div className="ml-auto inline-flex items-center gap-2">
           <SaveStateButton dirty={dirty} onSave={saveNow} />
           <ImportExportControls
-            budget={budget}
+            data={data}
             onImport={onImport}
             getEncryptionPassword={getEncryptionPassword}
           />
@@ -919,11 +915,11 @@ function BudgetView({
       <main className="flex-1">
         <SheetView
           sheet={activeSheet}
-          categories={budget.categories}
-          settings={budget.settings}
+          categories={data.categories}
+          settings={data.settings}
           selectMode={selectMode}
           selectedIds={selectedIds}
-          showName={budget.sheets.length > 1}
+          showName={data.sheets.length > 1}
           onUpdateCell={onUpdateCell}
           onAddRow={onAddRow}
           onAddComplex={onAddComplex}
@@ -948,8 +944,8 @@ function BudgetView({
       <ComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}
-        categories={budget.categories}
-        settings={budget.settings}
+        categories={data.categories}
+        settings={data.settings}
         onClose={() => setComplexOpen(false)}
         onCreate={onComplexSubmit}
         onCreateCategory={onCreateCategory}
@@ -958,8 +954,8 @@ function BudgetView({
         open={editPrompt !== null}
         row={editPrompt?.row ?? null}
         columns={activeSheet.columns}
-        categories={budget.categories}
-        settings={budget.settings}
+        categories={data.categories}
+        settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
         onClose={() => setEditPrompt(null)}
         onConvertToRecurring={onConvertToRecurring}
@@ -970,8 +966,8 @@ function BudgetView({
         open={bulkEditOpen && selectedRows.length > 0}
         rows={selectedRows}
         columns={activeSheet.columns}
-        categories={budget.categories}
-        settings={budget.settings}
+        categories={data.categories}
+        settings={data.settings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}
         onApplyRecurring={onApplyBulkRecurring}
@@ -1009,7 +1005,7 @@ function BudgetView({
       />
       <SettingsModal
         open={settingsOpen}
-        settings={budget.settings}
+        settings={data.settings}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
       />

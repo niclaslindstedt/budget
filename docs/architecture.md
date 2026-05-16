@@ -24,12 +24,12 @@ src/
 │   ├── icons.tsx                  # column-type + category-icon registries
 │   └── ImportExportControls.tsx   # file download + file picker
 ├── data/
-│   ├── types.ts          # Budget, Sheet, Column, Row, Category, CellValue
+│   ├── types.ts          # UserData, Sheet, Column, Row, Category, CellValue
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, palette, icon list
 │   ├── sheet.ts          # pure helpers (group, sort, balances, reorder)
 │   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
 │   ├── migrations.ts     # forward-only schema migration runner
-│   └── validate.ts       # boundary validator: unknown → Result<Budget>
+│   └── validate.ts       # boundary validator: unknown → Result<UserData>
 └── storage/
     ├── local.ts          # localStorage glue (load + save)
     └── file.ts           # JSON file codec: serialize + parse
@@ -46,7 +46,7 @@ src/
 │   ├── local.ts          # localStorage adapter (load / save / clear)
 │   └── file.ts           # JSON file export + import (Blob, FileReader)
 ├── data/
-│   ├── types.ts          # Budget, Sheet, Column, Row + future shapes
+│   ├── types.ts          # UserData, Sheet, Column, Row + future shapes
 │   ├── sheet.ts          # sheet-level pure helpers
 │   ├── migrations.ts     # schema migrations on load
 │   └── forecasting/      # savings, loans, leave planning (TBD)
@@ -60,11 +60,12 @@ The persistent state is a single JSON document stored under the
 carries its own `version` field). Top-level shape:
 
 ```ts
-type Budget = {
-  version: 3;
+type UserData = {
+  version: 4;
   sheets: Sheet[];
   activeSheetId: string;
   categories: Category[];
+  settings: Settings;
 };
 
 type Sheet = {
@@ -102,7 +103,7 @@ type Category = {
 
 A row's category is stored in the `category`-typed column's cell as
 the category id (string). The category record itself lives on the
-budget so renaming or recolouring updates every row at once.
+UserData so renaming or recolouring updates every row at once.
 
 Cells are keyed by column id (not column type) so the model supports
 adding multiple columns of the same type without ambiguity. The
@@ -126,7 +127,7 @@ functions keyed by source version. Loading any persisted budget — from
 2. `migrate()` walks the version forward one step at a time until it
    reaches `LATEST_VERSION`. A newer-than-supported version is a hard
    error (the data is from a future build of the app).
-3. `validateBudget()` enforces the latest schema. Soft anomalies are
+3. `validateUserData()` enforces the latest schema. Soft anomalies are
    repaired (cells referencing dropped columns are removed, a dangling
    `activeSheetId` falls back to the first sheet); hard violations
    (unknown column type, duplicate ids, wrong field types) are
@@ -187,20 +188,20 @@ icon is the dedicated path for changes meant to propagate.
 
 `src/storage/file.ts` provides the codec; `ImportExportControls`
 wires it to the DOM. Both `localStorage` reads and file imports run
-through the same `parseBudget(text)` pipeline.
+through the same `parseUserData(text)` pipeline.
 
-- **Export** — `serializeBudget(budget)` produces pretty-printed JSON
+- **Export** — `serializeUserData(data)` produces pretty-printed JSON
   with **sorted keys at every level** plus a trailing newline. Two
-  exports of equal budgets are byte-identical, which keeps diffs clean
+  exports of equal data are byte-identical, which keeps diffs clean
   if a user version-controls their file. The DOM glue wraps the string
   in a `Blob` and triggers a download as `budget-YYYY-MM-DD.json`.
-- **Import** — the user picks a file; `parseBudget(text)` returns
-  either `{ ok: true, budget, migrated }` or `{ ok: false, error }`.
-  On success the budget replaces the in-memory state (and is persisted
+- **Import** — the user picks a file; `parseUserData(text)` returns
+  either `{ ok: true, data, migrated }` or `{ ok: false, error }`.
+  On success the data replaces the in-memory state (and is persisted
   by the usual save effect). The `migrated` flag tells the UI to
   surface that the file was upgraded.
 
-The on-disk JSON shape is identical to the in-memory `Budget` shape —
+The on-disk JSON shape is identical to the in-memory `UserData` shape —
 no envelope or metadata wrapper. Round-trip identity is the
 invariant: `parse(serialize(b))` equals `b`.
 

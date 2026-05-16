@@ -1,16 +1,16 @@
-// Forward-only migration chain for persisted budgets.
+// Forward-only migration chain for persisted UserData blobs.
 //
 // Each entry in `migrations` migrates from version `N` to `N+1`. Once a
 // migration ships it must never be removed or rewritten — exports in the
 // wild still depend on it to upgrade cleanly. To add a new version: bump
-// `LATEST_VERSION`, update the `Budget.version` literal in `data/types.ts`,
+// `LATEST_VERSION`, update the `UserData.version` literal in `data/types.ts`,
 // and add the next step here.
 
 import { DEFAULT_SETTINGS } from "./constants";
 import { newId } from "./sheet";
 
-// Typed as a literal so consumers (like the Budget type) can pin to it.
-// When bumping, change BOTH this constant and the `Budget.version` literal
+// Typed as a literal so consumers (like the UserData type) can pin to it.
+// When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
 export const LATEST_VERSION = 4 as const;
 
@@ -75,14 +75,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
 };
 
 export type MigrationResult = {
-  budget: Versioned;
+  data: Versioned;
   migrated: boolean;
 };
 
 export function migrate(raw: Versioned): MigrationResult {
   if (raw.version > LATEST_VERSION) {
     throw new Error(
-      `Budget was created by a newer version of the app (v${raw.version}); ` +
+      `Data was created by a newer version of the app (v${raw.version}); ` +
         `this build supports up to v${LATEST_VERSION}.`,
     );
   }
@@ -98,5 +98,5 @@ export function migrate(raw: Versioned): MigrationResult {
     current = step(current);
     migrated = true;
   }
-  return { budget: current, migrated };
+  return { data: current, migrated };
 }
