@@ -7,6 +7,7 @@ import {
   createDefaultSheet,
   currentFiscalMonthKey,
   findColumnByType,
+  fiscalMonthSeedIso,
   getMonthKey,
   groupRowsByMonth,
   isRowHalfDone,
@@ -56,6 +57,27 @@ describe("getMonthKey", () => {
   it("collapses to calendar month when startOfMonth is 1", () => {
     expect(getMonthKey("2026-05-01", 1)).toBe("2026-05");
     expect(getMonthKey("2026-05-31", 1)).toBe("2026-05");
+  });
+});
+
+describe("fiscalMonthSeedIso", () => {
+  it("round-trips through getMonthKey for the same fiscal month", () => {
+    for (const startOfMonth of [1, 15, 25, 28]) {
+      for (const monthKey of ["2026-01", "2026-05", "2026-12"]) {
+        const iso = fiscalMonthSeedIso(monthKey, startOfMonth);
+        expect(getMonthKey(iso, startOfMonth)).toBe(monthKey);
+      }
+    }
+  });
+  it("uses the start-of-month day so the seed lands in this month's bucket", () => {
+    // Without this, `${monthKey}-01` would fall into fiscal "2026-04"
+    // because day 1 < 25 shifts the fiscal month back.
+    expect(fiscalMonthSeedIso("2026-05", 25)).toBe("2026-05-25");
+    expect(fiscalMonthSeedIso("2026-05", 1)).toBe("2026-05-01");
+  });
+  it("returns empty for non-monthKey input", () => {
+    expect(fiscalMonthSeedIso("undated", 25)).toBe("");
+    expect(fiscalMonthSeedIso("", 25)).toBe("");
   });
 });
 

@@ -86,6 +86,19 @@ export function groupRowsByMonth(
   return groups;
 }
 
+// ISO date that lands inside the fiscal month `monthKey` given the
+// configured `startOfMonth`. Used to seed a new row's date when the
+// user clicks the + button on a non-current month. With startOfMonth=25,
+// fiscal "2026-05" spans 2026-05-25 → 2026-06-24, so a seed of
+// `${monthKey}-01` would land in the previous bucket.
+export function fiscalMonthSeedIso(
+  monthKey: string,
+  startOfMonth: number = 1,
+): string {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return "";
+  return `${monthKey}-${String(startOfMonth).padStart(2, "0")}`;
+}
+
 // Fiscal-month key for "today" given a `startOfMonth`. Used to pick the
 // month that should scroll into view on load and to enforce that the
 // current month is always rendered even when it has no rows yet.
