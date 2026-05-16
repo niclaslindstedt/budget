@@ -20,7 +20,8 @@ ship to GitHub Pages.
 The first piece of UI is a spreadsheet-style sheet (rows × typed
 columns) grouped by month and year. Columns support drag-to-reorder,
 auto-size up to a configurable max width, and a derived running
-balance. Import/export and multiple sheets come next.
+balance. The header has Export / Import buttons that round-trip the
+whole budget through a JSON file. Multiple sheets come next.
 
 ## Why
 
@@ -70,8 +71,9 @@ Common `make` targets:
 
 ## Configuration
 
-No configuration files yet. When persisted data and import/export land,
-the data shape will be documented under [`docs/`](docs/).
+No configuration files yet. The persisted-data shape and the JSON
+import/export format are documented in
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Examples
 
