@@ -144,7 +144,12 @@ body {
     .sheet-table > thead > tr,
     .sheet-table > tbody > tr {
       display: grid;
-      grid-template-columns: 40px minmax(0, 1fr) 56px 72px 80px 40px;
+      /* Amount and balance use minmax(<min>, max-content) so they keep a
+         comfortable minimum but grow with the figure when needed; the 1fr
+         description column gives up width in turn. */
+      grid-template-columns:
+        40px minmax(0, 1fr) 56px minmax(72px, max-content)
+        minmax(80px, max-content) 40px;
       position: relative;
       overflow: hidden;
     }
@@ -152,7 +157,9 @@ body {
        more leading track so the rest of the layout doesn't reflow. */
     .sheet-table.is-selecting > thead > tr,
     .sheet-table.is-selecting > tbody > tr {
-      grid-template-columns: 32px 40px minmax(0, 1fr) 56px 72px 80px 40px;
+      grid-template-columns:
+        32px 40px minmax(0, 1fr) 56px minmax(72px, max-content)
+        minmax(80px, max-content) 40px;
     }
     /* Highlight the row in select mode and tint the selected ones. */
     .sheet-table > tbody > tr.is-selecting-row {

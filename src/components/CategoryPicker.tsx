@@ -100,7 +100,10 @@ export function CategoryPicker({
   }
 
   const isChip = variant === "chip";
-  const showChevron = selected !== null || !isChip;
+  // Cells are tight on width on mobile — the chevron is decorative there
+  // and the chip itself signals tappability, so it's only shown for the
+  // form-field variant used inside modals.
+  const showChevron = !isChip;
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
