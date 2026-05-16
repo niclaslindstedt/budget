@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HardDrive, ShieldCheck, X } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 
 import {
   DATE_FORMATS,
@@ -18,7 +18,7 @@ import type {
 } from "../data/types";
 import type { BackendId } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
-import { DropboxGlyph } from "./DropboxGlyph";
+import { BackendPicker } from "./BackendPicker";
 
 type Props = {
   open: boolean;
@@ -386,34 +386,13 @@ function MainView({
 
       <Section title="Storage">
         <Field label="Backend">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              aria-hidden
-              className={`inline-flex h-9 w-9 items-center justify-center rounded border ${
-                backend === "dropbox"
-                  ? "border-accent/40 text-accent"
-                  : "border-line text-muted"
-              }`}
-            >
-              {backend === "dropbox" ? (
-                <DropboxGlyph size={18} />
-              ) : (
-                <HardDrive size={18} aria-hidden focusable={false} />
-              )}
-            </span>
-            <select
-              value={backend}
-              onChange={(e) => {
-                const next = e.target.value as BackendId;
-                if (next === "local") onSelectLocal();
-                else onConnectDropbox();
-              }}
-              className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-            >
-              <option value="local">This device</option>
-              <option value="dropbox">Dropbox</option>
-            </select>
-          </div>
+          <BackendPicker
+            value={backend}
+            onSelect={(next) => {
+              if (next === "local") onSelectLocal();
+              else onConnectDropbox();
+            }}
+          />
           <p className="text-xs text-muted">
             {backend === "dropbox"
               ? dropboxConnected
