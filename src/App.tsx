@@ -36,6 +36,7 @@ import {
 } from "./storage/crypto";
 import { withEncryption } from "./storage/encrypting-adapter";
 import {
+  clearRawStorage,
   localAdapter,
   readRawStorage,
   writeRawStorage,
@@ -435,8 +436,14 @@ export function App() {
     [passwordRef],
   );
 
+  const handleWipe = useCallback(() => {
+    clearRawStorage();
+    passwordRef.current = null;
+    setAuth({ kind: "plain" });
+  }, [passwordRef]);
+
   if (auth.kind === "locked") {
-    return <UnlockScreen onUnlock={handleUnlock} />;
+    return <UnlockScreen onUnlock={handleUnlock} onWipe={handleWipe} />;
   }
 
   return (
