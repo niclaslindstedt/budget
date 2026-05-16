@@ -39,6 +39,11 @@
 }
 
 :root {
+  /* Height of the sticky page header — pt-3 + h-9 button + pb-4 + 1px
+     border. Month-name headers stick just below this. The md override
+     accounts for the wider pt-4 used at the same breakpoint. */
+  --app-header-h: 65px;
+
   /* One Dark — default. */
   --page-bg: #1d2027;
   --surface: #282c34;
@@ -83,6 +88,12 @@
     --positive: #5fa057;
     --negative: #d77a82;
     --line: #ccd0d6;
+  }
+}
+
+@media (min-width: 720px) {
+  :root {
+    --app-header-h: 69px;
   }
 }
 
