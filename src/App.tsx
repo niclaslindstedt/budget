@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useReducer } from "react";
 
+import { ImportExportControls } from "./components/ImportExportControls";
 import { SheetView } from "./components/SheetView";
 import { createEmptyRow, findColumnByType, moveColumn } from "./data/sheet";
 import type { Budget, CellValue, Row } from "./data/types";
 import { loadBudget, saveBudget } from "./storage/local";
 
-type Action =
+type SheetAction =
   | {
       type: "updateCell";
       sheetId: string;
@@ -18,9 +19,11 @@ type Action =
   | { type: "reorderColumns"; sheetId: string; fromId: string; toId: string }
   | { type: "setOpeningBalance"; sheetId: string; value: number };
 
+type Action = SheetAction | { type: "replace"; budget: Budget };
+
 function reduceSheet(
   sheet: Budget["sheets"][number],
-  action: Action,
+  action: SheetAction,
 ): Budget["sheets"][number] {
   switch (action.type) {
     case "updateCell":
@@ -60,6 +63,7 @@ function reduceSheet(
 }
 
 function reducer(state: Budget, action: Action): Budget {
+  if (action.type === "replace") return action.budget;
   return {
     ...state,
     sheets: state.sheets.map((sheet) =>
@@ -103,10 +107,17 @@ export function App() {
     (value: number) => dispatch({ type: "setOpeningBalance", sheetId, value }),
     [sheetId],
   );
+  const onImport = useCallback(
+    (next: Budget) => dispatch({ type: "replace", budget: next }),
+    [],
+  );
 
   return (
     <main className="mx-auto max-w-full px-3 pt-3 pb-10 md:px-5 md:pt-4">
-      <h1 className="mb-4 text-xl font-semibold">Budget</h1>
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Budget</h1>
+        <ImportExportControls budget={budget} onImport={onImport} />
+      </header>
       <SheetView
         sheet={activeSheet}
         showName={budget.sheets.length > 1}

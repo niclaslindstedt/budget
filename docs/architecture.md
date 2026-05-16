@@ -10,16 +10,20 @@ src/
 ├── App.tsx               # owns the budget reducer + persistence wiring
 ├── styles.css            # global styles + sheet layout
 ├── components/
-│   ├── SheetView.tsx     # one sheet — month grouping + opening balance
-│   ├── MonthTable.tsx    # one month's table
-│   ├── ColumnHeader.tsx  # draggable column header
-│   └── Cell.tsx          # per-type cell editor
+│   ├── SheetView.tsx              # one sheet — month grouping + opening balance
+│   ├── MonthTable.tsx             # one month's table
+│   ├── ColumnHeader.tsx           # draggable column header
+│   ├── Cell.tsx                   # per-type cell editor
+│   └── ImportExportControls.tsx   # file download + file picker
 ├── data/
 │   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
-│   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
+│   ├── sheet.ts          # pure helpers (group, sort, balances, reorder)
+│   ├── migrations.ts     # forward-only schema migration runner
+│   └── validate.ts       # boundary validator: unknown → Result<Budget>
 └── storage/
-    └── local.ts          # localStorage adapter (load + save)
+    ├── local.ts          # localStorage glue (load + save)
+    └── file.ts           # JSON file codec: serialize + parse
 ```
 
 ## Planned shape
@@ -85,19 +89,43 @@ row between buckets automatically on the next render.
 
 ### Migrations
 
-A version bump (e.g. `version: 1` → `version: 2`) triggers a migration
-in `src/storage/local.ts` before the data reaches components. Today
-there is only `version: 1` and the loader rejects shapes it does not
-recognise, falling back to a fresh budget.
+`src/data/migrations.ts` holds a forward-only chain of migration
+functions keyed by source version. Loading any persisted budget — from
+`localStorage` or an imported file — runs:
 
-## Import / export (planned)
+1. `JSON.parse` the raw text.
+2. `migrate()` walks the version forward one step at a time until it
+   reaches `LATEST_VERSION`. A newer-than-supported version is a hard
+   error (the data is from a future build of the app).
+3. `validateBudget()` enforces the latest schema. Soft anomalies are
+   repaired (cells referencing dropped columns are removed, a dangling
+   `activeSheetId` falls back to the first sheet); hard violations
+   (unknown column type, duplicate ids, wrong field types) are
+   surfaced as an error string.
 
-- **Export** — `src/storage/file.ts` will serialise the in-memory
-  state to a `Blob` and trigger a download as
-  `budget-YYYY-MM-DD.json`.
-- **Import** — the user picks a file; `FileReader` parses it, schema
-  guards reject malformed input, and the new state replaces (or merges
-  with — TBD) the current `localStorage` document.
+Today only `version: 1` exists, so the migration chain is empty. The
+scaffolding is in place so the next bump is a single entry.
+
+## Import / export
+
+`src/storage/file.ts` provides the codec; `ImportExportControls`
+wires it to the DOM. Both `localStorage` reads and file imports run
+through the same `parseBudget(text)` pipeline.
+
+- **Export** — `serializeBudget(budget)` produces pretty-printed JSON
+  with **sorted keys at every level** plus a trailing newline. Two
+  exports of equal budgets are byte-identical, which keeps diffs clean
+  if a user version-controls their file. The DOM glue wraps the string
+  in a `Blob` and triggers a download as `budget-YYYY-MM-DD.json`.
+- **Import** — the user picks a file; `parseBudget(text)` returns
+  either `{ ok: true, budget, migrated }` or `{ ok: false, error }`.
+  On success the budget replaces the in-memory state (and is persisted
+  by the usual save effect). The `migrated` flag tells the UI to
+  surface that the file was upgraded.
+
+The on-disk JSON shape is identical to the in-memory `Budget` shape —
+no envelope or metadata wrapper. Round-trip identity is the
+invariant: `parse(serialize(b))` equals `b`.
 
 No network. No third party. The file is the user's data, in plain
 JSON, in their hands.
