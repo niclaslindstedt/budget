@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Download, Upload } from "lucide-react";
 
 import type { Budget } from "../data/types";
 import {
@@ -18,8 +19,8 @@ type Status =
   | { kind: "ok"; message: string }
   | { kind: "error"; message: string };
 
-const buttonClass =
-  "inline-flex h-8 cursor-pointer items-center justify-center rounded border border-line bg-transparent px-3 text-sm text-fg hover:text-fg-bright hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg";
+const iconButton =
+  "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line bg-transparent hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg";
 
 export function ImportExportControls({ budget, onImport }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -64,16 +65,36 @@ export function ImportExportControls({ budget, onImport }: Props) {
   }
 
   return (
-    <div className="inline-flex flex-wrap items-center gap-2">
-      <button type="button" className={buttonClass} onClick={handleExport}>
-        Export
+    <div className="inline-flex items-center gap-2">
+      {status.kind !== "idle" && (
+        <span
+          role="status"
+          className={
+            status.kind === "error"
+              ? "text-xs text-danger"
+              : "text-xs text-muted"
+          }
+        >
+          {status.message}
+        </span>
+      )}
+      <button
+        type="button"
+        className={`${iconButton} text-accent hover:border-accent hover:text-accent`}
+        onClick={handleExport}
+        aria-label="Export budget as JSON"
+        title="Export"
+      >
+        <Download size={18} aria-hidden focusable={false} />
       </button>
       <button
         type="button"
-        className={buttonClass}
+        className={`${iconButton} text-link hover:border-link hover:text-link`}
         onClick={() => inputRef.current?.click()}
+        aria-label="Import budget from JSON"
+        title="Import"
       >
-        Import
+        <Upload size={18} aria-hidden focusable={false} />
       </button>
       <input
         ref={inputRef}
@@ -83,22 +104,9 @@ export function ImportExportControls({ budget, onImport }: Props) {
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) void handleFile(file);
-          // reset so picking the same filename twice still fires onChange
           e.target.value = "";
         }}
       />
-      {status.kind !== "idle" && (
-        <span
-          role="status"
-          className={
-            status.kind === "error"
-              ? "text-sm text-danger"
-              : "text-sm text-muted"
-          }
-        >
-          {status.message}
-        </span>
-      )}
     </div>
   );
 }

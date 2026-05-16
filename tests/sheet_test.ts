@@ -8,6 +8,7 @@ import {
   groupRowsByMonth,
   moveColumn,
   rowsInSeriesFrom,
+  shiftIsoToMonth,
   sortMonthKeys,
   sortRowsByDate,
 } from "../src/data/sheet";
@@ -124,6 +125,21 @@ describe("computeBalances", () => {
     const sheet = createDefaultSheet();
     sheet.columns = sheet.columns.filter((c) => c.type !== "amount");
     expect(computeBalances(sheet).size).toBe(0);
+  });
+});
+
+describe("shiftIsoToMonth", () => {
+  it("preserves day-of-month within the target month", () => {
+    expect(shiftIsoToMonth("2026-05-16", "2026-07")).toBe("2026-07-16");
+  });
+  it("clamps to the last day when the target month is shorter", () => {
+    expect(shiftIsoToMonth("2026-01-31", "2026-02")).toBe("2026-02-28");
+    expect(shiftIsoToMonth("2024-01-31", "2024-02")).toBe("2024-02-29");
+    expect(shiftIsoToMonth("2026-05-31", "2026-04")).toBe("2026-04-30");
+  });
+  it("returns input unchanged for malformed values", () => {
+    expect(shiftIsoToMonth("not-a-date", "2026-07")).toBe("not-a-date");
+    expect(shiftIsoToMonth("2026-05-16", "2026/07")).toBe("2026-05-16");
   });
 });
 

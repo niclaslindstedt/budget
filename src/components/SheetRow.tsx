@@ -10,9 +10,12 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   categories: Category[];
+  selectMode: boolean;
+  selected: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  onToggleSelect: (rowId: string) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
@@ -23,9 +26,12 @@ export function SheetRow({
   columns,
   balances,
   categories,
+  selectMode,
+  selected,
   onUpdateCell,
   onDeleteRequest,
   onEditRequest,
+  onToggleSelect,
   onCreateCategory,
 }: Props) {
   const [swiped, setSwiped] = useState(false);
@@ -39,12 +45,14 @@ export function SheetRow({
   const isSeries = !!row.seriesId;
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (selectMode) return;
     const t = e.touches[0];
     startX.current = t.clientX;
     startY.current = t.clientY;
     moved.current = false;
   };
   const onTouchMove = (e: React.TouchEvent) => {
+    if (selectMode) return;
     if (startX.current === null || startY.current === null) return;
     const t = e.touches[0];
     const dx = t.clientX - startX.current;
@@ -54,6 +62,7 @@ export function SheetRow({
     }
   };
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (selectMode) return;
     if (startX.current === null) return;
     const endX = e.changedTouches[0].clientX;
     const dx = endX - startX.current;
@@ -65,12 +74,22 @@ export function SheetRow({
   };
 
   const rowClass = [
-    swiped ? "is-swiped" : "",
+    swiped && !selectMode ? "is-swiped" : "",
     isCompleted ? "is-completed" : "",
     isSeries ? "is-series" : "",
+    selectMode ? "is-selecting-row" : "",
+    selected ? "is-selected" : "",
   ]
     .filter(Boolean)
     .join(" ");
+
+  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if (!selectMode) return;
+    // Don't double-toggle when the click originated from the checkbox itself.
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-select-cell]")) return;
+    onToggleSelect(row.id);
+  };
 
   return (
     <tr
@@ -78,7 +97,38 @@ export function SheetRow({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onClick={handleRowClick}
+      aria-selected={selectMode ? selected : undefined}
     >
+      {selectMode && (
+        <td
+          data-select-cell
+          className="select-cell border-r border-b border-line bg-surface-3 p-0 text-center"
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(row.id);
+            }}
+            className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 ${
+              selected ? "text-accent" : "text-muted"
+            }`}
+            aria-label={selected ? "Deselect row" : "Select row"}
+            aria-pressed={selected}
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded border ${
+                selected
+                  ? "border-accent bg-accent text-page-bg"
+                  : "border-muted"
+              }`}
+            >
+              {selected ? "✓" : ""}
+            </span>
+          </button>
+        </td>
+      )}
       {columns.map((col) => (
         <Cell
           key={col.id}

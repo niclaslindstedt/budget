@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { ListChecks } from "lucide-react";
 
+import { BulkActionBar } from "./components/BulkActionBar";
+import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
@@ -11,13 +14,16 @@ import {
   type EditScope,
 } from "./components/EditEntryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
+import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SheetView } from "./components/SheetView";
 import {
   createEmptyRow,
   findColumnByType,
+  getMonthKey,
   moveColumn,
   newId,
   rowsInSeriesFrom,
+  shiftIsoToMonth,
 } from "./data/sheet";
 import type { Budget, Category, CellValue, Row, Sheet } from "./data/types";
 import { loadBudget, saveBudget } from "./storage/local";
@@ -53,6 +59,30 @@ type SheetAction =
       type: "deleteRows";
       sheetId: string;
       rowIds: string[];
+    }
+  | {
+      type: "bulkUpdate";
+      sheetId: string;
+      rowIds: string[];
+      patch: BulkPatch;
+    }
+  | {
+      type: "bulkShiftToMonth";
+      sheetId: string;
+      rowIds: string[];
+      targetMonth: string;
+    }
+  | {
+      type: "bulkCopyToMonths";
+      sheetId: string;
+      rowIds: string[];
+      targetMonths: string[];
+    }
+  | {
+      type: "bulkMakeRecurring";
+      sheetId: string;
+      rowIds: string[];
+      futureDates: string[];
     }
   | { type: "reorderColumns"; sheetId: string; fromId: string; toId: string };
 
@@ -193,6 +223,99 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
       return { ...sheet, rows: sheet.rows.filter((r) => !drop.has(r.id)) };
     }
 
+    case "bulkUpdate": {
+      const ids = new Set(action.rowIds);
+      const dateColId = findColumnByType(sheet.columns, "date")?.id;
+      const amountColId = findColumnByType(sheet.columns, "amount")?.id;
+      const categoryColId = findColumnByType(sheet.columns, "category")?.id;
+      return {
+        ...sheet,
+        rows: sheet.rows.map((r) => {
+          if (!ids.has(r.id)) return r;
+          const cells = { ...r.cells };
+          if (action.patch.date !== undefined && dateColId) {
+            cells[dateColId] = action.patch.date;
+          }
+          if (action.patch.amount !== undefined && amountColId) {
+            cells[amountColId] = action.patch.amount;
+          }
+          if (action.patch.categoryId !== undefined && categoryColId) {
+            cells[categoryColId] = action.patch.categoryId;
+          }
+          return { ...r, cells };
+        }),
+      };
+    }
+
+    case "bulkShiftToMonth": {
+      const ids = new Set(action.rowIds);
+      const dateColId = findColumnByType(sheet.columns, "date")?.id;
+      if (!dateColId) return sheet;
+      return {
+        ...sheet,
+        rows: sheet.rows.map((r) => {
+          if (!ids.has(r.id)) return r;
+          const cur = r.cells[dateColId];
+          if (typeof cur !== "string") return r;
+          return {
+            ...r,
+            cells: {
+              ...r.cells,
+              [dateColId]: shiftIsoToMonth(cur, action.targetMonth),
+            },
+          };
+        }),
+      };
+    }
+
+    case "bulkCopyToMonths": {
+      const ids = new Set(action.rowIds);
+      const dateColId = findColumnByType(sheet.columns, "date")?.id;
+      if (!dateColId) return sheet;
+      const newRows: Row[] = [];
+      for (const r of sheet.rows) {
+        if (!ids.has(r.id)) continue;
+        const cur = r.cells[dateColId];
+        if (typeof cur !== "string") continue;
+        for (const month of action.targetMonths) {
+          // Copies are independent — drop any seriesId so they don't
+          // accidentally inherit the source row's recurring group.
+          newRows.push({
+            id: newId(),
+            cells: { ...r.cells, [dateColId]: shiftIsoToMonth(cur, month) },
+          });
+        }
+      }
+      return { ...sheet, rows: [...sheet.rows, ...newRows] };
+    }
+
+    case "bulkMakeRecurring": {
+      const ids = new Set(action.rowIds);
+      const dateColId = findColumnByType(sheet.columns, "date")?.id;
+      if (!dateColId) return sheet;
+      // Stamp each selected row with a fresh seriesId (preserving an
+      // existing one if it already had one), then replicate it at every
+      // recurrence date except its own anchor date.
+      const updated = sheet.rows.map((r) =>
+        ids.has(r.id) ? { ...r, seriesId: r.seriesId ?? newId() } : r,
+      );
+      const additions: Row[] = [];
+      for (const r of updated) {
+        if (!ids.has(r.id)) continue;
+        const anchorDate = r.cells[dateColId];
+        if (typeof anchorDate !== "string") continue;
+        for (const date of action.futureDates) {
+          if (date === anchorDate) continue;
+          additions.push({
+            id: newId(),
+            cells: { ...r.cells, [dateColId]: date },
+            seriesId: r.seriesId,
+          });
+        }
+      }
+      return { ...sheet, rows: [...updated, ...additions] };
+    }
+
     case "reorderColumns":
       return {
         ...sheet,
@@ -216,6 +339,8 @@ function reducer(state: Budget, action: Action): Budget {
 
 type DeletePrompt = { kind: "delete"; row: Row };
 type EditPrompt = { kind: "edit"; row: Row };
+type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
+type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 
 export function App() {
   const [budget, dispatch] = useReducer(reducer, undefined, loadBudget);
@@ -223,6 +348,16 @@ export function App() {
   const [complexSeedDate, setComplexSeedDate] = useState("");
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
   const [editPrompt, setEditPrompt] = useState<EditPrompt | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkDeletePrompt, setBulkDeletePrompt] =
+    useState<BulkDeletePrompt | null>(null);
+  const [moveCopyPrompt, setMoveCopyPrompt] = useState<MoveCopyPrompt | null>(
+    null,
+  );
 
   useEffect(() => {
     saveBudget(budget);
@@ -233,6 +368,21 @@ export function App() {
     budget.sheets[0];
 
   const sheetId = activeSheet.id;
+
+  // Drop ids that no longer exist (e.g. after an import) so the toolbar
+  // never claims a stale count.
+  useEffect(() => {
+    const existing = new Set(activeSheet.rows.map((r) => r.id));
+    setSelectedIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (existing.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [activeSheet.rows]);
 
   const onUpdateCell = useCallback(
     (rowId: string, columnId: string, value: CellValue) =>
@@ -297,10 +447,57 @@ export function App() {
     [sheetId],
   );
 
+  const onToggleSelect = useCallback((rowId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  }, []);
+  const onToggleSelectMonth = useCallback(
+    (rowIds: string[], target: boolean) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of rowIds) {
+          if (target) next.add(id);
+          else next.delete(id);
+        }
+        return next;
+      });
+    },
+    [],
+  );
+  const onCancelSelect = useCallback(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+  const onToggleSelectMode = useCallback(() => {
+    setSelectMode((on) => {
+      if (on) setSelectedIds(new Set());
+      return !on;
+    });
+  }, []);
+
   const dateCol = useMemo(
     () => findColumnByType(activeSheet.columns, "date"),
     [activeSheet.columns],
   );
+
+  const selectedRows = useMemo(
+    () => activeSheet.rows.filter((r) => selectedIds.has(r.id)),
+    [activeSheet.rows, selectedIds],
+  );
+
+  const selectedSourceMonths = useMemo<ReadonlySet<string>>(() => {
+    if (!dateCol) return new Set();
+    const set = new Set<string>();
+    for (const r of selectedRows) {
+      const key = getMonthKey(r.cells[dateCol.id]);
+      if (key !== "undated") set.add(key);
+    }
+    return set;
+  }, [selectedRows, dateCol]);
 
   // Last ISO date in the candidate series — defaults the "until" picker.
   const editLastSeriesDate = useMemo<string | null>(() => {
@@ -351,20 +548,105 @@ export function App() {
     ];
   }, [deletePrompt, activeSheet.rows, dateCol, sheetId]);
 
+  const bulkDeleteActions: ConfirmAction[] = useMemo(() => {
+    if (!bulkDeletePrompt) return [];
+    const ids = bulkDeletePrompt.rowIds;
+    return [
+      {
+        label: `Delete ${ids.length} ${ids.length === 1 ? "row" : "rows"}`,
+        tone: "danger",
+        onSelect: () => {
+          dispatch({ type: "deleteRows", sheetId, rowIds: ids });
+          setBulkDeletePrompt(null);
+          onCancelSelect();
+        },
+      },
+    ];
+  }, [bulkDeletePrompt, sheetId, onCancelSelect]);
+
+  const onBulkEdit = useCallback(() => setBulkEditOpen(true), []);
+  const onBulkDelete = useCallback(() => {
+    setBulkDeletePrompt({ kind: "bulk-delete", rowIds: [...selectedIds] });
+  }, [selectedIds]);
+  const onBulkMove = useCallback(() => {
+    setMoveCopyPrompt({ kind: "move", rows: selectedRows });
+  }, [selectedRows]);
+  const onBulkCopy = useCallback(() => {
+    setMoveCopyPrompt({ kind: "copy", rows: selectedRows });
+  }, [selectedRows]);
+
+  const onApplyBulkPatch = useCallback(
+    (rowIds: string[], patch: BulkPatch) => {
+      dispatch({ type: "bulkUpdate", sheetId, rowIds, patch });
+    },
+    [sheetId],
+  );
+  const onApplyBulkRecurring = useCallback(
+    (rowIds: string[], futureDates: string[]) => {
+      dispatch({
+        type: "bulkMakeRecurring",
+        sheetId,
+        rowIds,
+        futureDates,
+      });
+    },
+    [sheetId],
+  );
+  const handleMoveCopySubmit = useCallback(
+    (targetMonths: string[]) => {
+      if (!moveCopyPrompt) return;
+      const rowIds = moveCopyPrompt.rows.map((r) => r.id);
+      if (moveCopyPrompt.kind === "move") {
+        dispatch({
+          type: "bulkShiftToMonth",
+          sheetId,
+          rowIds,
+          targetMonth: targetMonths[0],
+        });
+      } else {
+        dispatch({
+          type: "bulkCopyToMonths",
+          sheetId,
+          rowIds,
+          targetMonths,
+        });
+      }
+      setMoveCopyPrompt(null);
+      onCancelSelect();
+    },
+    [moveCopyPrompt, sheetId, onCancelSelect],
+  );
+
   return (
     <div className="mx-auto flex min-h-screen max-w-full flex-col px-3 pt-3 pb-10 md:px-5 md:pt-4">
       <header className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line pb-4">
         <span className="text-base font-bold tracking-wide text-fg-bright">
           budget
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto inline-flex items-center gap-2">
           <ImportExportControls budget={budget} onImport={onImport} />
+          <button
+            type="button"
+            onClick={onToggleSelectMode}
+            aria-pressed={selectMode}
+            aria-label={selectMode ? "Exit select mode" : "Select rows"}
+            title={selectMode ? "Cancel" : "Select"}
+            className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+              selectMode
+                ? "border-pipe bg-pipe/15 text-pipe"
+                : "border-line text-pipe hover:border-pipe hover:bg-surface-2"
+            }`}
+          >
+            <ListChecks size={18} aria-hidden focusable={false} />
+          </button>
         </div>
       </header>
       <main className="flex-1">
         <SheetView
           sheet={activeSheet}
           categories={budget.categories}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
           showName={budget.sheets.length > 1}
           onUpdateCell={onUpdateCell}
           onAddRow={onAddRow}
@@ -372,9 +654,21 @@ export function App() {
           onDeleteRequest={onDeleteRequest}
           onEditRequest={onEditRequest}
           onReorderColumns={onReorderColumns}
+          onToggleSelect={onToggleSelect}
+          onToggleSelectMonth={onToggleSelectMonth}
           onCreateCategory={onCreateCategory}
         />
       </main>
+      {selectMode && (
+        <BulkActionBar
+          count={selectedIds.size}
+          onEdit={onBulkEdit}
+          onDelete={onBulkDelete}
+          onMove={onBulkMove}
+          onCopy={onBulkCopy}
+          onCancel={onCancelSelect}
+        />
+      )}
       <ComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}
@@ -394,6 +688,24 @@ export function App() {
         onEditSeries={onEditSeries}
         onCreateCategory={onCreateCategory}
       />
+      <BulkEditModal
+        open={bulkEditOpen && selectedRows.length > 0}
+        rows={selectedRows}
+        columns={activeSheet.columns}
+        categories={budget.categories}
+        onClose={() => setBulkEditOpen(false)}
+        onApplyPatch={onApplyBulkPatch}
+        onApplyRecurring={onApplyBulkRecurring}
+        onCreateCategory={onCreateCategory}
+      />
+      <MoveCopyModal
+        open={moveCopyPrompt !== null}
+        mode={moveCopyPrompt?.kind ?? "move"}
+        rows={moveCopyPrompt?.rows ?? []}
+        sourceMonths={selectedSourceMonths}
+        onClose={() => setMoveCopyPrompt(null)}
+        onSubmit={handleMoveCopySubmit}
+      />
       <ConfirmDialog
         open={deletePrompt !== null}
         title={
@@ -406,6 +718,15 @@ export function App() {
         }
         actions={deleteActions}
         onCancel={() => setDeletePrompt(null)}
+      />
+      <ConfirmDialog
+        open={bulkDeletePrompt !== null}
+        title="Delete selected"
+        description={`${bulkDeletePrompt?.rowIds.length ?? 0} row${
+          (bulkDeletePrompt?.rowIds.length ?? 0) === 1 ? "" : "s"
+        } will be permanently removed.`}
+        actions={bulkDeleteActions}
+        onCancel={() => setBulkDeletePrompt(null)}
       />
     </div>
   );
