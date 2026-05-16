@@ -1,277 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-md: 720px;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-line: var(--line);
+}
+
 :root {
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --surface-3: #eaeef2;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --accent: #0969da;
+  --danger: #cf222e;
+  --success: #1a7f37;
+  --line: #d0d7de;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #0d1117;
+    --surface-2: #161b22;
+    --surface-3: #1c2128;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --danger: #ff7b72;
+    --success: #3fb950;
+    --line: #30363d;
+  }
+}
+
+html {
   color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--fg);
   font-family:
     system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
     sans-serif;
-  --border: #d0d7de;
-  --border-strong: #afb8c1;
-  --bg: #ffffff;
-  --bg-alt: #f6f8fa;
-  --bg-header: #eaeef2;
-  --text: #1f2328;
-  --muted: #57606a;
-  --accent: #0969da;
-  --negative: #cf222e;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --border: #30363d;
-    --border-strong: #444c56;
-    --bg: #0d1117;
-    --bg-alt: #161b22;
-    --bg-header: #1c2128;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --accent: #58a6ff;
-    --negative: #ff7b72;
+@layer components {
+  /* Shared focus state for editable cell fields */
+  .field-input:focus {
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 2px var(--accent);
+    outline: none;
   }
-}
 
-* {
-  box-sizing: border-box;
-}
+  /* Mobile: convert table to block + per-row grid for full-width layout
+     and to make swipe-to-delete possible inside table rows */
+  @media (max-width: 720px) {
+    .sheet-table,
+    .sheet-table > thead,
+    .sheet-table > tbody,
+    .sheet-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .sheet-table > thead > tr,
+    .sheet-table > tbody > tr {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 72px 84px 44px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sheet-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .sheet-table th,
+    .sheet-table td {
+      display: flex;
+      align-items: stretch;
+      max-width: none;
+    }
+    .sheet-table th > *,
+    .sheet-table td > *:not(.date-picker-hidden) {
+      width: 100%;
+    }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-}
+    /* Row swipe: shift content left, slide action cell in from the right */
+    .sheet-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
+      transform: translateX(-64px);
+      background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+    }
+    .sheet-table > thead > tr > .action-cell,
+    .sheet-table > tbody > tr > .action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 64px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--danger);
+      border: 0;
+      z-index: 2;
+      align-items: center;
+      justify-content: center;
+    }
+    .sheet-table > tbody > tr.is-swiped > .action-cell {
+      transform: translateX(0);
+    }
 
-.app {
-  padding: 16px 20px 40px;
-  max-width: 100%;
-}
+    /* Done state tint applies on every cell so the entire row reads green */
+    .sheet-table
+      > tbody
+      > tr.is-completed:not(.is-swiped)
+      > td:not(.action-cell) {
+      background: color-mix(in srgb, var(--success) 10%, var(--surface));
+    }
+  }
 
-.app-title {
-  margin: 0 0 16px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.sheet-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.opening-balance {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.opening-balance input {
-  width: 10ch;
-  padding: 2px 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-}
-
-.sheet-months {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.month-heading {
-  margin: 0 0 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.month-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-}
-
-.sheet-table {
-  border-collapse: collapse;
-  table-layout: auto;
-  font-size: 13px;
-  width: max-content;
-  min-width: 100%;
-}
-
-.sheet-table th,
-.sheet-table td {
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  padding: 0;
-  vertical-align: top;
-  max-width: var(--max-column-chars, 60ch);
-}
-
-.sheet-table th:last-child,
-.sheet-table td:last-child {
-  border-right: none;
-}
-
-.sheet-table tbody tr:last-child td {
-  border-bottom: 1px solid var(--border);
-}
-
-.col-header {
-  background: var(--bg-header);
-  font-weight: 600;
-  text-align: left;
-  cursor: grab;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.col-header:active {
-  cursor: grabbing;
-}
-
-.col-header-label {
-  display: block;
-  padding: 6px 10px;
-}
-
-.col-header.is-drop-target {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.col-actions {
-  width: 32px;
-  background: var(--bg-header);
-}
-
-.cell {
-  background: var(--bg);
-}
-
-.cell input,
-.cell textarea {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  padding: 6px 10px;
-  outline: none;
-}
-
-.cell input:focus,
-.cell textarea:focus {
-  background: var(--bg-alt);
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-
-.cell-date input {
-  width: 100%;
-}
-
-.cell-description {
-  /* allow column to grow to content but cap by the shared max */
-  max-width: var(--max-column-chars, 60ch);
-}
-
-.cell-description textarea {
-  resize: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  /* progressive enhancement: auto-grow vertically with content */
-  field-sizing: content;
-  min-height: 1.6em;
-  line-height: 1.4;
-}
-
-.cell-amount input,
-.cell-balance {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.cell-balance {
-  padding: 6px 10px;
-  background: var(--bg-alt);
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.cell-balance.is-negative {
-  color: var(--negative);
-}
-
-.cell-completed {
-  text-align: center;
-}
-
-.cell-completed input {
-  width: auto;
-  padding: 6px;
-}
-
-.cell-actions {
-  text-align: center;
-  background: var(--bg-alt);
-  padding: 0;
-}
-
-.row-delete {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
-  padding: 4px 8px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.row-delete:hover {
-  color: var(--negative);
-  background: var(--bg);
-}
-
-.month-footer {
-  padding: 0;
-  background: var(--bg-alt);
-  border-right: none;
-}
-
-.row-add {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  text-align: left;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.row-add:hover {
-  background: var(--bg);
-}
-
-.row-empty td {
-  padding: 10px;
-  color: var(--muted);
-  font-style: italic;
-  text-align: center;
+  /* Desktop completed row tint */
+  @media (min-width: 720px) {
+    .sheet-table > tbody > tr.is-completed > td {
+      background: color-mix(in srgb, var(--success) 8%, var(--surface));
+    }
+  }
 }

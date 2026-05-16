@@ -12,6 +12,7 @@ import { MonthTable } from "./MonthTable";
 
 type Props = {
   sheet: Sheet;
+  showName?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onDeleteRow: (rowId: string) => void;
@@ -26,6 +27,7 @@ function currentMonthKey(): string {
 
 export function SheetView({
   sheet,
+  showName = true,
   onUpdateCell,
   onAddRow,
   onDeleteRow,
@@ -51,14 +53,17 @@ export function SheetView({
   }, [monthGroups]);
 
   return (
-    <section className="sheet">
-      <header className="sheet-header">
-        <h2>{sheet.name}</h2>
-        <label className="opening-balance">
+    <section>
+      <header className="mb-3 flex flex-wrap items-baseline gap-4">
+        {showName && (
+          <h2 className="m-0 text-base font-semibold">{sheet.name}</h2>
+        )}
+        <label className="inline-flex items-center gap-2 text-sm text-muted">
           <span>Opening balance</span>
           <input
             type="number"
             step="0.01"
+            className="w-[10ch] rounded border border-line bg-surface px-1.5 py-0.5 text-fg"
             value={sheet.openingBalance}
             onChange={(e) => {
               const n = Number(e.target.value);
@@ -67,7 +72,7 @@ export function SheetView({
           />
         </label>
       </header>
-      <div className="sheet-months">
+      <div className="flex flex-col gap-6">
         {visibleMonths.map((monthKey) => {
           const monthRows = dateCol
             ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)

@@ -1,6 +1,8 @@
+import { Plus } from "lucide-react";
+
 import type { CellValue, Column, Row } from "../data/types";
-import { Cell } from "./Cell";
 import { ColumnHeader } from "./ColumnHeader";
+import { SheetRow } from "./SheetRow";
 
 type Props = {
   monthKey: string;
@@ -36,10 +38,12 @@ export function MonthTable({
   onReorderColumns,
 }: Props) {
   return (
-    <section className="month">
-      <h3 className="month-heading">{formatMonth(monthKey)}</h3>
-      <div className="month-scroll">
-        <table className="sheet-table">
+    <section>
+      <h3 className="mb-1.5 text-xs font-semibold tracking-wider text-muted uppercase">
+        {formatMonth(monthKey)}
+      </h3>
+      <div className="overflow-hidden rounded-md border border-line bg-surface md:overflow-x-auto">
+        <table className="sheet-table w-full border-collapse text-sm md:text-[13px]">
           <thead>
             <tr>
               {columns.map((col) => (
@@ -49,46 +53,37 @@ export function MonthTable({
                   onReorder={onReorderColumns}
                 />
               ))}
-              <th className="col-actions" aria-label="row actions" />
+              <th
+                className="action-cell w-8 bg-surface-3"
+                aria-label="row actions"
+              />
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr className="row-empty">
-                <td colSpan={columns.length + 1}>No rows yet.</td>
-              </tr>
-            )}
             {rows.map((row) => (
-              <tr key={row.id}>
-                {columns.map((col) => (
-                  <Cell
-                    key={col.id}
-                    column={col}
-                    value={row.cells[col.id] ?? null}
-                    computedBalance={
-                      col.type === "balance" ? balances.get(row.id) : undefined
-                    }
-                    onChange={(value) => onUpdateCell(row.id, col.id, value)}
-                  />
-                ))}
-                <td className="cell cell-actions">
-                  <button
-                    type="button"
-                    className="row-delete"
-                    aria-label="Delete row"
-                    onClick={() => onDeleteRow(row.id)}
-                  >
-                    ×
-                  </button>
-                </td>
-              </tr>
+              <SheetRow
+                key={row.id}
+                row={row}
+                columns={columns}
+                balances={balances}
+                onUpdateCell={onUpdateCell}
+                onDeleteRow={onDeleteRow}
+              />
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={columns.length + 1} className="month-footer">
-                <button type="button" className="row-add" onClick={onAddRow}>
-                  + Add row
+              <td
+                colSpan={columns.length + 1}
+                className="border-r-0 bg-surface-2 p-0 text-center"
+              >
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-full p-2.5 text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  onClick={onAddRow}
+                  aria-label="Add row"
+                >
+                  <Plus size={22} aria-hidden focusable={false} />
                 </button>
               </td>
             </tr>
