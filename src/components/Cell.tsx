@@ -27,7 +27,7 @@ function dayFromIso(value: CellValue): string {
 
 const CELL_BASE = "border-r border-b border-line bg-surface last:border-r-0";
 const INPUT_BASE =
-  "field-input w-full border-0 bg-transparent px-2.5 py-2 text-inherit outline-none";
+  "field-input w-full border-0 bg-transparent px-2.5 py-2 font-mono text-inherit outline-none";
 
 export function Cell({ column, value, computedBalance, onChange }: Props) {
   switch (column.type) {
@@ -37,7 +37,7 @@ export function Cell({ column, value, computedBalance, onChange }: Props) {
 
     case "description":
       return (
-        <td className={`${CELL_BASE} max-w-[60ch]`}>
+        <td className={`${CELL_BASE} max-w-[60ch] text-fg`}>
           <textarea
             className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em]`}
             value={typeof value === "string" ? value : ""}
@@ -56,8 +56,8 @@ export function Cell({ column, value, computedBalance, onChange }: Props) {
       const n = computedBalance ?? 0;
       return (
         <td
-          className={`${CELL_BASE} bg-surface-2 px-2.5 py-2 text-right tabular-nums whitespace-nowrap ${
-            n < 0 ? "text-danger" : "text-muted"
+          className={`${CELL_BASE} bg-surface-3 px-2.5 py-2 text-right tabular-nums whitespace-nowrap ${
+            n < 0 ? "text-danger" : "text-meta"
           }`}
           aria-readonly="true"
         >
@@ -73,7 +73,7 @@ export function Cell({ column, value, computedBalance, onChange }: Props) {
           <button
             type="button"
             className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-              checked ? "text-success" : "text-muted"
+              checked ? "text-accent" : "text-muted"
             }`}
             aria-pressed={checked}
             aria-label={checked ? "Mark as not done" : "Mark as done"}
@@ -119,6 +119,10 @@ function AmountCell({
     commit(text.startsWith("-") ? text.slice(1) : "-" + text);
   };
 
+  const parsed = parseAmount(text);
+  const isNegative = parsed !== null && parsed < 0;
+  const isPositive = parsed !== null && parsed > 0;
+
   return (
     <td className={CELL_BASE}>
       <div className="relative flex items-stretch">
@@ -127,7 +131,7 @@ function AmountCell({
           onClick={toggleSign}
           aria-label="Toggle sign"
           tabIndex={-1}
-          className="absolute inset-y-0 left-0 z-10 flex w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-fg"
+          className="absolute inset-y-0 left-0 z-10 flex w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
         >
           <Minus size={14} aria-hidden focusable={false} />
         </button>
@@ -135,7 +139,9 @@ function AmountCell({
           type="text"
           inputMode="decimal"
           pattern="-?[0-9]*[.,]?[0-9]*"
-          className={`${INPUT_BASE} pl-6 text-right tabular-nums`}
+          className={`${INPUT_BASE} pl-6 text-right tabular-nums ${
+            isNegative ? "text-danger" : isPositive ? "text-meta" : "text-fg"
+          }`}
           value={text}
           onChange={(e) => commit(e.target.value)}
         />
@@ -159,7 +165,9 @@ function DateCell({
     <td className={`${CELL_BASE} relative p-0`}>
       <button
         type="button"
-        className="block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-inherit tabular-nums text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right"
+        className={`block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-mono tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
+          day ? "text-path" : "text-muted"
+        }`}
         onClick={() => {
           const input = inputRef.current;
           if (!input) return;

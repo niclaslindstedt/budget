@@ -54,16 +54,21 @@ export function SheetView({
 
   return (
     <section>
-      <header className="mb-3 flex flex-wrap items-baseline gap-4">
+      <header className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
         {showName && (
-          <h2 className="m-0 text-base font-semibold">{sheet.name}</h2>
+          <h2 className="m-0 text-base font-bold text-fg-bright">
+            <span aria-hidden="true" className="text-pipe">
+              #{" "}
+            </span>
+            {sheet.name}
+          </h2>
         )}
         <label className="inline-flex items-center gap-2 text-sm text-muted">
-          <span>Opening balance</span>
+          <span className="text-flag">--opening-balance</span>
           <input
             type="number"
             step="0.01"
-            className="w-[10ch] rounded border border-line bg-surface px-1.5 py-0.5 text-fg"
+            className="field-input w-[12ch] rounded border border-line bg-surface px-2 py-0.5 text-right tabular-nums text-meta"
             value={sheet.openingBalance}
             onChange={(e) => {
               const n = Number(e.target.value);
