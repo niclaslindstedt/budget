@@ -24,6 +24,10 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function todayDayOfMonth(): string {
+  return String(new Date().getDate());
+}
+
 function addMonthsIso(iso: string, months: number): string {
   if (!isIsoDate(iso)) return iso;
   const [y, m, d] = iso.split("-").map(Number);
@@ -72,9 +76,7 @@ export function RecurrenceForm({
   const [everyNDays, setEveryNDays] = useState("14");
 
   const [monthlyStride, setMonthlyStride] = useState<string>("1");
-  const [monthlyDay, setMonthlyDay] = useState(
-    String(Number(seedDate.slice(8, 10)) || 1),
-  );
+  const [monthlyDay, setMonthlyDay] = useState(todayDayOfMonth());
   const [monthlyOffset, setMonthlyOffset] = useState("0");
   const [monthlyStartMonth, setMonthlyStartMonth] = useState(
     seedDate.slice(0, 7),
@@ -91,7 +93,7 @@ export function RecurrenceForm({
     setEveryNEnd(horizonEnd);
     setEveryNDays("14");
     setMonthlyStride("1");
-    setMonthlyDay(String(Number(seedDate.slice(8, 10)) || 1));
+    setMonthlyDay(todayDayOfMonth());
     setMonthlyOffset("0");
     setMonthlyStartMonth(seedDate.slice(0, 7));
     setMonthlyEndMonth(horizonEnd.slice(0, 7));
