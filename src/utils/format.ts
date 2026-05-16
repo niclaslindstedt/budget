@@ -164,3 +164,25 @@ export function formatDate(iso: string, format: DateFormat): string {
       return `${dayNum} ${MONTH_SHORT[monthNum - 1]} ${y}`;
   }
 }
+
+// Short date for in-row cells: day and month only, no year, with leading
+// zeros stripped. Order and separator mirror `dateFormat` so a user who
+// configured DD/MM/YYYY sees "16/5" and one on MM/DD/YYYY sees "5/16".
+export function formatShortDate(iso: string, format: DateFormat): string {
+  if (typeof iso !== "string" || iso.length < 10) return "";
+  const monthNum = Number(iso.slice(5, 7));
+  const dayNum = Number(iso.slice(8, 10));
+  if (!Number.isFinite(monthNum) || !Number.isFinite(dayNum)) return "";
+  switch (format) {
+    case "YYYY-MM-DD":
+      return `${monthNum}-${dayNum}`;
+    case "DD/MM/YYYY":
+      return `${dayNum}/${monthNum}`;
+    case "MM/DD/YYYY":
+      return `${monthNum}/${dayNum}`;
+    case "DD.MM.YYYY":
+      return `${dayNum}.${monthNum}`;
+    case "D MMM YYYY":
+      return `${dayNum} ${MONTH_SHORT[monthNum - 1]}`;
+  }
+}

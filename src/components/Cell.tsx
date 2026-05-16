@@ -6,6 +6,7 @@ import {
   formatAmountForInput,
   formatBalance,
   formatDate,
+  formatShortDate,
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
@@ -21,12 +22,6 @@ type Props = {
   onChange: (value: CellValue) => void;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
-
-function dayFromIso(value: CellValue): string {
-  if (typeof value !== "string" || value.length < 10) return "";
-  const day = Number(value.slice(8, 10));
-  return Number.isFinite(day) && day > 0 ? String(day) : "";
-}
 
 const CELL_BASE = "border-r border-b border-line bg-surface last:border-r-0";
 const INPUT_BASE =
@@ -241,21 +236,21 @@ function DateCell({
   onChange: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const day = dayFromIso(value);
   const iso = typeof value === "string" ? value : "";
+  const short = iso ? formatShortDate(iso, settings.dateFormat) : "";
   const formatted = iso ? formatDate(iso, settings.dateFormat) : "";
 
   return (
     <td className={`${CELL_BASE} relative p-0`}>
       <button
         type="button"
-        className={`block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-mono tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
-          day ? "text-path" : "text-muted"
+        className={`block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-mono tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
+          short ? "text-path" : "text-muted"
         }`}
         aria-label={iso ? `Change date (${formatted})` : "Pick a date"}
         onClick={() => setOpen(true)}
       >
-        {day || "—"}
+        {short || "—"}
       </button>
       <DatePickerModal
         open={open}
