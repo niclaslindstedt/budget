@@ -43,7 +43,7 @@ export function Cell({
 
     case "description":
       return (
-        <td className={`${CELL_BASE} max-w-[60ch] text-fg`}>
+        <td className={`${CELL_BASE} text-fg md:w-full`}>
           <textarea
             className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em]`}
             value={typeof value === "string" ? value : ""}
