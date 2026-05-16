@@ -1,0 +1,23 @@
+node_modules
+dist
+dist-ssr
+.vite
+*.local
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+
+# Claude Code worktrees
+.claude/worktrees/
