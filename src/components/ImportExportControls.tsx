@@ -19,7 +19,7 @@ type Status =
   | { kind: "error"; message: string };
 
 const buttonClass =
-  "rounded border border-line bg-surface px-2 py-1 text-sm hover:bg-surface/80";
+  "inline-flex h-8 cursor-pointer items-center justify-center rounded border border-line bg-transparent px-3 text-sm text-fg hover:text-fg-bright hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg";
 
 export function ImportExportControls({ budget, onImport }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -92,7 +92,7 @@ export function ImportExportControls({ budget, onImport }: Props) {
           role="status"
           className={
             status.kind === "error"
-              ? "text-sm text-red-500"
+              ? "text-sm text-danger"
               : "text-sm text-muted"
           }
         >

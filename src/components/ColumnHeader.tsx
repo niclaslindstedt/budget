@@ -15,7 +15,7 @@ export function ColumnHeader({ column, onReorder }: Props) {
 
   return (
     <th
-      className={`cursor-grab border-r border-b border-line bg-surface-3 text-left font-semibold whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
+      className={`cursor-grab border-r border-b border-line bg-surface-3 text-left text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
         dragOver ? "outline outline-2 -outline-offset-2 outline-accent" : ""
       }`}
       draggable
@@ -37,10 +37,10 @@ export function ColumnHeader({ column, onReorder }: Props) {
         if (fromId && fromId !== column.id) onReorder(fromId, column.id);
       }}
     >
-      <span className="flex items-center gap-1.5 px-2.5 py-1.5 md:gap-2">
+      <span className="flex items-center gap-1.5 px-2.5 py-2 md:gap-2">
         <ColumnIcon
           type={column.type}
-          className="shrink-0 text-fg md:text-muted"
+          className="shrink-0 text-accent md:text-accent"
         />
         <span className="hidden md:inline">{column.label}</span>
       </span>

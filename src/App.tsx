@@ -113,20 +113,39 @@ export function App() {
   );
 
   return (
-    <main className="mx-auto max-w-full px-3 pt-3 pb-10 md:px-5 md:pt-4">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Budget</h1>
-        <ImportExportControls budget={budget} onImport={onImport} />
+    <div className="mx-auto flex min-h-screen max-w-full flex-col px-3 pt-3 pb-10 md:px-5 md:pt-4">
+      <header className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line pb-4">
+        <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+          <span aria-hidden="true" className="font-bold text-accent">
+            $
+          </span>
+          <span className="text-base font-bold tracking-wide text-fg-bright">
+            budget
+          </span>
+        </span>
+        <div className="ml-auto">
+          <ImportExportControls budget={budget} onImport={onImport} />
+        </div>
       </header>
-      <SheetView
-        sheet={activeSheet}
-        showName={budget.sheets.length > 1}
-        onUpdateCell={onUpdateCell}
-        onAddRow={onAddRow}
-        onDeleteRow={onDeleteRow}
-        onReorderColumns={onReorderColumns}
-        onSetOpeningBalance={onSetOpeningBalance}
-      />
-    </main>
+      <main className="flex-1">
+        <SheetView
+          sheet={activeSheet}
+          showName={budget.sheets.length > 1}
+          onUpdateCell={onUpdateCell}
+          onAddRow={onAddRow}
+          onDeleteRow={onDeleteRow}
+          onReorderColumns={onReorderColumns}
+          onSetOpeningBalance={onSetOpeningBalance}
+        />
+      </main>
+      <footer className="mt-12 border-t border-line pt-4 text-xs text-muted">
+        <a
+          href="https://github.com/niclaslindstedt/budget"
+          className="underline decoration-dotted hover:text-fg"
+        >
+          Source
+        </a>
+      </footer>
+    </div>
   );
 }

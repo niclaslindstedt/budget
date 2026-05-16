@@ -4,41 +4,78 @@
   --breakpoint-md: 720px;
 }
 
+/* Palette inspired by One Dark / One Light — the same shell-syntax-highlighter
+   roles used by blog.niclaslindstedt.se's fallback view. Each text token maps
+   to a recognisable zsh / oh-my-zsh colour so cells read like a real terminal
+   rather than a monochrome spreadsheet: green for completion / prompts, cyan
+   for paths and dates, yellow for strings and numbers, red for negatives, blue
+   for links. Default is dark; `prefers-color-scheme: light` rebinds the
+   variables and every Tailwind utility resolved through `@theme inline`
+   follows. */
 @theme inline {
+  --color-page-bg: var(--page-bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-fg: var(--fg);
+  --color-fg-bright: var(--fg-bright);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-meta: var(--meta);
+  --color-link: var(--link);
+  --color-path: var(--path);
+  --color-flag: var(--flag);
+  --color-pipe: var(--pipe);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-line: var(--line);
+  --font-mono:
+    "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --font-ui:
+    ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 :root {
-  --surface: #ffffff;
-  --surface-2: #f6f8fa;
-  --surface-3: #eaeef2;
-  --fg: #1f2328;
-  --muted: #57606a;
-  --accent: #0969da;
-  --danger: #cf222e;
-  --success: #1a7f37;
-  --line: #d0d7de;
+  /* One Dark — default. */
+  --page-bg: #1d2027;
+  --surface: #282c34;
+  --surface-2: #2c313a;
+  --surface-3: #21252b;
+  --fg: #abb2bf;
+  --fg-bright: #e6e6e6;
+  --muted: #7a8090;
+  --accent: #98c379;
+  --meta: #e5c07b;
+  --link: #61afef;
+  --path: #56b6c2;
+  --flag: #d19a66;
+  --pipe: #c678dd;
+  --danger: #e06c75;
+  --success: #98c379;
+  --line: #3e4451;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --surface: #0d1117;
-    --surface-2: #161b22;
-    --surface-3: #1c2128;
-    --fg: #e6edf3;
-    --muted: #8b949e;
-    --accent: #58a6ff;
-    --danger: #ff7b72;
-    --success: #3fb950;
-    --line: #30363d;
+    /* One Light. */
+    --page-bg: #eef0f2;
+    --surface: #f8f9fa;
+    --surface-2: #f1f3f5;
+    --surface-3: #e4e7eb;
+    --fg: #2f323a;
+    --fg-bright: #15171c;
+    --muted: #6a6f7c;
+    --accent: #3f8c3e;
+    --meta: #9c6a00;
+    --link: #2960c2;
+    --path: #0a6e92;
+    --flag: #ad4c00;
+    --pipe: #872187;
+    --danger: #c9434c;
+    --success: #3f8c3e;
+    --line: #ccd0d6;
   }
 }
 
@@ -46,16 +83,29 @@ html {
   color-scheme: light dark;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
-  background: var(--surface);
+  padding: 0;
+  background: var(--page-bg);
   color: var(--fg);
+  min-height: 100vh;
+}
+
+body {
   font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+    "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  /* Mobile default — bumped up for legibility and to avoid iOS focus-zoom. */
+  font-size: 15.5px;
+  line-height: 1.55;
+}
+
+@media (min-width: 640px) {
+  body {
+    font-size: 13.5px;
+  }
 }
 
 @layer components {
@@ -104,7 +154,7 @@ body {
     }
     .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
       transform: translateX(-64px);
-      background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+      background: color-mix(in srgb, var(--danger) 18%, var(--surface));
     }
     .sheet-table > thead > tr > .action-cell,
     .sheet-table > tbody > tr > .action-cell {
@@ -130,14 +180,14 @@ body {
       > tbody
       > tr.is-completed:not(.is-swiped)
       > td:not(.action-cell) {
-      background: color-mix(in srgb, var(--success) 10%, var(--surface));
+      background: color-mix(in srgb, var(--success) 12%, var(--surface));
     }
   }
 
   /* Desktop completed row tint */
   @media (min-width: 720px) {
     .sheet-table > tbody > tr.is-completed > td {
-      background: color-mix(in srgb, var(--success) 8%, var(--surface));
+      background: color-mix(in srgb, var(--success) 10%, var(--surface));
     }
   }
 }

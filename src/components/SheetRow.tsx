@@ -82,10 +82,10 @@ export function SheetRow({
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
         />
       ))}
-      <td className="action-cell border-r border-b border-line bg-surface-2 p-0 text-center last:border-r-0">
+      <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <button
           type="button"
-          className="inline-flex h-full w-full items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface md:hover:text-danger"
+          className="inline-flex h-full w-full cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
           aria-label="Delete row"
           onClick={() => onDeleteRow(row.id)}
         >
