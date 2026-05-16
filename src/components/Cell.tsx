@@ -9,6 +9,7 @@ import {
   formatShortDate,
   normalizeAmountInput,
   parseAmount,
+  withCurrency,
 } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
@@ -196,14 +197,21 @@ function AmountCell({
           aria-hidden
           className="invisible px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre"
         >
-          {text || "0"}
-          {settings.showCurrency ? ` ${settings.currency}` : ""}
+          {withCurrency(text || "0", settings)}
         </span>
         <input
           type="text"
           inputMode="decimal"
           pattern="[0-9]*[.,]?[0-9]*"
-          className={`${INPUT_BASE} absolute inset-0 ${settings.showCurrency ? "pr-8" : ""} pl-6 text-right tabular-nums ${
+          className={`${INPUT_BASE} absolute inset-0 ${
+            settings.showCurrency && settings.currencyPosition === "before"
+              ? "pl-10"
+              : "pl-6"
+          } ${
+            settings.showCurrency && settings.currencyPosition === "after"
+              ? "pr-8"
+              : ""
+          } text-right tabular-nums ${
             hasValue
               ? negative
                 ? "text-negative"
@@ -216,7 +224,9 @@ function AmountCell({
         {settings.showCurrency && (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-2 flex items-center font-mono text-xs text-muted"
+            className={`pointer-events-none absolute inset-y-0 ${
+              settings.currencyPosition === "before" ? "left-6" : "right-2"
+            } flex items-center font-mono text-xs text-muted`}
           >
             {settings.currency}
           </span>

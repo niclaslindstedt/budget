@@ -17,7 +17,11 @@ import type {
   Settings,
   Sheet,
 } from "../data/types";
-import { formatAmountForInput, formatBalance } from "../utils/format";
+import {
+  formatAmountForInput,
+  formatBalance,
+  withCurrency,
+} from "../utils/format";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
@@ -87,9 +91,7 @@ export function SheetView({
         const v = row.cells[amountCol.id];
         if (typeof v !== "number") continue;
         const body = formatAmountForInput(Math.abs(v), settings);
-        const full = settings.showCurrency
-          ? `${body} ${settings.currency}`
-          : body;
+        const full = withCurrency(body, settings);
         if (full.length > amountChars) amountChars = full.length;
       }
     }

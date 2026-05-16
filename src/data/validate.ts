@@ -284,6 +284,14 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.currency === "string" && raw.currency.length > 0
       ? raw.currency
       : DEFAULT_SETTINGS.currency;
+  const currencyPosition =
+    raw.currencyPosition === "before" || raw.currencyPosition === "after"
+      ? raw.currencyPosition
+      : DEFAULT_SETTINGS.currencyPosition;
+  const currencySpace =
+    typeof raw.currencySpace === "boolean"
+      ? raw.currencySpace
+      : DEFAULT_SETTINGS.currencySpace;
   const decimalSeparator =
     typeof raw.decimalSeparator === "string" &&
     DECIMAL_SEPARATORS.has(raw.decimalSeparator as DecimalSeparator)
@@ -322,6 +330,8 @@ function validateSettings(raw: unknown): Settings {
     dateFormat,
     shortDateFormat,
     currency,
+    currencyPosition,
+    currencySpace,
     decimalSeparator,
     thousandsSeparator,
     formatNumbers,

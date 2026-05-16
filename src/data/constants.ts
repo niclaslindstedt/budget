@@ -47,6 +47,8 @@ export const DEFAULT_SETTINGS: Settings = {
   dateFormat: "YYYY-MM-DD",
   shortDateFormat: "DD/MM",
   currency: "kr",
+  currencyPosition: "after",
+  currencySpace: true,
   decimalSeparator: ",",
   thousandsSeparator: " ",
   formatNumbers: true,

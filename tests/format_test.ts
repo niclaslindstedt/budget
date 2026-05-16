@@ -119,6 +119,79 @@ describe("formatAmount / formatBalance", () => {
     expect(formatBalance(1234.5, settings())).toBe("1 235 kr");
     expect(formatBalance(1234, settings())).toBe("1 234 kr");
   });
+
+  it("places the symbol before the amount when configured", () => {
+    expect(
+      formatAmount(
+        1234,
+        settings({ showDecimals: true, currencyPosition: "before" }),
+      ),
+    ).toBe("kr 1 234");
+    expect(
+      formatBalance(
+        1234,
+        settings({ showDecimals: true, currencyPosition: "before" }),
+      ),
+    ).toBe("kr 1 234,00");
+  });
+
+  it("drops the space between symbol and amount when configured", () => {
+    expect(
+      formatAmount(
+        1234,
+        settings({ showDecimals: true, currencySpace: false }),
+      ),
+    ).toBe("1 234kr");
+    expect(
+      formatAmount(
+        1234,
+        settings({
+          showDecimals: true,
+          currencyPosition: "before",
+          currencySpace: false,
+        }),
+      ),
+    ).toBe("kr1 234");
+  });
+
+  it("applies position and spacing to any user-typed symbol", () => {
+    expect(
+      formatAmount(
+        50,
+        settings({
+          showDecimals: true,
+          currency: "$",
+          currencyPosition: "before",
+          currencySpace: false,
+        }),
+      ),
+    ).toBe("$50");
+    expect(
+      formatAmount(
+        50,
+        settings({
+          showDecimals: true,
+          currency: "$",
+          currencyPosition: "before",
+          currencySpace: true,
+        }),
+      ),
+    ).toBe("$ 50");
+  });
+
+  it("omits the symbol regardless of position when showCurrency is off", () => {
+    expect(
+      formatAmount(
+        1234,
+        settings({
+          showDecimals: true,
+          showCurrency: false,
+          currencyPosition: "before",
+          currencySpace: false,
+        }),
+      ),
+    ).toBe("1 234");
+  });
 });
 
 describe("normalizeAmountInput", () => {
