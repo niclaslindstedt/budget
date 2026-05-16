@@ -1,7 +1,12 @@
-import { useRef, useState } from "react";
-import { Download, Upload } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, Eye, EyeOff, Lock, Upload, X } from "lucide-react";
 
 import type { Budget } from "../data/types";
+import {
+  decryptEnvelope,
+  encryptText,
+  isEncryptedEnvelope,
+} from "../storage/crypto";
 import {
   FILE_MIME_TYPE,
   parseBudget,
@@ -12,6 +17,12 @@ import {
 type Props = {
   budget: Budget;
   onImport: (budget: Budget) => void;
+  // When true, exports are wrapped in an encrypted envelope using the
+  // password returned by `getEncryptionPassword`. The same envelope
+  // shape the localStorage adapter writes, so re-importing the file
+  // surfaces the password prompt automatically.
+  encryptionEnabled: boolean;
+  getEncryptionPassword: () => string | null;
 };
 
 type Status =
@@ -22,34 +33,56 @@ type Status =
 const iconButton =
   "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line bg-transparent hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg";
 
-export function ImportExportControls({ budget, onImport }: Props) {
+export function ImportExportControls({
+  budget,
+  onImport,
+  encryptionEnabled,
+  getEncryptionPassword,
+}: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [pendingEnvelope, setPendingEnvelope] = useState<string | null>(null);
 
-  function handleExport() {
-    const blob = new Blob([serializeBudget(budget)], { type: FILE_MIME_TYPE });
+  async function handleExport() {
+    const plaintext = serializeBudget(budget);
+    let body = plaintext;
+    let filename = suggestFilename();
+    if (encryptionEnabled) {
+      const password = getEncryptionPassword();
+      if (!password) {
+        setStatus({
+          kind: "error",
+          message: "Encryption is on but no password is set. Re-unlock first.",
+        });
+        return;
+      }
+      try {
+        body = await encryptText(plaintext, password);
+        filename = suggestFilename().replace(/\.json$/, ".enc.json");
+      } catch (err) {
+        setStatus({
+          kind: "error",
+          message: `Encryption failed: ${(err as Error).message}`,
+        });
+        return;
+      }
+    }
+    const blob = new Blob([body], { type: FILE_MIME_TYPE });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = suggestFilename();
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    setStatus({ kind: "ok", message: "Exported." });
+    setStatus({
+      kind: "ok",
+      message: encryptionEnabled ? "Exported (encrypted)." : "Exported.",
+    });
   }
 
-  async function handleFile(file: File) {
-    let text: string;
-    try {
-      text = await file.text();
-    } catch (err) {
-      setStatus({
-        kind: "error",
-        message: `Could not read file: ${(err as Error).message}`,
-      });
-      return;
-    }
+  function finishImport(text: string) {
     const result = parseBudget(text);
     if (!result.ok) {
       setStatus({ kind: "error", message: `Import failed — ${result.error}` });
@@ -63,6 +96,40 @@ export function ImportExportControls({ budget, onImport }: Props) {
       message: `Imported ${sheetCount} sheet${sheetCount === 1 ? "" : "s"}${suffix}.`,
     });
   }
+
+  async function handleFile(file: File) {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch (err) {
+      setStatus({
+        kind: "error",
+        message: `Could not read file: ${(err as Error).message}`,
+      });
+      return;
+    }
+    if (isEncryptedEnvelope(text)) {
+      // Defer the parse until the user supplies a password — the
+      // prompt below picks up `pendingEnvelope`.
+      setPendingEnvelope(text);
+      setStatus({ kind: "idle" });
+      return;
+    }
+    finishImport(text);
+  }
+
+  const handleDecrypt = useCallback(
+    async (password: string) => {
+      if (!pendingEnvelope) return;
+      const plain = await decryptEnvelope(pendingEnvelope, password);
+      setPendingEnvelope(null);
+      finishImport(plain);
+    },
+    // finishImport closes over budget/onImport which are stable enough
+    // here; we intentionally don't list every transitive dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pendingEnvelope],
+  );
 
   return (
     <div className="inline-flex items-center gap-2">
@@ -81,9 +148,11 @@ export function ImportExportControls({ budget, onImport }: Props) {
       <button
         type="button"
         className={`${iconButton} text-accent hover:border-accent hover:text-accent`}
-        onClick={handleExport}
+        onClick={() => {
+          void handleExport();
+        }}
         aria-label="Export budget as JSON"
-        title="Export"
+        title={encryptionEnabled ? "Export (encrypted)" : "Export"}
       >
         <Download size={18} aria-hidden focusable={false} />
       </button>
@@ -107,6 +176,165 @@ export function ImportExportControls({ budget, onImport }: Props) {
           e.target.value = "";
         }}
       />
+      <ImportPasswordPrompt
+        open={pendingEnvelope !== null}
+        onCancel={() => setPendingEnvelope(null)}
+        onSubmit={handleDecrypt}
+      />
+    </div>
+  );
+}
+
+function ImportPasswordPrompt({
+  open,
+  onCancel,
+  onSubmit,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onSubmit: (password: string) => Promise<void>;
+}) {
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setPassword("");
+    setShow(false);
+    setBusy(false);
+    setError(null);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy || password.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onSubmit(password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="import-pwd-title"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <form
+        id="budget-import-decrypt"
+        onSubmit={handleSubmit}
+        className="flex w-full max-w-sm flex-col gap-3 overflow-hidden rounded-t-lg bg-surface p-0 shadow-2xl sm:rounded-lg"
+      >
+        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Lock
+              size={16}
+              aria-hidden
+              focusable={false}
+              className="text-pipe"
+            />
+            <h2
+              id="import-pwd-title"
+              className="text-sm font-bold tracking-wide text-fg-bright"
+            >
+              Encrypted budget
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close"
+            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <X size={16} aria-hidden focusable={false} />
+          </button>
+        </header>
+
+        <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
+          <p className="text-xs text-muted">
+            This file is encrypted. Enter the password it was exported with.
+          </p>
+
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            value="budget"
+            readOnly
+            hidden
+            aria-hidden="true"
+          />
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Password</span>
+            <div className="relative flex items-center">
+              <input
+                id="budget-import-password"
+                name="current-password"
+                type={show ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoFocus
+                className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
+              />
+              <button
+                type="button"
+                onClick={() => setShow((v) => !v)}
+                aria-label={show ? "Hide password" : "Show password"}
+                className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
+              >
+                {show ? (
+                  <EyeOff size={16} aria-hidden focusable={false} />
+                ) : (
+                  <Eye size={16} aria-hidden focusable={false} />
+                )}
+              </button>
+            </div>
+          </label>
+
+          {error && <p className="text-xs text-danger">{error}</p>}
+
+          <div className="mt-1 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy || password.length === 0}
+              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busy ? "Decrypting…" : "Decrypt & import"}
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }
