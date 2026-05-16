@@ -64,43 +64,50 @@ export function CategoryPicker({
     setCreating(false);
   }
 
+  const isChip = variant === "chip";
+  const showChevron = selected !== null || !isChip;
+
   return (
     <div ref={rootRef} className="relative inline-block w-full">
       <button
         type="button"
         className={
-          variant === "chip"
-            ? "flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-left font-mono text-xs hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          isChip
+            ? "flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1 text-left font-mono text-xs hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             : "field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
         }
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={!selected && isChip ? "Add category" : undefined}
       >
         {selected ? (
           <CategoryChip
             category={selected}
-            compact={variant === "chip"}
-            hideNameOnMobile={variant === "chip"}
+            compact={isChip}
+            hideNameOnMobile={isChip}
+          />
+        ) : isChip ? (
+          <Plus
+            size={16}
+            className="text-muted"
+            aria-hidden
+            focusable={false}
           />
         ) : (
-          <span
-            className={
-              variant === "chip"
-                ? "inline-flex items-center gap-1 text-muted"
-                : "inline-flex items-center gap-2 text-muted"
-            }
-          >
+          <span className="inline-flex items-center gap-2 text-muted">
             <Tag size={14} aria-hidden focusable={false} />
             <span>{placeholder}</span>
           </span>
         )}
-        <ChevronDown
-          size={12}
-          className="ml-auto shrink-0 text-muted"
-          aria-hidden
-          focusable={false}
-        />
+        {showChevron && (
+          <ChevronDown
+            size={12}
+            className="ml-auto shrink-0 text-muted"
+            aria-hidden
+            focusable={false}
+          />
+        )}
       </button>
 
       {open && (

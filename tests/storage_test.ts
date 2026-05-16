@@ -16,7 +16,6 @@ function sampleBudget(): Budget {
   const b = createDefaultSheet("Second");
   const dateCol = a.columns.find((c) => c.type === "date")!;
   const amountCol = a.columns.find((c) => c.type === "amount")!;
-  a.openingBalance = 100;
   a.rows = [
     {
       id: "row-1",
@@ -55,7 +54,6 @@ describe("serializeBudget", () => {
       activeSheetId: b.activeSheetId,
       sheets: b.sheets.map((s) => ({
         rows: s.rows.map((r) => ({ cells: r.cells, id: r.id })),
-        openingBalance: s.openingBalance,
         name: s.name,
         columns: s.columns.map((c) => ({
           label: c.label,

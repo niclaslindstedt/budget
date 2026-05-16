@@ -72,7 +72,6 @@ type Sheet = {
   name: string;
   columns: Column[]; // ordered; drag-and-drop reorders this array
   rows: Row[]; // flat list; month grouping is derived in the view
-  openingBalance: number;
 };
 
 type Column = {
@@ -109,8 +108,9 @@ Cells are keyed by column id (not column type) so the model supports
 adding multiple columns of the same type without ambiguity. The
 `balance` column is **derived** — its value is computed by
 `computeBalances()` from the row's date and amount, as a running total
-from the sheet's `openingBalance` across all rows in chronological
-order. It is never written to row cells.
+starting at zero across all rows in chronological order. It is never
+written to row cells. Users who need an opening balance record it as
+a regular row instead.
 
 Month grouping is a view concern: `groupRowsByMonth()` buckets rows
 by the `YYYY-MM` prefix of their date cell. Changing a date moves a

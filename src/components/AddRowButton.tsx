@@ -68,27 +68,25 @@ export function AddRowButton({ onAdd, onComplex }: Props) {
   }
 
   return (
-    <span className="relative inline-flex items-center">
-      <button
-        type="button"
-        className="group relative inline-flex cursor-pointer items-center justify-center rounded-full p-2.5 text-accent hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        onClick={handleClick}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        onContextMenu={handleContextMenu}
-        aria-label="Add row (long-press for recurring or categorised entry)"
-      >
-        <Plus size={22} aria-hidden focusable={false} />
-        <Sparkles
-          size={10}
-          aria-hidden
-          focusable={false}
-          className="absolute right-1.5 bottom-1.5 text-muted opacity-60 group-hover:text-meta"
-        />
-      </button>
-    </span>
+    <button
+      type="button"
+      className="add-row-button group relative flex w-full cursor-pointer items-center justify-center py-3 text-accent select-none hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onContextMenu={handleContextMenu}
+      aria-label="Add row (long-press for recurring or categorised entry)"
+    >
+      <Plus size={22} aria-hidden focusable={false} />
+      <Sparkles
+        size={10}
+        aria-hidden
+        focusable={false}
+        className="absolute right-2 bottom-1.5 text-muted opacity-60 group-hover:text-meta"
+      />
+    </button>
   );
 }

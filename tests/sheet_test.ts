@@ -105,9 +105,8 @@ describe("sortRowsByDate", () => {
 });
 
 describe("computeBalances", () => {
-  it("running total in date order, including opening balance and across months", () => {
+  it("running total in date order, starting from zero and carrying across months", () => {
     const sheet = createDefaultSheet();
-    sheet.openingBalance = 100;
     const dateCol = findColumnByType(sheet.columns, "date")!;
     const amountCol = findColumnByType(sheet.columns, "amount")!;
     const r1 = seedRow(dateCol.id, amountCol.id, "2026-04-15", 50);
@@ -116,9 +115,9 @@ describe("computeBalances", () => {
     sheet.rows = [r3, r1, r2]; // out of order on purpose
 
     const balances = computeBalances(sheet);
-    expect(balances.get(r1.id)).toBe(150);
-    expect(balances.get(r2.id)).toBe(130);
-    expect(balances.get(r3.id)).toBe(140);
+    expect(balances.get(r1.id)).toBe(50);
+    expect(balances.get(r2.id)).toBe(30);
+    expect(balances.get(r3.id)).toBe(40);
   });
 
   it("returns empty map when amount or date column is missing", () => {
