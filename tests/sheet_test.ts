@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  budgetHasHalfDoneRows,
+  budgetWithSavableRows,
   computeBalances,
   createDefaultSheet,
   findColumnByType,
   getMonthKey,
   groupRowsByMonth,
+  isRowHalfDone,
+  isRowSavable,
   moveColumn,
   rowsInSeriesFrom,
   shiftIsoToMonth,
   sortMonthKeys,
   sortRowsByDate,
 } from "../src/data/sheet";
-import type { Row } from "../src/data/types";
+import type { Budget, Row } from "../src/data/types";
 
 function seedRow(
   dateColId: string,
@@ -188,5 +192,116 @@ describe("rowsInSeriesFrom", () => {
     const anchor = rows.find((r) => r.id === "f")!;
     const result = rowsInSeriesFrom(rows, anchor, dateCol.id);
     expect(result).toEqual([anchor]);
+  });
+});
+
+describe("isRowSavable / isRowHalfDone", () => {
+  const sheet = createDefaultSheet();
+  const descCol = findColumnByType(sheet.columns, "description")!;
+  const amountCol = findColumnByType(sheet.columns, "amount")!;
+  const dateCol = findColumnByType(sheet.columns, "date")!;
+
+  function row(cells: Record<string, string | number | boolean | null>): Row {
+    return { id: "r", cells };
+  }
+
+  it("savable requires both description and amount", () => {
+    expect(
+      isRowSavable(
+        row({ [descCol.id]: "Rent", [amountCol.id]: 100 }),
+        sheet.columns,
+      ),
+    ).toBe(true);
+  });
+
+  it("amount of zero counts as filled", () => {
+    expect(
+      isRowSavable(
+        row({ [descCol.id]: "Refund", [amountCol.id]: 0 }),
+        sheet.columns,
+      ),
+    ).toBe(true);
+  });
+
+  it("whitespace-only description doesn't count as filled", () => {
+    expect(
+      isRowSavable(
+        row({ [descCol.id]: "   ", [amountCol.id]: 5 }),
+        sheet.columns,
+      ),
+    ).toBe(false);
+  });
+
+  it("a fully empty row is neither savable nor half-done", () => {
+    const r = row({ [dateCol.id]: "2026-05-16" });
+    expect(isRowSavable(r, sheet.columns)).toBe(false);
+    expect(isRowHalfDone(r, sheet.columns)).toBe(false);
+  });
+
+  it("description-only is half-done", () => {
+    const r = row({ [descCol.id]: "Coffee" });
+    expect(isRowSavable(r, sheet.columns)).toBe(false);
+    expect(isRowHalfDone(r, sheet.columns)).toBe(true);
+  });
+
+  it("amount-only is half-done", () => {
+    const r = row({ [amountCol.id]: -12 });
+    expect(isRowSavable(r, sheet.columns)).toBe(false);
+    expect(isRowHalfDone(r, sheet.columns)).toBe(true);
+  });
+
+  it("a complete row is not half-done", () => {
+    const r = row({ [descCol.id]: "Coffee", [amountCol.id]: -12 });
+    expect(isRowHalfDone(r, sheet.columns)).toBe(false);
+  });
+});
+
+describe("budgetWithSavableRows / budgetHasHalfDoneRows", () => {
+  function build(): { budget: Budget; descId: string; amountId: string } {
+    const sheet = createDefaultSheet();
+    const descId = findColumnByType(sheet.columns, "description")!.id;
+    const amountId = findColumnByType(sheet.columns, "amount")!.id;
+    sheet.rows = [
+      { id: "complete", cells: { [descId]: "Rent", [amountId]: -1000 } },
+      { id: "half", cells: { [descId]: "Coffee" } },
+      { id: "empty", cells: {} },
+    ];
+    return {
+      budget: {
+        version: 3,
+        sheets: [sheet],
+        activeSheetId: sheet.id,
+        categories: [],
+      },
+      descId,
+      amountId,
+    };
+  }
+
+  it("filters out half-done and empty rows from the snapshot", () => {
+    const { budget } = build();
+    const filtered = budgetWithSavableRows(budget);
+    expect(filtered.sheets[0].rows.map((r) => r.id)).toEqual(["complete"]);
+  });
+
+  it("does not mutate the input budget", () => {
+    const { budget } = build();
+    const before = budget.sheets[0].rows.length;
+    budgetWithSavableRows(budget);
+    expect(budget.sheets[0].rows.length).toBe(before);
+  });
+
+  it("reports half-done rows so callers can prompt or light up the save button", () => {
+    const { budget } = build();
+    expect(budgetHasHalfDoneRows(budget)).toBe(true);
+  });
+
+  it("returns false when every row is either complete or fully blank", () => {
+    const { budget, descId, amountId } = build();
+    budget.sheets[0].rows = [
+      { id: "complete", cells: { [descId]: "Rent", [amountId]: -1000 } },
+      { id: "empty", cells: {} },
+    ];
+    expect(budgetHasHalfDoneRows(budget)).toBe(false);
   });
 });

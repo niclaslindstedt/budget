@@ -15,10 +15,12 @@ import {
 } from "./components/EditEntryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
 import { MoveCopyModal } from "./components/MoveCopyModal";
+import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
 import { UnlockScreen } from "./components/UnlockScreen";
 import {
+  budgetWithSavableRows,
   createEmptyRow,
   findColumnByType,
   getMonthKey,
@@ -468,7 +470,11 @@ function BudgetView({
   onEnableEncryption,
   onDisableEncryption,
 }: BudgetViewProps) {
-  const { budget, dispatch } = useBudgetStorage(adapter, reducer);
+  const { budget, dispatch, dirty, saveNow } = useBudgetStorage(
+    adapter,
+    reducer,
+    { beforeSerialize: budgetWithSavableRows },
+  );
   const [complexOpen, setComplexOpen] = useState(false);
   const [complexSeedDate, setComplexSeedDate] = useState("");
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
@@ -490,6 +496,20 @@ function BudgetView({
     budget.sheets[0];
 
   const sheetId = activeSheet.id;
+
+  // Warn before unload when the in-memory state has changes the
+  // auto-save deliberately skipped (e.g. a half-filled row). The
+  // browser shows its own generic confirmation prompt; we just have
+  // to opt in.
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
 
   // Drop ids that no longer exist (e.g. after an import) so the toolbar
   // never claims a stale count.
@@ -746,6 +766,7 @@ function BudgetView({
           budget
         </span>
         <div className="ml-auto inline-flex items-center gap-2">
+          <SaveStateButton dirty={dirty} onSave={saveNow} />
           <ImportExportControls
             budget={budget}
             onImport={onImport}
