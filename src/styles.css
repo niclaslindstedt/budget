@@ -28,6 +28,8 @@
   --color-pipe: var(--pipe);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --color-line: var(--line);
   --font-mono:
     "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
@@ -54,6 +56,10 @@
   --pipe: #c678dd;
   --danger: #e06c75;
   --success: #98c379;
+  /* Pastel money colours — softer than danger/success so positive and
+     negative amounts read as a balanced pair instead of an alarm. */
+  --positive: #b5e3a0;
+  --negative: #f0b4ba;
   --line: #3e4451;
 }
 
@@ -75,6 +81,8 @@
     --pipe: #872187;
     --danger: #c9434c;
     --success: #3f8c3e;
+    --positive: #5fa057;
+    --negative: #d77a82;
     --line: #ccd0d6;
   }
 }
