@@ -34,6 +34,24 @@ function addMonthsIso(iso: string, months: number): string {
   return `${ty}-${tm}-${td}`;
 }
 
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
+function isIsoMonth(value: string): boolean {
+  if (!MONTH_RE.test(value)) return false;
+  const m = Number(value.slice(5, 7));
+  return m >= 1 && m <= 12;
+}
+
+function startOfMonth(yyyyMm: string): string {
+  return `${yyyyMm}-01`;
+}
+
+function endOfMonth(yyyyMm: string): string {
+  const [y, m] = yyyyMm.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${yyyyMm}-${String(last).padStart(2, "0")}`;
+}
+
 export function RecurrenceForm({
   seedDate: rawSeed,
   resetKey,
@@ -58,8 +76,12 @@ export function RecurrenceForm({
     String(Number(seedDate.slice(8, 10)) || 1),
   );
   const [monthlyOffset, setMonthlyOffset] = useState("0");
-  const [monthlyStart, setMonthlyStart] = useState(seedDate);
-  const [monthlyEnd, setMonthlyEnd] = useState(horizonEnd);
+  const [monthlyStartMonth, setMonthlyStartMonth] = useState(
+    seedDate.slice(0, 7),
+  );
+  const [monthlyEndMonth, setMonthlyEndMonth] = useState(
+    horizonEnd.slice(0, 7),
+  );
 
   useEffect(() => {
     setMode(includeOnce ? "once" : "monthly");
@@ -71,8 +93,8 @@ export function RecurrenceForm({
     setMonthlyStride("1");
     setMonthlyDay(String(Number(seedDate.slice(8, 10)) || 1));
     setMonthlyOffset("0");
-    setMonthlyStart(seedDate);
-    setMonthlyEnd(horizonEnd);
+    setMonthlyStartMonth(seedDate.slice(0, 7));
+    setMonthlyEndMonth(horizonEnd.slice(0, 7));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
@@ -106,8 +128,8 @@ export function RecurrenceForm({
         const day = Number(monthlyDay);
         const off = Number(monthlyOffset);
         if (
-          !isIsoDate(monthlyStart) ||
-          !isIsoDate(monthlyEnd) ||
+          !isIsoMonth(monthlyStartMonth) ||
+          !isIsoMonth(monthlyEndMonth) ||
           !Number.isFinite(stride) ||
           stride < 1 ||
           !Number.isFinite(day) ||
@@ -122,8 +144,8 @@ export function RecurrenceForm({
           intervalMonths: Math.floor(stride),
           dayOfMonth: Math.floor(day),
           offsetDays: Math.floor(off),
-          start: monthlyStart,
-          end: monthlyEnd,
+          start: startOfMonth(monthlyStartMonth),
+          end: endOfMonth(monthlyEndMonth),
         };
       }
     }
@@ -137,8 +159,8 @@ export function RecurrenceForm({
     monthlyStride,
     monthlyDay,
     monthlyOffset,
-    monthlyStart,
-    monthlyEnd,
+    monthlyStartMonth,
+    monthlyEndMonth,
   ]);
 
   const dates = useMemo(() => (rule ? expandRecurrence(rule) : []), [rule]);
@@ -323,23 +345,27 @@ export function RecurrenceForm({
                 placeholder="-2"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>Start</span>
-              <input
-                type="date"
-                value={monthlyStart}
-                onChange={(e) => setMonthlyStart(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>End</span>
-              <input
-                type="date"
-                value={monthlyEnd}
-                onChange={(e) => setMonthlyEnd(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
-              />
+            <label className="flex flex-col gap-1 text-xs text-muted sm:col-span-2">
+              <span>Range</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={monthlyStartMonth}
+                  onChange={(e) => setMonthlyStartMonth(e.target.value)}
+                  aria-label="Start month"
+                  className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
+                />
+                <span aria-hidden className="text-muted">
+                  –
+                </span>
+                <input
+                  type="month"
+                  value={monthlyEndMonth}
+                  onChange={(e) => setMonthlyEndMonth(e.target.value)}
+                  aria-label="End month"
+                  className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
+                />
+              </div>
             </label>
           </div>
         )}
