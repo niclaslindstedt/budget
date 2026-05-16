@@ -9,7 +9,7 @@ storage; you can export it to a file at any time and re-import it on
 another device. There is no backend, no account, and no third-party
 service in the loop.
 
-> Live at **[niclaslindstedt.github.io/budget](https://niclaslindstedt.github.io/budget/)**.
+> Live at **[budget.niclaslindstedt.se](https://budget.niclaslindstedt.se/)**.
 
 ## What
 
@@ -84,9 +84,11 @@ balance, and completion flag. See
 
 - **`make install` fails** — confirm the active Node version matches
   `.nvmrc` (`nvm use`).
-- **Pages deploy 404s** — `vite.config.ts` sets `base: "/budget/"` for
-  production builds. If you fork into a differently-named repo, update
-  that `base` value.
+- **Pages deploy 404s** — `vite.config.ts` sets `base: "/"` because the
+  site is served from the custom domain `budget.niclaslindstedt.se`
+  (see `public/CNAME`). If you fork without a custom domain so the
+  app is served at `<user>.github.io/<repo>/`, change `base` to
+  `"/<repo>/"` and remove `public/CNAME`.
 
 ## Documentation
 

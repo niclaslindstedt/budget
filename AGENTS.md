@@ -162,9 +162,13 @@ in).
 - **No backend.** This is a local-first app. Never reach for a remote
   store, third-party API, or analytics service without an explicit
   spec change. The deploy is a plain static bundle on GitHub Pages.
-- **Vite `base` path.** `vite.config.ts` pins `base` to `/budget/` in
-  production. If the repo is renamed, update both `vite.config.ts`
-  and the README badge / live-site URL.
+- **Vite `base` path.** `vite.config.ts` uses `base: "/"` because the
+  production site is served from the custom domain
+  `budget.niclaslindstedt.se` (see `public/CNAME`, which Vite copies
+  into the deployed artifact). If the custom domain is ever dropped
+  so the app falls back to `<user>.github.io/<repo>/`, update both
+  `vite.config.ts` (to `"/<repo>/"`) and the README live-site URL,
+  and remove `public/CNAME`.
 
 ## Website staleness pointer
 
