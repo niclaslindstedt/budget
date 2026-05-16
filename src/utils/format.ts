@@ -53,6 +53,15 @@ export function formatNumber(
   settings: Settings,
   opts: FormatNumberOpts = {},
 ): string {
+  // `showDecimals` off wins over `alwaysTwoFractionDigits` — the user has
+  // asked to hide the fractional portion everywhere, so balances drop
+  // their cents too.
+  if (!settings.showDecimals) {
+    const intRounded = String(Math.round(n));
+    return settings.formatNumbers
+      ? groupThousands(intRounded, settings.thousandsSeparator)
+      : intRounded;
+  }
   const rounded = roundTo2(n);
   const fixed = opts.alwaysTwoFractionDigits
     ? rounded.toFixed(2)

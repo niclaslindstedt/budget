@@ -222,6 +222,10 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.showCurrency === "boolean"
       ? raw.showCurrency
       : DEFAULT_SETTINGS.showCurrency;
+  const showDecimals =
+    typeof raw.showDecimals === "boolean"
+      ? raw.showDecimals
+      : DEFAULT_SETTINGS.showDecimals;
   return {
     startOfMonth,
     dateFormat,
@@ -230,6 +234,7 @@ function validateSettings(raw: unknown): Settings {
     thousandsSeparator,
     formatNumbers,
     showCurrency,
+    showDecimals,
   };
 }
 
