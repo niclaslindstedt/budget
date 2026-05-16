@@ -51,6 +51,7 @@ import {
   readRawStorage,
   writeRawStorage,
 } from "./storage/local-adapter";
+import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
 import {
   createUser,
@@ -418,22 +419,63 @@ type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 //   "signed-in"   — a user is active and their decrypted budget is
 //                   being edited; the password lives in `passwordRef`
 //                   so the encrypting adapter can encrypt every save.
+// `expiresAt` carries the wall-clock deadline of the cached password
+// in sessionStorage so a single timer can flip the state back to
+// signed-out when the cache lapses.
 // The state is also persisted in `budget.users.v1` so a reload lands
 // the user on the sign-in form for the same account they last used.
 type AuthState =
   | { kind: "signed-out"; lastUsername: string | null }
-  | { kind: "signed-in"; user: StoredUser; password: string };
+  | {
+      kind: "signed-in";
+      user: StoredUser;
+      password: string;
+      expiresAt: number;
+    };
+
+// Resolve the auth state to land on at boot. If sessionStorage still
+// holds a non-expired password for a known user, jump straight back
+// into the signed-in state — that's the whole point of the cache.
+function readBootAuth(): { users: StoredUser[]; auth: AuthState } {
+  const file = loadUsersFile();
+  const session = loadSession();
+  if (session) {
+    const user = file.users.find((u) => u.id === session.userId);
+    if (user) {
+      return {
+        users: file.users,
+        auth: {
+          kind: "signed-in",
+          user,
+          password: session.password,
+          expiresAt: session.expiresAt,
+        },
+      };
+    }
+    // Session points at a user that no longer exists locally — sweep
+    // the orphan and fall through to the regular signed-out flow.
+    clearSession();
+  }
+  const last = file.activeUserId
+    ? (file.users.find((u) => u.id === file.activeUserId) ?? null)
+    : null;
+  return {
+    users: file.users,
+    auth: { kind: "signed-out", lastUsername: last?.username ?? null },
+  };
+}
 
 export function App() {
-  const [users, setUsers] = useState<StoredUser[]>(() => loadUsersFile().users);
+  // Compute boot state exactly once — the result feeds `useState` and
+  // `useRef` initial values below, and we don't want to re-read
+  // sessionStorage on every render.
+  const bootRef = useRef<ReturnType<typeof readBootAuth> | null>(null);
+  if (bootRef.current === null) bootRef.current = readBootAuth();
+  const boot = bootRef.current;
 
-  const [auth, setAuth] = useState<AuthState>(() => {
-    const file = loadUsersFile();
-    const last = file.activeUserId
-      ? (file.users.find((u) => u.id === file.activeUserId) ?? null)
-      : null;
-    return { kind: "signed-out", lastUsername: last?.username ?? null };
-  });
+  const [users, setUsers] = useState<StoredUser[]>(boot.users);
+
+  const [auth, setAuth] = useState<AuthState>(boot.auth);
 
   // Whether any plaintext pre-account data is sitting in the legacy
   // `STORAGE_KEY` bucket. Detected once at mount and offered to the
@@ -447,7 +489,11 @@ export function App() {
 
   // Held password for the active user. Read by the encrypting adapter
   // on every save / load; cleared whenever auth flips to signed-out.
-  const passwordRef = useRef<string | null>(null);
+  // Seeded from the boot session so the encrypting adapter can decrypt
+  // straight away after a refresh that restored a cached password.
+  const passwordRef = useRef<string | null>(
+    boot.auth.kind === "signed-in" ? boot.auth.password : null,
+  );
 
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
@@ -470,7 +516,13 @@ export function App() {
       if (!ok) throw new Error("Wrong password");
       passwordRef.current = password;
       persistRegistry(users, user.id);
-      setAuth({ kind: "signed-in", user, password });
+      const session = saveSession(user.id, password);
+      setAuth({
+        kind: "signed-in",
+        user,
+        password,
+        expiresAt: session.expiresAt,
+      });
     },
     [users, persistRegistry],
   );
@@ -499,13 +551,20 @@ export function App() {
       setUsers(nextUsers);
       persistRegistry(nextUsers, user.id);
       passwordRef.current = password;
-      setAuth({ kind: "signed-in", user, password });
+      const session = saveSession(user.id, password);
+      setAuth({
+        kind: "signed-in",
+        user,
+        password,
+        expiresAt: session.expiresAt,
+      });
     },
     [users, persistRegistry],
   );
 
   const handleSignOut = useCallback(() => {
     passwordRef.current = null;
+    clearSession();
     setAuth((prev) => {
       const lastUsername =
         prev.kind === "signed-in"
@@ -523,6 +582,7 @@ export function App() {
     // the picker comes up blank instead of pre-filling the just-left
     // account.
     passwordRef.current = null;
+    clearSession();
     setAuth({ kind: "signed-out", lastUsername: null });
     persistRegistry(users, null);
   }, [users, persistRegistry]);
@@ -532,6 +592,7 @@ export function App() {
     // sign-up form when no users exist; we surface that affordance
     // here too by signing out + setting the hint to null.
     passwordRef.current = null;
+    clearSession();
     setAuth({ kind: "signed-out", lastUsername: null });
     persistRegistry(users, null);
   }, [users, persistRegistry]);
@@ -546,10 +607,29 @@ export function App() {
       setUsers(remaining);
       persistRegistry(remaining, null);
       passwordRef.current = null;
+      clearSession();
       setAuth({ kind: "signed-out", lastUsername: null });
     },
     [auth, users, persistRegistry],
   );
+
+  // Auto sign-out when the cached password TTL elapses. We schedule a
+  // single timer keyed off the absolute deadline so it stays accurate
+  // across re-renders; a ref to `handleSignOut` keeps the timer from
+  // resetting just because the callback identity changed.
+  const signOutRef = useRef(handleSignOut);
+  signOutRef.current = handleSignOut;
+  const expiresAt = auth.kind === "signed-in" ? auth.expiresAt : null;
+  useEffect(() => {
+    if (expiresAt === null) return;
+    const remaining = expiresAt - Date.now();
+    if (remaining <= 0) {
+      signOutRef.current();
+      return;
+    }
+    const timer = window.setTimeout(() => signOutRef.current(), remaining);
+    return () => window.clearTimeout(timer);
+  }, [expiresAt]);
 
   if (auth.kind === "signed-out" || adapter === null) {
     return (
