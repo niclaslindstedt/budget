@@ -18,58 +18,105 @@ function settings(overrides: Partial<Settings> = {}): Settings {
 
 describe("formatNumber", () => {
   it("uses configured thousands + decimal separators", () => {
-    expect(formatNumber(1234567.89, settings())).toBe("1 234 567,89");
+    expect(formatNumber(1234567.89, settings({ showDecimals: true }))).toBe(
+      "1 234 567,89",
+    );
     expect(
       formatNumber(
         1234567.89,
-        settings({ thousandsSeparator: ",", decimalSeparator: "." }),
+        settings({
+          showDecimals: true,
+          thousandsSeparator: ",",
+          decimalSeparator: ".",
+        }),
       ),
     ).toBe("1,234,567.89");
     expect(
       formatNumber(
         1234567.89,
-        settings({ thousandsSeparator: ".", decimalSeparator: "," }),
+        settings({
+          showDecimals: true,
+          thousandsSeparator: ".",
+          decimalSeparator: ",",
+        }),
       ),
     ).toBe("1.234.567,89");
   });
 
   it("drops thousands grouping when formatNumbers is off", () => {
-    expect(formatNumber(1234567.89, settings({ formatNumbers: false }))).toBe(
-      "1234567,89",
-    );
+    expect(
+      formatNumber(
+        1234567.89,
+        settings({ showDecimals: true, formatNumbers: false }),
+      ),
+    ).toBe("1234567,89");
   });
 
   it("omits trailing zeros for whole numbers unless asked", () => {
-    expect(formatNumber(100, settings())).toBe("100");
+    expect(formatNumber(100, settings({ showDecimals: true }))).toBe("100");
     expect(
-      formatNumber(100, settings(), { alwaysTwoFractionDigits: true }),
+      formatNumber(100, settings({ showDecimals: true }), {
+        alwaysTwoFractionDigits: true,
+      }),
     ).toBe("100,00");
   });
 
   it("rounds floats to two decimals to hide drift", () => {
-    expect(formatNumber(0.1 + 0.2, settings())).toBe("0,3");
+    expect(formatNumber(0.1 + 0.2, settings({ showDecimals: true }))).toBe(
+      "0,3",
+    );
   });
 
   it("formats negatives with a leading minus", () => {
-    expect(formatNumber(-1234.5, settings())).toBe("-1 234,5");
+    expect(formatNumber(-1234.5, settings({ showDecimals: true }))).toBe(
+      "-1 234,5",
+    );
+  });
+
+  it("hides the fractional part when showDecimals is off (default)", () => {
+    expect(formatNumber(1234.56, settings())).toBe("1 235");
+    expect(formatNumber(1234.4, settings())).toBe("1 234");
+    expect(formatNumber(-0.5, settings())).toBe("0");
+    expect(
+      formatNumber(100, settings(), { alwaysTwoFractionDigits: true }),
+    ).toBe("100");
   });
 });
 
 describe("formatAmount / formatBalance", () => {
   it("appends currency when showCurrency is on", () => {
-    expect(formatAmount(1234, settings())).toBe("1 234 kr");
-    expect(formatBalance(1234, settings())).toBe("1 234,00 kr");
-  });
-
-  it("omits currency when showCurrency is off", () => {
-    expect(formatAmount(1234, settings({ showCurrency: false }))).toBe("1 234");
-    expect(formatBalance(1234, settings({ showCurrency: false }))).toBe(
-      "1 234,00",
+    expect(formatAmount(1234, settings({ showDecimals: true }))).toBe(
+      "1 234 kr",
+    );
+    expect(formatBalance(1234, settings({ showDecimals: true }))).toBe(
+      "1 234,00 kr",
     );
   });
 
+  it("omits currency when showCurrency is off", () => {
+    expect(
+      formatAmount(1234, settings({ showDecimals: true, showCurrency: false })),
+    ).toBe("1 234");
+    expect(
+      formatBalance(
+        1234,
+        settings({ showDecimals: true, showCurrency: false }),
+      ),
+    ).toBe("1 234,00");
+  });
+
   it("honours a user-typed currency string", () => {
-    expect(formatAmount(50, settings({ currency: "$" }))).toBe("50 $");
+    expect(
+      formatAmount(50, settings({ showDecimals: true, currency: "$" })),
+    ).toBe("50 $");
+  });
+
+  it("hides decimals on amounts and balances when showDecimals is off", () => {
+    // Default settings have showDecimals off — balances drop their
+    // ".00" tail and amounts round to whole units.
+    expect(formatAmount(1234.56, settings())).toBe("1 235 kr");
+    expect(formatBalance(1234.5, settings())).toBe("1 235 kr");
+    expect(formatBalance(1234, settings())).toBe("1 234 kr");
   });
 });
 

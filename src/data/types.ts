@@ -97,9 +97,11 @@ export type Settings = {
   thousandsSeparator: ThousandsSeparator;
   // Display toggles. `formatNumbers` controls whether amounts/balances
   // render with thousands grouping; `showCurrency` controls whether the
-  // currency token is appended.
+  // currency token is appended; `showDecimals` controls whether the
+  // fractional portion is rendered at all (off rounds to whole units).
   formatNumbers: boolean;
   showCurrency: boolean;
+  showDecimals: boolean;
 };
 
 export type Budget = {

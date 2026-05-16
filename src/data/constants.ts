@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
   thousandsSeparator: " ",
   formatNumbers: true,
   showCurrency: true,
+  showDecimals: false,
 };
 
 // Allowed date formats, in the order the settings UI lists them.

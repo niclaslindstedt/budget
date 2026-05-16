@@ -341,6 +341,12 @@ function MainView({
           checked={draft.showCurrency}
           onChange={(v) => onUpdate("showCurrency", v)}
         />
+        <ToggleRow
+          label="Show decimals"
+          hint="Render the fractional part of amounts and balances. Off rounds to whole units."
+          checked={draft.showDecimals}
+          onChange={(v) => onUpdate("showDecimals", v)}
+        />
       </Section>
 
       <Section title="Security">
