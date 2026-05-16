@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, CellValue, Column, Row } from "../data/types";
@@ -11,7 +11,8 @@ type Props = {
   balances: Map<string, number>;
   categories: Category[];
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
-  onDeleteRow: (rowId: string) => void;
+  onDeleteRequest: (row: Row) => void;
+  onEditRequest: (row: Row) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
@@ -23,7 +24,8 @@ export function SheetRow({
   balances,
   categories,
   onUpdateCell,
-  onDeleteRow,
+  onDeleteRequest,
+  onEditRequest,
   onCreateCategory,
 }: Props) {
   const [swiped, setSwiped] = useState(false);
@@ -34,6 +36,7 @@ export function SheetRow({
   const completedCol = findColumnByType(columns, "completed");
   const isCompleted =
     completedCol !== undefined && row.cells[completedCol.id] === true;
+  const isSeries = !!row.seriesId;
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -64,6 +67,7 @@ export function SheetRow({
   const rowClass = [
     swiped ? "is-swiped" : "",
     isCompleted ? "is-completed" : "",
+    isSeries ? "is-series" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -89,14 +93,24 @@ export function SheetRow({
         />
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
-        <button
-          type="button"
-          className="inline-flex h-full w-full cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
-          aria-label="Delete row"
-          onClick={() => onDeleteRow(row.id)}
-        >
-          <Trash2 size={18} aria-hidden focusable={false} />
-        </button>
+        <div className="action-stack flex h-full w-full items-stretch">
+          <button
+            type="button"
+            className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+            aria-label={isSeries ? "Edit recurring entry" : "Make recurring"}
+            onClick={() => onEditRequest(row)}
+          >
+            <Pencil size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
+            aria-label="Delete row"
+            onClick={() => onDeleteRequest(row)}
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+          </button>
+        </div>
       </td>
     </tr>
   );

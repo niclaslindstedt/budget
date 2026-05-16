@@ -7,6 +7,7 @@ import {
   getMonthKey,
   groupRowsByMonth,
   moveColumn,
+  rowsInSeriesFrom,
   sortMonthKeys,
   sortRowsByDate,
 } from "../src/data/sheet";
@@ -124,5 +125,53 @@ describe("computeBalances", () => {
     const sheet = createDefaultSheet();
     sheet.columns = sheet.columns.filter((c) => c.type !== "amount");
     expect(computeBalances(sheet).size).toBe(0);
+  });
+});
+
+describe("rowsInSeriesFrom", () => {
+  const sheet = createDefaultSheet();
+  const dateCol = findColumnByType(sheet.columns, "date")!;
+  const amountCol = findColumnByType(sheet.columns, "amount")!;
+
+  function s(id: string, date: string, amount = 1, seriesId?: string): Row {
+    const row: Row = {
+      id,
+      cells: { [dateCol.id]: date, [amountCol.id]: amount },
+    };
+    if (seriesId) row.seriesId = seriesId;
+    return row;
+  }
+
+  const rows: Row[] = [
+    s("a", "2026-01-15", 1, "rent"),
+    s("b", "2026-02-15", 1, "rent"),
+    s("c", "2026-03-15", 1, "rent"),
+    s("d", "2026-04-15", 1, "rent"),
+    s("e", "2026-02-20", 1, "spotify"),
+    s("f", "2026-03-20", 1),
+  ];
+
+  it("returns anchor + matching siblings with date >= anchor date", () => {
+    const anchor = rows.find((r) => r.id === "b")!;
+    const result = rowsInSeriesFrom(rows, anchor, dateCol.id);
+    expect(result.map((r) => r.id)).toEqual(["b", "c", "d"]);
+  });
+
+  it("clamps with untilIso (inclusive)", () => {
+    const anchor = rows.find((r) => r.id === "b")!;
+    const result = rowsInSeriesFrom(rows, anchor, dateCol.id, "2026-03-31");
+    expect(result.map((r) => r.id)).toEqual(["b", "c"]);
+  });
+
+  it("excludes other series and one-off rows", () => {
+    const anchor = rows.find((r) => r.id === "a")!;
+    const result = rowsInSeriesFrom(rows, anchor, dateCol.id);
+    expect(result.every((r) => r.seriesId === "rent")).toBe(true);
+  });
+
+  it("returns just the anchor for non-series rows", () => {
+    const anchor = rows.find((r) => r.id === "f")!;
+    const result = rowsInSeriesFrom(rows, anchor, dateCol.id);
+    expect(result).toEqual([anchor]);
   });
 });

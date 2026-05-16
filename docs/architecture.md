@@ -14,9 +14,12 @@ src/
 │   ├── MonthTable.tsx             # one month's table
 │   ├── ColumnHeader.tsx           # draggable column header
 │   ├── Cell.tsx                   # per-type cell editor
-│   ├── SheetRow.tsx               # row body — swipe-to-delete + cell wiring
+│   ├── SheetRow.tsx               # row body — swipe-to-act + cell wiring
 │   ├── AddRowButton.tsx           # `+` with long-press / right-click hatch
 │   ├── ComplexEntryModal.tsx      # recurring + categorised entry form
+│   ├── EditEntryModal.tsx         # promote-to-recurring / scoped series edit
+│   ├── RecurrenceForm.tsx         # mode-tabs + preview, shared by both modals
+│   ├── ConfirmDialog.tsx          # generic confirm prompt with scope options
 │   ├── CategoryPicker.tsx         # custom dropdown + inline category creator
 │   ├── icons.tsx                  # column-type + category-icon registries
 │   └── ImportExportControls.tsx   # file download + file picker
@@ -58,7 +61,7 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type Budget = {
-  version: 2;
+  version: 3;
   sheets: Sheet[];
   activeSheetId: string;
   categories: Category[];
@@ -87,6 +90,7 @@ type Column = {
 type Row = {
   id: string;
   cells: Record<string /* column id */, string | number | boolean | null>;
+  seriesId?: string; // shared by all rows in the same recurrence
 };
 
 type Category = {
@@ -128,11 +132,14 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `2`. The chain has one step:
+Current `LATEST_VERSION` is `3`. The chain has two steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
   column) so existing rows can be tagged without re-arranging.
+- **v2 → v3** — version bump only. No row data is rewritten; this
+  release adds an optional `Row.seriesId` field that older builds
+  would silently drop, so bumping signals the new shape.
 
 ## Complex entries
 
@@ -145,9 +152,36 @@ or 12). `expandRecurrence(rule)` returns a sorted, de-duplicated
 list of ISO `YYYY-MM-DD` strings clamped to `[start, end]`.
 
 The `ComplexEntryModal` collects a description, amount, category,
-and a recurrence rule; on submit it expands the rule and dispatches
-one row per emitted date. Generated rows are ordinary rows —
-edit and delete behave the same as for manually-added rows.
+and a recurrence rule; on submit it expands the rule, dispatches one
+row per emitted date, and tags every generated row with a shared
+`seriesId` so they can be edited or deleted as a group later.
+
+### Series operations
+
+Each row on the sheet has two actions, revealed by swiping the row
+left on mobile (or via the action icons at the right edge on
+desktop):
+
+- **Pen icon** opens `EditEntryModal`. On a non-series row the modal
+  is a "promote to recurring" form — it reuses `RecurrenceForm` to
+  capture a cadence + end date and dispatches `convertToRecurring`,
+  which generates future rows that inherit the anchor's description,
+  amount, and category, all sharing a new `seriesId`. On a row that
+  already belongs to a series, the modal shows the editable fields
+  plus a **scope chooser**: "Only this entry", or "This entry and
+  all future" with an optional "until …" date so temporary changes
+  (a one-quarter rent bump, a price hike that reverts) can revert
+  automatically. The scope is dispatched as `editSeries` and the
+  reducer rewrites only the matching rows.
+- **Trash icon** opens `ConfirmDialog`. For a one-off row it offers
+  a single danger action; for a series row it adds "Just this one"
+  and "This and all future (N)" so the matching rows are removed in
+  a single `deleteRows` dispatch.
+
+Inline cell edits on series rows remain local — they only change
+that one row, so day-to-day tweaks (marking a single payment as
+done, correcting one date) don't trigger a scope prompt. The pen
+icon is the dedicated path for changes meant to propagate.
 
 ## Import / export
 

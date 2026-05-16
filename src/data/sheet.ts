@@ -112,3 +112,27 @@ export function createEmptyRow(
   }
   return { id: newId(), cells };
 }
+
+// Rows in the same series with a date >= `anchor`'s date (anchor included).
+// Optionally clamped to an inclusive upper bound, used for the "until …"
+// option on edit-scope dialogs. For non-series anchors, returns just the
+// anchor so callers can treat scope-aware ops uniformly.
+export function rowsInSeriesFrom(
+  rows: Row[],
+  anchor: Row,
+  dateColumnId: string,
+  untilIso?: string | null,
+): Row[] {
+  if (!anchor.seriesId) return [anchor];
+  const anchorDate = anchor.cells[dateColumnId];
+  if (typeof anchorDate !== "string") return [anchor];
+  const matched = rows.filter((r) => {
+    if (r.seriesId !== anchor.seriesId) return false;
+    const d = r.cells[dateColumnId];
+    if (typeof d !== "string") return false;
+    if (d < anchorDate) return false;
+    if (untilIso && d > untilIso) return false;
+    return true;
+  });
+  return sortRowsByDate(matched, dateColumnId);
+}

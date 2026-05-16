@@ -28,7 +28,7 @@ function sampleBudget(): Budget {
     },
   ];
   return {
-    version: 2,
+    version: 3,
     sheets: [a, b],
     activeSheetId: b.id,
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
@@ -182,7 +182,7 @@ describe("migrate", () => {
     expect(() => migrate({ version: LATEST_VERSION + 1 })).toThrow();
   });
 
-  it("v1 → v2: adds categories array and a category column to every sheet", () => {
+  it("v1 → latest: adds categories array and a category column to every sheet", () => {
     const v1 = {
       version: 1,
       activeSheetId: "s1",
@@ -204,7 +204,7 @@ describe("migrate", () => {
     };
     const { budget, migrated } = migrate(v1);
     expect(migrated).toBe(true);
-    expect(budget.version).toBe(2);
+    expect(budget.version).toBe(LATEST_VERSION);
     expect(budget.categories).toEqual([]);
     const sheet = (
       budget.sheets as Array<{ columns: Array<{ type: string }> }>
@@ -224,7 +224,7 @@ describe("migrate", () => {
     expect(validated.ok).toBe(true);
   });
 
-  it("v1 → v2: leaves an already-present category column alone", () => {
+  it("v1 → latest: leaves an already-present category column alone", () => {
     const v1 = {
       version: 1,
       activeSheetId: "s1",
@@ -247,6 +247,70 @@ describe("migrate", () => {
       budget.sheets as Array<{ columns: Array<{ id: string }> }>
     )[0];
     expect(sheet.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
+  });
+
+  it("v2 → v3: bumps version, preserves data, keeps existing seriesIds", () => {
+    const v2 = {
+      version: 2,
+      activeSheetId: "s1",
+      categories: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Old",
+          openingBalance: 0,
+          columns: [
+            { id: "c1", type: "date", label: "Date" },
+            { id: "c2", type: "description", label: "Description" },
+            { id: "c3", type: "category", label: "Category" },
+            { id: "c4", type: "amount", label: "Amount" },
+            { id: "c5", type: "balance", label: "Balance" },
+            { id: "c6", type: "completed", label: "Done" },
+          ],
+          rows: [
+            {
+              id: "r1",
+              cells: { c1: "2026-05-01", c4: 100 },
+            },
+          ],
+        },
+      ],
+    };
+    const { budget, migrated } = migrate(v2);
+    expect(migrated).toBe(true);
+    expect(budget.version).toBe(LATEST_VERSION);
+    const sheet = (budget.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
+    expect(sheet.rows).toHaveLength(1);
+    expect(sheet.rows[0].id).toBe("r1");
+  });
+});
+
+describe("seriesId field on rows", () => {
+  it("round-trips through serialize/parse", () => {
+    const b = sampleBudget();
+    b.sheets[0].rows[0].seriesId = "series-1";
+    b.sheets[0].rows[1].seriesId = "series-1";
+    const r = parseBudget(serializeBudget(b));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.budget.sheets[0].rows[0].seriesId).toBe("series-1");
+      expect(r.budget.sheets[0].rows[1].seriesId).toBe("series-1");
+    }
+  });
+
+  it("is omitted from JSON when undefined", () => {
+    const b = sampleBudget();
+    const text = serializeBudget(b);
+    expect(text.includes("seriesId")).toBe(false);
+  });
+
+  it("rejects empty-string seriesId", () => {
+    const b = sampleBudget();
+    const raw = JSON.parse(serializeBudget(b));
+    raw.sheets[0].rows[0].seriesId = "";
+    const r = parseBudget(JSON.stringify(raw));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/seriesId/);
   });
 });
 

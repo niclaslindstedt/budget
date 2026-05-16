@@ -17,7 +17,8 @@ type Props = {
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onAddComplex: (date: string) => void;
-  onDeleteRow: (rowId: string) => void;
+  onDeleteRequest: (row: Row) => void;
+  onEditRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onSetOpeningBalance: (value: number) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -35,7 +36,8 @@ export function SheetView({
   onUpdateCell,
   onAddRow,
   onAddComplex,
-  onDeleteRow,
+  onDeleteRequest,
+  onEditRequest,
   onReorderColumns,
   onSetOpeningBalance,
   onCreateCategory,
@@ -100,7 +102,8 @@ export function SheetView({
               onUpdateCell={onUpdateCell}
               onAddRow={() => onAddRow(seedDate)}
               onAddComplex={() => onAddComplex(seedDate)}
-              onDeleteRow={onDeleteRow}
+              onDeleteRequest={onDeleteRequest}
+              onEditRequest={onEditRequest}
               onReorderColumns={onReorderColumns}
               onCreateCategory={onCreateCategory}
             />

@@ -17,6 +17,10 @@ export type Column = {
 export type Row = {
   id: string;
   cells: Record<string, CellValue>;
+  // Optional grouping id shared by every row generated from the same
+  // recurrence. Used to scope "edit / delete all future" operations and
+  // is undefined for one-off rows added inline.
+  seriesId?: string;
 };
 
 export type CategoryIcon =
@@ -62,7 +66,7 @@ export type Sheet = {
 };
 
 export type Budget = {
-  version: 2;
+  version: 3;
   sheets: Sheet[];
   activeSheetId: string;
   categories: Category[];

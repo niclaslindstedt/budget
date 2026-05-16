@@ -6,7 +6,7 @@ import { parseBudget } from "./file";
 export function freshBudget(): Budget {
   const sheet = createDefaultSheet();
   return {
-    version: 2,
+    version: 3,
     sheets: [sheet],
     activeSheetId: sheet.id,
     categories: [],
