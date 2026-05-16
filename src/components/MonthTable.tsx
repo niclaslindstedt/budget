@@ -39,7 +39,7 @@ export function MonthTable({
 }: Props) {
   return (
     <section>
-      <h3 className="mb-1.5 text-xs font-semibold tracking-wider text-muted uppercase">
+      <h3 className="sticky top-0 z-10 bg-surface py-1.5 text-xs font-semibold tracking-wider text-muted uppercase">
         {formatMonth(monthKey)}
       </h3>
       <div className="overflow-hidden rounded-md border border-line bg-surface md:overflow-x-auto">
