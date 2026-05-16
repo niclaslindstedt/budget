@@ -6,12 +6,13 @@
 // `LATEST_VERSION`, update the `Budget.version` literal in `data/types.ts`,
 // and add the next step here.
 
+import { DEFAULT_SETTINGS } from "./constants";
 import { newId } from "./sheet";
 
 // Typed as a literal so consumers (like the Budget type) can pin to it.
 // When bumping, change BOTH this constant and the `Budget.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 3 as const;
+export const LATEST_VERSION = 4 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -61,6 +62,16 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // version flags that this build understands the new shape so older
   // builds know not to silently drop unknown fields.
   2: (v2) => ({ ...v2, version: 3 }),
+
+  // v3 → v4: introduces budget-level `settings` covering fiscal-month
+  // start, date format, currency, number format, and display toggles.
+  // Existing budgets get the canonical defaults so behaviour matches
+  // pre-settings builds until the user changes them.
+  3: (v3) => ({
+    ...v3,
+    version: 4,
+    settings: { ...DEFAULT_SETTINGS },
+  }),
 };
 
 export type MigrationResult = {

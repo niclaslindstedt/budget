@@ -1,4 +1,4 @@
-import type { Category, CellValue, Column, Row } from "../data/types";
+import type { Category, CellValue, Column, Row, Settings } from "../data/types";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
 import { SheetRow } from "./SheetRow";
@@ -9,6 +9,7 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   categories: Category[];
+  settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
@@ -40,6 +41,7 @@ export function MonthTable({
   columns,
   balances,
   categories,
+  settings,
   selectMode,
   selectedIds,
   onUpdateCell,
@@ -126,6 +128,7 @@ export function MonthTable({
                 columns={columns}
                 balances={balances}
                 categories={categories}
+                settings={settings}
                 selectMode={selectMode}
                 selected={selectedIds.has(row.id)}
                 onUpdateCell={onUpdateCell}

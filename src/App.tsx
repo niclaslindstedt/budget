@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ListChecks, Settings } from "lucide-react";
+import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
 import { BulkActionBar } from "./components/BulkActionBar";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
@@ -29,7 +29,14 @@ import {
   rowsInSeriesFrom,
   shiftIsoToMonth,
 } from "./data/sheet";
-import type { Budget, Category, CellValue, Row, Sheet } from "./data/types";
+import type {
+  Budget,
+  Category,
+  CellValue,
+  Row,
+  Settings,
+  Sheet,
+} from "./data/types";
 import type { StorageAdapter } from "./storage/adapter";
 import {
   decryptEnvelope,
@@ -106,7 +113,8 @@ type SheetAction =
 type Action =
   | SheetAction
   | { type: "replace"; budget: Budget }
-  | { type: "addCategory"; category: Category };
+  | { type: "addCategory"; category: Category }
+  | { type: "updateSettings"; settings: Settings };
 
 function applyPatch(
   row: Row,
@@ -346,6 +354,9 @@ function reducer(state: Budget, action: Action): Budget {
   if (action.type === "addCategory") {
     return { ...state, categories: [...state.categories, action.category] };
   }
+  if (action.type === "updateSettings") {
+    return { ...state, settings: action.settings };
+  }
   return {
     ...state,
     sheets: state.sheets.map((sheet) =>
@@ -569,6 +580,10 @@ function BudgetView({
     },
     [dispatch],
   );
+  const onSaveSettings = useCallback(
+    (settings: Settings) => dispatch({ type: "updateSettings", settings }),
+    [dispatch],
+  );
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
       dispatch({ type: "addRowsFromComplex", sheetId, draft });
@@ -642,11 +657,14 @@ function BudgetView({
     if (!dateCol) return new Set();
     const set = new Set<string>();
     for (const r of selectedRows) {
-      const key = getMonthKey(r.cells[dateCol.id]);
+      const key = getMonthKey(
+        r.cells[dateCol.id],
+        budget.settings.startOfMonth,
+      );
       if (key !== "undated") set.add(key);
     }
     return set;
-  }, [selectedRows, dateCol]);
+  }, [selectedRows, dateCol, budget.settings.startOfMonth]);
 
   // Last ISO date in the candidate series — defaults the "until" picker.
   const editLastSeriesDate = useMemo<string | null>(() => {
@@ -801,7 +819,7 @@ function BudgetView({
             title="Settings"
             className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
           >
-            <Settings size={18} aria-hidden focusable={false} />
+            <SettingsIcon size={18} aria-hidden focusable={false} />
           </button>
         </div>
       </header>
@@ -809,6 +827,7 @@ function BudgetView({
         <SheetView
           sheet={activeSheet}
           categories={budget.categories}
+          settings={budget.settings}
           selectMode={selectMode}
           selectedIds={selectedIds}
           showName={budget.sheets.length > 1}
@@ -837,6 +856,7 @@ function BudgetView({
         open={complexOpen}
         initialDate={complexSeedDate}
         categories={budget.categories}
+        settings={budget.settings}
         onClose={() => setComplexOpen(false)}
         onCreate={onComplexSubmit}
         onCreateCategory={onCreateCategory}
@@ -846,6 +866,7 @@ function BudgetView({
         row={editPrompt?.row ?? null}
         columns={activeSheet.columns}
         categories={budget.categories}
+        settings={budget.settings}
         lastSeriesDate={editLastSeriesDate}
         onClose={() => setEditPrompt(null)}
         onConvertToRecurring={onConvertToRecurring}
@@ -857,6 +878,7 @@ function BudgetView({
         rows={selectedRows}
         columns={activeSheet.columns}
         categories={budget.categories}
+        settings={budget.settings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}
         onApplyRecurring={onApplyBulkRecurring}
@@ -894,8 +916,10 @@ function BudgetView({
       />
       <SettingsModal
         open={settingsOpen}
+        settings={budget.settings}
         encryptionEnabled={encryptionEnabled}
         onClose={() => setSettingsOpen(false)}
+        onSave={onSaveSettings}
         onEnableEncryption={onEnableEncryption}
         onDisableEncryption={onDisableEncryption}
       />

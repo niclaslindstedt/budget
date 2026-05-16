@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category } from "../data/types";
+import type { Category, Settings } from "../data/types";
+import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 
@@ -10,6 +11,7 @@ type Props = {
   open: boolean;
   initialDate: string;
   categories: Category[];
+  settings: Settings;
   onClose: () => void;
   onCreate: (entries: ComplexEntryDraft) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -26,6 +28,7 @@ export function ComplexEntryModal({
   open,
   initialDate,
   categories,
+  settings,
   onClose,
   onCreate,
   onCreateCategory,
@@ -62,11 +65,7 @@ export function ComplexEntryModal({
     [],
   );
 
-  const parsedAmount = useMemo(() => {
-    if (amount.trim() === "" || amount.trim() === "-") return null;
-    const n = Number(amount.replace(",", "."));
-    return Number.isFinite(n) ? n : null;
-  }, [amount]);
+  const parsedAmount = useMemo(() => parseAmount(amount), [amount]);
 
   if (!open) return null;
 
@@ -129,7 +128,9 @@ export function ComplexEntryModal({
                 type="text"
                 inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) =>
+                  setAmount(normalizeAmountInput(e.target.value, settings))
+                }
                 className={`field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
                   parsedAmount !== null && parsedAmount < 0
                     ? "text-negative"

@@ -3,7 +3,12 @@ import { X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Column, Row } from "../data/types";
+import type { Category, Column, Row, Settings } from "../data/types";
+import {
+  formatAmountForInput,
+  normalizeAmountInput,
+  parseAmount,
+} from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 
@@ -19,24 +24,19 @@ type Props = {
   rows: Row[];
   columns: Column[];
   categories: Category[];
+  settings: Settings;
   onClose: () => void;
   onApplyPatch: (rowIds: string[], patch: BulkPatch) => void;
   onApplyRecurring: (rowIds: string[], futureDates: string[]) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
-function parseAmount(text: string): number | null {
-  const trimmed = text.trim();
-  if (trimmed === "" || trimmed === "-") return null;
-  const n = Number(trimmed.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-}
-
 export function BulkEditModal({
   open,
   rows,
   columns,
   categories,
+  settings,
   onClose,
   onApplyPatch,
   onApplyRecurring,
@@ -92,11 +92,17 @@ export function BulkEditModal({
     setDateEnabled(false);
     setDateValue(seedDate);
     setAmountEnabled(false);
-    setAmountText(sharedAmount !== null ? String(sharedAmount) : "");
+    setAmountText(
+      sharedAmount !== null
+        ? sharedAmount < 0
+          ? `-${formatAmountForInput(Math.abs(sharedAmount), settings)}`
+          : formatAmountForInput(sharedAmount, settings)
+        : "",
+    );
     setRecurringEnabled(false);
     setRecurringDates([]);
     setRecurrenceResetKey((k) => k + 1);
-  }, [open, seedDate, sharedAmount]);
+  }, [open, seedDate, sharedAmount, settings]);
 
   useEffect(() => {
     if (!open) return;
@@ -212,7 +218,9 @@ export function BulkEditModal({
                 type="text"
                 inputMode="decimal"
                 value={amountText}
-                onChange={(e) => setAmountText(e.target.value)}
+                onChange={(e) =>
+                  setAmountText(normalizeAmountInput(e.target.value, settings))
+                }
                 className={`field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
                   parsedAmount !== null && parsedAmount < 0
                     ? "text-danger"

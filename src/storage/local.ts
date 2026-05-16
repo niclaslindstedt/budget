@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
 import type { Budget } from "../data/types";
 import { parseBudget } from "./file";
@@ -5,10 +6,11 @@ import { parseBudget } from "./file";
 export function freshBudget(): Budget {
   const sheet = createDefaultSheet();
   return {
-    version: 3,
+    version: 4,
     sheets: [sheet],
     activeSheetId: sheet.id,
     categories: [],
+    settings: { ...DEFAULT_SETTINGS },
   };
 }
 
