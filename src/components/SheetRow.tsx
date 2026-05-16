@@ -141,6 +141,7 @@ export function SheetRow({
           }
           categories={categories}
           settings={settings}
+          isRecurring={isSeries}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
           onCreateCategory={onCreateCategory}
         />
