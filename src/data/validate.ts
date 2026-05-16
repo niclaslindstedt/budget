@@ -84,7 +84,7 @@ function validateRow(
   knownColumnIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, cells } = raw;
+  const { id, cells, seriesId } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (!isObject(cells)) return fail(`${path}.cells`, "expected an object");
@@ -97,7 +97,13 @@ function validateRow(
       return fail(`${path}.cells.${k}`, "expected string|number|boolean|null");
     validated[k] = v;
   }
-  return { ok: true, value: { id, cells: validated } };
+  const row: Row = { id, cells: validated };
+  if (seriesId !== undefined) {
+    if (typeof seriesId !== "string" || seriesId === "")
+      return fail(`${path}.seriesId`, "expected a non-empty string");
+    row.seriesId = seriesId;
+  }
+  return { ok: true, value: row };
 }
 
 function validateSheet(raw: unknown, path: string): Result<Sheet> {

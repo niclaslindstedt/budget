@@ -153,8 +153,8 @@ body {
       transition: transform 200ms ease;
     }
     .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
-      transform: translateX(-64px);
-      background: color-mix(in srgb, var(--danger) 18%, var(--surface));
+      transform: translateX(-112px);
+      background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
     .sheet-table > thead > tr > .action-cell,
     .sheet-table > tbody > tr > .action-cell {
@@ -162,17 +162,29 @@ body {
       top: 0;
       right: 0;
       bottom: 0;
-      width: 64px;
+      width: 112px;
       transform: translateX(100%);
       transition: transform 200ms ease;
-      background: var(--danger);
+      background: var(--page-bg);
       border: 0;
       z-index: 2;
       align-items: center;
       justify-content: center;
+      padding: 0;
     }
     .sheet-table > tbody > tr.is-swiped > .action-cell {
       transform: translateX(0);
+    }
+    /* Split the revealed area into two equal-width action buttons. The
+       left one (pen) is the accent colour, the right one (trash) is the
+       danger colour, so the gesture telegraphs both options at a glance. */
+    .sheet-table > tbody > tr > .action-cell .action-btn-edit {
+      background: var(--accent);
+      color: var(--surface);
+    }
+    .sheet-table > tbody > tr > .action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
     }
 
     /* Done state tint applies on every cell so the entire row reads green */

@@ -12,7 +12,8 @@ type Props = {
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
   onAddComplex: () => void;
-  onDeleteRow: (rowId: string) => void;
+  onDeleteRequest: (row: Row) => void;
+  onEditRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
@@ -38,7 +39,8 @@ export function MonthTable({
   onUpdateCell,
   onAddRow,
   onAddComplex,
-  onDeleteRow,
+  onDeleteRequest,
+  onEditRequest,
   onReorderColumns,
   onCreateCategory,
 }: Props) {
@@ -77,7 +79,8 @@ export function MonthTable({
                 balances={balances}
                 categories={categories}
                 onUpdateCell={onUpdateCell}
-                onDeleteRow={onDeleteRow}
+                onDeleteRequest={onDeleteRequest}
+                onEditRequest={onEditRequest}
                 onCreateCategory={onCreateCategory}
               />
             ))}

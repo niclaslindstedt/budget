@@ -11,7 +11,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the Budget type) can pin to it.
 // When bumping, change BOTH this constant and the `Budget.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 2 as const;
+export const LATEST_VERSION = 3 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -54,6 +54,13 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
       }),
     };
   },
+
+  // v2 → v3: introduces an optional `seriesId` field on rows so the app
+  // can scope "edit / delete future" operations across rows generated
+  // from the same recurrence. No row data needs rewriting; bumping the
+  // version flags that this build understands the new shape so older
+  // builds know not to silently drop unknown fields.
+  2: (v2) => ({ ...v2, version: 3 }),
 };
 
 export type MigrationResult = {
