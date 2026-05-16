@@ -74,7 +74,11 @@ export function Cell({
           }`}
           aria-readonly="true"
         >
-          {formatBalance(n, settings)}
+          {/* Wrap the text so the mobile layout (where each td is
+             display:flex) gets a full-width child for `text-right` to bite
+             on — otherwise the bare text node becomes a narrow anonymous
+             flex item that sits at the start of the cell. */}
+          <span className="block">{formatBalance(n, settings)}</span>
         </td>
       );
     }
