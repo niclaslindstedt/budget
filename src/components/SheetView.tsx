@@ -9,12 +9,24 @@ import {
   sortMonthKeys,
   sortRowsByDate,
 } from "../data/sheet";
-import type { Category, CellValue, Row, Settings, Sheet } from "../data/types";
+import type {
+  AccountBudget,
+  Category,
+  CellValue,
+  Row,
+  Settings,
+  Sheet,
+} from "../data/types";
 import { formatAmountForInput, formatBalance } from "../utils/format";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
   sheet: Sheet;
+  // The AccountBudget block to render. Currently the only SheetItem
+  // variant, so a single block is always shown — pulled out as its own
+  // prop so a future multi-block view drops in by mapping over
+  // `sheet.items` and rendering one component per variant.
+  item: AccountBudget;
   categories: Category[];
   settings: Settings;
   selectMode: boolean;
@@ -38,6 +50,7 @@ function todayIso(): string {
 
 export function SheetView({
   sheet,
+  item,
   categories,
   settings,
   selectMode,
@@ -54,23 +67,23 @@ export function SheetView({
   onCreateCategory,
 }: Props) {
   const dateCol = useMemo(
-    () => findColumnByType(sheet.columns, "date"),
-    [sheet.columns],
+    () => findColumnByType(item.columns, "date"),
+    [item.columns],
   );
 
-  const balances = useMemo(() => computeBalances(sheet), [sheet]);
+  const balances = useMemo(() => computeBalances(item), [item]);
 
   // Each month renders as its own CSS grid, so amount/balance columns
   // sized with `max-content` end up different widths per month. Compute
-  // the longest formatted value across the whole sheet here and pass it
+  // the longest formatted value across the whole block here and pass it
   // down so every month aligns on the same column widths.
   const colWidths = useMemo(() => {
-    const amountCol = findColumnByType(sheet.columns, "amount");
-    const balanceCol = findColumnByType(sheet.columns, "balance");
+    const amountCol = findColumnByType(item.columns, "amount");
+    const balanceCol = findColumnByType(item.columns, "balance");
     let amountChars = 0;
     let balanceChars = 0;
     if (amountCol) {
-      for (const row of sheet.rows) {
+      for (const row of item.rows) {
         const v = row.cells[amountCol.id];
         if (typeof v !== "number") continue;
         const body = formatAmountForInput(Math.abs(v), settings);
@@ -87,12 +100,12 @@ export function SheetView({
       }
     }
     return { amountChars, balanceChars };
-  }, [sheet.rows, sheet.columns, balances, settings]);
+  }, [item.rows, item.columns, balances, settings]);
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
-    return groupRowsByMonth(sheet.rows, dateCol.id, settings.startOfMonth);
-  }, [sheet.rows, dateCol, settings.startOfMonth]);
+    return groupRowsByMonth(item.rows, dateCol.id, settings.startOfMonth);
+  }, [item.rows, dateCol, settings.startOfMonth]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -159,7 +172,7 @@ export function SheetView({
               <MonthTable
                 monthKey={monthKey}
                 rows={monthRows}
-                columns={sheet.columns}
+                columns={item.columns}
                 balances={balances}
                 categories={categories}
                 settings={settings}

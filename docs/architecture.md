@@ -24,7 +24,7 @@ src/
 │   ├── icons.tsx                  # column-type + category-icon registries
 │   └── ImportExportControls.tsx   # file download + file picker
 ├── data/
-│   ├── types.ts          # UserData, Sheet, Column, Row, Category, CellValue
+│   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget, …
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, palette, icon list
 │   ├── sheet.ts          # pure helpers (group, sort, balances, reorder)
 │   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
@@ -46,7 +46,7 @@ src/
 │   ├── local.ts          # localStorage adapter (load / save / clear)
 │   └── file.ts           # JSON file export + import (Blob, FileReader)
 ├── data/
-│   ├── types.ts          # UserData, Sheet, Column, Row + future shapes
+│   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget, …
 │   ├── sheet.ts          # sheet-level pure helpers
 │   ├── migrations.ts     # schema migrations on load
 │   └── forecasting/      # savings, loans, leave planning (TBD)
@@ -61,16 +61,34 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 4;
+  version: 5;
   sheets: Sheet[];
   activeSheetId: string;
+  accounts: Account[];
   categories: Category[];
   settings: Settings;
+};
+
+type Account = {
+  id: string;
+  name: string;
 };
 
 type Sheet = {
   id: string;
   name: string;
+  items: SheetItem[]; // typed blocks rendered inside the sheet
+};
+
+// Discriminated union; today the only variant is AccountBudget. A
+// Graph / Note / etc. variant slots in as another case without
+// another migration of the existing data.
+type SheetItem = AccountBudget;
+
+type AccountBudget = {
+  id: string;
+  type: "accountBudget";
+  accountId: string; // points at one of UserData.accounts
   columns: Column[]; // ordered; drag-and-drop reorders this array
   rows: Row[]; // flat list; month grouping is derived in the view
 };
@@ -100,6 +118,17 @@ type Category = {
   icon: CategoryIcon; // one of a fixed allowlist
 };
 ```
+
+Accounts live at the `UserData` level so the same account can be
+referenced from multiple sheets, and a future roll-up view can sum
+balances across the whole user. Each `AccountBudget` block points at
+one account via `accountId`; the validator rejects dangling
+references.
+
+A sheet today holds exactly one `AccountBudget` item, which is what
+the UI surfaces. The shape supports stacking more items (e.g. an
+`AccountBudget` plus a Graph keyed to the same account) without
+another migration when that UX lands.
 
 A row's category is stored in the `category`-typed column's cell as
 the category id (string). The category record itself lives on the
@@ -133,7 +162,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `3`. The chain has two steps:
+Current `LATEST_VERSION` is `5`. The chain has four steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -141,6 +170,13 @@ Current `LATEST_VERSION` is `3`. The chain has two steps:
 - **v2 → v3** — version bump only. No row data is rewritten; this
   release adds an optional `Row.seriesId` field that older builds
   would silently drop, so bumping signals the new shape.
+- **v3 → v4** — introduces budget-level `settings` (fiscal-month
+  start, date format, currency, number format, display toggles).
+  Existing data gets the canonical defaults.
+- **v4 → v5** — introduces explicit `Account`s and turns each `Sheet`
+  into a container of typed `SheetItem`s. The pre-v5 `columns` and
+  `rows` on a sheet move into the body of one `AccountBudget` item
+  pointing at a freshly minted default `Account`.
 
 ## Complex entries
 

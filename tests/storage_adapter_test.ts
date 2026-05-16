@@ -8,11 +8,13 @@ import { serializeUserData } from "../src/storage/file";
 import { localAdapter } from "../src/storage/local-adapter";
 
 function sampleData(): UserData {
-  const sheet = createDefaultSheet("Tests");
+  const accountId = "acct-1";
+  const sheet = createDefaultSheet("Tests", accountId);
   return {
-    version: 3,
+    version: 5,
     sheets: [sheet],
     activeSheetId: sheet.id,
+    accounts: [{ id: accountId, name: "Default" }],
     categories: [],
   } as unknown as UserData;
 }

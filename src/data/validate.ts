@@ -1,6 +1,8 @@
 import { DATE_FORMATS, DEFAULT_SETTINGS } from "./constants";
 import { LATEST_VERSION } from "./migrations";
 import type {
+  Account,
+  AccountBudget,
   Category,
   CategoryIcon,
   CellValue,
@@ -11,6 +13,7 @@ import type {
   Row,
   Settings,
   Sheet,
+  SheetItem,
   ThousandsSeparator,
   UserData,
 } from "./types";
@@ -117,13 +120,24 @@ function validateRow(
   return { ok: true, value: row };
 }
 
-function validateSheet(raw: unknown, path: string): Result<Sheet> {
+function validateAccountBudget(
+  raw: unknown,
+  path: string,
+  knownAccountIds: ReadonlySet<string>,
+): Result<AccountBudget> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, name, columns, rows } = raw;
+  const { id, type, accountId, columns, rows } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
-  if (typeof name !== "string")
-    return fail(`${path}.name`, "expected a string");
+  if (type !== "accountBudget")
+    return fail(`${path}.type`, `expected "accountBudget"`);
+  if (typeof accountId !== "string" || accountId === "")
+    return fail(`${path}.accountId`, "expected a non-empty string");
+  if (!knownAccountIds.has(accountId))
+    return fail(
+      `${path}.accountId`,
+      `references unknown account "${accountId}"`,
+    );
   if (!Array.isArray(columns))
     return fail(`${path}.columns`, "expected an array");
   if (!Array.isArray(rows)) return fail(`${path}.rows`, "expected an array");
@@ -154,11 +168,66 @@ function validateSheet(raw: unknown, path: string): Result<Sheet> {
     ok: true,
     value: {
       id,
-      name,
+      type: "accountBudget",
+      accountId,
       columns: validatedColumns,
       rows: validatedRows,
     },
   };
+}
+
+function validateSheetItem(
+  raw: unknown,
+  path: string,
+  knownAccountIds: ReadonlySet<string>,
+): Result<SheetItem> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const type = (raw as { type?: unknown }).type;
+  if (type === "accountBudget") {
+    return validateAccountBudget(raw, path, knownAccountIds);
+  }
+  return fail(`${path}.type`, `unknown sheet item type "${String(type)}"`);
+}
+
+function validateSheet(
+  raw: unknown,
+  path: string,
+  knownAccountIds: ReadonlySet<string>,
+): Result<Sheet> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, items } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  if (!Array.isArray(items)) return fail(`${path}.items`, "expected an array");
+
+  const validatedItems: SheetItem[] = [];
+  const seenItemIds = new Set<string>();
+  for (let i = 0; i < items.length; i++) {
+    const r = validateSheetItem(
+      items[i],
+      `${path}.items[${i}]`,
+      knownAccountIds,
+    );
+    if (!r.ok) return r;
+    if (seenItemIds.has(r.value.id))
+      return fail(`${path}.items[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenItemIds.add(r.value.id);
+    validatedItems.push(r.value);
+  }
+
+  return { ok: true, value: { id, name, items: validatedItems } };
+}
+
+function validateAccount(raw: unknown, path: string): Result<Account> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  return { ok: true, value: { id, name } };
 }
 
 function validateCategory(raw: unknown, path: string): Result<Category> {
@@ -250,6 +319,20 @@ export function validateUserData(raw: unknown): Result<UserData> {
   if (typeof raw.activeSheetId !== "string")
     return fail("activeSheetId", "expected a string");
 
+  const rawAccounts = Array.isArray(raw.accounts) ? raw.accounts : [];
+  const accounts: Account[] = [];
+  const seenAccountIds = new Set<string>();
+  for (let i = 0; i < rawAccounts.length; i++) {
+    const r = validateAccount(rawAccounts[i], `accounts[${i}]`);
+    if (!r.ok) return r;
+    if (seenAccountIds.has(r.value.id))
+      return fail(`accounts[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenAccountIds.add(r.value.id);
+    accounts.push(r.value);
+  }
+  if (accounts.length === 0)
+    return fail("accounts", "expected at least one account");
+
   const rawCategories = Array.isArray(raw.categories) ? raw.categories : [];
   const categories: Category[] = [];
   const seenCategoryIds = new Set<string>();
@@ -265,7 +348,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
   for (let i = 0; i < raw.sheets.length; i++) {
-    const r = validateSheet(raw.sheets[i], `sheets[${i}]`);
+    const r = validateSheet(raw.sheets[i], `sheets[${i}]`, seenAccountIds);
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
       return fail(`sheets[${i}].id`, `duplicate id "${r.value.id}"`);
@@ -286,6 +369,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       version: LATEST_VERSION,
       sheets,
       activeSheetId,
+      accounts,
       categories,
       settings,
     },

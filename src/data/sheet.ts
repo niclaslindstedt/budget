@@ -1,4 +1,5 @@
 import type {
+  AccountBudget,
   CellValue,
   Column,
   ColumnType,
@@ -14,7 +15,7 @@ export function newId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export function createDefaultSheet(name = "Sheet 1"): Sheet {
+export function createDefaultAccountBudget(accountId: string): AccountBudget {
   const columns: Column[] = [
     { id: newId(), type: "date", label: "Date" },
     { id: newId(), type: "description", label: "Description" },
@@ -25,9 +26,18 @@ export function createDefaultSheet(name = "Sheet 1"): Sheet {
   ];
   return {
     id: newId(),
-    name,
+    type: "accountBudget",
+    accountId,
     columns,
     rows: [],
+  };
+}
+
+export function createDefaultSheet(name = "Sheet 1", accountId: string): Sheet {
+  return {
+    id: newId(),
+    name,
+    items: [createDefaultAccountBudget(accountId)],
   };
 }
 
@@ -131,14 +141,14 @@ export function sortRowsByDate(rows: Row[], dateColumnId: string): Row[] {
   });
 }
 
-// Running balance per row, chronological across the whole sheet so the
-// total carries across months. Returns a map keyed by row id.
-export function computeBalances(sheet: Sheet): Map<string, number> {
+// Running balance per row, chronological across the whole AccountBudget
+// so the total carries across months. Returns a map keyed by row id.
+export function computeBalances(item: AccountBudget): Map<string, number> {
   const result = new Map<string, number>();
-  const dateCol = findColumnByType(sheet.columns, "date");
-  const amountCol = findColumnByType(sheet.columns, "amount");
+  const dateCol = findColumnByType(item.columns, "date");
+  const amountCol = findColumnByType(item.columns, "amount");
   if (!dateCol || !amountCol) return result;
-  const sorted = sortRowsByDate(sheet.rows, dateCol.id);
+  const sorted = sortRowsByDate(item.rows, dateCol.id);
   let running = 0;
   for (const row of sorted) {
     const raw = row.cells[amountCol.id];
@@ -221,20 +231,32 @@ function hasText(value: CellValue): boolean {
 
 // Strip rows that aren't savable so the on-disk snapshot only ever
 // holds rows the user has finished entering. Used as a pre-serialize
-// transform by the storage hook.
+// transform by the storage hook. Descends through every sheet's items
+// and filters the rows on each AccountBudget; non-AccountBudget items
+// pass through untouched.
 export function userDataWithSavableRows(data: UserData): UserData {
   return {
     ...data,
     sheets: data.sheets.map((s) => ({
       ...s,
-      rows: s.rows.filter((r) => isRowSavable(r, s.columns)),
+      items: s.items.map((item) => {
+        if (item.type !== "accountBudget") return item;
+        return {
+          ...item,
+          rows: item.rows.filter((r) => isRowSavable(r, item.columns)),
+        };
+      }),
     })),
   };
 }
 
 export function userDataHasHalfDoneRows(data: UserData): boolean {
   return data.sheets.some((s) =>
-    s.rows.some((r) => isRowHalfDone(r, s.columns)),
+    s.items.some(
+      (item) =>
+        item.type === "accountBudget" &&
+        item.rows.some((r) => isRowHalfDone(r, item.columns)),
+    ),
   );
 }
 

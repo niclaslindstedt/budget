@@ -33,6 +33,7 @@ import {
   userDataWithSavableRows,
 } from "./data/sheet";
 import type {
+  AccountBudget,
   Category,
   CellValue,
   Row,
@@ -58,29 +59,39 @@ import {
   verifyPassword,
 } from "./storage/users";
 
-type SheetAction =
+// Every item-level action carries both `sheetId` (so the dispatcher can
+// find the right sheet quickly) and `itemId` (so a sheet that grows to
+// hold multiple items can target the right one). Today the UI only
+// renders one AccountBudget per sheet, so `itemId` always resolves to
+// the same value, but plumbing it through now means future multi-item
+// support drops in without another reducer rewrite.
+type ItemAction =
   | {
       type: "updateCell";
       sheetId: string;
+      itemId: string;
       rowId: string;
       columnId: string;
       value: CellValue;
     }
-  | { type: "addRow"; sheetId: string; date: string }
+  | { type: "addRow"; sheetId: string; itemId: string; date: string }
   | {
       type: "addRowsFromComplex";
       sheetId: string;
+      itemId: string;
       draft: ComplexEntryDraft;
     }
   | {
       type: "convertToRecurring";
       sheetId: string;
+      itemId: string;
       rowId: string;
       futureDates: string[];
     }
   | {
       type: "editSeries";
       sheetId: string;
+      itemId: string;
       rowId: string;
       patch: EditPatch;
       scope: EditScope;
@@ -88,36 +99,47 @@ type SheetAction =
   | {
       type: "deleteRows";
       sheetId: string;
+      itemId: string;
       rowIds: string[];
     }
   | {
       type: "bulkUpdate";
       sheetId: string;
+      itemId: string;
       rowIds: string[];
       patch: BulkPatch;
     }
   | {
       type: "bulkShiftToMonth";
       sheetId: string;
+      itemId: string;
       rowIds: string[];
       targetMonth: string;
     }
   | {
       type: "bulkCopyToMonths";
       sheetId: string;
+      itemId: string;
       rowIds: string[];
       targetMonths: string[];
     }
   | {
       type: "bulkMakeRecurring";
       sheetId: string;
+      itemId: string;
       rowIds: string[];
       futureDates: string[];
     }
-  | { type: "reorderColumns"; sheetId: string; fromId: string; toId: string };
+  | {
+      type: "reorderColumns";
+      sheetId: string;
+      itemId: string;
+      fromId: string;
+      toId: string;
+    };
 
 type Action =
-  | SheetAction
+  | ItemAction
   | { type: "replace"; data: UserData }
   | { type: "addCategory"; category: Category }
   | { type: "updateSettings"; settings: Settings };
@@ -139,12 +161,15 @@ function applyPatch(
   return next;
 }
 
-function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
+function reduceAccountBudget(
+  item: AccountBudget,
+  action: ItemAction,
+): AccountBudget {
   switch (action.type) {
     case "updateCell":
       return {
-        ...sheet,
-        rows: sheet.rows.map((r) =>
+        ...item,
+        rows: item.rows.map((r) =>
           r.id === action.rowId
             ? { ...r, cells: { ...r.cells, [action.columnId]: action.value } }
             : r,
@@ -152,12 +177,12 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
       };
 
     case "addRow": {
-      const dateCol = findColumnByType(sheet.columns, "date");
-      const newRow: Row = createEmptyRow(sheet.columns, {
+      const dateCol = findColumnByType(item.columns, "date");
+      const newRow: Row = createEmptyRow(item.columns, {
         date: dateCol && action.date ? action.date : null,
         completed: false,
       });
-      return { ...sheet, rows: [...sheet.rows, newRow] };
+      return { ...item, rows: [...item.rows, newRow] };
     }
 
     case "addRowsFromComplex": {
@@ -166,7 +191,7 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
       // can be edited or deleted together later.
       const seriesId = draft.dates.length > 1 ? newId() : undefined;
       const newRows: Row[] = draft.dates.map((date) => {
-        const row = createEmptyRow(sheet.columns, {
+        const row = createEmptyRow(item.columns, {
           date,
           description: draft.description,
           amount: draft.amount,
@@ -176,20 +201,20 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
         if (seriesId) row.seriesId = seriesId;
         return row;
       });
-      return { ...sheet, rows: [...sheet.rows, ...newRows] };
+      return { ...item, rows: [...item.rows, ...newRows] };
     }
 
     case "convertToRecurring": {
-      const anchor = sheet.rows.find((r) => r.id === action.rowId);
-      if (!anchor) return sheet;
+      const anchor = item.rows.find((r) => r.id === action.rowId);
+      if (!anchor) return item;
       // Promote the anchor row into a series of its own. Future rows
       // inherit description, amount, and category from the anchor.
       const seriesId = anchor.seriesId ?? newId();
-      const descCol = findColumnByType(sheet.columns, "description");
-      const amountCol = findColumnByType(sheet.columns, "amount");
-      const categoryCol = findColumnByType(sheet.columns, "category");
+      const descCol = findColumnByType(item.columns, "description");
+      const amountCol = findColumnByType(item.columns, "amount");
+      const categoryCol = findColumnByType(item.columns, "category");
       const newRows: Row[] = action.futureDates.map((date) => {
-        const row = createEmptyRow(sheet.columns, {
+        const row = createEmptyRow(item.columns, {
           date,
           description:
             descCol && typeof anchor.cells[descCol.id] === "string"
@@ -209,9 +234,9 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
         return row;
       });
       return {
-        ...sheet,
+        ...item,
         rows: [
-          ...sheet.rows.map((r) =>
+          ...item.rows.map((r) =>
             r.id === anchor.id ? { ...r, seriesId } : r,
           ),
           ...newRows,
@@ -220,21 +245,21 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
     }
 
     case "editSeries": {
-      const anchor = sheet.rows.find((r) => r.id === action.rowId);
-      if (!anchor) return sheet;
-      const dateCol = findColumnByType(sheet.columns, "date");
-      if (!dateCol) return sheet;
+      const anchor = item.rows.find((r) => r.id === action.rowId);
+      if (!anchor) return item;
+      const dateCol = findColumnByType(item.columns, "date");
+      if (!dateCol) return item;
       const cols = {
-        descId: findColumnByType(sheet.columns, "description")?.id,
-        amountId: findColumnByType(sheet.columns, "amount")?.id,
-        categoryId: findColumnByType(sheet.columns, "category")?.id,
+        descId: findColumnByType(item.columns, "description")?.id,
+        amountId: findColumnByType(item.columns, "amount")?.id,
+        categoryId: findColumnByType(item.columns, "category")?.id,
       };
       let targets: ReadonlySet<string>;
       if (action.scope.kind === "just-this") {
         targets = new Set([anchor.id]);
       } else {
         const future = rowsInSeriesFrom(
-          sheet.rows,
+          item.rows,
           anchor,
           dateCol.id,
           action.scope.untilIso,
@@ -242,8 +267,8 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
         targets = new Set(future.map((r) => r.id));
       }
       return {
-        ...sheet,
-        rows: sheet.rows.map((r) =>
+        ...item,
+        rows: item.rows.map((r) =>
           targets.has(r.id) ? applyPatch(r, action.patch, cols) : r,
         ),
       };
@@ -251,17 +276,17 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
 
     case "deleteRows": {
       const drop = new Set(action.rowIds);
-      return { ...sheet, rows: sheet.rows.filter((r) => !drop.has(r.id)) };
+      return { ...item, rows: item.rows.filter((r) => !drop.has(r.id)) };
     }
 
     case "bulkUpdate": {
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(sheet.columns, "date")?.id;
-      const amountColId = findColumnByType(sheet.columns, "amount")?.id;
-      const categoryColId = findColumnByType(sheet.columns, "category")?.id;
+      const dateColId = findColumnByType(item.columns, "date")?.id;
+      const amountColId = findColumnByType(item.columns, "amount")?.id;
+      const categoryColId = findColumnByType(item.columns, "category")?.id;
       return {
-        ...sheet,
-        rows: sheet.rows.map((r) => {
+        ...item,
+        rows: item.rows.map((r) => {
           if (!ids.has(r.id)) return r;
           const cells = { ...r.cells };
           if (action.patch.date !== undefined && dateColId) {
@@ -280,11 +305,11 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
 
     case "bulkShiftToMonth": {
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(sheet.columns, "date")?.id;
-      if (!dateColId) return sheet;
+      const dateColId = findColumnByType(item.columns, "date")?.id;
+      if (!dateColId) return item;
       return {
-        ...sheet,
-        rows: sheet.rows.map((r) => {
+        ...item,
+        rows: item.rows.map((r) => {
           if (!ids.has(r.id)) return r;
           const cur = r.cells[dateColId];
           if (typeof cur !== "string") return r;
@@ -301,10 +326,10 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
 
     case "bulkCopyToMonths": {
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(sheet.columns, "date")?.id;
-      if (!dateColId) return sheet;
+      const dateColId = findColumnByType(item.columns, "date")?.id;
+      if (!dateColId) return item;
       const newRows: Row[] = [];
-      for (const r of sheet.rows) {
+      for (const r of item.rows) {
         if (!ids.has(r.id)) continue;
         const cur = r.cells[dateColId];
         if (typeof cur !== "string") continue;
@@ -317,17 +342,17 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
           });
         }
       }
-      return { ...sheet, rows: [...sheet.rows, ...newRows] };
+      return { ...item, rows: [...item.rows, ...newRows] };
     }
 
     case "bulkMakeRecurring": {
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(sheet.columns, "date")?.id;
-      if (!dateColId) return sheet;
+      const dateColId = findColumnByType(item.columns, "date")?.id;
+      if (!dateColId) return item;
       // Stamp each selected row with a fresh seriesId (preserving an
       // existing one if it already had one), then replicate it at every
       // recurrence date except its own anchor date.
-      const updated = sheet.rows.map((r) =>
+      const updated = item.rows.map((r) =>
         ids.has(r.id) ? { ...r, seriesId: r.seriesId ?? newId() } : r,
       );
       const additions: Row[] = [];
@@ -344,15 +369,26 @@ function reduceSheet(sheet: Sheet, action: SheetAction): Sheet {
           });
         }
       }
-      return { ...sheet, rows: [...updated, ...additions] };
+      return { ...item, rows: [...updated, ...additions] };
     }
 
     case "reorderColumns":
       return {
-        ...sheet,
-        columns: moveColumn(sheet.columns, action.fromId, action.toId),
+        ...item,
+        columns: moveColumn(item.columns, action.fromId, action.toId),
       };
   }
+}
+
+function reduceSheet(sheet: Sheet, action: ItemAction): Sheet {
+  return {
+    ...sheet,
+    items: sheet.items.map((item) =>
+      item.id === action.itemId && item.type === "accountBudget"
+        ? reduceAccountBudget(item, action)
+        : item,
+    ),
+  };
 }
 
 function reducer(state: UserData, action: Action): UserData {
@@ -589,7 +625,20 @@ function BudgetView({
   const activeSheet =
     data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
 
+  // The single AccountBudget block on the active sheet. The data model
+  // allows sheets to hold multiple items (and other variants like
+  // graphs in the future) but the current UI surfaces exactly one
+  // AccountBudget — so we narrow here and the rest of the view operates
+  // on that block directly. Migrations and `freshUserData` both
+  // guarantee its presence; the `?? activeSheet.items[0]` is a defensive
+  // fallback in case a future variant lands in slot 0.
+  const activeItem: AccountBudget =
+    (activeSheet.items.find(
+      (it): it is AccountBudget => it.type === "accountBudget",
+    ) as AccountBudget | undefined) ?? (activeSheet.items[0] as AccountBudget);
+
   const sheetId = activeSheet.id;
+  const itemId = activeItem.id;
 
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
@@ -608,7 +657,7 @@ function BudgetView({
   // Drop ids that no longer exist (e.g. after an import) so the toolbar
   // never claims a stale count.
   useEffect(() => {
-    const existing = new Set(activeSheet.rows.map((r) => r.id));
+    const existing = new Set(activeItem.rows.map((r) => r.id));
     setSelectedIds((prev) => {
       let changed = false;
       const next = new Set<string>();
@@ -618,16 +667,23 @@ function BudgetView({
       }
       return changed ? next : prev;
     });
-  }, [activeSheet.rows]);
+  }, [activeItem.rows]);
 
   const onUpdateCell = useCallback(
     (rowId: string, columnId: string, value: CellValue) =>
-      dispatch({ type: "updateCell", sheetId, rowId, columnId, value }),
-    [dispatch, sheetId],
+      dispatch({
+        type: "updateCell",
+        sheetId,
+        itemId,
+        rowId,
+        columnId,
+        value,
+      }),
+    [dispatch, sheetId, itemId],
   );
   const onAddRow = useCallback(
-    (date: string) => dispatch({ type: "addRow", sheetId, date }),
-    [dispatch, sheetId],
+    (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
+    [dispatch, sheetId, itemId],
   );
   const onAddComplex = useCallback((date: string) => {
     setComplexSeedDate(date);
@@ -637,21 +693,21 @@ function BudgetView({
     (row: Row) => {
       // A row that hasn't been persisted yet (no description + amount) is
       // a transient placeholder — discard it without prompting.
-      if (!isRowSavable(row, activeSheet.columns)) {
-        dispatch({ type: "deleteRows", sheetId, rowIds: [row.id] });
+      if (!isRowSavable(row, activeItem.columns)) {
+        dispatch({ type: "deleteRows", sheetId, itemId, rowIds: [row.id] });
         return;
       }
       setDeletePrompt({ kind: "delete", row });
     },
-    [activeSheet.columns, dispatch, sheetId],
+    [activeItem.columns, dispatch, sheetId, itemId],
   );
   const onEditRequest = useCallback((row: Row) => {
     setEditPrompt({ kind: "edit", row });
   }, []);
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
-      dispatch({ type: "reorderColumns", sheetId, fromId, toId }),
-    [dispatch, sheetId],
+      dispatch({ type: "reorderColumns", sheetId, itemId, fromId, toId }),
+    [dispatch, sheetId, itemId],
   );
   const onImport = useCallback(
     (next: UserData) => dispatch({ type: "replace", data: next }),
@@ -671,29 +727,30 @@ function BudgetView({
   );
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
-      dispatch({ type: "addRowsFromComplex", sheetId, draft });
+      dispatch({ type: "addRowsFromComplex", sheetId, itemId, draft });
       setComplexOpen(false);
     },
-    [dispatch, sheetId],
+    [dispatch, sheetId, itemId],
   );
   const onConvertToRecurring = useCallback(
     (rowId: string, futureDates: string[]) => {
       dispatch({
         type: "convertToRecurring",
         sheetId,
+        itemId,
         rowId,
         futureDates,
       });
       setEditPrompt(null);
     },
-    [dispatch, sheetId],
+    [dispatch, sheetId, itemId],
   );
   const onEditSeries = useCallback(
     (rowId: string, patch: EditPatch, scope: EditScope) => {
-      dispatch({ type: "editSeries", sheetId, rowId, patch, scope });
+      dispatch({ type: "editSeries", sheetId, itemId, rowId, patch, scope });
       setEditPrompt(null);
     },
-    [dispatch, sheetId],
+    [dispatch, sheetId, itemId],
   );
 
   const onToggleSelect = useCallback((rowId: string) => {
@@ -729,13 +786,13 @@ function BudgetView({
   }, []);
 
   const dateCol = useMemo(
-    () => findColumnByType(activeSheet.columns, "date"),
-    [activeSheet.columns],
+    () => findColumnByType(activeItem.columns, "date"),
+    [activeItem.columns],
   );
 
   const selectedRows = useMemo(
-    () => activeSheet.rows.filter((r) => selectedIds.has(r.id)),
-    [activeSheet.rows, selectedIds],
+    () => activeItem.rows.filter((r) => selectedIds.has(r.id)),
+    [activeItem.rows, selectedIds],
   );
 
   const selectedSourceMonths = useMemo<ReadonlySet<string>>(() => {
@@ -752,12 +809,12 @@ function BudgetView({
   const editLastSeriesDate = useMemo<string | null>(() => {
     const row = editPrompt?.row;
     if (!row?.seriesId || !dateCol) return null;
-    const dates = activeSheet.rows
+    const dates = activeItem.rows
       .filter((r) => r.seriesId === row.seriesId)
       .map((r) => r.cells[dateCol.id])
       .filter((d): d is string => typeof d === "string");
     return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
-  }, [editPrompt, activeSheet.rows, dateCol]);
+  }, [editPrompt, activeItem.rows, dateCol]);
 
   const deleteActions: ConfirmAction[] = useMemo(() => {
     if (!deletePrompt) return [];
@@ -768,13 +825,18 @@ function BudgetView({
           label: "Delete this row",
           tone: "danger",
           onSelect: () => {
-            dispatch({ type: "deleteRows", sheetId, rowIds: [row.id] });
+            dispatch({
+              type: "deleteRows",
+              sheetId,
+              itemId,
+              rowIds: [row.id],
+            });
             setDeletePrompt(null);
           },
         },
       ];
     }
-    const futureIds = rowsInSeriesFrom(activeSheet.rows, row, dateCol.id).map(
+    const futureIds = rowsInSeriesFrom(activeItem.rows, row, dateCol.id).map(
       (r) => r.id,
     );
     return [
@@ -782,7 +844,7 @@ function BudgetView({
         label: "Just this one",
         tone: "danger",
         onSelect: () => {
-          dispatch({ type: "deleteRows", sheetId, rowIds: [row.id] });
+          dispatch({ type: "deleteRows", sheetId, itemId, rowIds: [row.id] });
           setDeletePrompt(null);
         },
       },
@@ -790,12 +852,12 @@ function BudgetView({
         label: `This and all future (${futureIds.length})`,
         tone: "danger",
         onSelect: () => {
-          dispatch({ type: "deleteRows", sheetId, rowIds: futureIds });
+          dispatch({ type: "deleteRows", sheetId, itemId, rowIds: futureIds });
           setDeletePrompt(null);
         },
       },
     ];
-  }, [deletePrompt, activeSheet.rows, dateCol, dispatch, sheetId]);
+  }, [deletePrompt, activeItem.rows, dateCol, dispatch, sheetId, itemId]);
 
   const bulkDeleteActions: ConfirmAction[] = useMemo(() => {
     if (!bulkDeletePrompt) return [];
@@ -805,13 +867,13 @@ function BudgetView({
         label: `Delete ${ids.length} ${ids.length === 1 ? "row" : "rows"}`,
         tone: "danger",
         onSelect: () => {
-          dispatch({ type: "deleteRows", sheetId, rowIds: ids });
+          dispatch({ type: "deleteRows", sheetId, itemId, rowIds: ids });
           setBulkDeletePrompt(null);
           onCancelSelect();
         },
       },
     ];
-  }, [bulkDeletePrompt, dispatch, sheetId, onCancelSelect]);
+  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect]);
 
   const onBulkEdit = useCallback(() => setBulkEditOpen(true), []);
   const onBulkDelete = useCallback(() => {
@@ -826,20 +888,21 @@ function BudgetView({
 
   const onApplyBulkPatch = useCallback(
     (rowIds: string[], patch: BulkPatch) => {
-      dispatch({ type: "bulkUpdate", sheetId, rowIds, patch });
+      dispatch({ type: "bulkUpdate", sheetId, itemId, rowIds, patch });
     },
-    [dispatch, sheetId],
+    [dispatch, sheetId, itemId],
   );
   const onApplyBulkRecurring = useCallback(
     (rowIds: string[], futureDates: string[]) => {
       dispatch({
         type: "bulkMakeRecurring",
         sheetId,
+        itemId,
         rowIds,
         futureDates,
       });
     },
-    [dispatch, sheetId],
+    [dispatch, sheetId, itemId],
   );
   const handleMoveCopySubmit = useCallback(
     (targetMonths: string[]) => {
@@ -849,6 +912,7 @@ function BudgetView({
         dispatch({
           type: "bulkShiftToMonth",
           sheetId,
+          itemId,
           rowIds,
           targetMonth: targetMonths[0],
         });
@@ -856,6 +920,7 @@ function BudgetView({
         dispatch({
           type: "bulkCopyToMonths",
           sheetId,
+          itemId,
           rowIds,
           targetMonths,
         });
@@ -863,7 +928,7 @@ function BudgetView({
       setMoveCopyPrompt(null);
       onCancelSelect();
     },
-    [dispatch, moveCopyPrompt, sheetId, onCancelSelect],
+    [dispatch, moveCopyPrompt, sheetId, itemId, onCancelSelect],
   );
 
   return (
@@ -915,6 +980,7 @@ function BudgetView({
       <main className="flex-1">
         <SheetView
           sheet={activeSheet}
+          item={activeItem}
           categories={data.categories}
           settings={data.settings}
           selectMode={selectMode}
@@ -953,7 +1019,7 @@ function BudgetView({
       <EditEntryModal
         open={editPrompt !== null}
         row={editPrompt?.row ?? null}
-        columns={activeSheet.columns}
+        columns={activeItem.columns}
         categories={data.categories}
         settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
@@ -965,7 +1031,7 @@ function BudgetView({
       <BulkEditModal
         open={bulkEditOpen && selectedRows.length > 0}
         rows={selectedRows}
-        columns={activeSheet.columns}
+        columns={activeItem.columns}
         categories={data.categories}
         settings={data.settings}
         onClose={() => setBulkEditOpen(false)}

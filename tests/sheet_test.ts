@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeBalances,
-  createDefaultSheet,
+  createDefaultAccountBudget,
   currentFiscalMonthKey,
   findColumnByType,
   fiscalMonthSeedIso,
@@ -18,7 +18,9 @@ import {
   userDataHasHalfDoneRows,
   userDataWithSavableRows,
 } from "../src/data/sheet";
-import type { Row, UserData } from "../src/data/types";
+import type { AccountBudget, Row, UserData } from "../src/data/types";
+
+const TEST_ACCOUNT_ID = "acct-1";
 
 function seedRow(
   dateColId: string,
@@ -94,7 +96,7 @@ describe("currentFiscalMonthKey", () => {
 
 describe("moveColumn", () => {
   it("reorders by id", () => {
-    const sheet = createDefaultSheet();
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
     const ids = sheet.columns.map((c) => c.id);
     const next = moveColumn(sheet.columns, ids[0], ids[3]);
     const order = next.map((c) => c.type);
@@ -110,7 +112,7 @@ describe("moveColumn", () => {
   });
 
   it("no-ops when ids are equal or missing", () => {
-    const sheet = createDefaultSheet();
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
     const sameRef = sheet.columns;
     expect(moveColumn(sameRef, sameRef[0].id, sameRef[0].id)).toBe(sameRef);
     expect(moveColumn(sameRef, "x", sameRef[0].id)).toBe(sameRef);
@@ -119,7 +121,7 @@ describe("moveColumn", () => {
 
 describe("groupRowsByMonth + sortMonthKeys", () => {
   it("groups by YYYY-MM and sorts undated last", () => {
-    const sheet = createDefaultSheet();
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
     const dateCol = findColumnByType(sheet.columns, "date")!;
     const amountCol = findColumnByType(sheet.columns, "amount")!;
     const rows = [
@@ -140,7 +142,7 @@ describe("groupRowsByMonth + sortMonthKeys", () => {
 
 describe("sortRowsByDate", () => {
   it("sorts ascending, empty dates last", () => {
-    const sheet = createDefaultSheet();
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
     const dateCol = findColumnByType(sheet.columns, "date")!;
     const amountCol = findColumnByType(sheet.columns, "amount")!;
     const rows = [
@@ -159,7 +161,7 @@ describe("sortRowsByDate", () => {
 
 describe("computeBalances", () => {
   it("running total in date order, starting from zero and carrying across months", () => {
-    const sheet = createDefaultSheet();
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
     const dateCol = findColumnByType(sheet.columns, "date")!;
     const amountCol = findColumnByType(sheet.columns, "amount")!;
     const r1 = seedRow(dateCol.id, amountCol.id, "2026-04-15", 50);
@@ -174,7 +176,7 @@ describe("computeBalances", () => {
   });
 
   it("returns empty map when amount or date column is missing", () => {
-    const sheet = createDefaultSheet();
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
     sheet.columns = sheet.columns.filter((c) => c.type !== "amount");
     expect(computeBalances(sheet).size).toBe(0);
   });
@@ -196,7 +198,7 @@ describe("shiftIsoToMonth", () => {
 });
 
 describe("rowsInSeriesFrom", () => {
-  const sheet = createDefaultSheet();
+  const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
   const dateCol = findColumnByType(sheet.columns, "date")!;
   const amountCol = findColumnByType(sheet.columns, "amount")!;
 
@@ -244,7 +246,7 @@ describe("rowsInSeriesFrom", () => {
 });
 
 describe("isRowSavable / isRowHalfDone", () => {
-  const sheet = createDefaultSheet();
+  const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
   const descCol = findColumnByType(sheet.columns, "description")!;
   const amountCol = findColumnByType(sheet.columns, "amount")!;
   const dateCol = findColumnByType(sheet.columns, "date")!;
@@ -305,20 +307,26 @@ describe("isRowSavable / isRowHalfDone", () => {
 });
 
 describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
+  function firstAB(data: UserData): AccountBudget {
+    return data.sheets[0].items[0] as AccountBudget;
+  }
+
   function build(): { data: UserData; descId: string; amountId: string } {
-    const sheet = createDefaultSheet();
-    const descId = findColumnByType(sheet.columns, "description")!.id;
-    const amountId = findColumnByType(sheet.columns, "amount")!.id;
-    sheet.rows = [
+    const item = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const descId = findColumnByType(item.columns, "description")!.id;
+    const amountId = findColumnByType(item.columns, "amount")!.id;
+    item.rows = [
       { id: "complete", cells: { [descId]: "Rent", [amountId]: -1000 } },
       { id: "half", cells: { [descId]: "Coffee" } },
       { id: "empty", cells: {} },
     ];
+    const sheetId = "sheet-1";
     return {
       data: {
-        version: 3,
-        sheets: [sheet],
-        activeSheetId: sheet.id,
+        version: 5,
+        sheets: [{ id: sheetId, name: "Test", items: [item] }],
+        activeSheetId: sheetId,
+        accounts: [{ id: TEST_ACCOUNT_ID, name: "Default" }],
         categories: [],
       } as unknown as UserData,
       descId,
@@ -329,14 +337,14 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
   it("filters out half-done and empty rows from the snapshot", () => {
     const { data } = build();
     const filtered = userDataWithSavableRows(data);
-    expect(filtered.sheets[0].rows.map((r) => r.id)).toEqual(["complete"]);
+    expect(firstAB(filtered).rows.map((r) => r.id)).toEqual(["complete"]);
   });
 
   it("does not mutate the input data", () => {
     const { data } = build();
-    const before = data.sheets[0].rows.length;
+    const before = firstAB(data).rows.length;
     userDataWithSavableRows(data);
-    expect(data.sheets[0].rows.length).toBe(before);
+    expect(firstAB(data).rows.length).toBe(before);
   });
 
   it("reports half-done rows so callers can prompt or light up the save button", () => {
@@ -346,7 +354,7 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
 
   it("returns false when every row is either complete or fully blank", () => {
     const { data, descId, amountId } = build();
-    data.sheets[0].rows = [
+    firstAB(data).rows = [
       { id: "complete", cells: { [descId]: "Rent", [amountId]: -1000 } },
       { id: "empty", cells: {} },
     ];

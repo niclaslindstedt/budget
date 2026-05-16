@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/data/constants";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
-import type { UserData } from "../src/data/types";
+import type { AccountBudget, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
 import {
   parseUserData,
@@ -13,11 +13,13 @@ import {
 import { readUserDataFromText } from "../src/storage/local";
 
 function sampleData(): UserData {
-  const a = createDefaultSheet("First");
-  const b = createDefaultSheet("Second");
-  const dateCol = a.columns.find((c) => c.type === "date")!;
-  const amountCol = a.columns.find((c) => c.type === "amount")!;
-  a.rows = [
+  const accountId = "acct-1";
+  const a = createDefaultSheet("First", accountId);
+  const b = createDefaultSheet("Second", accountId);
+  const aItem = a.items[0] as AccountBudget;
+  const dateCol = aItem.columns.find((c) => c.type === "date")!;
+  const amountCol = aItem.columns.find((c) => c.type === "amount")!;
+  aItem.rows = [
     {
       id: "row-1",
       cells: { [dateCol.id]: "2026-05-01", [amountCol.id]: 42 },
@@ -28,12 +30,17 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 4,
+    version: 5,
     sheets: [a, b],
     activeSheetId: b.id,
+    accounts: [{ id: accountId, name: "Default" }],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
     settings: { ...DEFAULT_SETTINGS },
   };
+}
+
+function firstItem(data: UserData): AccountBudget {
+  return data.sheets[0].items[0] as AccountBudget;
 }
 
 describe("serializeUserData", () => {
@@ -55,15 +62,24 @@ describe("serializeUserData", () => {
     const reordered = {
       activeSheetId: b.activeSheetId,
       sheets: b.sheets.map((s) => ({
-        rows: s.rows.map((r) => ({ cells: r.cells, id: r.id })),
+        items: s.items.map((it) => {
+          const ab = it as AccountBudget;
+          return {
+            rows: ab.rows.map((r) => ({ cells: r.cells, id: r.id })),
+            accountId: ab.accountId,
+            type: ab.type,
+            columns: ab.columns.map((c) => ({
+              label: c.label,
+              type: c.type,
+              id: c.id,
+            })),
+            id: ab.id,
+          };
+        }),
         name: s.name,
-        columns: s.columns.map((c) => ({
-          label: c.label,
-          type: c.type,
-          id: c.id,
-        })),
         id: s.id,
       })),
+      accounts: b.accounts,
       categories: b.categories,
       settings: b.settings,
       version: b.version,
@@ -78,7 +94,8 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 5)).toEqual([
+    expect(topKeys.slice(0, 6)).toEqual([
+      "accounts",
       "activeSheetId",
       "categories",
       "settings",
@@ -116,7 +133,7 @@ describe("parseUserData — error paths", () => {
   it("rejects unknown column type", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));
-    raw.sheets[0].columns[0].type = "color";
+    raw.sheets[0].items[0].columns[0].type = "color";
     const r = parseUserData(JSON.stringify(raw));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/unknown column type/);
@@ -144,13 +161,12 @@ describe("parseUserData — error paths", () => {
 describe("validateUserData — soft recovery", () => {
   it("drops cells referencing missing columns rather than failing", () => {
     const b = sampleData();
-    const sheet = b.sheets[0];
-    sheet.rows[0].cells["ghost-column-id"] = "stray";
+    firstItem(b).rows[0].cells["ghost-column-id"] = "stray";
     const r = validateUserData(b);
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(
-        r.value.sheets[0].rows[0].cells["ghost-column-id"],
+        firstItem(r.value).rows[0].cells["ghost-column-id"],
       ).toBeUndefined();
     }
   });
@@ -244,10 +260,12 @@ describe("migrate", () => {
     expect(migrated).toBe(true);
     expect(data.version).toBe(LATEST_VERSION);
     expect(data.categories).toEqual([]);
-    const sheet = (
-      data.sheets as Array<{ columns: Array<{ type: string }> }>
-    )[0];
-    const types = sheet.columns.map((c) => c.type);
+    const item = (
+      data.sheets as Array<{
+        items: Array<{ columns: Array<{ type: string }> }>;
+      }>
+    )[0].items[0];
+    const types = item.columns.map((c) => c.type);
     // category sits right after description
     expect(types).toEqual([
       "date",
@@ -281,11 +299,15 @@ describe("migrate", () => {
       ],
     };
     const { data } = migrate(v1);
-    const sheet = (data.sheets as Array<{ columns: Array<{ id: string }> }>)[0];
-    expect(sheet.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
+    const item = (
+      data.sheets as Array<{
+        items: Array<{ columns: Array<{ id: string }> }>;
+      }>
+    )[0].items[0];
+    expect(item.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
   });
 
-  it("v3 → v4: adds settings with defaults, preserves data", () => {
+  it("v3 → v4 → v5: adds settings with defaults, preserves data", () => {
     const v3 = {
       version: 3,
       activeSheetId: "s1",
@@ -310,13 +332,17 @@ describe("migrate", () => {
     expect(migrated).toBe(true);
     expect(data.version).toBe(LATEST_VERSION);
     expect(data.settings).toEqual(DEFAULT_SETTINGS);
-    const sheet = (data.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
-    expect(sheet.rows[0].id).toBe("r1");
+    const item = (
+      data.sheets as Array<{
+        items: Array<{ rows: Array<{ id: string }> }>;
+      }>
+    )[0].items[0];
+    expect(item.rows[0].id).toBe("r1");
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });
 
-  it("v2 → v3 → v4: bumps version, preserves data, keeps existing seriesIds", () => {
+  it("v2 → latest: bumps version, preserves data, keeps existing seriesIds", () => {
     const v2 = {
       version: 2,
       activeSheetId: "s1",
@@ -346,22 +372,68 @@ describe("migrate", () => {
     const { data, migrated } = migrate(v2);
     expect(migrated).toBe(true);
     expect(data.version).toBe(LATEST_VERSION);
-    const sheet = (data.sheets as Array<{ rows: Array<{ id: string }> }>)[0];
-    expect(sheet.rows).toHaveLength(1);
-    expect(sheet.rows[0].id).toBe("r1");
+    const item = (
+      data.sheets as Array<{
+        items: Array<{ rows: Array<{ id: string }> }>;
+      }>
+    )[0].items[0];
+    expect(item.rows).toHaveLength(1);
+    expect(item.rows[0].id).toBe("r1");
+  });
+
+  it("v4 → v5: wraps each sheet's columns+rows into an AccountBudget item and seeds a default Account", () => {
+    const v4 = {
+      version: 4,
+      activeSheetId: "s1",
+      categories: [],
+      settings: { ...DEFAULT_SETTINGS },
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          columns: [
+            { id: "c1", type: "date", label: "Date" },
+            { id: "c2", type: "description", label: "Description" },
+            { id: "c3", type: "amount", label: "Amount" },
+          ],
+          rows: [{ id: "r1", cells: { c1: "2026-05-01", c3: 50 } }],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v4);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const accounts = data.accounts as Array<{ id: string; name: string }>;
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0].name).toBe("Default");
+    const sheets = data.sheets as Array<{
+      items: Array<{
+        type: string;
+        accountId: string;
+        rows: Array<{ id: string }>;
+        columns: Array<{ id: string }>;
+      }>;
+    }>;
+    expect(sheets[0].items).toHaveLength(1);
+    expect(sheets[0].items[0].type).toBe("accountBudget");
+    expect(sheets[0].items[0].accountId).toBe(accounts[0].id);
+    expect(sheets[0].items[0].rows[0].id).toBe("r1");
+    expect(sheets[0].items[0].columns).toHaveLength(3);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
   });
 });
 
 describe("seriesId field on rows", () => {
   it("round-trips through serialize/parse", () => {
     const b = sampleData();
-    b.sheets[0].rows[0].seriesId = "series-1";
-    b.sheets[0].rows[1].seriesId = "series-1";
+    firstItem(b).rows[0].seriesId = "series-1";
+    firstItem(b).rows[1].seriesId = "series-1";
     const r = parseUserData(serializeUserData(b));
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.data.sheets[0].rows[0].seriesId).toBe("series-1");
-      expect(r.data.sheets[0].rows[1].seriesId).toBe("series-1");
+      expect(firstItem(r.data).rows[0].seriesId).toBe("series-1");
+      expect(firstItem(r.data).rows[1].seriesId).toBe("series-1");
     }
   });
 
@@ -374,7 +446,7 @@ describe("seriesId field on rows", () => {
   it("rejects empty-string seriesId", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));
-    raw.sheets[0].rows[0].seriesId = "";
+    raw.sheets[0].items[0].rows[0].seriesId = "";
     const r = parseUserData(JSON.stringify(raw));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/seriesId/);

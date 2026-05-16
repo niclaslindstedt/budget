@@ -12,7 +12,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 4 as const;
+export const LATEST_VERSION = 5 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -72,6 +72,46 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
     version: 4,
     settings: { ...DEFAULT_SETTINGS },
   }),
+
+  // v4 → v5: introduces explicit Accounts and turns each Sheet into a
+  // container of typed items. Pre-v5 sheets carried their columns and
+  // rows directly; in v5 those become the body of one `AccountBudget`
+  // item that points at a freshly minted default Account. The shape
+  // supports future SheetItem variants (graphs, notes, etc.) without
+  // another migration.
+  4: (v4) => {
+    const defaultAccountId = newId();
+    const sheets = Array.isArray(v4.sheets) ? v4.sheets : [];
+    return {
+      ...v4,
+      version: 5,
+      accounts: [{ id: defaultAccountId, name: "Default" }],
+      sheets: sheets.map((raw) => {
+        if (typeof raw !== "object" || raw === null) return raw;
+        const sheet = raw as {
+          id?: unknown;
+          name?: unknown;
+          columns?: unknown;
+          rows?: unknown;
+        };
+        const columns = Array.isArray(sheet.columns) ? sheet.columns : [];
+        const rows = Array.isArray(sheet.rows) ? sheet.rows : [];
+        return {
+          id: sheet.id,
+          name: sheet.name,
+          items: [
+            {
+              id: newId(),
+              type: "accountBudget",
+              accountId: defaultAccountId,
+              columns,
+              rows,
+            },
+          ],
+        };
+      }),
+    };
+  },
 };
 
 export type MigrationResult = {
