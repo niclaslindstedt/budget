@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, X } from "lucide-react";
+import { HardDrive, ShieldCheck, X } from "lucide-react";
 
 import {
   DATE_FORMATS,
@@ -16,13 +16,20 @@ import type {
   ShortDateFormat,
   ThousandsSeparator,
 } from "../data/types";
+import type { BackendId } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
+import { DropboxGlyph } from "./DropboxGlyph";
 
 type Props = {
   open: boolean;
   settings: Settings;
+  backend: BackendId;
+  dropboxConnected: boolean;
   onClose: () => void;
   onSave: (next: Settings) => void;
+  onConnectDropbox: () => void;
+  onDisconnectDropbox: () => void;
+  onSelectLocal: () => void;
 };
 
 function presetIdFor(settings: Settings): string {
@@ -38,7 +45,17 @@ function presetById(id: string): NumberFormatPreset | undefined {
   return NUMBER_FORMATS.find((f) => f.id === id);
 }
 
-export function SettingsModal({ open, settings, onClose, onSave }: Props) {
+export function SettingsModal({
+  open,
+  settings,
+  backend,
+  dropboxConnected,
+  onClose,
+  onSave,
+  onConnectDropbox,
+  onDisconnectDropbox,
+  onSelectLocal,
+}: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
   const [draft, setDraft] = useState<Settings>(settings);
@@ -123,9 +140,14 @@ export function SettingsModal({ open, settings, onClose, onSave }: Props) {
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <MainView
             draft={draft}
+            backend={backend}
+            dropboxConnected={dropboxConnected}
             onUpdate={update}
             onApplyNumberFormat={applyNumberFormat}
             onApplyDecimal={applyDecimal}
+            onConnectDropbox={onConnectDropbox}
+            onDisconnectDropbox={onDisconnectDropbox}
+            onSelectLocal={onSelectLocal}
           />
         </div>
 
@@ -161,14 +183,24 @@ export function SettingsModal({ open, settings, onClose, onSave }: Props) {
 
 function MainView({
   draft,
+  backend,
+  dropboxConnected,
   onUpdate,
   onApplyNumberFormat,
   onApplyDecimal,
+  onConnectDropbox,
+  onDisconnectDropbox,
+  onSelectLocal,
 }: {
   draft: Settings;
+  backend: BackendId;
+  dropboxConnected: boolean;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   onApplyNumberFormat: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
+  onConnectDropbox: () => void;
+  onDisconnectDropbox: () => void;
+  onSelectLocal: () => void;
 }) {
   const numberPreviewSample = 1234567.89;
   const datePreviewIso = "2026-05-16";
@@ -350,6 +382,70 @@ function MainView({
           checked={draft.showDecimals}
           onChange={(v) => onUpdate("showDecimals", v)}
         />
+      </Section>
+
+      <Section title="Storage">
+        <Field label="Backend">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              aria-hidden
+              className={`inline-flex h-9 w-9 items-center justify-center rounded border ${
+                backend === "dropbox"
+                  ? "border-accent/40 text-accent"
+                  : "border-line text-muted"
+              }`}
+            >
+              {backend === "dropbox" ? (
+                <DropboxGlyph size={18} />
+              ) : (
+                <HardDrive size={18} aria-hidden focusable={false} />
+              )}
+            </span>
+            <select
+              value={backend}
+              onChange={(e) => {
+                const next = e.target.value as BackendId;
+                if (next === "local") onSelectLocal();
+                else onConnectDropbox();
+              }}
+              className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
+            >
+              <option value="local">This device</option>
+              <option value="dropbox">Dropbox</option>
+            </select>
+          </div>
+          <p className="text-xs text-muted">
+            {backend === "dropbox"
+              ? dropboxConnected
+                ? "Synced to your Dropbox app folder every few minutes, or when you press Save."
+                : "Authorize to keep your budget in your Dropbox app folder."
+              : "Stored locally in this browser. Export to JSON to move it elsewhere."}
+          </p>
+        </Field>
+        {backend === "dropbox" && (
+          <div className="flex items-center gap-2">
+            {dropboxConnected ? (
+              <button
+                type="button"
+                onClick={onDisconnectDropbox}
+                className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+              >
+                Disconnect Dropbox
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onConnectDropbox}
+                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
+              >
+                Connect Dropbox
+              </button>
+            )}
+            {dropboxConnected && (
+              <span className="text-xs text-success">Connected</span>
+            )}
+          </div>
+        )}
       </Section>
 
       <Section title="Security">

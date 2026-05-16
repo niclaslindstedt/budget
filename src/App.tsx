@@ -19,6 +19,7 @@ import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
+import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
 import { STORAGE_KEY, userDataKey } from "./data/constants";
 import {
@@ -43,7 +44,20 @@ import type {
   UserData,
 } from "./data/types";
 import type { StorageAdapter } from "./storage/adapter";
+import {
+  type BackendId,
+  clearDropboxToken,
+  getBackend,
+  getDropboxToken,
+  setBackend,
+  setDropboxToken,
+} from "./storage/backend-preference";
 import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
+import {
+  completeDropboxAuth,
+  createDropboxAdapter,
+  startDropboxAuth,
+} from "./storage/dropbox-adapter";
 import { withEncryption } from "./storage/encrypting-adapter";
 import {
   clearRawStorage,
@@ -486,13 +500,114 @@ export function App() {
     boot.auth.kind === "signed-in" ? boot.auth.password : null,
   );
 
+  // Per-user device-local storage preferences. Loaded lazily on sign-
+  // in so a fresh-device session lands on local until the user
+  // reconnects Dropbox here. Lives in App so the adapter `useMemo`
+  // can rebuild when the user flips the choice from Settings.
+  const [backend, setBackendState] = useState<BackendId>("local");
+  const [dropboxToken, setDropboxTokenState] = useState<string | null>(null);
+
+  // Sync state with the active user every time auth flips.
+  useEffect(() => {
+    if (auth.kind !== "signed-in") {
+      setBackendState("local");
+      setDropboxTokenState(null);
+      return;
+    }
+    setBackendState(getBackend(auth.user.id));
+    setDropboxTokenState(getDropboxToken(auth.user.id));
+  }, [auth]);
+
+  // Complete the Dropbox OAuth round-trip when the redirect lands
+  // back here. The user signed in before clicking Connect, so by
+  // the time this fires they should already be signed-in again (or
+  // about to be — we wait for that transition). Errors surface in
+  // the console only; a future polish pass can surface them in UI.
+  useEffect(() => {
+    if (auth.kind !== "signed-in") return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) return;
+    let cancelled = false;
+    completeDropboxAuth(code)
+      .then((token) => {
+        if (cancelled || auth.kind !== "signed-in") return;
+        setDropboxToken(auth.user.id, token);
+        setBackend(auth.user.id, "dropbox");
+        setDropboxTokenState(token);
+        setBackendState("dropbox");
+      })
+      .catch((err: unknown) => {
+        console.error("Dropbox connect failed:", err);
+      })
+      .finally(() => {
+        // Clean the code out of the URL regardless of outcome so a
+        // page reload doesn't re-trigger the exchange.
+        const url = new URL(window.location.href);
+        url.searchParams.delete("code");
+        url.searchParams.delete("state");
+        window.history.replaceState({}, "", url.toString());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
+
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
-    return withEncryption(
-      createLocalAdapter(userDataKey(auth.user.id)),
-      passwordRef,
-    );
+    const inner: StorageAdapter =
+      backend === "dropbox" && dropboxToken
+        ? createDropboxAdapter(dropboxToken)
+        : createLocalAdapter(userDataKey(auth.user.id));
+    return withEncryption(inner, passwordRef);
+  }, [auth, backend, dropboxToken]);
+
+  const handleConnectDropbox = useCallback(() => {
+    void startDropboxAuth();
+  }, []);
+
+  const handleSelectLocal = useCallback(() => {
+    if (auth.kind !== "signed-in") return;
+    setBackend(auth.user.id, "local");
+    setBackendState("local");
   }, [auth]);
+
+  const handleDisconnectDropbox = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    const userId = auth.user.id;
+    // Pull the latest Dropbox snapshot through the encrypting adapter
+    // so the bytes that land in localStorage match what was up there,
+    // then drop the token and flip back to local. Failing to fetch
+    // is tolerated — the in-memory state has just been auto-saved
+    // there moments ago, so worst case the user loses the few
+    // minutes between the last sync and the disconnect.
+    if (dropboxToken) {
+      try {
+        const cloud = withEncryption(
+          createDropboxAdapter(dropboxToken),
+          passwordRef,
+        );
+        const snap = await cloud.load();
+        if (snap) {
+          // Persist whatever we just decrypted into the local slot.
+          // We round-trip through the encrypting adapter to write
+          // the *encrypted* envelope to localStorage (matching the
+          // shape the local adapter normally sees).
+          const local = withEncryption(
+            createLocalAdapter(userDataKey(userId)),
+            passwordRef,
+          );
+          await local.save(snap.text);
+        }
+      } catch (err) {
+        console.error("Dropbox disconnect: failed to mirror to local", err);
+      }
+    }
+    clearDropboxToken(userId);
+    setBackend(userId, "local");
+    setDropboxTokenState(null);
+    setBackendState("local");
+  }, [auth, dropboxToken]);
 
   const persistRegistry = useCallback(
     (nextUsers: StoredUser[], activeUserId: string | null) => {
@@ -612,11 +727,16 @@ export function App() {
       user={auth.user}
       password={auth.password}
       hasOtherUsers={users.length > 1}
+      backend={backend}
+      dropboxConnected={dropboxToken !== null}
       getEncryptionPassword={() => passwordRef.current}
       onSignOut={handleSignOut}
       onSwitchUser={handleSwitchUser}
       onCreateAccount={handleStartCreateAccountFromMenu}
       onDeleteAccount={handleDeleteAccount}
+      onConnectDropbox={handleConnectDropbox}
+      onDisconnectDropbox={handleDisconnectDropbox}
+      onSelectLocal={handleSelectLocal}
     />
   );
 }
@@ -628,6 +748,8 @@ type BudgetViewProps = {
   // re-stamp `sessionStorage` with the user's chosen TTL on each tick.
   password: string;
   hasOtherUsers: boolean;
+  backend: BackendId;
+  dropboxConnected: boolean;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
   // adapter uses.
@@ -636,6 +758,9 @@ type BudgetViewProps = {
   onSwitchUser: () => void;
   onCreateAccount: () => void;
   onDeleteAccount: (password: string) => Promise<void>;
+  onConnectDropbox: () => void;
+  onDisconnectDropbox: () => void;
+  onSelectLocal: () => void;
 };
 
 function BudgetView({
@@ -643,13 +768,18 @@ function BudgetView({
   user,
   password,
   hasOtherUsers,
+  backend,
+  dropboxConnected,
   getEncryptionPassword,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
   onDeleteAccount,
+  onConnectDropbox,
+  onDisconnectDropbox,
+  onSelectLocal,
 }: BudgetViewProps) {
-  const { data, dispatch, dirty, saveNow } = useUserDataStorage(
+  const { data, dispatch, status, dirty, saveNow } = useUserDataStorage(
     adapter,
     reducer,
     { beforeSerialize: userDataWithSavableRows },
@@ -1057,6 +1187,9 @@ function BudgetView({
         </span>
         <div className="ml-auto inline-flex items-center gap-2">
           <SaveStateButton dirty={dirty} onSave={saveNow} />
+          {backend === "dropbox" && (
+            <SyncStatus status={status} dirty={dirty} />
+          )}
           <ImportExportControls
             data={data}
             onImport={onImport}
@@ -1190,8 +1323,13 @@ function BudgetView({
       <SettingsModal
         open={settingsOpen}
         settings={data.settings}
+        backend={backend}
+        dropboxConnected={dropboxConnected}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
+        onConnectDropbox={onConnectDropbox}
+        onDisconnectDropbox={onDisconnectDropbox}
+        onSelectLocal={onSelectLocal}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}
