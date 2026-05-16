@@ -13,6 +13,8 @@ import { MonthTable } from "./MonthTable";
 type Props = {
   sheet: Sheet;
   categories: Category[];
+  selectMode: boolean;
+  selectedIds: ReadonlySet<string>;
   showName?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
@@ -20,6 +22,8 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
+  onToggleSelect: (rowId: string) => void;
+  onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
@@ -31,6 +35,8 @@ function currentMonthKey(): string {
 export function SheetView({
   sheet,
   categories,
+  selectMode,
+  selectedIds,
   showName = true,
   onUpdateCell,
   onAddRow,
@@ -38,6 +44,8 @@ export function SheetView({
   onDeleteRequest,
   onEditRequest,
   onReorderColumns,
+  onToggleSelect,
+  onToggleSelectMonth,
   onCreateCategory,
 }: Props) {
   const dateCol = useMemo(
@@ -81,12 +89,16 @@ export function SheetView({
               columns={sheet.columns}
               balances={balances}
               categories={categories}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
               onUpdateCell={onUpdateCell}
               onAddRow={() => onAddRow(seedDate)}
               onAddComplex={() => onAddComplex(seedDate)}
               onDeleteRequest={onDeleteRequest}
               onEditRequest={onEditRequest}
               onReorderColumns={onReorderColumns}
+              onToggleSelect={onToggleSelect}
+              onToggleSelectMonth={onToggleSelectMonth}
               onCreateCategory={onCreateCategory}
             />
           );

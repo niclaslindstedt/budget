@@ -141,6 +141,25 @@ body {
       position: relative;
       overflow: hidden;
     }
+    /* In select mode, prepend a 32px checkbox column. The grid takes one
+       more leading track so the rest of the layout doesn't reflow. */
+    .sheet-table.is-selecting > thead > tr,
+    .sheet-table.is-selecting > tbody > tr {
+      grid-template-columns: 32px 40px minmax(0, 1fr) 56px 72px 80px 40px;
+    }
+    /* Highlight the row in select mode and tint the selected ones. */
+    .sheet-table > tbody > tr.is-selecting-row {
+      cursor: pointer;
+    }
+    .sheet-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
+      pointer-events: none;
+    }
+    .sheet-table
+      > tbody
+      > tr.is-selecting-row.is-selected
+      > td:not(.action-cell) {
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    }
     .sheet-table > tfoot > tr {
       display: block;
       width: 100%;
@@ -208,6 +227,15 @@ body {
   @media (min-width: 720px) {
     .sheet-table > tbody > tr.is-completed > td {
       background: color-mix(in srgb, var(--success) 10%, var(--surface));
+    }
+    .sheet-table > tbody > tr.is-selecting-row {
+      cursor: pointer;
+    }
+    .sheet-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
+      pointer-events: none;
+    }
+    .sheet-table > tbody > tr.is-selecting-row.is-selected > td {
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     }
   }
 }

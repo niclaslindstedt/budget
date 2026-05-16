@@ -13,13 +13,11 @@ type Props = {
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
 
-const moneyFormat = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-function formatMoney(n: number): string {
-  return moneyFormat.format(n);
+// Balance column is a derived sum — keep it compact so the column doesn't
+// dominate on mobile. No thousands separators; round to two decimal
+// places so floating-point drift doesn't print a 12-digit tail.
+function formatBalance(n: number): string {
+  return String(Math.round(n * 100) / 100);
 }
 
 function dayFromIso(value: CellValue): string {
@@ -71,7 +69,7 @@ export function Cell({
           }`}
           aria-readonly="true"
         >
-          {formatMoney(n)}
+          {formatBalance(n)}
         </td>
       );
     }

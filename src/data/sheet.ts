@@ -112,6 +112,21 @@ export function createEmptyRow(
   return { id: newId(), cells };
 }
 
+// Shift an ISO date into `targetMonth` ("YYYY-MM"), preserving the
+// day-of-month and clamping to the target month's length so e.g. Jan 31
+// → Feb 28/29 instead of overflowing into March.
+export function shiftIsoToMonth(iso: string, targetMonth: string): string {
+  if (iso.length < 10 || !/^\d{4}-\d{2}$/.test(targetMonth)) return iso;
+  const day = Number(iso.slice(8, 10));
+  const [y, m] = targetMonth.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(day)) {
+    return iso;
+  }
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const clamped = Math.min(Math.max(1, day), lastDay);
+  return `${targetMonth}-${String(clamped).padStart(2, "0")}`;
+}
+
 // Rows in the same series with a date >= `anchor`'s date (anchor included).
 // Optionally clamped to an inclusive upper bound, used for the "until …"
 // option on edit-scope dialogs. For non-series anchors, returns just the
