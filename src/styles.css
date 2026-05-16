@@ -185,7 +185,7 @@ body {
       max-width: none;
     }
     .sheet-table th > *,
-    .sheet-table td > *:not(.date-picker-hidden) {
+    .sheet-table td > * {
       width: 100%;
     }
 

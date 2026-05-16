@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Minus, Plus } from "lucide-react";
 
 import type { Category, CellValue, Column } from "../data/types";
 import { CategoryPicker } from "./CategoryPicker";
+import { DatePickerModal } from "./DatePickerModal";
 
 type Props = {
   column: Column;
@@ -217,7 +218,7 @@ function DateCell({
   value: CellValue;
   onChange: (value: CellValue) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
   const day = dayFromIso(value);
   const iso = typeof value === "string" ? value : "";
 
@@ -228,31 +229,16 @@ function DateCell({
         className={`block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-mono tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
           day ? "text-path" : "text-muted"
         }`}
-        onClick={() => {
-          const input = inputRef.current;
-          if (!input) return;
-          if (typeof input.showPicker === "function") {
-            try {
-              input.showPicker();
-              return;
-            } catch {
-              // fall through to focus
-            }
-          }
-          input.focus();
-          input.click();
-        }}
+        aria-label={iso ? `Change date (${iso})` : "Pick a date"}
+        onClick={() => setOpen(true)}
       >
         {day || "—"}
       </button>
-      <input
-        ref={inputRef}
-        type="date"
-        className="date-picker-hidden pointer-events-none absolute m-0 h-px w-px border-0 p-0 opacity-0"
+      <DatePickerModal
+        open={open}
         value={iso}
-        onChange={(e) => onChange(e.target.value || null)}
-        aria-label="Date"
-        tabIndex={-1}
+        onClose={() => setOpen(false)}
+        onSelect={(next) => onChange(next)}
       />
     </td>
   );
