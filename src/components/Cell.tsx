@@ -116,10 +116,10 @@ export function Cell({
   }
 }
 
-function parseAmount(text: string): number | null {
-  if (text === "" || text === "-") return null;
+function parseAbsAmount(text: string): number | null {
+  if (text === "") return null;
   const n = Number(text.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function AmountCell({
@@ -129,31 +129,39 @@ function AmountCell({
   value: CellValue;
   onChange: (value: CellValue) => void;
 }) {
-  const externalText = typeof value === "number" ? String(value) : "";
-  const [text, setText] = useState(externalText);
+  const externalNumber = typeof value === "number" ? value : null;
+  const externalAbsText =
+    externalNumber !== null ? String(Math.abs(externalNumber)) : "";
+  const [text, setText] = useState(externalAbsText);
+  const [negative, setNegative] = useState(
+    externalNumber !== null && externalNumber < 0,
+  );
 
-  // Skip resync while local text represents the same number, so in-progress
-  // input like "-" or "12," is not clobbered by a parent rerender.
+  // Skip resync while local state already represents the same number, so
+  // in-progress input like "12," is not clobbered by a parent rerender.
   useEffect(() => {
-    if (parseAmount(text) === value) return;
-    setText(externalText);
-  }, [value, externalText, text]);
+    const localAbs = parseAbsAmount(text);
+    const localSigned =
+      localAbs === null ? null : negative ? -localAbs : localAbs;
+    if (localSigned === externalNumber) return;
+    setText(externalAbsText);
+    setNegative(externalNumber !== null && externalNumber < 0);
+  }, [externalNumber, externalAbsText, text, negative]);
 
-  const commit = (next: string) => {
-    setText(next);
-    onChange(parseAmount(next));
+  const commit = (nextText: string, nextNegative: boolean) => {
+    // Sign lives on the toggle button — strip any minus the keyboard or a
+    // paste produces so the input only ever shows the absolute value.
+    const cleaned = nextText.replace(/-/g, "");
+    setText(cleaned);
+    setNegative(nextNegative);
+    const abs = parseAbsAmount(cleaned);
+    onChange(abs === null ? null : nextNegative ? -abs : abs);
   };
 
-  const toggleSign = () => {
-    commit(text.startsWith("-") ? text.slice(1) : "-" + text);
-  };
+  const toggleSign = () => commit(text, !negative);
 
-  const parsed = parseAmount(text);
-  const isNegative = parsed !== null && parsed < 0;
-  const isPositive = parsed !== null && parsed > 0;
-  // Icon mirrors the current sign of the entry: + for positive or empty,
-  // − for negative. Tapping it flips the sign in place.
-  const showMinus = text.startsWith("-");
+  const parsed = parseAbsAmount(text);
+  const hasValue = parsed !== null && parsed > 0;
 
   return (
     <td className={CELL_BASE}>
@@ -161,31 +169,41 @@ function AmountCell({
         <button
           type="button"
           onClick={toggleSign}
-          aria-label={showMinus ? "Make positive" : "Make negative"}
+          aria-label={negative ? "Make positive" : "Make negative"}
           tabIndex={-1}
           className={`absolute inset-y-0 left-0 z-10 flex w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-            showMinus ? "text-negative" : "text-positive"
+            negative ? "text-negative" : "text-positive"
           }`}
         >
-          {showMinus ? (
+          {negative ? (
             <Minus size={14} aria-hidden focusable={false} />
           ) : (
             <Plus size={14} aria-hidden focusable={false} />
           )}
         </button>
+        {/* Hidden mirror of the input value so the cell's intrinsic width
+           tracks its content — the input itself reports a fixed intrinsic
+           size driven by the `size` attribute, so it can't drive grid
+           auto-sizing on its own. */}
+        <span
+          aria-hidden
+          className="invisible px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre"
+        >
+          {text || "0"}
+        </span>
         <input
           type="text"
           inputMode="decimal"
-          pattern="-?[0-9]*[.,]?[0-9]*"
-          className={`${INPUT_BASE} pl-6 text-right tabular-nums ${
-            isNegative
-              ? "text-negative"
-              : isPositive
-                ? "text-positive"
-                : "text-fg"
+          pattern="[0-9]*[.,]?[0-9]*"
+          className={`${INPUT_BASE} absolute inset-0 pl-6 text-right tabular-nums ${
+            hasValue
+              ? negative
+                ? "text-negative"
+                : "text-positive"
+              : "text-fg"
           }`}
           value={text}
-          onChange={(e) => commit(e.target.value)}
+          onChange={(e) => commit(e.target.value, negative)}
         />
       </div>
     </td>
