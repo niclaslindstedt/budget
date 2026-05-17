@@ -21,10 +21,10 @@ import { challengeFor, randomVerifier, redirectUri } from "./oauth-pkce";
 // The matching app is registered at
 // https://www.dropbox.com/developers/apps as "Scoped access" with
 // permission type "App folder" (folder name `budget.niclaslindstedt.se`).
-// Its redirect URIs must include `https://budget.niclaslindstedt.se/`
-// (prod) and `http://localhost:5173/` (dev) — `startDropboxAuth`
-// derives the URI from `window.location.origin` and Dropbox requires
-// an exact match.
+// Its redirect URIs must include `https://budget.niclaslindstedt.se`
+// (prod) and `http://localhost:5173` (dev), no trailing slash —
+// `startDropboxAuth` derives the URI from `window.location.origin`
+// and Dropbox requires an exact match.
 export const DROPBOX_APP_KEY = "fjk4dj166rrzuiw";
 
 // Public folder name inside the user's Dropbox `Apps/` directory. This
