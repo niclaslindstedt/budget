@@ -16,7 +16,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 7 as const;
+export const LATEST_VERSION = 8 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -152,6 +152,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
       }),
     };
   },
+
+  // v7 → v8: introduces an optional `glyph` field on rows so a
+  // recurring entry can carry a custom icon shown in the description
+  // cell (and replacing the mobile ellipsis trigger). No row data
+  // needs rewriting; bumping the version flags that this build
+  // understands the new shape so older builds know not to silently
+  // drop the field.
+  7: (v7) => ({ ...v7, version: 8 }),
 };
 
 export type MigrationResult = {

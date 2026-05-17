@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Settings } from "../data/types";
+import type { Category, CategoryIcon, Settings } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
+import { GlyphPicker } from "./GlyphPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 
 type Props = {
@@ -21,6 +22,10 @@ export type ComplexEntryDraft = {
   description: string;
   amount: number;
   categoryId: string | null;
+  // `null` = use the default recurring icon; otherwise stamp the chosen
+  // glyph on every generated row so the description cell can render it
+  // in place of the … trigger on mobile.
+  glyph: CategoryIcon | null;
   dates: string[];
 };
 
@@ -37,6 +42,7 @@ export function ComplexEntryModal({
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [glyph, setGlyph] = useState<CategoryIcon | null>(null);
   const [dates, setDates] = useState<string[]>([]);
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
@@ -47,6 +53,7 @@ export function ComplexEntryModal({
     setAmountText("");
     setNegative(true);
     setCategoryId(null);
+    setGlyph(null);
     setDates([]);
     setResetKey((k) => k + 1);
   }, [open]);
@@ -96,6 +103,7 @@ export function ComplexEntryModal({
       description: description.trim(),
       amount: parsedAmount,
       categoryId,
+      glyph,
       dates,
     });
   }
@@ -185,6 +193,10 @@ export function ComplexEntryModal({
                 onSelect={setCategoryId}
                 onCreate={onCreateCategory}
               />
+            </div>
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <span className="text-xs text-muted">Glyph</span>
+              <GlyphPicker value={glyph} onChange={setGlyph} />
             </div>
           </div>
 

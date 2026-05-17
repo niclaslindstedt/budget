@@ -2,7 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Minus, Plus, Repeat } from "lucide-react";
 
-import type { Category, CellValue, Column, Settings } from "../data/types";
+import type {
+  Category,
+  CategoryIcon,
+  CellValue,
+  Column,
+  Settings,
+} from "../data/types";
 import {
   formatAmountForInput,
   formatBalance,
@@ -16,6 +22,7 @@ import {
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
+import { CategoryIconGlyph } from "./icons";
 
 type Props = {
   column: Column;
@@ -24,6 +31,10 @@ type Props = {
   categories?: Category[];
   settings: Settings;
   isRecurring?: boolean;
+  // Custom glyph carried on the row. When set, the description cell
+  // renders this in place of the default recurring icon (and uses it as
+  // the mobile popover trigger so the row reads at a glance).
+  glyph?: CategoryIcon | null;
   onChange: (value: CellValue) => void;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
@@ -39,6 +50,7 @@ export function Cell({
   categories,
   settings,
   isRecurring,
+  glyph,
   onChange,
   onCreateCategory,
 }: Props) {
@@ -52,6 +64,7 @@ export function Cell({
         <DescriptionCell
           value={typeof value === "string" ? value : ""}
           isRecurring={!!isRecurring}
+          glyph={glyph ?? null}
           onChange={onChange}
         />
       );
@@ -283,12 +296,18 @@ function DateCell({
 function DescriptionCell({
   value,
   isRecurring,
+  glyph,
   onChange,
 }: {
   value: string;
   isRecurring: boolean;
+  glyph: CategoryIcon | null;
   onChange: (value: CellValue) => void;
 }) {
+  // Pick the row's leading icon. A custom glyph wins over the default
+  // Repeat icon; for one-off rows we show nothing (the mobile trigger
+  // falls back to "…").
+  const hasIcon = glyph !== null || isRecurring;
   return (
     <td
       className={`${CELL_BASE} align-middle md:w-full ${
@@ -298,18 +317,22 @@ function DescriptionCell({
       {/* Desktop: the description is inline as an auto-growing textarea —
          the column is wide enough that wrapping reads fine. */}
       <div className="hidden md:flex md:items-start">
-        {isRecurring && (
+        {hasIcon && (
           <span
-            aria-label="Recurring entry"
-            title="Recurring entry"
+            aria-label={isRecurring ? "Recurring entry" : "Entry glyph"}
+            title={isRecurring ? "Recurring entry" : undefined}
             className="flex shrink-0 items-center pt-2 pl-2 text-flag"
           >
-            <Repeat size={12} aria-hidden focusable={false} />
+            {glyph !== null ? (
+              <CategoryIconGlyph name={glyph} size={12} />
+            ) : (
+              <Repeat size={12} aria-hidden focusable={false} />
+            )}
           </span>
         )}
         <textarea
           className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-            isRecurring ? "pl-1.5" : ""
+            hasIcon ? "pl-1.5" : ""
           }`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -318,11 +341,13 @@ function DescriptionCell({
         />
       </div>
       {/* Mobile: the column is narrow, so a long description wraps to many
-         lines and balloons the row. Render an ellipsis trigger that opens
-         a popover with the full editable description instead. */}
+         lines and balloons the row. Render the row's glyph (or default
+         recurring icon, or "…") as the trigger so the row is identifiable
+         at a glance, and open the full editable description in a popover. */}
       <DescriptionPopover
         value={value}
         isRecurring={isRecurring}
+        glyph={glyph}
         onChange={onChange}
       />
     </td>
@@ -357,10 +382,12 @@ function computeDescriptionPopoverPosition(rect: DOMRect): {
 function DescriptionPopover({
   value,
   isRecurring,
+  glyph,
   onChange,
 }: {
   value: string;
   isRecurring: boolean;
+  glyph: CategoryIcon | null;
   onChange: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -424,6 +451,10 @@ function DescriptionPopover({
   };
 
   const hasValue = value.length > 0;
+  // Show the row's glyph (custom, or the default Repeat for series rows)
+  // as the trigger. One-off rows fall back to the existing "…" so the
+  // popover stays reachable.
+  const hasGlyph = glyph !== null || isRecurring;
 
   return (
     <>
@@ -438,15 +469,24 @@ function DescriptionPopover({
         aria-expanded={open}
         aria-label={hasValue ? `Description: ${value}` : "Add description"}
       >
-        {isRecurring && (
-          <Repeat
-            size={12}
-            aria-hidden
-            focusable={false}
-            className="shrink-0 text-flag"
-          />
+        {hasGlyph ? (
+          glyph !== null ? (
+            <CategoryIconGlyph
+              name={glyph}
+              size={16}
+              className="shrink-0 text-flag"
+            />
+          ) : (
+            <Repeat
+              size={16}
+              aria-hidden
+              focusable={false}
+              className="shrink-0 text-flag"
+            />
+          )
+        ) : (
+          <span>…</span>
         )}
-        <span>…</span>
       </button>
       {open &&
         position &&

@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 7,
+    version: 8,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -508,6 +508,49 @@ describe("migrate", () => {
     expect(validated.ok).toBe(true);
   });
 
+  it("v7 → v8: bumps the version and leaves existing rows untouched", () => {
+    const v7 = {
+      version: 7,
+      activeSheetId: "s1",
+      categories: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [{ id: "r1", cells: { c1: "2026-05-01", c3: 50 } }],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v7);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const sheets = data.sheets as Array<{
+      items: Array<{ rows: Array<{ id: string; glyph?: string }> }>;
+    }>;
+    expect(sheets[0].items[0].rows[0].id).toBe("r1");
+    expect(sheets[0].items[0].rows[0].glyph).toBeUndefined();
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+  });
+
   it("v5 → v6: bumps the version and preserves shape", () => {
     const v5 = {
       version: 5,
@@ -580,6 +623,40 @@ describe("nullable accountId & empty accounts", () => {
     const r = parseUserData(serializeUserData(b));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/accountId/);
+  });
+});
+
+describe("glyph field on rows", () => {
+  it("round-trips through serialize/parse", () => {
+    const b = sampleData();
+    firstItem(b).rows[0].glyph = "piggy-bank";
+    firstItem(b).rows[1].glyph = "coffee";
+    const r = parseUserData(serializeUserData(b));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(firstItem(r.data).rows[0].glyph).toBe("piggy-bank");
+      expect(firstItem(r.data).rows[1].glyph).toBe("coffee");
+    }
+  });
+
+  it("is omitted from JSON when undefined", () => {
+    const b = sampleData();
+    const text = serializeUserData(b);
+    expect(text.includes('"glyph":') && text.includes("rows")).toBe(true);
+    // The rows themselves shouldn't carry a glyph key — only sheets do.
+    const raw = JSON.parse(text);
+    for (const row of raw.sheets[0].items[0].rows) {
+      expect(row.glyph).toBeUndefined();
+    }
+  });
+
+  it("rejects an unknown glyph name", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.sheets[0].items[0].rows[0].glyph = "not-a-glyph";
+    const r = parseUserData(JSON.stringify(raw));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/glyph/);
   });
 });
 

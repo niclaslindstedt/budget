@@ -114,7 +114,7 @@ function validateRow(
   knownColumnIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, cells, seriesId } = raw;
+  const { id, cells, seriesId, glyph } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (!isObject(cells)) return fail(`${path}.cells`, "expected an object");
@@ -132,6 +132,11 @@ function validateRow(
     if (typeof seriesId !== "string" || seriesId === "")
       return fail(`${path}.seriesId`, "expected a non-empty string");
     row.seriesId = seriesId;
+  }
+  if (glyph !== undefined) {
+    if (typeof glyph !== "string" || !CATEGORY_ICONS.has(glyph as CategoryIcon))
+      return fail(`${path}.glyph`, `unknown glyph "${String(glyph)}"`);
+    row.glyph = glyph as CategoryIcon;
   }
   return { ok: true, value: row };
 }

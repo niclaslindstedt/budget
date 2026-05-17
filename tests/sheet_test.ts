@@ -343,7 +343,7 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
     const sheetId = "sheet-1";
     return {
       data: {
-        version: 7,
+        version: 8,
         sheets: [{ id: sheetId, name: "Test", items: [item] }],
         activeSheetId: sheetId,
         accounts: [{ id: TEST_ACCOUNT_ID, name: "Default" }],

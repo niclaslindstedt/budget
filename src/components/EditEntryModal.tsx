@@ -3,13 +3,20 @@ import { X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Column, Row, Settings } from "../data/types";
+import type {
+  Category,
+  CategoryIcon,
+  Column,
+  Row,
+  Settings,
+} from "../data/types";
 import {
   formatAmountForInput,
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
+import { GlyphPicker } from "./GlyphPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 
 type Props = {
@@ -22,7 +29,11 @@ type Props = {
   // editing a series row. `null` if this row isn't part of a series.
   lastSeriesDate: string | null;
   onClose: () => void;
-  onConvertToRecurring: (rowId: string, dates: string[]) => void;
+  onConvertToRecurring: (
+    rowId: string,
+    dates: string[],
+    glyph: CategoryIcon | null,
+  ) => void;
   onEditSeries: (rowId: string, patch: EditPatch, scope: EditScope) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
@@ -31,6 +42,9 @@ export type EditPatch = {
   description: string;
   amount: number | null;
   categoryId: string | null;
+  // `undefined` = don't touch the row's glyph; `null` = clear back to
+  // the default recurring icon; a `CategoryIcon` = set the custom glyph.
+  glyph?: CategoryIcon | null;
 };
 
 export type EditScope =
@@ -87,6 +101,7 @@ export function EditEntryModal({
     dateCol && row && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
       : "";
+  const initialGlyph: CategoryIcon | null = row?.glyph ?? null;
 
   const isSeries = !!row?.seriesId;
 
@@ -95,6 +110,7 @@ export function EditEntryModal({
   const [categoryId, setCategoryId] = useState<string | null>(
     initialCategoryId,
   );
+  const [glyph, setGlyph] = useState<CategoryIcon | null>(initialGlyph);
 
   // "Just this" vs "this and all future"; the latter optionally clamped
   // to a date so temporary price changes can revert later.
@@ -114,6 +130,7 @@ export function EditEntryModal({
     setDescription(initialDescription);
     setAmount(initialAmountText);
     setCategoryId(initialCategoryId);
+    setGlyph(initialGlyph);
     setScopeKind("just-this");
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
@@ -147,6 +164,8 @@ export function EditEntryModal({
     setAmount(normalizeAmountInput(next, settings));
   }
 
+  const glyphTouched = glyph !== initialGlyph;
+
   function handleSaveEdit() {
     if (!row) return;
     onEditSeries(
@@ -155,6 +174,7 @@ export function EditEntryModal({
         description: description.trim(),
         amount: amountTouched ? parsedAmount : null,
         categoryId,
+        glyph: glyphTouched ? glyph : undefined,
       },
       scopeKind === "just-this"
         ? { kind: "just-this" }
@@ -169,7 +189,7 @@ export function EditEntryModal({
     // the action payload minimal.
     const extras = recurringDates.filter((d) => d !== initialDate);
     if (extras.length === 0) return;
-    onConvertToRecurring(row.id, extras);
+    onConvertToRecurring(row.id, extras, glyph);
   }
 
   return (
@@ -239,6 +259,10 @@ export function EditEntryModal({
                     onCreate={onCreateCategory}
                   />
                 </div>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <span className="text-xs text-muted">Glyph</span>
+                  <GlyphPicker value={glyph} onChange={setGlyph} />
+                </div>
               </div>
 
               <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
@@ -293,6 +317,10 @@ export function EditEntryModal({
                 Generate future entries from this row using a recurrence rule.
                 The current row stays as-is and joins the new series.
               </p>
+              <div className="mb-4 flex flex-col gap-1">
+                <span className="text-xs text-muted">Glyph</span>
+                <GlyphPicker value={glyph} onChange={setGlyph} />
+              </div>
               <RecurrenceForm
                 seedDate={initialDate}
                 resetKey={recurrenceResetKey}
