@@ -114,7 +114,12 @@ body,
   padding: 0;
   background: var(--page-bg);
   color: var(--fg);
-  min-height: 100vh;
+  /* `dvh` tracks the dynamic viewport so the page matches the visible
+     area as the iOS Safari chrome expands and collapses. With `100vh`
+     the document is taller than the visible area when the chrome is
+     showing, which makes an empty budget scrollable with nothing to
+     scroll to. */
+  min-height: 100dvh;
 }
 
 body {
