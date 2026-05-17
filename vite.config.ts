@@ -32,6 +32,6 @@ function emitPathAlias(...aliases: readonly string[]): Plugin {
 // ever removed and the app falls back to niclaslindstedt.github.io/budget/,
 // switch base to "/budget/" for production builds.
 export default defineConfig({
-  plugins: [react(), tailwindcss(), emitPathAlias("privacy")],
+  plugins: [react(), tailwindcss(), emitPathAlias("privacy", "schema")],
   base: "/",
 });

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
 import { PrivacyPage } from "./components/PrivacyPage";
+import { SchemaPage } from "./components/SchemaPage";
 import "./styles.css";
 import { installSelectOnFocus } from "./utils/select-on-focus";
 
@@ -13,12 +14,17 @@ if (!rootElement) {
 
 installSelectOnFocus();
 
-// Trivial path-based switch. The build emits a `dist/privacy/index.html`
-// alias (see `vite.config.ts`) so GitHub Pages serves the same SPA at
-// `/privacy/`, and this check decides which view to mount.
+// Trivial path-based switch. The build emits `dist/<alias>/index.html`
+// aliases (see `vite.config.ts`) so GitHub Pages serves the same SPA
+// at `/privacy/` and `/schema/`, and this check decides which view to
+// mount. `/schema` is the JSON-Schema reference an agent can fetch
+// when handed an exported `budget-*.json` file.
 const path = window.location.pathname;
 const isPrivacy = path === "/privacy" || path === "/privacy/";
+const isSchema = path === "/schema" || path === "/schema/";
 
 createRoot(rootElement).render(
-  <StrictMode>{isPrivacy ? <PrivacyPage /> : <App />}</StrictMode>,
+  <StrictMode>
+    {isSchema ? <SchemaPage /> : isPrivacy ? <PrivacyPage /> : <App />}
+  </StrictMode>,
 );
