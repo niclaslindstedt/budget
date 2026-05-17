@@ -95,6 +95,16 @@ export function useUserDataStorage<Action>(
   // revision token. We guard with a ref that the loader flips.
   const skipNextSave = useRef<boolean>(false);
 
+  // Async adapters (e.g. the encrypting wrapper) can't hand back
+  // data before the first paint, so the reducer is briefly seeded
+  // with `freshUserData()`. Without this gate, the auto-save effect
+  // races the in-flight `adapter.load()` — a `setTimeout(0)` fires
+  // well before PBKDF2 + AES-GCM decryption completes, and writes
+  // the empty starter state over the user's real bytes. The flag
+  // stays false until the load resolves (or the synchronous fast
+  // path filled state from `loadSync`).
+  const hasLoadedRef = useRef<boolean>(adapter.loadSync !== undefined);
+
   // Stash `beforeSerialize` in a ref so the save effect closes over
   // the latest transform without re-running every time the caller
   // passes an inline function.
@@ -155,6 +165,7 @@ export function useUserDataStorage<Action>(
         if (cancelled) return;
         lastSnapshot.current = snap;
         skipNextSave.current = true;
+        hasLoadedRef.current = true;
         setData(snap ? readUserDataFromText(snap.text) : freshUserData());
         setLastSavedText(snap?.text ?? null);
         setStatus({ kind: "idle" });
@@ -174,6 +185,7 @@ export function useUserDataStorage<Action>(
   // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
   useEffect(() => {
+    if (!hasLoadedRef.current) return;
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
@@ -219,6 +231,7 @@ export function useUserDataStorage<Action>(
     return adapter.watch((snap) => {
       lastSnapshot.current = snap;
       skipNextSave.current = true;
+      hasLoadedRef.current = true;
       setData(readUserDataFromText(snap.text));
       setLastSavedText(snap.text);
       setStatus({ kind: "idle" });
