@@ -48,7 +48,9 @@ export function UpdateBalanceModal({
   // currency overrides the global one).
   const accountSettings = useMemo(
     () =>
-      account?.currency ? { ...settings, currency: account.currency } : settings,
+      account?.currency
+        ? { ...settings, currency: account.currency }
+        : settings,
     [account, settings],
   );
 
@@ -165,8 +167,8 @@ export function UpdateBalanceModal({
             </label>
           ) : (
             <p className="text-xs text-muted">
-              No budget sheet tracks this account yet. Add one (Sheet → Edit
-              → pick this account) before recording a correction.
+              No budget sheet tracks this account yet. Add one (Sheet → Edit →
+              pick this account) before recording a correction.
             </p>
           )}
 

@@ -2110,7 +2110,8 @@ function BudgetView({
     [updateBalanceForId, data.accounts],
   );
   const updateBalanceCurrent = useMemo(
-    () => (updateBalanceAccount ? accountBalance(data, updateBalanceAccount.id) : 0),
+    () =>
+      updateBalanceAccount ? accountBalance(data, updateBalanceAccount.id) : 0,
     [data, updateBalanceAccount],
   );
   const updateBalanceHasBudget = useMemo(() => {
@@ -2118,7 +2119,8 @@ function BudgetView({
     return data.sheets.some((s) =>
       s.items.some(
         (it) =>
-          it.type === "accountBudget" && it.accountId === updateBalanceAccount.id,
+          it.type === "accountBudget" &&
+          it.accountId === updateBalanceAccount.id,
       ),
     );
   }, [updateBalanceAccount, data.sheets]);

@@ -1,9 +1,6 @@
 import { findColumnByType } from "../data/sheet";
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
-import {
-  formatAmountForInput,
-  withCurrency,
-} from "../utils/format";
+import { formatAmountForInput, withCurrency } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
