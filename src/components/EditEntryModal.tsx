@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
@@ -83,16 +83,17 @@ export function EditEntryModal({
       : "";
   const initialAmountText =
     amountCol && row && typeof row.cells[amountCol.id] === "number"
-      ? // Preserve sign when seeding the input — unlike the inline
-        // AmountCell, this modal lets the user type a signed value
-        // directly so the displayed sign matches the stored value.
-        (row.cells[amountCol.id] as number) < 0
-        ? `-${formatAmountForInput(
-            Math.abs(row.cells[amountCol.id] as number),
-            settings,
-          )}`
-        : formatAmountForInput(row.cells[amountCol.id] as number, settings)
+      ? formatAmountForInput(
+          Math.abs(row.cells[amountCol.id] as number),
+          settings,
+        )
       : "";
+  // Sign lives on a +/- toggle button; default to negative when no amount
+  // is set, otherwise mirror the stored sign (treating 0 as negative too).
+  const initialNegative =
+    amountCol && row && typeof row.cells[amountCol.id] === "number"
+      ? (row.cells[amountCol.id] as number) <= 0
+      : true;
   const initialCategoryId =
     categoryCol && row && typeof row.cells[categoryCol.id] === "string"
       ? (row.cells[categoryCol.id] as string)
@@ -107,6 +108,7 @@ export function EditEntryModal({
 
   const [description, setDescription] = useState(initialDescription);
   const [amount, setAmount] = useState(initialAmountText);
+  const [negative, setNegative] = useState(initialNegative);
   const [categoryId, setCategoryId] = useState<string | null>(
     initialCategoryId,
   );
@@ -129,6 +131,7 @@ export function EditEntryModal({
     if (!open) return;
     setDescription(initialDescription);
     setAmount(initialAmountText);
+    setNegative(initialNegative);
     setCategoryId(initialCategoryId);
     setGlyph(initialGlyph);
     setScopeKind("just-this");
@@ -157,11 +160,25 @@ export function EditEntryModal({
 
   if (!open || !row) return null;
 
-  const parsedAmount = parseAmount(amount);
-  const amountTouched = amount !== initialAmountText;
+  const parsedAbs = parseAmount(amount);
+  const parsedAmount =
+    parsedAbs === null
+      ? null
+      : negative
+        ? -Math.abs(parsedAbs)
+        : Math.abs(parsedAbs);
+  const amountTouched =
+    amount !== initialAmountText || negative !== initialNegative;
 
   function handleAmountChange(next: string) {
-    setAmount(normalizeAmountInput(next, settings));
+    // Sign lives on the toggle button — strip any minus the keyboard or
+    // a paste produces so the input only ever shows the absolute value.
+    const stripped = next.replace(/-/g, "");
+    setAmount(normalizeAmountInput(stripped, settings));
+  }
+
+  function toggleSign() {
+    setNegative((s) => !s);
   }
 
   const glyphTouched = glyph !== initialGlyph;
@@ -235,19 +252,36 @@ export function EditEntryModal({
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-muted">Amount</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    className={`field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
-                      parsedAmount !== null && parsedAmount < 0
-                        ? "text-negative"
-                        : parsedAmount !== null && parsedAmount > 0
-                          ? "text-positive"
+                  <div className="relative flex">
+                    <button
+                      type="button"
+                      onClick={toggleSign}
+                      aria-label={negative ? "Make positive" : "Make negative"}
+                      tabIndex={-1}
+                      className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
+                        negative ? "text-negative" : "text-positive"
+                      }`}
+                    >
+                      {negative ? (
+                        <Minus size={14} aria-hidden focusable={false} />
+                      ) : (
+                        <Plus size={14} aria-hidden focusable={false} />
+                      )}
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
+                        parsedAbs !== null && parsedAbs !== 0
+                          ? negative
+                            ? "text-negative"
+                            : "text-positive"
                           : "text-fg"
-                    }`}
-                  />
+                      }`}
+                    />
+                  </div>
                 </label>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted">Category</span>
