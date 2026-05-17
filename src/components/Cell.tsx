@@ -273,7 +273,7 @@ function DateCell({
     <td className={`${CELL_BASE} relative p-0`}>
       <button
         type="button"
-        className={`block w-full cursor-pointer border-0 bg-transparent px-2 py-2 text-center font-mono tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
+        className={`block w-full cursor-pointer border-0 bg-transparent px-1 py-2 text-center font-mono tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
           short ? "text-path" : "text-muted"
         }`}
         aria-label={iso ? `Change date (${formatted})` : "Pick a date"}
