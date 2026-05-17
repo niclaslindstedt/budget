@@ -233,12 +233,12 @@ Agent-driven maintenance playbooks live under
 discovery paths (`.claude/skills/`) are symlinks to `.agent/skills/`
 so every tool sees the same canonical set.
 
-| Skill           | Run when                                                                                                                                            | Run order |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `update-docs`   | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table.                                           | 1         |
-| `update-readme` | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                  | 2         |
-| `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero. | last      |
-| `maintenance`   | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.            | umbrella  |
+| Skill           | Run when                                                                                                                                                                                                                       | Run order |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| `update-docs`   | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates. | 1         |
+| `update-readme` | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                             | 2         |
+| `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                            | last      |
+| `maintenance`   | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                       | umbrella  |
 
 `update-manpages` and `update-website` are listed in `OSS_SPEC.md`
 §21.5 but are intentionally omitted here — see the "OSS_SPEC.md
