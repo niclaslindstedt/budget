@@ -208,6 +208,14 @@ export const USER_DATA_SCHEMA = {
             'recurring entry. Used to scope "edit / delete all future" ' +
             "operations. Absent on one-off rows.",
         },
+        glyph: {
+          $ref: "#/$defs/CategoryIcon",
+          description:
+            "Optional custom glyph the description cell renders in " +
+            "place of the default recurring icon. Every row in the same " +
+            "series carries the same value; absent rows render the " +
+            "default Repeat icon when seriesId is set, or no glyph at all.",
+        },
       },
     },
     AccountBudget: {

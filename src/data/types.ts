@@ -21,6 +21,11 @@ export type Row = {
   // recurrence. Used to scope "edit / delete all future" operations and
   // is undefined for one-off rows added inline.
   seriesId?: string;
+  // Optional custom glyph the description cell renders in place of the
+  // default recurring icon. Every row in the same series carries the
+  // same value (the entry modals propagate edits across the scope), so
+  // the cell can read it row-locally without a series lookup.
+  glyph?: CategoryIcon;
 };
 
 export type CategoryIcon =
@@ -187,7 +192,7 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 7;
+  version: 8;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

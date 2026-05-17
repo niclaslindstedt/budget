@@ -47,6 +47,7 @@ import type {
   Account,
   AccountBudget,
   Category,
+  CategoryIcon,
   CellValue,
   Row,
   Settings,
@@ -118,6 +119,7 @@ type ItemAction =
       itemId: string;
       rowId: string;
       futureDates: string[];
+      glyph: CategoryIcon | null;
     }
   | {
       type: "editSeries";
@@ -201,6 +203,12 @@ function applyPatch(
   if (cols.amountId && patch.amount !== null)
     next.cells[cols.amountId] = patch.amount;
   if (cols.categoryId) next.cells[cols.categoryId] = patch.categoryId ?? null;
+  // `undefined` means "don't touch"; explicit `null` clears the glyph
+  // back to the default recurring icon.
+  if (patch.glyph !== undefined) {
+    if (patch.glyph === null) delete next.glyph;
+    else next.glyph = patch.glyph;
+  }
   return next;
 }
 
@@ -242,6 +250,7 @@ function reduceAccountBudget(
           completed: false,
         });
         if (seriesId) row.seriesId = seriesId;
+        if (draft.glyph) row.glyph = draft.glyph;
         return row;
       });
       return { ...item, rows: [...item.rows, ...newRows] };
@@ -251,7 +260,9 @@ function reduceAccountBudget(
       const anchor = item.rows.find((r) => r.id === action.rowId);
       if (!anchor) return item;
       // Promote the anchor row into a series of its own. Future rows
-      // inherit description, amount, and category from the anchor.
+      // inherit description, amount, and category from the anchor; the
+      // glyph comes from the modal so promotion and custom glyph
+      // selection happen in the same step.
       const seriesId = anchor.seriesId ?? newId();
       const descCol = findColumnByType(item.columns, "description");
       const amountCol = findColumnByType(item.columns, "amount");
@@ -274,14 +285,19 @@ function reduceAccountBudget(
           completed: false,
         });
         row.seriesId = seriesId;
+        if (action.glyph) row.glyph = action.glyph;
         return row;
       });
       return {
         ...item,
         rows: [
-          ...item.rows.map((r) =>
-            r.id === anchor.id ? { ...r, seriesId } : r,
-          ),
+          ...item.rows.map((r) => {
+            if (r.id !== anchor.id) return r;
+            const next: Row = { ...r, seriesId };
+            if (action.glyph) next.glyph = action.glyph;
+            else if (action.glyph === null) delete next.glyph;
+            return next;
+          }),
           ...newRows,
         ],
       };
@@ -405,11 +421,13 @@ function reduceAccountBudget(
         if (typeof anchorDate !== "string") continue;
         for (const date of action.futureDates) {
           if (date === anchorDate) continue;
-          additions.push({
+          const next: Row = {
             id: newId(),
             cells: { ...r.cells, [dateColId]: date },
             seriesId: r.seriesId,
-          });
+          };
+          if (r.glyph) next.glyph = r.glyph;
+          additions.push(next);
         }
       }
       return { ...item, rows: [...updated, ...additions] };
@@ -1285,13 +1303,14 @@ function BudgetView({
     [dispatch, sheetId, itemId],
   );
   const onConvertToRecurring = useCallback(
-    (rowId: string, futureDates: string[]) => {
+    (rowId: string, futureDates: string[], glyph: CategoryIcon | null) => {
       dispatch({
         type: "convertToRecurring",
         sheetId,
         itemId,
         rowId,
         futureDates,
+        glyph,
       });
       setEditPrompt(null);
     },

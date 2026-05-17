@@ -88,7 +88,7 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 7;
+  version: 8;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -149,6 +149,9 @@ type Row = {
   id: string;
   cells: Record<string /* column id */, string | number | boolean | null>;
   seriesId?: string; // shared by all rows in the same recurrence
+  glyph?: CategoryIcon; // optional custom glyph for the description cell;
+  // absent rows render the default recurring icon when `seriesId` is set,
+  // and on mobile this replaces the "…" popover trigger.
 };
 
 type Category = {
@@ -202,7 +205,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `7`. The chain has six steps:
+Current `LATEST_VERSION` is `8`. The chain has seven steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -226,6 +229,11 @@ Current `LATEST_VERSION` is `7`. The chain has six steps:
   multiple named, colour-coded sheets. Existing sheets get
   `type: "budget"`, the default glyph + colour, and an empty
   description.
+- **v7 → v8** — version bump only. Introduces an optional `Row.glyph`
+  field so a recurring entry can carry a custom icon shown in the
+  description cell (and replacing the mobile `…` trigger). Older
+  builds would silently drop the field, so bumping signals the new
+  shape.
 
 ## Complex entries
 

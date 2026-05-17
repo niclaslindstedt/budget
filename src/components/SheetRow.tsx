@@ -151,6 +151,7 @@ export function SheetRow({
           categories={categories}
           settings={settings}
           isRecurring={isSeries}
+          glyph={row.glyph ?? null}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
           onCreateCategory={onCreateCategory}
         />
