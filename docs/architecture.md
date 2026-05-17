@@ -57,10 +57,23 @@ src/
 │   ├── users.ts                   # device-wide user registry + password hashing
 │   ├── useUserDataStorage.ts      # React hook tying adapter ↔ reducer
 │   └── file.ts                    # JSON file codec: serialize + parse
-└── utils/
-    ├── format.ts                  # currency / amount / date formatting helpers
-    └── select-on-focus.ts         # global focus handler — select-all on focus
+├── utils/
+│   ├── format.ts                  # currency / amount / date formatting helpers
+│   └── select-on-focus.ts         # global focus handler — select-all on focus
+└── seo/
+    ├── siteConfig.ts              # SITE_URL, SITE_NAME, AUTHOR, OG defaults
+    └── routes.ts                  # per-route <title> / description / JSON-LD
 ```
+
+The `src/seo/` modules are also imported by `vite.config.ts` — its
+`emit-path-alias-with-seo` plugin reads `dist/index.html` after the
+Vite build and writes `dist/<route>/index.html` for each entry in
+`routes.ts` with the route-specific `<title>`, meta description,
+canonical, og:\*, twitter:\*, and JSON-LD blocks spliced in between
+the `<!-- HEAD_SEO_START -->` / `<!-- HEAD_SEO_END -->` markers in the
+shell. The plugin also emits a `dist/404.html` copy marked
+`noindex,follow` so GitHub Pages' SPA-fallback URLs don't leak
+soft-404 signals.
 
 ## Planned shape
 
