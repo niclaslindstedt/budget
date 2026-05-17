@@ -22,6 +22,7 @@ import {
   formatBalance,
   withCurrency,
 } from "../utils/format";
+import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
@@ -172,53 +173,57 @@ export function SheetView({
   }, [scrollToTodayTick, today]);
 
   return (
-    <section ref={sectionRef}>
-      <header className="mb-4 flex items-center gap-2">
-        <h2 className="m-0 text-base font-bold text-fg-bright">{sheet.name}</h2>
-      </header>
-      <div className="flex flex-col gap-3 md:gap-6">
-        {visibleMonths.map((monthKey) => {
-          const monthRows = dateCol
-            ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
-            : [];
-          const isCurrent = monthKey === currentMonth;
-          const seedDate =
-            monthKey === "undated"
-              ? ""
-              : isCurrent
-                ? today
-                : fiscalMonthSeedIso(monthKey, settings.startOfMonth);
-          return (
-            <div
-              key={monthKey}
-              ref={isCurrent ? scrollTargetRef : null}
-              data-month-key={monthKey}
-            >
-              <MonthTable
-                monthKey={monthKey}
-                rows={monthRows}
-                columns={item.columns}
-                balances={balances}
-                categories={categories}
-                settings={settings}
-                selectMode={selectMode}
-                selectedIds={selectedIds}
-                amountChars={colWidths.amountChars}
-                balanceChars={colWidths.balanceChars}
-                onUpdateCell={onUpdateCell}
-                onAddRow={() => onAddRow(seedDate)}
-                onAddComplex={() => onAddComplex(seedDate)}
-                onDeleteRequest={onDeleteRequest}
-                onEditRequest={onEditRequest}
-                onReorderColumns={onReorderColumns}
-                onToggleSelect={onToggleSelect}
-                onToggleSelectMonth={onToggleSelectMonth}
-                onCreateCategory={onCreateCategory}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </section>
+    <ActiveRowProvider>
+      <section ref={sectionRef} data-sheet-content>
+        <header className="mb-4 flex items-center gap-2">
+          <h2 className="m-0 text-base font-bold text-fg-bright">
+            {sheet.name}
+          </h2>
+        </header>
+        <div className="flex flex-col gap-3 md:gap-6">
+          {visibleMonths.map((monthKey) => {
+            const monthRows = dateCol
+              ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
+              : [];
+            const isCurrent = monthKey === currentMonth;
+            const seedDate =
+              monthKey === "undated"
+                ? ""
+                : isCurrent
+                  ? today
+                  : fiscalMonthSeedIso(monthKey, settings.startOfMonth);
+            return (
+              <div
+                key={monthKey}
+                ref={isCurrent ? scrollTargetRef : null}
+                data-month-key={monthKey}
+              >
+                <MonthTable
+                  monthKey={monthKey}
+                  rows={monthRows}
+                  columns={item.columns}
+                  balances={balances}
+                  categories={categories}
+                  settings={settings}
+                  selectMode={selectMode}
+                  selectedIds={selectedIds}
+                  amountChars={colWidths.amountChars}
+                  balanceChars={colWidths.balanceChars}
+                  onUpdateCell={onUpdateCell}
+                  onAddRow={() => onAddRow(seedDate)}
+                  onAddComplex={() => onAddComplex(seedDate)}
+                  onDeleteRequest={onDeleteRequest}
+                  onEditRequest={onEditRequest}
+                  onReorderColumns={onReorderColumns}
+                  onToggleSelect={onToggleSelect}
+                  onToggleSelectMonth={onToggleSelectMonth}
+                  onCreateCategory={onCreateCategory}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </ActiveRowProvider>
   );
 }

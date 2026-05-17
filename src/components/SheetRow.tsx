@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Repeat, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
+import { useActiveRow } from "./useActiveRow";
 import { Cell } from "./Cell";
 
 type Props = {
@@ -40,6 +41,16 @@ export function SheetRow({
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
   const moved = useRef(false);
+  const activeRow = useActiveRow();
+
+  // A swiped row exposes destructive action buttons; treat it as an
+  // active state so a click outside only dismisses the swipe instead of
+  // also firing the button that was tapped.
+  useEffect(() => {
+    if (!swiped || !activeRow) return;
+    const token = activeRow.activate(row.id, () => setSwiped(false));
+    return () => activeRow.deactivate(token);
+  }, [swiped, activeRow, row.id]);
 
   const completedCol = findColumnByType(columns, "completed");
   const isCompleted =
@@ -104,6 +115,7 @@ export function SheetRow({
   return (
     <tr
       className={rowClass}
+      data-row-id={row.id}
       data-row-date={isoDate}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -143,6 +155,7 @@ export function SheetRow({
       {columns.map((col) => (
         <Cell
           key={col.id}
+          rowId={row.id}
           column={col}
           value={row.cells[col.id] ?? null}
           computedBalance={
