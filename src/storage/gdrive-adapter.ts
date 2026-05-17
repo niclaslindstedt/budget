@@ -36,7 +36,8 @@ import { challengeFor, randomVerifier, redirectUri } from "./oauth-pkce";
 //   5. The credential page issues a client secret. PKCE makes it
 //      optional — ignore it here.
 //   6. Paste the client id below.
-export const GOOGLE_CLIENT_ID = "REPLACE_WITH_YOUR_GOOGLE_OAUTH_CLIENT_ID";
+export const GOOGLE_CLIENT_ID =
+  "945081762861-mgrai26dghkrtpt4csrnspvj54afjvib.apps.googleusercontent.com";
 
 // Name of the single file the app reads / writes inside the user's
 // My Drive. Surfaced to the user in `SyncDetailsModal`.
