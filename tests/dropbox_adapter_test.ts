@@ -192,6 +192,142 @@ describe("dropbox adapter", () => {
   });
 });
 
+describe("dropbox silent token refresh", () => {
+  it("refreshes the access token on 401 and retries the request", async () => {
+    let accessToken = "expired-access";
+    let refreshCalls = 0;
+    const refreshed: string[] = [];
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url === "https://api.dropboxapi.com/oauth2/token") {
+        refreshCalls += 1;
+        const body = (call.init?.body as string) ?? "";
+        expect(body).toContain("grant_type=refresh_token");
+        expect(body).toContain("refresh_token=ref-1");
+        accessToken = "fresh-access";
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({
+            access_token: "fresh-access",
+            token_type: "bearer",
+            expires_in: 14400,
+          }),
+        });
+      }
+      if (call.url.includes("/files/upload")) {
+        const auth = (call.init?.headers as Record<string, string>)
+          .Authorization;
+        if (auth === "Bearer expired-access") {
+          return makeResponse({
+            status: 401,
+            body: JSON.stringify({
+              error_summary: "expired_access_token/",
+              error: { ".tag": "expired_access_token" },
+            }),
+          });
+        }
+        expect(auth).toBe(`Bearer ${accessToken}`);
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ rev: "after-refresh" }),
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+
+    const adapter = createDropboxAdapter(
+      {
+        accessToken: "expired-access",
+        refreshToken: "ref-1",
+        onAccessTokenRefreshed: (token) => {
+          refreshed.push(token);
+        },
+      },
+      fn,
+    );
+    const snap = await adapter.save("payload");
+    expect(snap.revision).toBe("after-refresh");
+    expect(refreshCalls).toBe(1);
+    expect(refreshed).toEqual(["fresh-access"]);
+    const uploadCalls = calls.filter((c) => c.url.includes("/files/upload"));
+    expect(uploadCalls).toHaveLength(2);
+  });
+
+  it("falls through to the 401 when no refresh token is available", async () => {
+    const { fn } = fakeFetch((call) => {
+      if (call.url.includes("/files/upload")) {
+        return makeResponse({
+          status: 401,
+          body: JSON.stringify({
+            error_summary: "expired_access_token/",
+            error: { ".tag": "expired_access_token" },
+          }),
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createDropboxAdapter(
+      {
+        accessToken: "expired-access",
+        refreshToken: null,
+        onAccessTokenRefreshed: () => {},
+      },
+      fn,
+    );
+    await expect(adapter.save("payload")).rejects.toThrow(/401/);
+  });
+
+  it("only swaps tokens once when concurrent calls all see 401", async () => {
+    let refreshCalls = 0;
+    const { fn } = fakeFetch((call) => {
+      if (call.url === "https://api.dropboxapi.com/oauth2/token") {
+        refreshCalls += 1;
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ access_token: "fresh", expires_in: 14400 }),
+        });
+      }
+      const auth = (call.init?.headers as Record<string, string>).Authorization;
+      if (auth === "Bearer expired") {
+        if (call.url.includes("/files/upload")) {
+          return makeResponse({
+            status: 401,
+            body: JSON.stringify({
+              error_summary: "expired_access_token/",
+            }),
+          });
+        }
+        return makeResponse({
+          status: 401,
+          body: JSON.stringify({
+            error_summary: "expired_access_token/",
+          }),
+        });
+      }
+      if (call.url.includes("/files/upload")) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ rev: "ok" }),
+        });
+      }
+      return makeResponse({
+        status: 200,
+        body: "{}",
+        headers: { "Dropbox-API-Result": JSON.stringify({ rev: "ok" }) },
+      });
+    });
+    const adapter = createDropboxAdapter(
+      {
+        accessToken: "expired",
+        refreshToken: "ref",
+        onAccessTokenRefreshed: () => {},
+      },
+      fn,
+    );
+    await Promise.all([adapter.save("a"), adapter.load(), adapter.save("b")]);
+    expect(refreshCalls).toBe(1);
+  });
+});
+
 describe("ConflictError integration with dropbox", () => {
   it("the thrown error is detected by instanceof ConflictError", async () => {
     const { fn } = fakeFetch((call) => {

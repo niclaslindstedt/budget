@@ -21,6 +21,11 @@ export type EncryptionMode = "encrypted" | "plaintext";
 
 const BACKEND_PREFIX = "budget.backend.";
 const DROPBOX_TOKEN_PREFIX = "budget.dropbox.token.";
+// Long-lived companion to the short-lived access token. Stored under
+// its own key so a legacy install (access token only) round-trips
+// unchanged and just doesn't get silent refresh until the user
+// reconnects once.
+const DROPBOX_REFRESH_PREFIX = "budget.dropbox.refresh.";
 const GDRIVE_TOKEN_PREFIX = "budget.gdrive.token.";
 const ENCRYPTION_PREFIX = "budget.encryption.";
 
@@ -30,6 +35,10 @@ function backendKey(userId: string): string {
 
 function dropboxTokenKey(userId: string): string {
   return `${DROPBOX_TOKEN_PREFIX}${userId}`;
+}
+
+function dropboxRefreshKey(userId: string): string {
+  return `${DROPBOX_REFRESH_PREFIX}${userId}`;
 }
 
 function gdriveTokenKey(userId: string): string {
@@ -61,6 +70,18 @@ export function setDropboxToken(userId: string, token: string): void {
 
 export function clearDropboxToken(userId: string): void {
   clearRawStorage(dropboxTokenKey(userId));
+}
+
+export function getDropboxRefreshToken(userId: string): string | null {
+  return readRawStorage(dropboxRefreshKey(userId));
+}
+
+export function setDropboxRefreshToken(userId: string, token: string): void {
+  writeRawStorage(token, dropboxRefreshKey(userId));
+}
+
+export function clearDropboxRefreshToken(userId: string): void {
+  clearRawStorage(dropboxRefreshKey(userId));
 }
 
 export function getGdriveToken(userId: string): string | null {
