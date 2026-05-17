@@ -2084,7 +2084,7 @@ function BudgetView({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 pb-20 md:px-5">
-      <header className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-page-bg px-2 pt-3 pb-3 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
+      <header className="sticky top-0 z-30 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-page-bg px-2 pt-3 pb-3 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
         <button
           type="button"
           onClick={onScrollToToday}
