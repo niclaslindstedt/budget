@@ -6,13 +6,17 @@
 // `LATEST_VERSION`, update the `UserData.version` literal in `data/types.ts`,
 // and add the next step here.
 
-import { DEFAULT_SETTINGS } from "./constants";
+import {
+  DEFAULT_SETTINGS,
+  DEFAULT_SHEET_COLOR,
+  DEFAULT_SHEET_GLYPH,
+} from "./constants";
 import { newId } from "./sheet";
 
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 6 as const;
+export const LATEST_VERSION = 7 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -119,6 +123,35 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // remain valid — the migration is a bare version bump and the
   // type widening is backward-compatible on disk.
   5: (v5) => ({ ...v5, version: 6 }),
+
+  // v6 → v7: introduces sheet metadata (`type`, `glyph`, `color`,
+  // `description`) so users can run multiple named, colour-coded
+  // sheets side by side and pick between them from the bottom tab
+  // bar. Existing sheets get the canonical defaults so they keep
+  // working unchanged until the user edits them.
+  6: (v6) => {
+    const sheets = Array.isArray(v6.sheets) ? v6.sheets : [];
+    return {
+      ...v6,
+      version: 7,
+      sheets: sheets.map((raw) => {
+        if (typeof raw !== "object" || raw === null) return raw;
+        const sheet = raw as Record<string, unknown>;
+        return {
+          ...sheet,
+          type: typeof sheet.type === "string" ? sheet.type : "budget",
+          glyph:
+            typeof sheet.glyph === "string" ? sheet.glyph : DEFAULT_SHEET_GLYPH,
+          color:
+            typeof sheet.color === "string" && sheet.color.length > 0
+              ? sheet.color
+              : DEFAULT_SHEET_COLOR,
+          description:
+            typeof sheet.description === "string" ? sheet.description : "",
+        };
+      }),
+    };
+  },
 };
 
 export type MigrationResult = {

@@ -13,8 +13,8 @@ src/
 │   ├── AuthScreen.tsx             # sign-in / sign-up / "continue without account"
 │   ├── UserMenu.tsx               # per-user menu (sign out, switch, delete)
 │   ├── SettingsModal.tsx          # app-level settings (formats, storage, etc.)
-│   ├── BudgetSettingsModal.tsx    # per-sheet settings (name + account)
-│   ├── BudgetMenu.tsx             # gear menu on the active sheet header
+│   ├── SheetTabs.tsx              # bottom tab bar — sheet glyphs + `+`
+│   ├── SheetModal.tsx             # new / edit sheet form (name, type, glyph, …)
 │   ├── BackendPicker.tsx          # local vs Dropbox backend chooser
 │   ├── DropboxGlyph.tsx           # Dropbox brand mark for the picker
 │   ├── SyncStatus.tsx             # syncing / saved indicator for cloud backends
@@ -88,7 +88,7 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 6;
+  version: 7;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -104,8 +104,20 @@ type Account = {
 type Sheet = {
   id: string;
   name: string;
+  type: SheetType; // today: "budget"; planners join later
+  glyph: SheetGlyph; // displayed in the bottom tab bar
+  color: string; // hex; tints the tab and the editor preview
+  description: string; // free-form note shown in the modal
   items: SheetItem[]; // typed blocks rendered inside the sheet
 };
+
+// Sheet flavour. Future planners (loan, savings, parental-leave, …)
+// slot in as additional literals; the UI dispatches off `Sheet.type`.
+type SheetType = "budget";
+
+// Glyph picker reuses the `CategoryIcon` allowlist so the same
+// rendering helpers cover both category chips and sheet tabs.
+type SheetGlyph = CategoryIcon;
 
 // Discriminated union; today the only variant is AccountBudget. A
 // Graph / Note / etc. variant slots in as another case without
@@ -190,7 +202,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `6`. The chain has five steps:
+Current `LATEST_VERSION` is `7`. The chain has six steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -209,6 +221,11 @@ Current `LATEST_VERSION` is `6`. The chain has five steps:
   `string | null` so a budget can exist without being tied to an
   account, and allows `accounts` to be empty. Existing string ids
   remain valid — the migration is a bare version bump.
+- **v6 → v7** — introduces per-sheet display metadata (`type`,
+  `glyph`, `color`, `description`) so the bottom tab bar can show
+  multiple named, colour-coded sheets. Existing sheets get
+  `type: "budget"`, the default glyph + colour, and an empty
+  description.
 
 ## Complex entries
 

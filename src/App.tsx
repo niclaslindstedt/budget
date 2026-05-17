@@ -8,8 +8,9 @@ import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
 import { AuthScreen } from "./components/AuthScreen";
 import { BulkActionBar } from "./components/BulkActionBar";
-import { BudgetSettingsModal } from "./components/BudgetSettingsModal";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
+import { SheetModal, type SheetDraft } from "./components/SheetModal";
+import { SheetTabs } from "./components/SheetTabs";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
@@ -29,6 +30,7 @@ import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
 import { STORAGE_KEY, userDataKey } from "./data/constants";
 import {
+  createDefaultSheet,
   createEmptyRow,
   findColumnByType,
   getMonthKey,
@@ -177,7 +179,11 @@ type Action =
       itemId: string;
       accountId: string | null;
     }
-  | { type: "createAccount"; account: Account };
+  | { type: "createAccount"; account: Account }
+  | { type: "addSheet"; sheet: Sheet }
+  | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
+  | { type: "deleteSheet"; sheetId: string }
+  | { type: "selectSheet"; sheetId: string };
 
 function applyPatch(
   row: Row,
@@ -444,6 +450,40 @@ function reducer(state: UserData, action: Action): UserData {
         sheet.id === action.sheetId ? { ...sheet, name: action.name } : sheet,
       ),
     };
+  }
+  if (action.type === "addSheet") {
+    // New sheets become the active sheet so the user lands on the
+    // empty ledger they just created instead of having to chase down
+    // its tab.
+    return {
+      ...state,
+      sheets: [...state.sheets, action.sheet],
+      activeSheetId: action.sheet.id,
+    };
+  }
+  if (action.type === "updateSheetMeta") {
+    return {
+      ...state,
+      sheets: state.sheets.map((sheet) =>
+        sheet.id === action.sheetId ? { ...sheet, ...action.meta } : sheet,
+      ),
+    };
+  }
+  if (action.type === "deleteSheet") {
+    // Guard against deleting the only sheet — the UI never offers it
+    // but the reducer enforces it too so an externally dispatched
+    // action can't strand the user with an empty workspace.
+    if (state.sheets.length <= 1) return state;
+    const nextSheets = state.sheets.filter((s) => s.id !== action.sheetId);
+    const nextActive =
+      state.activeSheetId === action.sheetId
+        ? nextSheets[0].id
+        : state.activeSheetId;
+    return { ...state, sheets: nextSheets, activeSheetId: nextActive };
+  }
+  if (action.type === "selectSheet") {
+    if (!state.sheets.some((s) => s.id === action.sheetId)) return state;
+    return { ...state, activeSheetId: action.sheetId };
   }
   if (action.type === "setItemAccount") {
     return {
@@ -976,7 +1016,10 @@ function BudgetView({
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [budgetSettingsOpen, setBudgetSettingsOpen] = useState(false);
+  // null = closed; { sheet: null } = new-sheet modal; { sheet: <Sheet> } = edit.
+  const [sheetModal, setSheetModal] = useState<{ sheet: Sheet | null } | null>(
+    null,
+  );
 
   const activeSheet =
     data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
@@ -1157,21 +1200,72 @@ function BudgetView({
     (settings: Settings) => dispatch({ type: "updateSettings", settings }),
     [dispatch],
   );
-  const onAddAccount = useCallback(
-    (account: Account) => dispatch({ type: "createAccount", account }),
+  const onSelectSheet = useCallback(
+    (id: string) => dispatch({ type: "selectSheet", sheetId: id }),
     [dispatch],
   );
-  const onSaveBudgetSettings = useCallback(
-    ({ name, accountId }: { name: string; accountId: string | null }) => {
-      if (name !== activeSheet.name) {
-        dispatch({ type: "renameSheet", sheetId, name });
+  const onOpenNewSheet = useCallback(() => {
+    setSheetModal({ sheet: null });
+  }, []);
+  const onOpenEditSheet = useCallback(
+    (id: string) => {
+      const target = data.sheets.find((s) => s.id === id);
+      if (target) setSheetModal({ sheet: target });
+    },
+    [data.sheets],
+  );
+  const onSaveSheet = useCallback(
+    (draft: SheetDraft) => {
+      // Resolve the final accountId. When the user typed a name into
+      // the inline "new account" form we mint the account here, then
+      // bind the sheet's budget item to its fresh id in the same
+      // dispatch batch so a refresh mid-save can't strand the budget
+      // pointing at nothing.
+      let finalAccountId = draft.accountId;
+      if (draft.newAccountName) {
+        const account: Account = { id: newId(), name: draft.newAccountName };
+        dispatch({ type: "createAccount", account });
+        finalAccountId = account.id;
       }
-      if (accountId !== activeItem.accountId) {
-        dispatch({ type: "setItemAccount", sheetId, itemId, accountId });
+
+      if (sheetModal?.sheet) {
+        const target = sheetModal.sheet;
+        dispatch({
+          type: "updateSheetMeta",
+          sheetId: target.id,
+          meta: draft,
+        });
+        // Update the account binding on the sheet's budget item if it
+        // changed. Finding the first AccountBudget mirrors the picker
+        // in the view: the current UI exposes one block per sheet.
+        const budgetItem = target.items.find(
+          (it): it is AccountBudget => it.type === "accountBudget",
+        );
+        if (budgetItem && budgetItem.accountId !== finalAccountId) {
+          dispatch({
+            type: "setItemAccount",
+            sheetId: target.id,
+            itemId: budgetItem.id,
+            accountId: finalAccountId,
+          });
+        }
+      } else {
+        const sheet = createDefaultSheet(draft.name, finalAccountId, {
+          type: draft.type,
+          glyph: draft.glyph,
+          color: draft.color,
+          description: draft.description,
+        });
+        dispatch({ type: "addSheet", sheet });
       }
     },
-    [dispatch, activeSheet.name, activeItem.accountId, sheetId, itemId],
+    [dispatch, sheetModal],
   );
+  const onDeleteSheet = useCallback(() => {
+    if (!sheetModal?.sheet) return;
+    dispatch({ type: "deleteSheet", sheetId: sheetModal.sheet.id });
+    setSheetModal(null);
+  }, [dispatch, sheetModal]);
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
       dispatch({ type: "addRowsFromComplex", sheetId, itemId, draft });
@@ -1379,7 +1473,7 @@ function BudgetView({
   );
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 pb-10 md:px-5">
+    <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 pb-20 md:px-5">
       <header className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-page-bg px-2 pt-3 pb-3 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
         <span className="text-base font-bold tracking-wide text-fg-bright">
           budget
@@ -1445,10 +1539,9 @@ function BudgetView({
           onToggleSelect={onToggleSelect}
           onToggleSelectMonth={onToggleSelectMonth}
           onCreateCategory={onCreateCategory}
-          onOpenSettings={() => setBudgetSettingsOpen(true)}
         />
       </main>
-      {selectMode && (
+      {selectMode ? (
         <BulkActionBar
           count={selectedIds.size}
           onEdit={onBulkEdit}
@@ -1457,7 +1550,31 @@ function BudgetView({
           onCopy={onBulkCopy}
           onCancel={onCancelSelect}
         />
+      ) : (
+        <SheetTabs
+          sheets={data.sheets}
+          activeSheetId={activeSheet.id}
+          onSelect={onSelectSheet}
+          onEdit={onOpenEditSheet}
+          onAdd={onOpenNewSheet}
+        />
       )}
+      <SheetModal
+        open={sheetModal !== null}
+        sheet={sheetModal?.sheet ?? null}
+        currentAccountId={
+          sheetModal?.sheet
+            ? (sheetModal.sheet.items.find(
+                (it): it is AccountBudget => it.type === "accountBudget",
+              )?.accountId ?? null)
+            : null
+        }
+        accounts={data.accounts}
+        canDelete={data.sheets.length > 1}
+        onClose={() => setSheetModal(null)}
+        onSave={onSaveSheet}
+        onDelete={onDeleteSheet}
+      />
       <ComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}
@@ -1533,15 +1650,6 @@ function BudgetView({
         onDisconnectDropbox={onDisconnectDropbox}
         onSelectLocal={onSelectLocal}
         onSetEncryption={onSetEncryption}
-      />
-      <BudgetSettingsModal
-        open={budgetSettingsOpen}
-        budgetName={activeSheet.name}
-        accounts={data.accounts}
-        accountId={activeItem.accountId}
-        onClose={() => setBudgetSettingsOpen(false)}
-        onSave={onSaveBudgetSettings}
-        onCreateAccount={onAddAccount}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}

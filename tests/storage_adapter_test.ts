@@ -11,7 +11,7 @@ function sampleData(): UserData {
   const accountId = "acct-1";
   const sheet = createDefaultSheet("Tests", accountId);
   return {
-    version: 6,
+    version: 7,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [{ id: accountId, name: "Default" }],

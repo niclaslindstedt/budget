@@ -161,8 +161,10 @@ body {
 
   /* iOS long-press would select the icon and pop the share/copy callout
      on the add-row button; suppress both since long-press is reserved for
-     opening the recurring-entry modal. */
-  .add-row-button {
+     opening the recurring-entry modal. The same gesture opens the sheet-
+     edit modal on the bottom tab bar, so it gets the same treatment. */
+  .add-row-button,
+  .sheet-tab {
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }

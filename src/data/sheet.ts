@@ -1,3 +1,4 @@
+import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "./constants";
 import type {
   AccountBudget,
   CellValue,
@@ -5,6 +6,8 @@ import type {
   ColumnType,
   Row,
   Sheet,
+  SheetGlyph,
+  SheetType,
   UserData,
 } from "./types";
 
@@ -38,10 +41,20 @@ export function createDefaultAccountBudget(
 export function createDefaultSheet(
   name = "Sheet 1",
   accountId: string | null = null,
+  overrides: {
+    type?: SheetType;
+    glyph?: SheetGlyph;
+    color?: string;
+    description?: string;
+  } = {},
 ): Sheet {
   return {
     id: newId(),
     name,
+    type: overrides.type ?? "budget",
+    glyph: overrides.glyph ?? DEFAULT_SHEET_GLYPH,
+    color: overrides.color ?? DEFAULT_SHEET_COLOR,
+    description: overrides.description ?? "",
     items: [createDefaultAccountBudget(accountId)],
   };
 }
