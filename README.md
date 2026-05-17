@@ -86,12 +86,15 @@ derived balance, and completion flag. The per-month `+` button adds
 a blank row; long-press (or right-click) opens a modal for complex
 entries — recurring payments (specific dates, every N days, or
 monthly / quarterly / yearly with day-of-month + offset) and
-category assignment. Swipe a row left (or hover on desktop) to
-reveal a pen icon that promotes the row to a recurring series — or
-edits an existing series with a scope chooser ("only this", "this
-and all future, until …") for temporary price changes — plus a
-trash icon that always asks for confirmation, with scoped delete
-options when the row is part of a series. See
+category assignment. Swipe a row left on mobile (the action icons
+are always visible on desktop) to reveal a repeat icon that promotes
+the row to a recurring series — or edits an existing series with a
+scope chooser ("only this", "this and all future, until …") for
+temporary price changes — plus a trash icon that always asks for
+confirmation, with scoped delete options when the row is part of a
+series. The header also has a select-mode toggle that surfaces a bulk
+action bar (edit, delete, move, copy across months) for any rows you
+check. See
 [`src/components/SheetView.tsx`](src/components/SheetView.tsx).
 
 ## Troubleshooting
