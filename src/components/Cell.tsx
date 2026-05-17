@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Minus, Plus, Repeat } from "lucide-react";
 
 import type { Category, CellValue, Column, Settings } from "../data/types";
@@ -46,32 +47,11 @@ export function Cell({
 
     case "description":
       return (
-        <td
-          className={`${CELL_BASE} md:w-full ${
-            isRecurring ? "text-flag" : "text-fg"
-          }`}
-        >
-          <div className="flex items-start">
-            {isRecurring && (
-              <span
-                aria-label="Recurring entry"
-                title="Recurring entry"
-                className="flex shrink-0 items-center pt-2 pl-2 text-flag"
-              >
-                <Repeat size={12} aria-hidden focusable={false} />
-              </span>
-            )}
-            <textarea
-              className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-                isRecurring ? "pl-1.5" : ""
-              }`}
-              value={typeof value === "string" ? value : ""}
-              onChange={(e) => onChange(e.target.value)}
-              rows={1}
-              placeholder="…"
-            />
-          </div>
-        </td>
+        <DescriptionCell
+          value={typeof value === "string" ? value : ""}
+          isRecurring={!!isRecurring}
+          onChange={onChange}
+        />
       );
 
     case "amount": {
@@ -84,7 +64,7 @@ export function Cell({
       const n = computedBalance ?? 0;
       return (
         <td
-          className={`${CELL_BASE} bg-surface-3 px-2.5 py-2 text-right tabular-nums whitespace-nowrap ${
+          className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
             n < 0 ? "text-negative" : "text-positive"
           }`}
           aria-readonly="true"
@@ -288,5 +268,196 @@ function DateCell({
         onSelect={(next) => onChange(next)}
       />
     </td>
+  );
+}
+
+function DescriptionCell({
+  value,
+  isRecurring,
+  onChange,
+}: {
+  value: string;
+  isRecurring: boolean;
+  onChange: (value: CellValue) => void;
+}) {
+  return (
+    <td
+      className={`${CELL_BASE} align-middle md:w-full ${
+        isRecurring ? "text-flag" : "text-fg"
+      }`}
+    >
+      {/* Desktop: the description is inline as an auto-growing textarea —
+         the column is wide enough that wrapping reads fine. */}
+      <div className="hidden md:flex md:items-start">
+        {isRecurring && (
+          <span
+            aria-label="Recurring entry"
+            title="Recurring entry"
+            className="flex shrink-0 items-center pt-2 pl-2 text-flag"
+          >
+            <Repeat size={12} aria-hidden focusable={false} />
+          </span>
+        )}
+        <textarea
+          className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
+            isRecurring ? "pl-1.5" : ""
+          }`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={1}
+          placeholder="…"
+        />
+      </div>
+      {/* Mobile: the column is narrow, so a long description wraps to many
+         lines and balloons the row. Render an ellipsis trigger that opens
+         a popover with the full editable description instead. */}
+      <DescriptionPopover
+        value={value}
+        isRecurring={isRecurring}
+        onChange={onChange}
+      />
+    </td>
+  );
+}
+
+const POPOVER_MAX_WIDTH = 360;
+const POPOVER_VIEWPORT_MARGIN = 8;
+
+function computeDescriptionPopoverPosition(rect: DOMRect): {
+  top: number;
+  left: number;
+  width: number;
+} {
+  const width = Math.min(
+    window.innerWidth - 2 * POPOVER_VIEWPORT_MARGIN,
+    POPOVER_MAX_WIDTH,
+  );
+  let left = rect.left;
+  const maxLeft = window.innerWidth - POPOVER_VIEWPORT_MARGIN - width;
+  if (left > maxLeft) left = maxLeft;
+  if (left < POPOVER_VIEWPORT_MARGIN) left = POPOVER_VIEWPORT_MARGIN;
+  return { top: rect.bottom + 4, left, width };
+}
+
+function DescriptionPopover({
+  value,
+  isRecurring,
+  onChange,
+}: {
+  value: string;
+  isRecurring: boolean;
+  onChange: (value: CellValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(e: PointerEvent) {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function updatePosition() {
+      if (!triggerRef.current) return;
+      setPosition(
+        computeDescriptionPopoverPosition(
+          triggerRef.current.getBoundingClientRect(),
+        ),
+      );
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("resize", updatePosition);
+    // Capture phase catches scrolls on any ancestor (e.g. the page body).
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (open) textareaRef.current?.focus();
+  }, [open]);
+
+  const handleToggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    if (!triggerRef.current) return;
+    setPosition(
+      computeDescriptionPopoverPosition(
+        triggerRef.current.getBoundingClientRect(),
+      ),
+    );
+    setOpen(true);
+  };
+
+  const hasValue = value.length > 0;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={handleToggle}
+        className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-left font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+          isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"
+        }`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={hasValue ? `Description: ${value}` : "Add description"}
+      >
+        {isRecurring && (
+          <Repeat
+            size={12}
+            aria-hidden
+            focusable={false}
+            className="shrink-0 text-flag"
+          />
+        )}
+        <span>…</span>
+      </button>
+      {open &&
+        position &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label="Description"
+            className="fixed z-50 rounded border border-line bg-surface-2 shadow-lg"
+            style={{
+              top: position.top,
+              left: position.left,
+              width: position.width,
+            }}
+          >
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Description"
+              rows={3}
+              className="field-input block w-full resize-none rounded border-0 bg-transparent p-2.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content] min-h-[4.5em]"
+            />
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
