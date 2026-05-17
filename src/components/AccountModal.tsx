@@ -138,7 +138,7 @@ export function AccountModal({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <div
@@ -156,7 +156,7 @@ export function AccountModal({
                   <CategoryIconGlyph name="wallet" size={22} />
                 )}
               </div>
-              <label className="flex flex-1 flex-col gap-1.5">
+              <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <span className="text-xs text-muted">Name</span>
                 <input
                   type="text"
@@ -168,7 +168,7 @@ export function AccountModal({
                       handleSave();
                     }
                   }}
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                   placeholder="Checking, Travel fund, Cash…"
                   autoFocus
                 />
@@ -182,13 +182,17 @@ export function AccountModal({
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
                 placeholder="Optional. e.g. shared household savings."
-                className="field-input resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                className="field-input w-full min-w-0 resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               />
             </label>
 
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-muted">Glyph</span>
-              <GlyphPicker value={glyph} onChange={setGlyph} />
+              <GlyphPicker
+                value={glyph}
+                onChange={setGlyph}
+                defaultIcon="wallet"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -217,52 +221,52 @@ export function AccountModal({
                 value={bank}
                 onChange={(e) => setBank(e.target.value)}
                 placeholder="e.g. Swedbank, Nordea, Revolut…"
-                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               />
             </div>
 
             <div className="grid grid-cols-[1fr_2fr] gap-2">
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs text-muted">Clearing</span>
                 <input
                   type="text"
                   value={clearing}
                   onChange={(e) => setClearing(e.target.value)}
                   placeholder="8327"
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs text-muted">Account number</span>
                 <input
                   type="text"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
                   placeholder="123 456 789"
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
               </label>
             </div>
 
             <div className="grid grid-cols-[2fr_1fr] gap-2">
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs text-muted">IBAN</span>
                 <input
                   type="text"
                   value={iban}
                   onChange={(e) => setIban(e.target.value)}
                   placeholder="SE45 5000 0000 0583 9825 7466"
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs text-muted">BIC / SWIFT</span>
                 <input
                   type="text"
                   value={bic}
                   onChange={(e) => setBic(e.target.value)}
                   placeholder="SWEDSESS"
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
               </label>
             </div>
@@ -274,7 +278,7 @@ export function AccountModal({
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 placeholder="Leave blank to use the global setting"
-                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
               <span className="text-xs text-muted">
                 Free-form token. Empty means use the workspace setting.
