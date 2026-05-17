@@ -65,7 +65,7 @@ export function MonthTable({
 
   return (
     <section>
-      <h3 className="sticky top-[var(--app-header-h)] z-10 mb-1 bg-page-bg py-1 text-xs font-bold tracking-wider text-fg-bright uppercase md:mb-2 md:py-1.5">
+      <h3 className="sticky top-[var(--app-header-h)] z-20 mb-1 bg-page-bg py-1 text-xs font-bold tracking-wider text-fg-bright uppercase md:mb-2 md:py-1.5">
         {formatMonth(monthKey)}
       </h3>
       <div

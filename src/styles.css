@@ -114,7 +114,12 @@ body,
   padding: 0;
   background: var(--page-bg);
   color: var(--fg);
-  min-height: 100vh;
+  /* `dvh` tracks the dynamic viewport so the page matches the visible
+     area as the iOS Safari chrome expands and collapses. With `100vh`
+     the document is taller than the visible area when the chrome is
+     showing, which makes an empty budget scrollable with nothing to
+     scroll to. */
+  min-height: 100dvh;
 }
 
 body {
@@ -138,11 +143,13 @@ body {
      directly below the month header so the two stack cleanly. Ancestor
      overflow must be `clip` (not `hidden`) — `hidden` establishes a
      scroll container which would trap sticky positioning inside the
-     table wrapper. */
+     table wrapper. z-index sits above the amount cell's sign button
+     (z-10) so the negative sign in a scrolled-past row doesn't bleed
+     through the header. */
   .sheet-table > thead {
     position: sticky;
     top: calc(var(--app-header-h) + var(--month-header-h));
-    z-index: 5;
+    z-index: 15;
   }
 
   /* Shared focus state for editable cell fields */
