@@ -7,10 +7,20 @@ The shape of the codebase today, and where it is heading.
 ```
 src/
 ├── main.tsx              # React 18 entry, mounts <App /> into #root
-├── App.tsx               # owns the budget reducer + persistence wiring
+├── App.tsx               # owns the auth state + budget reducer + adapter wiring
 ├── styles.css            # global styles + sheet layout
 ├── components/
-│   ├── SheetView.tsx              # one sheet — month grouping + opening balance
+│   ├── AuthScreen.tsx             # sign-in / sign-up / "continue without account"
+│   ├── UserMenu.tsx               # per-user menu (sign out, switch, delete)
+│   ├── SettingsModal.tsx          # app-level settings (formats, storage, etc.)
+│   ├── BudgetSettingsModal.tsx    # per-sheet settings (name + account)
+│   ├── BudgetMenu.tsx             # gear menu on the active sheet header
+│   ├── BackendPicker.tsx          # local vs Dropbox backend chooser
+│   ├── DropboxGlyph.tsx           # Dropbox brand mark for the picker
+│   ├── SyncStatus.tsx             # syncing / saved indicator for cloud backends
+│   ├── SaveStateButton.tsx        # manual "save now" affordance
+│   ├── ImportExportControls.tsx   # file download + file picker
+│   ├── SheetView.tsx              # one sheet — month grouping + balances
 │   ├── MonthTable.tsx             # one month's table
 │   ├── ColumnHeader.tsx           # draggable column header
 │   ├── Cell.tsx                   # per-type cell editor
@@ -19,20 +29,37 @@ src/
 │   ├── ComplexEntryModal.tsx      # recurring + categorised entry form
 │   ├── EditEntryModal.tsx         # promote-to-recurring / scoped series edit
 │   ├── RecurrenceForm.tsx         # mode-tabs + preview, shared by both modals
+│   ├── BulkActionBar.tsx          # toolbar shown in select mode
+│   ├── BulkEditModal.tsx          # apply patches to many rows at once
+│   ├── MoveCopyModal.tsx          # shift / duplicate rows across months
+│   ├── DatePickerModal.tsx        # modal calendar (mobile-friendly)
 │   ├── ConfirmDialog.tsx          # generic confirm prompt with scope options
 │   ├── CategoryPicker.tsx         # custom dropdown + inline category creator
-│   ├── icons.tsx                  # column-type + category-icon registries
-│   └── ImportExportControls.tsx   # file download + file picker
+│   └── icons.tsx                  # column-type + category-icon registries
 ├── data/
-│   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget, …
-│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, palette, icon list
+│   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget,
+│   │                     # Settings, StoredUser, UsersFile, …
+│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, USERS_KEY,
+│   │                     # userDataKey(), DEFAULT_SETTINGS, palette, icon list
 │   ├── sheet.ts          # pure helpers (group, sort, balances, reorder)
 │   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
 │   ├── migrations.ts     # forward-only schema migration runner
 │   └── validate.ts       # boundary validator: unknown → Result<UserData>
-└── storage/
-    ├── local.ts          # localStorage glue (load + save)
-    └── file.ts           # JSON file codec: serialize + parse
+├── storage/
+│   ├── adapter.ts                 # StorageAdapter interface (load/save/clear)
+│   ├── local.ts                   # bootstrap helpers — freshUserData() + readUserDataFromText()
+│   ├── local-adapter.ts           # StorageAdapter implementation over localStorage
+│   ├── dropbox-adapter.ts         # StorageAdapter over the Dropbox HTTP API
+│   ├── encrypting-adapter.ts      # AES-GCM envelope wrapper around any adapter
+│   ├── crypto.ts                  # PBKDF2 + AES-GCM primitives
+│   ├── backend-preference.ts      # per-user backend + encryption choice
+│   ├── session.ts                 # sessionStorage cache for the active password
+│   ├── users.ts                   # device-wide user registry + password hashing
+│   ├── useUserDataStorage.ts      # React hook tying adapter ↔ reducer
+│   └── file.ts                    # JSON file codec: serialize + parse
+└── utils/
+    ├── format.ts                  # currency / amount / date formatting helpers
+    └── select-on-focus.ts         # global focus handler — select-all on focus
 ```
 
 ## Planned shape
@@ -61,7 +88,7 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 5;
+  version: 6;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -88,7 +115,8 @@ type SheetItem = AccountBudget;
 type AccountBudget = {
   id: string;
   type: "accountBudget";
-  accountId: string; // points at one of UserData.accounts
+  accountId: string | null; // points at one of UserData.accounts, or null
+  // when the budget is not yet tied to an account
   columns: Column[]; // ordered; drag-and-drop reorders this array
   rows: Row[]; // flat list; month grouping is derived in the view
 };
@@ -162,7 +190,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `5`. The chain has four steps:
+Current `LATEST_VERSION` is `6`. The chain has five steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -177,6 +205,10 @@ Current `LATEST_VERSION` is `5`. The chain has four steps:
   into a container of typed `SheetItem`s. The pre-v5 `columns` and
   `rows` on a sheet move into the body of one `AccountBudget` item
   pointing at a freshly minted default `Account`.
+- **v5 → v6** — widens `AccountBudget.accountId` from `string` to
+  `string | null` so a budget can exist without being tied to an
+  account, and allows `accounts` to be empty. Existing string ids
+  remain valid — the migration is a bare version bump.
 
 ## Complex entries
 
@@ -199,7 +231,7 @@ Each row on the sheet has two actions, revealed by swiping the row
 left on mobile (or via the action icons at the right edge on
 desktop):
 
-- **Pen icon** opens `EditEntryModal`. On a non-series row the modal
+- **Repeat icon** opens `EditEntryModal`. On a non-series row the modal
   is a "promote to recurring" form — it reuses `RecurrenceForm` to
   capture a cadence + end date and dispatches `convertToRecurring`,
   which generates future rows that inherit the anchor's description,
@@ -217,7 +249,7 @@ desktop):
 
 Inline cell edits on series rows remain local — they only change
 that one row, so day-to-day tweaks (marking a single payment as
-done, correcting one date) don't trigger a scope prompt. The pen
+done, correcting one date) don't trigger a scope prompt. The repeat
 icon is the dedicated path for changes meant to propagate.
 
 ## Import / export
@@ -257,6 +289,9 @@ The whole app is a static bundle. GitHub Pages is the cheapest way to
 serve it without a vendor in the loop, and the deploy pipeline is one
 workflow (`.github/workflows/pages.yml`).
 
-Project sites at `<user>.github.io/<repo>/` mean every asset URL needs
-the `/budget/` prefix in production. That is pinned in
-`vite.config.ts` via the `base` option.
+The production site is served from the custom domain
+`budget.niclaslindstedt.se` (pinned via `public/CNAME`, which Vite
+copies into the deployed artifact), so `vite.config.ts` uses
+`base: "/"`. If the custom domain is ever dropped and the app falls
+back to `<user>.github.io/<repo>/`, switch `base` to `"/<repo>/"` and
+remove `public/CNAME`.

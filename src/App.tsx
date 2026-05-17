@@ -1,3 +1,8 @@
+// oss-spec:allow-large-file: top-level component owns the auth shell, the
+// per-user adapter wiring, and the full UserData reducer state machine as
+// one cohesive unit; splitting would either fragment the state machine or
+// drag component-typed action payloads (BulkPatch, EditPatch,
+// ComplexEntryDraft) into data/ in violation of the dependency direction.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 

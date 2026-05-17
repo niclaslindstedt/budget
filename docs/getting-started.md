@@ -23,10 +23,12 @@ make install     # npm ci
 make dev
 ```
 
-Vite serves the app at `http://localhost:5173`. The dev server uses
-`base: "/"` so paths look like normal `/assets/...`; the production
-build uses `base: "/budget/"` because GitHub Pages project sites are
-served from a sub-path.
+Vite serves the app at `http://localhost:5173`. Both dev and production
+builds use `base: "/"` because the deployed site lives on the custom
+domain `budget.niclaslindstedt.se` (see `public/CNAME`). If the custom
+domain is ever dropped so the app falls back to
+`<user>.github.io/<repo>/`, update `base` in `vite.config.ts` to
+`"/<repo>/"` and remove `public/CNAME`.
 
 ## Build for production
 
@@ -48,7 +50,8 @@ make test        # Vitest (no tests yet)
 - **`make install` fails on a fresh clone** — check `nvm use` actually
   switched to a Node 22 binary (`node --version`).
 - **Pages preview shows assets 404** — confirm `vite.config.ts` still
-  sets `base: "/budget/"` for production. Rename the repo? Update that
-  value to match.
+  sets `base: "/"` and that `public/CNAME` still points at the custom
+  domain. Drop the custom domain? Switch `base` to `"/<repo>/"` and
+  remove `public/CNAME`.
 - **Vite dev server complains about a missing `#root` element** — the
   app expects `<div id="root"></div>` in `index.html`. Don't remove it.
