@@ -69,13 +69,16 @@ import type { StorageAdapter } from "./storage/adapter";
 import {
   type BackendId,
   type EncryptionMode,
+  clearDropboxRefreshToken,
   clearDropboxToken,
   clearGdriveToken,
   getBackend,
+  getDropboxRefreshToken,
   getDropboxToken,
   getEncryption,
   getGdriveToken,
   setBackend,
+  setDropboxRefreshToken,
   setDropboxToken,
   setEncryption,
   setGdriveToken,
@@ -772,6 +775,12 @@ export function App() {
   // can rebuild when the user flips the choice from Settings.
   const [backend, setBackendState] = useState<BackendId>("local");
   const [dropboxToken, setDropboxTokenState] = useState<string | null>(null);
+  // The refresh token is held in a ref rather than React state because
+  // silent refreshes update the access token in localStorage and inside
+  // the adapter's closure — bouncing it through `setState` would
+  // rebuild the `adapter` useMemo and trigger a needless reload of the
+  // user's data.
+  const dropboxRefreshTokenRef = useRef<string | null>(null);
   const [gdriveToken, setGdriveTokenState] = useState<string | null>(null);
   const [encryption, setEncryptionState] =
     useState<EncryptionMode>("encrypted");
@@ -784,12 +793,14 @@ export function App() {
     if (auth.kind !== "signed-in") {
       setBackendState("local");
       setDropboxTokenState(null);
+      dropboxRefreshTokenRef.current = null;
       setGdriveTokenState(null);
       setEncryptionState("encrypted");
       return;
     }
     setBackendState(getBackend(auth.user.id));
     setDropboxTokenState(getDropboxToken(auth.user.id));
+    dropboxRefreshTokenRef.current = getDropboxRefreshToken(auth.user.id);
     setGdriveTokenState(getGdriveToken(auth.user.id));
     setEncryptionState(
       auth.user.isDefault ? "plaintext" : getEncryption(auth.user.id),
@@ -811,36 +822,51 @@ export function App() {
     if (!code) return;
     const provider = params.get("state") === "gdrive" ? "gdrive" : "dropbox";
     let cancelled = false;
-    const exchange =
-      provider === "gdrive"
-        ? completeGdriveAuth(code)
-        : completeDropboxAuth(code);
-    exchange
-      .then((token) => {
-        if (cancelled || auth.kind !== "signed-in") return;
-        if (provider === "gdrive") {
+    if (provider === "gdrive") {
+      completeGdriveAuth(code)
+        .then((token) => {
+          if (cancelled || auth.kind !== "signed-in") return;
           setGdriveToken(auth.user.id, token);
           setBackend(auth.user.id, "gdrive");
           setGdriveTokenState(token);
           setBackendState("gdrive");
-        } else {
-          setDropboxToken(auth.user.id, token);
+        })
+        .catch((err: unknown) => {
+          console.error(`${provider} connect failed:`, err);
+        })
+        .finally(cleanCodeFromUrl);
+    } else {
+      completeDropboxAuth(code)
+        .then((result) => {
+          if (cancelled || auth.kind !== "signed-in") return;
+          setDropboxToken(auth.user.id, result.accessToken);
+          if (result.refreshToken) {
+            setDropboxRefreshToken(auth.user.id, result.refreshToken);
+            dropboxRefreshTokenRef.current = result.refreshToken;
+          } else {
+            // Shouldn't happen — `token_access_type=offline` should
+            // always return one — but clear stale state if it does so
+            // we don't try to refresh with the previous account's token.
+            clearDropboxRefreshToken(auth.user.id);
+            dropboxRefreshTokenRef.current = null;
+          }
           setBackend(auth.user.id, "dropbox");
-          setDropboxTokenState(token);
+          setDropboxTokenState(result.accessToken);
           setBackendState("dropbox");
-        }
-      })
-      .catch((err: unknown) => {
-        console.error(`${provider} connect failed:`, err);
-      })
-      .finally(() => {
-        // Clean the code out of the URL regardless of outcome so a
-        // page reload doesn't re-trigger the exchange.
-        const url = new URL(window.location.href);
-        url.searchParams.delete("code");
-        url.searchParams.delete("state");
-        window.history.replaceState({}, "", url.toString());
-      });
+        })
+        .catch((err: unknown) => {
+          console.error(`${provider} connect failed:`, err);
+        })
+        .finally(cleanCodeFromUrl);
+    }
+    function cleanCodeFromUrl() {
+      // Clean the code out of the URL regardless of outcome so a page
+      // reload doesn't re-trigger the exchange.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("state");
+      window.history.replaceState({}, "", url.toString());
+    }
     return () => {
       cancelled = true;
     };
@@ -848,12 +874,24 @@ export function App() {
 
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
+    const userId = auth.user.id;
     const inner: StorageAdapter =
       backend === "dropbox" && dropboxToken
-        ? createDropboxAdapter(dropboxToken)
+        ? createDropboxAdapter({
+            accessToken: dropboxToken,
+            refreshToken: dropboxRefreshTokenRef.current,
+            // Persist the silently-refreshed access token so the next
+            // page load picks it up; deliberately do NOT touch React
+            // state, since rebuilding the adapter mid-session would
+            // discard our `lastSnapshot` and force a reload of the
+            // user's data.
+            onAccessTokenRefreshed: (next) => {
+              setDropboxToken(userId, next);
+            },
+          })
         : backend === "gdrive" && gdriveToken
           ? createGdriveAdapter(gdriveToken)
-          : createLocalAdapter(userDataKey(auth.user.id));
+          : createLocalAdapter(userDataKey(userId));
     // Skip the encryption wrapper entirely when the user has opted
     // out — keeps `loadSync` available on local and writes plaintext
     // bytes to whichever inner backend is active (including the
@@ -888,7 +926,13 @@ export function App() {
     // loses the few minutes between the last sync and the disconnect.
     if (dropboxToken) {
       try {
-        const cloudInner = createDropboxAdapter(dropboxToken);
+        const cloudInner = createDropboxAdapter({
+          accessToken: dropboxToken,
+          refreshToken: dropboxRefreshTokenRef.current,
+          onAccessTokenRefreshed: (next) => {
+            setDropboxToken(userId, next);
+          },
+        });
         const cloud =
           encryption === "plaintext"
             ? cloudInner
@@ -907,8 +951,10 @@ export function App() {
       }
     }
     clearDropboxToken(userId);
+    clearDropboxRefreshToken(userId);
     setBackend(userId, "local");
     setDropboxTokenState(null);
+    dropboxRefreshTokenRef.current = null;
     setBackendState("local");
   }, [auth, dropboxToken, encryption]);
 
@@ -965,7 +1011,13 @@ export function App() {
       const userId = auth.user.id;
       function buildInner(): StorageAdapter {
         if (backend === "dropbox" && dropboxToken)
-          return createDropboxAdapter(dropboxToken);
+          return createDropboxAdapter({
+            accessToken: dropboxToken,
+            refreshToken: dropboxRefreshTokenRef.current,
+            onAccessTokenRefreshed: (nextToken) => {
+              setDropboxToken(userId, nextToken);
+            },
+          });
         if (backend === "gdrive" && gdriveToken)
           return createGdriveAdapter(gdriveToken);
         return createLocalAdapter(userDataKey(userId));
@@ -1009,6 +1061,7 @@ export function App() {
       saveSession(user.id, password);
       setBackendState(getBackend(user.id));
       setDropboxTokenState(getDropboxToken(user.id));
+      dropboxRefreshTokenRef.current = getDropboxRefreshToken(user.id);
       setEncryptionState(getEncryption(user.id));
       setAuth({ kind: "signed-in", user, password });
     },
@@ -1059,6 +1112,7 @@ export function App() {
       // session's state) and momentarily render as a fresh budget.
       setBackendState(getBackend(user.id));
       setDropboxTokenState(getDropboxToken(user.id));
+      dropboxRefreshTokenRef.current = getDropboxRefreshToken(user.id);
       setEncryptionState(getEncryption(user.id));
       setAuth({ kind: "signed-in", user, password });
     },
@@ -1081,6 +1135,7 @@ export function App() {
     saveSession(user.id, "");
     setBackendState("local");
     setDropboxTokenState(null);
+    dropboxRefreshTokenRef.current = null;
     setEncryptionState("plaintext");
     setAuth({ kind: "signed-in", user, password: "" });
   }, [users, persistRegistry]);
