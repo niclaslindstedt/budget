@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
+import { ApplySeriesEditDialog } from "./components/ApplySeriesEditDialog";
 import { AuthScreen } from "./components/AuthScreen";
 import { BudgetLoading } from "./components/BudgetLoading";
 import { BulkActionBar } from "./components/BulkActionBar";
@@ -39,6 +40,7 @@ import {
   isRowSavable,
   moveColumn,
   newId,
+  propagateCellInSeries,
   rowsInSeriesFrom,
   shiftIsoToMonth,
   userDataWithSavableRows,
@@ -136,6 +138,15 @@ type ItemAction =
       rowId: string;
       patch: EditPatch;
       scope: EditScope;
+    }
+  | {
+      type: "propagateCellToFuture";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+      columnId: string;
+      value: CellValue;
+      untilIso: string | null;
     }
   | {
       type: "deleteRows";
@@ -341,6 +352,24 @@ function reduceAccountBudget(
       };
     }
 
+    case "propagateCellToFuture": {
+      const anchor = item.rows.find((r) => r.id === action.rowId);
+      if (!anchor) return item;
+      const dateCol = findColumnByType(item.columns, "date");
+      if (!dateCol) return item;
+      return {
+        ...item,
+        rows: propagateCellInSeries(
+          item.rows,
+          anchor,
+          dateCol.id,
+          action.columnId,
+          action.value,
+          action.untilIso,
+        ),
+      };
+    }
+
     case "deleteRows": {
       const drop = new Set(action.rowIds);
       return { ...item, rows: item.rows.filter((r) => !drop.has(r.id)) };
@@ -542,6 +571,16 @@ type DeletePrompt = { kind: "delete"; row: Row };
 type EditPrompt = { kind: "edit"; row: Row };
 type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
+type PendingSeriesEdit = {
+  rowId: string;
+  columnId: string;
+  // Pre-snapshotted so the dialog renders without re-deriving from
+  // possibly-stale row state if the user kept editing elsewhere.
+  fieldLabel: string;
+  anchorDate: string;
+  lastSeriesDate: string | null;
+  value: CellValue;
+};
 
 // Auth is rooted in the per-device user registry. Three states:
 //   "signed-out"  — no active user; the auth screen is shown with the
@@ -1105,6 +1144,11 @@ function BudgetView({
   const [complexSeedDate, setComplexSeedDate] = useState("");
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
   const [editPrompt, setEditPrompt] = useState<EditPrompt | null>(null);
+  // Captures the most recent inline edit on a recurring row so the user
+  // can choose to fan the change out to every following entry in the
+  // series. `null` while no prompt is pending.
+  const [pendingSeriesEdit, setPendingSeriesEdit] =
+    useState<PendingSeriesEdit | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -1265,6 +1309,77 @@ function BudgetView({
       }),
     [dispatch, sheetId, itemId],
   );
+  const onCommitCell = useCallback(
+    (rowId: string, columnId: string, value: CellValue) => {
+      const row = activeItem.rows.find((r) => r.id === rowId);
+      if (!row?.seriesId) return;
+      const col = activeItem.columns.find((c) => c.id === columnId);
+      // Only propagate fields that make sense across every occurrence —
+      // date and completed are inherently per-occurrence, balance is
+      // computed.
+      if (
+        !col ||
+        (col.type !== "description" &&
+          col.type !== "amount" &&
+          col.type !== "category")
+      ) {
+        return;
+      }
+      const dateCol = findColumnByType(activeItem.columns, "date");
+      const anchorDate =
+        dateCol && typeof row.cells[dateCol.id] === "string"
+          ? (row.cells[dateCol.id] as string)
+          : "";
+      let lastSeriesDate: string | null = null;
+      if (dateCol) {
+        const seriesDates = activeItem.rows
+          .filter((r) => r.seriesId === row.seriesId)
+          .map((r) => r.cells[dateCol.id])
+          .filter((d): d is string => typeof d === "string");
+        if (seriesDates.length > 0) {
+          lastSeriesDate = seriesDates.sort().at(-1) ?? null;
+        }
+      }
+      setPendingSeriesEdit({
+        rowId,
+        columnId,
+        fieldLabel: col.label,
+        anchorDate,
+        lastSeriesDate,
+        value,
+      });
+    },
+    [activeItem.rows, activeItem.columns],
+  );
+  const onApplyPendingToFuture = useCallback(
+    (untilIso: string | null) => {
+      if (!pendingSeriesEdit) return;
+      dispatch({
+        type: "propagateCellToFuture",
+        sheetId,
+        itemId,
+        rowId: pendingSeriesEdit.rowId,
+        columnId: pendingSeriesEdit.columnId,
+        value: pendingSeriesEdit.value,
+        untilIso,
+      });
+      setPendingSeriesEdit(null);
+    },
+    [dispatch, pendingSeriesEdit, sheetId, itemId],
+  );
+  const onDismissPendingSeriesEdit = useCallback(() => {
+    setPendingSeriesEdit(null);
+  }, []);
+
+  // Drop the pending prompt if the row vanishes (sheet switch, delete,
+  // import) so a stale prompt can't fan out a no-longer-relevant edit.
+  useEffect(() => {
+    if (!pendingSeriesEdit) return;
+    const exists = activeItem.rows.some(
+      (r) => r.id === pendingSeriesEdit.rowId,
+    );
+    if (!exists) setPendingSeriesEdit(null);
+  }, [pendingSeriesEdit, activeItem.rows]);
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
@@ -1666,6 +1781,7 @@ function BudgetView({
             selectedIds={selectedIds}
             scrollToTodayTick={scrollToTodayTick}
             onUpdateCell={onUpdateCell}
+            onCommitCell={onCommitCell}
             onAddRow={onAddRow}
             onAddComplex={onAddComplex}
             onDeleteRequest={onDeleteRequest}
@@ -1731,6 +1847,14 @@ function BudgetView({
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
         onCreateCategory={onCreateCategory}
+      />
+      <ApplySeriesEditDialog
+        open={pendingSeriesEdit !== null}
+        fieldLabel={pendingSeriesEdit?.fieldLabel ?? ""}
+        anchorDate={pendingSeriesEdit?.anchorDate ?? ""}
+        lastSeriesDate={pendingSeriesEdit?.lastSeriesDate ?? null}
+        onCancel={onDismissPendingSeriesEdit}
+        onApplyToFuture={onApplyPendingToFuture}
       />
       <BulkEditModal
         open={bulkEditOpen && selectedRows.length > 0}

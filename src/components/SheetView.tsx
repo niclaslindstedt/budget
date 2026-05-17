@@ -42,6 +42,7 @@ type Props = {
   // mount us without immediately overriding the first-mount auto-scroll.
   scrollToTodayTick: number;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
+  onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onAddComplex: (date: string) => void;
   onDeleteRequest: (row: Row) => void;
@@ -66,6 +67,7 @@ export function SheetView({
   selectedIds,
   scrollToTodayTick,
   onUpdateCell,
+  onCommitCell,
   onAddRow,
   onAddComplex,
   onDeleteRequest,
@@ -210,6 +212,7 @@ export function SheetView({
                   amountChars={colWidths.amountChars}
                   balanceChars={colWidths.balanceChars}
                   onUpdateCell={onUpdateCell}
+                  onCommitCell={onCommitCell}
                   onAddRow={() => onAddRow(seedDate)}
                   onAddComplex={() => onAddComplex(seedDate)}
                   onDeleteRequest={onDeleteRequest}

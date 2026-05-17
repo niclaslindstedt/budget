@@ -301,3 +301,26 @@ export function rowsInSeriesFrom(
   });
   return sortRowsByDate(matched, dateColumnId);
 }
+
+// Set `cellColumnId` to `value` on the anchor and every later sibling in
+// the same series, optionally clamped by `untilIso`. Returns `rows`
+// unchanged when the anchor is not part of a series.
+export function propagateCellInSeries(
+  rows: Row[],
+  anchor: Row,
+  dateColumnId: string,
+  cellColumnId: string,
+  value: CellValue,
+  untilIso: string | null,
+): Row[] {
+  if (!anchor.seriesId) return rows;
+  const targetIds = new Set(
+    rowsInSeriesFrom(rows, anchor, dateColumnId, untilIso).map((r) => r.id),
+  );
+  if (targetIds.size === 0) return rows;
+  return rows.map((r) =>
+    targetIds.has(r.id)
+      ? { ...r, cells: { ...r.cells, [cellColumnId]: value } }
+      : r,
+  );
+}

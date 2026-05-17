@@ -12,6 +12,7 @@ import {
   isRowHalfDone,
   isRowSavable,
   moveColumn,
+  propagateCellInSeries,
   rowsInSeriesFrom,
   shiftIsoToMonth,
   sortMonthKeys,
@@ -262,6 +263,76 @@ describe("rowsInSeriesFrom", () => {
     const anchor = rows.find((r) => r.id === "f")!;
     const result = rowsInSeriesFrom(rows, anchor, dateCol.id);
     expect(result).toEqual([anchor]);
+  });
+});
+
+describe("propagateCellInSeries", () => {
+  const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+  const dateCol = findColumnByType(sheet.columns, "date")!;
+  const amountCol = findColumnByType(sheet.columns, "amount")!;
+
+  function s(id: string, date: string, amount = 1, seriesId?: string): Row {
+    const row: Row = {
+      id,
+      cells: { [dateCol.id]: date, [amountCol.id]: amount },
+    };
+    if (seriesId) row.seriesId = seriesId;
+    return row;
+  }
+
+  const rows: Row[] = [
+    s("a", "2026-01-15", 1, "rent"),
+    s("b", "2026-02-15", 1, "rent"),
+    s("c", "2026-03-15", 1, "rent"),
+    s("d", "2026-04-15", 1, "rent"),
+    s("e", "2026-02-20", 5, "spotify"),
+    s("f", "2026-03-20", 5),
+  ];
+
+  it("updates the anchor and every later sibling in the same series", () => {
+    const anchor = rows.find((r) => r.id === "b")!;
+    const result = propagateCellInSeries(
+      rows,
+      anchor,
+      dateCol.id,
+      amountCol.id,
+      9,
+      null,
+    );
+    expect(result.find((r) => r.id === "a")!.cells[amountCol.id]).toBe(1);
+    expect(result.find((r) => r.id === "b")!.cells[amountCol.id]).toBe(9);
+    expect(result.find((r) => r.id === "c")!.cells[amountCol.id]).toBe(9);
+    expect(result.find((r) => r.id === "d")!.cells[amountCol.id]).toBe(9);
+    expect(result.find((r) => r.id === "e")!.cells[amountCol.id]).toBe(5);
+    expect(result.find((r) => r.id === "f")!.cells[amountCol.id]).toBe(5);
+  });
+
+  it("respects the inclusive untilIso bound", () => {
+    const anchor = rows.find((r) => r.id === "b")!;
+    const result = propagateCellInSeries(
+      rows,
+      anchor,
+      dateCol.id,
+      amountCol.id,
+      9,
+      "2026-03-31",
+    );
+    expect(result.find((r) => r.id === "b")!.cells[amountCol.id]).toBe(9);
+    expect(result.find((r) => r.id === "c")!.cells[amountCol.id]).toBe(9);
+    expect(result.find((r) => r.id === "d")!.cells[amountCol.id]).toBe(1);
+  });
+
+  it("returns rows untouched when anchor isn't part of a series", () => {
+    const anchor = rows.find((r) => r.id === "f")!;
+    const result = propagateCellInSeries(
+      rows,
+      anchor,
+      dateCol.id,
+      amountCol.id,
+      9,
+      null,
+    );
+    expect(result).toBe(rows);
   });
 });
 

@@ -15,6 +15,10 @@ type Props = {
   selectMode: boolean;
   selected: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
+  // Fires after the user finishes editing a cell (blur / discrete select).
+  // Used to prompt for series-wide propagation on recurring rows; the
+  // parent ignores the signal for one-off rows.
+  onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
@@ -32,6 +36,7 @@ export function SheetRow({
   selectMode,
   selected,
   onUpdateCell,
+  onCommitCell,
   onDeleteRequest,
   onEditRequest,
   onToggleSelect,
@@ -166,6 +171,7 @@ export function SheetRow({
           isRecurring={isSeries}
           glyph={row.glyph ?? null}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
+          onCommit={(value) => onCommitCell(row.id, col.id, value)}
           onCreateCategory={onCreateCategory}
         />
       ))}
