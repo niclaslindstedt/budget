@@ -16,6 +16,7 @@ type Props = {
   amountChars: number;
   balanceChars: number;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
+  onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
   onAddComplex: () => void;
   onDeleteRequest: (row: Row) => void;
@@ -50,6 +51,7 @@ export function MonthTable({
   amountChars,
   balanceChars,
   onUpdateCell,
+  onCommitCell,
   onAddRow,
   onAddComplex,
   onDeleteRequest,
@@ -153,6 +155,7 @@ export function MonthTable({
                 selectMode={selectMode}
                 selected={selectedIds.has(row.id)}
                 onUpdateCell={onUpdateCell}
+                onCommitCell={onCommitCell}
                 onDeleteRequest={onDeleteRequest}
                 onEditRequest={onEditRequest}
                 onToggleSelect={onToggleSelect}

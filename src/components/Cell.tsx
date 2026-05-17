@@ -38,6 +38,11 @@ type Props = {
   // the mobile popover trigger so the row reads at a glance).
   glyph?: CategoryIcon | null;
   onChange: (value: CellValue) => void;
+  // Fires when the user finishes editing a cell (blur for the typed
+  // inputs, the selection event for picker-style cells). Distinct from
+  // `onChange`, which can fire on every keystroke. Lets the parent know
+  // the edit has settled so it can prompt for series propagation.
+  onCommit?: (value: CellValue) => void;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
 
@@ -55,6 +60,7 @@ export function Cell({
   isRecurring,
   glyph,
   onChange,
+  onCommit,
   onCreateCategory,
 }: Props) {
   switch (column.type) {
@@ -70,6 +76,7 @@ export function Cell({
           isRecurring={!!isRecurring}
           glyph={glyph ?? null}
           onChange={onChange}
+          onCommit={onCommit}
         />
       );
 
@@ -80,6 +87,7 @@ export function Cell({
           value={value}
           settings={settings}
           onChange={onChange}
+          onCommit={onCommit}
         />
       );
     }
@@ -129,7 +137,10 @@ export function Cell({
             rowId={rowId}
             categories={categories ?? []}
             selectedId={selectedId}
-            onSelect={(id) => onChange(id)}
+            onSelect={(id) => {
+              onChange(id);
+              onCommit?.(id);
+            }}
             onCreate={
               onCreateCategory ??
               ((draft) => ({
@@ -150,11 +161,13 @@ function AmountCell({
   value,
   settings,
   onChange,
+  onCommit,
 }: {
   rowId: string;
   value: CellValue;
   settings: Settings;
   onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
 }) {
   const externalNumber = typeof value === "number" ? value : null;
   const externalAbsText =
@@ -168,8 +181,12 @@ function AmountCell({
   const inputRef = useRef<HTMLInputElement>(null);
   const activeRow = useActiveRow();
   const tokenRef = useRef<number | null>(null);
+  // Snapshot the signed value at focus time so blur can decide whether
+  // the edit actually changed anything before bubbling a commit signal.
+  const focusValueRef = useRef<number | null>(externalNumber);
 
   function handleFocus() {
+    focusValueRef.current = externalNumber;
     if (!activeRow || tokenRef.current !== null) return;
     tokenRef.current = activeRow.activate(rowId, () =>
       inputRef.current?.blur(),
@@ -180,6 +197,13 @@ function AmountCell({
     if (activeRow && tokenRef.current !== null) {
       activeRow.deactivate(tokenRef.current);
       tokenRef.current = null;
+    }
+    if (!onCommit) return;
+    const abs = parseAmount(text);
+    const signed =
+      abs === null ? null : negative ? -Math.abs(abs) : Math.abs(abs);
+    if (signed !== focusValueRef.current) {
+      onCommit(signed);
     }
   }
 
@@ -209,7 +233,17 @@ function AmountCell({
     );
   };
 
-  const toggleSign = () => commit(text, !negative);
+  const toggleSign = () => {
+    // The sign toggle is a discrete action, so commit straight through —
+    // there's no focus/blur cycle to wait on.
+    const nextNegative = !negative;
+    commit(text, nextNegative);
+    if (!onCommit) return;
+    const abs = parseAmount(text);
+    const signed =
+      abs === null ? null : nextNegative ? -Math.abs(abs) : Math.abs(abs);
+    onCommit(signed);
+  };
 
   const parsed = parseAmount(text);
   const hasValue = parsed !== null && parsed > 0;
@@ -331,12 +365,14 @@ function DescriptionCell({
   isRecurring,
   glyph,
   onChange,
+  onCommit,
 }: {
   rowId: string;
   value: string;
   isRecurring: boolean;
   glyph: CategoryIcon | null;
   onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
 }) {
   // Pick the row's leading icon. A custom glyph wins over the default
   // Repeat icon; for one-off rows we show nothing (the mobile trigger
@@ -345,8 +381,12 @@ function DescriptionCell({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeRow = useActiveRow();
   const tokenRef = useRef<number | null>(null);
+  // Snapshot the value at focus so blur only emits a commit when the
+  // text actually changed — avoids prompting after a no-op click in.
+  const focusValueRef = useRef<string>(value);
 
   function handleFocus() {
+    focusValueRef.current = value;
     if (!activeRow || tokenRef.current !== null) return;
     tokenRef.current = activeRow.activate(rowId, () =>
       textareaRef.current?.blur(),
@@ -358,6 +398,8 @@ function DescriptionCell({
       activeRow.deactivate(tokenRef.current);
       tokenRef.current = null;
     }
+    if (!onCommit) return;
+    if (value !== focusValueRef.current) onCommit(value);
   }
 
   return (
@@ -405,6 +447,7 @@ function DescriptionCell({
         isRecurring={isRecurring}
         glyph={glyph}
         onChange={onChange}
+        onCommit={onCommit}
       />
     </td>
   );
@@ -441,14 +484,20 @@ function DescriptionPopover({
   isRecurring,
   glyph,
   onChange,
+  onCommit,
 }: {
   rowId: string;
   value: string;
   isRecurring: boolean;
   glyph: CategoryIcon | null;
   onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Snapshot the value at popover-open time so we only emit a commit
+  // when the user actually changed the description before closing.
+  const openValueRef = useRef<string>(value);
+  const wasOpenRef = useRef(false);
   const [position, setPosition] = useState<{
     top: number;
     left: number;
@@ -458,6 +507,16 @@ function DescriptionPopover({
   const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeRow = useActiveRow();
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      openValueRef.current = value;
+    } else if (!open && wasOpenRef.current) {
+      if (onCommit && value !== openValueRef.current) onCommit(value);
+    }
+    wasOpenRef.current = open;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
