@@ -1,4 +1,5 @@
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
+import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
 import { SheetRow } from "./SheetRow";
@@ -62,10 +63,20 @@ export function MonthTable({
   const allSelected =
     rowIds.length > 0 && rowIds.every((id) => selectedIds.has(id));
   const someSelected = rowIds.some((id) => selectedIds.has(id)) && !allSelected;
+  // Tint the sticky header with the month's pastel — `undated` has no
+  // calendar month so it stays on the neutral `fg-bright` colour.
+  const headerMonthNum = monthNumberFromKey(monthKey);
+  const headerColor =
+    headerMonthNum !== null ? monthColorVar(headerMonthNum) : undefined;
 
   return (
     <section>
-      <h3 className="sticky top-[var(--app-header-h)] z-20 mb-1 bg-page-bg py-1 text-xs font-bold tracking-wider text-fg-bright uppercase md:mb-2 md:py-1.5">
+      <h3
+        className={`sticky top-[var(--app-header-h)] z-20 mb-1 bg-page-bg py-1 text-xs font-bold tracking-wider uppercase md:mb-2 md:py-1.5 ${
+          headerColor ? "" : "text-fg-bright"
+        }`}
+        style={headerColor ? { color: headerColor } : undefined}
+      >
         {formatMonth(monthKey)}
       </h3>
       <div

@@ -7,6 +7,7 @@ import {
   formatAmountForInput,
   formatBalance,
   formatDate,
+  formatDayOnly,
   formatNumber,
   formatShortDate,
   normalizeAmountInput,
@@ -277,6 +278,21 @@ describe("formatDate", () => {
   it("returns an empty string for malformed input", () => {
     expect(formatDate("", "YYYY-MM-DD")).toBe("");
     expect(formatDate("abc", "YYYY-MM-DD")).toBe("");
+  });
+});
+
+describe("formatDayOnly", () => {
+  it("returns the day number with no leading zero", () => {
+    expect(formatDayOnly("2026-05-01")).toBe("1");
+    expect(formatDayOnly("2026-05-09")).toBe("9");
+    expect(formatDayOnly("2026-05-16")).toBe("16");
+    expect(formatDayOnly("2026-12-31")).toBe("31");
+  });
+
+  it("returns an empty string for malformed input", () => {
+    expect(formatDayOnly("")).toBe("");
+    expect(formatDayOnly("abc")).toBe("");
+    expect(formatDayOnly("2026-05")).toBe("");
   });
 });
 
