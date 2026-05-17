@@ -10,9 +10,22 @@ type Props = {
   // the default Repeat icon on series rows and to nothing on one-offs.
   value: CategoryIcon | null;
   onChange: (next: CategoryIcon | null) => void;
+  // What "null" looks like in this context. Default is the recurring
+  // Repeat icon (used by series rows). Account modal passes "wallet"
+  // so the picker's default matches the wallet avatar it shows next
+  // to the name.
+  defaultIcon?: CategoryIcon;
+  defaultLabel?: string;
 };
 
-export function GlyphPicker({ value, onChange }: Props) {
+export function GlyphPicker({
+  value,
+  onChange,
+  defaultIcon,
+  defaultLabel = defaultIcon
+    ? `Default (${defaultIcon})`
+    : "Default (recurring)",
+}: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -50,17 +63,25 @@ export function GlyphPicker({ value, onChange }: Props) {
       >
         <span className="inline-flex items-center gap-2 text-fg">
           {value === null ? (
-            <Repeat
-              size={14}
-              className="text-flag"
-              aria-hidden
-              focusable={false}
-            />
+            defaultIcon ? (
+              <CategoryIconGlyph
+                name={defaultIcon}
+                size={14}
+                className="text-flag"
+              />
+            ) : (
+              <Repeat
+                size={14}
+                className="text-flag"
+                aria-hidden
+                focusable={false}
+              />
+            )
           ) : (
             <CategoryIconGlyph name={value} size={14} className="text-flag" />
           )}
           <span className="text-xs text-muted">
-            {value === null ? "Default (recurring)" : value}
+            {value === null ? defaultLabel : value}
           </span>
         </span>
         <ChevronDown
@@ -80,16 +101,24 @@ export function GlyphPicker({ value, onChange }: Props) {
             <button
               type="button"
               onClick={() => pick(null)}
-              aria-label="Default recurring glyph"
+              aria-label={
+                defaultIcon
+                  ? `Default ${defaultIcon} glyph`
+                  : "Default recurring glyph"
+              }
               aria-pressed={value === null}
-              title="Default (recurring)"
+              title={defaultLabel}
               className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border ${
                 value === null
                   ? "border-accent text-accent"
                   : "border-line text-muted hover:border-fg"
               }`}
             >
-              <Repeat size={14} aria-hidden focusable={false} />
+              {defaultIcon ? (
+                <CategoryIconGlyph name={defaultIcon} size={14} />
+              ) : (
+                <Repeat size={14} aria-hidden focusable={false} />
+              )}
             </button>
             {CATEGORY_ICON_NAMES.map((name) => (
               <button
