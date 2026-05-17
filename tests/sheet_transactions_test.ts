@@ -145,9 +145,14 @@ describe("synthesizeTransactionRow", () => {
 });
 
 describe("accountBalance", () => {
+  // Fixed reference "today" so the date-filtering branch is
+  // deterministic across the suite — the real clock would drift
+  // and silently re-categorise rows as past vs. future over time.
+  const TODAY = "2026-05-17";
+
   it("returns 0 for an account with no budget and no transactions", () => {
     const data = workspace();
-    expect(accountBalance(data, "savings-id")).toBe(0);
+    expect(accountBalance(data, "savings-id", TODAY)).toBe(0);
   });
 
   it("sums budget-row amounts plus signed transaction amounts", () => {
@@ -171,25 +176,100 @@ describe("accountBalance", () => {
     ]);
     const item = data.sheets[0].items[0] as AccountBudget;
     const amountCol = item.columns.find((c) => c.type === "amount")!;
+    const dateCol = item.columns.find((c) => c.type === "date")!;
     item.rows = [
-      { id: "r1", cells: { [amountCol.id]: 50 } },
-      { id: "r2", cells: { [amountCol.id]: -20 } },
+      {
+        id: "r1",
+        cells: { [dateCol.id]: "2026-05-02", [amountCol.id]: 50 },
+      },
+      {
+        id: "r2",
+        cells: { [dateCol.id]: "2026-05-12", [amountCol.id]: -20 },
+      },
     ];
     // Checking: budget rows 50 + (-20) = 30; transactions +300 (in)
     // − 100 (out) = 200. Total = 230.
-    expect(accountBalance(data, "checking-id")).toBe(230);
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(230);
     // Savings: no budget rows; transactions −300 (out) + 100 (in) = −200.
-    expect(accountBalance(data, "savings-id")).toBe(-200);
+    expect(accountBalance(data, "savings-id", TODAY)).toBe(-200);
+  });
+
+  it("excludes future-dated budget rows and transactions", () => {
+    // Future entries are projections, not money that has moved —
+    // the displayed account balance must reflect today's reality.
+    const data = workspace([
+      {
+        id: "past-tx",
+        date: "2026-05-10",
+        description: "Settled",
+        amount: 100,
+        fromAccountId: "savings-id",
+        toAccountId: "checking-id",
+      },
+      {
+        id: "future-tx",
+        date: "2026-06-01",
+        description: "Scheduled",
+        amount: 500,
+        fromAccountId: "savings-id",
+        toAccountId: "checking-id",
+      },
+    ]);
+    const item = data.sheets[0].items[0] as AccountBudget;
+    const amountCol = item.columns.find((c) => c.type === "amount")!;
+    const dateCol = item.columns.find((c) => c.type === "date")!;
+    item.rows = [
+      {
+        id: "r-past",
+        cells: { [dateCol.id]: "2026-05-15", [amountCol.id]: 40 },
+      },
+      {
+        id: "r-today",
+        cells: { [dateCol.id]: TODAY, [amountCol.id]: 5 },
+      },
+      {
+        id: "r-future",
+        cells: { [dateCol.id]: "2026-12-31", [amountCol.id]: 9999 },
+      },
+    ];
+    // Checking: past budget rows 40 + 5 = 45; past transaction
+    // +100 (in). The 9999 and the 500 are after `TODAY` and
+    // contribute nothing.
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(145);
+    expect(accountBalance(data, "savings-id", TODAY)).toBe(-100);
+  });
+
+  it("excludes undated budget rows", () => {
+    // A row with no date hasn't been scheduled, so it can't have
+    // taken place — keep it out of the running balance.
+    const data = workspace();
+    const item = data.sheets[0].items[0] as AccountBudget;
+    const amountCol = item.columns.find((c) => c.type === "amount")!;
+    const dateCol = item.columns.find((c) => c.type === "date")!;
+    item.rows = [
+      { id: "r-undated", cells: { [amountCol.id]: 123 } },
+      {
+        id: "r-empty-date",
+        cells: { [dateCol.id]: "", [amountCol.id]: 456 },
+      },
+    ];
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(0);
   });
 
   it("ignores budgets attached to a different account", () => {
     const data = workspace();
     const item = data.sheets[0].items[0] as AccountBudget;
     const amountCol = item.columns.find((c) => c.type === "amount")!;
-    item.rows = [{ id: "r1", cells: { [amountCol.id]: 999 } }];
+    const dateCol = item.columns.find((c) => c.type === "date")!;
+    item.rows = [
+      {
+        id: "r1",
+        cells: { [dateCol.id]: "2026-05-01", [amountCol.id]: 999 },
+      },
+    ];
     // The 999 belongs to Checking; Savings has neither budget nor
     // transactions involving it, so its balance stays at 0.
-    expect(accountBalance(data, "savings-id")).toBe(0);
-    expect(accountBalance(data, "checking-id")).toBe(999);
+    expect(accountBalance(data, "savings-id", TODAY)).toBe(0);
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(999);
   });
 });

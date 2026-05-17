@@ -367,29 +367,47 @@ export function synthesizeTransactionRow(
 }
 
 // Sum of the account's budget rows' amounts plus signed transaction
-// amounts (outgoing subtract, incoming add). Returns 0 when the
-// account has neither a budget nor any transactions — those accounts
-// are still listed on the Accounts sheet at zero so the user can add
-// transactions against them later.
-export function accountBalance(data: UserData, accountId: string): number {
+// amounts (outgoing subtract, incoming add), counting only entries
+// that have actually taken place — i.e. dated on or before `today`.
+// Future-dated budget rows and transactions are projections, not yet
+// money in or out of the account, so they're excluded from the
+// displayed balance. Undated rows are likewise excluded since we
+// don't know when (or whether) they happen. Returns 0 when the
+// account has neither past budget rows nor past transactions —
+// those accounts are still listed on the Accounts sheet at zero so
+// the user can add transactions against them later.
+export function accountBalance(
+  data: UserData,
+  accountId: string,
+  today: string = todayIso(),
+): number {
   let total = 0;
   for (const sheet of data.sheets) {
     for (const item of sheet.items) {
       if (item.type !== "accountBudget") continue;
       if (item.accountId !== accountId) continue;
       const amountCol = findColumnByType(item.columns, "amount");
-      if (!amountCol) continue;
+      const dateCol = findColumnByType(item.columns, "date");
+      if (!amountCol || !dateCol) continue;
       for (const row of item.rows) {
+        const d = row.cells[dateCol.id];
+        if (typeof d !== "string" || d === "" || d > today) continue;
         const v = row.cells[amountCol.id];
         if (typeof v === "number") total += v;
       }
     }
   }
   for (const tx of data.transactions) {
+    if (tx.date > today) continue;
     if (tx.fromAccountId === accountId) total -= tx.amount;
     if (tx.toAccountId === accountId) total += tx.amount;
   }
   return total;
+}
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // Rows in the same series with a date >= `anchor`'s date (anchor included).
