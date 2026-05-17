@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
 import { AuthScreen } from "./components/AuthScreen";
+import { BudgetLoading } from "./components/BudgetLoading";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
 import { SheetModal, type SheetDraft } from "./components/SheetModal";
@@ -1523,25 +1524,29 @@ function BudgetView({
         </div>
       </header>
       <main className="flex-1">
-        <SheetView
-          sheet={activeSheet}
-          item={activeItem}
-          categories={data.categories}
-          settings={data.settings}
-          selectMode={selectMode}
-          selectedIds={selectedIds}
-          onUpdateCell={onUpdateCell}
-          onAddRow={onAddRow}
-          onAddComplex={onAddComplex}
-          onDeleteRequest={onDeleteRequest}
-          onEditRequest={onEditRequest}
-          onReorderColumns={onReorderColumns}
-          onToggleSelect={onToggleSelect}
-          onToggleSelectMonth={onToggleSelectMonth}
-          onCreateCategory={onCreateCategory}
-        />
+        {status.kind === "loading" ? (
+          <BudgetLoading />
+        ) : (
+          <SheetView
+            sheet={activeSheet}
+            item={activeItem}
+            categories={data.categories}
+            settings={data.settings}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            onUpdateCell={onUpdateCell}
+            onAddRow={onAddRow}
+            onAddComplex={onAddComplex}
+            onDeleteRequest={onDeleteRequest}
+            onEditRequest={onEditRequest}
+            onReorderColumns={onReorderColumns}
+            onToggleSelect={onToggleSelect}
+            onToggleSelectMonth={onToggleSelectMonth}
+            onCreateCategory={onCreateCategory}
+          />
+        )}
       </main>
-      {selectMode ? (
+      {status.kind === "loading" ? null : selectMode ? (
         <BulkActionBar
           count={selectedIds.size}
           onEdit={onBulkEdit}
