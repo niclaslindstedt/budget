@@ -88,15 +88,39 @@ export type AccountBudget = {
 // data because old blocks still match their own variant.
 export type SheetItem = AccountBudget;
 
+// Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
+// right body — today only the transactional ledger ("budget") is
+// implemented, but future planners (loan tracking, savings forecast,
+// parental-leave planner, …) slot in as additional literals without
+// needing another migration.
+export type SheetType = "budget";
+
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,
 // but the shape supports stacking blocks (e.g. an AccountBudget plus a
 // Graph of the same account) without another migration later.
+//
+// `glyph`, `color`, and `description` are user-facing display
+// metadata: the sheet shows up in the bottom tab bar as a coloured
+// glyph (with its name beside it on desktop), and `description` is
+// surfaced in the editor modal so a user juggling several sheets has
+// somewhere to leave themselves a note (e.g. "Child account").
 export type Sheet = {
   id: string;
   name: string;
+  type: SheetType;
+  glyph: SheetGlyph;
+  color: string;
+  description: string;
   items: SheetItem[];
 };
+
+// Glyphs available for a Sheet. Reuses the `CategoryIcon` set so the
+// same picker, validator allowlist, and rendering helper cover both
+// the category chips and the sheet tabs; the names already lean
+// money/account-oriented (wallet, banknote, piggy-bank, …) which is
+// exactly the vocabulary sheets need.
+export type SheetGlyph = CategoryIcon;
 
 // User-facing display and entry preferences. Persisted as part of the
 // budget so an export carries the user's chosen formats and a re-import
@@ -163,7 +187,7 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 6;
+  version: 7;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

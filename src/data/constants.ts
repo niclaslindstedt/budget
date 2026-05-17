@@ -1,6 +1,8 @@
 import type {
   DateFormat,
   Settings,
+  SheetGlyph,
+  SheetType,
   ShortDateFormat,
   ThousandsSeparator,
 } from "./types";
@@ -136,6 +138,34 @@ export const CATEGORY_COLORS: readonly string[] = [
   "#c678dd",
   "#be5046",
   "#5c6370",
+];
+
+// Sheets reuse the category palette. Keeping them aligned means a
+// user's existing colour intuition carries over, and the visual style
+// of the sheet tabs matches the chips inside the sheet.
+export const SHEET_COLORS: readonly string[] = CATEGORY_COLORS;
+
+// Defaults applied to migrated sheets and the very first sheet a
+// fresh budget seeds. `wallet` is a generic money glyph that reads
+// well even at the tiny size used in the bottom tab bar.
+export const DEFAULT_SHEET_GLYPH: SheetGlyph = "wallet";
+export const DEFAULT_SHEET_COLOR: string = SHEET_COLORS[5];
+
+// Display metadata for each sheet flavour. Today only `budget` is
+// implemented; planners (loan, savings, parental-leave, …) join the
+// list as their UIs land.
+export const SHEET_TYPES: readonly {
+  id: SheetType;
+  label: string;
+  description: string;
+  glyph: SheetGlyph;
+}[] = [
+  {
+    id: "budget",
+    label: "Budget",
+    description: "Track money in and out, month by month.",
+    glyph: "wallet",
+  },
 ];
 
 // Horizon used when a recurring entry has no explicit end date. Twelve

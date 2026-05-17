@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 6,
+    version: 7,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -77,6 +77,10 @@ describe("serializeUserData", () => {
           };
         }),
         name: s.name,
+        description: s.description,
+        color: s.color,
+        glyph: s.glyph,
+        type: s.type,
         id: s.id,
       })),
       accounts: b.accounts,
@@ -456,6 +460,50 @@ describe("migrate", () => {
     expect(sheets[0].items[0].accountId).toBe(accounts[0].id);
     expect(sheets[0].items[0].rows[0].id).toBe("r1");
     expect(sheets[0].items[0].columns).toHaveLength(3);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+  });
+
+  it("v6 → v7: seeds sheet metadata (type, glyph, color, description)", () => {
+    const v6 = {
+      version: 6,
+      activeSheetId: "s1",
+      categories: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v6);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const sheets = data.sheets as Array<{
+      type: string;
+      glyph: string;
+      color: string;
+      description: string;
+    }>;
+    expect(sheets[0].type).toBe("budget");
+    expect(typeof sheets[0].glyph).toBe("string");
+    expect(typeof sheets[0].color).toBe("string");
+    expect(sheets[0].description).toBe("");
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });

@@ -1,6 +1,8 @@
 import {
   DATE_FORMATS,
   DEFAULT_SETTINGS,
+  DEFAULT_SHEET_COLOR,
+  DEFAULT_SHEET_GLYPH,
   MAX_SESSION_TIMEOUT_MINUTES,
   MIN_SESSION_TIMEOUT_MINUTES,
   SHORT_DATE_FORMATS,
@@ -19,7 +21,9 @@ import type {
   Row,
   Settings,
   Sheet,
+  SheetGlyph,
   SheetItem,
+  SheetType,
   ShortDateFormat,
   ThousandsSeparator,
   UserData,
@@ -44,6 +48,8 @@ const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
   "completed",
   "category",
 ]);
+
+const SHEET_TYPES: ReadonlySet<SheetType> = new Set<SheetType>(["budget"]);
 
 const CATEGORY_ICONS: ReadonlySet<CategoryIcon> = new Set<CategoryIcon>([
   "tag",
@@ -232,7 +238,36 @@ function validateSheet(
     validatedItems.push(r.value);
   }
 
-  return { ok: true, value: { id, name, items: validatedItems } };
+  // Display metadata. Soft-recovers each field to a sane default if
+  // missing or bogus — these are cosmetic, so a typo'd glyph name
+  // shouldn't lock the user out of an otherwise-valid sheet.
+  const type: SheetType =
+    typeof raw.type === "string" && SHEET_TYPES.has(raw.type as SheetType)
+      ? (raw.type as SheetType)
+      : "budget";
+  const glyph: SheetGlyph =
+    typeof raw.glyph === "string" && CATEGORY_ICONS.has(raw.glyph as SheetGlyph)
+      ? (raw.glyph as SheetGlyph)
+      : DEFAULT_SHEET_GLYPH;
+  const color =
+    typeof raw.color === "string" && raw.color.length > 0
+      ? raw.color
+      : DEFAULT_SHEET_COLOR;
+  const description =
+    typeof raw.description === "string" ? raw.description : "";
+
+  return {
+    ok: true,
+    value: {
+      id,
+      name,
+      type,
+      glyph,
+      color,
+      description,
+      items: validatedItems,
+    },
+  };
 }
 
 function validateAccount(raw: unknown, path: string): Result<Account> {
