@@ -1,16 +1,18 @@
 import { DEFAULT_SETTINGS } from "../data/constants";
-import { createDefaultSheet, newId } from "../data/sheet";
+import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
 import { parseUserData } from "./file";
 
 export function freshUserData(): UserData {
-  const accountId = newId();
-  const sheet = createDefaultSheet("Sheet 1", accountId);
+  // Fresh budgets start with no account attached. Accounts are
+  // user-created — "an account can be anything you want" — so the
+  // app no longer fabricates a "Default" account on first run.
+  const sheet = createDefaultSheet("Sheet 1");
   return {
-    version: 5,
+    version: 6,
     sheets: [sheet],
     activeSheetId: sheet.id,
-    accounts: [{ id: accountId, name: "Default" }],
+    accounts: [],
     categories: [],
     settings: { ...DEFAULT_SETTINGS },
   };

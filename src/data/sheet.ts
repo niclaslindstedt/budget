@@ -15,7 +15,9 @@ export function newId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export function createDefaultAccountBudget(accountId: string): AccountBudget {
+export function createDefaultAccountBudget(
+  accountId: string | null = null,
+): AccountBudget {
   const columns: Column[] = [
     { id: newId(), type: "date", label: "Date" },
     { id: newId(), type: "description", label: "Description" },
@@ -33,7 +35,10 @@ export function createDefaultAccountBudget(accountId: string): AccountBudget {
   };
 }
 
-export function createDefaultSheet(name = "Sheet 1", accountId: string): Sheet {
+export function createDefaultSheet(
+  name = "Sheet 1",
+  accountId: string | null = null,
+): Sheet {
   return {
     id: newId(),
     name,

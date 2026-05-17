@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 5,
+    version: 6,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -459,6 +459,80 @@ describe("migrate", () => {
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });
+
+  it("v5 → v6: bumps the version and preserves shape", () => {
+    const v5 = {
+      version: 5,
+      activeSheetId: "s1",
+      categories: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [{ id: "r1", cells: { c1: "2026-05-01", c3: 50 } }],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v5);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const sheets = data.sheets as Array<{
+      items: Array<{ accountId: string | null }>;
+    }>;
+    expect(sheets[0].items[0].accountId).toBe("a1");
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+  });
+});
+
+describe("nullable accountId & empty accounts", () => {
+  it("accepts an AccountBudget with accountId: null", () => {
+    const b = sampleData();
+    firstItem(b).accountId = null;
+    const r = parseUserData(serializeUserData(b));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(firstItem(r.data).accountId).toBeNull();
+    }
+  });
+
+  it("accepts an empty accounts array when no AccountBudget references one", () => {
+    const b = sampleData();
+    // Detach every item from its account, then drop the accounts list.
+    for (const sheet of b.sheets) {
+      for (const item of sheet.items) {
+        if (item.type === "accountBudget") item.accountId = null;
+      }
+    }
+    b.accounts = [];
+    const r = parseUserData(serializeUserData(b));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.accounts).toEqual([]);
+    }
+  });
+
+  it("rejects an accountId that references an unknown account", () => {
+    const b = sampleData();
+    firstItem(b).accountId = "ghost";
+    const r = parseUserData(serializeUserData(b));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/accountId/);
+  });
 });
 
 describe("seriesId field on rows", () => {
@@ -496,6 +570,12 @@ describe("readUserDataFromText", () => {
     expect(b.version).toBe(LATEST_VERSION);
     expect(b.sheets).toHaveLength(1);
     expect(b.categories).toEqual([]);
+  });
+
+  it("fresh data starts with no accounts and an unassigned budget", () => {
+    const b = readUserDataFromText(null);
+    expect(b.accounts).toEqual([]);
+    expect(firstItem(b).accountId).toBeNull();
   });
 
   it("falls back to fresh data on garbage input", () => {

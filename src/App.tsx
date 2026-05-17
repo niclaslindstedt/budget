@@ -3,6 +3,7 @@ import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
 import { AuthScreen } from "./components/AuthScreen";
 import { BulkActionBar } from "./components/BulkActionBar";
+import { BudgetSettingsModal } from "./components/BudgetSettingsModal";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
 import {
   ComplexEntryModal,
@@ -34,6 +35,7 @@ import {
   userDataWithSavableRows,
 } from "./data/sheet";
 import type {
+  Account,
   AccountBudget,
   Category,
   CellValue,
@@ -162,7 +164,15 @@ type Action =
   | ItemAction
   | { type: "replace"; data: UserData }
   | { type: "addCategory"; category: Category }
-  | { type: "updateSettings"; settings: Settings };
+  | { type: "updateSettings"; settings: Settings }
+  | { type: "renameSheet"; sheetId: string; name: string }
+  | {
+      type: "setItemAccount";
+      sheetId: string;
+      itemId: string;
+      accountId: string | null;
+    }
+  | { type: "createAccount"; account: Account };
 
 function applyPatch(
   row: Row,
@@ -418,6 +428,34 @@ function reducer(state: UserData, action: Action): UserData {
   }
   if (action.type === "updateSettings") {
     return { ...state, settings: action.settings };
+  }
+  if (action.type === "createAccount") {
+    return { ...state, accounts: [...state.accounts, action.account] };
+  }
+  if (action.type === "renameSheet") {
+    return {
+      ...state,
+      sheets: state.sheets.map((sheet) =>
+        sheet.id === action.sheetId ? { ...sheet, name: action.name } : sheet,
+      ),
+    };
+  }
+  if (action.type === "setItemAccount") {
+    return {
+      ...state,
+      sheets: state.sheets.map((sheet) =>
+        sheet.id === action.sheetId
+          ? {
+              ...sheet,
+              items: sheet.items.map((item) =>
+                item.id === action.itemId && item.type === "accountBudget"
+                  ? { ...item, accountId: action.accountId }
+                  : item,
+              ),
+            }
+          : sheet,
+      ),
+    };
   }
   return {
     ...state,
@@ -933,6 +971,7 @@ function BudgetView({
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [budgetSettingsOpen, setBudgetSettingsOpen] = useState(false);
 
   const activeSheet =
     data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
@@ -1112,6 +1151,21 @@ function BudgetView({
   const onSaveSettings = useCallback(
     (settings: Settings) => dispatch({ type: "updateSettings", settings }),
     [dispatch],
+  );
+  const onAddAccount = useCallback(
+    (account: Account) => dispatch({ type: "createAccount", account }),
+    [dispatch],
+  );
+  const onSaveBudgetSettings = useCallback(
+    ({ name, accountId }: { name: string; accountId: string | null }) => {
+      if (name !== activeSheet.name) {
+        dispatch({ type: "renameSheet", sheetId, name });
+      }
+      if (accountId !== activeItem.accountId) {
+        dispatch({ type: "setItemAccount", sheetId, itemId, accountId });
+      }
+    },
+    [dispatch, activeSheet.name, activeItem.accountId, sheetId, itemId],
   );
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
@@ -1377,7 +1431,6 @@ function BudgetView({
           settings={data.settings}
           selectMode={selectMode}
           selectedIds={selectedIds}
-          showName={data.sheets.length > 1}
           onUpdateCell={onUpdateCell}
           onAddRow={onAddRow}
           onAddComplex={onAddComplex}
@@ -1387,6 +1440,7 @@ function BudgetView({
           onToggleSelect={onToggleSelect}
           onToggleSelectMonth={onToggleSelectMonth}
           onCreateCategory={onCreateCategory}
+          onOpenSettings={() => setBudgetSettingsOpen(true)}
         />
       </main>
       {selectMode && (
@@ -1474,6 +1528,15 @@ function BudgetView({
         onDisconnectDropbox={onDisconnectDropbox}
         onSelectLocal={onSelectLocal}
         onSetEncryption={onSetEncryption}
+      />
+      <BudgetSettingsModal
+        open={budgetSettingsOpen}
+        budgetName={activeSheet.name}
+        accounts={data.accounts}
+        accountId={activeItem.accountId}
+        onClose={() => setBudgetSettingsOpen(false)}
+        onSave={onSaveBudgetSettings}
+        onCreateAccount={onAddAccount}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}

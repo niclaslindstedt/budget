@@ -69,11 +69,15 @@ export type Account = {
 // One block on a sheet that budgets a single Account: a typed spreadsheet
 // with columns (date, description, amount, balance, …) and rows. The
 // `accountId` ties the block to its Account so balances and forecasts
-// can be computed per account.
+// can be computed per account. Nullable so a budget can be created
+// before the user has decided which account it tracks — once account
+// transactions exist the running balance will pick up the account's
+// real starting balance, but until then an unassigned budget is just
+// a free-standing forward-looking ledger.
 export type AccountBudget = {
   id: string;
   type: "accountBudget";
-  accountId: string;
+  accountId: string | null;
   columns: Column[];
   rows: Row[];
 };
@@ -159,7 +163,7 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 5;
+  version: 6;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
