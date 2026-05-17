@@ -293,6 +293,23 @@ invariant: `parse(serialize(b))` equals `b`.
 No network. No third party. The file is the user's data, in plain
 JSON, in their hands.
 
+### Public JSON Schema
+
+The exported shape is also published as a JSON Schema (Draft 2020-12)
+at `https://budget.niclaslindstedt.se/schema`. The page renders the
+schema as both a `<pre>` code block and a
+`<script type="application/schema+json">` element, alongside prose
+explaining cell semantics, the derived `balance` column, fiscal months,
+and series ids. The intent is that an LLM (or any other tool) handed a
+`budget-*.json` file can be pointed at the URL and reason about the
+data without reading the React source.
+
+The schema lives in `src/data/schema.ts` and is built from the same
+constants the runtime validator uses (`CATEGORY_ICON_NAMES`,
+`DATE_FORMATS`, `DEFAULT_SETTINGS`, `LATEST_VERSION`, …) so the public
+contract cannot drift from the validator silently. The settings-modal
+footer links to it next to the privacy policy.
+
 ## Dependency direction
 
 `components/` depend on `data/` and `storage/`. Nothing in `data/` or

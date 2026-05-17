@@ -112,6 +112,7 @@ that way.
 | -------------------------------- | ----------------------------------------------------- |
 | New UI section / page            | `src/components/<Name>.tsx` + wire into `src/App.tsx` |
 | Persisted-data shape changes     | `src/data/` (add types + a migration if needed)       |
+| Public JSON Schema document      | `src/data/schema.ts` (rendered at `/schema`)          |
 | Read/write to `localStorage`     | `src/storage/local.ts`                                |
 | Export / import file format      | `src/storage/file.ts`                                 |
 | Vite config (base path, plugins) | `vite.config.ts`                                      |
@@ -169,13 +170,57 @@ in).
 
 ## Documentation sync points
 
-| If you change …          | Also update …                         |
-| ------------------------ | ------------------------------------- |
-| `package.json` scripts   | `Makefile`, `README.md` Usage section |
-| `Makefile` targets       | `README.md` Usage section, `ci.yml`   |
-| `src/` top-level layout  | `README.md`, this file                |
-| Node version in `.nvmrc` | `ci.yml`, `pages.yml`, `README.md`    |
-| Persisted-data shape     | `docs/architecture.md`                |
+| If you change …          | Also update …                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `package.json` scripts   | `Makefile`, `README.md` Usage section                                              |
+| `Makefile` targets       | `README.md` Usage section, `ci.yml`                                                |
+| `src/` top-level layout  | `README.md`, this file                                                             |
+| Node version in `.nvmrc` | `ci.yml`, `pages.yml`, `README.md`                                                 |
+| Persisted-data shape     | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`) |
+
+## Agent analysis — the JSON Schema at `/schema`
+
+The persisted shape (`UserData`) is exposed as a JSON Schema (Draft
+2020-12) at a stable URL:
+
+- **Live page:** <https://budget.niclaslindstedt.se/schema>
+- **Source:** `src/data/schema.ts`
+- **Renderer:** `src/components/SchemaPage.tsx`
+- **In-app entry point:** Settings → footer link next to "Privacy
+  policy" → "Data schema" (opens in a new tab).
+
+The page is purpose-built for agents (LLMs, scripts, anything else)
+handed a `budget-YYYY-MM-DD.json` export. It carries:
+
+- A strict JSON Schema (`additionalProperties: false`) validating the
+  whole document, with prose `description` strings on every field —
+  rendered both as a `<pre>` code block and as a
+  `<script type="application/schema+json">` element so machine-readable
+  parsers can extract it without scraping.
+- A short "For agents in a hurry" cheat-sheet covering the
+  column-id-keyed-cells gotcha, the derived `balance` column, category
+  cells holding ids (not names), and `seriesId` semantics.
+- A step-by-step "Reading a file" walkthrough and a "Common pitfalls"
+  list.
+
+**Pointing other agents at this URL is the supported way to hand off a
+budget file for analysis.** Do not paste the schema into other docs or
+re-author it elsewhere — the page at `/schema` is the single
+canonical reference and is generated from the same constants
+(`CATEGORY_ICON_NAMES`, `DATE_FORMATS`, `DEFAULT_SETTINGS`,
+`LATEST_VERSION`, …) the runtime validator uses.
+
+When you change the persisted shape:
+
+1. Update `src/data/types.ts` and `src/data/validate.ts` first.
+2. Add a forward-only migration in `src/data/migrations.ts` and bump
+   `LATEST_VERSION` + the `UserData.version` literal together.
+3. Mirror the change in `src/data/schema.ts` (new properties, new
+   enums, new `$defs`) so the public schema and the runtime validator
+   stay aligned. The schema is the public contract; the validator is
+   the runtime enforcer — both must move at the same time.
+4. Re-render the page locally and skim it: the prose should still
+   make sense to someone who has never read the React source.
 
 ## Cross-cutting rules
 

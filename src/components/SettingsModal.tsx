@@ -521,8 +521,11 @@ function MainView({
       </Section>
 
       {/* Opens in a new tab so an in-flight settings edit isn't lost
-          when the user navigates away to read the policy. */}
-      <p className="mt-4 text-center text-xs text-muted">
+          when the user navigates away to read these. The schema page
+          exposes the JSON Schema for the exported data so an LLM (or
+          any other tool) handed a `budget-*.json` file can be pointed
+          at a stable URL describing its shape. */}
+      <p className="mt-4 flex items-center justify-center gap-3 text-center text-xs text-muted">
         <a
           href="/privacy"
           target="_blank"
@@ -530,6 +533,15 @@ function MainView({
           className="text-link hover:underline"
         >
           Privacy policy
+        </a>
+        <span aria-hidden>·</span>
+        <a
+          href="/schema"
+          target="_blank"
+          rel="noreferrer"
+          className="text-link hover:underline"
+        >
+          Data schema
         </a>
       </p>
     </div>
