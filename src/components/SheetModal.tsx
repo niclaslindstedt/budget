@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Check, ChevronDown, Plus, Trash2, Wallet, X } from "lucide-react";
 
 import {
   CATEGORY_ICON_NAMES,
@@ -69,6 +69,7 @@ export function SheetModal({
   const [description, setDescription] = useState("");
   const [typeOpen, setTypeOpen] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
@@ -82,6 +83,7 @@ export function SheetModal({
     setDescription(sheet?.description ?? "");
     setTypeOpen(false);
     setAccountId(currentAccountId);
+    setAccountOpen(false);
     setCreatingAccount(false);
     setNewAccountName("");
   }, [open, sheet, currentAccountId]);
@@ -110,9 +112,11 @@ export function SheetModal({
   function handleAccountChange(value: string) {
     if (value === NEW_ACCOUNT_SENTINEL) {
       setCreatingAccount(true);
+      setAccountOpen(false);
       return;
     }
     setAccountId(value === "" ? null : value);
+    setAccountOpen(false);
   }
 
   function handleCancelCreateAccount() {
@@ -246,19 +250,14 @@ export function SheetModal({
                     </div>
                   </div>
                 ) : (
-                  <select
-                    value={accountId ?? ""}
-                    onChange={(e) => handleAccountChange(e.target.value)}
-                    className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright"
-                  >
-                    <option value="">No account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                    <option value={NEW_ACCOUNT_SENTINEL}>+ New account…</option>
-                  </select>
+                  <AccountPicker
+                    value={accountId}
+                    accounts={accounts}
+                    open={accountOpen}
+                    onToggle={() => setAccountOpen((v) => !v)}
+                    onClose={() => setAccountOpen(false)}
+                    onPick={handleAccountChange}
+                  />
                 )}
                 <p className="text-xs text-muted">
                   Attach this budget to an account so its running balance can
@@ -369,6 +368,127 @@ export function SheetModal({
         </footer>
       </div>
     </div>
+  );
+}
+
+function AccountPicker({
+  value,
+  accounts,
+  open,
+  onToggle,
+  onClose,
+  onPick,
+}: {
+  value: string | null;
+  accounts: Account[];
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onPick: (value: string) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = accounts.find((a) => a.id === value) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(e: PointerEvent) {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      onClose();
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    return () => document.removeEventListener("pointerdown", handlePointer);
+  }, [open, onClose]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+      >
+        <span className="text-muted">
+          <Wallet size={16} aria-hidden focusable={false} />
+        </span>
+        <span className="flex-1 truncate">
+          {selected ? selected.name : "No account"}
+        </span>
+        <ChevronDown
+          size={14}
+          className="shrink-0 text-muted"
+          aria-hidden
+          focusable={false}
+        />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
+        >
+          <AccountOption
+            label="No account"
+            icon={<Wallet size={16} aria-hidden focusable={false} />}
+            selected={value === null}
+            onClick={() => onPick("")}
+          />
+          {accounts.map((a) => (
+            <AccountOption
+              key={a.id}
+              label={a.name}
+              icon={<Wallet size={16} aria-hidden focusable={false} />}
+              selected={a.id === value}
+              onClick={() => onPick(a.id)}
+            />
+          ))}
+          <li className="mt-1 border-t border-line">
+            <button
+              type="button"
+              onClick={() => onPick(NEW_ACCOUNT_SENTINEL)}
+              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              <Plus size={14} aria-hidden focusable={false} />
+              New account
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function AccountOption({
+  label,
+  icon,
+  selected,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        role="option"
+        aria-selected={selected}
+        onClick={onClick}
+        className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+      >
+        <span className="text-muted">{icon}</span>
+        <span className="flex-1 truncate">{label}</span>
+        {selected && (
+          <Check
+            size={14}
+            className="text-accent"
+            aria-hidden
+            focusable={false}
+          />
+        )}
+      </button>
+    </li>
   );
 }
 
