@@ -148,8 +148,11 @@ describe("dropbox adapter", () => {
     const apiArg = JSON.parse(
       (uploadCall?.init?.headers as Record<string, string>)["Dropbox-API-Arg"],
     );
-    expect(apiArg.mode).toBe("update");
-    expect(apiArg.update).toBe("r1");
+    // `update` must travel inside the `mode` tag-union struct; sending
+    // it as a sibling field makes the Dropbox upload endpoint reject
+    // the call with `unknown field 'update'`.
+    expect(apiArg.mode).toEqual({ ".tag": "update", update: "r1" });
+    expect(apiArg.update).toBeUndefined();
   });
 
   it("uses add mode for the very first save", async () => {
