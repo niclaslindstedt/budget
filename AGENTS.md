@@ -140,6 +140,17 @@ that way.
   row"); form labels are plain words ("Description", "Amount"). The
   `text-flag` / `text-path` / `text-pipe` utilities exist for sheet
   cells and similar data tokens, not for chrome.
+- **Always use custom dropdowns.** Never reach for the native
+  `<select>` / `<option>` elements — the browser renders them with the
+  OS's own widget, which breaks the monospaced One Dark / One Light
+  look and feel and looks especially out-of-place on mobile (see the
+  iOS wheel picker). Build a button + listbox in the project style
+  instead — model new pickers on `TypePicker` / `AccountPicker` in
+  `src/components/SheetModal.tsx` or `CategoryPicker` in
+  `src/components/CategoryPicker.tsx` (use the latter's portal pattern
+  when the dropdown lives in a tight cell or could overflow its
+  container). Apply the same rule when refactoring older code: if you
+  touch a screen that still has a native `<select>`, replace it.
 - **PR conventions**: PR titles must follow Conventional Commits
   because the title becomes the squash-merge commit on `main`.
   Squash-merge is the only permitted merge strategy. **Rebase on
