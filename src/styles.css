@@ -163,7 +163,7 @@ body {
          and completed tracks are kept narrow (icon-only on mobile) so
          the description column gets as much of the row as possible. */
       grid-template-columns:
-        40px minmax(0, 1fr) 40px
+        46px minmax(0, 1fr) 40px
         minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 2.25rem))
         minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 1rem))
         40px;
@@ -175,7 +175,7 @@ body {
     .sheet-table.is-selecting > thead > tr,
     .sheet-table.is-selecting > tbody > tr {
       grid-template-columns:
-        30px 40px minmax(0, 1fr) 40px
+        30px 46px minmax(0, 1fr) 40px
         minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 2.25rem))
         minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 1rem))
         40px;
