@@ -2656,134 +2656,143 @@ function BudgetView({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 pb-20 md:px-5">
-      <header className="sticky top-0 z-30 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-page-bg px-2 pt-3 pb-3 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
-        <button
-          type="button"
-          onClick={onScrollToToday}
-          aria-label="Scroll to today"
-          title="Scroll to today"
-          className="inline-flex cursor-pointer items-center gap-2 rounded border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-        >
-          <img
-            src="/icons/icon-64.png"
-            srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
-            alt=""
-            aria-hidden
-            width={24}
-            height={24}
-            className="h-6 w-6 rounded-sm"
-          />
-          <span className="hidden text-base font-bold tracking-wide text-fg-bright md:inline">
-            budget
-          </span>
-        </button>
-        <div className="ml-auto inline-flex items-center gap-2">
-          <SaveStateButton dirty={dirty} onSave={saveNow} />
-          {backend !== "local" && (
-            <SyncStatus
-              providerName={backend === "dropbox" ? "Dropbox" : "Google Drive"}
-              status={status}
-              dirty={dirty}
-              onClick={() => setSyncDetailsOpen(true)}
+      {/* `data-modal-background` is the toggle target for the modal
+          lifecycle hook in src/utils/scroll-lock.ts — any open modal
+          flips `inert` on every match, freezing focus and pointer
+          events on the chrome behind the backdrop. `display: contents`
+          keeps the flex column layout unchanged. */}
+      <div className="contents" data-modal-background>
+        <header className="sticky top-0 z-30 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-page-bg px-2 pt-3 pb-3 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
+          <button
+            type="button"
+            onClick={onScrollToToday}
+            aria-label="Scroll to today"
+            title="Scroll to today"
+            className="inline-flex cursor-pointer items-center gap-2 rounded border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
+            <img
+              src="/icons/icon-64.png"
+              srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
+              alt=""
+              aria-hidden
+              width={24}
+              height={24}
+              className="h-6 w-6 rounded-sm"
+            />
+            <span className="hidden text-base font-bold tracking-wide text-fg-bright md:inline">
+              budget
+            </span>
+          </button>
+          <div className="ml-auto inline-flex items-center gap-2">
+            <SaveStateButton dirty={dirty} onSave={saveNow} />
+            {backend !== "local" && (
+              <SyncStatus
+                providerName={
+                  backend === "dropbox" ? "Dropbox" : "Google Drive"
+                }
+                status={status}
+                dirty={dirty}
+                onClick={() => setSyncDetailsOpen(true)}
+              />
+            )}
+            <ImportExportControls
+              data={data}
+              onImport={onImport}
+              encryption={encryption}
+              getEncryptionPassword={getEncryptionPassword}
+            />
+            <button
+              type="button"
+              onClick={onToggleSelectMode}
+              aria-pressed={selectMode}
+              aria-label={selectMode ? "Exit select mode" : "Select rows"}
+              title={selectMode ? "Cancel" : "Select"}
+              className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+                selectMode
+                  ? "border-pipe bg-pipe/15 text-pipe"
+                  : "border-line text-pipe hover:border-pipe hover:bg-surface-2"
+              }`}
+            >
+              <ListChecks size={18} aria-hidden focusable={false} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Open settings"
+              title="Settings"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+            >
+              <SettingsIcon size={18} aria-hidden focusable={false} />
+            </button>
+            <UserMenu
+              user={user}
+              hasOtherUsers={hasOtherUsers}
+              onSignOut={onSignOut}
+              onSwitchUser={onSwitchUser}
+              onCreateAccount={onCreateAccount}
+              onDeleteAccount={onDeleteAccount}
+            />
+          </div>
+        </header>
+        <main className="flex-1">
+          {status.kind === "loading" ? (
+            <BudgetLoading />
+          ) : activeSheet.type === "accounts" ? (
+            <AccountsSheetView
+              sheet={activeSheet}
+              data={data}
+              settings={data.settings}
+              onCreateAccount={onOpenCreateAccount}
+              onEditAccount={onOpenEditAccount}
+              onUpdateBalance={onOpenUpdateBalance}
+              onCreateTransaction={onOpenCreateTransaction}
+              onEditTransaction={onOpenEditTransaction}
+            />
+          ) : (
+            <SheetView
+              sheet={activeSheet}
+              item={activeItem}
+              categories={data.categories}
+              accounts={data.accounts}
+              transactions={data.transactions}
+              settings={data.settings}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              scrollToTodayTick={scrollToTodayTick}
+              onUpdateCell={onUpdateCell}
+              onCommitCell={onCommitCell}
+              onAddRow={onAddRow}
+              onAddComplex={onAddComplex}
+              onDeleteRequest={onDeleteRequest}
+              onEditRequest={onEditRequest}
+              onTransactionRequest={onTransactionRequest}
+              onCorrectionDeleteRequest={onCorrectionDeleteRequest}
+              onReorderColumns={onReorderColumns}
+              onToggleSelect={onToggleSelect}
+              onToggleSelectMonth={onToggleSelectMonth}
+              onCreateCategory={onCreateCategory}
             />
           )}
-          <ImportExportControls
-            data={data}
-            onImport={onImport}
-            encryption={encryption}
-            getEncryptionPassword={getEncryptionPassword}
-          />
-          <button
-            type="button"
-            onClick={onToggleSelectMode}
-            aria-pressed={selectMode}
-            aria-label={selectMode ? "Exit select mode" : "Select rows"}
-            title={selectMode ? "Cancel" : "Select"}
-            className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-              selectMode
-                ? "border-pipe bg-pipe/15 text-pipe"
-                : "border-line text-pipe hover:border-pipe hover:bg-surface-2"
-            }`}
-          >
-            <ListChecks size={18} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Open settings"
-            title="Settings"
-            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
-            <SettingsIcon size={18} aria-hidden focusable={false} />
-          </button>
-          <UserMenu
-            user={user}
-            hasOtherUsers={hasOtherUsers}
-            onSignOut={onSignOut}
-            onSwitchUser={onSwitchUser}
-            onCreateAccount={onCreateAccount}
-            onDeleteAccount={onDeleteAccount}
-          />
-        </div>
-      </header>
-      <main className="flex-1">
-        {status.kind === "loading" ? (
-          <BudgetLoading />
-        ) : activeSheet.type === "accounts" ? (
-          <AccountsSheetView
-            sheet={activeSheet}
-            data={data}
-            settings={data.settings}
-            onCreateAccount={onOpenCreateAccount}
-            onEditAccount={onOpenEditAccount}
-            onUpdateBalance={onOpenUpdateBalance}
-            onCreateTransaction={onOpenCreateTransaction}
-            onEditTransaction={onOpenEditTransaction}
+        </main>
+        {status.kind === "loading" ? null : selectMode ? (
+          <BulkActionBar
+            count={selectedIds.size}
+            onEdit={onBulkEdit}
+            onDelete={onBulkDelete}
+            onMove={onBulkMove}
+            onCopy={onBulkCopy}
+            onCancel={onCancelSelect}
           />
         ) : (
-          <SheetView
-            sheet={activeSheet}
-            item={activeItem}
-            categories={data.categories}
-            accounts={data.accounts}
-            transactions={data.transactions}
-            settings={data.settings}
-            selectMode={selectMode}
-            selectedIds={selectedIds}
-            scrollToTodayTick={scrollToTodayTick}
-            onUpdateCell={onUpdateCell}
-            onCommitCell={onCommitCell}
-            onAddRow={onAddRow}
-            onAddComplex={onAddComplex}
-            onDeleteRequest={onDeleteRequest}
-            onEditRequest={onEditRequest}
-            onTransactionRequest={onTransactionRequest}
-            onCorrectionDeleteRequest={onCorrectionDeleteRequest}
-            onReorderColumns={onReorderColumns}
-            onToggleSelect={onToggleSelect}
-            onToggleSelectMonth={onToggleSelectMonth}
-            onCreateCategory={onCreateCategory}
+          <SheetTabs
+            sheets={data.sheets}
+            activeSheetId={activeSheet.id}
+            onSelect={onSelectSheet}
+            onEdit={onOpenEditSheet}
+            onAdd={onOpenNewSheet}
           />
         )}
-      </main>
-      {status.kind === "loading" ? null : selectMode ? (
-        <BulkActionBar
-          count={selectedIds.size}
-          onEdit={onBulkEdit}
-          onDelete={onBulkDelete}
-          onMove={onBulkMove}
-          onCopy={onBulkCopy}
-          onCancel={onCancelSelect}
-        />
-      ) : (
-        <SheetTabs
-          sheets={data.sheets}
-          activeSheetId={activeSheet.id}
-          onSelect={onSelectSheet}
-          onEdit={onOpenEditSheet}
-          onAdd={onOpenNewSheet}
-        />
-      )}
+      </div>
       <SheetModal
         open={sheetModal !== null}
         sheet={sheetModal?.sheet ?? null}
