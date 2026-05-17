@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 
 import type { Account, Settings } from "../data/types";
@@ -54,19 +54,18 @@ export function UpdateBalanceModal({
     [account, settings],
   );
 
-  const [text, setText] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  // Seed the input with the current balance every time the modal opens
-  // for a different account, so the user can edit-in-place instead of
-  // typing from scratch — and pre-select it so a single keystroke
-  // overwrites the seed.
+  // Lazy init so the input renders pre-seeded on the first paint after
+  // open — important on iOS, where the input must be ready *and* focused
+  // inside the click gesture that opened the modal for the soft keyboard
+  // to appear. The `key={account.id}` on the <input> remounts it when
+  // the user opens the modal for a different account, re-running the
+  // autoFocus + reseeding via the effect below.
+  const [text, setText] = useState(() =>
+    formatAmountForInput(currentBalance, accountSettings),
+  );
   useEffect(() => {
     if (!open) return;
     setText(formatAmountForInput(currentBalance, accountSettings));
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    });
   }, [open, account?.id, currentBalance, accountSettings]);
 
   useEffect(() => {
@@ -154,10 +153,12 @@ export function UpdateBalanceModal({
             <label className="flex flex-col gap-1">
               <span className="text-muted">New balance</span>
               <input
-                ref={inputRef}
+                key={account.id}
                 type="text"
                 inputMode="decimal"
                 autoComplete="off"
+                autoFocus
+                onFocus={(e) => e.currentTarget.select()}
                 value={text}
                 onChange={(e) =>
                   setText(normalizeAmountInput(e.target.value, accountSettings))
