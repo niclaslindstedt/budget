@@ -60,12 +60,15 @@ import {
   type BackendId,
   type EncryptionMode,
   clearDropboxToken,
+  clearGdriveToken,
   getBackend,
   getDropboxToken,
   getEncryption,
+  getGdriveToken,
   setBackend,
   setDropboxToken,
   setEncryption,
+  setGdriveToken,
 } from "./storage/backend-preference";
 import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
 import {
@@ -73,6 +76,11 @@ import {
   createDropboxAdapter,
   startDropboxAuth,
 } from "./storage/dropbox-adapter";
+import {
+  completeGdriveAuth,
+  createGdriveAdapter,
+  startGdriveAuth,
+} from "./storage/gdrive-adapter";
 import { withEncryption } from "./storage/encrypting-adapter";
 import {
   clearRawStorage,
@@ -623,6 +631,7 @@ export function App() {
   // can rebuild when the user flips the choice from Settings.
   const [backend, setBackendState] = useState<BackendId>("local");
   const [dropboxToken, setDropboxTokenState] = useState<string | null>(null);
+  const [gdriveToken, setGdriveTokenState] = useState<string | null>(null);
   const [encryption, setEncryptionState] =
     useState<EncryptionMode>("encrypted");
 
@@ -634,37 +643,54 @@ export function App() {
     if (auth.kind !== "signed-in") {
       setBackendState("local");
       setDropboxTokenState(null);
+      setGdriveTokenState(null);
       setEncryptionState("encrypted");
       return;
     }
     setBackendState(getBackend(auth.user.id));
     setDropboxTokenState(getDropboxToken(auth.user.id));
+    setGdriveTokenState(getGdriveToken(auth.user.id));
     setEncryptionState(
       auth.user.isDefault ? "plaintext" : getEncryption(auth.user.id),
     );
   }, [auth]);
 
-  // Complete the Dropbox OAuth round-trip when the redirect lands
-  // back here. The user signed in before clicking Connect, so by
-  // the time this fires they should already be signed-in again (or
-  // about to be — we wait for that transition). Errors surface in
-  // the console only; a future polish pass can surface them in UI.
+  // Complete the cloud-backend OAuth round-trip when the redirect
+  // lands back here. The user signed in before clicking Connect, so
+  // by the time this fires they should already be signed-in again
+  // (or about to be — we wait for that transition). The `state`
+  // query param tags which provider issued the code; we default to
+  // Dropbox for backwards compatibility with the legacy auth URL
+  // that didn't set `state`. Errors surface in the console only; a
+  // future polish pass can surface them in UI.
   useEffect(() => {
     if (auth.kind !== "signed-in") return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     if (!code) return;
+    const provider = params.get("state") === "gdrive" ? "gdrive" : "dropbox";
     let cancelled = false;
-    completeDropboxAuth(code)
+    const exchange =
+      provider === "gdrive"
+        ? completeGdriveAuth(code)
+        : completeDropboxAuth(code);
+    exchange
       .then((token) => {
         if (cancelled || auth.kind !== "signed-in") return;
-        setDropboxToken(auth.user.id, token);
-        setBackend(auth.user.id, "dropbox");
-        setDropboxTokenState(token);
-        setBackendState("dropbox");
+        if (provider === "gdrive") {
+          setGdriveToken(auth.user.id, token);
+          setBackend(auth.user.id, "gdrive");
+          setGdriveTokenState(token);
+          setBackendState("gdrive");
+        } else {
+          setDropboxToken(auth.user.id, token);
+          setBackend(auth.user.id, "dropbox");
+          setDropboxTokenState(token);
+          setBackendState("dropbox");
+        }
       })
       .catch((err: unknown) => {
-        console.error("Dropbox connect failed:", err);
+        console.error(`${provider} connect failed:`, err);
       })
       .finally(() => {
         // Clean the code out of the URL regardless of outcome so a
@@ -684,17 +710,24 @@ export function App() {
     const inner: StorageAdapter =
       backend === "dropbox" && dropboxToken
         ? createDropboxAdapter(dropboxToken)
-        : createLocalAdapter(userDataKey(auth.user.id));
+        : backend === "gdrive" && gdriveToken
+          ? createGdriveAdapter(gdriveToken)
+          : createLocalAdapter(userDataKey(auth.user.id));
     // Skip the encryption wrapper entirely when the user has opted
     // out — keeps `loadSync` available on local and writes plaintext
-    // bytes to whichever inner backend is active (including Dropbox).
+    // bytes to whichever inner backend is active (including the
+    // cloud backends).
     return encryption === "plaintext"
       ? inner
       : withEncryption(inner, passwordRef);
-  }, [auth, backend, dropboxToken, encryption]);
+  }, [auth, backend, dropboxToken, gdriveToken, encryption]);
 
   const handleConnectDropbox = useCallback(() => {
     void startDropboxAuth();
+  }, []);
+
+  const handleConnectGdrive = useCallback(() => {
+    void startGdriveAuth();
   }, []);
 
   const handleSelectLocal = useCallback(() => {
@@ -738,12 +771,49 @@ export function App() {
     setBackendState("local");
   }, [auth, dropboxToken, encryption]);
 
+  const handleDisconnectGdrive = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    const userId = auth.user.id;
+    // Mirror the Dropbox disconnect flow: pull the latest cloud
+    // snapshot down so the bytes that land in localStorage match
+    // what was up there. Best-effort — a stale local copy is a
+    // few-minute regression at worst because the auto-save runs on
+    // the same debounce.
+    if (gdriveToken) {
+      try {
+        const cloudInner = createGdriveAdapter(gdriveToken);
+        const cloud =
+          encryption === "plaintext"
+            ? cloudInner
+            : withEncryption(cloudInner, passwordRef);
+        const snap = await cloud.load();
+        if (snap) {
+          const localInner = createLocalAdapter(userDataKey(userId));
+          const local =
+            encryption === "plaintext"
+              ? localInner
+              : withEncryption(localInner, passwordRef);
+          await local.save(snap.text);
+        }
+      } catch (err) {
+        console.error(
+          "Google Drive disconnect: failed to mirror to local",
+          err,
+        );
+      }
+    }
+    clearGdriveToken(userId);
+    setBackend(userId, "local");
+    setGdriveTokenState(null);
+    setBackendState("local");
+  }, [auth, gdriveToken, encryption]);
+
   // Flip the per-user encryption preference, re-wrapping the bytes
   // already in the active backend so the next load isn't reading the
   // wrong envelope. Reads through the *current* preference and writes
-  // through the *new* one. Backend choice (local vs Dropbox) is
-  // independent — encryption is just whether the adapter wraps with
-  // `withEncryption` on top.
+  // through the *new* one. Backend choice (local vs Dropbox vs
+  // Google Drive) is independent — encryption is just whether the
+  // adapter wraps with `withEncryption` on top.
   const handleSetEncryption = useCallback(
     async (next: EncryptionMode) => {
       if (auth.kind !== "signed-in") return;
@@ -752,14 +822,15 @@ export function App() {
       if (auth.user.isDefault) return;
       if (next === encryption) return;
       const userId = auth.user.id;
-      const innerForCurrent: StorageAdapter =
-        backend === "dropbox" && dropboxToken
-          ? createDropboxAdapter(dropboxToken)
-          : createLocalAdapter(userDataKey(userId));
-      const innerForNext: StorageAdapter =
-        backend === "dropbox" && dropboxToken
-          ? createDropboxAdapter(dropboxToken)
-          : createLocalAdapter(userDataKey(userId));
+      function buildInner(): StorageAdapter {
+        if (backend === "dropbox" && dropboxToken)
+          return createDropboxAdapter(dropboxToken);
+        if (backend === "gdrive" && gdriveToken)
+          return createGdriveAdapter(gdriveToken);
+        return createLocalAdapter(userDataKey(userId));
+      }
+      const innerForCurrent: StorageAdapter = buildInner();
+      const innerForNext: StorageAdapter = buildInner();
       const current =
         encryption === "plaintext"
           ? innerForCurrent
@@ -778,7 +849,7 @@ export function App() {
       setEncryption(userId, next);
       setEncryptionState(next);
     },
-    [auth, backend, dropboxToken, encryption],
+    [auth, backend, dropboxToken, gdriveToken, encryption],
   );
 
   const persistRegistry = useCallback(
@@ -960,6 +1031,7 @@ export function App() {
       hasOtherUsers={otherRealUsers.length > 0}
       backend={backend}
       dropboxConnected={dropboxToken !== null}
+      gdriveConnected={gdriveToken !== null}
       encryption={encryption}
       getEncryptionPassword={() => passwordRef.current}
       onSignOut={handleSignOut}
@@ -968,6 +1040,8 @@ export function App() {
       onDeleteAccount={handleDeleteAccount}
       onConnectDropbox={handleConnectDropbox}
       onDisconnectDropbox={handleDisconnectDropbox}
+      onConnectGdrive={handleConnectGdrive}
+      onDisconnectGdrive={handleDisconnectGdrive}
       onSelectLocal={handleSelectLocal}
       onSetEncryption={handleSetEncryption}
     />
@@ -983,6 +1057,7 @@ type BudgetViewProps = {
   hasOtherUsers: boolean;
   backend: BackendId;
   dropboxConnected: boolean;
+  gdriveConnected: boolean;
   encryption: EncryptionMode;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
@@ -994,6 +1069,8 @@ type BudgetViewProps = {
   onDeleteAccount: (password: string) => Promise<void>;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
+  onConnectGdrive: () => void;
+  onDisconnectGdrive: () => void;
   onSelectLocal: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
 };
@@ -1005,6 +1082,7 @@ function BudgetView({
   hasOtherUsers,
   backend,
   dropboxConnected,
+  gdriveConnected,
   encryption,
   getEncryptionPassword,
   onSignOut,
@@ -1013,6 +1091,8 @@ function BudgetView({
   onDeleteAccount,
   onConnectDropbox,
   onDisconnectDropbox,
+  onConnectGdrive,
+  onDisconnectGdrive,
   onSelectLocal,
   onSetEncryption,
 }: BudgetViewProps) {
@@ -1706,12 +1786,15 @@ function BudgetView({
         settings={data.settings}
         backend={backend}
         dropboxConnected={dropboxConnected}
+        gdriveConnected={gdriveConnected}
         encryption={encryption}
         isGuest={isGuest}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
         onConnectDropbox={onConnectDropbox}
         onDisconnectDropbox={onDisconnectDropbox}
+        onConnectGdrive={onConnectGdrive}
+        onDisconnectGdrive={onDisconnectGdrive}
         onSelectLocal={onSelectLocal}
         onSetEncryption={onSetEncryption}
       />

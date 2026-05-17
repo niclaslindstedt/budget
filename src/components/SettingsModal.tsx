@@ -26,6 +26,7 @@ type Props = {
   settings: Settings;
   backend: BackendId;
   dropboxConnected: boolean;
+  gdriveConnected: boolean;
   encryption: EncryptionMode;
   // True when the active user is the no-password "guest" account.
   // Disables the encryption toggle (there's no key to derive without
@@ -35,9 +36,37 @@ type Props = {
   onSave: (next: Settings) => void;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
+  onConnectGdrive: () => void;
+  onDisconnectGdrive: () => void;
   onSelectLocal: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
 };
+
+type CloudId = Exclude<BackendId, "local">;
+
+type CloudCopy = {
+  name: string;
+  connectedHint: string;
+  unconnectedHint: string;
+};
+
+function cloudCopy(id: CloudId): CloudCopy {
+  if (id === "dropbox") {
+    return {
+      name: "Dropbox",
+      connectedHint:
+        "Synced to your Dropbox app folder every few minutes, or when you press Save.",
+      unconnectedHint:
+        "Authorize to keep your budget in your Dropbox app folder.",
+    };
+  }
+  return {
+    name: "Google Drive",
+    connectedHint:
+      "Synced to your Google Drive every few minutes, or when you press Save.",
+    unconnectedHint: "Authorize to keep your budget in your Google Drive.",
+  };
+}
 
 function presetIdFor(settings: Settings): string {
   const match = NUMBER_FORMATS.find(
@@ -57,12 +86,15 @@ export function SettingsModal({
   settings,
   backend,
   dropboxConnected,
+  gdriveConnected,
   encryption,
   isGuest,
   onClose,
   onSave,
   onConnectDropbox,
   onDisconnectDropbox,
+  onConnectGdrive,
+  onDisconnectGdrive,
   onSelectLocal,
   onSetEncryption,
 }: Props) {
@@ -154,6 +186,7 @@ export function SettingsModal({
             draft={draft}
             backend={backend}
             dropboxConnected={dropboxConnected}
+            gdriveConnected={gdriveConnected}
             encryption={encryption}
             isGuest={isGuest}
             onUpdate={update}
@@ -161,6 +194,8 @@ export function SettingsModal({
             onApplyDecimal={applyDecimal}
             onConnectDropbox={onConnectDropbox}
             onDisconnectDropbox={onDisconnectDropbox}
+            onConnectGdrive={onConnectGdrive}
+            onDisconnectGdrive={onDisconnectGdrive}
             onSelectLocal={onSelectLocal}
             onSetEncryption={onSetEncryption}
           />
@@ -200,6 +235,7 @@ function MainView({
   draft,
   backend,
   dropboxConnected,
+  gdriveConnected,
   encryption,
   isGuest,
   onUpdate,
@@ -207,12 +243,15 @@ function MainView({
   onApplyDecimal,
   onConnectDropbox,
   onDisconnectDropbox,
+  onConnectGdrive,
+  onDisconnectGdrive,
   onSelectLocal,
   onSetEncryption,
 }: {
   draft: Settings;
   backend: BackendId;
   dropboxConnected: boolean;
+  gdriveConnected: boolean;
   encryption: EncryptionMode;
   isGuest: boolean;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
@@ -220,6 +259,8 @@ function MainView({
   onApplyDecimal: (d: DecimalSeparator) => void;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
+  onConnectGdrive: () => void;
+  onDisconnectGdrive: () => void;
   onSelectLocal: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
 }) {
@@ -411,41 +452,55 @@ function MainView({
             value={backend}
             onSelect={(next) => {
               if (next === "local") onSelectLocal();
-              else onConnectDropbox();
+              else if (next === "dropbox") onConnectDropbox();
+              else onConnectGdrive();
             }}
           />
           <p className="text-xs text-muted">
-            {backend === "dropbox"
-              ? dropboxConnected
-                ? "Synced to your Dropbox app folder every few minutes, or when you press Save."
-                : "Authorize to keep your budget in your Dropbox app folder."
-              : "Stored locally in this browser. Export to JSON to move it elsewhere."}
+            {backend === "local"
+              ? "Stored locally in this browser. Export to JSON to move it elsewhere."
+              : (() => {
+                  const copy = cloudCopy(backend);
+                  const connected =
+                    backend === "dropbox" ? dropboxConnected : gdriveConnected;
+                  return connected ? copy.connectedHint : copy.unconnectedHint;
+                })()}
           </p>
         </Field>
-        {backend === "dropbox" && (
-          <div className="flex items-center gap-2">
-            {dropboxConnected ? (
-              <button
-                type="button"
-                onClick={onDisconnectDropbox}
-                className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-              >
-                Disconnect Dropbox
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onConnectDropbox}
-                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-              >
-                Connect Dropbox
-              </button>
-            )}
-            {dropboxConnected && (
-              <span className="text-xs text-success">Connected</span>
-            )}
-          </div>
-        )}
+        {backend !== "local" &&
+          (() => {
+            const copy = cloudCopy(backend);
+            const connected =
+              backend === "dropbox" ? dropboxConnected : gdriveConnected;
+            const onConnect =
+              backend === "dropbox" ? onConnectDropbox : onConnectGdrive;
+            const onDisconnect =
+              backend === "dropbox" ? onDisconnectDropbox : onDisconnectGdrive;
+            return (
+              <div className="flex items-center gap-2">
+                {connected ? (
+                  <button
+                    type="button"
+                    onClick={onDisconnect}
+                    className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+                  >
+                    Disconnect {copy.name}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onConnect}
+                    className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
+                  >
+                    Connect {copy.name}
+                  </button>
+                )}
+                {connected && (
+                  <span className="text-xs text-success">Connected</span>
+                )}
+              </div>
+            );
+          })()}
       </Section>
 
       <Section title="Security">
@@ -469,8 +524,8 @@ function MainView({
             </h3>
             <p className="mt-1 text-xs text-muted">
               {encryption === "encrypted"
-                ? "Your budget is wrapped in AES-GCM with a PBKDF2-derived key from your account password before being written — whether the bytes land in this browser or in your Dropbox app folder."
-                : "Your budget is written as plain JSON — to this browser, or to your Dropbox app folder if connected. Anyone with access to those bytes can read it without your password."}
+                ? "Your budget is wrapped in AES-GCM with a PBKDF2-derived key from your account password before being written — whether the bytes land in this browser or in your connected cloud folder."
+                : "Your budget is written as plain JSON — to this browser, or to your connected cloud folder. Anyone with access to those bytes can read it without your password."}
             </p>
           </div>
         </div>

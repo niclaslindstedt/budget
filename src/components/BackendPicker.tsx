@@ -4,6 +4,7 @@ import { Check, ChevronDown, HardDrive } from "lucide-react";
 
 import type { BackendId } from "../storage/backend-preference";
 import { DropboxGlyph } from "./DropboxGlyph";
+import { GoogleDriveGlyph } from "./GoogleDriveGlyph";
 
 const DROPDOWN_MIN_WIDTH = 224;
 const VIEWPORT_MARGIN = 8;
@@ -37,6 +38,11 @@ const OPTIONS: Option[] = [
     id: "dropbox",
     label: "Dropbox",
     Glyph: ({ size = 16 }) => <DropboxGlyph size={size} />,
+  },
+  {
+    id: "gdrive",
+    label: "Google Drive",
+    Glyph: ({ size = 16 }) => <GoogleDriveGlyph size={size} />,
   },
 ];
 
@@ -101,7 +107,7 @@ export function BackendPicker({ value, onSelect }: Props) {
       >
         <span
           aria-hidden
-          className={value === "dropbox" ? "text-accent" : "text-muted"}
+          className={value === "local" ? "text-muted" : "text-accent"}
         >
           <selected.Glyph size={16} />
         </span>
@@ -141,7 +147,7 @@ export function BackendPicker({ value, onSelect }: Props) {
                       <span
                         aria-hidden
                         className={
-                          opt.id === "dropbox" ? "text-accent" : "text-muted"
+                          opt.id === "local" ? "text-muted" : "text-accent"
                         }
                       >
                         <opt.Glyph size={16} />

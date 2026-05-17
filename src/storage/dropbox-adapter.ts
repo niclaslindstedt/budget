@@ -1,4 +1,5 @@
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+import { challengeFor, randomVerifier, redirectUri } from "./oauth-pkce";
 
 // Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly
 // (no SDK — two endpoints don't justify ~100kB of bundle) and stores
@@ -143,30 +144,6 @@ export function createDropboxAdapter(
 
 // ---- OAuth (PKCE) ---------------------------------------------------
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomVerifier(): string {
-  const bytes = new Uint8Array(64);
-  crypto.getRandomValues(bytes);
-  return base64UrlEncode(bytes);
-}
-
-async function challengeFor(verifier: string): Promise<string> {
-  const data = new TextEncoder().encode(verifier);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return base64UrlEncode(new Uint8Array(digest));
-}
-
-function redirectUri(): string {
-  // The OAuth app registration must list this exact URI; we use the
-  // current page origin so prod and local dev work without forking.
-  return `${window.location.origin}/`;
-}
-
 // Kicks the user out to Dropbox's consent page. Returns nothing — the
 // next thing that happens is a full-page redirect back to the app
 // with `?code=…` set.
@@ -181,6 +158,10 @@ export async function startDropboxAuth(): Promise<void> {
     code_challenge: challenge,
     code_challenge_method: "S256",
     token_access_type: "offline",
+    // Tag the redirect so a multi-provider app can route the ?code=
+    // back to the right token exchange. Dropbox echoes `state` back
+    // unchanged.
+    state: "dropbox",
   });
   window.location.assign(`${AUTH_BASE}?${params.toString()}`);
 }
