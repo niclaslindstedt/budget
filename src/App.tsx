@@ -65,7 +65,7 @@ import type {
   Transaction,
   UserData,
 } from "./data/types";
-import type { StorageAdapter } from "./storage/adapter";
+import type { Snapshot, StorageAdapter } from "./storage/adapter";
 import {
   type BackendId,
   type EncryptionMode,
@@ -705,13 +705,17 @@ type AuthState =
   | { kind: "signed-out"; lastUsername: string | null }
   | { kind: "signed-in"; user: StoredUser; password: string };
 
-// In-flight cloud-link awaiting the user's choice. OAuth has completed
-// (so we hold valid tokens) and a probe of the target cloud has
-// returned an existing budget file — `remoteRevision` is the snapshot
-// token we'll thread back through `save()` if the user picks "replace
-// with current budget", so the optimistic-concurrency guard in the
-// adapter sees the parent revision and accepts the write as an update
-// rather than a colliding `add`.
+// In-flight cloud-link awaiting the user's confirmation. OAuth has
+// completed (so we hold valid tokens) and the target cloud and the
+// active source backend have both been probed — `remoteSnapshot` is
+// the cloud's existing file (or `null` when the cloud is empty), and
+// `sourceText` is the bytes currently on the source side (or `null`
+// when the source has nothing yet). The dialog uses the
+// presence / absence of each side to decide what to ask; resolving
+// uploads `sourceText` to the cloud (threading
+// `remoteSnapshot.revision` so the write lands as an update rather
+// than a colliding `add`) when the user picks "use this device's
+// budget", and otherwise just flips the backend.
 type PendingCloudLink =
   | {
       provider: "dropbox";
@@ -719,13 +723,15 @@ type PendingCloudLink =
       // The backend the user is linking *from*, used to phrase the
       // dialog ("this device" vs. "your current Dropbox" etc.).
       fromBackend: BackendId;
-      remoteRevision: string | undefined;
+      remoteSnapshot: Snapshot | null;
+      sourceText: string | null;
     }
   | {
       provider: "gdrive";
       accessToken: string;
       fromBackend: BackendId;
-      remoteRevision: string | undefined;
+      remoteSnapshot: Snapshot | null;
+      sourceText: string | null;
     };
 
 // Resolve the auth state to land on at boot. If sessionStorage still
@@ -880,27 +886,73 @@ export function App() {
     setBackendState("gdrive");
   }, []);
 
-  // Push the user's current in-memory budget through a freshly-built
-  // raw cloud adapter, wrapping with `withEncryption` so the bytes
-  // that land in the cloud match the user's encryption preference.
-  // `baseRevision` lets the caller thread the revision returned by an
-  // earlier probe so the adapter writes the file as an update (not an
-  // `add` that would 409 against the pre-existing remote).
-  const uploadCurrentDataVia = useCallback(
-    async (
-      rawCloud: StorageAdapter,
-      baseRevision: string | undefined,
-    ): Promise<void> => {
-      const data = currentDataRef.current;
-      if (!data) return;
+  // Wrap a raw adapter with `withEncryption` when the active user has
+  // encryption on AND a password is in hand — mirrors the same gate
+  // used when assembling the live `adapter` below, so source / target
+  // probes during the link flow see and write the bytes through the
+  // same envelope the steady-state app does.
+  const wrapWithActiveEncryption = useCallback(
+    (raw: StorageAdapter): StorageAdapter => {
       const password = passwordRef.current;
-      const cloud =
-        encryption === "encrypted" && password
-          ? withEncryption(rawCloud, passwordRef)
-          : rawCloud;
-      await cloud.save(serializeUserData(data), baseRevision);
+      return encryption === "encrypted" && password
+        ? withEncryption(raw, passwordRef)
+        : raw;
     },
     [encryption],
+  );
+
+  // Build a raw adapter for the *source* backend so the OAuth-
+  // completion path can load the user's current bytes without
+  // depending on `currentDataRef` — which only reflects whatever
+  // BudgetView happens to have loaded by the time the redirect lands
+  // (typically `freshUserData()` on a cold boot, since cloud loads
+  // are async). Returns null only when the source is a cloud backend
+  // and the token has gone missing.
+  const buildSourceRawAdapter = useCallback(
+    (userId: string, fromBackend: BackendId): StorageAdapter | null => {
+      if (fromBackend === "dropbox") {
+        const token = getDropboxToken(userId);
+        if (!token) return null;
+        const refresh = getDropboxRefreshToken(userId);
+        return createDropboxAdapter({
+          accessToken: token,
+          refreshToken: refresh,
+          onAccessTokenRefreshed: (next) => {
+            setDropboxToken(userId, next);
+          },
+        });
+      }
+      if (fromBackend === "gdrive") {
+        const token = getGdriveToken(userId);
+        if (!token) return null;
+        return createGdriveAdapter(token);
+      }
+      return createLocalAdapter(userDataKey(userId));
+    },
+    [],
+  );
+
+  // Read the source backend's current bytes, falling back to the
+  // in-memory snapshot if the source adapter can't be built (e.g. a
+  // cloud source whose token expired between sessions). The result
+  // is plaintext UserData JSON ready to be re-written through a
+  // wrapped target adapter on the resolve path.
+  const loadSourceText = useCallback(
+    async (userId: string, fromBackend: BackendId): Promise<string | null> => {
+      const raw = buildSourceRawAdapter(userId, fromBackend);
+      if (raw) {
+        try {
+          const wrapped = wrapWithActiveEncryption(raw);
+          const snap = await wrapped.load();
+          if (snap) return snap.text;
+        } catch (err) {
+          console.error("Source load failed during cloud link:", err);
+        }
+      }
+      const fallback = currentDataRef.current;
+      return fallback ? serializeUserData(fallback) : null;
+    },
+    [buildSourceRawAdapter, wrapWithActiveEncryption],
   );
 
   // Complete the cloud-backend OAuth round-trip when the redirect
@@ -912,12 +964,15 @@ export function App() {
   // that didn't set `state`. Errors surface in the console only; a
   // future polish pass can surface them in UI.
   //
-  // Before flipping the backend we probe the target cloud: if it
-  // already holds a budget file, parking the OAuth result in
-  // `pendingCloudLink` lets the user decide between adopting the
-  // remote file or replacing it with the current one — otherwise the
-  // backend flip would silently overwrite whichever side is "smaller"
-  // (the cloud on first save, or the local data on first load).
+  // Before flipping the backend we probe both sides — the target
+  // cloud (so the dialog knows whether it already holds a budget)
+  // and the source backend (so we have authoritative bytes to push,
+  // independent of whether BudgetView has finished its async load
+  // into `currentDataRef`). The result is always parked in
+  // `pendingCloudLink` so the user sees an explicit confirmation
+  // dialog for the switch, even in the no-conflict cases — silently
+  // flipping the backend has been the source of "did it work?"
+  // confusion.
   useEffect(() => {
     if (auth.kind !== "signed-in") return;
     const params = new URLSearchParams(window.location.search);
@@ -951,21 +1006,20 @@ export function App() {
         // own on the next 401.
         onAccessTokenRefreshed: () => {},
       });
-      const remote = await probe.load();
+      const [remote, sourceText] = await Promise.all([
+        probe.load().catch((err: unknown) => {
+          console.error("Dropbox probe failed during link:", err);
+          return null;
+        }),
+        loadSourceText(userId, fromBackend),
+      ]);
       if (cancelled || auth.kind !== "signed-in") return;
-      if (remote === null || currentDataRef.current === null) {
-        // Cloud is empty or the local side has nothing to lose —
-        // adopt the cloud as-is, pushing local up first if there's
-        // anything to push, then flip the backend.
-        if (remote === null) await uploadCurrentDataVia(probe, undefined);
-        commitDropboxLink(userId, result);
-        return;
-      }
       setPendingCloudLink({
         provider: "dropbox",
         auth: result,
         fromBackend,
-        remoteRevision: remote.revision,
+        remoteSnapshot: remote,
+        sourceText,
       });
     }
 
@@ -973,18 +1027,20 @@ export function App() {
       const token = await completeGdriveAuth(authCode);
       if (cancelled || auth.kind !== "signed-in") return;
       const probe = createGdriveAdapter(token);
-      const remote = await probe.load();
+      const [remote, sourceText] = await Promise.all([
+        probe.load().catch((err: unknown) => {
+          console.error("Google Drive probe failed during link:", err);
+          return null;
+        }),
+        loadSourceText(userId, fromBackend),
+      ]);
       if (cancelled || auth.kind !== "signed-in") return;
-      if (remote === null || currentDataRef.current === null) {
-        if (remote === null) await uploadCurrentDataVia(probe, undefined);
-        commitGdriveLink(userId, token);
-        return;
-      }
       setPendingCloudLink({
         provider: "gdrive",
         accessToken: token,
         fromBackend,
-        remoteRevision: remote.revision,
+        remoteSnapshot: remote,
+        sourceText,
       });
     }
 
@@ -999,26 +1055,27 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [auth, commitDropboxLink, commitGdriveLink, uploadCurrentDataVia]);
+  }, [auth, loadSourceText]);
 
-  // Resolve a parked cloud-link conflict. "use-remote" just flips the
-  // backend and lets the storage hook reload from the cloud; "replace-
-  // remote" pushes the user's current budget through the probe adapter
-  // first (using the remote revision the probe gave us, so the write
-  // lands as an update rather than colliding with the existing file)
-  // and only then flips the backend. The dialog is dismissed as soon
-  // as the user picks so the path stays snappy; any error from the
-  // upload is logged and the link silently aborts (the user can
-  // retry from Settings).
+  // Resolve a parked cloud-link confirmation. "use-cloud" just flips
+  // the backend and lets the storage hook reload from the cloud (which
+  // may itself be empty — that's the "both sides empty, just confirm"
+  // case). "use-source" pushes the stashed `sourceText` through the
+  // probe adapter first, threading the remote revision so the write
+  // lands as an update rather than a colliding `add` when the cloud
+  // already had a file; then flips the backend. The dialog is
+  // dismissed as soon as the user picks so the path stays snappy;
+  // any error from the upload is logged and the link silently aborts
+  // (the user can retry from Settings).
   const resolveCloudLink = useCallback(
-    async (action: "use-remote" | "replace-remote"): Promise<void> => {
+    async (action: "use-cloud" | "use-source"): Promise<void> => {
       const pending = pendingCloudLink;
       if (!pending || auth.kind !== "signed-in") return;
       setPendingCloudLink(null);
       const userId = auth.user.id;
       try {
-        if (action === "replace-remote") {
-          const probe =
+        if (action === "use-source" && pending.sourceText !== null) {
+          const probeRaw =
             pending.provider === "dropbox"
               ? createDropboxAdapter({
                   accessToken: pending.auth.accessToken,
@@ -1028,7 +1085,11 @@ export function App() {
                   },
                 })
               : createGdriveAdapter(pending.accessToken);
-          await uploadCurrentDataVia(probe, pending.remoteRevision);
+          const probe = wrapWithActiveEncryption(probeRaw);
+          await probe.save(
+            pending.sourceText,
+            pending.remoteSnapshot?.revision,
+          );
         }
         if (pending.provider === "dropbox") {
           commitDropboxLink(userId, pending.auth);
@@ -1044,7 +1105,7 @@ export function App() {
       pendingCloudLink,
       commitDropboxLink,
       commitGdriveLink,
-      uploadCurrentDataVia,
+      wrapWithActiveEncryption,
     ],
   );
 
@@ -1423,7 +1484,7 @@ export function App() {
         onSelectLocal={handleSelectLocal}
         onSetEncryption={handleSetEncryption}
       />
-      <CloudLinkConflictDialog
+      <CloudLinkDialog
         pending={pendingCloudLink}
         onResolve={resolveCloudLink}
         onCancel={cancelCloudLink}
@@ -1432,67 +1493,143 @@ export function App() {
   );
 }
 
-// Surfaces the cloud-link conflict to the user. Two actions, neither
-// pre-selected: adopting the cloud version replaces what's on this
-// device; the other replaces what's in the cloud. Wording shifts
-// between "this device" and the source cloud name so a user migrating
-// from one cloud backend to another sees an accurate prompt.
-function CloudLinkConflictDialog({
+// Surfaces the finished cloud link to the user. Always shows after a
+// successful OAuth round-trip, so the switch is never silent — even
+// the no-decision cases ("both sides empty, just confirm") get an
+// explicit "Done" so the user knows the backend has flipped. When
+// there is a choice to make — the source has data, the target has
+// data, or both — the buttons spell out which side wins and which
+// gets replaced. Wording shifts between "this device" and the source
+// cloud name so a user migrating from one cloud backend to another
+// sees an accurate prompt.
+function CloudLinkDialog({
   pending,
   onResolve,
   onCancel,
 }: {
   pending: PendingCloudLink | null;
-  onResolve: (action: "use-remote" | "replace-remote") => void;
+  onResolve: (action: "use-cloud" | "use-source") => void;
   onCancel: () => void;
 }) {
   if (!pending) return null;
   const targetName =
     pending.provider === "dropbox" ? "Dropbox" : "Google Drive";
-  const sourceName =
+  const sourcePossessive =
     pending.fromBackend === "local"
-      ? "this device"
+      ? "this device's budget"
       : pending.fromBackend === "dropbox"
         ? "your Dropbox budget"
         : "your Google Drive budget";
-  // The "kept" side is whichever location won't be overwritten by the
-  // user's choice. The "untouched" side is the *other* original
-  // location: switching backends never deletes the source data — it
-  // sits there until the user opts to clear it — so we tell them
-  // outright. Worded for both directions: linking from local leaves
-  // localStorage intact; linking from another cloud leaves that
-  // cloud's file intact.
   const untouched =
     pending.fromBackend === "local"
-      ? "your current budget on this device"
+      ? "this device's current budget"
       : pending.fromBackend === "dropbox"
         ? "your Dropbox budget"
         : "your Google Drive budget";
+  const hasSource = pending.sourceText !== null;
+  const hasRemote = pending.remoteSnapshot !== null;
+
+  // The dialog body shifts based on which sides hold a budget. Four
+  // shapes total — kept inline so the variant matrix is visible at a
+  // glance rather than scattered across helpers.
+  if (hasSource && hasRemote) {
+    return (
+      <ConfirmDialog
+        open
+        title={`${targetName} already has a budget`}
+        description={
+          <>
+            <p>
+              {targetName} already contains a budget file. Pick which version to
+              keep — the other will be replaced.
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Either way, {untouched} stays where it is — switching backends
+              doesn&apos;t delete it, so you can still get back to it later.
+            </p>
+          </>
+        }
+        actions={[
+          {
+            label: `Use the ${targetName} version`,
+            onSelect: () => onResolve("use-cloud"),
+          },
+          {
+            label: `Replace ${targetName} with ${sourcePossessive}`,
+            tone: "danger",
+            onSelect: () => onResolve("use-source"),
+          },
+        ]}
+        onCancel={onCancel}
+      />
+    );
+  }
+  if (hasSource && !hasRemote) {
+    return (
+      <ConfirmDialog
+        open
+        title={`Linking ${targetName}`}
+        description={
+          <>
+            <p>
+              {targetName} is connected and empty. Bring {sourcePossessive}{" "}
+              over, or start fresh on {targetName}?
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              {untouched} stays where it is either way — switching backends
+              doesn&apos;t delete it.
+            </p>
+          </>
+        }
+        actions={[
+          {
+            label: `Bring ${sourcePossessive} over to ${targetName}`,
+            onSelect: () => onResolve("use-source"),
+          },
+          {
+            label: `Start fresh on ${targetName}`,
+            onSelect: () => onResolve("use-cloud"),
+          },
+        ]}
+        onCancel={onCancel}
+      />
+    );
+  }
+  if (!hasSource && hasRemote) {
+    return (
+      <ConfirmDialog
+        open
+        title={`Use existing ${targetName} budget?`}
+        description={
+          <p>
+            {targetName} already contains a budget file. Switching will use that
+            as your active budget on this device.
+          </p>
+        }
+        actions={[
+          {
+            label: `Switch to ${targetName}`,
+            onSelect: () => onResolve("use-cloud"),
+          },
+        ]}
+        onCancel={onCancel}
+      />
+    );
+  }
   return (
     <ConfirmDialog
       open
-      title={`${targetName} already has a budget`}
+      title={`${targetName} linked`}
       description={
-        <>
-          <p>
-            {targetName} already contains a budget file. Pick which version to
-            keep — the other will be replaced.
-          </p>
-          <p className="mt-2 text-xs text-muted">
-            Either way, {untouched} stays where it is — switching backends
-            doesn&apos;t delete it, so you can still get back to it later.
-          </p>
-        </>
+        <p>
+          {targetName} is connected. New entries will be saved there from now
+          on.
+        </p>
       }
       actions={[
         {
-          label: `Use the ${targetName} version`,
-          onSelect: () => onResolve("use-remote"),
-        },
-        {
-          label: `Replace ${targetName} with ${sourceName}`,
-          tone: "danger",
-          onSelect: () => onResolve("replace-remote"),
+          label: `Switch to ${targetName}`,
+          onSelect: () => onResolve("use-cloud"),
         },
       ]}
       onCancel={onCancel}
@@ -2376,8 +2513,9 @@ function BudgetView({
         </button>
         <div className="ml-auto inline-flex items-center gap-2">
           <SaveStateButton dirty={dirty} onSave={saveNow} />
-          {backend === "dropbox" && (
+          {backend !== "local" && (
             <SyncStatus
+              providerName={backend === "dropbox" ? "Dropbox" : "Google Drive"}
               status={status}
               dirty={dirty}
               onClick={() => setSyncDetailsOpen(true)}

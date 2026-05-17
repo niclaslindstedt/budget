@@ -8,6 +8,7 @@ import type { SaveStatus } from "../storage/useUserDataStorage";
 // chrome noise. Clicking opens the sync-details modal.
 
 type Props = {
+  providerName: string;
   status: SaveStatus;
   dirty: boolean;
   onClick: () => void;
@@ -20,7 +21,11 @@ type View = {
   spin?: boolean;
 };
 
-function viewFor(status: SaveStatus, dirty: boolean): View {
+function viewFor(
+  status: SaveStatus,
+  dirty: boolean,
+  providerName: string,
+): View {
   switch (status.kind) {
     case "loading":
       return { Icon: Loader, label: "Loading…", tone: "busy", spin: true };
@@ -38,7 +43,11 @@ function viewFor(status: SaveStatus, dirty: boolean): View {
     case "idle":
       return dirty
         ? { Icon: RefreshCw, label: "Pending sync", tone: "busy" }
-        : { Icon: CloudCheck, label: "Synced to Dropbox", tone: "ok" };
+        : {
+            Icon: CloudCheck,
+            label: `Synced to ${providerName}`,
+            tone: "ok",
+          };
   }
 }
 
@@ -49,8 +58,8 @@ const TONE_CLASS: Record<View["tone"], string> = {
   err: "border-danger/50 text-danger hover:bg-danger/10",
 };
 
-export function SyncStatus({ status, dirty, onClick }: Props) {
-  const view = viewFor(status, dirty);
+export function SyncStatus({ providerName, status, dirty, onClick }: Props) {
+  const view = viewFor(status, dirty, providerName);
   return (
     <button
       type="button"
