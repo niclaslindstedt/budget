@@ -70,6 +70,26 @@
   --positive: #b5e3a0;
   --negative: #f0b4ba;
   --line: #3e4451;
+  /* Per-month pastels. The wheel runs cold → warm → cold through the
+     year (icy blues in deep winter, fresh greens in spring, peaches and
+     ambers in summer, mauves and cranberries through autumn back into
+     winter) so the eye picks up the season at a glance. Used by the
+     sticky month header and the date-cell day numbers; the cell colour
+     follows the date's calendar month, not the fiscal-month bucket it
+     sits in, so a row in April that lives in May's table still reads as
+     April. Light pastels here for legibility on the dark surface. */
+  --month-1: #9bc4e2;
+  --month-2: #b8b5dd;
+  --month-3: #a8d5ba;
+  --month-4: #b5d88a;
+  --month-5: #f2a5b5;
+  --month-6: #f2d27a;
+  --month-7: #f5b97a;
+  --month-8: #e8a878;
+  --month-9: #d89878;
+  --month-10: #d98a6a;
+  --month-11: #b894a5;
+  --month-12: #c88898;
 }
 
 @media (prefers-color-scheme: light) {
@@ -93,6 +113,20 @@
     --positive: #5fa057;
     --negative: #d77a82;
     --line: #ccd0d6;
+    /* Same wheel, retuned for the lighter surface — pastels deepened so
+       they retain enough chroma to read against the light backdrop. */
+    --month-1: #4f86b3;
+    --month-2: #7670b8;
+    --month-3: #4f9c75;
+    --month-4: #6e9c3a;
+    --month-5: #c0556f;
+    --month-6: #b88b1a;
+    --month-7: #c47220;
+    --month-8: #a4601c;
+    --month-9: #95521e;
+    --month-10: #9e4a23;
+    --month-11: #815a6a;
+    --month-12: #985367;
   }
 }
 

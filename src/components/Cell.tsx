@@ -6,11 +6,13 @@ import {
   formatAmountForInput,
   formatBalance,
   formatDate,
+  formatDayOnly,
   formatShortDate,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
 } from "../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
 
@@ -267,19 +269,26 @@ function DateCell({
   const [open, setOpen] = useState(false);
   const iso = typeof value === "string" ? value : "";
   const short = iso ? formatShortDate(iso, settings.shortDateFormat) : "";
+  const dayOnly = iso ? formatDayOnly(iso) : "";
   const formatted = iso ? formatDate(iso, settings.dateFormat) : "";
+  // Colour follows the date's *calendar* month, so a row whose date is
+  // in April but whose fiscal-month bucket is May still reads as April.
+  const monthNum = iso ? monthNumberFromKey(iso) : null;
+  const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
 
   return (
     <td className={`${CELL_BASE} relative p-0`}>
       <button
         type="button"
-        className={`block w-full cursor-pointer border-0 bg-transparent px-1 py-2 text-center font-mono tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:text-right ${
-          short ? "text-path" : "text-muted"
+        className={`block w-full cursor-pointer border-0 bg-transparent px-1 py-2 text-center font-mono font-bold tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:font-normal md:text-right ${
+          iso ? "" : "text-muted"
         }`}
+        style={iso && monthColor ? { color: monthColor } : undefined}
         aria-label={iso ? `Change date (${formatted})` : "Pick a date"}
         onClick={() => setOpen(true)}
       >
-        {short || "—"}
+        <span className="md:hidden">{dayOnly || "—"}</span>
+        <span className="hidden md:inline">{short || "—"}</span>
       </button>
       <DatePickerModal
         open={open}

@@ -175,6 +175,16 @@ export function formatDate(iso: string, format: DateFormat): string {
   }
 }
 
+// Day-only rendering for the mobile cell — month is conveyed by the
+// per-month colour applied to the cell text, so the digits stay
+// compact enough to share a row with description + amount + balance.
+export function formatDayOnly(iso: string): string {
+  if (typeof iso !== "string" || iso.length < 10) return "";
+  const dayNum = Number(iso.slice(8, 10));
+  if (!Number.isFinite(dayNum)) return "";
+  return String(dayNum);
+}
+
 // Short date for in-row cells: day and month only, no year, with
 // leading zeros stripped. Configured independently of `dateFormat`
 // so users can read sheet cells as "16/5" while keeping a long-form
