@@ -162,7 +162,10 @@ export function SheetRow({
             type="button"
             className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
             aria-label={isSeries ? "Edit recurring entry" : "Make recurring"}
-            onClick={() => onEditRequest(row)}
+            onClick={() => {
+              setSwiped(false);
+              onEditRequest(row);
+            }}
           >
             <Repeat size={16} aria-hidden focusable={false} />
           </button>
