@@ -16,13 +16,14 @@ import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
 // and the key itself is published in the deployed JS bundle either
 // way — bake it in for zero env-var infrastructure.
 //
-// NOTE: This is a placeholder. Register a Dropbox app at
-// https://www.dropbox.com/developers/apps with type "Scoped access",
-// permission type "App folder", and the redirect URIs configured to
-// `https://budget.niclaslindstedt.se/` (prod) and
-// `http://localhost:5173/` (dev). Replace the value below with the
-// app key the dashboard hands back.
-export const DROPBOX_APP_KEY = "REPLACE_ME_WITH_DROPBOX_APP_KEY";
+// The matching app is registered at
+// https://www.dropbox.com/developers/apps as "Scoped access" with
+// permission type "App folder" (folder name `budget.niclaslindstedt.se`).
+// Its redirect URIs must include `https://budget.niclaslindstedt.se/`
+// (prod) and `http://localhost:5173/` (dev) — `startDropboxAuth`
+// derives the URI from `window.location.origin` and Dropbox requires
+// an exact match.
+export const DROPBOX_APP_KEY = "fjk4dj166rrzuiw";
 
 const DROPBOX_FILE_PATH = "/budget.json";
 const AUTH_BASE = "https://www.dropbox.com/oauth2/authorize";
