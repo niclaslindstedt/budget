@@ -35,6 +35,11 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
+  // Monotonic counter from the parent. Each tick triggers a one-shot
+  // scroll to today's row (or the current fiscal month container if no
+  // row falls on today). Initial value 0 is a no-op so the parent can
+  // mount us without immediately overriding the first-mount auto-scroll.
+  scrollToTodayTick: number;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onAddComplex: (date: string) => void;
@@ -58,6 +63,7 @@ export function SheetView({
   settings,
   selectMode,
   selectedIds,
+  scrollToTodayTick,
   onUpdateCell,
   onAddRow,
   onAddComplex,
@@ -68,6 +74,7 @@ export function SheetView({
   onToggleSelectMonth,
   onCreateCategory,
 }: Props) {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const dateCol = useMemo(
     () => findColumnByType(item.columns, "date"),
     [item.columns],
@@ -142,8 +149,30 @@ export function SheetView({
     });
   }, [sheet.id, currentMonth]);
 
+  // User-triggered scroll-to-today (parent bumps the tick when the
+  // budget icon/title is pressed). Initial 0 is skipped so the first
+  // mount only fires the auto-scroll above. Prefers a row that lands
+  // exactly on today's ISO; falls back to the current fiscal month
+  // container when today has no entry yet.
+  useEffect(() => {
+    if (scrollToTodayTick === 0) return;
+    requestAnimationFrame(() => {
+      const row = sectionRef.current?.querySelector<HTMLElement>(
+        `[data-row-date="${today}"]`,
+      );
+      if (row) {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      scrollTargetRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [scrollToTodayTick, today]);
+
   return (
-    <section>
+    <section ref={sectionRef}>
       <header className="mb-4 flex items-center gap-2">
         <h2 className="m-0 text-base font-bold text-fg-bright">{sheet.name}</h2>
       </header>

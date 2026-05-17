@@ -46,6 +46,14 @@ export function SheetRow({
     completedCol !== undefined && row.cells[completedCol.id] === true;
   const isSeries = !!row.seriesId;
 
+  // Expose the row's ISO date so SheetView's scroll-to-today can target
+  // it directly. Skipped when the date cell is empty or non-string.
+  const dateCol = findColumnByType(columns, "date");
+  const isoDate =
+    dateCol && typeof row.cells[dateCol.id] === "string"
+      ? (row.cells[dateCol.id] as string)
+      : undefined;
+
   const onTouchStart = (e: React.TouchEvent) => {
     if (selectMode) return;
     const t = e.touches[0];
@@ -96,6 +104,7 @@ export function SheetRow({
   return (
     <tr
       className={rowClass}
+      data-row-date={isoDate}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
