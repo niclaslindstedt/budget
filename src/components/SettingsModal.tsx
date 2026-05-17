@@ -466,6 +466,11 @@ function MainView({
                   return connected ? copy.connectedHint : copy.unconnectedHint;
                 })()}
           </p>
+          <p className="text-xs text-muted">
+            Switching backends doesn&apos;t delete the budget at the other
+            location — it stays in place, so you can switch back to it from here
+            later.
+          </p>
         </Field>
         {backend !== "local" &&
           (() => {

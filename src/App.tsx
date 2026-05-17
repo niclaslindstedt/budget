@@ -85,10 +85,12 @@ import {
 } from "./storage/backend-preference";
 import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
 import {
+  type DropboxAuthResult,
   completeDropboxAuth,
   createDropboxAdapter,
   startDropboxAuth,
 } from "./storage/dropbox-adapter";
+import { serializeUserData } from "./storage/file";
 import {
   completeGdriveAuth,
   createGdriveAdapter,
@@ -703,6 +705,29 @@ type AuthState =
   | { kind: "signed-out"; lastUsername: string | null }
   | { kind: "signed-in"; user: StoredUser; password: string };
 
+// In-flight cloud-link awaiting the user's choice. OAuth has completed
+// (so we hold valid tokens) and a probe of the target cloud has
+// returned an existing budget file — `remoteRevision` is the snapshot
+// token we'll thread back through `save()` if the user picks "replace
+// with current budget", so the optimistic-concurrency guard in the
+// adapter sees the parent revision and accepts the write as an update
+// rather than a colliding `add`.
+type PendingCloudLink =
+  | {
+      provider: "dropbox";
+      auth: DropboxAuthResult;
+      // The backend the user is linking *from*, used to phrase the
+      // dialog ("this device" vs. "your current Dropbox" etc.).
+      fromBackend: BackendId;
+      remoteRevision: string | undefined;
+    }
+  | {
+      provider: "gdrive";
+      accessToken: string;
+      fromBackend: BackendId;
+      remoteRevision: string | undefined;
+    };
+
 // Resolve the auth state to land on at boot. If sessionStorage still
 // holds a non-expired password for a known user, jump straight back
 // into the signed-in state — that's the whole point of the cache.
@@ -785,6 +810,22 @@ export function App() {
   const [encryption, setEncryptionState] =
     useState<EncryptionMode>("encrypted");
 
+  // Pending cloud-link conflict resolution. Non-null while the user is
+  // being asked to decide between adopting the cloud file or replacing
+  // it with their current budget — the tokens collected by OAuth are
+  // parked here so the dialog's "Use cloud" / "Replace with current
+  // budget" branches can finish the link with the right effect.
+  const [pendingCloudLink, setPendingCloudLink] =
+    useState<PendingCloudLink | null>(null);
+
+  // Mirror of BudgetView's in-memory `UserData` so the OAuth-completion
+  // and conflict-resolution paths in App can push the user's current
+  // budget into a freshly-linked cloud backend. BudgetView updates this
+  // on every render — see the `useEffect` near `useUserDataStorage` —
+  // and null means "no budget loaded yet" (e.g. between mount and the
+  // first async load on a cloud adapter).
+  const currentDataRef = useRef<UserData | null>(null);
+
   // Sync state with the active user every time auth flips. The
   // default (no-password) user is pinned to plaintext storage — there
   // is no password to derive a key from, and the user explicitly
@@ -807,6 +848,61 @@ export function App() {
     );
   }, [auth]);
 
+  // Persist the OAuth tokens and flip the active backend in one batch,
+  // so the adapter `useMemo` below rebuilds against the new cloud
+  // backend exactly once. Split out from the OAuth effect because both
+  // the "no remote file" branch and the conflict-resolution dialog
+  // need the same commit step.
+  const commitDropboxLink = useCallback(
+    (userId: string, result: DropboxAuthResult) => {
+      setDropboxToken(userId, result.accessToken);
+      if (result.refreshToken) {
+        setDropboxRefreshToken(userId, result.refreshToken);
+        dropboxRefreshTokenRef.current = result.refreshToken;
+      } else {
+        // Shouldn't happen — `token_access_type=offline` should always
+        // return one — but clear stale state if it does so we don't
+        // try to refresh with the previous account's token.
+        clearDropboxRefreshToken(userId);
+        dropboxRefreshTokenRef.current = null;
+      }
+      setBackend(userId, "dropbox");
+      setDropboxTokenState(result.accessToken);
+      setBackendState("dropbox");
+    },
+    [],
+  );
+
+  const commitGdriveLink = useCallback((userId: string, token: string) => {
+    setGdriveToken(userId, token);
+    setBackend(userId, "gdrive");
+    setGdriveTokenState(token);
+    setBackendState("gdrive");
+  }, []);
+
+  // Push the user's current in-memory budget through a freshly-built
+  // raw cloud adapter, wrapping with `withEncryption` so the bytes
+  // that land in the cloud match the user's encryption preference.
+  // `baseRevision` lets the caller thread the revision returned by an
+  // earlier probe so the adapter writes the file as an update (not an
+  // `add` that would 409 against the pre-existing remote).
+  const uploadCurrentDataVia = useCallback(
+    async (
+      rawCloud: StorageAdapter,
+      baseRevision: string | undefined,
+    ): Promise<void> => {
+      const data = currentDataRef.current;
+      if (!data) return;
+      const password = passwordRef.current;
+      const cloud =
+        encryption === "encrypted" && password
+          ? withEncryption(rawCloud, passwordRef)
+          : rawCloud;
+      await cloud.save(serializeUserData(data), baseRevision);
+    },
+    [encryption],
+  );
+
   // Complete the cloud-backend OAuth round-trip when the redirect
   // lands back here. The user signed in before clicking Connect, so
   // by the time this fires they should already be signed-in again
@@ -815,50 +911,83 @@ export function App() {
   // Dropbox for backwards compatibility with the legacy auth URL
   // that didn't set `state`. Errors surface in the console only; a
   // future polish pass can surface them in UI.
+  //
+  // Before flipping the backend we probe the target cloud: if it
+  // already holds a budget file, parking the OAuth result in
+  // `pendingCloudLink` lets the user decide between adopting the
+  // remote file or replacing it with the current one — otherwise the
+  // backend flip would silently overwrite whichever side is "smaller"
+  // (the cloud on first save, or the local data on first load).
   useEffect(() => {
     if (auth.kind !== "signed-in") return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     if (!code) return;
+    // Pin the narrowed string into a local — TypeScript's
+    // `if (!code) return` narrowing doesn't reach the nested function
+    // declarations below, which would otherwise see `string | null`.
+    const authCode = code;
     const provider = params.get("state") === "gdrive" ? "gdrive" : "dropbox";
     let cancelled = false;
-    if (provider === "gdrive") {
-      completeGdriveAuth(code)
-        .then((token) => {
-          if (cancelled || auth.kind !== "signed-in") return;
-          setGdriveToken(auth.user.id, token);
-          setBackend(auth.user.id, "gdrive");
-          setGdriveTokenState(token);
-          setBackendState("gdrive");
-        })
-        .catch((err: unknown) => {
-          console.error(`${provider} connect failed:`, err);
-        })
-        .finally(cleanCodeFromUrl);
-    } else {
-      completeDropboxAuth(code)
-        .then((result) => {
-          if (cancelled || auth.kind !== "signed-in") return;
-          setDropboxToken(auth.user.id, result.accessToken);
-          if (result.refreshToken) {
-            setDropboxRefreshToken(auth.user.id, result.refreshToken);
-            dropboxRefreshTokenRef.current = result.refreshToken;
-          } else {
-            // Shouldn't happen — `token_access_type=offline` should
-            // always return one — but clear stale state if it does so
-            // we don't try to refresh with the previous account's token.
-            clearDropboxRefreshToken(auth.user.id);
-            dropboxRefreshTokenRef.current = null;
-          }
-          setBackend(auth.user.id, "dropbox");
-          setDropboxTokenState(result.accessToken);
-          setBackendState("dropbox");
-        })
-        .catch((err: unknown) => {
-          console.error(`${provider} connect failed:`, err);
-        })
-        .finally(cleanCodeFromUrl);
+    const userId = auth.user.id;
+    const fromBackend = getBackend(userId);
+
+    const run = provider === "gdrive" ? doGdrive() : doDropbox();
+    void run
+      .catch((err: unknown) => {
+        console.error(`${provider} connect failed:`, err);
+      })
+      .finally(cleanCodeFromUrl);
+
+    async function doDropbox(): Promise<void> {
+      const result = await completeDropboxAuth(authCode);
+      if (cancelled || auth.kind !== "signed-in") return;
+      const probe = createDropboxAdapter({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        // Refresh-token swaps before commit have nowhere durable to
+        // land — the user hasn't accepted the link yet. Drop the new
+        // token on the floor; the post-commit adapter will mint its
+        // own on the next 401.
+        onAccessTokenRefreshed: () => {},
+      });
+      const remote = await probe.load();
+      if (cancelled || auth.kind !== "signed-in") return;
+      if (remote === null || currentDataRef.current === null) {
+        // Cloud is empty or the local side has nothing to lose —
+        // adopt the cloud as-is, pushing local up first if there's
+        // anything to push, then flip the backend.
+        if (remote === null) await uploadCurrentDataVia(probe, undefined);
+        commitDropboxLink(userId, result);
+        return;
+      }
+      setPendingCloudLink({
+        provider: "dropbox",
+        auth: result,
+        fromBackend,
+        remoteRevision: remote.revision,
+      });
     }
+
+    async function doGdrive(): Promise<void> {
+      const token = await completeGdriveAuth(authCode);
+      if (cancelled || auth.kind !== "signed-in") return;
+      const probe = createGdriveAdapter(token);
+      const remote = await probe.load();
+      if (cancelled || auth.kind !== "signed-in") return;
+      if (remote === null || currentDataRef.current === null) {
+        if (remote === null) await uploadCurrentDataVia(probe, undefined);
+        commitGdriveLink(userId, token);
+        return;
+      }
+      setPendingCloudLink({
+        provider: "gdrive",
+        accessToken: token,
+        fromBackend,
+        remoteRevision: remote.revision,
+      });
+    }
+
     function cleanCodeFromUrl() {
       // Clean the code out of the URL regardless of outcome so a page
       // reload doesn't re-trigger the exchange.
@@ -870,7 +999,58 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [auth]);
+  }, [auth, commitDropboxLink, commitGdriveLink, uploadCurrentDataVia]);
+
+  // Resolve a parked cloud-link conflict. "use-remote" just flips the
+  // backend and lets the storage hook reload from the cloud; "replace-
+  // remote" pushes the user's current budget through the probe adapter
+  // first (using the remote revision the probe gave us, so the write
+  // lands as an update rather than colliding with the existing file)
+  // and only then flips the backend. The dialog is dismissed as soon
+  // as the user picks so the path stays snappy; any error from the
+  // upload is logged and the link silently aborts (the user can
+  // retry from Settings).
+  const resolveCloudLink = useCallback(
+    async (action: "use-remote" | "replace-remote"): Promise<void> => {
+      const pending = pendingCloudLink;
+      if (!pending || auth.kind !== "signed-in") return;
+      setPendingCloudLink(null);
+      const userId = auth.user.id;
+      try {
+        if (action === "replace-remote") {
+          const probe =
+            pending.provider === "dropbox"
+              ? createDropboxAdapter({
+                  accessToken: pending.auth.accessToken,
+                  refreshToken: pending.auth.refreshToken,
+                  onAccessTokenRefreshed: (next) => {
+                    setDropboxToken(userId, next);
+                  },
+                })
+              : createGdriveAdapter(pending.accessToken);
+          await uploadCurrentDataVia(probe, pending.remoteRevision);
+        }
+        if (pending.provider === "dropbox") {
+          commitDropboxLink(userId, pending.auth);
+        } else {
+          commitGdriveLink(userId, pending.accessToken);
+        }
+      } catch (err) {
+        console.error(`${pending.provider} link failed:`, err);
+      }
+    },
+    [
+      auth,
+      pendingCloudLink,
+      commitDropboxLink,
+      commitGdriveLink,
+      uploadCurrentDataVia,
+    ],
+  );
+
+  const cancelCloudLink = useCallback(() => {
+    setPendingCloudLink(null);
+  }, []);
 
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
@@ -1220,26 +1400,102 @@ export function App() {
   );
 
   return (
-    <BudgetView
-      adapter={adapter}
-      user={auth.user}
-      password={auth.password}
-      hasOtherUsers={otherRealUsers.length > 0}
-      backend={backend}
-      dropboxConnected={dropboxToken !== null}
-      gdriveConnected={gdriveToken !== null}
-      encryption={encryption}
-      getEncryptionPassword={() => passwordRef.current}
-      onSignOut={handleSignOut}
-      onSwitchUser={handleSwitchUser}
-      onCreateAccount={handleStartCreateAccountFromMenu}
-      onDeleteAccount={handleDeleteAccount}
-      onConnectDropbox={handleConnectDropbox}
-      onDisconnectDropbox={handleDisconnectDropbox}
-      onConnectGdrive={handleConnectGdrive}
-      onDisconnectGdrive={handleDisconnectGdrive}
-      onSelectLocal={handleSelectLocal}
-      onSetEncryption={handleSetEncryption}
+    <>
+      <BudgetView
+        adapter={adapter}
+        user={auth.user}
+        password={auth.password}
+        hasOtherUsers={otherRealUsers.length > 0}
+        backend={backend}
+        dropboxConnected={dropboxToken !== null}
+        gdriveConnected={gdriveToken !== null}
+        encryption={encryption}
+        getEncryptionPassword={() => passwordRef.current}
+        currentDataRef={currentDataRef}
+        onSignOut={handleSignOut}
+        onSwitchUser={handleSwitchUser}
+        onCreateAccount={handleStartCreateAccountFromMenu}
+        onDeleteAccount={handleDeleteAccount}
+        onConnectDropbox={handleConnectDropbox}
+        onDisconnectDropbox={handleDisconnectDropbox}
+        onConnectGdrive={handleConnectGdrive}
+        onDisconnectGdrive={handleDisconnectGdrive}
+        onSelectLocal={handleSelectLocal}
+        onSetEncryption={handleSetEncryption}
+      />
+      <CloudLinkConflictDialog
+        pending={pendingCloudLink}
+        onResolve={resolveCloudLink}
+        onCancel={cancelCloudLink}
+      />
+    </>
+  );
+}
+
+// Surfaces the cloud-link conflict to the user. Two actions, neither
+// pre-selected: adopting the cloud version replaces what's on this
+// device; the other replaces what's in the cloud. Wording shifts
+// between "this device" and the source cloud name so a user migrating
+// from one cloud backend to another sees an accurate prompt.
+function CloudLinkConflictDialog({
+  pending,
+  onResolve,
+  onCancel,
+}: {
+  pending: PendingCloudLink | null;
+  onResolve: (action: "use-remote" | "replace-remote") => void;
+  onCancel: () => void;
+}) {
+  if (!pending) return null;
+  const targetName =
+    pending.provider === "dropbox" ? "Dropbox" : "Google Drive";
+  const sourceName =
+    pending.fromBackend === "local"
+      ? "this device"
+      : pending.fromBackend === "dropbox"
+        ? "your Dropbox budget"
+        : "your Google Drive budget";
+  // The "kept" side is whichever location won't be overwritten by the
+  // user's choice. The "untouched" side is the *other* original
+  // location: switching backends never deletes the source data — it
+  // sits there until the user opts to clear it — so we tell them
+  // outright. Worded for both directions: linking from local leaves
+  // localStorage intact; linking from another cloud leaves that
+  // cloud's file intact.
+  const untouched =
+    pending.fromBackend === "local"
+      ? "your current budget on this device"
+      : pending.fromBackend === "dropbox"
+        ? "your Dropbox budget"
+        : "your Google Drive budget";
+  return (
+    <ConfirmDialog
+      open
+      title={`${targetName} already has a budget`}
+      description={
+        <>
+          <p>
+            {targetName} already contains a budget file. Pick which version to
+            keep — the other will be replaced.
+          </p>
+          <p className="mt-2 text-xs text-muted">
+            Either way, {untouched} stays where it is — switching backends
+            doesn&apos;t delete it, so you can still get back to it later.
+          </p>
+        </>
+      }
+      actions={[
+        {
+          label: `Use the ${targetName} version`,
+          onSelect: () => onResolve("use-remote"),
+        },
+        {
+          label: `Replace ${targetName} with ${sourceName}`,
+          tone: "danger",
+          onSelect: () => onResolve("replace-remote"),
+        },
+      ]}
+      onCancel={onCancel}
     />
   );
 }
@@ -1259,6 +1515,11 @@ type BudgetViewProps = {
   // wrap downloaded files in the same envelope shape the storage
   // adapter uses.
   getEncryptionPassword: () => string | null;
+  // App owns this ref and reads it from the cloud-link conflict path
+  // when the user picks "replace with current budget"; BudgetView's
+  // job is to keep it pointed at whatever `useUserDataStorage` is
+  // showing on screen so the upload reflects the latest in-memory edits.
+  currentDataRef: React.MutableRefObject<UserData | null>;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
@@ -1281,6 +1542,7 @@ function BudgetView({
   gdriveConnected,
   encryption,
   getEncryptionPassword,
+  currentDataRef,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
@@ -1297,6 +1559,13 @@ function BudgetView({
     reducer,
     { beforeSerialize: userDataWithSavableRows },
   );
+  // Mirror in-memory data into the App-owned ref so the cloud-link
+  // conflict path can upload the latest budget. Updated on every render
+  // because both data changes and ref-identity changes (after a sign-
+  // out / sign-in round trip) need to land here.
+  useEffect(() => {
+    currentDataRef.current = data;
+  }, [currentDataRef, data]);
   const [complexOpen, setComplexOpen] = useState(false);
   const [complexSeedDate, setComplexSeedDate] = useState("");
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
