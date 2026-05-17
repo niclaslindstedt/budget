@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 
 import { ActiveRowContext } from "./useActiveRow";
 
@@ -14,6 +7,11 @@ import { ActiveRowContext } from "./useActiveRow";
 // or the row is swiped to reveal its action buttons, the rest of the
 // sheet is inert. The first click outside the active row only dismisses
 // the active state — it does not also fire whatever was clicked.
+//
+// Listeners are installed once at mount and read live from the
+// registration ref. Earlier versions gated installation on a state
+// flag, which left a render-cycle window where the second tap (e.g.
+// AddRowButton) could slip through before the effect re-ran.
 
 type Registration = {
   token: number;
@@ -32,17 +30,11 @@ const SWALLOWED_EVENTS = [
 export function ActiveRowProvider({ children }: { children: ReactNode }) {
   const registrationsRef = useRef<Registration[]>([]);
   const nextTokenRef = useRef(1);
-  const [activeRowId, setActiveRowId] = useState<string | null>(null);
-
-  const updateActiveRowId = useCallback(() => {
-    const next = registrationsRef.current.at(-1)?.rowId ?? null;
-    setActiveRowId((prev) => (prev === next ? prev : next));
-  }, []);
 
   const dismissAll = useCallback(() => {
     const entries = registrationsRef.current;
+    if (entries.length === 0) return;
     registrationsRef.current = [];
-    setActiveRowId(null);
     for (const entry of entries) {
       try {
         entry.dismiss();
@@ -62,31 +54,22 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
       }
       const token = nextTokenRef.current++;
       registrationsRef.current.push({ token, rowId, dismiss });
-      updateActiveRowId();
       return token;
     },
-    [dismissAll, updateActiveRowId],
+    [dismissAll],
   );
 
-  const deactivate = useCallback(
-    (token: number) => {
-      const before = registrationsRef.current.length;
-      registrationsRef.current = registrationsRef.current.filter(
-        (r) => r.token !== token,
-      );
-      if (registrationsRef.current.length !== before) updateActiveRowId();
-    },
-    [updateActiveRowId],
-  );
+  const deactivate = useCallback((token: number) => {
+    registrationsRef.current = registrationsRef.current.filter(
+      (r) => r.token !== token,
+    );
+  }, []);
 
   useEffect(() => {
-    if (activeRowId === null) return;
-    const activeRow = document.querySelector<HTMLElement>(
-      `[data-row-id="${CSS.escape(activeRowId)}"]`,
-    );
-    const sheetRoot = activeRow?.closest<HTMLElement>("[data-sheet-content]");
-
-    function isInsideActiveRegion(target: EventTarget | null): boolean {
+    function isInsideActiveRegion(
+      target: EventTarget | null,
+      activeRow: HTMLElement | null,
+    ): boolean {
       if (!(target instanceof Node)) return false;
       if (activeRow?.contains(target)) return true;
       if (target instanceof Element) {
@@ -98,13 +81,27 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
     }
 
     function handler(e: Event) {
+      // Resolve the active row on every event rather than capturing it
+      // when the effect ran. The registration ref is the source of
+      // truth; the DOM lookup is cheap and avoids stale node refs when
+      // React rerenders the row.
+      const top = registrationsRef.current.at(-1);
+      if (!top) return;
+      const activeRow = document.querySelector<HTMLElement>(
+        `[data-row-id="${CSS.escape(top.rowId)}"]`,
+      );
+      const sheetRoot = activeRow?.closest<HTMLElement>("[data-sheet-content]");
       const target = e.target as Element | null;
-      if (isInsideActiveRegion(target)) return;
+      if (isInsideActiveRegion(target, activeRow ?? null)) return;
       // Clicks outside the sheet (header buttons, sheet tabs, modals)
       // still dismiss but are allowed to perform their own action — the
       // "block other buttons" rule is scoped to the sheet itself.
       if (!sheetRoot || !target || !sheetRoot.contains(target)) {
-        if (e.type === "pointerdown" || e.type === "touchstart") {
+        if (
+          e.type === "pointerdown" ||
+          e.type === "touchstart" ||
+          e.type === "mousedown"
+        ) {
           dismissAll();
         }
         return;
@@ -119,12 +116,17 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
       (
         e as Event & { stopImmediatePropagation?: () => void }
       ).stopImmediatePropagation?.();
-      // preventDefault only on click-like events. Preventing default on
-      // touchstart/pointerdown would also block page scrolling on
-      // mobile while a field is focused, so we leave those untouched —
-      // the natural focus shift handles input blur, and the swallowed
-      // click ensures buttons stay inert.
-      if (e.type === "click" || e.type === "contextmenu") {
+      // preventDefault on mousedown blocks the browser's focus shift to
+      // the tapped element — without it, tapping another row's input
+      // would still pull focus there (popping the keyboard on mobile)
+      // even though we swallowed the click. We deliberately do NOT
+      // preventDefault on touchstart/pointerdown: those would also
+      // block page scrolling while a field is focused.
+      if (
+        e.type === "click" ||
+        e.type === "contextmenu" ||
+        e.type === "mousedown"
+      ) {
         e.preventDefault();
       }
       if (
@@ -144,7 +146,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
         document.removeEventListener(type, handler, true);
       }
     };
-  }, [activeRowId, dismissAll]);
+  }, [dismissAll]);
 
   const value = useMemo(
     () => ({ activate, deactivate }),
