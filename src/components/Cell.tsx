@@ -329,9 +329,13 @@ function DescriptionCell({
   );
 }
 
-const POPOVER_MAX_WIDTH = 360;
+const POPOVER_MAX_WIDTH = 280;
 const POPOVER_VIEWPORT_MARGIN = 8;
 
+// Document-coord position so the popover scrolls with the trigger row when
+// iOS shifts the page up to fit the on-screen keyboard. `position: fixed`
+// stays anchored to the layout viewport — which iOS moves out from under
+// the popover when the keyboard appears, leaving the field off-screen.
 function computeDescriptionPopoverPosition(rect: DOMRect): {
   top: number;
   left: number;
@@ -341,11 +345,13 @@ function computeDescriptionPopoverPosition(rect: DOMRect): {
     window.innerWidth - 2 * POPOVER_VIEWPORT_MARGIN,
     POPOVER_MAX_WIDTH,
   );
-  let left = rect.left;
-  const maxLeft = window.innerWidth - POPOVER_VIEWPORT_MARGIN - width;
+  let left = rect.left + window.scrollX;
+  const maxLeft =
+    window.innerWidth + window.scrollX - POPOVER_VIEWPORT_MARGIN - width;
   if (left > maxLeft) left = maxLeft;
-  if (left < POPOVER_VIEWPORT_MARGIN) left = POPOVER_VIEWPORT_MARGIN;
-  return { top: rect.bottom + 4, left, width };
+  if (left < window.scrollX + POPOVER_VIEWPORT_MARGIN)
+    left = window.scrollX + POPOVER_VIEWPORT_MARGIN;
+  return { top: rect.bottom + window.scrollY + 4, left, width };
 }
 
 function DescriptionPopover({
@@ -425,7 +431,7 @@ function DescriptionPopover({
         ref={triggerRef}
         type="button"
         onClick={handleToggle}
-        className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-left font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+        className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-center font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
           isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"
         }`}
         aria-haspopup="dialog"
@@ -449,7 +455,7 @@ function DescriptionPopover({
             ref={popoverRef}
             role="dialog"
             aria-label="Description"
-            className="fixed z-50 rounded border border-line bg-surface-2 shadow-lg"
+            className="absolute z-50 rounded border border-line bg-surface-2 shadow-lg"
             style={{
               top: position.top,
               left: position.left,
@@ -461,8 +467,8 @@ function DescriptionPopover({
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder="Description"
-              rows={3}
-              className="field-input block w-full resize-none rounded border-0 bg-transparent p-2.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content] min-h-[4.5em]"
+              rows={1}
+              className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
             />
           </div>,
           document.body,
