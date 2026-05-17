@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 
+import { useBodyScrollLock } from "../utils/scroll-lock";
+
 type Tone = "default" | "danger";
 
 export type ConfirmAction = {
@@ -35,6 +37,8 @@ export function ConfirmDialog({
   hideCancel,
   onCancel,
 }: Props) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {

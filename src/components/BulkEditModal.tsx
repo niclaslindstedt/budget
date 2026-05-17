@@ -9,6 +9,7 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryPicker } from "./CategoryPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 
@@ -84,6 +85,8 @@ export function BulkEditModal({
   const [recurringEnabled, setRecurringEnabled] = useState(false);
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

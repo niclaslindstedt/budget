@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import type { Row } from "../data/types";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 
 type Props = {
   open: boolean;
@@ -35,6 +36,8 @@ export function MoveCopyModal({
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

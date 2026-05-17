@@ -18,6 +18,7 @@ import type {
 } from "../data/types";
 import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import { BackendPicker } from "./BackendPicker";
 
 type Props = {
@@ -68,6 +69,8 @@ export function SettingsModal({
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
   const [draft, setDraft] = useState<Settings>(settings);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

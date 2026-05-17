@@ -15,6 +15,7 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryPicker } from "./CategoryPicker";
 import { GlyphPicker } from "./GlyphPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
@@ -126,6 +127,8 @@ export function EditEntryModal({
 
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
+
+  useBodyScrollLock(open && !!row);
 
   useEffect(() => {
     if (!open) return;

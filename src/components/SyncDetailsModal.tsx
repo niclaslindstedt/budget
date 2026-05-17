@@ -16,6 +16,7 @@ import {
   dropboxWebUrl,
 } from "../storage/dropbox-adapter";
 import type { SaveStatus } from "../storage/useUserDataStorage";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 
 type Props = {
   open: boolean;
@@ -125,6 +126,8 @@ export function SyncDetailsModal({
   onSaveNow,
   onClose,
 }: Props) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
