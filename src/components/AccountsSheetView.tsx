@@ -18,6 +18,7 @@ type Props = {
   settings: Settings;
   onCreateAccount: () => void;
   onEditAccount: (accountId: string) => void;
+  onUpdateBalance: (accountId: string) => void;
   onCreateTransaction: () => void;
   onEditTransaction: (transactionId: string) => void;
 };
@@ -28,6 +29,7 @@ export function AccountsSheetView({
   settings,
   onCreateAccount,
   onEditAccount,
+  onUpdateBalance,
   onCreateTransaction,
   onEditTransaction,
 }: Props) {
@@ -40,6 +42,20 @@ export function AccountsSheetView({
     for (const a of data.accounts) m.set(a.id, accountBalance(data, a.id));
     return m;
   }, [data]);
+  // Which accounts have at least one AccountBudget pointing at them.
+  // Only those balances are clickable — the "update balance" flow needs
+  // a budget to drop the correction row into. Computed alongside
+  // `balances` so the row render reads it without re-walking sheets.
+  const accountsWithBudget = useMemo(() => {
+    const s = new Set<string>();
+    for (const sheet of data.sheets) {
+      for (const item of sheet.items) {
+        if (item.type !== "accountBudget") continue;
+        if (item.accountId) s.add(item.accountId);
+      }
+    }
+    return s;
+  }, [data.sheets]);
   const accountsById = useMemo(() => {
     const m = new Map<string, Account>();
     for (const a of data.accounts) m.set(a.id, a);
@@ -158,7 +174,24 @@ export function AccountsSheetView({
                         balance < 0 ? "text-negative" : "text-positive"
                       }`}
                     >
-                      {formatBalance(balance, accountSettings)}
+                      {accountsWithBudget.has(account.id) ? (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateBalance(account.id)}
+                          aria-label={`Update balance for ${account.name}`}
+                          title="Update balance"
+                          className="cursor-pointer border-0 bg-transparent p-0 font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                        >
+                          {formatBalance(balance, accountSettings)}
+                        </button>
+                      ) : (
+                        <span
+                          className="font-mono"
+                          title="Add a budget sheet for this account to update its balance"
+                        >
+                          {formatBalance(balance, accountSettings)}
+                        </span>
+                      )}
                     </td>
                     <td className="w-10 px-2 py-2 text-right align-middle">
                       <button

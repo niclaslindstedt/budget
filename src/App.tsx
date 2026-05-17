@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
 import { AccountModal, type AccountDraft } from "./components/AccountModal";
+import { UpdateBalanceModal } from "./components/UpdateBalanceModal";
 import { AccountsSheetView } from "./components/AccountsSheetView";
 import { ApplySeriesEditDialog } from "./components/ApplySeriesEditDialog";
 import { AuthScreen } from "./components/AuthScreen";
@@ -40,6 +41,7 @@ import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
 import { STORAGE_KEY, userDataKey } from "./data/constants";
 import {
+  accountBalance,
   createDefaultSheet,
   createEmptyRow,
   findColumnByType,
@@ -105,6 +107,7 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
+import { formatAmountForInput, withCurrency } from "./utils/format";
 import {
   createDefaultUser,
   createUser,
@@ -218,6 +221,18 @@ type Action =
   | { type: "createAccount"; account: Account }
   | { type: "updateAccount"; accountId: string; patch: Partial<Account> }
   | { type: "deleteAccount"; accountId: string }
+  | {
+      // Append a balance-correction row to the first AccountBudget that
+      // tracks `accountId`. The amount carries the signed delta needed
+      // to bring the account's running total to the user-asserted
+      // value; `date` is the day to stamp the correction with. No-op
+      // when no budget references the account — the UI gates the click
+      // on that condition but the reducer enforces it too.
+      type: "correctAccountBalance";
+      accountId: string;
+      date: string;
+      amount: number;
+    }
   | { type: "createTransaction"; transaction: Transaction }
   | {
       type: "updateTransaction";
@@ -562,6 +577,44 @@ function reducer(state: UserData, action: Action): UserData {
           tx.fromAccountId !== action.accountId &&
           tx.toAccountId !== action.accountId,
       ),
+    };
+  }
+  if (action.type === "correctAccountBalance") {
+    // Find the first AccountBudget that tracks the target account.
+    // When an account is referenced by multiple budgets, the correction
+    // lands in the earliest one — `accountBalance` walks all budgets so
+    // the displayed total still agrees regardless of where the row
+    // physically sits. No-op when nothing matches.
+    let placed = false;
+    return {
+      ...state,
+      sheets: state.sheets.map((sheet) => {
+        if (placed) return sheet;
+        let touched = false;
+        const items = sheet.items.map((item) => {
+          if (placed) return item;
+          if (item.type !== "accountBudget") return item;
+          if (item.accountId !== action.accountId) return item;
+          const dateCol = findColumnByType(item.columns, "date");
+          const descCol = findColumnByType(item.columns, "description");
+          const amountCol = findColumnByType(item.columns, "amount");
+          if (!dateCol || !descCol || !amountCol) return item;
+          const cells: Record<string, CellValue> = {
+            [dateCol.id]: action.date,
+            [descCol.id]: "Balance correction",
+            [amountCol.id]: action.amount,
+          };
+          const newRow: Row = {
+            id: newId(),
+            cells,
+            isCorrection: true,
+          };
+          placed = true;
+          touched = true;
+          return { ...item, rows: [...item.rows, newRow] };
+        });
+        return touched ? { ...sheet, items } : sheet;
+      }),
     };
   }
   if (action.type === "createTransaction") {
@@ -1603,6 +1656,23 @@ function BudgetView({
   const [accountModal, setAccountModal] = useState<{
     account: Account | null;
   } | null>(null);
+  // null = closed; otherwise the id of the account whose balance the
+  // user is updating from the Accounts page. The modal looks the account
+  // up by id each render so a concurrent rename / delete doesn't strand
+  // a stale snapshot in component state.
+  const [updateBalanceForId, setUpdateBalanceForId] = useState<string | null>(
+    null,
+  );
+  // null = closed; otherwise the id of the correction row queued for
+  // deletion (set when the user clicks the divider line in the budget
+  // view). The ConfirmDialog renders against this state to ask for
+  // confirmation before dispatching `deleteRows`.
+  const [correctionDeletePrompt, setCorrectionDeletePrompt] = useState<{
+    sheetId: string;
+    itemId: string;
+    rowId: string;
+    deltaText: string;
+  } | null>(null);
   // null = closed; otherwise the request describes the mode (promote /
   // create / edit). The TransactionModal seeds itself from the request.
   const [transactionRequest, setTransactionRequest] =
@@ -1848,6 +1918,30 @@ function BudgetView({
   const onEditRequest = useCallback((row: Row) => {
     setEditPrompt({ kind: "edit", row });
   }, []);
+  const onCorrectionDeleteRequest = useCallback(
+    (row: Row) => {
+      // Pre-format the signed delta so the prompt reads naturally even
+      // after the row is gone (the dialog body keeps showing the text
+      // until React unmounts it on close).
+      const amountCol = findColumnByType(activeItem.columns, "amount");
+      const amount =
+        amountCol && typeof row.cells[amountCol.id] === "number"
+          ? (row.cells[amountCol.id] as number)
+          : 0;
+      const sign = amount >= 0 ? "+" : "−";
+      const deltaText = `${sign}${withCurrency(
+        formatAmountForInput(Math.abs(amount), data.settings),
+        data.settings,
+      )}`;
+      setCorrectionDeletePrompt({
+        sheetId,
+        itemId: activeItem.id,
+        rowId: row.id,
+        deltaText,
+      });
+    },
+    [activeItem, sheetId, data.settings],
+  );
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
       dispatch({ type: "reorderColumns", sheetId, itemId, fromId, toId }),
@@ -2000,6 +2094,56 @@ function BudgetView({
     });
     setAccountModal(null);
   }, [dispatch, accountModal]);
+
+  // Balance-correction flow. The Accounts page surfaces a clickable
+  // balance per account; clicking opens UpdateBalanceModal, which lets
+  // the user assert a new balance and confirms a correction row will
+  // be added on today's date.
+  const onOpenUpdateBalance = useCallback((accountId: string) => {
+    setUpdateBalanceForId(accountId);
+  }, []);
+  const updateBalanceAccount = useMemo(
+    () =>
+      updateBalanceForId
+        ? (data.accounts.find((a) => a.id === updateBalanceForId) ?? null)
+        : null,
+    [updateBalanceForId, data.accounts],
+  );
+  const updateBalanceCurrent = useMemo(
+    () => (updateBalanceAccount ? accountBalance(data, updateBalanceAccount.id) : 0),
+    [data, updateBalanceAccount],
+  );
+  const updateBalanceHasBudget = useMemo(() => {
+    if (!updateBalanceAccount) return false;
+    return data.sheets.some((s) =>
+      s.items.some(
+        (it) =>
+          it.type === "accountBudget" && it.accountId === updateBalanceAccount.id,
+      ),
+    );
+  }, [updateBalanceAccount, data.sheets]);
+  const updateBalanceDate = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+  const onConfirmUpdateBalance = useCallback(
+    (newBalance: number) => {
+      if (!updateBalanceAccount) return;
+      const delta = newBalance - updateBalanceCurrent;
+      if (delta === 0) {
+        setUpdateBalanceForId(null);
+        return;
+      }
+      dispatch({
+        type: "correctAccountBalance",
+        accountId: updateBalanceAccount.id,
+        date: updateBalanceDate,
+        amount: delta,
+      });
+      setUpdateBalanceForId(null);
+    },
+    [dispatch, updateBalanceAccount, updateBalanceCurrent, updateBalanceDate],
+  );
 
   // Transaction modal entry points. The promote-row path computes the
   // direction from the row's amount sign so the modal only has to ask
@@ -2295,6 +2439,26 @@ function BudgetView({
     ];
   }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect]);
 
+  const correctionDeleteActions: ConfirmAction[] = useMemo(() => {
+    if (!correctionDeletePrompt) return [];
+    const target = correctionDeletePrompt;
+    return [
+      {
+        label: "Remove correction",
+        tone: "danger",
+        onSelect: () => {
+          dispatch({
+            type: "deleteRows",
+            sheetId: target.sheetId,
+            itemId: target.itemId,
+            rowIds: [target.rowId],
+          });
+          setCorrectionDeletePrompt(null);
+        },
+      },
+    ];
+  }, [correctionDeletePrompt, dispatch]);
+
   const onBulkEdit = useCallback(() => setBulkEditOpen(true), []);
   const onBulkDelete = useCallback(() => {
     setBulkDeletePrompt({ kind: "bulk-delete", rowIds: [...selectedIds] });
@@ -2432,6 +2596,7 @@ function BudgetView({
             settings={data.settings}
             onCreateAccount={onOpenCreateAccount}
             onEditAccount={onOpenEditAccount}
+            onUpdateBalance={onOpenUpdateBalance}
             onCreateTransaction={onOpenCreateTransaction}
             onEditTransaction={onOpenEditTransaction}
           />
@@ -2453,6 +2618,7 @@ function BudgetView({
             onDeleteRequest={onDeleteRequest}
             onEditRequest={onEditRequest}
             onTransactionRequest={onTransactionRequest}
+            onCorrectionDeleteRequest={onCorrectionDeleteRequest}
             onReorderColumns={onReorderColumns}
             onToggleSelect={onToggleSelect}
             onToggleSelectMonth={onToggleSelectMonth}
@@ -2506,6 +2672,16 @@ function BudgetView({
         onClose={() => setAccountModal(null)}
         onSave={onSaveAccount}
         onDelete={onDeleteFinancialAccount}
+      />
+      <UpdateBalanceModal
+        open={updateBalanceAccount !== null}
+        account={updateBalanceAccount}
+        currentBalance={updateBalanceCurrent}
+        settings={data.settings}
+        date={updateBalanceDate}
+        canRecord={updateBalanceHasBudget}
+        onConfirm={onConfirmUpdateBalance}
+        onCancel={() => setUpdateBalanceForId(null)}
       />
       <TransactionModal
         open={transactionRequest !== null}
@@ -2589,6 +2765,17 @@ function BudgetView({
         } will be permanently removed.`}
         actions={bulkDeleteActions}
         onCancel={() => setBulkDeletePrompt(null)}
+      />
+      <ConfirmDialog
+        open={correctionDeletePrompt !== null}
+        title="Remove balance correction"
+        description={
+          correctionDeletePrompt
+            ? `The ${correctionDeletePrompt.deltaText} correction will be removed and the running balance will revert.`
+            : ""
+        }
+        actions={correctionDeleteActions}
+        onCancel={() => setCorrectionDeletePrompt(null)}
       />
       <SyncDetailsModal
         open={syncDetailsOpen}

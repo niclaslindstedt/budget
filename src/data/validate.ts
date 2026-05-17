@@ -119,7 +119,7 @@ function validateRow(
   knownColumnIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, cells, seriesId, glyph } = raw;
+  const { id, cells, seriesId, glyph, isCorrection } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (!isObject(cells)) return fail(`${path}.cells`, "expected an object");
@@ -142,6 +142,13 @@ function validateRow(
     if (typeof glyph !== "string" || !CATEGORY_ICONS.has(glyph as CategoryIcon))
       return fail(`${path}.glyph`, `unknown glyph "${String(glyph)}"`);
     row.glyph = glyph as CategoryIcon;
+  }
+  if (isCorrection !== undefined) {
+    if (typeof isCorrection !== "boolean")
+      return fail(`${path}.isCorrection`, "expected a boolean");
+    // Only persist `true` — a stored `false` is indistinguishable from
+    // "field absent" and just bloats the on-disk snapshot.
+    if (isCorrection) row.isCorrection = true;
   }
   return { ok: true, value: row };
 }

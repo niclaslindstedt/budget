@@ -26,6 +26,14 @@ export type Row = {
   // same value (the entry modals propagate edits across the scope), so
   // the cell can read it row-locally without a series lookup.
   glyph?: CategoryIcon;
+  // True when this row was minted by the "update balance" flow on the
+  // Accounts page: its amount is the delta needed to bring the account's
+  // running total to a user-asserted value. Rendered as a full-width
+  // divider line ("——— balance correction ±X ———") in place of the
+  // normal columned row, and excluded from bulk-edit selection. The
+  // running balance reads `amount` like any other row, so the correction
+  // shifts the total without further special casing.
+  isCorrection?: boolean;
   // Runtime-only markers populated by `synthesizeTransactionRow` when a
   // Transaction is interleaved into a budget view. Never persisted —
   // synthesized rows live outside `item.rows` (the budget view merges
@@ -251,7 +259,7 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 9;
+  version: 10;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

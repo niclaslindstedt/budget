@@ -60,6 +60,7 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
+  onCorrectionDeleteRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -88,6 +89,7 @@ export function SheetView({
   onDeleteRequest,
   onEditRequest,
   onTransactionRequest,
+  onCorrectionDeleteRequest,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
@@ -264,6 +266,7 @@ export function SheetView({
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
                   onTransactionRequest={onTransactionRequest}
+                  onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}
                   onToggleSelectMonth={onToggleSelectMonth}

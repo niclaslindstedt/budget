@@ -10,13 +10,13 @@ import {
 } from "../src/data/sheet";
 import type { AccountBudget, Transaction, UserData } from "../src/data/types";
 
-// Build a minimal v9 workspace with two accounts, one budget, and an
+// Build a minimal workspace with two accounts, one budget, and an
 // optional list of transactions. Tests use this as a fixture so each
 // case can focus on the interesting bit instead of re-stating shape.
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 9,
+    version: 10,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -254,6 +254,38 @@ describe("accountBalance", () => {
       },
     ];
     expect(accountBalance(data, "checking-id", TODAY)).toBe(0);
+  });
+
+  it("rolls correction rows into the running balance like any other row", () => {
+    // A correction row's `amount` carries the signed delta that brings
+    // the running total to the user-asserted value. It's just a Row
+    // with `isCorrection: true` and the same date/amount cells, so
+    // `accountBalance` should consume it without any special casing.
+    const data = workspace();
+    const item = data.sheets[0].items[0] as AccountBudget;
+    const amountCol = item.columns.find((c) => c.type === "amount")!;
+    const descCol = item.columns.find((c) => c.type === "description")!;
+    const dateCol = item.columns.find((c) => c.type === "date")!;
+    item.rows = [
+      {
+        id: "r-normal",
+        cells: {
+          [dateCol.id]: "2026-05-01",
+          [descCol.id]: "Salary",
+          [amountCol.id]: 1000,
+        },
+      },
+      {
+        id: "r-correction",
+        cells: {
+          [dateCol.id]: "2026-05-10",
+          [descCol.id]: "Balance correction",
+          [amountCol.id]: 250,
+        },
+        isCorrection: true,
+      },
+    ];
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(1250);
   });
 
   it("ignores budgets attached to a different account", () => {
