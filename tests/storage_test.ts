@@ -30,11 +30,12 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 8,
+    version: 9,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
+    transactions: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -85,6 +86,7 @@ describe("serializeUserData", () => {
       })),
       accounts: b.accounts,
       categories: b.categories,
+      transactions: b.transactions,
       settings: b.settings,
       version: b.version,
     } as UserData;
@@ -98,12 +100,13 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 6)).toEqual([
+    expect(topKeys.slice(0, 7)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "settings",
       "sheets",
+      "transactions",
       "version",
     ]);
   });
@@ -547,6 +550,50 @@ describe("migrate", () => {
     }>;
     expect(sheets[0].items[0].rows[0].id).toBe("r1");
     expect(sheets[0].items[0].rows[0].glyph).toBeUndefined();
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+  });
+
+  it("v8 → v9: adds an empty transactions array and accepts new account fields", () => {
+    const v8 = {
+      version: 8,
+      activeSheetId: "s1",
+      categories: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [
+                {
+                  id: "r1",
+                  cells: { c1: "2026-05-01", c2: "Rent", c3: 50 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v8);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    expect((data as unknown as UserData).transactions).toEqual([]);
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });

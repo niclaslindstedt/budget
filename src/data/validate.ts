@@ -11,6 +11,7 @@ import { LATEST_VERSION } from "./migrations";
 import type {
   Account,
   AccountBudget,
+  AccountsView,
   Category,
   CategoryIcon,
   CellValue,
@@ -26,6 +27,7 @@ import type {
   SheetType,
   ShortDateFormat,
   ThousandsSeparator,
+  Transaction,
   UserData,
 } from "./types";
 
@@ -49,7 +51,10 @@ const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
   "category",
 ]);
 
-const SHEET_TYPES: ReadonlySet<SheetType> = new Set<SheetType>(["budget"]);
+const SHEET_TYPES: ReadonlySet<SheetType> = new Set<SheetType>([
+  "budget",
+  "accounts",
+]);
 
 const CATEGORY_ICONS: ReadonlySet<CategoryIcon> = new Set<CategoryIcon>([
   "tag",
@@ -202,6 +207,19 @@ function validateAccountBudget(
   };
 }
 
+function validateAccountsView(
+  raw: unknown,
+  path: string,
+): Result<AccountsView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "accountsView")
+    return fail(`${path}.type`, `expected "accountsView"`);
+  return { ok: true, value: { id, type: "accountsView" } };
+}
+
 function validateSheetItem(
   raw: unknown,
   path: string,
@@ -211,6 +229,9 @@ function validateSheetItem(
   const type = (raw as { type?: unknown }).type;
   if (type === "accountBudget") {
     return validateAccountBudget(raw, path, knownAccountIds);
+  }
+  if (type === "accountsView") {
+    return validateAccountsView(raw, path);
   }
   return fail(`${path}.type`, `unknown sheet item type "${String(type)}"`);
 }
@@ -282,7 +303,89 @@ function validateAccount(raw: unknown, path: string): Result<Account> {
     return fail(`${path}.id`, "expected a non-empty string");
   if (typeof name !== "string")
     return fail(`${path}.name`, "expected a string");
-  return { ok: true, value: { id, name } };
+  const account: Account = { id, name };
+  // Every extra field is optional and free-form; we accept strings
+  // straight through, and validate `glyph` against the same allowlist
+  // categories use. Unknown fields are simply dropped.
+  if (typeof raw.description === "string")
+    account.description = raw.description;
+  if (
+    typeof raw.glyph === "string" &&
+    CATEGORY_ICONS.has(raw.glyph as CategoryIcon)
+  ) {
+    account.glyph = raw.glyph as CategoryIcon;
+  }
+  if (typeof raw.color === "string" && raw.color.length > 0)
+    account.color = raw.color;
+  if (typeof raw.bank === "string") account.bank = raw.bank;
+  if (typeof raw.clearing === "string") account.clearing = raw.clearing;
+  if (typeof raw.accountNumber === "string")
+    account.accountNumber = raw.accountNumber;
+  if (typeof raw.iban === "string") account.iban = raw.iban;
+  if (typeof raw.bic === "string") account.bic = raw.bic;
+  if (typeof raw.currency === "string" && raw.currency.length > 0)
+    account.currency = raw.currency;
+  return { ok: true, value: account };
+}
+
+function validateTransaction(
+  raw: unknown,
+  path: string,
+  knownAccountIds: ReadonlySet<string>,
+  knownCategoryIds: ReadonlySet<string>,
+): Result<Transaction> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, date, description, amount, fromAccountId, toAccountId } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof date !== "string")
+    return fail(`${path}.date`, "expected an ISO date string");
+  if (typeof description !== "string")
+    return fail(`${path}.description`, "expected a string");
+  if (typeof amount !== "number" || !Number.isFinite(amount))
+    return fail(`${path}.amount`, "expected a finite number");
+  if (typeof fromAccountId !== "string" || fromAccountId === "")
+    return fail(`${path}.fromAccountId`, "expected a non-empty string");
+  if (typeof toAccountId !== "string" || toAccountId === "")
+    return fail(`${path}.toAccountId`, "expected a non-empty string");
+  if (!knownAccountIds.has(fromAccountId))
+    return fail(
+      `${path}.fromAccountId`,
+      `references unknown account "${fromAccountId}"`,
+    );
+  if (!knownAccountIds.has(toAccountId))
+    return fail(
+      `${path}.toAccountId`,
+      `references unknown account "${toAccountId}"`,
+    );
+  const tx: Transaction = {
+    id,
+    date,
+    description,
+    amount,
+    fromAccountId,
+    toAccountId,
+  };
+  if (raw.categoryId !== undefined) {
+    if (raw.categoryId === null) {
+      tx.categoryId = null;
+    } else if (typeof raw.categoryId === "string" && raw.categoryId !== "") {
+      // Drop dangling category references silently so a deleted
+      // category can't trap the transaction; the cell renderer treats
+      // an unknown id as "no category".
+      tx.categoryId = knownCategoryIds.has(raw.categoryId)
+        ? raw.categoryId
+        : null;
+    } else {
+      return fail(`${path}.categoryId`, "expected a string or null");
+    }
+  }
+  if (raw.completed !== undefined) {
+    if (typeof raw.completed !== "boolean")
+      return fail(`${path}.completed`, "expected a boolean");
+    tx.completed = raw.completed;
+  }
+  return { ok: true, value: tx };
 }
 
 function validateCategory(raw: unknown, path: string): Result<Category> {
@@ -422,6 +525,25 @@ export function validateUserData(raw: unknown): Result<UserData> {
     categories.push(r.value);
   }
 
+  const rawTransactions = Array.isArray(raw.transactions)
+    ? raw.transactions
+    : [];
+  const transactions: Transaction[] = [];
+  const seenTransactionIds = new Set<string>();
+  for (let i = 0; i < rawTransactions.length; i++) {
+    const r = validateTransaction(
+      rawTransactions[i],
+      `transactions[${i}]`,
+      seenAccountIds,
+      seenCategoryIds,
+    );
+    if (!r.ok) return r;
+    if (seenTransactionIds.has(r.value.id))
+      return fail(`transactions[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenTransactionIds.add(r.value.id);
+    transactions.push(r.value);
+  }
+
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
   for (let i = 0; i < raw.sheets.length; i++) {
@@ -448,6 +570,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       activeSheetId,
       accounts,
       categories,
+      transactions,
       settings,
     },
   };

@@ -42,6 +42,10 @@ type Props = {
   currentAccountId: string | null;
   accounts: Account[];
   canDelete: boolean;
+  // True when the workspace already contains an Accounts sheet (other
+  // than the one being edited). The TypePicker greys out the Accounts
+  // option in that case so the user can't create a second.
+  accountsSheetTaken?: boolean;
   onClose: () => void;
   onSave: (draft: SheetDraft) => void;
   onDelete?: () => void;
@@ -58,6 +62,7 @@ export function SheetModal({
   currentAccountId,
   accounts,
   canDelete,
+  accountsSheetTaken = false,
   onClose,
   onSave,
   onDelete,
@@ -209,6 +214,7 @@ export function SheetModal({
               <TypePicker
                 value={type}
                 open={typeOpen}
+                accountsTaken={accountsSheetTaken}
                 onToggle={() => setTypeOpen((v) => !v)}
                 onPick={(next) => {
                   setType(next);
@@ -217,6 +223,14 @@ export function SheetModal({
               />
               <p className="text-xs text-muted">{selectedType.description}</p>
             </label>
+
+            {type === "accounts" && (
+              <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+                The Accounts sheet is a workspace-wide dashboard. Manage
+                accounts and transfers from there — no per-sheet account binding
+                needed.
+              </p>
+            )}
 
             {type === "budget" && (
               <div className="flex flex-col gap-1.5">
@@ -498,11 +512,13 @@ function AccountOption({
 function TypePicker({
   value,
   open,
+  accountsTaken,
   onToggle,
   onPick,
 }: {
   value: SheetType;
   open: boolean;
+  accountsTaken: boolean;
   onToggle: () => void;
   onPick: (next: SheetType) => void;
 }) {
@@ -534,19 +550,32 @@ function TypePicker({
         >
           {SHEET_TYPES.map((opt) => {
             const isSelected = opt.id === value;
+            // Singleton enforcement: only one Accounts sheet can exist
+            // per workspace. Once one is in place, the option greys out
+            // (unless this modal is editing that very sheet — handled
+            // by the parent passing `accountsTaken=false` in that case).
+            const isDisabled =
+              opt.id === "accounts" && accountsTaken && !isSelected;
             return (
               <li key={opt.id}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  onClick={() => onPick(opt.id)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (isDisabled) return;
+                    onPick(opt.id);
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="text-muted">
                     <CategoryIconGlyph name={opt.glyph} size={16} />
                   </span>
                   <span className="flex-1 truncate">{opt.label}</span>
+                  {isDisabled && (
+                    <span className="text-xs text-muted">Already exists</span>
+                  )}
                   {isSelected && (
                     <Check
                       size={14}

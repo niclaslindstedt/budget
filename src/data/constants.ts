@@ -166,6 +166,12 @@ export const SHEET_TYPES: readonly {
     description: "Track money in and out, month by month.",
     glyph: "wallet",
   },
+  {
+    id: "accounts",
+    label: "Accounts",
+    description: "Manage accounts and transfers between them.",
+    glyph: "piggy-bank",
+  },
 ];
 
 // Horizon used when a recurring entry has no explicit end date. Twelve
