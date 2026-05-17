@@ -1,13 +1,16 @@
 import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "./constants";
 import type {
   AccountBudget,
+  AccountsView,
   CellValue,
   Column,
   ColumnType,
   Row,
   Sheet,
   SheetGlyph,
+  SheetItem,
   SheetType,
+  Transaction,
   UserData,
 } from "./types";
 
@@ -38,6 +41,10 @@ export function createDefaultAccountBudget(
   };
 }
 
+export function createDefaultAccountsView(): AccountsView {
+  return { id: newId(), type: "accountsView" };
+}
+
 export function createDefaultSheet(
   name = "Sheet 1",
   accountId: string | null = null,
@@ -48,14 +55,23 @@ export function createDefaultSheet(
     description?: string;
   } = {},
 ): Sheet {
+  const type = overrides.type ?? "budget";
+  // The Accounts flavour renders a global dashboard, not a per-account
+  // ledger — seed an AccountsView in place of the budget block. Other
+  // flavours fall back to a fresh AccountBudget bound to `accountId`
+  // (which may be null for a free-standing forward-looking ledger).
+  const items: SheetItem[] =
+    type === "accounts"
+      ? [createDefaultAccountsView()]
+      : [createDefaultAccountBudget(accountId)];
   return {
     id: newId(),
     name,
-    type: overrides.type ?? "budget",
+    type,
     glyph: overrides.glyph ?? DEFAULT_SHEET_GLYPH,
     color: overrides.color ?? DEFAULT_SHEET_COLOR,
     description: overrides.description ?? "",
-    items: [createDefaultAccountBudget(accountId)],
+    items,
   };
 }
 
@@ -276,6 +292,104 @@ export function userDataHasHalfDoneRows(data: UserData): boolean {
         item.rows.some((r) => isRowHalfDone(r, item.columns)),
     ),
   );
+}
+
+// Every transaction with `accountId` on either end, ordered by date.
+// Both incoming and outgoing transactions are included — callers
+// decide the sign at render time from `selfAccountId` vs the
+// transaction's `fromAccountId` / `toAccountId`.
+export function transactionsForAccount(
+  transactions: readonly Transaction[],
+  accountId: string,
+): Transaction[] {
+  const matches = transactions.filter(
+    (tx) => tx.fromAccountId === accountId || tx.toAccountId === accountId,
+  );
+  return matches.sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+}
+
+// Synthesize a Row that represents one side of a transaction so the
+// existing MonthTable + SheetRow + Cell pipeline can render it without
+// special-casing. The cells are keyed by the budget's column ids so the
+// row drops straight into the existing grid. Marker fields
+// (`transactionId`, `peerAccountId`, `peerAccountName`) flag the
+// synthesized origin — `Cell` / `SheetRow` read them to disable inline
+// editing and swap the action buttons. These fields are runtime-only;
+// they're never written back to storage because synthesized rows live
+// outside `item.rows`. The `accountsById` map carries names so the cell
+// renderer can show "→ Savings" without re-walking the accounts list
+// for every cell.
+export function synthesizeTransactionRow(
+  tx: Transaction,
+  selfAccountId: string,
+  columns: Column[],
+  accountsById: ReadonlyMap<string, string>,
+): Row {
+  const outgoing = tx.fromAccountId === selfAccountId;
+  const peerAccountId = outgoing ? tx.toAccountId : tx.fromAccountId;
+  // Always positive on the `to` side, negative on the `from` side, so
+  // running-balance math from `computeBalances` agrees with intuition.
+  const signedAmount = outgoing ? -tx.amount : tx.amount;
+  const cells: Record<string, CellValue> = {};
+  for (const col of columns) {
+    switch (col.type) {
+      case "date":
+        cells[col.id] = tx.date;
+        break;
+      case "description":
+        cells[col.id] = tx.description;
+        break;
+      case "amount":
+        cells[col.id] = signedAmount;
+        break;
+      case "category":
+        cells[col.id] = tx.categoryId ?? null;
+        break;
+      case "completed":
+        cells[col.id] = tx.completed ?? false;
+        break;
+      // `balance` is derived at render time by computeBalances, so no
+      // stored cell is needed.
+    }
+  }
+  // Reuse the transaction id as the row id so React's keyed reconciler
+  // stays stable across re-syntheses and so deletion paths (which key
+  // by row id today) can be wired to a transaction lookup cleanly.
+  return {
+    id: `tx:${tx.id}`,
+    cells,
+    transactionId: tx.id,
+    peerAccountId,
+    peerAccountName: accountsById.get(peerAccountId) ?? "Unknown account",
+  };
+}
+
+// Sum of the account's budget rows' amounts plus signed transaction
+// amounts (outgoing subtract, incoming add). Returns 0 when the
+// account has neither a budget nor any transactions — those accounts
+// are still listed on the Accounts sheet at zero so the user can add
+// transactions against them later.
+export function accountBalance(data: UserData, accountId: string): number {
+  let total = 0;
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      if (item.accountId !== accountId) continue;
+      const amountCol = findColumnByType(item.columns, "amount");
+      if (!amountCol) continue;
+      for (const row of item.rows) {
+        const v = row.cells[amountCol.id];
+        if (typeof v === "number") total += v;
+      }
+    }
+  }
+  for (const tx of data.transactions) {
+    if (tx.fromAccountId === accountId) total -= tx.amount;
+    if (tx.toAccountId === accountId) total += tx.amount;
+  }
+  return total;
 }
 
 // Rows in the same series with a date >= `anchor`'s date (anchor included).

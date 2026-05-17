@@ -11,7 +11,8 @@ const SCHEMA_JSON = stableStringify(USER_DATA_SCHEMA, 2);
 // Last meaningful change to the prose below. Bump when the
 // explanation text changes; the schema's own freshness comes from the
 // `version` field it embeds.
-const LAST_UPDATED = "2026-05-17";
+const LAST_UPDATED =
+  "2026-05-17 (v9 — added Transaction, AccountsView, account metadata)";
 
 export function SchemaPage() {
   return (
@@ -76,6 +77,26 @@ export function SchemaPage() {
               Rows generated from a recurring entry share a{" "}
               <code className="text-meta">seriesId</code>. Use it to group "this
               and all future" operations.
+            </li>
+            <li>
+              Transfers between accounts live in the top-level{" "}
+              <code className="text-meta">transactions</code> array, not as rows
+              on either budget. <code className="text-meta">amount</code> is
+              always positive; the direction is{" "}
+              <code className="text-meta">fromAccountId → toAccountId</code>.
+              The app synthesizes a read-only row on each endpoint's budget at
+              render time — do NOT add those synthesized rows back into{" "}
+              <code className="text-meta">rows</code> when summing balances or
+              you'll double-count.
+            </li>
+            <li>
+              The <code className="text-meta">"accounts"</code> sheet flavour
+              holds a single item with{" "}
+              <code className="text-meta">type: "accountsView"</code> and no
+              data of its own — the dashboard renders directly from the global{" "}
+              <code className="text-meta">accounts</code> and{" "}
+              <code className="text-meta">transactions</code> arrays. Only one
+              such sheet exists per user.
             </li>
           </ul>
         </Section>
@@ -178,6 +199,19 @@ export function SchemaPage() {
               (when non-null) in the top-level{" "}
               <code className="text-meta">accounts</code> array.
             </li>
+            <li>
+              To compute an account's true balance, sum the{" "}
+              <code className="text-meta">amount</code> cells of every budget
+              row whose <code className="text-meta">accountId</code> matches,
+              then for each entry in{" "}
+              <code className="text-meta">transactions</code> add{" "}
+              <code className="text-meta">amount</code> when the account is the{" "}
+              <code className="text-meta">toAccountId</code> and subtract it
+              when the account is the{" "}
+              <code className="text-meta">fromAccountId</code>. Skip{" "}
+              <code className="text-meta">"accountsView"</code> items — they
+              hold no rows.
+            </li>
           </ol>
         </Section>
 
@@ -218,6 +252,17 @@ export function SchemaPage() {
               </strong>{" "}
               An exported file only contains rows with both a description and a
               numeric amount; you won't see placeholders.
+            </li>
+            <li>
+              <strong className="text-fg-bright">
+                Don't double-count transactions.
+              </strong>{" "}
+              A transfer between two accounts is stored once in{" "}
+              <code className="text-meta">transactions</code>. The app
+              synthesizes a read-only row on each endpoint's budget at render
+              time, but those rows are NEVER persisted. If you're computing
+              balances, ignore the budget rows for the transactions and add them
+              once from <code className="text-meta">transactions</code>.
             </li>
           </ul>
         </Section>
@@ -264,12 +309,18 @@ function Section({
 // than the schema module because the schema must be a valid JSON
 // Schema document.
 const OVERVIEW_TEXT = `UserData
-├─ version: 7                              schema version (this build)
+├─ version: 9                              schema version (this build)
 ├─ activeSheetId: string                   id of the sheet to open first
 ├─ accounts: Account[]                     real-world accounts (may be empty)
-│  └─ Account { id, name }
+│  └─ Account { id, name,
+│              description?, glyph?, color?, bank?,
+│              clearing?, accountNumber?, iban?, bic?, currency? }
 ├─ categories: Category[]                  category records
 │  └─ Category { id, name, color, icon }
+├─ transactions: Transaction[]             transfers between accounts
+│  └─ Transaction { id, date, description, amount (>= 0),
+│                   fromAccountId, toAccountId,
+│                   categoryId?, completed? }
 ├─ settings: Settings                      display + entry preferences
 │  ├─ startOfMonth: 1..28                  fiscal-month rollover day
 │  ├─ dateFormat / shortDateFormat
@@ -279,16 +330,18 @@ const OVERVIEW_TEXT = `UserData
 │  └─ sessionTimeoutMinutes: 1..1440
 └─ sheets: Sheet[] (non-empty)
    └─ Sheet { id, name, type, glyph, color, description, items }
-      └─ items: SheetItem[]                today: one AccountBudget per sheet
-         └─ AccountBudget { id, type: "accountBudget", accountId|null,
-                            columns, rows }
-            ├─ columns: Column[]           order = display order
-            │  └─ Column { id, type, label }
-            │     type ∈ { date | description | amount | balance
-            │            | completed | category }
-            └─ rows: Row[]                 month grouping is derived
-               └─ Row { id, cells, seriesId? }
-                  cells: { [columnId]: string|number|boolean|null }`;
+      └─ items: SheetItem[]                budget: AccountBudget; accounts: AccountsView
+         ├─ AccountBudget { id, type: "accountBudget", accountId|null,
+         │                  columns, rows }
+         │  ├─ columns: Column[]           order = display order
+         │  │  └─ Column { id, type, label }
+         │  │     type ∈ { date | description | amount | balance
+         │  │            | completed | category }
+         │  └─ rows: Row[]                 month grouping is derived
+         │     └─ Row { id, cells, seriesId? }
+         │        cells: { [columnId]: string|number|boolean|null }
+         └─ AccountsView { id, type: "accountsView" }
+                                           singleton dashboard, no data of its own`;
 
 function stableStringify(value: unknown, indent: number): string {
   return JSON.stringify(value, stableReplacer, indent);

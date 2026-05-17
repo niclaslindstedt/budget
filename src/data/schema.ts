@@ -57,6 +57,7 @@ export const USER_DATA_SCHEMA = {
     "activeSheetId",
     "accounts",
     "categories",
+    "transactions",
     "settings",
   ],
   properties: {
@@ -100,6 +101,20 @@ export const USER_DATA_SCHEMA = {
         'category\'s id in the cell whose column has `type: "category"`. ' +
         "Renaming a category updates every tagged row automatically.",
       items: { $ref: "#/$defs/Category" },
+    },
+    transactions: {
+      type: "array",
+      description:
+        "Transfers between two accounts. Each transaction is rendered " +
+        "as a read-only synthesized row on every AccountBudget that " +
+        "tracks one of its endpoints (sign depends on which side the " +
+        "budget's account is on) AND in the global log on the singleton " +
+        "Accounts sheet. The synthesized rows are NOT persisted — " +
+        "transactions live only here. When summing an account's " +
+        "balance, add `amount` to the `toAccountId` side and subtract " +
+        "from the `fromAccountId` side; never double-count by also " +
+        "reading the synthesized rows.",
+      items: { $ref: "#/$defs/Transaction" },
     },
     settings: {
       $ref: "#/$defs/Settings",
@@ -256,12 +271,32 @@ export const USER_DATA_SCHEMA = {
         },
       },
     },
+    AccountsView: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "type"],
+      description:
+        "Marker item used by the singleton Accounts sheet flavour. " +
+        "Carries no data of its own: the dashboard renders the global " +
+        "`accounts` and `transactions` arrays directly. Future per-sheet " +
+        "config (account filter, sort order, …) lands here without " +
+        "another migration.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        type: { type: "string", const: "accountsView" },
+      },
+    },
     SheetItem: {
       description:
-        "Discriminated union of items a sheet can hold. Today the only " +
-        "variant is `AccountBudget`; future variants are tagged by their " +
-        "own `type` literal.",
-      oneOf: [{ $ref: "#/$defs/AccountBudget" }],
+        "Discriminated union of items a sheet can hold. `AccountBudget` " +
+        "is the per-account ledger that powers the budget sheet flavour; " +
+        "`AccountsView` is the dashboard rendered by the singleton " +
+        "Accounts flavour. Future variants are tagged by their own " +
+        "`type` literal.",
+      oneOf: [
+        { $ref: "#/$defs/AccountBudget" },
+        { $ref: "#/$defs/AccountsView" },
+      ],
     },
     Sheet: {
       type: "object",
@@ -305,12 +340,118 @@ export const USER_DATA_SCHEMA = {
       required: ["id", "name"],
       description:
         "A real-world account (bank account, credit card, cash envelope, " +
-        "…) referenced by one or more AccountBudget items.",
+        "…) referenced by one or more AccountBudget items and by every " +
+        "Transaction. All fields beyond `id` and `name` are optional " +
+        "display / bank-detail metadata; readers should treat absent " +
+        "fields as 'unspecified' rather than 'empty'.",
       properties: {
         id: { $ref: "#/$defs/Id" },
         name: {
           type: "string",
           description: "User-facing label. May be empty.",
+        },
+        description: {
+          type: "string",
+          description: "Free-form note shown on the Accounts dashboard.",
+        },
+        glyph: {
+          $ref: "#/$defs/CategoryIcon",
+          description: "Icon shown next to the account on the dashboard.",
+        },
+        color: {
+          $ref: "#/$defs/HexColor",
+          description: "Accent colour for this account on the dashboard.",
+        },
+        bank: { type: "string", description: "Free-form bank name." },
+        clearing: {
+          type: "string",
+          description:
+            "Swedish clearingnummer (typically 4–5 digits identifying " +
+            "the bank's branch). Free-form so non-Swedish equivalents " +
+            "fit; readers must not parse it.",
+        },
+        accountNumber: {
+          type: "string",
+          description: "Local account number (no clearing prefix). Free-form.",
+        },
+        iban: {
+          type: "string",
+          description: "International Bank Account Number. Free-form.",
+        },
+        bic: {
+          type: "string",
+          description: "BIC / SWIFT code. Free-form.",
+        },
+        currency: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Free-form per-account currency token that overrides " +
+            "`settings.currency` when rendering this account's balance. " +
+            "Absent or empty means 'use the global setting'.",
+        },
+      },
+    },
+    Transaction: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "id",
+        "date",
+        "description",
+        "amount",
+        "fromAccountId",
+        "toAccountId",
+      ],
+      description:
+        "One transfer between two accounts. `amount` is ALWAYS POSITIVE — " +
+        "the sign comes from the direction (`fromAccountId → " +
+        "toAccountId`). The same transaction appears on both endpoints' " +
+        "budgets as a synthesized read-only row (negative on the from " +
+        "side, positive on the to side); to avoid double-counting, sum " +
+        "balances from `accounts[i].amount` data + transactions directly, " +
+        "not from synthesized budget rows.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        date: {
+          type: "string",
+          description: "ISO YYYY-MM-DD date the transfer occurred on.",
+        },
+        description: {
+          type: "string",
+          description: "Free-form label, shown on both budgets and the log.",
+        },
+        amount: {
+          type: "number",
+          description:
+            "Magnitude of the transfer. ALWAYS positive — the direction " +
+            "is `fromAccountId → toAccountId`. Readers that want a " +
+            "signed amount for a specific account should negate when " +
+            "the account is on the `from` side.",
+        },
+        fromAccountId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Id of the account money flows OUT of. MUST reference an " +
+            "entry in `accounts`.",
+        },
+        toAccountId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Id of the account money flows INTO. MUST reference an " +
+            "entry in `accounts`. May equal `fromAccountId` in pathological " +
+            "user input but the UI does not generate such transactions.",
+        },
+        categoryId: {
+          oneOf: [{ $ref: "#/$defs/Id" }, { type: "null" }],
+          description:
+            "Optional category tag, referencing `categories`. Null means " +
+            "'uncategorised'.",
+        },
+        completed: {
+          type: "boolean",
+          description:
+            "Optional done flag mirroring the budget's `completed` column.",
         },
       },
     },

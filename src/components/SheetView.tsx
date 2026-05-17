@@ -8,14 +8,18 @@ import {
   groupRowsByMonth,
   sortMonthKeys,
   sortRowsByDate,
+  synthesizeTransactionRow,
+  transactionsForAccount,
 } from "../data/sheet";
 import type {
+  Account,
   AccountBudget,
   Category,
   CellValue,
   Row,
   Settings,
   Sheet,
+  Transaction,
 } from "../data/types";
 import {
   formatAmountForInput,
@@ -33,6 +37,14 @@ type Props = {
   // `sheet.items` and rendering one component per variant.
   item: AccountBudget;
   categories: Category[];
+  // All accounts in the workspace. Needed so the view can look up the
+  // peer account name when synthesizing a transaction row, and so the
+  // running balance can mirror what the Accounts dashboard shows.
+  accounts: Account[];
+  // Every cross-account transaction in the workspace. The view filters
+  // to the ones involving `item.accountId` and interleaves them into
+  // the rows displayed in each month.
+  transactions: Transaction[];
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -47,6 +59,7 @@ type Props = {
   onAddComplex: (date: string) => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  onTransactionRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -62,6 +75,8 @@ export function SheetView({
   sheet,
   item,
   categories,
+  accounts,
+  transactions,
   settings,
   selectMode,
   selectedIds,
@@ -72,6 +87,7 @@ export function SheetView({
   onAddComplex,
   onDeleteRequest,
   onEditRequest,
+  onTransactionRequest,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
@@ -83,19 +99,48 @@ export function SheetView({
     [item.columns],
   );
 
-  const balances = useMemo(() => computeBalances(item), [item]);
+  // Interleave synthesized transaction rows alongside the budget's own
+  // rows so month grouping, running balance, and sort-by-date pick them
+  // up without further special-casing. Only the transactions involving
+  // this budget's account contribute. When the budget has no account
+  // attached, no synthesis happens — there is no "this account" to
+  // place the transactions against.
+  const accountsById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of accounts) m.set(a.id, a.name);
+    return m;
+  }, [accounts]);
+  const transactionRows = useMemo(() => {
+    if (!item.accountId) return [] as Row[];
+    const accountTxs = transactionsForAccount(transactions, item.accountId);
+    return accountTxs.map((tx) =>
+      synthesizeTransactionRow(
+        tx,
+        item.accountId as string,
+        item.columns,
+        accountsById,
+      ),
+    );
+  }, [item.accountId, item.columns, transactions, accountsById]);
+
+  const mergedItem = useMemo<AccountBudget>(
+    () => ({ ...item, rows: [...item.rows, ...transactionRows] }),
+    [item, transactionRows],
+  );
+
+  const balances = useMemo(() => computeBalances(mergedItem), [mergedItem]);
 
   // Each month renders as its own CSS grid, so amount/balance columns
   // sized with `max-content` end up different widths per month. Compute
   // the longest formatted value across the whole block here and pass it
   // down so every month aligns on the same column widths.
   const colWidths = useMemo(() => {
-    const amountCol = findColumnByType(item.columns, "amount");
-    const balanceCol = findColumnByType(item.columns, "balance");
+    const amountCol = findColumnByType(mergedItem.columns, "amount");
+    const balanceCol = findColumnByType(mergedItem.columns, "balance");
     let amountChars = 0;
     let balanceChars = 0;
     if (amountCol) {
-      for (const row of item.rows) {
+      for (const row of mergedItem.rows) {
         const v = row.cells[amountCol.id];
         if (typeof v !== "number") continue;
         const body = formatAmountForInput(Math.abs(v), settings);
@@ -110,12 +155,12 @@ export function SheetView({
       }
     }
     return { amountChars, balanceChars };
-  }, [item.rows, item.columns, balances, settings]);
+  }, [mergedItem.rows, mergedItem.columns, balances, settings]);
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
-    return groupRowsByMonth(item.rows, dateCol.id, settings.startOfMonth);
-  }, [item.rows, dateCol, settings.startOfMonth]);
+    return groupRowsByMonth(mergedItem.rows, dateCol.id, settings.startOfMonth);
+  }, [mergedItem.rows, dateCol, settings.startOfMonth]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -203,12 +248,13 @@ export function SheetView({
                 <MonthTable
                   monthKey={monthKey}
                   rows={monthRows}
-                  columns={item.columns}
+                  columns={mergedItem.columns}
                   balances={balances}
                   categories={categories}
                   settings={settings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}
+                  canTransfer={item.accountId !== null}
                   amountChars={colWidths.amountChars}
                   balanceChars={colWidths.balanceChars}
                   onUpdateCell={onUpdateCell}
@@ -217,6 +263,7 @@ export function SheetView({
                   onAddComplex={() => onAddComplex(seedDate)}
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
+                  onTransactionRequest={onTransactionRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}
                   onToggleSelectMonth={onToggleSelectMonth}

@@ -101,41 +101,55 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 8;
+  version: 9;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
   categories: Category[];
+  transactions: Transaction[]; // cross-account transfers; see below
   settings: Settings;
 };
 
 type Account = {
   id: string;
   name: string;
+  // All metadata fields below are optional. The Accounts dashboard
+  // surfaces them and the create-account modal collects them, but
+  // the budget logic only reads `id` and `name`.
+  description?: string;
+  glyph?: CategoryIcon;
+  color?: string;
+  bank?: string;
+  clearing?: string; // Swedish clearingnummer
+  accountNumber?: string;
+  iban?: string;
+  bic?: string; // BIC / SWIFT
+  currency?: string; // overrides Settings.currency for this account's display
 };
 
 type Sheet = {
   id: string;
   name: string;
-  type: SheetType; // today: "budget"; planners join later
+  type: SheetType; // today: "budget" | "accounts"; planners join later
   glyph: SheetGlyph; // displayed in the bottom tab bar
   color: string; // hex; tints the tab and the editor preview
   description: string; // free-form note shown in the modal
   items: SheetItem[]; // typed blocks rendered inside the sheet
 };
 
-// Sheet flavour. Future planners (loan, savings, parental-leave, …)
-// slot in as additional literals; the UI dispatches off `Sheet.type`.
-type SheetType = "budget";
+// Sheet flavour. "accounts" is a singleton dashboard; the type picker
+// greys it out once one exists. Future planners (loan, savings,
+// parental-leave, …) slot in as additional literals.
+type SheetType = "budget" | "accounts";
 
 // Glyph picker reuses the `CategoryIcon` allowlist so the same
 // rendering helpers cover both category chips and sheet tabs.
 type SheetGlyph = CategoryIcon;
 
-// Discriminated union; today the only variant is AccountBudget. A
-// Graph / Note / etc. variant slots in as another case without
-// another migration of the existing data.
-type SheetItem = AccountBudget;
+// Discriminated union. AccountBudget is the per-account ledger; the
+// AccountsView marker tags the singleton dashboard so the view layer
+// can dispatch off `item.type`. Future variants slot in here.
+type SheetItem = AccountBudget | AccountsView;
 
 type AccountBudget = {
   id: string;
@@ -144,6 +158,14 @@ type AccountBudget = {
   // when the budget is not yet tied to an account
   columns: Column[]; // ordered; drag-and-drop reorders this array
   rows: Row[]; // flat list; month grouping is derived in the view
+};
+
+// The Accounts dashboard holds no data of its own — it renders the
+// global accounts + transactions arrays. Future per-sheet config
+// (account filter, sort order, …) lands here without a migration.
+type AccountsView = {
+  id: string;
+  type: "accountsView";
 };
 
 type Column = {
@@ -167,6 +189,17 @@ type Row = {
   // and on mobile this replaces the "…" popover trigger.
 };
 
+type Transaction = {
+  id: string;
+  date: string; // ISO YYYY-MM-DD
+  description: string;
+  amount: number; // ALWAYS positive — direction = from → to
+  fromAccountId: string; // money flows OUT of this account
+  toAccountId: string; // money flows INTO this account
+  categoryId?: string | null;
+  completed?: boolean;
+};
+
 type Category = {
   id: string;
   name: string;
@@ -174,6 +207,17 @@ type Category = {
   icon: CategoryIcon; // one of a fixed allowlist
 };
 ```
+
+Transactions are top-level (not duplicated rows on the involved
+budgets). Budget views synthesize a read-only row on each side at
+render time so the running balance and month grouping pick the
+transfer up. The synthesized rows carry runtime-only marker fields
+(`transactionId`, `peerAccountId`, `peerAccountName`) that are never
+persisted — `userDataWithSavableRows` strips synthesized rows before
+save, and the validator/schema do not list those fields. When
+summing balances from a persisted export, walk `transactions`
+directly: incoming on the `toAccountId` side, outgoing on the
+`fromAccountId` side.
 
 Accounts live at the `UserData` level so the same account can be
 referenced from multiple sheets, and a future roll-up view can sum
@@ -218,7 +262,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `8`. The chain has seven steps:
+Current `LATEST_VERSION` is `9`. The chain has eight steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -247,6 +291,13 @@ Current `LATEST_VERSION` is `8`. The chain has seven steps:
   description cell (and replacing the mobile `…` trigger). Older
   builds would silently drop the field, so bumping signals the new
   shape.
+- **v8 → v9** — adds top-level `transactions: []` (cross-account
+  transfers, see the Data model above) plus the singleton `"accounts"`
+  sheet flavour with its `AccountsView` item variant. `Account` gains
+  optional `description`, `glyph`, `color`, `bank`, `clearing`,
+  `accountNumber`, `iban`, `bic`, `currency` metadata. The migration
+  is a bare add of `transactions: []`; every new field is optional so
+  v8 records pass the v9 validator unchanged.
 
 ## Complex entries
 

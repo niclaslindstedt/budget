@@ -13,6 +13,7 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
+  canTransfer: boolean;
   amountChars: number;
   balanceChars: number;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
@@ -21,6 +22,7 @@ type Props = {
   onAddComplex: () => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  onTransactionRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -48,6 +50,7 @@ export function MonthTable({
   settings,
   selectMode,
   selectedIds,
+  canTransfer,
   amountChars,
   balanceChars,
   onUpdateCell,
@@ -56,15 +59,26 @@ export function MonthTable({
   onAddComplex,
   onDeleteRequest,
   onEditRequest,
+  onTransactionRequest,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
   onCreateCategory,
 }: Props) {
-  const rowIds = rows.map((r) => r.id);
+  // Synthesized transaction rows live in `rows` (the parent merges them
+  // in) but they are not selectable for bulk operations — they aren't
+  // real budget rows, so a delete or move that targets them would do
+  // nothing. Filter them out of the selection helpers so the "select
+  // all in month" affordance and aria states only reflect rows the user
+  // can act on.
+  const selectableRowIds = rows
+    .filter((r) => r.transactionId === undefined)
+    .map((r) => r.id);
   const allSelected =
-    rowIds.length > 0 && rowIds.every((id) => selectedIds.has(id));
-  const someSelected = rowIds.some((id) => selectedIds.has(id)) && !allSelected;
+    selectableRowIds.length > 0 &&
+    selectableRowIds.every((id) => selectedIds.has(id));
+  const someSelected =
+    selectableRowIds.some((id) => selectedIds.has(id)) && !allSelected;
   // Tint the sticky header with the month's pastel — `undated` has no
   // calendar month so it stays on the neutral `fg-bright` colour.
   const headerMonthNum = monthNumberFromKey(monthKey);
@@ -106,8 +120,10 @@ export function MonthTable({
                 >
                   <button
                     type="button"
-                    onClick={() => onToggleSelectMonth(rowIds, !allSelected)}
-                    disabled={rowIds.length === 0}
+                    onClick={() =>
+                      onToggleSelectMonth(selectableRowIds, !allSelected)
+                    }
+                    disabled={selectableRowIds.length === 0}
                     className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-muted disabled:opacity-30"
                     aria-label={
                       allSelected
@@ -154,10 +170,12 @@ export function MonthTable({
                 settings={settings}
                 selectMode={selectMode}
                 selected={selectedIds.has(row.id)}
+                canTransfer={canTransfer}
                 onUpdateCell={onUpdateCell}
                 onCommitCell={onCommitCell}
                 onDeleteRequest={onDeleteRequest}
                 onEditRequest={onEditRequest}
+                onTransactionRequest={onTransactionRequest}
                 onToggleSelect={onToggleSelect}
                 onCreateCategory={onCreateCategory}
               />

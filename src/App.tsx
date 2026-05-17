@@ -6,12 +6,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListChecks, Settings as SettingsIcon } from "lucide-react";
 
+import { AccountModal, type AccountDraft } from "./components/AccountModal";
+import { AccountsSheetView } from "./components/AccountsSheetView";
 import { ApplySeriesEditDialog } from "./components/ApplySeriesEditDialog";
 import { AuthScreen } from "./components/AuthScreen";
 import { BudgetLoading } from "./components/BudgetLoading";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
 import { SheetModal, type SheetDraft } from "./components/SheetModal";
+import {
+  TransactionModal,
+  type TransactionDraft,
+  type TransactionModalRequest,
+} from "./components/TransactionModal";
 import { SheetTabs } from "./components/SheetTabs";
 import {
   ComplexEntryModal,
@@ -55,6 +62,7 @@ import type {
   Settings,
   Sheet,
   StoredUser,
+  Transaction,
   UserData,
 } from "./data/types";
 import type { StorageAdapter } from "./storage/adapter";
@@ -203,6 +211,25 @@ type Action =
       accountId: string | null;
     }
   | { type: "createAccount"; account: Account }
+  | { type: "updateAccount"; accountId: string; patch: Partial<Account> }
+  | { type: "deleteAccount"; accountId: string }
+  | { type: "createTransaction"; transaction: Transaction }
+  | {
+      type: "updateTransaction";
+      transactionId: string;
+      patch: Partial<Transaction>;
+    }
+  | { type: "deleteTransaction"; transactionId: string }
+  | {
+      // Drop a budget row and mint a transaction in one cycle so the
+      // app never sits in a state where the same logical transfer
+      // exists twice (once as a row, once as a transaction).
+      type: "promoteRowToTransaction";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+      transaction: Transaction;
+    }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
@@ -499,6 +526,81 @@ function reducer(state: UserData, action: Action): UserData {
   }
   if (action.type === "createAccount") {
     return { ...state, accounts: [...state.accounts, action.account] };
+  }
+  if (action.type === "updateAccount") {
+    return {
+      ...state,
+      accounts: state.accounts.map((a) =>
+        a.id === action.accountId ? { ...a, ...action.patch } : a,
+      ),
+    };
+  }
+  if (action.type === "deleteAccount") {
+    // Cascading detach: clear `accountId` on any AccountBudget that
+    // referenced this account so the budgets keep working as
+    // free-standing ledgers, and drop any transactions that touched
+    // it (a transfer between two known accounts loses its other half
+    // once one side is gone, so the cleanest answer is removal).
+    return {
+      ...state,
+      accounts: state.accounts.filter((a) => a.id !== action.accountId),
+      sheets: state.sheets.map((sheet) => ({
+        ...sheet,
+        items: sheet.items.map((item) =>
+          item.type === "accountBudget" && item.accountId === action.accountId
+            ? { ...item, accountId: null }
+            : item,
+        ),
+      })),
+      transactions: state.transactions.filter(
+        (tx) =>
+          tx.fromAccountId !== action.accountId &&
+          tx.toAccountId !== action.accountId,
+      ),
+    };
+  }
+  if (action.type === "createTransaction") {
+    return {
+      ...state,
+      transactions: [...state.transactions, action.transaction],
+    };
+  }
+  if (action.type === "updateTransaction") {
+    return {
+      ...state,
+      transactions: state.transactions.map((tx) =>
+        tx.id === action.transactionId ? { ...tx, ...action.patch } : tx,
+      ),
+    };
+  }
+  if (action.type === "deleteTransaction") {
+    return {
+      ...state,
+      transactions: state.transactions.filter(
+        (tx) => tx.id !== action.transactionId,
+      ),
+    };
+  }
+  if (action.type === "promoteRowToTransaction") {
+    return {
+      ...state,
+      transactions: [...state.transactions, action.transaction],
+      sheets: state.sheets.map((sheet) =>
+        sheet.id === action.sheetId
+          ? {
+              ...sheet,
+              items: sheet.items.map((item) =>
+                item.id === action.itemId && item.type === "accountBudget"
+                  ? {
+                      ...item,
+                      rows: item.rows.filter((r) => r.id !== action.rowId),
+                    }
+                  : item,
+              ),
+            }
+          : sheet,
+      ),
+    };
   }
   if (action.type === "renameSheet") {
     return {
@@ -1173,21 +1275,40 @@ function BudgetView({
   const [sheetModal, setSheetModal] = useState<{ sheet: Sheet | null } | null>(
     null,
   );
+  // null = closed; { account: null } = create-account modal; otherwise edit.
+  const [accountModal, setAccountModal] = useState<{
+    account: Account | null;
+  } | null>(null);
+  // null = closed; otherwise the request describes the mode (promote /
+  // create / edit). The TransactionModal seeds itself from the request.
+  const [transactionRequest, setTransactionRequest] =
+    useState<TransactionModalRequest | null>(null);
 
   const activeSheet =
     data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
 
-  // The single AccountBudget block on the active sheet. The data model
-  // allows sheets to hold multiple items (and other variants like
-  // graphs in the future) but the current UI surfaces exactly one
-  // AccountBudget — so we narrow here and the rest of the view operates
-  // on that block directly. Migrations and `freshUserData` both
-  // guarantee its presence; the `?? activeSheet.items[0]` is a defensive
-  // fallback in case a future variant lands in slot 0.
-  const activeItem: AccountBudget =
-    (activeSheet.items.find(
+  // The active sheet's first AccountBudget block. For sheets of type
+  // "budget" this is what the rest of the view renders against. For
+  // "accounts" sheets there's no budget item — `activeBudget` is null
+  // and we render `AccountsSheetView` in place of `SheetView`. The
+  // budget-only callbacks below fall back to a stub when null so the
+  // type checker stays happy; they're never invoked while an accounts
+  // sheet is active because the budget UI isn't on screen.
+  const activeBudget: AccountBudget | null =
+    activeSheet.items.find(
       (it): it is AccountBudget => it.type === "accountBudget",
-    ) as AccountBudget | undefined) ?? (activeSheet.items[0] as AccountBudget);
+    ) ?? null;
+  const stubBudget = useMemo<AccountBudget>(
+    () => ({
+      id: "stub",
+      type: "accountBudget",
+      accountId: null,
+      columns: [],
+      rows: [],
+    }),
+    [],
+  );
+  const activeItem: AccountBudget = activeBudget ?? stubBudget;
 
   const sheetId = activeSheet.id;
   const itemId = activeItem.id;
@@ -1490,6 +1611,215 @@ function BudgetView({
     dispatch({ type: "deleteSheet", sheetId: sheetModal.sheet.id });
     setSheetModal(null);
   }, [dispatch, sheetModal]);
+
+  // Account / transaction modal handlers. Kept on the BudgetView so
+  // they share the same dispatch and Account state as the rest of the
+  // workspace — the modals themselves stay pure presentational shells.
+  const onOpenCreateAccount = useCallback(() => {
+    setAccountModal({ account: null });
+  }, []);
+  const onOpenEditAccount = useCallback(
+    (accountId: string) => {
+      const target = data.accounts.find((a) => a.id === accountId);
+      if (target) setAccountModal({ account: target });
+    },
+    [data.accounts],
+  );
+  const onSaveAccount = useCallback(
+    (draft: AccountDraft) => {
+      // Strip empty strings from optional fields so a cleared input
+      // restores "unset" rather than persisting an empty value the
+      // schema would carry through every export.
+      const patch: Partial<Account> = {
+        name: draft.name,
+        description: draft.description || undefined,
+        glyph: draft.glyph ?? undefined,
+        color: draft.color ?? undefined,
+        bank: draft.bank || undefined,
+        clearing: draft.clearing || undefined,
+        accountNumber: draft.accountNumber || undefined,
+        iban: draft.iban || undefined,
+        bic: draft.bic || undefined,
+        currency: draft.currency || undefined,
+      };
+      if (accountModal?.account) {
+        dispatch({
+          type: "updateAccount",
+          accountId: accountModal.account.id,
+          patch,
+        });
+      } else {
+        const account: Account = {
+          id: newId(),
+          name: draft.name,
+          ...(draft.description && { description: draft.description }),
+          ...(draft.glyph && { glyph: draft.glyph }),
+          ...(draft.color && { color: draft.color }),
+          ...(draft.bank && { bank: draft.bank }),
+          ...(draft.clearing && { clearing: draft.clearing }),
+          ...(draft.accountNumber && { accountNumber: draft.accountNumber }),
+          ...(draft.iban && { iban: draft.iban }),
+          ...(draft.bic && { bic: draft.bic }),
+          ...(draft.currency && { currency: draft.currency }),
+        };
+        dispatch({ type: "createAccount", account });
+      }
+      setAccountModal(null);
+    },
+    [dispatch, accountModal],
+  );
+  const onDeleteFinancialAccount = useCallback(() => {
+    if (!accountModal?.account) return;
+    dispatch({
+      type: "deleteAccount",
+      accountId: accountModal.account.id,
+    });
+    setAccountModal(null);
+  }, [dispatch, accountModal]);
+
+  // Transaction modal entry points. The promote-row path computes the
+  // direction from the row's amount sign so the modal only has to ask
+  // for the OTHER account.
+  const onTransactionRequest = useCallback(
+    (row: Row) => {
+      if (!activeBudget || activeBudget.accountId === null) return;
+      if (row.transactionId) {
+        // Synthesized transaction row — open it in edit mode by
+        // looking up the underlying transaction.
+        const tx = data.transactions.find((t) => t.id === row.transactionId);
+        if (!tx) return;
+        setTransactionRequest({
+          kind: "edit",
+          transactionId: tx.id,
+          date: tx.date,
+          description: tx.description,
+          amount: tx.amount,
+          fromAccountId: tx.fromAccountId,
+          toAccountId: tx.toAccountId,
+          categoryId: tx.categoryId ?? null,
+          completed: tx.completed ?? false,
+        });
+        return;
+      }
+      const dateCol = findColumnByType(activeBudget.columns, "date");
+      const descCol = findColumnByType(activeBudget.columns, "description");
+      const amountCol = findColumnByType(activeBudget.columns, "amount");
+      const categoryCol = findColumnByType(activeBudget.columns, "category");
+      const rawDate = dateCol ? row.cells[dateCol.id] : null;
+      const rawDesc = descCol ? row.cells[descCol.id] : null;
+      const rawAmount = amountCol ? row.cells[amountCol.id] : null;
+      const rawCategory = categoryCol ? row.cells[categoryCol.id] : null;
+      const amount = typeof rawAmount === "number" ? rawAmount : 0;
+      setTransactionRequest({
+        kind: "promote",
+        row,
+        selfAccountId: activeBudget.accountId,
+        seedDate: typeof rawDate === "string" ? rawDate : "",
+        seedDescription: typeof rawDesc === "string" ? rawDesc : "",
+        seedAmount: amount,
+        outgoing: amount < 0,
+        seedCategoryId: typeof rawCategory === "string" ? rawCategory : null,
+      });
+    },
+    [activeBudget, data.transactions],
+  );
+  const onOpenCreateTransaction = useCallback(() => {
+    const today = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
+    setTransactionRequest({
+      kind: "create",
+      defaultFromId: data.accounts[0]?.id ?? null,
+      defaultToId: data.accounts[1]?.id ?? null,
+      seedDate: today,
+    });
+  }, [data.accounts]);
+  const onOpenEditTransaction = useCallback(
+    (transactionId: string) => {
+      const tx = data.transactions.find((t) => t.id === transactionId);
+      if (!tx) return;
+      setTransactionRequest({
+        kind: "edit",
+        transactionId: tx.id,
+        date: tx.date,
+        description: tx.description,
+        amount: tx.amount,
+        fromAccountId: tx.fromAccountId,
+        toAccountId: tx.toAccountId,
+        categoryId: tx.categoryId ?? null,
+        completed: tx.completed ?? false,
+      });
+    },
+    [data.transactions],
+  );
+  const onPromoteTransaction = useCallback(
+    (draft: TransactionDraft) => {
+      if (!activeBudget || transactionRequest?.kind !== "promote") return;
+      const transaction: Transaction = {
+        id: newId(),
+        date: draft.date,
+        description: draft.description,
+        amount: draft.amount,
+        fromAccountId: draft.fromAccountId,
+        toAccountId: draft.toAccountId,
+        ...(draft.categoryId !== null && { categoryId: draft.categoryId }),
+        ...(draft.completed && { completed: draft.completed }),
+      };
+      dispatch({
+        type: "promoteRowToTransaction",
+        sheetId,
+        itemId: activeBudget.id,
+        rowId: transactionRequest.row.id,
+        transaction,
+      });
+      setTransactionRequest(null);
+    },
+    [dispatch, activeBudget, sheetId, transactionRequest],
+  );
+  const onCreateTransaction = useCallback(
+    (draft: TransactionDraft) => {
+      const transaction: Transaction = {
+        id: newId(),
+        date: draft.date,
+        description: draft.description,
+        amount: draft.amount,
+        fromAccountId: draft.fromAccountId,
+        toAccountId: draft.toAccountId,
+        ...(draft.categoryId !== null && { categoryId: draft.categoryId }),
+        ...(draft.completed && { completed: draft.completed }),
+      };
+      dispatch({ type: "createTransaction", transaction });
+      setTransactionRequest(null);
+    },
+    [dispatch],
+  );
+  const onEditTransactionSave = useCallback(
+    (transactionId: string, draft: TransactionDraft) => {
+      dispatch({
+        type: "updateTransaction",
+        transactionId,
+        patch: {
+          date: draft.date,
+          description: draft.description,
+          amount: draft.amount,
+          fromAccountId: draft.fromAccountId,
+          toAccountId: draft.toAccountId,
+          categoryId: draft.categoryId,
+          completed: draft.completed,
+        },
+      });
+      setTransactionRequest(null);
+    },
+    [dispatch],
+  );
+  const onDeleteTransactionFromModal = useCallback(
+    (transactionId: string) => {
+      dispatch({ type: "deleteTransaction", transactionId });
+      setTransactionRequest(null);
+    },
+    [dispatch],
+  );
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
       dispatch({ type: "addRowsFromComplex", sheetId, itemId, draft });
@@ -1771,11 +2101,23 @@ function BudgetView({
       <main className="flex-1">
         {status.kind === "loading" ? (
           <BudgetLoading />
+        ) : activeSheet.type === "accounts" ? (
+          <AccountsSheetView
+            sheet={activeSheet}
+            data={data}
+            settings={data.settings}
+            onCreateAccount={onOpenCreateAccount}
+            onEditAccount={onOpenEditAccount}
+            onCreateTransaction={onOpenCreateTransaction}
+            onEditTransaction={onOpenEditTransaction}
+          />
         ) : (
           <SheetView
             sheet={activeSheet}
             item={activeItem}
             categories={data.categories}
+            accounts={data.accounts}
+            transactions={data.transactions}
             settings={data.settings}
             selectMode={selectMode}
             selectedIds={selectedIds}
@@ -1786,6 +2128,7 @@ function BudgetView({
             onAddComplex={onAddComplex}
             onDeleteRequest={onDeleteRequest}
             onEditRequest={onEditRequest}
+            onTransactionRequest={onTransactionRequest}
             onReorderColumns={onReorderColumns}
             onToggleSelect={onToggleSelect}
             onToggleSelectMonth={onToggleSelectMonth}
@@ -1823,9 +2166,35 @@ function BudgetView({
         }
         accounts={data.accounts}
         canDelete={data.sheets.length > 1}
+        // The Accounts flavour is a singleton. The picker greys it out
+        // when one already exists (unless the current draft is editing
+        // that very sheet).
+        accountsSheetTaken={data.sheets.some(
+          (s) => s.type === "accounts" && s.id !== sheetModal?.sheet?.id,
+        )}
         onClose={() => setSheetModal(null)}
         onSave={onSaveSheet}
         onDelete={onDeleteSheet}
+      />
+      <AccountModal
+        open={accountModal !== null}
+        account={accountModal?.account ?? null}
+        onClose={() => setAccountModal(null)}
+        onSave={onSaveAccount}
+        onDelete={onDeleteFinancialAccount}
+      />
+      <TransactionModal
+        open={transactionRequest !== null}
+        request={transactionRequest}
+        accounts={data.accounts}
+        categories={data.categories}
+        settings={data.settings}
+        onClose={() => setTransactionRequest(null)}
+        onPromote={onPromoteTransaction}
+        onCreate={onCreateTransaction}
+        onEdit={onEditTransactionSave}
+        onDelete={onDeleteTransactionFromModal}
+        onCreateCategory={onCreateCategory}
       />
       <ComplexEntryModal
         open={complexOpen}

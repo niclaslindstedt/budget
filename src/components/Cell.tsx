@@ -1,6 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Minus, Plus, Repeat } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Check,
+  Minus,
+  Plus,
+  Repeat,
+} from "lucide-react";
 
 import type {
   Category,
@@ -37,6 +44,14 @@ type Props = {
   // renders this in place of the default recurring icon (and uses it as
   // the mobile popover trigger so the row reads at a glance).
   glyph?: CategoryIcon | null;
+  // True when this row is a synthesized side of a Transaction. Disables
+  // every editor (the row is sourced from `data.transactions`, not the
+  // budget's `item.rows`) and swaps the description leading glyph to a
+  // transfer indicator. The `peerName` / `outgoing` props feed the
+  // direction arrow and "→ Savings" prefix in the description cell.
+  isTransaction?: boolean;
+  peerName?: string;
+  outgoing?: boolean;
   onChange: (value: CellValue) => void;
   // Fires when the user finishes editing a cell (blur for the typed
   // inputs, the selection event for picker-style cells). Distinct from
@@ -59,10 +74,93 @@ export function Cell({
   settings,
   isRecurring,
   glyph,
+  isTransaction,
+  peerName,
+  outgoing,
   onChange,
   onCommit,
   onCreateCategory,
 }: Props) {
+  // Synthesized transaction rows are not editable inline — the
+  // underlying data lives in `data.transactions`, not on the budget's
+  // rows[]. Render each cell as a display-only span / icon and offer
+  // editing through the action button (which opens the transaction
+  // modal). The dedicated transaction layouts only differ from the
+  // regular layouts in two ways: no input element, and the description
+  // cell shows a transfer arrow + peer-account name.
+  if (isTransaction) {
+    switch (column.type) {
+      case "date":
+        return (
+          <ReadonlyDateCell
+            value={typeof value === "string" ? value : ""}
+            settings={settings}
+          />
+        );
+      case "description":
+        return (
+          <TransactionDescriptionCell
+            value={typeof value === "string" ? value : ""}
+            peerName={peerName ?? ""}
+            outgoing={!!outgoing}
+          />
+        );
+      case "amount":
+        return (
+          <ReadonlyAmountCell
+            value={typeof value === "number" ? value : null}
+            settings={settings}
+          />
+        );
+      case "balance": {
+        const n = computedBalance ?? 0;
+        return (
+          <td
+            className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
+              n < 0 ? "text-negative" : "text-positive"
+            }`}
+            aria-readonly="true"
+          >
+            <span className="block">{formatBalance(n, settings)}</span>
+          </td>
+        );
+      }
+      case "completed": {
+        const checked = value === true;
+        return (
+          <td
+            className={`${CELL_BASE} p-0 text-center text-muted`}
+            aria-readonly="true"
+          >
+            <span className="flex h-full min-h-9 w-full items-center justify-center p-1.5">
+              {checked && <Check size={18} aria-hidden focusable={false} />}
+            </span>
+          </td>
+        );
+      }
+      case "category": {
+        const selectedId = typeof value === "string" ? value : null;
+        const category = categories?.find((c) => c.id === selectedId) ?? null;
+        return (
+          <td className={`${CELL_BASE} px-2 py-1.5 align-middle`}>
+            {category ? (
+              <span
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs"
+                style={{
+                  color: category.color,
+                  backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
+                }}
+              >
+                <span className="truncate">{category.name}</span>
+              </span>
+            ) : (
+              <span className="text-xs text-muted">—</span>
+            )}
+          </td>
+        );
+      }
+    }
+  }
   switch (column.type) {
     case "date": {
       return <DateCell value={value} settings={settings} onChange={onChange} />;
@@ -633,5 +731,139 @@ function DescriptionPopover({
           document.body,
         )}
     </>
+  );
+}
+
+// Read-only date cell for synthesized transaction rows. Uses the same
+// long / short / day-only formatters as the editable variant so widths
+// line up across the table.
+function ReadonlyDateCell({
+  value,
+  settings,
+}: {
+  value: string;
+  settings: Settings;
+}) {
+  const short = value ? formatShortDate(value, settings.shortDateFormat) : "";
+  const dayOnly = value ? formatDayOnly(value) : "";
+  const monthNum = value ? monthNumberFromKey(value) : null;
+  const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
+  return (
+    <td
+      className={`${CELL_BASE} relative px-1 py-2 text-center font-mono font-bold tabular-nums whitespace-nowrap md:px-2.5 md:font-normal md:text-right ${
+        value ? "" : "text-muted"
+      }`}
+      style={value && monthColor ? { color: monthColor } : undefined}
+      aria-readonly="true"
+    >
+      <span className="md:hidden">{dayOnly || "—"}</span>
+      <span className="hidden md:inline">{short || "—"}</span>
+    </td>
+  );
+}
+
+// Read-only amount cell for synthesized transaction rows. Mirrors the
+// editable variant's coloured sign + currency suffix but renders as
+// plain text so the row reads identically without becoming editable.
+function ReadonlyAmountCell({
+  value,
+  settings,
+}: {
+  value: number | null;
+  settings: Settings;
+}) {
+  const negative = value !== null && value < 0;
+  const abs = value !== null ? Math.abs(value) : null;
+  const body = abs !== null ? formatAmountForInput(abs, settings) : "";
+  return (
+    <td className={CELL_BASE}>
+      <div className="relative flex items-stretch">
+        <span
+          className={`pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center ${
+            negative ? "text-negative" : "text-positive"
+          }`}
+          aria-hidden
+        >
+          {negative ? (
+            <Minus size={14} aria-hidden focusable={false} />
+          ) : (
+            <Plus size={14} aria-hidden focusable={false} />
+          )}
+        </span>
+        <span
+          className={`block w-full px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre text-right ${
+            settings.showCurrency && settings.currencyPosition === "after"
+              ? "pr-8"
+              : ""
+          } ${
+            abs !== null
+              ? negative
+                ? "text-negative"
+                : "text-positive"
+              : "text-muted"
+          }`}
+        >
+          {body || "—"}
+        </span>
+        {settings.showCurrency && abs !== null && (
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute inset-y-0 ${
+              settings.currencyPosition === "before" ? "left-6" : "right-2"
+            } flex items-center font-mono text-xs text-muted`}
+          >
+            {settings.currency}
+          </span>
+        )}
+      </div>
+    </td>
+  );
+}
+
+// Description cell for synthesized transaction rows. Shows a transfer
+// arrow leading into the peer account name, then the transaction
+// description as plain text. Mirrors the editable description cell's
+// desktop / mobile split so the row collapses cleanly on small screens.
+function TransactionDescriptionCell({
+  value,
+  peerName,
+  outgoing,
+}: {
+  value: string;
+  peerName: string;
+  outgoing: boolean;
+}) {
+  const arrow = outgoing ? (
+    // Outgoing transfer: arrow pointing AWAY from us toward the peer.
+    <ArrowRight
+      size={12}
+      aria-hidden
+      focusable={false}
+      className="shrink-0 text-flag"
+    />
+  ) : (
+    // Incoming transfer: the bidirectional glyph reads better than a
+    // left-pointing arrow at a glance because the row's sign already
+    // tells the user where the money came from.
+    <ArrowLeftRight
+      size={12}
+      aria-hidden
+      focusable={false}
+      className="shrink-0 text-flag"
+    />
+  );
+  return (
+    <td className={`${CELL_BASE} text-flag align-middle md:w-full`}>
+      <div className="hidden md:flex md:items-center md:gap-1.5 md:px-2.5 md:py-2">
+        {arrow}
+        <span className="text-muted">{peerName || "—"}</span>
+        {value && <span className="text-muted">·</span>}
+        <span className="truncate text-fg">{value}</span>
+      </div>
+      <div className="flex h-full min-h-9 w-full items-center justify-center gap-1.5 px-2.5 py-2 font-mono text-flag md:hidden">
+        {arrow}
+        <span className="truncate text-fg">{value || peerName || "—"}</span>
+      </div>
+    </td>
   );
 }

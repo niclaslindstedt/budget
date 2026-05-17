@@ -16,7 +16,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 8 as const;
+export const LATEST_VERSION = 9 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -160,6 +160,19 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // understands the new shape so older builds know not to silently
   // drop the field.
   7: (v7) => ({ ...v7, version: 8 }),
+
+  // v8 → v9: introduces top-level `transactions` (transfers between
+  // accounts) and the "accounts" sheet flavour with its `AccountsView`
+  // item variant. Accounts also gain optional bank-detail metadata
+  // (description, glyph, color, bank, clearing, accountNumber, iban,
+  // bic, currency). Existing data needs no rewrite: the migration is
+  // a bare version bump plus an empty `transactions` array, and every
+  // new field is optional so v8 records pass the v9 validator
+  // unchanged.
+  8: (v8) => {
+    const transactions = Array.isArray(v8.transactions) ? v8.transactions : [];
+    return { ...v8, version: 9, transactions };
+  },
 };
 
 export type MigrationResult = {

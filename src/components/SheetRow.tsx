@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Repeat, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Repeat, Trash2 } from "lucide-react";
 
-import { findColumnByType } from "../data/sheet";
+import { findColumnByType, isRowSavable } from "../data/sheet";
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
 import { useActiveRow } from "./useActiveRow";
 import { Cell } from "./Cell";
@@ -14,6 +14,11 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selected: boolean;
+  // Whether the transfer button on this row can be used. False when
+  // the parent budget has no account attached (transfers need a known
+  // source) — the button stays visible but disabled, with a tooltip
+  // explaining why.
+  canTransfer: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Fires after the user finishes editing a cell (blur / discrete select).
   // Used to prompt for series-wide propagation on recurring rows; the
@@ -21,6 +26,7 @@ type Props = {
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  onTransactionRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
@@ -35,10 +41,12 @@ export function SheetRow({
   settings,
   selectMode,
   selected,
+  canTransfer,
   onUpdateCell,
   onCommitCell,
   onDeleteRequest,
   onEditRequest,
+  onTransactionRequest,
   onToggleSelect,
   onCreateCategory,
 }: Props) {
@@ -61,6 +69,22 @@ export function SheetRow({
   const isCompleted =
     completedCol !== undefined && row.cells[completedCol.id] === true;
   const isSeries = !!row.seriesId;
+  const isTransaction = !!row.transactionId;
+  // The transfer button needs both a savable row (so we know an amount
+  // and description exist to promote) AND a parent budget with a known
+  // account. Synthesized transaction rows skip the savable check —
+  // they're already a transaction, so the button takes the user to the
+  // edit modal instead of promoting.
+  const transferEnabled =
+    canTransfer && (isTransaction || isRowSavable(row, columns));
+  // Direction for a synthesized transaction row: negative amount means
+  // money flows OUT of this budget's account. The Cell renderer uses
+  // this to pick the right arrow glyph for the description cell.
+  const amountCol = findColumnByType(columns, "amount");
+  const amountValue =
+    amountCol !== undefined ? row.cells[amountCol.id] : undefined;
+  const isOutgoing =
+    isTransaction && typeof amountValue === "number" && amountValue < 0;
 
   // Expose the row's ISO date so SheetView's scroll-to-today can target
   // it directly. Skipped when the date cell is empty or non-string.
@@ -170,6 +194,9 @@ export function SheetRow({
           settings={settings}
           isRecurring={isSeries}
           glyph={row.glyph ?? null}
+          isTransaction={isTransaction}
+          peerName={row.peerAccountName ?? ""}
+          outgoing={isOutgoing}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
           onCommit={(value) => onCommitCell(row.id, col.id, value)}
           onCreateCategory={onCreateCategory}
@@ -177,25 +204,57 @@ export function SheetRow({
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <div className="action-stack flex h-full w-full items-stretch">
+          {!isTransaction && (
+            <button
+              type="button"
+              className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={isSeries ? "Edit recurring entry" : "Make recurring"}
+              onClick={() => {
+                setSwiped(false);
+                onEditRequest(row);
+              }}
+            >
+              <Repeat size={16} aria-hidden focusable={false} />
+            </button>
+          )}
           <button
             type="button"
-            className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-            aria-label={isSeries ? "Edit recurring entry" : "Make recurring"}
+            disabled={!transferEnabled}
+            className="action-btn action-btn-transfer inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white disabled:cursor-not-allowed disabled:opacity-40 md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+            aria-label={
+              isTransaction
+                ? "Edit transaction"
+                : canTransfer
+                  ? "Make transaction"
+                  : "Attach this budget to an account to enable transfers"
+            }
+            title={
+              !canTransfer
+                ? "Attach this budget to an account to enable transfers"
+                : isTransaction
+                  ? "Edit transaction"
+                  : !transferEnabled
+                    ? "Set a description and amount first"
+                    : undefined
+            }
             onClick={() => {
+              if (!transferEnabled) return;
               setSwiped(false);
-              onEditRequest(row);
+              onTransactionRequest(row);
             }}
           >
-            <Repeat size={16} aria-hidden focusable={false} />
+            <ArrowLeftRight size={16} aria-hidden focusable={false} />
           </button>
-          <button
-            type="button"
-            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
-            aria-label="Delete row"
-            onClick={() => onDeleteRequest(row)}
-          >
-            <Trash2 size={16} aria-hidden focusable={false} />
-          </button>
+          {!isTransaction && (
+            <button
+              type="button"
+              className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
+              aria-label="Delete row"
+              onClick={() => onDeleteRequest(row)}
+            >
+              <Trash2 size={16} aria-hidden focusable={false} />
+            </button>
+          )}
         </div>
       </td>
     </tr>

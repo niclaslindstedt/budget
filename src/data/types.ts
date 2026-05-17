@@ -26,6 +26,16 @@ export type Row = {
   // same value (the entry modals propagate edits across the scope), so
   // the cell can read it row-locally without a series lookup.
   glyph?: CategoryIcon;
+  // Runtime-only markers populated by `synthesizeTransactionRow` when a
+  // Transaction is interleaved into a budget view. Never persisted —
+  // synthesized rows live outside `item.rows` (the budget view merges
+  // them in at render time), and the validator/schema do not list
+  // these fields. The cell renderer reads them to disable inline
+  // editing, swap the row glyph, and offer the transaction-edit modal
+  // in place of the usual delete/recurring actions.
+  transactionId?: string;
+  peerAccountId?: string;
+  peerAccountName?: string;
 };
 
 export type CategoryIcon =
@@ -66,9 +76,45 @@ export type Category = {
 // that a budget tracks. Accounts live at the UserData level so the same
 // account can be referenced from multiple sheets and a future roll-up
 // view can sum balances across the whole user.
+//
+// All fields beyond `id` and `name` are optional display / bank-detail
+// metadata: the Accounts sheet surfaces them and the create-account
+// modal collects them, but the budget logic itself only reads `id`
+// and `name`. New optional fields land here without a migration —
+// readers ignore unknown fields, writers fill in what they have.
 export type Account = {
   id: string;
   name: string;
+  description?: string;
+  glyph?: CategoryIcon;
+  color?: string;
+  bank?: string;
+  // Swedish clearingnummer (4–5 digits identifying the branch).
+  clearing?: string;
+  // Local account number (without the clearing prefix).
+  accountNumber?: string;
+  iban?: string;
+  bic?: string;
+  // Free-form currency token that overrides Settings.currency when
+  // rendering this account's balance. Empty / undefined means "use
+  // the global setting".
+  currency?: string;
+};
+
+// One transfer between two accounts. Stored at the UserData level so a
+// transaction can exist for accounts without a budget attached — the
+// Accounts sheet renders the global list, and budget views synthesize
+// the involving rows for the account they track. `amount` is always
+// positive; direction is `fromAccountId → toAccountId`.
+export type Transaction = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  fromAccountId: string;
+  toAccountId: string;
+  categoryId?: string | null;
+  completed?: boolean;
 };
 
 // One block on a sheet that budgets a single Account: a typed spreadsheet
@@ -87,18 +133,31 @@ export type AccountBudget = {
   rows: Row[];
 };
 
-// Discriminated union of everything a sheet can hold. Currently the
-// only variant is `AccountBudget`; future variants (Graph, Note, …)
-// slot in as additional cases without a migration of the existing
-// data because old blocks still match their own variant.
-export type SheetItem = AccountBudget;
+// Workspace-wide dashboard sheet item. The Accounts sheet is a
+// singleton flavour that doesn't track a single account — instead it
+// renders the global account list and the cross-account transactions
+// log. The item carries no data of its own today; the shape exists so
+// future per-sheet config (account filter, sort order, …) lands here
+// without another migration.
+export type AccountsView = {
+  id: string;
+  type: "accountsView";
+};
+
+// Discriminated union of everything a sheet can hold. `AccountBudget`
+// is the per-account ledger; `AccountsView` is the workspace-wide
+// dashboard rendered by the Accounts sheet flavour. Future variants
+// (Graph, Note, …) slot in as additional cases without a migration of
+// the existing data because old blocks still match their own variant.
+export type SheetItem = AccountBudget | AccountsView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
-// right body — today only the transactional ledger ("budget") is
-// implemented, but future planners (loan tracking, savings forecast,
-// parental-leave planner, …) slot in as additional literals without
-// needing another migration.
-export type SheetType = "budget";
+// right body — today the transactional ledger ("budget") and the
+// workspace-wide accounts dashboard ("accounts") are implemented.
+// Future planners (loan tracking, savings forecast, parental-leave
+// planner, …) slot in as additional literals without needing another
+// migration.
+export type SheetType = "budget" | "accounts";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,
@@ -192,11 +251,16 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 8;
+  version: 9;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
   categories: Category[];
+  // Transfers between accounts. Each transaction renders as a read-only
+  // synthesized row on every budget that tracks one of its endpoints,
+  // and as a top-level row on the Accounts sheet's transaction log.
+  // Empty on a fresh budget and on v8 imports the v9 migration upgrades.
+  transactions: Transaction[];
   settings: Settings;
 };
 
