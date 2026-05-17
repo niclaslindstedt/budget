@@ -20,11 +20,13 @@ import {
   withCurrency,
 } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
+import { useActiveRow } from "./useActiveRow";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
+  rowId: string;
   column: Column;
   value: CellValue;
   computedBalance?: number;
@@ -44,6 +46,7 @@ const INPUT_BASE =
   "field-input w-full border-0 bg-transparent px-2.5 py-2 font-mono text-inherit outline-none";
 
 export function Cell({
+  rowId,
   column,
   value,
   computedBalance,
@@ -62,6 +65,7 @@ export function Cell({
     case "description":
       return (
         <DescriptionCell
+          rowId={rowId}
           value={typeof value === "string" ? value : ""}
           isRecurring={!!isRecurring}
           glyph={glyph ?? null}
@@ -71,7 +75,12 @@ export function Cell({
 
     case "amount": {
       return (
-        <AmountCell value={value} settings={settings} onChange={onChange} />
+        <AmountCell
+          rowId={rowId}
+          value={value}
+          settings={settings}
+          onChange={onChange}
+        />
       );
     }
 
@@ -117,6 +126,7 @@ export function Cell({
       return (
         <td className={`${CELL_BASE} p-0`}>
           <CategoryPicker
+            rowId={rowId}
             categories={categories ?? []}
             selectedId={selectedId}
             onSelect={(id) => onChange(id)}
@@ -136,10 +146,12 @@ export function Cell({
 }
 
 function AmountCell({
+  rowId,
   value,
   settings,
   onChange,
 }: {
+  rowId: string;
   value: CellValue;
   settings: Settings;
   onChange: (value: CellValue) => void;
@@ -153,6 +165,23 @@ function AmountCell({
   const [negative, setNegative] = useState(
     externalNumber !== null ? externalNumber < 0 : true,
   );
+  const inputRef = useRef<HTMLInputElement>(null);
+  const activeRow = useActiveRow();
+  const tokenRef = useRef<number | null>(null);
+
+  function handleFocus() {
+    if (!activeRow || tokenRef.current !== null) return;
+    tokenRef.current = activeRow.activate(rowId, () =>
+      inputRef.current?.blur(),
+    );
+  }
+
+  function handleBlur() {
+    if (activeRow && tokenRef.current !== null) {
+      activeRow.deactivate(tokenRef.current);
+      tokenRef.current = null;
+    }
+  }
 
   // Skip resync while local state already represents the same number, so
   // in-progress input like "12," is not clobbered by a parent rerender.
@@ -214,6 +243,7 @@ function AmountCell({
           {withCurrency(text || "0", settings)}
         </span>
         <input
+          ref={inputRef}
           type="text"
           inputMode="decimal"
           pattern="[0-9]*[.,]?[0-9]*"
@@ -234,6 +264,8 @@ function AmountCell({
           }`}
           value={text}
           onChange={(e) => commit(e.target.value, negative)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
         />
         {settings.showCurrency && (
           <span
@@ -294,11 +326,13 @@ function DateCell({
 }
 
 function DescriptionCell({
+  rowId,
   value,
   isRecurring,
   glyph,
   onChange,
 }: {
+  rowId: string;
   value: string;
   isRecurring: boolean;
   glyph: CategoryIcon | null;
@@ -308,6 +342,24 @@ function DescriptionCell({
   // Repeat icon; for one-off rows we show nothing (the mobile trigger
   // falls back to "…").
   const hasIcon = glyph !== null || isRecurring;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeRow = useActiveRow();
+  const tokenRef = useRef<number | null>(null);
+
+  function handleFocus() {
+    if (!activeRow || tokenRef.current !== null) return;
+    tokenRef.current = activeRow.activate(rowId, () =>
+      textareaRef.current?.blur(),
+    );
+  }
+
+  function handleBlur() {
+    if (activeRow && tokenRef.current !== null) {
+      activeRow.deactivate(tokenRef.current);
+      tokenRef.current = null;
+    }
+  }
+
   return (
     <td
       className={`${CELL_BASE} align-middle md:w-full ${
@@ -331,11 +383,14 @@ function DescriptionCell({
           </span>
         )}
         <textarea
+          ref={textareaRef}
           className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
             hasIcon ? "pl-1.5" : ""
           }`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           rows={1}
           placeholder="…"
         />
@@ -345,6 +400,7 @@ function DescriptionCell({
          recurring icon, or "…") as the trigger so the row is identifiable
          at a glance, and open the full editable description in a popover. */}
       <DescriptionPopover
+        rowId={rowId}
         value={value}
         isRecurring={isRecurring}
         glyph={glyph}
@@ -380,11 +436,13 @@ function computeDescriptionPopoverPosition(rect: DOMRect): {
 }
 
 function DescriptionPopover({
+  rowId,
   value,
   isRecurring,
   glyph,
   onChange,
 }: {
+  rowId: string;
   value: string;
   isRecurring: boolean;
   glyph: CategoryIcon | null;
@@ -399,15 +457,10 @@ function DescriptionPopover({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeRow = useActiveRow();
 
   useEffect(() => {
     if (!open) return;
-    function handlePointer(e: PointerEvent) {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target)) return;
-      if (popoverRef.current?.contains(target)) return;
-      setOpen(false);
-    }
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
@@ -419,18 +472,24 @@ function DescriptionPopover({
         ),
       );
     }
-    document.addEventListener("pointerdown", handlePointer);
     document.addEventListener("keydown", handleKey);
     window.addEventListener("resize", updatePosition);
     // Capture phase catches scrolls on any ancestor (e.g. the page body).
     window.addEventListener("scroll", updatePosition, true);
     return () => {
-      document.removeEventListener("pointerdown", handlePointer);
       document.removeEventListener("keydown", handleKey);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
   }, [open]);
+
+  // While open, register with the active-row coordinator so clicks
+  // outside dismiss the popover without also firing whatever was clicked.
+  useEffect(() => {
+    if (!open || !activeRow) return;
+    const token = activeRow.activate(rowId, () => setOpen(false));
+    return () => activeRow.deactivate(token);
+  }, [open, activeRow, rowId]);
 
   useLayoutEffect(() => {
     if (open) textareaRef.current?.focus();
@@ -495,6 +554,7 @@ function DescriptionPopover({
             ref={popoverRef}
             role="dialog"
             aria-label="Description"
+            data-active-portal
             className="absolute z-50 rounded border border-line bg-surface-2 shadow-lg"
             style={{
               top: position.top,

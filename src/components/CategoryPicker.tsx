@@ -4,6 +4,7 @@ import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
 import { CATEGORY_COLORS, CATEGORY_ICON_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
+import { useActiveRow } from "./useActiveRow";
 import { CategoryIconGlyph } from "./icons";
 
 const DROPDOWN_MIN_WIDTH = 224; // matches min-w-[14rem]
@@ -24,6 +25,11 @@ function computePosition(rect: DOMRect): Position {
 }
 
 type Props = {
+  // When rendered inside a sheet row, the row's id wires the picker
+  // into the active-row coordinator so outside clicks dismiss it
+  // without also firing whatever was clicked. Modals (BulkEdit,
+  // SheetModal, ComplexEntry) leave it undefined.
+  rowId?: string;
   categories: Category[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -34,6 +40,7 @@ type Props = {
 };
 
 export function CategoryPicker({
+  rowId,
   categories,
   selectedId,
   onSelect,
@@ -46,8 +53,21 @@ export function CategoryPicker({
   const [position, setPosition] = useState<Position | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const activeRow = useActiveRow();
 
   const selected = categories.find((c) => c.id === selectedId) ?? null;
+
+  // Register with the active-row coordinator while the dropdown is open
+  // so outside clicks dismiss it without firing the underlying button.
+  // Only applies inside a sheet row — modals do not provide a context.
+  useEffect(() => {
+    if (!open || !activeRow || !rowId) return;
+    const token = activeRow.activate(rowId, () => {
+      setOpen(false);
+      setCreating(false);
+    });
+    return () => activeRow.deactivate(token);
+  }, [open, activeRow, rowId]);
 
   useLayoutEffect(() => {
     if (!open || !rootRef.current) return;
@@ -153,6 +173,7 @@ export function CategoryPicker({
         createPortal(
           <div
             ref={dropdownRef}
+            data-active-portal
             className="fixed z-50 rounded border border-line bg-surface-2 shadow-lg"
             style={{
               top: position.top,
