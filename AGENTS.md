@@ -96,11 +96,17 @@ src/
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
 │   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
 └── storage/
-    └── local.ts          # localStorage adapter (load + save)
+    ├── adapter.ts             # StorageAdapter interface + ConflictError
+    ├── local-adapter.ts       # localStorage adapter (load + save)
+    ├── dropbox-adapter.ts     # Dropbox HTTP adapter + OAuth (PKCE)
+    ├── gdrive-adapter.ts      # Google Drive HTTP adapter + OAuth (PKCE)
+    ├── oauth-pkce.ts          # Shared PKCE helpers (verifier, challenge)
+    ├── encrypting-adapter.ts  # AES-GCM envelope wrapper around any adapter
+    └── backend-preference.ts  # Per-user backend choice + cloud tokens
 ```
 
-Planned additions (not in place yet): `storage/file.ts` for JSON
-import/export, `utils/` for money/date helpers, multi-sheet UI.
+Planned additions (not in place yet): `utils/` for money/date helpers,
+multi-sheet UI polish.
 
 Dependency direction: `components/` depend on `data/` and `storage/`.
 Nothing in `data/` or `storage/` imports from `components/`. Keep it

@@ -29,9 +29,9 @@ export function PrivacyPage() {
             <span className="text-path">budget.niclaslindstedt.se</span>. It has
             no backend, no user accounts on a server, no sync service, and no
             analytics SDK in the bundle. Your budget lives in your
-            browser&apos;s storage on your device. If you connect Dropbox, a
-            copy of the same bytes also lives in your own Dropbox app folder. We
-            never receive your data.
+            browser&apos;s storage on your device. If you connect a cloud
+            storage backend (Dropbox or Google Drive), a copy of the same bytes
+            also lives in your own cloud folder. We never receive your data.
           </p>
         </Section>
 
@@ -53,14 +53,15 @@ export function PrivacyPage() {
               in settings; with encryption off, the budget is stored as
               plaintext JSON inside{" "}
               <code className="text-meta">localStorage</code> (and inside your
-              Dropbox app folder, if connected).
+              cloud folder, if a cloud backend is connected).
             </li>
             <li>Per-device preferences such as your chosen storage backend.</li>
           </ul>
           <p>
             None of this leaves your device unless you choose to export it (the{" "}
             Export button writes a JSON file you save yourself) or connect a
-            third-party backend such as Dropbox (described below).
+            third-party backend such as Dropbox or Google Drive (described
+            below).
           </p>
         </Section>
 
@@ -114,6 +115,66 @@ export function PrivacyPage() {
               className="text-link hover:underline"
             >
               Dropbox&apos;s privacy policy
+            </a>
+            .
+          </p>
+        </Section>
+
+        <Section title="Google Drive integration (optional)">
+          <p>
+            If you choose Google Drive as your storage backend, the app opens
+            Google&apos;s OAuth consent screen in your browser. You sign in to
+            Google directly — your credentials never pass through this app.
+            After you grant consent, the app receives an access token that is
+            stored in your browser&apos;s{" "}
+            <code className="text-meta">localStorage</code> only.
+          </p>
+          <ul className="ml-5 list-disc space-y-1">
+            <li>
+              <strong className="text-fg-bright">Scope.</strong> The app
+              requests the <code className="text-meta">drive.file</code> scope,
+              which restricts it to files this app itself creates inside your
+              Drive. The app cannot read or write anything else in your Drive.
+            </li>
+            <li>
+              <strong className="text-fg-bright">What is uploaded.</strong> A
+              single file named <code className="text-meta">budget.json</code>{" "}
+              in your My Drive, containing the same bytes the app would
+              otherwise write to{" "}
+              <code className="mx-1 text-meta">localStorage</code> — encrypted
+              by default, plaintext if you opted out of encryption.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Token lifetime.</strong> The
+              access token is short-lived (about one hour). When it expires,
+              syncing pauses with an error and you reconnect from Settings. The
+              app does not request an offline / refresh token.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Who can see the bytes.</strong>{" "}
+              Only you and Google. The project authors do not run any server
+              that observes your traffic.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Revoking access.</strong> You
+              can revoke this app&apos;s access at any time from{" "}
+              <a
+                href="https://myaccount.google.com/permissions"
+                className="text-link hover:underline"
+              >
+                myaccount.google.com/permissions
+              </a>
+              . Deleting the file from your Drive also deletes the only remote
+              copy.
+            </li>
+          </ul>
+          <p>
+            Google&apos;s own handling of the bytes is governed by{" "}
+            <a
+              href="https://policies.google.com/privacy"
+              className="text-link hover:underline"
+            >
+              Google&apos;s privacy policy
             </a>
             .
           </p>
