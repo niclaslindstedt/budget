@@ -519,6 +519,19 @@ function MainView({
           </p>
         </Field>
       </Section>
+
+      {/* Opens in a new tab so an in-flight settings edit isn't lost
+          when the user navigates away to read the policy. */}
+      <p className="mt-4 text-center text-xs text-muted">
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noreferrer"
+          className="text-link hover:underline"
+        >
+          Privacy policy
+        </a>
+      </p>
     </div>
   );
 }
