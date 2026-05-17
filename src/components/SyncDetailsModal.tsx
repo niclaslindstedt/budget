@@ -1,5 +1,13 @@
 import { useEffect } from "react";
-import { ExternalLink, X } from "lucide-react";
+import {
+  CloudAlert,
+  CloudCheck,
+  CloudUpload,
+  ExternalLink,
+  Loader,
+  RefreshCw,
+  X,
+} from "lucide-react";
 
 import type { BackendId } from "../storage/backend-preference";
 import {
@@ -7,10 +15,14 @@ import {
   DROPBOX_FILE_PATH,
   dropboxWebUrl,
 } from "../storage/dropbox-adapter";
+import type { SaveStatus } from "../storage/useUserDataStorage";
 
 type Props = {
   open: boolean;
   backend: BackendId;
+  status: SaveStatus;
+  dirty: boolean;
+  onSaveNow: () => void;
   onClose: () => void;
 };
 
@@ -31,7 +43,88 @@ function providerView(backend: BackendId): ProviderView | null {
   return null;
 }
 
-export function SyncDetailsModal({ open, backend, onClose }: Props) {
+type StatusView = {
+  Icon: typeof CloudCheck;
+  label: string;
+  tone: "ok" | "busy" | "warn" | "err";
+  detail?: string;
+  spin?: boolean;
+};
+
+function statusView(
+  status: SaveStatus,
+  dirty: boolean,
+  providerName: string,
+): StatusView {
+  switch (status.kind) {
+    case "loading":
+      return {
+        Icon: Loader,
+        label: "Loading…",
+        tone: "busy",
+        spin: true,
+      };
+    case "saving":
+      return {
+        Icon: CloudUpload,
+        label: "Syncing now…",
+        tone: "busy",
+        spin: true,
+      };
+    case "error":
+      return {
+        Icon: CloudAlert,
+        label: "Sync failed",
+        tone: "err",
+        detail: status.message,
+      };
+    case "conflict":
+      return {
+        Icon: CloudAlert,
+        label: "Sync conflict",
+        tone: "warn",
+        detail: `${providerName} changed underneath this device. Reload to pick up the remote copy.`,
+      };
+    case "saved":
+    case "idle":
+      return dirty
+        ? {
+            Icon: RefreshCw,
+            label: "Pending sync",
+            tone: "busy",
+            detail:
+              "Edits aren't on the cloud yet. Tap Save now to push immediately, or wait for the next auto-save.",
+          }
+        : {
+            Icon: CloudCheck,
+            label: `Synced to ${providerName}`,
+            tone: "ok",
+          };
+  }
+}
+
+const TONE_BORDER: Record<StatusView["tone"], string> = {
+  ok: "border-success/40",
+  busy: "border-line",
+  warn: "border-pipe/50",
+  err: "border-danger/50",
+};
+
+const TONE_TEXT: Record<StatusView["tone"], string> = {
+  ok: "text-success",
+  busy: "text-muted",
+  warn: "text-pipe",
+  err: "text-danger",
+};
+
+export function SyncDetailsModal({
+  open,
+  backend,
+  status,
+  dirty,
+  onSaveNow,
+  onClose,
+}: Props) {
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -44,6 +137,12 @@ export function SyncDetailsModal({ open, backend, onClose }: Props) {
   if (!open) return null;
   const view = providerView(backend);
   if (!view) return null;
+
+  const state = statusView(status, dirty, view.name);
+  const busy = status.kind === "saving" || status.kind === "loading";
+  const showSaveNow =
+    !busy && (status.kind === "error" || (dirty && status.kind !== "conflict"));
+  const saveLabel = status.kind === "error" ? "Try again" : "Save now";
 
   return (
     <div
@@ -74,6 +173,41 @@ export function SyncDetailsModal({ open, backend, onClose }: Props) {
         </header>
 
         <div className="flex flex-col gap-3 px-4 py-4">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs text-muted">Status</span>
+            <div
+              className={`flex items-start gap-2 rounded border px-2 py-1.5 ${TONE_BORDER[state.tone]}`}
+            >
+              <state.Icon
+                size={16}
+                aria-hidden
+                focusable={false}
+                className={`mt-0.5 shrink-0 ${TONE_TEXT[state.tone]} ${
+                  state.spin ? "animate-spin" : ""
+                }`}
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className={`text-sm font-bold ${TONE_TEXT[state.tone]}`}>
+                  {state.label}
+                </span>
+                {state.detail && (
+                  <p className="text-xs break-words whitespace-pre-wrap text-fg">
+                    {state.detail}
+                  </p>
+                )}
+              </div>
+            </div>
+            {showSaveNow && (
+              <button
+                type="button"
+                onClick={onSaveNow}
+                className="inline-flex cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
+              >
+                <CloudUpload size={14} aria-hidden focusable={false} />
+                {saveLabel}
+              </button>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">Provider</span>
             <span className="text-sm text-fg-bright">{view.name}</span>

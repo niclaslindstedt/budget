@@ -1662,6 +1662,9 @@ function BudgetView({
       <SyncDetailsModal
         open={syncDetailsOpen}
         backend={backend}
+        status={status}
+        dirty={dirty}
+        onSaveNow={saveNow}
         onClose={() => setSyncDetailsOpen(false)}
       />
       <SettingsModal
