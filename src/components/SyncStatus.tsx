@@ -11,11 +11,12 @@ import type { SaveStatus } from "../storage/useUserDataStorage";
 // Renders the active backend's sync state next to `SaveStateButton`.
 // Mounted only when a cloud backend is active — local saves are
 // instantaneous and a permanent "synced" indicator there would be
-// chrome noise.
+// chrome noise. Clicking opens the sync-details modal.
 
 type Props = {
   status: SaveStatus;
   dirty: boolean;
+  onClick: () => void;
 };
 
 type View = {
@@ -48,20 +49,21 @@ function viewFor(status: SaveStatus, dirty: boolean): View {
 }
 
 const TONE_CLASS: Record<View["tone"], string> = {
-  ok: "border-success/40 text-success",
-  busy: "border-line text-muted",
-  warn: "border-pipe/50 text-pipe",
-  err: "border-danger/50 text-danger",
+  ok: "border-success/40 text-success hover:bg-success/10",
+  busy: "border-line text-muted hover:bg-surface-2",
+  warn: "border-pipe/50 text-pipe hover:bg-pipe/10",
+  err: "border-danger/50 text-danger hover:bg-danger/10",
 };
 
-export function SyncStatus({ status, dirty }: Props) {
+export function SyncStatus({ status, dirty, onClick }: Props) {
   const view = viewFor(status, dirty);
   return (
-    <span
+    <button
+      type="button"
+      onClick={onClick}
       title={view.label}
       aria-label={view.label}
-      role="status"
-      className={`inline-flex h-9 w-9 items-center justify-center rounded border bg-transparent ${
+      className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
         TONE_CLASS[view.tone]
       }`}
     >
@@ -71,6 +73,6 @@ export function SyncStatus({ status, dirty }: Props) {
         focusable={false}
         className={view.spin ? "animate-spin" : undefined}
       />
-    </span>
+    </button>
   );
 }

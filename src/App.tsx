@@ -26,6 +26,7 @@ import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
+import { SyncDetailsModal } from "./components/SyncDetailsModal";
 import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
 import { STORAGE_KEY, userDataKey } from "./data/constants";
@@ -1016,6 +1017,7 @@ function BudgetView({
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   // null = closed; { sheet: null } = new-sheet modal; { sheet: <Sheet> } = edit.
   const [sheetModal, setSheetModal] = useState<{ sheet: Sheet | null } | null>(
     null,
@@ -1475,13 +1477,28 @@ function BudgetView({
   return (
     <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 pb-20 md:px-5">
       <header className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-page-bg px-2 pt-3 pb-3 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
-        <span className="text-base font-bold tracking-wide text-fg-bright">
-          budget
+        <span className="inline-flex items-center gap-2">
+          <img
+            src="/icons/icon-64.png"
+            srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
+            alt=""
+            aria-hidden
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-sm"
+          />
+          <span className="hidden text-base font-bold tracking-wide text-fg-bright md:inline">
+            budget
+          </span>
         </span>
         <div className="ml-auto inline-flex items-center gap-2">
           <SaveStateButton dirty={dirty} onSave={saveNow} />
           {backend === "dropbox" && (
-            <SyncStatus status={status} dirty={dirty} />
+            <SyncStatus
+              status={status}
+              dirty={dirty}
+              onClick={() => setSyncDetailsOpen(true)}
+            />
           )}
           <ImportExportControls
             data={data}
@@ -1636,6 +1653,11 @@ function BudgetView({
         } will be permanently removed.`}
         actions={bulkDeleteActions}
         onCancel={() => setBulkDeletePrompt(null)}
+      />
+      <SyncDetailsModal
+        open={syncDetailsOpen}
+        backend={backend}
+        onClose={() => setSyncDetailsOpen(false)}
       />
       <SettingsModal
         open={settingsOpen}

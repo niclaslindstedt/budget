@@ -25,7 +25,20 @@ import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
 // an exact match.
 export const DROPBOX_APP_KEY = "fjk4dj166rrzuiw";
 
-const DROPBOX_FILE_PATH = "/budget.json";
+// Public folder name inside the user's Dropbox `Apps/` directory. This
+// matches the Dropbox app registration's "App folder" name and is what
+// the user will see when browsing Dropbox in their file manager.
+export const DROPBOX_APP_FOLDER = "budget.niclaslindstedt.se";
+
+export const DROPBOX_FILE_PATH = "/budget.json";
+
+// Web URL that opens the budget file's parent folder in Dropbox's web
+// UI with the file pre-selected for preview. Used by the cloud-sync
+// modal's "Open in Dropbox" button.
+export function dropboxWebUrl(): string {
+  const fileName = DROPBOX_FILE_PATH.replace(/^\//, "");
+  return `https://www.dropbox.com/home/Apps/${DROPBOX_APP_FOLDER}?preview=${encodeURIComponent(fileName)}`;
+}
 const AUTH_BASE = "https://www.dropbox.com/oauth2/authorize";
 const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
 const UPLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/upload";
