@@ -44,6 +44,11 @@
      accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
   --app-header-h: 61px;
 
+  /* Height of the sticky month-name h3 (text-xs line-height 1rem + py-1
+     above and below). Column headers stick directly below the month
+     header at app-header-h + month-header-h. */
+  --month-header-h: 24px;
+
   /* One Dark — default. */
   --page-bg: #1d2027;
   --surface: #282c34;
@@ -94,6 +99,7 @@
 @media (min-width: 720px) {
   :root {
     --app-header-h: 69px;
+    --month-header-h: 28px;
   }
 }
 
@@ -127,6 +133,18 @@ body {
 }
 
 @layer components {
+  /* Sticky column headers: thead's containing block is the table so it
+     keeps sticking until the table itself scrolls past. Offset sits
+     directly below the month header so the two stack cleanly. Ancestor
+     overflow must be `clip` (not `hidden`) — `hidden` establishes a
+     scroll container which would trap sticky positioning inside the
+     table wrapper. */
+  .sheet-table > thead {
+    position: sticky;
+    top: calc(var(--app-header-h) + var(--month-header-h));
+    z-index: 5;
+  }
+
   /* Shared focus state for editable cell fields */
   .field-input:focus {
     background: var(--surface-2);
