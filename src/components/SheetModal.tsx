@@ -209,20 +209,21 @@ export function SheetModal({
               </label>
             </div>
 
-            <label className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <span className="text-xs text-muted">Type</span>
               <TypePicker
                 value={type}
                 open={typeOpen}
                 accountsTaken={accountsSheetTaken}
                 onToggle={() => setTypeOpen((v) => !v)}
+                onClose={() => setTypeOpen(false)}
                 onPick={(next) => {
                   setType(next);
                   setTypeOpen(false);
                 }}
               />
               <p className="text-xs text-muted">{selectedType.description}</p>
-            </label>
+            </div>
 
             {type === "accounts" && (
               <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
@@ -514,17 +515,31 @@ function TypePicker({
   open,
   accountsTaken,
   onToggle,
+  onClose,
   onPick,
 }: {
   value: SheetType;
   open: boolean;
   accountsTaken: boolean;
   onToggle: () => void;
+  onClose: () => void;
   onPick: (next: SheetType) => void;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const selected = SHEET_TYPES.find((t) => t.id === value) ?? SHEET_TYPES[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(e: PointerEvent) {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      onClose();
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    return () => document.removeEventListener("pointerdown", handlePointer);
+  }, [open, onClose]);
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={onToggle}
