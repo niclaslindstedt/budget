@@ -141,13 +141,18 @@ function validateAccountBudget(
     return fail(`${path}.id`, "expected a non-empty string");
   if (type !== "accountBudget")
     return fail(`${path}.type`, `expected "accountBudget"`);
-  if (typeof accountId !== "string" || accountId === "")
-    return fail(`${path}.accountId`, "expected a non-empty string");
-  if (!knownAccountIds.has(accountId))
-    return fail(
-      `${path}.accountId`,
-      `references unknown account "${accountId}"`,
-    );
+  // `accountId` is nullable so a budget can exist without being tied to
+  // an account. When it is a string, keep the "non-empty + must reference
+  // a known account" check so a typo or stale id is still caught.
+  if (accountId !== null) {
+    if (typeof accountId !== "string" || accountId === "")
+      return fail(`${path}.accountId`, "expected a non-empty string or null");
+    if (!knownAccountIds.has(accountId))
+      return fail(
+        `${path}.accountId`,
+        `references unknown account "${accountId}"`,
+      );
+  }
   if (!Array.isArray(columns))
     return fail(`${path}.columns`, "expected an array");
   if (!Array.isArray(rows)) return fail(`${path}.rows`, "expected an array");
@@ -179,7 +184,7 @@ function validateAccountBudget(
     value: {
       id,
       type: "accountBudget",
-      accountId,
+      accountId: accountId as string | null,
       columns: validatedColumns,
       rows: validatedRows,
     },
@@ -364,8 +369,6 @@ export function validateUserData(raw: unknown): Result<UserData> {
     seenAccountIds.add(r.value.id);
     accounts.push(r.value);
   }
-  if (accounts.length === 0)
-    return fail("accounts", "expected at least one account");
 
   const rawCategories = Array.isArray(raw.categories) ? raw.categories : [];
   const categories: Category[] = [];

@@ -22,6 +22,7 @@ import {
   formatBalance,
   withCurrency,
 } from "../utils/format";
+import { BudgetMenu } from "./BudgetMenu";
 import { MonthTable } from "./MonthTable";
 
 type Props = {
@@ -35,7 +36,6 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
-  showName?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onAddComplex: (date: string) => void;
@@ -45,6 +45,7 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onOpenSettings: () => void;
 };
 
 function todayIso(): string {
@@ -59,7 +60,6 @@ export function SheetView({
   settings,
   selectMode,
   selectedIds,
-  showName = true,
   onUpdateCell,
   onAddRow,
   onAddComplex,
@@ -69,6 +69,7 @@ export function SheetView({
   onToggleSelect,
   onToggleSelectMonth,
   onCreateCategory,
+  onOpenSettings,
 }: Props) {
   const dateCol = useMemo(
     () => findColumnByType(item.columns, "date"),
@@ -146,13 +147,10 @@ export function SheetView({
 
   return (
     <section>
-      {showName && (
-        <header className="mb-4">
-          <h2 className="m-0 text-base font-bold text-fg-bright">
-            {sheet.name}
-          </h2>
-        </header>
-      )}
+      <header className="mb-4 flex items-center gap-2">
+        <h2 className="m-0 text-base font-bold text-fg-bright">{sheet.name}</h2>
+        <BudgetMenu onOpenSettings={onOpenSettings} />
+      </header>
       <div className="flex flex-col gap-3 md:gap-6">
         {visibleMonths.map((monthKey) => {
           const monthRows = dateCol

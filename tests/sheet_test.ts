@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeBalances,
   createDefaultAccountBudget,
+  createDefaultSheet,
   currentFiscalMonthKey,
   findColumnByType,
   fiscalMonthSeedIso,
@@ -91,6 +92,25 @@ describe("currentFiscalMonthKey", () => {
   it("returns the previous month when day < startOfMonth", () => {
     expect(currentFiscalMonthKey(25, new Date(2026, 4, 24))).toBe("2026-04");
     expect(currentFiscalMonthKey(25, new Date(2026, 0, 1))).toBe("2025-12");
+  });
+});
+
+describe("createDefaultAccountBudget / createDefaultSheet", () => {
+  it("defaults accountId to null when omitted", () => {
+    const item = createDefaultAccountBudget();
+    expect(item.accountId).toBeNull();
+  });
+
+  it("threads a provided accountId through", () => {
+    const item = createDefaultAccountBudget("acct-9");
+    expect(item.accountId).toBe("acct-9");
+  });
+
+  it("creates a sheet with an unassigned AccountBudget by default", () => {
+    const sheet = createDefaultSheet("Foo");
+    const item = sheet.items[0] as AccountBudget;
+    expect(sheet.name).toBe("Foo");
+    expect(item.accountId).toBeNull();
   });
 });
 
@@ -323,7 +343,7 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
     const sheetId = "sheet-1";
     return {
       data: {
-        version: 5,
+        version: 6,
         sheets: [{ id: sheetId, name: "Test", items: [item] }],
         activeSheetId: sheetId,
         accounts: [{ id: TEST_ACCOUNT_ID, name: "Default" }],

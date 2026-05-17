@@ -12,7 +12,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 5 as const;
+export const LATEST_VERSION = 6 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -112,6 +112,13 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
       }),
     };
   },
+
+  // v5 → v6: `AccountBudget.accountId` widens from `string` to
+  // `string | null` so a budget can exist without being tied to an
+  // account, and `accounts` may now be empty. Existing string ids
+  // remain valid — the migration is a bare version bump and the
+  // type widening is backward-compatible on disk.
+  5: (v5) => ({ ...v5, version: 6 }),
 };
 
 export type MigrationResult = {
