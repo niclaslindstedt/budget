@@ -29,10 +29,11 @@ import { challengeFor, randomVerifier, redirectUri } from "./oauth-pkce";
 //   4. Authorized JavaScript origins:
 //        https://budget.niclaslindstedt.se
 //        http://localhost:5173
-//      Authorized redirect URIs (note the trailing slash, which is
-//      what `redirectUri()` returns):
-//        https://budget.niclaslindstedt.se/
-//        http://localhost:5173/
+//      Authorized redirect URIs (no trailing slash — Google rejects
+//      that, and `redirectUri()` matches by returning the bare
+//      origin):
+//        https://budget.niclaslindstedt.se
+//        http://localhost:5173
 //   5. The credential page issues a client secret. PKCE makes it
 //      optional — ignore it here.
 //   6. Paste the client id below.

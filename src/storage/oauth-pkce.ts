@@ -27,6 +27,9 @@ export async function challengeFor(verifier: string): Promise<string> {
 
 // The OAuth app registration must list this exact URI; we use the
 // current page origin so prod and local dev work without forking.
+// No trailing slash — Google's OAuth client config rejects redirect
+// URIs that end in `/`, and Dropbox accepts either form, so the
+// slash-less origin is the only spelling that satisfies both.
 export function redirectUri(): string {
-  return `${window.location.origin}/`;
+  return window.location.origin;
 }
