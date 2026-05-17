@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 9,
+    version: 10,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -176,6 +176,35 @@ describe("validateUserData — soft recovery", () => {
         firstItem(r.value).rows[0].cells["ghost-column-id"],
       ).toBeUndefined();
     }
+  });
+
+  it("keeps a row's isCorrection: true through validation", () => {
+    const b = sampleData();
+    firstItem(b).rows[0].isCorrection = true;
+    const r = validateUserData(b);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(firstItem(r.value).rows[0].isCorrection).toBe(true);
+    }
+  });
+
+  it("drops a row's isCorrection: false instead of persisting the falsy flag", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.sheets[0].items[0].rows[0].isCorrection = false;
+    const r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(firstItem(r.value).rows[0].isCorrection).toBeUndefined();
+    }
+  });
+
+  it("rejects a non-boolean isCorrection field", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.sheets[0].items[0].rows[0].isCorrection = "yes";
+    const r = validateUserData(raw);
+    expect(r.ok).toBe(false);
   });
 
   it("recovers a dangling activeSheetId to the first sheet", () => {
@@ -552,6 +581,60 @@ describe("migrate", () => {
     expect(sheets[0].items[0].rows[0].glyph).toBeUndefined();
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
+  });
+
+  it("v9 → v10: bare version bump that accepts the new optional isCorrection row field", () => {
+    const v9 = {
+      version: 9,
+      activeSheetId: "s1",
+      categories: [],
+      transactions: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [
+                {
+                  id: "r1",
+                  cells: {
+                    c1: "2026-05-01",
+                    c2: "Balance correction",
+                    c3: 250,
+                  },
+                  isCorrection: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v9);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+    if (validated.ok) {
+      const item = validated.value.sheets[0].items[0];
+      if (item.type !== "accountBudget") throw new Error("expected budget");
+      expect(item.rows[0].isCorrection).toBe(true);
+    }
   });
 
   it("v8 → v9: adds an empty transactions array and accepts new account fields", () => {

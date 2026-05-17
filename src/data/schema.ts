@@ -231,6 +231,21 @@ export const USER_DATA_SCHEMA = {
             "series carries the same value; absent rows render the " +
             "default Repeat icon when seriesId is set, or no glyph at all.",
         },
+        isCorrection: {
+          type: "boolean",
+          description:
+            'True when this row was minted by the "update balance" flow ' +
+            "on the Accounts page: its `amount` cell holds the delta " +
+            "needed to bring the account's running balance to a user-" +
+            "asserted value. Rendered in the budget view as a full-width " +
+            'divider line ("——— balance correction ±X ———") rather than ' +
+            "a normal columned row, and excluded from bulk-edit selection. " +
+            "The running balance reads `amount` like any other row, so " +
+            "the correction shifts the total without further special " +
+            "casing. Absent on non-correction rows; only `true` is ever " +
+            "persisted (a stored `false` is indistinguishable from absent " +
+            "and is dropped on save).",
+        },
       },
     },
     AccountBudget: {

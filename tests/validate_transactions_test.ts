@@ -5,12 +5,12 @@ import { createDefaultSheet } from "../src/data/sheet";
 import type { Transaction, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
 
-// Build a minimal valid v9 workspace then let each case mutate the
+// Build a minimal valid workspace then let each case mutate the
 // `transactions` array. Keeps the irrelevant fields off-screen.
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 9,
+    version: 10,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -116,7 +116,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 9,
+      version: 10,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -151,7 +151,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 9,
+      version: 10,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],

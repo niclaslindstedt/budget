@@ -1,4 +1,6 @@
+import { findColumnByType } from "../data/sheet";
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
+import { formatAmountForInput, withCurrency } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
@@ -23,6 +25,7 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
+  onCorrectionDeleteRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -60,6 +63,7 @@ export function MonthTable({
   onDeleteRequest,
   onEditRequest,
   onTransactionRequest,
+  onCorrectionDeleteRequest,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
@@ -68,12 +72,17 @@ export function MonthTable({
   // Synthesized transaction rows live in `rows` (the parent merges them
   // in) but they are not selectable for bulk operations — they aren't
   // real budget rows, so a delete or move that targets them would do
-  // nothing. Filter them out of the selection helpers so the "select
-  // all in month" affordance and aria states only reflect rows the user
-  // can act on.
+  // nothing. Correction rows render as a divider line rather than a
+  // columned row, so a bulk-edit selection on one would have nothing to
+  // act on either; both are filtered out of selection helpers.
   const selectableRowIds = rows
-    .filter((r) => r.transactionId === undefined)
+    .filter((r) => r.transactionId === undefined && !r.isCorrection)
     .map((r) => r.id);
+  const amountCol = findColumnByType(columns, "amount");
+  // Columns + action cell + (optional) select cell = total td count we
+  // need to colSpan when rendering a correction row as a full-width
+  // divider line.
+  const correctionColSpan = columns.length + 1 + (selectMode ? 1 : 0);
   const allSelected =
     selectableRowIds.length > 0 &&
     selectableRowIds.every((id) => selectedIds.has(id));
@@ -160,26 +169,43 @@ export function MonthTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <SheetRow
-                key={row.id}
-                row={row}
-                columns={columns}
-                balances={balances}
-                categories={categories}
-                settings={settings}
-                selectMode={selectMode}
-                selected={selectedIds.has(row.id)}
-                canTransfer={canTransfer}
-                onUpdateCell={onUpdateCell}
-                onCommitCell={onCommitCell}
-                onDeleteRequest={onDeleteRequest}
-                onEditRequest={onEditRequest}
-                onTransactionRequest={onTransactionRequest}
-                onToggleSelect={onToggleSelect}
-                onCreateCategory={onCreateCategory}
-              />
-            ))}
+            {rows.map((row) => {
+              if (row.isCorrection) {
+                const amount =
+                  amountCol && typeof row.cells[amountCol.id] === "number"
+                    ? (row.cells[amountCol.id] as number)
+                    : 0;
+                return (
+                  <CorrectionLine
+                    key={row.id}
+                    colSpan={correctionColSpan}
+                    amount={amount}
+                    settings={settings}
+                    onClick={() => onCorrectionDeleteRequest(row)}
+                  />
+                );
+              }
+              return (
+                <SheetRow
+                  key={row.id}
+                  row={row}
+                  columns={columns}
+                  balances={balances}
+                  categories={categories}
+                  settings={settings}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(row.id)}
+                  canTransfer={canTransfer}
+                  onUpdateCell={onUpdateCell}
+                  onCommitCell={onCommitCell}
+                  onDeleteRequest={onDeleteRequest}
+                  onEditRequest={onEditRequest}
+                  onTransactionRequest={onTransactionRequest}
+                  onToggleSelect={onToggleSelect}
+                  onCreateCategory={onCreateCategory}
+                />
+              );
+            })}
           </tbody>
           <tfoot>
             <tr>
@@ -194,5 +220,52 @@ export function MonthTable({
         </table>
       </div>
     </section>
+  );
+}
+
+// One-row stand-in for a balance-correction Row. Renders as a single
+// full-width <td> showing "——— balance correction ±X kr ———" — no
+// columns, no action buttons. The whole line is a button so clicking
+// it opens the delete-confirmation prompt (the parent handler shows a
+// ConfirmDialog and dispatches the actual deletion).
+function CorrectionLine({
+  colSpan,
+  amount,
+  settings,
+  onClick,
+}: {
+  colSpan: number;
+  amount: number;
+  settings: Settings;
+  onClick: () => void;
+}) {
+  const sign = amount >= 0 ? "+" : "−";
+  const magnitude = withCurrency(
+    formatAmountForInput(Math.abs(amount), settings),
+    settings,
+  );
+  const amountClass = amount >= 0 ? "text-positive" : "text-negative";
+  return (
+    <tr className="correction-row">
+      <td colSpan={colSpan} className="border-b border-line bg-surface p-0">
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={`Remove balance correction of ${sign}${magnitude}`}
+          title="Remove balance correction"
+          className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-xs text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        >
+          <span aria-hidden className="h-px flex-1 bg-line" />
+          <span className="whitespace-nowrap">
+            balance correction{" "}
+            <span className={`font-mono tabular-nums ${amountClass}`}>
+              {sign}
+              {magnitude}
+            </span>
+          </span>
+          <span aria-hidden className="h-px flex-1 bg-line" />
+        </button>
+      </td>
+    </tr>
   );
 }

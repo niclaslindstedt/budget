@@ -309,7 +309,7 @@ function Section({
 // than the schema module because the schema must be a valid JSON
 // Schema document.
 const OVERVIEW_TEXT = `UserData
-├─ version: 9                              schema version (this build)
+├─ version: 10                             schema version (this build)
 ├─ activeSheetId: string                   id of the sheet to open first
 ├─ accounts: Account[]                     real-world accounts (may be empty)
 │  └─ Account { id, name,
@@ -338,7 +338,7 @@ const OVERVIEW_TEXT = `UserData
          │  │     type ∈ { date | description | amount | balance
          │  │            | completed | category }
          │  └─ rows: Row[]                 month grouping is derived
-         │     └─ Row { id, cells, seriesId? }
+         │     └─ Row { id, cells, seriesId?, glyph?, isCorrection? }
          │        cells: { [columnId]: string|number|boolean|null }
          └─ AccountsView { id, type: "accountsView" }
                                            singleton dashboard, no data of its own`;
