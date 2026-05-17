@@ -146,11 +146,7 @@ function SheetTab({
       }}
     >
       <CategoryIconGlyph name={sheet.glyph} size={16} />
-      <span
-        className={`max-w-[10rem] truncate text-xs font-bold tracking-wide ${
-          active ? "" : "hidden md:inline"
-        }`}
-      >
+      <span className="hidden max-w-[10rem] truncate text-xs font-bold tracking-wide md:inline">
         {sheet.name}
       </span>
     </button>
