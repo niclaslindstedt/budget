@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import type { Account, Settings } from "../data/types";
@@ -67,6 +67,22 @@ export function UpdateBalanceModal({
     if (!open) return;
     setText(formatAmountForInput(currentBalance, accountSettings));
   }, [open, account?.id, currentBalance, accountSettings]);
+
+  // Pre-select the seed so the next keystroke replaces it. `select()`
+  // from `onFocus` works on desktop but iOS's keyboard animation often
+  // clears the selection right after focus settles — defer the call to
+  // the next frame so the selection sticks once the keyboard is up.
+  // autoFocus on the <input> handles the keyboard pop itself (inside
+  // the click gesture); this effect only handles the selection.
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (!open || !canRecord) return;
+    const id = requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) el.setSelectionRange(0, el.value.length);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, account?.id, canRecord]);
 
   useEffect(() => {
     if (!open) return;
@@ -154,6 +170,7 @@ export function UpdateBalanceModal({
               <span className="text-muted">New balance</span>
               <input
                 key={account.id}
+                ref={inputRef}
                 type="text"
                 inputMode="decimal"
                 autoComplete="off"
