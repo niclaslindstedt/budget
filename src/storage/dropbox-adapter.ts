@@ -8,9 +8,10 @@ import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
 // that localStorage would have held.
 //
 // Concurrency mirrors Dropbox's own `rev`: `Snapshot.revision` round-
-// trips through the hook, and `save` uses `update` mode with the
-// previous `rev` so a remote that moved underneath us surfaces as
-// `ConflictError` instead of a silent overwrite.
+// trips through the hook, and `save` uses the `update` write-mode
+// variant (`{".tag":"update","update":<rev>}`) with the previous `rev`
+// so a remote that moved underneath us surfaces as `ConflictError`
+// instead of a silent overwrite.
 
 // Public app key. Dropbox's PKCE flow doesn't require a client secret,
 // and the key itself is published in the deployed JS bundle either
@@ -60,7 +61,12 @@ type FileMetadata = {
   rev: string;
 };
 
-type SaveArgs = { mode: "add" } | { mode: "update"; update: string };
+// Dropbox's `WriteMode` is a tag union. `add` and `overwrite` carry no
+// payload so the short string form is accepted, but `update` carries
+// the parent `rev` and must use the explicit `{".tag":"update",…}`
+// struct form — sending `update` as a sibling of `mode` makes the
+// upload endpoint reject the call with `unknown field 'update'`.
+type WriteMode = "add" | { ".tag": "update"; update: string };
 
 async function loadFromDropbox(
   token: string,
@@ -100,14 +106,11 @@ export function createDropboxAdapter(
     load: () => loadFromDropbox(token, fetchImpl),
 
     async save(text: string, baseRevision?: string): Promise<Snapshot> {
-      const args: { path: string; mute: boolean } & SaveArgs = baseRevision
-        ? {
-            path: DROPBOX_FILE_PATH,
-            mode: "update",
-            update: baseRevision,
-            mute: true,
-          }
-        : { path: DROPBOX_FILE_PATH, mode: "add", mute: true };
+      const args: { path: string; mute: boolean; mode: WriteMode } = {
+        path: DROPBOX_FILE_PATH,
+        mute: true,
+        mode: baseRevision ? { ".tag": "update", update: baseRevision } : "add",
+      };
       const res = await fetchImpl(UPLOAD_ENDPOINT, {
         method: "POST",
         headers: {

@@ -1,10 +1,4 @@
-import {
-  CloudAlert,
-  CloudCheck,
-  CloudUpload,
-  Loader,
-  RefreshCw,
-} from "lucide-react";
+import { CloudAlert, CloudCheck, Loader, RefreshCw } from "lucide-react";
 
 import type { SaveStatus } from "../storage/useUserDataStorage";
 
@@ -31,7 +25,7 @@ function viewFor(status: SaveStatus, dirty: boolean): View {
     case "loading":
       return { Icon: Loader, label: "Loading…", tone: "busy", spin: true };
     case "saving":
-      return { Icon: CloudUpload, label: "Syncing…", tone: "busy", spin: true };
+      return { Icon: Loader, label: "Syncing…", tone: "busy", spin: true };
     case "error":
       return {
         Icon: CloudAlert,
