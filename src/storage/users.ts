@@ -1,4 +1,5 @@
 import {
+  DEFAULT_USERNAME,
   PASSWORD_HASH_BITS,
   PASSWORD_HASH_ITERATIONS,
   PASSWORD_SALT_BYTES,
@@ -86,6 +87,32 @@ export function findUserByUsername(
   return users.find((u) => normalizeUsername(u.username) === target);
 }
 
+// Locate the no-password "guest" account in the registry, if one
+// exists. There is at most one — the create-account flow consumes it
+// when a real account is created.
+export function findDefaultUser(
+  users: readonly StoredUser[],
+): StoredUser | undefined {
+  return users.find((u) => u.isDefault);
+}
+
+// Build a no-password "guest" account record. Password fields are
+// left empty: the encrypting adapter is skipped for default users
+// (encryption preference is forced to plaintext in `App.tsx`), so
+// no derivation ever runs against these blanks.
+export function createDefaultUser(): StoredUser {
+  return {
+    id: newId(),
+    username: DEFAULT_USERNAME,
+    passwordHash: "",
+    passwordSalt: "",
+    iterations: 0,
+    hash: "SHA-256",
+    createdAt: Date.now(),
+    isDefault: true,
+  };
+}
+
 export async function createUser(
   username: string,
   password: string,
@@ -137,7 +164,8 @@ function isStoredUser(value: unknown): value is StoredUser {
     typeof v.passwordSalt === "string" &&
     typeof v.iterations === "number" &&
     v.hash === "SHA-256" &&
-    typeof v.createdAt === "number"
+    typeof v.createdAt === "number" &&
+    (v.isDefault === undefined || typeof v.isDefault === "boolean")
   );
 }
 

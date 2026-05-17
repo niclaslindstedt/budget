@@ -26,6 +26,10 @@ type Props = {
   backend: BackendId;
   dropboxConnected: boolean;
   encryption: EncryptionMode;
+  // True when the active user is the no-password "guest" account.
+  // Disables the encryption toggle (there's no key to derive without
+  // a password) and tweaks the help text to point at "Create account".
+  isGuest: boolean;
   onClose: () => void;
   onSave: (next: Settings) => void;
   onConnectDropbox: () => void;
@@ -53,6 +57,7 @@ export function SettingsModal({
   backend,
   dropboxConnected,
   encryption,
+  isGuest,
   onClose,
   onSave,
   onConnectDropbox,
@@ -147,6 +152,7 @@ export function SettingsModal({
             backend={backend}
             dropboxConnected={dropboxConnected}
             encryption={encryption}
+            isGuest={isGuest}
             onUpdate={update}
             onApplyNumberFormat={applyNumberFormat}
             onApplyDecimal={applyDecimal}
@@ -192,6 +198,7 @@ function MainView({
   backend,
   dropboxConnected,
   encryption,
+  isGuest,
   onUpdate,
   onApplyNumberFormat,
   onApplyDecimal,
@@ -204,6 +211,7 @@ function MainView({
   backend: BackendId;
   dropboxConnected: boolean;
   encryption: EncryptionMode;
+  isGuest: boolean;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   onApplyNumberFormat: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
@@ -471,7 +479,10 @@ function MainView({
                 type="button"
                 onClick={() => onSetEncryption(m)}
                 aria-pressed={encryption === m}
-                className={`cursor-pointer border-0 px-3 py-1.5 font-mono text-sm ${
+                disabled={isGuest}
+                className={`border-0 px-3 py-1.5 font-mono text-sm ${
+                  isGuest ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                } ${
                   encryption === m
                     ? "bg-accent/15 text-accent"
                     : "bg-surface-2 text-fg hover:bg-surface-3"
@@ -482,8 +493,9 @@ function MainView({
             ))}
           </div>
           <p className="text-xs text-muted">
-            Applies to the active backend and any cloud sync. Switching re-wraps
-            the bytes already in storage. Exports follow this setting too.
+            {isGuest
+              ? "Guest mode has no password to derive a key from. Create an account from the account menu to encrypt your budget."
+              : "Applies to the active backend and any cloud sync. Switching re-wraps the bytes already in storage. Exports follow this setting too."}
           </p>
         </Field>
         <Field label="Session timeout">
