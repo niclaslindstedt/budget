@@ -4,6 +4,7 @@ import { Minus, Plus, X } from "lucide-react";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, CategoryIcon, Settings } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryPicker } from "./CategoryPicker";
 import { GlyphPicker } from "./GlyphPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
@@ -46,6 +47,8 @@ export function ComplexEntryModal({
   const [dates, setDates] = useState<string[]>([]);
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

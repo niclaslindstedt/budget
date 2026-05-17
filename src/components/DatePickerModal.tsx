@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import { isIsoDate } from "../data/recurrence";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 
 type Props = {
   open: boolean;
@@ -59,6 +60,8 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
 
   const [viewYear, setViewYear] = useState(iy);
   const [viewMonth, setViewMonth] = useState(im);
+
+  useBodyScrollLock(open);
 
   // Re-sync view to the incoming value each time the modal opens, so
   // re-opening on the same row jumps back to that row's month rather than

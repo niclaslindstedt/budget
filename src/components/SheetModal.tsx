@@ -9,6 +9,7 @@ import {
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryIconGlyph } from "./icons";
 
 export type SheetDraft = {
@@ -73,6 +74,8 @@ export function SheetModal({
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

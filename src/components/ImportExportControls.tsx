@@ -3,6 +3,7 @@ import { Download, Eye, EyeOff, Lock, Upload, X } from "lucide-react";
 
 import type { UserData } from "../data/types";
 import type { EncryptionMode } from "../storage/backend-preference";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import {
   decryptEnvelope,
   encryptText,
@@ -209,6 +210,8 @@ function ImportPasswordPrompt({
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
