@@ -69,7 +69,7 @@ export function MonthTable({
         {formatMonth(monthKey)}
       </h3>
       <div
-        className={`overflow-hidden rounded border border-line bg-surface md:overflow-x-auto ${
+        className={`overflow-clip rounded border border-line bg-surface ${
           selectMode ? "sheet-table-selecting" : ""
         }`}
         style={
