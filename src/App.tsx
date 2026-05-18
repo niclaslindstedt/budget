@@ -140,7 +140,10 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
+import { debug } from "./utils/debug";
 import { formatNumber, withCurrency } from "./utils/format";
+
+const log = debug("app");
 import {
   createDefaultUser,
   createUser,
@@ -1449,6 +1452,7 @@ export function App() {
   // opted out of accounts.
   useEffect(() => {
     if (auth.kind !== "signed-in") {
+      log.log("auth: signed-out — clearing per-user preferences");
       setBackendState("browser");
       setDropboxTokenState(null);
       dropboxRefreshTokenRef.current = null;
@@ -1456,13 +1460,21 @@ export function App() {
       setEncryptionState("encrypted");
       return;
     }
-    setBackendState(getBackend(auth.user.id));
-    setDropboxTokenState(getDropboxToken(auth.user.id));
-    dropboxRefreshTokenRef.current = getDropboxRefreshToken(auth.user.id);
-    setGdriveTokenState(getGdriveToken(auth.user.id));
-    setEncryptionState(
-      auth.user.isDefault ? "plaintext" : getEncryption(auth.user.id),
+    const nextBackend = getBackend(auth.user.id);
+    const nextDropboxToken = getDropboxToken(auth.user.id);
+    const nextRefresh = getDropboxRefreshToken(auth.user.id);
+    const nextGdriveToken = getGdriveToken(auth.user.id);
+    const nextEncryption = auth.user.isDefault
+      ? "plaintext"
+      : getEncryption(auth.user.id);
+    log.log(
+      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} hasDropboxToken=${Boolean(nextDropboxToken)} hasDropboxRefresh=${Boolean(nextRefresh)} hasGdriveToken=${Boolean(nextGdriveToken)} encryption=${nextEncryption}`,
     );
+    setBackendState(nextBackend);
+    setDropboxTokenState(nextDropboxToken);
+    dropboxRefreshTokenRef.current = nextRefresh;
+    setGdriveTokenState(nextGdriveToken);
+    setEncryptionState(nextEncryption);
   }, [auth]);
 
   // Persist the OAuth tokens and flip the active backend in one batch,
@@ -1472,11 +1484,17 @@ export function App() {
   // need the same commit step.
   const commitDropboxLink = useCallback(
     (userId: string, result: DropboxAuthResult) => {
+      log.log(
+        `commitDropboxLink: persisting tokens hasRefresh=${Boolean(result.refreshToken)}`,
+      );
       setDropboxToken(userId, result.accessToken);
       if (result.refreshToken) {
         setDropboxRefreshToken(userId, result.refreshToken);
         dropboxRefreshTokenRef.current = result.refreshToken;
       } else {
+        log.warn(
+          "commitDropboxLink: no refresh token in response — silent refresh will not work",
+        );
         // Shouldn't happen — `token_access_type=offline` should always
         // return one — but clear stale state if it does so we don't
         // try to refresh with the previous account's token.
@@ -1491,6 +1509,7 @@ export function App() {
   );
 
   const commitGdriveLink = useCallback((userId: string, token: string) => {
+    log.log("commitGdriveLink: persisting token");
     setGdriveToken(userId, token);
     setBackend(userId, "gdrive");
     setGdriveTokenState(token);
@@ -1605,17 +1624,26 @@ export function App() {
     let cancelled = false;
     const userId = auth.user.id;
     const fromBackend = getBackend(userId);
+    log.log(
+      `oauth: ?code= present provider=${provider} fromBackend=${fromBackend}`,
+    );
 
     const run = provider === "gdrive" ? doGdrive() : doDropbox();
     void run
       .catch((err: unknown) => {
+        log.error(`oauth: ${provider} connect failed`, err);
         console.error(`${provider} connect failed:`, err);
       })
       .finally(cleanCodeFromUrl);
 
     async function doDropbox(): Promise<void> {
+      log.log("oauth(dropbox): exchanging code for tokens");
       const result = await completeDropboxAuth(authCode);
-      if (cancelled || auth.kind !== "signed-in") return;
+      if (cancelled || auth.kind !== "signed-in") {
+        log.log("oauth(dropbox): aborted after token exchange (cancelled)");
+        return;
+      }
+      log.log("oauth(dropbox): probing remote + source in parallel");
       const probe = createDropboxAdapter({
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
@@ -1627,12 +1655,19 @@ export function App() {
       });
       const [remote, sourceText] = await Promise.all([
         probe.load().catch((err: unknown) => {
+          log.error("oauth(dropbox): probe failed", err);
           console.error("Dropbox probe failed during link:", err);
           return null;
         }),
         loadSourceText(userId, fromBackend),
       ]);
-      if (cancelled || auth.kind !== "signed-in") return;
+      if (cancelled || auth.kind !== "signed-in") {
+        log.log("oauth(dropbox): aborted after probe (cancelled)");
+        return;
+      }
+      log.log(
+        `oauth(dropbox): probe done remoteHasBytes=${Boolean(remote)} sourceHasBytes=${Boolean(sourceText)} — opening confirmation`,
+      );
       setPendingCloudLink({
         provider: "dropbox",
         auth: result,
@@ -1643,17 +1678,29 @@ export function App() {
     }
 
     async function doGdrive(): Promise<void> {
+      log.log("oauth(gdrive): exchanging code for tokens");
       const token = await completeGdriveAuth(authCode);
-      if (cancelled || auth.kind !== "signed-in") return;
+      if (cancelled || auth.kind !== "signed-in") {
+        log.log("oauth(gdrive): aborted after token exchange (cancelled)");
+        return;
+      }
+      log.log("oauth(gdrive): probing remote + source in parallel");
       const probe = createGdriveAdapter(token);
       const [remote, sourceText] = await Promise.all([
         probe.load().catch((err: unknown) => {
+          log.error("oauth(gdrive): probe failed", err);
           console.error("Google Drive probe failed during link:", err);
           return null;
         }),
         loadSourceText(userId, fromBackend),
       ]);
-      if (cancelled || auth.kind !== "signed-in") return;
+      if (cancelled || auth.kind !== "signed-in") {
+        log.log("oauth(gdrive): aborted after probe (cancelled)");
+        return;
+      }
+      log.log(
+        `oauth(gdrive): probe done remoteHasBytes=${Boolean(remote)} sourceHasBytes=${Boolean(sourceText)} — opening confirmation`,
+      );
       setPendingCloudLink({
         provider: "gdrive",
         accessToken: token,
@@ -1690,10 +1737,16 @@ export function App() {
     async (action: "use-cloud" | "use-source"): Promise<void> => {
       const pending = pendingCloudLink;
       if (!pending || auth.kind !== "signed-in") return;
+      log.log(
+        `cloud-link resolve: ${pending.provider} action=${action} fromBackend=${pending.fromBackend}`,
+      );
       setPendingCloudLink(null);
       const userId = auth.user.id;
       try {
         if (action === "use-source" && pending.sourceText !== null) {
+          log.log(
+            `cloud-link: pushing source bytes (${pending.sourceText.length}) into ${pending.provider}`,
+          );
           const probeRaw =
             pending.provider === "dropbox"
               ? createDropboxAdapter({
@@ -1710,12 +1763,16 @@ export function App() {
             pending.remoteSnapshot?.revision,
           );
         }
+        log.log(
+          `cloud-link: committing — flipping backend to ${pending.provider}`,
+        );
         if (pending.provider === "dropbox") {
           commitDropboxLink(userId, pending.auth);
         } else {
           commitGdriveLink(userId, pending.accessToken);
         }
       } catch (err) {
+        log.error(`cloud-link: ${pending.provider} link failed`, err);
         console.error(`${pending.provider} link failed:`, err);
       }
     },
@@ -1733,16 +1790,25 @@ export function App() {
   }, []);
 
   const adapter = useMemo<StorageAdapter | null>(() => {
-    if (auth.kind !== "signed-in") return null;
+    if (auth.kind !== "signed-in") {
+      log.log("adapter: null (not signed in)");
+      return null;
+    }
     const userId = auth.user.id;
     // Folder backend with the handle still being restored from IDB —
     // return null so the storage hook waits (same null-tolerated path
     // as the auth handshake). Without this gate the first render
     // would pick the browser fallback below and trigger an unwanted
     // load + replace before the folder handle lands.
-    if (backend === "folder" && !folderHandleLoaded) return null;
+    if (backend === "folder" && !folderHandleLoaded) {
+      log.log("adapter: null (folder handle still loading)");
+      return null;
+    }
     let inner: StorageAdapter;
     if (backend === "dropbox" && dropboxToken) {
+      log.log(
+        `adapter: building dropbox (hasRefresh=${Boolean(dropboxRefreshTokenRef.current)})`,
+      );
       inner = createDropboxAdapter({
         accessToken: dropboxToken,
         refreshToken: dropboxRefreshTokenRef.current,
@@ -1752,12 +1818,15 @@ export function App() {
         // discard our `lastSnapshot` and force a reload of the
         // user's data.
         onAccessTokenRefreshed: (next) => {
+          log.log("dropbox: persisting refreshed access token");
           setDropboxToken(userId, next);
         },
       });
     } else if (backend === "gdrive" && gdriveToken) {
+      log.log("adapter: building gdrive");
       inner = createGdriveAdapter(gdriveToken);
     } else if (backend === "folder" && folderHandle) {
+      log.log("adapter: building folder");
       inner = createFolderAdapter({
         directoryHandle: folderHandle,
         onPermissionLost: () => {
@@ -1767,11 +1836,19 @@ export function App() {
           // adapter, and surface the reconnect banner — the IDB
           // record is intentionally kept so the user can re-grant
           // with one click against the stored handle.
+          log.warn("folder: permission lost during operation");
           setFolderHandle(null);
           setFolderReconnectNeeded(true);
         },
       });
     } else {
+      log.log(
+        `adapter: building browser (backend=${backend} dropboxToken=${Boolean(
+          dropboxToken,
+        )} gdriveToken=${Boolean(gdriveToken)} folderHandle=${Boolean(
+          folderHandle,
+        )})`,
+      );
       // Default and reconnect-needed fallback. When `backend ===
       // "folder"` but no live handle is in state (permission lost,
       // or IDB had no record), this keeps the user editing locally
@@ -1783,9 +1860,18 @@ export function App() {
     // out — keeps `loadSync` available on local and writes plaintext
     // bytes to whichever inner backend is active (including the
     // cloud backends).
-    return encryption === "plaintext"
-      ? inner
-      : withEncryption(inner, passwordRef);
+    if (encryption === "plaintext") {
+      log.log(`adapter: encryption off — inner=${inner.id}`);
+      return inner;
+    }
+    if (!passwordRef.current) {
+      log.warn(
+        `adapter: encryption on but no password held — load will fail with "password required" if the file is encrypted (inner=${inner.id})`,
+      );
+    } else {
+      log.log(`adapter: wrapping ${inner.id} with encryption`);
+    }
+    return withEncryption(inner, passwordRef);
   }, [
     auth,
     backend,

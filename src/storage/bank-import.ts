@@ -14,6 +14,9 @@
 // registry.
 
 import type { HistoryEntry } from "../data/types";
+import { debug } from "../utils/debug";
+
+const log = debug("bank-import");
 
 export type ParsedBankEntry = {
   date: string;
@@ -84,9 +87,41 @@ export function listBankParsers(): readonly BankParser[] {
 }
 
 export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
+  log.log(
+    `parseBankFile: ${file.name} bytes=${file.bytes.byteLength} parsers=${registry.length}`,
+  );
   for (const parser of registry) {
-    if (await parser.sniff(file)) return parser.parse(file);
+    const sniffStart = performance.now();
+    let matched = false;
+    try {
+      matched = await parser.sniff(file);
+    } catch (err) {
+      log.warn(`sniff[${parser.id}] threw — treating as no match`, err);
+    }
+    const sniffMs = (performance.now() - sniffStart).toFixed(0);
+    log.log(
+      `sniff[${parser.id}]: ${matched ? "match" : "skip"} (${sniffMs}ms)`,
+    );
+    if (matched) {
+      const parseStart = performance.now();
+      try {
+        const result = await parser.parse(file);
+        const parseMs = (performance.now() - parseStart).toFixed(0);
+        log.log(
+          `parse[${parser.id}]: ${result.entries.length} entries (${parseMs}ms)`,
+        );
+        return result;
+      } catch (err) {
+        const parseMs = (performance.now() - parseStart).toFixed(0);
+        log.error(`parse[${parser.id}]: failed (${parseMs}ms)`, err);
+        throw err;
+      }
+    }
   }
+  log.error("parseBankFile: no parser matched", {
+    name: file.name,
+    parsers: registry.map((p) => p.id),
+  });
   throw new Error(
     "No parser matched this file. Supported: " +
       registry.map((p) => p.name).join(", "),
@@ -166,6 +201,9 @@ export function mergeHistory(
   }
   const merged = Array.from(byId.values()).sort((a, b) =>
     a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  log.log(
+    `mergeHistory: existing=${existing.length} parsed=${parsed.length} added=${addedCount} duplicates=${duplicateCount}`,
   );
   return { merged, addedCount, duplicateCount };
 }

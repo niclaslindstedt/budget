@@ -30,10 +30,12 @@
 //     or skip lines like "Skapad" / "Valuta"), so we search for the
 //     "Radnummer" row instead.
 
+import { debug } from "../utils/debug";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
 import { readFirstSheet, type XlsxCellValue } from "./xlsx-reader";
 
 const PARSER_ID = "swedbank-xlsx";
+const log = debug("bank-swedbank");
 
 const HEADERS = [
   "Radnummer",
@@ -62,7 +64,8 @@ registerBankParser({
     try {
       const sheet = await readFirstSheet(file.bytes);
       return findHeaderRow(sheet.rows) >= 0;
-    } catch {
+    } catch (err) {
+      log.warn("sniff: readFirstSheet threw — treating as no match", err);
       return false;
     }
   },
