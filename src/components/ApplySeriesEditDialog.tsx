@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { Checkbox } from "./form";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -54,14 +55,16 @@ export function ApplySeriesEditDialog({
           {fieldLabel} updated on this entry ({anchorDate || "no date"}). Apply
           the same change to all following entries in this series?
         </p>
-        <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs text-muted">
-          <input
-            type="checkbox"
-            checked={untilEnabled}
-            onChange={(e) => setUntilEnabled(e.target.checked)}
-          />
-          Stop after a date (temporary change)
-        </label>
+        <Checkbox
+          checked={untilEnabled}
+          onChange={setUntilEnabled}
+          label={
+            <span className="text-xs text-muted">
+              Stop after a date (temporary change)
+            </span>
+          }
+          className="mt-2 items-center"
+        />
         {untilEnabled && (
           <input
             type="date"

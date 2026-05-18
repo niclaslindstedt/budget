@@ -19,6 +19,7 @@ import {
 import { Modal } from "./Modal";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
+import { Checkbox } from "./form";
 import { CategoryIconGlyph } from "./icons";
 import type { Settings } from "../data/types";
 
@@ -382,15 +383,12 @@ export function TransactionModal({
             />
           </div>
 
-          <label className="inline-flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={completed}
-              onChange={(e) => setCompleted(e.target.checked)}
-              className="h-4 w-4 cursor-pointer"
-            />
-            <span className="text-sm text-fg">Mark as done</span>
-          </label>
+          <Checkbox
+            checked={completed}
+            onChange={setCompleted}
+            label="Mark as done"
+            className="items-center"
+          />
         </div>
       </Modal.Body>
       <Modal.Footer className="justify-between">

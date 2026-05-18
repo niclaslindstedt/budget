@@ -20,7 +20,7 @@ import type {
 import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
 import { BackendPicker } from "./BackendPicker";
-import { SelectPicker } from "./form";
+import { Checkbox, SelectPicker } from "./form";
 import { ImportExportControls } from "./ImportExportControls";
 import { Modal } from "./Modal";
 
@@ -839,18 +839,12 @@ function ToggleRow({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-1"
-      />
-      <span className="flex flex-col">
-        <span className="text-sm text-fg">{label}</span>
-        {hint && <span className="text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
+    <Checkbox
+      checked={checked}
+      onChange={onChange}
+      label={label}
+      description={hint}
+    />
   );
 }
 

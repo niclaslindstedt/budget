@@ -10,6 +10,7 @@ import {
 } from "../utils/format";
 import { Modal } from "./Modal";
 import { CategoryPicker } from "./CategoryPicker";
+import { Checkbox } from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
 
 export type BulkPatch = {
@@ -262,14 +263,12 @@ function Toggle({
   return (
     <fieldset className="mt-3 rounded border border-line bg-surface-3 p-3">
       <legend className="px-1">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-fg">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => onToggle(e.target.checked)}
-          />
-          {label}
-        </label>
+        <Checkbox
+          checked={enabled}
+          onChange={onToggle}
+          label={label}
+          className="items-center"
+        />
       </legend>
       {hint && <p className="mb-2 text-xs text-muted">{hint}</p>}
       <div
