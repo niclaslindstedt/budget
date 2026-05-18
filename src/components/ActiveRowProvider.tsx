@@ -38,12 +38,37 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
   const registrationsRef = useRef<Registration[]>([]);
   const nextTokenRef = useRef(1);
   const [hasActive, setHasActive] = useState(false);
+  // A tap that dismisses an active row produces a sequence
+  // (pointerdown → pointerup → mousedown → click). We swallow the
+  // pointerdown above, but by the time the trailing mousedown/click
+  // arrives the registrations are already empty, so the handler would
+  // otherwise let them through and the click would fire on whatever
+  // button the tap landed on (e.g. AddRowButton). Latching this flag
+  // keeps the rest of the sequence suppressed until it clears itself.
+  const dismissTrailingRef = useRef(false);
+  const dismissTrailingTimerRef = useRef<number | null>(null);
+
+  const armDismissTrailing = useCallback(() => {
+    dismissTrailingRef.current = true;
+    if (dismissTrailingTimerRef.current !== null) {
+      window.clearTimeout(dismissTrailingTimerRef.current);
+    }
+    // 150ms is comfortably above the ~50-100ms a trailing click takes
+    // to arrive after pointerdown on every browser we target, and below
+    // the ~200ms it takes a user to deliberately tap again. So a stray
+    // tap is intercepted, but a follow-up tap reliably gets through.
+    dismissTrailingTimerRef.current = window.setTimeout(() => {
+      dismissTrailingRef.current = false;
+      dismissTrailingTimerRef.current = null;
+    }, 150);
+  }, []);
 
   const dismissAll = useCallback(() => {
     const entries = registrationsRef.current;
     if (entries.length === 0) return;
     registrationsRef.current = [];
     setHasActive(false);
+    armDismissTrailing();
     for (const entry of entries) {
       try {
         entry.dismiss();
@@ -51,7 +76,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
         // Ignore dismissers that throw — the next click will retry.
       }
     }
-  }, []);
+  }, [armDismissTrailing]);
 
   const activate = useCallback(
     (rowId: string, dismiss: () => void) => {
@@ -91,13 +116,48 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
+    function swallow(e: Event) {
+      e.stopPropagation();
+      (
+        e as Event & { stopImmediatePropagation?: () => void }
+      ).stopImmediatePropagation?.();
+      if (
+        e.type === "click" ||
+        e.type === "contextmenu" ||
+        e.type === "mousedown"
+      ) {
+        e.preventDefault();
+      }
+    }
+
     function handler(e: Event) {
       // Resolve the active row on every event rather than capturing it
       // when the effect ran. The registration ref is the source of
       // truth; the DOM lookup is cheap and avoids stale node refs when
       // React rerenders the row.
       const top = registrationsRef.current.at(-1);
-      if (!top) return;
+      if (!top) {
+        // The dismissing pointerdown has already cleared registrations,
+        // but the same tap still has trailing mousedown/click events on
+        // the way. Swallow them so the button under the finger doesn't
+        // also fire.
+        if (
+          dismissTrailingRef.current &&
+          (e.type === "click" ||
+            e.type === "contextmenu" ||
+            e.type === "mousedown")
+        ) {
+          swallow(e);
+          if (e.type === "click") {
+            dismissTrailingRef.current = false;
+            if (dismissTrailingTimerRef.current !== null) {
+              window.clearTimeout(dismissTrailingTimerRef.current);
+              dismissTrailingTimerRef.current = null;
+            }
+          }
+        }
+        return;
+      }
       const activeRow = document.querySelector<HTMLElement>(
         `[data-row-id="${CSS.escape(top.rowId)}"]`,
       );
@@ -122,24 +182,13 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
       // capture phase prevents any later listener (including React's at
       // the root) from running, so the AddRowButton's onPointerDown
       // long-press timer never starts and other buttons' onClick never
-      // fires.
-      e.stopPropagation();
-      (
-        e as Event & { stopImmediatePropagation?: () => void }
-      ).stopImmediatePropagation?.();
-      // preventDefault on mousedown blocks the browser's focus shift to
-      // the tapped element — without it, tapping another row's input
-      // would still pull focus there (popping the keyboard on mobile)
-      // even though we swallowed the click. We deliberately do NOT
-      // preventDefault on touchstart/pointerdown: those would also
+      // fires. preventDefault on mousedown blocks the browser's focus
+      // shift to the tapped element — without it, tapping another row's
+      // input would still pull focus there (popping the keyboard on
+      // mobile) even though we swallowed the click. We deliberately do
+      // NOT preventDefault on touchstart/pointerdown: those would also
       // block page scrolling while a field is focused.
-      if (
-        e.type === "click" ||
-        e.type === "contextmenu" ||
-        e.type === "mousedown"
-      ) {
-        e.preventDefault();
-      }
+      swallow(e);
       if (
         e.type === "pointerdown" ||
         e.type === "mousedown" ||
@@ -155,6 +204,10 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
     return () => {
       for (const type of SWALLOWED_EVENTS) {
         document.removeEventListener(type, handler, true);
+      }
+      if (dismissTrailingTimerRef.current !== null) {
+        window.clearTimeout(dismissTrailingTimerRef.current);
+        dismissTrailingTimerRef.current = null;
       }
     };
   }, [dismissAll]);
