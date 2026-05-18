@@ -4,6 +4,7 @@ import { ChevronDown, Repeat } from "lucide-react";
 import { CATEGORY_ICON_NAMES } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
 import { useEscapeKey, usePointerOutside } from "../hooks";
+import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -85,47 +86,25 @@ export function GlyphPicker({
           aria-label="Glyph"
           className="absolute z-30 mt-1 w-full rounded border border-line bg-surface-2 p-2 shadow-lg"
         >
-          <div className="grid grid-cols-8 gap-1">
-            <button
-              type="button"
-              onClick={() => pick(null)}
-              aria-label={
-                defaultIcon
-                  ? `Default ${defaultIcon} glyph`
-                  : "Default recurring glyph"
-              }
-              aria-pressed={value === null}
-              title={defaultLabel}
-              className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border ${
-                value === null
-                  ? "border-accent text-accent"
-                  : "border-line text-muted hover:border-fg"
-              }`}
-            >
-              {defaultIcon ? (
-                <CategoryIconGlyph name={defaultIcon} size={14} />
-              ) : (
-                <Repeat size={14} aria-hidden focusable={false} />
-              )}
-            </button>
-            {CATEGORY_ICON_NAMES.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => pick(name)}
-                aria-label={`Glyph ${name}`}
-                aria-pressed={value === name}
-                title={name}
-                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border ${
-                  value === name
-                    ? "border-accent text-accent"
-                    : "border-line text-muted hover:border-fg"
-                }`}
-              >
-                <CategoryIconGlyph name={name} size={14} />
-              </button>
-            ))}
-          </div>
+          <GlyphGrid
+            icons={CATEGORY_ICON_NAMES}
+            value={value}
+            onChange={pick}
+            defaultSlot={{
+              icon: defaultIcon ?? null,
+              label: defaultIcon
+                ? `Default ${defaultIcon} glyph`
+                : "Default recurring glyph",
+              selected: value === null,
+              onSelect: () => pick(null),
+              render: () =>
+                defaultIcon ? (
+                  <CategoryIconGlyph name={defaultIcon} size={14} />
+                ) : (
+                  <Repeat size={14} aria-hidden focusable={false} />
+                ),
+            }}
+          />
         </div>
       )}
     </div>

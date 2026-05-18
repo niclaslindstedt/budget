@@ -90,14 +90,20 @@ src/
 │   ├── SheetView.tsx     # one sheet — month grouping + opening balance
 │   ├── MonthTable.tsx    # one month's table (header + rows + add row)
 │   ├── ColumnHeader.tsx  # draggable column header (HTML5 drag-and-drop)
-│   └── Cell.tsx          # per-type cell editor (date/text/number/check)
+│   ├── Cell.tsx          # per-type cell editor (date/text/number/check)
+│   ├── Modal.tsx         # compound shell for every modal dialog
+│   ├── FloatingPanel.tsx # portalled dropdown shell for pickers
+│   ├── ColorPalette.tsx  # circular color-swatch grid
+│   ├── GlyphGrid.tsx     # 8-column icon-button grid
+│   └── cells/            # readonly cell variants + shared classes
 ├── data/
 │   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
 │   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
 ├── hooks/
-│   ├── useEscapeKey.ts       # close-on-Escape listener
-│   └── usePointerOutside.ts  # close-on-outside-click listener
+│   ├── useEscapeKey.ts          # close-on-Escape listener
+│   ├── usePointerOutside.ts     # close-on-outside-click listener
+│   └── useFloatingPosition.ts   # anchor a float to a trigger element
 ├── storage/
 │   ├── adapter.ts             # StorageAdapter interface + ConflictError
 │   ├── local-adapter.ts       # localStorage adapter (load + save)

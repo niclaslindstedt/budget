@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, Plus, Trash2, Wallet, X } from "lucide-react";
+import { Check, ChevronDown, Plus, Trash2, Wallet } from "lucide-react";
 
 import {
   CATEGORY_ICON_NAMES,
@@ -9,8 +9,10 @@ import {
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
-import { useEscapeKey } from "../hooks";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { usePointerOutside } from "../hooks";
+import { ColorPalette } from "./ColorPalette";
+import { GlyphGrid } from "./GlyphGrid";
+import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
 
 export type SheetDraft = {
@@ -81,8 +83,6 @@ export function SheetModal({
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
 
-  useBodyScrollLock(open);
-
   useEffect(() => {
     if (!open) return;
     setName(sheet?.name ?? "");
@@ -100,10 +100,6 @@ export function SheetModal({
   useEffect(() => {
     if (creatingAccount) newAccountInputRef.current?.focus();
   }, [creatingAccount]);
-
-  useEscapeKey(open, onClose);
-
-  if (!open) return null;
 
   const trimmedNewAccount = newAccountName.trim();
   const canSave =
@@ -143,243 +139,185 @@ export function SheetModal({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sheet-modal-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="flex max-h-[95vh] w-full max-w-lg flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl sm:rounded-lg">
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="sheet-modal-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
-          >
-            {isEdit ? "Edit sheet" : "New sheet"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-          >
-            <X size={18} aria-hidden focusable={false} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                aria-hidden
-                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border"
-                style={{
-                  color,
-                  backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`,
-                  borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+    <Modal open={open} onClose={onClose} labelledBy="sheet-modal-title">
+      <Modal.Header
+        title={isEdit ? "Edit sheet" : "New sheet"}
+        onClose={onClose}
+      />
+      <Modal.Body>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div
+              aria-hidden
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border"
+              style={{
+                color,
+                backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`,
+                borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+              }}
+            >
+              <CategoryIconGlyph name={glyph} size={22} />
+            </div>
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-xs text-muted">Name</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canSave) {
+                    e.preventDefault();
+                    handleSave();
+                  }
                 }}
-              >
-                <CategoryIconGlyph name={glyph} size={22} />
-              </div>
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs text-muted">Name</span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && canSave) {
-                      e.preventDefault();
-                      handleSave();
-                    }
-                  }}
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                  placeholder="Checking, Travel fund, Child account…"
-                  autoFocus
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Type</span>
-              <TypePicker
-                value={type}
-                open={typeOpen}
-                accountsTaken={accountsSheetTaken}
-                onToggle={() => setTypeOpen((v) => !v)}
-                onClose={() => setTypeOpen(false)}
-                onPick={(next) => {
-                  setType(next);
-                  setTypeOpen(false);
-                }}
-              />
-              <p className="text-xs text-muted">{selectedType.description}</p>
-            </div>
-
-            {type === "accounts" && (
-              <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-                The Accounts sheet is a workspace-wide dashboard. Manage
-                accounts and transfers from there — no per-sheet account binding
-                needed.
-              </p>
-            )}
-
-            {type === "budget" && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted">Account</span>
-                {creatingAccount ? (
-                  <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
-                    <label className="flex flex-col gap-1">
-                      <span className="text-xs text-muted">
-                        New account name
-                      </span>
-                      <input
-                        ref={newAccountInputRef}
-                        type="text"
-                        value={newAccountName}
-                        onChange={(e) => setNewAccountName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            e.preventDefault();
-                            handleCancelCreateAccount();
-                          }
-                        }}
-                        placeholder="Checking, Cash, Travel fund…"
-                        className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
-                      />
-                    </label>
-                    <div className="flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={handleCancelCreateAccount}
-                        className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <AccountPicker
-                    value={accountId}
-                    accounts={accounts}
-                    open={accountOpen}
-                    onToggle={() => setAccountOpen((v) => !v)}
-                    onClose={() => setAccountOpen(false)}
-                    onPick={handleAccountChange}
-                  />
-                )}
-                <p className="text-xs text-muted">
-                  Attach this budget to an account so its running balance can
-                  reflect the account&apos;s real balance. Leave it unassigned
-                  for a free-standing forward-looking ledger.
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Color</span>
-              <div className="flex flex-wrap gap-1.5">
-                {SHEET_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-label={`Color ${c}`}
-                    aria-pressed={c === color}
-                    onClick={() => setColor(c)}
-                    className={`h-6 w-6 cursor-pointer rounded-full border-2 ${
-                      c === color ? "border-fg-bright" : "border-transparent"
-                    }`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Glyph</span>
-              <div className="grid grid-cols-8 gap-1">
-                {CATEGORY_ICON_NAMES.map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    aria-label={`Glyph ${name}`}
-                    aria-pressed={name === glyph}
-                    onClick={() => setGlyph(name)}
-                    className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded border ${
-                      name === glyph
-                        ? "border-current"
-                        : "border-line text-muted hover:border-fg"
-                    }`}
-                    style={
-                      name === glyph
-                        ? {
-                            color,
-                            backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <CategoryIconGlyph name={name} size={16} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Description</span>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                placeholder="Optional. e.g. expenses for child account."
-                className="field-input resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                placeholder="Checking, Travel fund, Child account…"
+                autoFocus
               />
             </label>
           </div>
-        </div>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
-          <div>
-            {isEdit && onDelete && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={!canDelete}
-                title={
-                  canDelete
-                    ? "Delete this sheet"
-                    : "Can't delete the only sheet"
-                }
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Trash2 size={14} aria-hidden focusable={false} />
-                Delete
-              </button>
-            )}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Type</span>
+            <TypePicker
+              value={type}
+              open={typeOpen}
+              accountsTaken={accountsSheetTaken}
+              onToggle={() => setTypeOpen((v) => !v)}
+              onClose={() => setTypeOpen(false)}
+              onPick={(next) => {
+                setType(next);
+                setTypeOpen(false);
+              }}
+            />
+            <p className="text-xs text-muted">{selectedType.description}</p>
           </div>
-          <div className="flex items-center gap-2">
+
+          {type === "accounts" && (
+            <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+              The Accounts sheet is a workspace-wide dashboard. Manage accounts
+              and transfers from there — no per-sheet account binding needed.
+            </p>
+          )}
+
+          {type === "budget" && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted">Account</span>
+              {creatingAccount ? (
+                <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">New account name</span>
+                    <input
+                      ref={newAccountInputRef}
+                      type="text"
+                      value={newAccountName}
+                      onChange={(e) => setNewAccountName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          handleCancelCreateAccount();
+                        }
+                      }}
+                      placeholder="Checking, Cash, Travel fund…"
+                      className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+                    />
+                  </label>
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCancelCreateAccount}
+                      className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <AccountPicker
+                  value={accountId}
+                  accounts={accounts}
+                  open={accountOpen}
+                  onToggle={() => setAccountOpen((v) => !v)}
+                  onClose={() => setAccountOpen(false)}
+                  onPick={handleAccountChange}
+                />
+              )}
+              <p className="text-xs text-muted">
+                Attach this budget to an account so its running balance can
+                reflect the account&apos;s real balance. Leave it unassigned for
+                a free-standing forward-looking ledger.
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Color</span>
+            <ColorPalette
+              colors={SHEET_COLORS}
+              value={color}
+              onChange={setColor}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Glyph</span>
+            <GlyphGrid
+              icons={CATEGORY_ICON_NAMES}
+              value={glyph}
+              onChange={setGlyph}
+              size={8}
+              tintColor={color}
+            />
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Description</span>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Optional. e.g. expenses for child account."
+              className="field-input resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+            />
+          </label>
+        </div>
+      </Modal.Body>
+      <Modal.Footer className="justify-between">
+        <div>
+          {isEdit && onDelete && (
             <button
               type="button"
-              onClick={onClose}
-              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+              onClick={onDelete}
+              disabled={!canDelete}
+              title={
+                canDelete ? "Delete this sheet" : "Can't delete the only sheet"
+              }
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Cancel
+              <Trash2 size={14} aria-hidden focusable={false} />
+              Delete
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!canSave}
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isEdit ? "Save" : "Create"}
-            </button>
-          </div>
-        </footer>
-      </div>
-    </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!canSave}
+            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isEdit ? "Save" : "Create"}
+          </button>
+        </div>
+      </Modal.Footer>
+    </Modal>
   );
 }
 
@@ -401,15 +339,7 @@ function AccountPicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
 
-  useEffect(() => {
-    if (!open) return;
-    function handlePointer(e: PointerEvent) {
-      if (rootRef.current?.contains(e.target as Node)) return;
-      onClose();
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    return () => document.removeEventListener("pointerdown", handlePointer);
-  }, [open, onClose]);
+  usePointerOutside(open, [rootRef], onClose);
 
   return (
     <div ref={rootRef} className="relative">
@@ -522,15 +452,7 @@ function TypePicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const selected = SHEET_TYPES.find((t) => t.id === value) ?? SHEET_TYPES[0];
 
-  useEffect(() => {
-    if (!open) return;
-    function handlePointer(e: PointerEvent) {
-      if (rootRef.current?.contains(e.target as Node)) return;
-      onClose();
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    return () => document.removeEventListener("pointerdown", handlePointer);
-  }, [open, onClose]);
+  usePointerOutside(open, [rootRef], onClose);
 
   return (
     <div ref={rootRef} className="relative">

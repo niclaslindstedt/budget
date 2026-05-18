@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useEscapeKey } from "../hooks";
-import { X } from "lucide-react";
-
 import type { Account, Settings } from "../data/types";
 import {
   formatAmountForInput,
@@ -11,7 +8,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../utils/format";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { Modal } from "./Modal";
 
 type Props = {
   open: boolean;
@@ -43,8 +40,6 @@ export function UpdateBalanceModal({
   onConfirm,
   onCancel,
 }: Props) {
-  useBodyScrollLock(open);
-
   // Account-scoped settings so the modal renders amounts in the same
   // currency the Accounts page just showed the user (per-account
   // currency overrides the global one).
@@ -86,10 +81,6 @@ export function UpdateBalanceModal({
     return () => cancelAnimationFrame(id);
   }, [open, account?.id, canRecord]);
 
-  useEscapeKey(open, onCancel);
-
-  if (!open || !account) return null;
-
   const parsed = parseAmount(text);
   const delta = parsed !== null ? parsed - currentBalance : null;
   const hasDelta = delta !== null && delta !== 0;
@@ -107,128 +98,112 @@ export function UpdateBalanceModal({
   const newBalanceText =
     parsed !== null ? formatBalance(parsed, accountSettings) : "";
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  function handleConfirm() {
     if (!canRecord || !hasDelta || parsed === null) return;
     onConfirm(parsed);
-  };
+  }
 
   return (
-    <div
+    <Modal
+      open={open && account !== null}
+      onClose={onCancel}
+      labelledBy="update-balance-title"
       role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="update-balance-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+      size="max-w-md"
+      scrollableBody={false}
     >
-      <form
-        onSubmit={onSubmit}
-        className="flex w-full max-w-md flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl sm:rounded-lg"
-      >
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="update-balance-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
+      <Modal.Header title="Update balance" onClose={onCancel} />
+      <div className="flex flex-col gap-3 border-b border-line px-4 py-3 text-sm text-fg">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-muted">Account</span>
+          <span className="font-bold text-fg-bright">{account?.name}</span>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-muted">Current balance</span>
+          <span
+            className={`tabular-nums ${
+              currentBalance < 0 ? "text-negative" : "text-positive"
+            }`}
           >
-            Update balance
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-          >
-            <X size={18} aria-hidden focusable={false} />
-          </button>
-        </header>
+            {formatBalance(currentBalance, accountSettings)}
+          </span>
+        </div>
 
-        <div className="flex flex-col gap-3 border-b border-line px-4 py-3 text-sm text-fg">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-muted">Account</span>
-            <span className="font-bold text-fg-bright">{account.name}</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-muted">Current balance</span>
+        {canRecord && account ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-muted">New balance</span>
+            <input
+              key={account.id}
+              ref={inputRef}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoFocus
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleConfirm();
+                }
+              }}
+              value={text}
+              onChange={(e) =>
+                setText(normalizeAmountInput(e.target.value, accountSettings))
+              }
+              className="field-input w-full rounded border border-line bg-surface-2 px-2.5 py-2 text-right font-mono tabular-nums text-fg-bright outline-none focus:border-accent"
+            />
+          </label>
+        ) : (
+          <p className="text-xs text-muted">
+            No budget sheet tracks this account yet. Add one (Sheet → Edit →
+            pick this account) before recording a correction.
+          </p>
+        )}
+
+        {canRecord && hasDelta && (
+          <p className="text-xs text-muted">
+            Adds a balance correction of{" "}
             <span
-              className={`tabular-nums ${
-                currentBalance < 0 ? "text-negative" : "text-positive"
+              className={`font-mono tabular-nums ${
+                delta >= 0 ? "text-positive" : "text-negative"
               }`}
             >
-              {formatBalance(currentBalance, accountSettings)}
+              {deltaText}
+            </span>{" "}
+            on <span className="font-mono text-flag">{date}</span> so the
+            running balance lands on{" "}
+            <span className="font-mono tabular-nums text-fg-bright">
+              {newBalanceText}
             </span>
-          </div>
+            .
+          </p>
+        )}
+        {canRecord && parsed !== null && !hasDelta && (
+          <p className="text-xs text-muted">
+            Already at this balance — nothing to record.
+          </p>
+        )}
+      </div>
 
-          {canRecord ? (
-            <label className="flex flex-col gap-1">
-              <span className="text-muted">New balance</span>
-              <input
-                key={account.id}
-                ref={inputRef}
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                autoFocus
-                onFocus={(e) => e.currentTarget.select()}
-                value={text}
-                onChange={(e) =>
-                  setText(normalizeAmountInput(e.target.value, accountSettings))
-                }
-                className="field-input w-full rounded border border-line bg-surface-2 px-2.5 py-2 text-right font-mono tabular-nums text-fg-bright outline-none focus:border-accent"
-              />
-            </label>
-          ) : (
-            <p className="text-xs text-muted">
-              No budget sheet tracks this account yet. Add one (Sheet → Edit →
-              pick this account) before recording a correction.
-            </p>
-          )}
-
-          {canRecord && hasDelta && (
-            <p className="text-xs text-muted">
-              Adds a balance correction of{" "}
-              <span
-                className={`font-mono tabular-nums ${
-                  delta >= 0 ? "text-positive" : "text-negative"
-                }`}
-              >
-                {deltaText}
-              </span>{" "}
-              on <span className="font-mono text-flag">{date}</span> so the
-              running balance lands on{" "}
-              <span className="font-mono tabular-nums text-fg-bright">
-                {newBalanceText}
-              </span>
-              .
-            </p>
-          )}
-          {canRecord && parsed !== null && !hasDelta && (
-            <p className="text-xs text-muted">
-              Already at this balance — nothing to record.
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2 px-4 py-3">
-          {canRecord && (
-            <button
-              type="submit"
-              disabled={!hasDelta}
-              className="cursor-pointer rounded border border-accent/60 bg-accent/10 px-3 py-2 text-left text-sm font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted disabled:hover:bg-transparent"
-            >
-              Confirm balance update
-            </button>
-          )}
+      <div className="flex flex-col gap-2 px-4 py-3">
+        {canRecord && (
           <button
             type="button"
-            onClick={onCancel}
-            className="cursor-pointer rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
+            onClick={handleConfirm}
+            disabled={!hasDelta}
+            className="cursor-pointer rounded border border-accent/60 bg-accent/10 px-3 py-2 text-left text-sm font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted disabled:hover:bg-transparent"
           >
-            {canRecord ? "Cancel" : "Close"}
+            Confirm balance update
           </button>
-        </div>
-      </form>
-    </div>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="cursor-pointer rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
+        >
+          {canRecord ? "Cancel" : "Close"}
+        </button>
+      </div>
+    </Modal>
   );
 }

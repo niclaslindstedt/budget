@@ -1,8 +1,5 @@
 import { Fragment, useMemo } from "react";
 
-import { useEscapeKey } from "../hooks";
-import { X } from "lucide-react";
-
 import type {
   Account,
   HistoryEntry,
@@ -11,7 +8,7 @@ import type {
 } from "../data/types";
 import { formatBalance, formatDayOnly, formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { Modal } from "./Modal";
 
 const monthFormat = new Intl.DateTimeFormat(undefined, {
   month: "long",
@@ -46,10 +43,6 @@ export function HistoryModal({
   settings,
   onCancel,
 }: Props) {
-  useBodyScrollLock(open);
-
-  useEscapeKey(open, onCancel);
-
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) =>
       a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
@@ -94,143 +87,118 @@ export function HistoryModal({
     return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
   }, [sortedEntries, accountSettings]);
 
-  if (!open || !account) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="history-modal-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+    <Modal
+      open={open && account !== null}
+      onClose={onCancel}
+      labelledBy="history-modal-title"
+      size="max-w-2xl"
     >
-      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl sm:rounded-lg">
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="history-modal-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
-          >
-            History · {account.name}
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-          >
-            <X size={18} aria-hidden focusable={false} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-x-hidden overflow-y-auto">
-          {sortedEntries.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-muted">
-              No history yet. Import a bank statement to populate this view.
-            </p>
-          ) : (
-            <table className="w-full table-fixed border-collapse text-sm">
-              <colgroup>
-                <col className="w-9 md:w-14" />
-                <col />
-                <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
-                <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
-              </colgroup>
-              <thead className="sticky top-0 z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted">
-                <tr className="border-b border-line">
-                  <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
-                    Date
-                  </th>
-                  <th className="px-2 py-1.5 text-left">Description</th>
-                  <th className="px-1 py-1.5 text-right md:px-2">Amount</th>
-                  <th className="px-1 py-1.5 text-right md:px-2">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((group) => {
-                  const monthNum = monthNumberFromKey(group.monthKey);
-                  const monthColor =
-                    monthNum !== null ? monthColorVar(monthNum) : undefined;
-                  return (
-                    <Fragment key={group.monthKey}>
-                      <tr className="border-b border-line bg-surface-2">
+      <Modal.Header
+        title={`History · ${account?.name ?? ""}`}
+        onClose={onCancel}
+      />
+      <Modal.Body className="px-0 py-0 overflow-x-hidden">
+        {sortedEntries.length === 0 ? (
+          <p className="px-4 py-6 text-center text-xs text-muted">
+            No history yet. Import a bank statement to populate this view.
+          </p>
+        ) : (
+          <table className="w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-9 md:w-14" />
+              <col />
+              <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
+              <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted">
+              <tr className="border-b border-line">
+                <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
+                  Date
+                </th>
+                <th className="px-2 py-1.5 text-left">Description</th>
+                <th className="px-1 py-1.5 text-right md:px-2">Amount</th>
+                <th className="px-1 py-1.5 text-right md:px-2">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map((group) => {
+                const monthNum = monthNumberFromKey(group.monthKey);
+                const monthColor =
+                  monthNum !== null ? monthColorVar(monthNum) : undefined;
+                return (
+                  <Fragment key={group.monthKey}>
+                    <tr className="border-b border-line bg-surface-2">
+                      <td
+                        colSpan={4}
+                        className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                        style={monthColor ? { color: monthColor } : undefined}
+                      >
+                        {formatMonth(group.monthKey)}
+                      </td>
+                    </tr>
+                    {group.entries.map((e) => (
+                      <tr
+                        key={e.id}
+                        className={`border-b border-line last:border-b-0 ${
+                          e.hidden ? "opacity-50" : ""
+                        }`}
+                      >
                         <td
-                          colSpan={4}
-                          className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                          className="px-1 py-1.5 text-center align-top font-mono text-xs font-bold whitespace-nowrap md:px-2 md:text-left md:font-normal"
                           style={monthColor ? { color: monthColor } : undefined}
                         >
-                          {formatMonth(group.monthKey)}
+                          <span className="md:hidden">
+                            {formatDayOnly(e.date)}
+                          </span>
+                          <span className="hidden md:inline">
+                            {formatShortDate(e.date, settings.shortDateFormat)}
+                          </span>
                         </td>
-                      </tr>
-                      {group.entries.map((e) => (
-                        <tr
-                          key={e.id}
-                          className={`border-b border-line last:border-b-0 ${
-                            e.hidden ? "opacity-50" : ""
+                        <td className="px-2 py-1.5 align-top text-fg break-words">
+                          {e.description}
+                        </td>
+                        <td
+                          className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
+                            e.amount < 0 ? "text-negative" : "text-positive"
                           }`}
                         >
-                          <td
-                            className="px-1 py-1.5 text-center align-top font-mono text-xs font-bold whitespace-nowrap md:px-2 md:text-left md:font-normal"
-                            style={
-                              monthColor ? { color: monthColor } : undefined
-                            }
-                          >
-                            <span className="md:hidden">
-                              {formatDayOnly(e.date)}
-                            </span>
-                            <span className="hidden md:inline">
-                              {formatShortDate(
-                                e.date,
-                                settings.shortDateFormat,
-                              )}
-                            </span>
-                          </td>
-                          <td className="px-2 py-1.5 align-top text-fg break-words">
-                            {e.description}
-                          </td>
-                          <td
-                            className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
-                              e.amount < 0 ? "text-negative" : "text-positive"
-                            }`}
-                          >
-                            {formatBalance(e.amount, accountSettings)}
-                          </td>
-                          <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
-                            {formatBalance(e.balance, accountSettings)}
-                          </td>
-                        </tr>
-                      ))}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {imports.length > 0 && (
-          <div className="border-t border-line bg-surface-2 px-4 py-2 text-xs text-muted">
-            <h3 className="mb-1 font-bold tracking-wider uppercase">Imports</h3>
-            <ul className="flex flex-col gap-0.5">
-              {imports.map((imp) => (
-                <li key={imp.id} className="flex justify-between gap-2">
-                  <span className="truncate font-mono text-fg">
-                    {imp.filename}
-                  </span>
-                  <span className="whitespace-nowrap">
-                    {imp.addedCount} new
-                    {imp.duplicateCount > 0
-                      ? `, ${imp.duplicateCount} skipped`
-                      : ""}{" "}
-                    · {imp.rangeStart} → {imp.rangeEnd}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+                          {formatBalance(e.amount, accountSettings)}
+                        </td>
+                        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
+                          {formatBalance(e.balance, accountSettings)}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-      </div>
-    </div>
+      </Modal.Body>
+
+      {imports.length > 0 && (
+        <div className="border-t border-line bg-surface-2 px-4 py-2 text-xs text-muted">
+          <h3 className="mb-1 font-bold tracking-wider uppercase">Imports</h3>
+          <ul className="flex flex-col gap-0.5">
+            {imports.map((imp) => (
+              <li key={imp.id} className="flex justify-between gap-2">
+                <span className="truncate font-mono text-fg">
+                  {imp.filename}
+                </span>
+                <span className="whitespace-nowrap">
+                  {imp.addedCount} new
+                  {imp.duplicateCount > 0
+                    ? `, ${imp.duplicateCount} skipped`
+                    : ""}{" "}
+                  · {imp.rangeStart} → {imp.rangeEnd}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Modal>
   );
 }
