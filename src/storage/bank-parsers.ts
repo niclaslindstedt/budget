@@ -5,6 +5,7 @@
 
 import "./bank-skandia";
 import "./bank-ica";
+import "./bank-swedbank";
 
 export {
   type BankFile,
