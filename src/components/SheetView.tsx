@@ -95,6 +95,40 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// When no row falls on today, the next-best target is the first row
+// dated on or after today — that keeps today's position at the top of
+// the viewport with upcoming entries below it. Returns null when every
+// dated row is already in the past.
+function findNextRowOnOrAfter(
+  section: HTMLElement | null,
+  today: string,
+): HTMLElement | null {
+  if (!section) return null;
+  const candidates = section.querySelectorAll<HTMLElement>("[data-row-date]");
+  for (const el of candidates) {
+    const d = el.getAttribute("data-row-date");
+    if (d && d >= today) return el;
+  }
+  return null;
+}
+
+// Scroll a row to the top of the viewport, accounting for the three
+// stacked sticky bands above it (app header → month header → column
+// header thead). `scrollIntoView({ block: "start" })` would land the
+// row underneath all three; offsetting by their combined height pulls
+// it just below them so today's date is the first thing the user sees.
+function scrollRowToTop(row: HTMLElement, behavior: ScrollBehavior) {
+  const thead = row.closest("table")?.querySelector("thead");
+  const theadH = thead?.getBoundingClientRect().height ?? 0;
+  const rootStyle = getComputedStyle(document.documentElement);
+  const appH = parseFloat(rootStyle.getPropertyValue("--app-header-h")) || 0;
+  const monthH =
+    parseFloat(rootStyle.getPropertyValue("--month-header-h")) || 0;
+  const top =
+    row.getBoundingClientRect().top + window.scrollY - appH - monthH - theadH;
+  window.scrollTo({ top: Math.max(0, top), behavior });
+}
+
 // History pagination: the view starts with the current fiscal month plus
 // one previous month, and "Show more" reveals three additional months
 // each click. Older months stay grouped behind the button so a long
@@ -276,49 +310,42 @@ export function SheetView({
     return false;
   }, [monthGroups, oldestVisibleMonth]);
 
-  // Scroll the current fiscal month into view on first mount and any time
-  // the user changes `startOfMonth` (which shifts which month "current"
-  // resolves to). The ref guards against re-running after the user has
-  // scrolled away on their own — we only auto-scroll for sheet+month
-  // identity changes, not on every render.
+  // Scroll today's row to the top of the viewport on first mount and any
+  // time the user changes `startOfMonth` (which shifts which month
+  // "current" resolves to). The ref guards against re-running after the
+  // user has scrolled away on their own — we only auto-scroll for
+  // sheet+month identity changes, not on every render.
   const scrollTargetRef = useRef<HTMLDivElement | null>(null);
   const lastScrolledKey = useRef<string | null>(null);
+  const scrollToToday = (behavior: ScrollBehavior) => {
+    requestAnimationFrame(() => {
+      const section = sectionRef.current;
+      const row =
+        section?.querySelector<HTMLElement>(`[data-row-date="${today}"]`) ??
+        findNextRowOnOrAfter(section, today);
+      if (row) {
+        scrollRowToTop(row, behavior);
+        return;
+      }
+      scrollTargetRef.current?.scrollIntoView({ behavior, block: "start" });
+    });
+  };
   useEffect(() => {
     const key = `${sheet.id}:${currentMonth}`;
     if (lastScrolledKey.current === key) return;
     lastScrolledKey.current = key;
-    // Defer to the next frame so layout has settled (tables render
-    // synchronously but the sticky month headers establish their height
-    // on commit, which can offset the calculated scroll position).
-    requestAnimationFrame(() => {
-      scrollTargetRef.current?.scrollIntoView({
-        behavior: "auto",
-        block: "start",
-      });
-    });
+    scrollToToday("auto");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id, currentMonth]);
 
   // User-triggered scroll-to-today (parent bumps the tick when the
   // budget icon/title is pressed). Initial 0 is skipped so the first
-  // mount only fires the auto-scroll above. Prefers a row that lands
-  // exactly on today's ISO; falls back to the current fiscal month
-  // container when today has no entry yet.
+  // mount only fires the auto-scroll above.
   useEffect(() => {
     if (scrollToTodayTick === 0) return;
-    requestAnimationFrame(() => {
-      const row = sectionRef.current?.querySelector<HTMLElement>(
-        `[data-row-date="${today}"]`,
-      );
-      if (row) {
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-      scrollTargetRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }, [scrollToTodayTick, today]);
+    scrollToToday("smooth");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollToTodayTick]);
 
   return (
     <ActiveRowProvider>
