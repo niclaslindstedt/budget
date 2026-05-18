@@ -1526,8 +1526,19 @@ export function App() {
   // "Reconnect folder" cue and the active adapter falls back to the
   // browser backend so editing keeps working.
   const [folderReconnectNeeded, setFolderReconnectNeeded] = useState(false);
-  const [encryption, setEncryptionState] =
-    useState<EncryptionMode>("encrypted");
+  // Seeded from boot so the very first adapter built by the `useMemo`
+  // below matches what the auth effect would later set. Without this,
+  // a guest-with-data session boots with encryption="encrypted", the
+  // adapter is wrapped with `withEncryption` (no `loadSync`), the
+  // storage hook latches into status:"loading", and the auth effect's
+  // swap to the bare local adapter races the in-flight load — the
+  // load gets cancelled and "Loading budget…" never clears.
+  const [encryption, setEncryptionState] = useState<EncryptionMode>(() => {
+    if (boot.auth.kind !== "signed-in") return "encrypted";
+    return boot.auth.user.isDefault
+      ? "plaintext"
+      : getEncryption(boot.auth.user.id);
+  });
 
   // Pending cloud-link conflict resolution. Non-null while the user is
   // being asked to decide between adopting the cloud file or replacing

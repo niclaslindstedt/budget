@@ -186,6 +186,29 @@ export function useUserDataStorage<Action>(
   // Async load. Skipped when `loadSync` already handed us data.
   useEffect(() => {
     if (adapter.loadSync) {
+      // When the previous adapter was async (no `loadSync`) and its
+      // in-flight load got cancelled by this adapter swap, `hasLoadedRef`
+      // is still false and state is the empty `freshUserData()` seeded
+      // by the `useState` initializer with status:"loading". Run the
+      // sync load now so the swap actually populates state — otherwise
+      // the spinner never clears.
+      if (!hasLoadedRef.current) {
+        const snap = adapter.loadSync();
+        log.log(
+          `adapter mount [${adapter.id}] sync — recovering from cancelled async load ${
+            snap
+              ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"}`
+              : "<empty>"
+          }`,
+        );
+        lastSnapshot.current = snap;
+        skipNextSave.current = true;
+        hasLoadedRef.current = true;
+        setData(snap ? readUserDataFromText(snap.text) : freshUserData());
+        setLastSavedText(snap?.text ?? null);
+        setStatus({ kind: "idle" });
+        return;
+      }
       log.log(`adapter mount [${adapter.id}] sync — load skipped`);
       return;
     }
