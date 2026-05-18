@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 // the wording is edited — the value renders verbatim at the top of
 // the page and is the only line readers have to look at to see how
 // fresh the policy is.
-const LAST_UPDATED = "2026-05-17";
+const LAST_UPDATED = "2026-05-18";
 
 export function PrivacyPage() {
   return (
@@ -29,9 +29,10 @@ export function PrivacyPage() {
             <span className="text-path">budget.niclaslindstedt.se</span>. It has
             no backend, no user accounts on a server, no sync service, and no
             analytics SDK in the bundle. Your budget lives in your
-            browser&apos;s storage on your device. If you connect a cloud
-            storage backend (Dropbox or Google Drive), a copy of the same bytes
-            also lives in your own cloud folder. We never receive your data.
+            browser&apos;s storage on your device. If you point it at a folder
+            on your disk, or connect a cloud storage backend (Dropbox or Google
+            Drive), a copy of the same bytes also lives there. We never receive
+            your data.
           </p>
         </Section>
 
@@ -63,6 +64,46 @@ export function PrivacyPage() {
             third-party backend such as Dropbox or Google Drive (described
             below).
           </p>
+        </Section>
+
+        <Section title="Local folder (optional)">
+          <p>
+            If you choose the Local-folder backend, the app asks your browser
+            for permission to write into a directory you pick on your own
+            device. Inside that directory it maintains a single file named{" "}
+            <code className="text-meta">budget.json</code> — the same bytes it
+            would otherwise write to{" "}
+            <code className="mx-1 text-meta">localStorage</code>, encrypted by
+            default, plaintext if you opted out of encryption.
+          </p>
+          <ul className="ml-5 list-disc space-y-1">
+            <li>
+              <strong className="text-fg-bright">Where the bytes go.</strong>{" "}
+              Nowhere off-device. Your browser is the only thing reading or
+              writing the file; the project authors do not run any server that
+              observes your traffic.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Browser support.</strong> This
+              backend uses the File System Access API and currently works in
+              Chrome, Edge, and other Chromium-based browsers. Firefox and
+              Safari users see the option disabled.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Cross-device sync.</strong> Not
+              built in. If you point this backend at a folder that is itself
+              synced by another tool (Dropbox-mounted directory, iCloud Drive,
+              Syncthing, …), edits on one device will sync to others through
+              that tool — that&apos;s your call, and outside the app&apos;s
+              control.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Revoking access.</strong>{" "}
+              Disconnect from Settings → Storage to clear the saved folder
+              handle, or revoke File System permission from your browser&apos;s
+              site settings.
+            </li>
+          </ul>
         </Section>
 
         <Section title="Dropbox integration (optional)">

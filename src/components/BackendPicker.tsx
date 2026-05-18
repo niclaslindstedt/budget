@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react";
-import { Check, ChevronDown, HardDrive } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, FolderOpen, HardDrive } from "lucide-react";
 
 import type { FloatingPlacement } from "../hooks";
 import type { BackendId } from "../storage/backend-preference";
+import { isFolderBackendAvailable } from "../storage/folder-handle-store";
 import { DropboxGlyph } from "./DropboxGlyph";
 import { FloatingPanel } from "./FloatingPanel";
 import { GoogleDriveGlyph } from "./GoogleDriveGlyph";
@@ -17,43 +18,62 @@ type Option = {
   id: BackendId;
   label: string;
   Glyph: (props: { size?: number }) => React.ReactElement;
+  disabledReason?: string;
 };
-
-const OPTIONS: Option[] = [
-  {
-    id: "local",
-    label: "This device",
-    Glyph: ({ size = 16 }) => (
-      <HardDrive size={size} aria-hidden focusable={false} />
-    ),
-  },
-  {
-    id: "dropbox",
-    label: "Dropbox",
-    Glyph: ({ size = 16 }) => <DropboxGlyph size={size} />,
-  },
-  {
-    id: "gdrive",
-    label: "Google Drive",
-    Glyph: ({ size = 16 }) => <GoogleDriveGlyph size={size} />,
-  },
-];
 
 type Props = {
   value: BackendId;
   onSelect: (next: BackendId) => void;
 };
 
+function isLocalBackend(id: BackendId): boolean {
+  return id === "browser" || id === "folder";
+}
+
 export function BackendPicker({ value, onSelect }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
 
-  const selected = OPTIONS.find((o) => o.id === value) ?? OPTIONS[0];
+  const options = useMemo<Option[]>(() => {
+    const folderAvailable = isFolderBackendAvailable();
+    return [
+      {
+        id: "browser",
+        label: "This browser",
+        Glyph: ({ size = 16 }) => (
+          <HardDrive size={size} aria-hidden focusable={false} />
+        ),
+      },
+      {
+        id: "folder",
+        label: "Local folder",
+        Glyph: ({ size = 16 }) => (
+          <FolderOpen size={size} aria-hidden focusable={false} />
+        ),
+        disabledReason: folderAvailable
+          ? undefined
+          : "Requires Chrome, Edge, or another Chromium browser.",
+      },
+      {
+        id: "dropbox",
+        label: "Dropbox",
+        Glyph: ({ size = 16 }) => <DropboxGlyph size={size} />,
+      },
+      {
+        id: "gdrive",
+        label: "Google Drive",
+        Glyph: ({ size = 16 }) => <GoogleDriveGlyph size={size} />,
+      },
+    ];
+  }, []);
 
-  function handlePick(id: BackendId) {
+  const selected = options.find((o) => o.id === value) ?? options[0];
+
+  function handlePick(opt: Option) {
+    if (opt.disabledReason) return;
     setOpen(false);
-    if (id !== value) onSelect(id);
+    if (opt.id !== value) onSelect(opt.id);
   }
 
   return (
@@ -67,7 +87,7 @@ export function BackendPicker({ value, onSelect }: Props) {
       >
         <span
           aria-hidden
-          className={value === "local" ? "text-muted" : "text-accent"}
+          className={isLocalBackend(value) ? "text-muted" : "text-accent"}
         >
           <selected.Glyph size={16} />
         </span>
@@ -88,21 +108,32 @@ export function BackendPicker({ value, onSelect }: Props) {
         className="overflow-hidden"
       >
         <ul role="listbox" className="py-1">
-          {OPTIONS.map((opt) => {
+          {options.map((opt) => {
             const isSelected = opt.id === value;
+            const disabled = Boolean(opt.disabledReason);
             return (
               <li key={opt.id}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  onClick={() => handlePick(opt.id)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  aria-disabled={disabled || undefined}
+                  title={opt.disabledReason}
+                  onClick={() => handlePick(opt)}
+                  className={`flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
+                    disabled
+                      ? "cursor-not-allowed text-muted opacity-50"
+                      : "cursor-pointer text-fg hover:bg-surface"
+                  }`}
                 >
                   <span
                     aria-hidden
                     className={
-                      opt.id === "local" ? "text-muted" : "text-accent"
+                      disabled
+                        ? "text-muted"
+                        : isLocalBackend(opt.id)
+                          ? "text-muted"
+                          : "text-accent"
                     }
                   >
                     <opt.Glyph size={16} />

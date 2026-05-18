@@ -53,8 +53,8 @@ export function clearRawStorage(key: string = STORAGE_KEY): void {
 // duplicating the surrounding adapter logic.
 export function createLocalAdapter(key: string): StorageAdapter {
   return {
-    id: "local",
-    label: "This device",
+    id: "browser",
+    label: "This browser",
     saveDebounceMs: 0,
 
     loadSync(): Snapshot | null {

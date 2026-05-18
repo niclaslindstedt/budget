@@ -33,7 +33,6 @@ import {
   type HistoryPromotePrefill,
 } from "./components/EditEntryModal";
 import { HistoryModal } from "./components/HistoryModal";
-import { ImportExportControls } from "./components/ImportExportControls";
 import { ImportHistoryModal } from "./components/ImportHistoryModal";
 import {
   MatchRuleModal,
@@ -125,6 +124,14 @@ import {
   startGdriveAuth,
 } from "./storage/gdrive-adapter";
 import { withEncryption } from "./storage/encrypting-adapter";
+import { createFolderAdapter } from "./storage/folder-adapter";
+import {
+  clearDirectoryHandle,
+  ensurePermission,
+  isFolderBackendAvailable,
+  loadDirectoryHandle,
+  saveDirectoryHandle,
+} from "./storage/folder-handle-store";
 import {
   clearRawStorage,
   createLocalAdapter,
@@ -1308,6 +1315,19 @@ type PendingCloudLink =
       sourceText: string | null;
     };
 
+// In-flight folder-link awaiting the user's confirmation. Same shape
+// as `PendingCloudLink` but gesture-driven rather than OAuth-driven —
+// the handle is already granted by the time we get here. Kept
+// separate from `PendingCloudLink` so the dialog wording and the
+// commit path stay specific to each flow (OAuth tokens vs. a directory
+// handle, "your Dropbox" vs. "the folder you picked").
+type PendingFolderLink = {
+  handle: FileSystemDirectoryHandle;
+  fromBackend: BackendId;
+  remoteSnapshot: Snapshot | null;
+  sourceText: string | null;
+};
+
 // Resolve the auth state to land on at boot. If sessionStorage still
 // holds a non-expired password for a known user, jump straight back
 // into the signed-in state — that's the whole point of the cache.
@@ -1378,7 +1398,7 @@ export function App() {
   // in so a fresh-device session lands on local until the user
   // reconnects Dropbox here. Lives in App so the adapter `useMemo`
   // can rebuild when the user flips the choice from Settings.
-  const [backend, setBackendState] = useState<BackendId>("local");
+  const [backend, setBackendState] = useState<BackendId>("browser");
   const [dropboxToken, setDropboxTokenState] = useState<string | null>(null);
   // The refresh token is held in a ref rather than React state because
   // silent refreshes update the access token in localStorage and inside
@@ -1387,6 +1407,21 @@ export function App() {
   // user's data.
   const dropboxRefreshTokenRef = useRef<string | null>(null);
   const [gdriveToken, setGdriveTokenState] = useState<string | null>(null);
+  // Live `FileSystemDirectoryHandle` for the folder backend, restored
+  // from IndexedDB after auth flips. `folderHandleLoaded` distinguishes
+  // "still probing IDB" from "no handle exists" so the `adapter`
+  // useMemo can hold off on building anything during the async restore
+  // (returning `null` from the memo, which the storage hook treats as
+  // a no-op — same contract as the auth handshake).
+  const [folderHandle, setFolderHandle] =
+    useState<FileSystemDirectoryHandle | null>(null);
+  const [folderHandleLoaded, setFolderHandleLoaded] = useState(false);
+  // Set when a boot-time `queryPermission` returns anything other than
+  // "granted" — the App keeps the IDB record around so the user can
+  // re-grant with one click, but the Settings hint flips to a
+  // "Reconnect folder" cue and the active adapter falls back to the
+  // browser backend so editing keeps working.
+  const [folderReconnectNeeded, setFolderReconnectNeeded] = useState(false);
   const [encryption, setEncryptionState] =
     useState<EncryptionMode>("encrypted");
 
@@ -1397,6 +1432,8 @@ export function App() {
   // budget" branches can finish the link with the right effect.
   const [pendingCloudLink, setPendingCloudLink] =
     useState<PendingCloudLink | null>(null);
+  const [pendingFolderLink, setPendingFolderLink] =
+    useState<PendingFolderLink | null>(null);
 
   // Mirror of BudgetView's in-memory `UserData` so the OAuth-completion
   // and conflict-resolution paths in App can push the user's current
@@ -1412,7 +1449,7 @@ export function App() {
   // opted out of accounts.
   useEffect(() => {
     if (auth.kind !== "signed-in") {
-      setBackendState("local");
+      setBackendState("browser");
       setDropboxTokenState(null);
       dropboxRefreshTokenRef.current = null;
       setGdriveTokenState(null);
@@ -1501,9 +1538,17 @@ export function App() {
         if (!token) return null;
         return createGdriveAdapter(token);
       }
+      if (fromBackend === "folder") {
+        // The folder source needs the live handle held in App state,
+        // not something we can rebuild from localStorage. Caller falls
+        // back to the in-memory snapshot when the handle isn't there
+        // — e.g. permission was revoked between sessions.
+        if (!folderHandle) return null;
+        return createFolderAdapter({ directoryHandle: folderHandle });
+      }
       return createLocalAdapter(userDataKey(userId));
     },
-    [],
+    [folderHandle],
   );
 
   // Read the source backend's current bytes, falling back to the
@@ -1690,23 +1735,50 @@ export function App() {
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") return null;
     const userId = auth.user.id;
-    const inner: StorageAdapter =
-      backend === "dropbox" && dropboxToken
-        ? createDropboxAdapter({
-            accessToken: dropboxToken,
-            refreshToken: dropboxRefreshTokenRef.current,
-            // Persist the silently-refreshed access token so the next
-            // page load picks it up; deliberately do NOT touch React
-            // state, since rebuilding the adapter mid-session would
-            // discard our `lastSnapshot` and force a reload of the
-            // user's data.
-            onAccessTokenRefreshed: (next) => {
-              setDropboxToken(userId, next);
-            },
-          })
-        : backend === "gdrive" && gdriveToken
-          ? createGdriveAdapter(gdriveToken)
-          : createLocalAdapter(userDataKey(userId));
+    // Folder backend with the handle still being restored from IDB —
+    // return null so the storage hook waits (same null-tolerated path
+    // as the auth handshake). Without this gate the first render
+    // would pick the browser fallback below and trigger an unwanted
+    // load + replace before the folder handle lands.
+    if (backend === "folder" && !folderHandleLoaded) return null;
+    let inner: StorageAdapter;
+    if (backend === "dropbox" && dropboxToken) {
+      inner = createDropboxAdapter({
+        accessToken: dropboxToken,
+        refreshToken: dropboxRefreshTokenRef.current,
+        // Persist the silently-refreshed access token so the next
+        // page load picks it up; deliberately do NOT touch React
+        // state, since rebuilding the adapter mid-session would
+        // discard our `lastSnapshot` and force a reload of the
+        // user's data.
+        onAccessTokenRefreshed: (next) => {
+          setDropboxToken(userId, next);
+        },
+      });
+    } else if (backend === "gdrive" && gdriveToken) {
+      inner = createGdriveAdapter(gdriveToken);
+    } else if (backend === "folder" && folderHandle) {
+      inner = createFolderAdapter({
+        directoryHandle: folderHandle,
+        onPermissionLost: () => {
+          // The OS revoked access mid-session (rare, but possible
+          // via site-settings while the tab is open). Drop the live
+          // handle so the next render falls back to the browser
+          // adapter, and surface the reconnect banner — the IDB
+          // record is intentionally kept so the user can re-grant
+          // with one click against the stored handle.
+          setFolderHandle(null);
+          setFolderReconnectNeeded(true);
+        },
+      });
+    } else {
+      // Default and reconnect-needed fallback. When `backend ===
+      // "folder"` but no live handle is in state (permission lost,
+      // or IDB had no record), this keeps the user editing locally
+      // until they reconnect from Settings — better than locking
+      // them out.
+      inner = createLocalAdapter(userDataKey(userId));
+    }
     // Skip the encryption wrapper entirely when the user has opted
     // out — keeps `loadSync` available on local and writes plaintext
     // bytes to whichever inner backend is active (including the
@@ -1714,7 +1786,15 @@ export function App() {
     return encryption === "plaintext"
       ? inner
       : withEncryption(inner, passwordRef);
-  }, [auth, backend, dropboxToken, gdriveToken, encryption]);
+  }, [
+    auth,
+    backend,
+    dropboxToken,
+    gdriveToken,
+    folderHandle,
+    folderHandleLoaded,
+    encryption,
+  ]);
 
   const handleConnectDropbox = useCallback(() => {
     void startDropboxAuth();
@@ -1724,10 +1804,10 @@ export function App() {
     void startGdriveAuth();
   }, []);
 
-  const handleSelectLocal = useCallback(() => {
+  const handleSelectBrowser = useCallback(() => {
     if (auth.kind !== "signed-in") return;
-    setBackend(auth.user.id, "local");
-    setBackendState("local");
+    setBackend(auth.user.id, "browser");
+    setBackendState("browser");
   }, [auth]);
 
   const handleDisconnectDropbox = useCallback(async () => {
@@ -1767,10 +1847,10 @@ export function App() {
     }
     clearDropboxToken(userId);
     clearDropboxRefreshToken(userId);
-    setBackend(userId, "local");
+    setBackend(userId, "browser");
     setDropboxTokenState(null);
     dropboxRefreshTokenRef.current = null;
-    setBackendState("local");
+    setBackendState("browser");
   }, [auth, dropboxToken, encryption]);
 
   const handleDisconnectGdrive = useCallback(async () => {
@@ -1805,10 +1885,223 @@ export function App() {
       }
     }
     clearGdriveToken(userId);
-    setBackend(userId, "local");
+    setBackend(userId, "browser");
     setGdriveTokenState(null);
-    setBackendState("local");
+    setBackendState("browser");
   }, [auth, gdriveToken, encryption]);
+
+  // Restore the per-user folder handle from IndexedDB whenever the
+  // signed-in user changes. We always reset `folderHandleLoaded` to
+  // false up front so the `adapter` useMemo holds off on building a
+  // browser-fallback adapter during the async probe — without that
+  // gate, a folder-backed session would flash a fresh-budget render
+  // on every reload.
+  //
+  // At boot we only `queryPermission` (no `requestPermission`) since
+  // no user gesture is in scope. On "denied" / "prompt" we keep the
+  // IDB record around so the Reconnect button in Settings can
+  // re-grant in one click against the stored handle, and surface the
+  // reconnect cue so the user knows their folder isn't live.
+  useEffect(() => {
+    if (auth.kind !== "signed-in") {
+      setFolderHandle(null);
+      setFolderHandleLoaded(true);
+      setFolderReconnectNeeded(false);
+      return;
+    }
+    const userId = auth.user.id;
+    let cancelled = false;
+    setFolderHandleLoaded(false);
+    setFolderReconnectNeeded(false);
+    void (async () => {
+      const stored = await loadDirectoryHandle(userId);
+      if (cancelled) return;
+      if (!stored) {
+        setFolderHandle(null);
+        setFolderHandleLoaded(true);
+        return;
+      }
+      const status = await ensurePermission(stored, "readwrite", false);
+      if (cancelled) return;
+      if (status === "granted") {
+        setFolderHandle(stored);
+        setFolderReconnectNeeded(false);
+      } else {
+        setFolderHandle(null);
+        setFolderReconnectNeeded(true);
+      }
+      setFolderHandleLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
+
+  // Commit a freshly-picked folder as the active backend. Persists the
+  // handle to IDB, mirrors any source-side bytes through the encrypting
+  // wrapper if they need to land in the folder, then flips state.
+  const commitFolderLink = useCallback(
+    async (userId: string, handle: FileSystemDirectoryHandle) => {
+      await saveDirectoryHandle(userId, handle);
+      setBackend(userId, "folder");
+      setFolderHandle(handle);
+      setFolderHandleLoaded(true);
+      setFolderReconnectNeeded(false);
+      setBackendState("folder");
+    },
+    [],
+  );
+
+  // Pick a folder and probe both sides for an existing budget. Same
+  // probe-and-confirm pattern as the cloud OAuth flow: if both the
+  // folder and the current source already hold data, the dialog asks
+  // the user which one to keep. Otherwise commits straight away.
+  const handleConnectFolder = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    if (typeof window === "undefined" || !window.showDirectoryPicker) return;
+    let handle: FileSystemDirectoryHandle;
+    try {
+      handle = await window.showDirectoryPicker({ mode: "readwrite" });
+    } catch (err) {
+      // AbortError = user cancelled the picker; nothing to do.
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error("Folder picker failed:", err);
+      return;
+    }
+    const userId = auth.user.id;
+    const fromBackend = getBackend(userId);
+    const probeInner = createFolderAdapter({ directoryHandle: handle });
+    const probe = wrapWithActiveEncryption(probeInner);
+    const [remote, sourceText] = await Promise.all([
+      probe.load().catch((err: unknown) => {
+        console.error("Folder probe failed during link:", err);
+        return null;
+      }),
+      loadSourceText(userId, fromBackend),
+    ]);
+    if (auth.kind !== "signed-in") return;
+    if (remote === null && sourceText === null) {
+      // Nothing on either side — just commit, no dialog needed.
+      await commitFolderLink(userId, handle);
+      return;
+    }
+    if (remote !== null && sourceText === null) {
+      // Folder already has bytes, source is empty — adopt them silently
+      // (matches the cloud-link "use cloud" branch with nothing to lose).
+      await commitFolderLink(userId, handle);
+      return;
+    }
+    if (remote === null && sourceText !== null) {
+      // Folder is empty, source has bytes — push the source into the
+      // folder before flipping so the folder's first read returns the
+      // user's actual budget rather than nothing.
+      try {
+        await probe.save(sourceText);
+      } catch (err) {
+        console.error("Folder seed failed during link:", err);
+      }
+      await commitFolderLink(userId, handle);
+      return;
+    }
+    // Both sides have data — ask the user which one wins.
+    setPendingFolderLink({
+      handle,
+      fromBackend,
+      remoteSnapshot: remote,
+      sourceText,
+    });
+  }, [auth, commitFolderLink, loadSourceText, wrapWithActiveEncryption]);
+
+  // Resolve the folder-link confirmation. Mirrors `resolveCloudLink`:
+  // "use-source" pushes the parked source bytes into the folder
+  // (threading the remote revision so the write lands as an update),
+  // then commits; "use-cloud" — the folder's existing budget wins —
+  // just commits.
+  const resolveFolderLink = useCallback(
+    async (action: "use-cloud" | "use-source"): Promise<void> => {
+      const pending = pendingFolderLink;
+      if (!pending || auth.kind !== "signed-in") return;
+      setPendingFolderLink(null);
+      const userId = auth.user.id;
+      try {
+        if (action === "use-source" && pending.sourceText !== null) {
+          const probeInner = createFolderAdapter({
+            directoryHandle: pending.handle,
+          });
+          const probe = wrapWithActiveEncryption(probeInner);
+          await probe.save(
+            pending.sourceText,
+            pending.remoteSnapshot?.revision,
+          );
+        }
+        await commitFolderLink(userId, pending.handle);
+      } catch (err) {
+        console.error("Folder link failed:", err);
+      }
+    },
+    [auth, pendingFolderLink, commitFolderLink, wrapWithActiveEncryption],
+  );
+
+  const cancelFolderLink = useCallback(() => {
+    setPendingFolderLink(null);
+  }, []);
+
+  // Re-grant permission against the already-stored handle. The
+  // `requestPermission` call requires a user gesture, which is why
+  // this lives in a click handler rather than the boot effect.
+  const handleReconnectFolder = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    const userId = auth.user.id;
+    const stored = await loadDirectoryHandle(userId);
+    if (!stored) {
+      // No stored handle to re-grant against — escalate to the full
+      // picker flow instead.
+      void handleConnectFolder();
+      return;
+    }
+    const status = await ensurePermission(stored, "readwrite", true);
+    if (status === "granted") {
+      setFolderHandle(stored);
+      setFolderReconnectNeeded(false);
+    }
+  }, [auth, handleConnectFolder]);
+
+  // Mirror the folder's current bytes back into the browser backend
+  // (same pattern as the Dropbox / GDrive disconnect), then clear the
+  // handle from IDB and flip state. Best-effort: a stale browser copy
+  // is a few-edit regression at worst, since `useUserDataStorage`
+  // saves on debounce.
+  const handleDisconnectFolder = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    const userId = auth.user.id;
+    if (folderHandle) {
+      try {
+        const folderInner = createFolderAdapter({
+          directoryHandle: folderHandle,
+        });
+        const folder =
+          encryption === "plaintext"
+            ? folderInner
+            : withEncryption(folderInner, passwordRef);
+        const snap = await folder.load();
+        if (snap) {
+          const browserInner = createLocalAdapter(userDataKey(userId));
+          const browserAdapter =
+            encryption === "plaintext"
+              ? browserInner
+              : withEncryption(browserInner, passwordRef);
+          await browserAdapter.save(snap.text);
+        }
+      } catch (err) {
+        console.error("Folder disconnect: failed to mirror to browser", err);
+      }
+    }
+    await clearDirectoryHandle(userId);
+    setBackend(userId, "browser");
+    setFolderHandle(null);
+    setFolderReconnectNeeded(false);
+    setBackendState("browser");
+  }, [auth, folderHandle, encryption]);
 
   // Flip the per-user encryption preference, re-wrapping the bytes
   // already in the active backend so the next load isn't reading the
@@ -1835,6 +2128,8 @@ export function App() {
           });
         if (backend === "gdrive" && gdriveToken)
           return createGdriveAdapter(gdriveToken);
+        if (backend === "folder" && folderHandle)
+          return createFolderAdapter({ directoryHandle: folderHandle });
         return createLocalAdapter(userDataKey(userId));
       }
       const innerForCurrent: StorageAdapter = buildInner();
@@ -1857,7 +2152,7 @@ export function App() {
       setEncryption(userId, next);
       setEncryptionState(next);
     },
-    [auth, backend, dropboxToken, gdriveToken, encryption],
+    [auth, backend, dropboxToken, gdriveToken, folderHandle, encryption],
   );
 
   const persistRegistry = useCallback(
@@ -1948,7 +2243,7 @@ export function App() {
     persistRegistry(nextUsers, user.id);
     passwordRef.current = "";
     saveSession(user.id, "");
-    setBackendState("local");
+    setBackendState("browser");
     setDropboxTokenState(null);
     dropboxRefreshTokenRef.current = null;
     setEncryptionState("plaintext");
@@ -2011,7 +2306,7 @@ export function App() {
     [auth, users, persistRegistry],
   );
 
-  if (auth.kind === "signed-out" || adapter === null) {
+  if (auth.kind === "signed-out") {
     const realUsers = users.filter((u) => !u.isDefault);
     const guestAvailable = findDefaultUser(users) !== undefined;
     return (
@@ -2024,6 +2319,21 @@ export function App() {
         onCreateAccount={handleCreateAccount}
         onContinueWithoutAccount={handleContinueWithoutAccount}
       />
+    );
+  }
+  if (adapter === null) {
+    // The adapter useMemo returns null while the folder handle is
+    // being restored from IndexedDB. Show a quiet hold rather than
+    // the AuthScreen — the user is signed in, just briefly waiting
+    // on a permission probe that usually completes in milliseconds.
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex min-h-svh items-center justify-center px-4 text-sm text-muted"
+      >
+        Restoring folder access…
+      </div>
     );
   }
 
@@ -2044,6 +2354,9 @@ export function App() {
         backend={backend}
         dropboxConnected={dropboxToken !== null}
         gdriveConnected={gdriveToken !== null}
+        folderConnected={folderHandle !== null}
+        folderAvailable={isFolderBackendAvailable()}
+        folderReconnectNeeded={folderReconnectNeeded}
         encryption={encryption}
         getEncryptionPassword={() => passwordRef.current}
         currentDataRef={currentDataRef}
@@ -2055,7 +2368,10 @@ export function App() {
         onDisconnectDropbox={handleDisconnectDropbox}
         onConnectGdrive={handleConnectGdrive}
         onDisconnectGdrive={handleDisconnectGdrive}
-        onSelectLocal={handleSelectLocal}
+        onConnectFolder={handleConnectFolder}
+        onReconnectFolder={handleReconnectFolder}
+        onDisconnectFolder={handleDisconnectFolder}
+        onSelectBrowser={handleSelectBrowser}
         onSetEncryption={handleSetEncryption}
       />
       <CloudLinkDialog
@@ -2063,7 +2379,78 @@ export function App() {
         onResolve={resolveCloudLink}
         onCancel={cancelCloudLink}
       />
+      <FolderLinkDialog
+        pending={pendingFolderLink}
+        onResolve={resolveFolderLink}
+        onCancel={cancelFolderLink}
+      />
     </>
+  );
+}
+
+// Confirmation dialog after the user picks a directory. Mirrors
+// `CloudLinkDialog`'s variant matrix but specialized to the folder
+// flow: no provider branch since there's only one, no "your Dropbox"
+// vs. "your Google Drive" wording, and the action labels reference
+// "the folder" rather than a provider name.
+function FolderLinkDialog({
+  pending,
+  onResolve,
+  onCancel,
+}: {
+  pending: PendingFolderLink | null;
+  onResolve: (action: "use-cloud" | "use-source") => void;
+  onCancel: () => void;
+}) {
+  if (!pending) return null;
+  const sourcePossessive =
+    pending.fromBackend === "browser"
+      ? "this browser's budget"
+      : pending.fromBackend === "folder"
+        ? "your previous folder budget"
+        : pending.fromBackend === "dropbox"
+          ? "your Dropbox budget"
+          : "your Google Drive budget";
+  const untouched =
+    pending.fromBackend === "browser"
+      ? "this browser's current budget"
+      : pending.fromBackend === "folder"
+        ? "your previous folder budget"
+        : pending.fromBackend === "dropbox"
+          ? "your Dropbox budget"
+          : "your Google Drive budget";
+  // The only variant that surfaces here is "both sides have data" —
+  // the connect handler short-circuits the other three cases
+  // (commits straight away when one side is empty).
+  return (
+    <ConfirmDialog
+      open
+      title="Folder already contains a budget"
+      description={
+        <>
+          <p>
+            The folder you picked already contains a budget file. Pick which
+            version to keep — the other will be replaced.
+          </p>
+          <p className="mt-2 text-xs text-muted">
+            Either way, {untouched} stays where it is — switching backends
+            doesn&apos;t delete it, so you can still get back to it later.
+          </p>
+        </>
+      }
+      actions={[
+        {
+          label: "Use the folder version",
+          onSelect: () => onResolve("use-cloud"),
+        },
+        {
+          label: `Replace folder with ${sourcePossessive}`,
+          tone: "danger",
+          onSelect: () => onResolve("use-source"),
+        },
+      ]}
+      onCancel={onCancel}
+    />
   );
 }
 
@@ -2089,17 +2476,21 @@ function CloudLinkDialog({
   const targetName =
     pending.provider === "dropbox" ? "Dropbox" : "Google Drive";
   const sourcePossessive =
-    pending.fromBackend === "local"
-      ? "this device's budget"
-      : pending.fromBackend === "dropbox"
-        ? "your Dropbox budget"
-        : "your Google Drive budget";
+    pending.fromBackend === "browser"
+      ? "this browser's budget"
+      : pending.fromBackend === "folder"
+        ? "your local folder budget"
+        : pending.fromBackend === "dropbox"
+          ? "your Dropbox budget"
+          : "your Google Drive budget";
   const untouched =
-    pending.fromBackend === "local"
-      ? "this device's current budget"
-      : pending.fromBackend === "dropbox"
-        ? "your Dropbox budget"
-        : "your Google Drive budget";
+    pending.fromBackend === "browser"
+      ? "this browser's current budget"
+      : pending.fromBackend === "folder"
+        ? "your local folder budget"
+        : pending.fromBackend === "dropbox"
+          ? "your Dropbox budget"
+          : "your Google Drive budget";
   const hasSource = pending.sourceText !== null;
   const hasRemote = pending.remoteSnapshot !== null;
 
@@ -2221,6 +2612,9 @@ type BudgetViewProps = {
   backend: BackendId;
   dropboxConnected: boolean;
   gdriveConnected: boolean;
+  folderConnected: boolean;
+  folderAvailable: boolean;
+  folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
@@ -2239,7 +2633,10 @@ type BudgetViewProps = {
   onDisconnectDropbox: () => void;
   onConnectGdrive: () => void;
   onDisconnectGdrive: () => void;
-  onSelectLocal: () => void;
+  onConnectFolder: () => void;
+  onReconnectFolder: () => void;
+  onDisconnectFolder: () => void;
+  onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
 };
 
@@ -2251,6 +2648,9 @@ function BudgetView({
   backend,
   dropboxConnected,
   gdriveConnected,
+  folderConnected,
+  folderAvailable,
+  folderReconnectNeeded,
   encryption,
   getEncryptionPassword,
   currentDataRef,
@@ -2262,7 +2662,10 @@ function BudgetView({
   onDisconnectDropbox,
   onConnectGdrive,
   onDisconnectGdrive,
-  onSelectLocal,
+  onConnectFolder,
+  onReconnectFolder,
+  onDisconnectFolder,
+  onSelectBrowser,
   onSetEncryption,
 }: BudgetViewProps) {
   const { data, dispatch, status, dirty, saveNow } = useUserDataStorage(
@@ -3511,7 +3914,7 @@ function BudgetView({
           </button>
           <div className="ml-auto inline-flex items-center gap-2">
             <SaveStateButton dirty={dirty} onSave={saveNow} />
-            {backend !== "local" && (
+            {(backend === "dropbox" || backend === "gdrive") && (
               <SyncStatus
                 providerName={
                   backend === "dropbox" ? "Dropbox" : "Google Drive"
@@ -3521,12 +3924,6 @@ function BudgetView({
                 onClick={() => setSyncDetailsOpen(true)}
               />
             )}
-            <ImportExportControls
-              data={data}
-              onImport={onImport}
-              encryption={encryption}
-              getEncryptionPassword={getEncryptionPassword}
-            />
             <button
               type="button"
               onClick={onToggleSelectMode}
@@ -3857,18 +4254,27 @@ function BudgetView({
         backend={backend}
         dropboxConnected={dropboxConnected}
         gdriveConnected={gdriveConnected}
+        folderConnected={folderConnected}
+        folderAvailable={folderAvailable}
+        folderReconnectNeeded={folderReconnectNeeded}
         encryption={encryption}
         isGuest={isGuest}
         merchantHintCount={Object.keys(data.merchantHints).length}
         recurringDismissalCount={data.recurringDismissals.length}
         transferDismissalCount={data.transferCollapseDismissals.length}
+        data={data}
+        onImport={onImport}
+        getEncryptionPassword={getEncryptionPassword}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
         onConnectDropbox={onConnectDropbox}
         onDisconnectDropbox={onDisconnectDropbox}
         onConnectGdrive={onConnectGdrive}
         onDisconnectGdrive={onDisconnectGdrive}
-        onSelectLocal={onSelectLocal}
+        onConnectFolder={onConnectFolder}
+        onReconnectFolder={onReconnectFolder}
+        onDisconnectFolder={onDisconnectFolder}
+        onSelectBrowser={onSelectBrowser}
         onSetEncryption={onSetEncryption}
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}

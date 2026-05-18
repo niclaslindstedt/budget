@@ -23,7 +23,7 @@ export type Snapshot = {
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
   // last-used adapter) can be keyed per backend.
-  readonly id: "local" | "dropbox" | "gdrive";
+  readonly id: "browser" | "folder" | "dropbox" | "gdrive";
 
   // Human-readable label for the future settings UI.
   readonly label: string;

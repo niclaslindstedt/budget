@@ -12,7 +12,7 @@ import {
 // signing in on a fresh device should land on local until they
 // reconnect their cloud backend of choice there.
 
-export type BackendId = "local" | "dropbox" | "gdrive";
+export type BackendId = "browser" | "folder" | "dropbox" | "gdrive";
 
 // Whether stored bytes are wrapped in the AES-GCM envelope before being
 // handed to the adapter. Defaults to "encrypted" for every existing user
@@ -53,7 +53,11 @@ export function getBackend(userId: string): BackendId {
   const raw = readRawStorage(backendKey(userId));
   if (raw === "dropbox") return "dropbox";
   if (raw === "gdrive") return "gdrive";
-  return "local";
+  if (raw === "folder") return "folder";
+  // Legacy value "local" predates the rename to "browser" — silently
+  // migrate. Any other unknown / missing value also falls through to
+  // the browser default.
+  return "browser";
 }
 
 export function setBackend(userId: string, backend: BackendId): void {
