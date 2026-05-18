@@ -52,8 +52,9 @@ export type StorageAdapter = {
 
   // Milliseconds to wait after the last edit before pushing a save.
   // Defaults to 0 (save immediately) — appropriate for localStorage.
-  // Cloud adapters should set this to ~750ms to coalesce keystrokes
-  // into one network request.
+  // Cloud adapters should set this around one second to coalesce
+  // keystrokes inside a single edit gesture into one network request
+  // while still feeling like "save on every change".
   readonly saveDebounceMs?: number;
 };
 

@@ -55,10 +55,11 @@ const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const DRIVE_FILES_API = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 
-// 5-minute coalescing window — matches the Dropbox adapter so the
-// "every few minutes or on manual Save" behaviour is consistent
-// regardless of the active cloud backend. `saveNow()` bypasses this.
-const SAVE_DEBOUNCE_MS = 5 * 60 * 1000;
+// 1-second coalescing window — matches the Dropbox adapter so the
+// "save on every change" behaviour is consistent regardless of the
+// active cloud backend. Rapid keystrokes inside a single edit gesture
+// collapse into one network save; `saveNow()` bypasses this.
+const SAVE_DEBOUNCE_MS = 1000;
 
 // `sessionStorage` survives the OAuth redirect round-trip but is
 // scoped to the tab, so a parallel auth flow in another tab can't

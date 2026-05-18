@@ -52,10 +52,13 @@ const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
 const UPLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/upload";
 const DOWNLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/download";
 
-// 5-minute coalescing window. The user explicitly asked for "every
-// few minutes or on manual Save"; `saveNow()` (the disk button)
-// still bypasses this for the immediate-flush escape hatch.
-const SAVE_DEBOUNCE_MS = 5 * 60 * 1000;
+// 1-second coalescing window so cloud sync matches local-storage
+// "save on every change" in feel — rapid keystrokes within a single
+// edit gesture collapse into one network save, but anything the user
+// would recognise as a discrete change lands in Dropbox right after
+// they finish it. `saveNow()` (the disk button) still bypasses this
+// for the immediate-flush escape hatch.
+const SAVE_DEBOUNCE_MS = 1000;
 
 // `sessionStorage` survives the OAuth redirect round-trip but is
 // scoped to the tab, so a parallel auth flow in another tab can't
