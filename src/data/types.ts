@@ -136,6 +136,14 @@ export type Account = {
 // `importedAt` records the millisecond timestamp the entry was first
 // loaded so a future "undo last import" affordance can roll back a
 // session-worth of writes by timestamp.
+//
+// `collapsedIntoTransactionId` is set by the cross-account transfer
+// auto-collapse flow: when a pair of mirror entries (one on each side
+// of an internal Swish) is merged into a single `Transaction`, both
+// HistoryEntrys are flipped to `hidden: true` and stamped with the
+// transaction's id so the operation is reversible (delete the
+// transaction → clear the backref → un-hide) and idempotent
+// (subsequent imports skip entries that already carry a backref).
 export type HistoryEntry = {
   id: string;
   date: string;
@@ -144,6 +152,7 @@ export type HistoryEntry = {
   balance: number;
   importedAt: number;
   hidden?: boolean;
+  collapsedIntoTransactionId?: string;
 };
 
 // Per-account metadata recorded each time the user imports a file.
@@ -306,6 +315,27 @@ export type Settings = {
   sessionTimeoutMinutes: number;
 };
 
+// Persistent memory of which category the user assigned to which
+// merchant. Keyed by the normalised description so cosmetic
+// differences ("Spotify *123", "SPOTIFY") map to a single hint. The
+// recurring-candidate promote flow reads this to pre-suggest a
+// category; future "bulk categorise history" sweeps will read it
+// too. Always advisory — the UI surfaces the suggestion to the user,
+// never auto-applies silently.
+export type MerchantHint = {
+  categoryId: string;
+  // How many times the user has assigned this category to this
+  // merchant. Higher counts could later inform suggestion ordering;
+  // today the panel just shows the count for transparency.
+  hitCount: number;
+  // Unix ms timestamp of the most recent assignment. Used by the
+  // "Merchant memory" settings section to show "last used …" and as
+  // a tiebreaker if two hints ever collide on the same key (the
+  // validator already enforces a single hint per key, but the field
+  // costs nothing and keeps the door open).
+  lastUsedAt: number;
+};
+
 // Top-level persisted blob for one signed-in user. Holds everything
 // that user owns: their sheets, the categories they've defined, and
 // their display preferences. The user account itself (id, username,
@@ -313,7 +343,7 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 11;
+  version: 12;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -338,6 +368,20 @@ export type UserData = {
   // "undo last import" affordance reads it back to filter `history`
   // by `importedAt`.
   historyImports: Record<string, HistoryImport[]>;
+  // Merchant-hint memory. See `MerchantHint`. Stored as a record so
+  // a category-deletion can sweep dangling hints in a single pass
+  // and so the on-disk size scales with the number of distinct
+  // merchants, not with the number of transactions.
+  merchantHints: Record<string, MerchantHint>;
+  // Normalised-description keys the user dismissed with "Not
+  // recurring" on the recurring-candidate panel. The detector skips
+  // these so noise doesn't keep coming back on every import. The
+  // settings UI surfaces a clear-all so a misclick is recoverable.
+  recurringDismissals: string[];
+  // Pair keys the user dismissed with "Never" on the transfer-
+  // collapse modal. Same shape and contract as `recurringDismissals`:
+  // detector reads it as an allowlist, settings UI offers a clear-all.
+  transferCollapseDismissals: string[];
   settings: Settings;
 };
 

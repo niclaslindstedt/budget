@@ -10,7 +10,7 @@ import { validateUserData } from "../src/data/validate";
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 11,
+    version: 12,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -118,7 +118,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 11,
+      version: 12,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -155,7 +155,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 11,
+      version: 12,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -169,6 +169,39 @@ describe("validateUserData — accounts metadata", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.accounts[0].glyph).toBeUndefined();
+    }
+  });
+
+  it("drops merchant hints whose categoryId no longer exists, and dedups dismissal arrays", () => {
+    const sheet = createDefaultSheet("Checking", "a1");
+    const data = {
+      version: 12,
+      sheets: [sheet],
+      activeSheetId: sheet.id,
+      accounts: [{ id: "a1", name: "Checking" }],
+      categories: [
+        { id: "c1", name: "Food", color: "#e06c75", icon: "utensils" },
+      ],
+      transactions: [],
+      history: {},
+      historyImports: {},
+      merchantHints: {
+        "ica maxi": { categoryId: "c1", hitCount: 3, lastUsedAt: 1 },
+        "ghost merchant": { categoryId: "deleted", hitCount: 1, lastUsedAt: 2 },
+      },
+      recurringDismissals: ["spotify", "", "spotify"],
+      transferCollapseDismissals: ["pair1|pair2"],
+      settings: { ...DEFAULT_SETTINGS },
+    };
+    const result = validateUserData(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(Object.keys(result.value.merchantHints).sort()).toEqual([
+        "ica maxi",
+      ]);
+      expect(result.value.merchantHints["ica maxi"].hitCount).toBe(3);
+      expect(result.value.recurringDismissals).toEqual(["spotify"]);
+      expect(result.value.transferCollapseDismissals).toEqual(["pair1|pair2"]);
     }
   });
 });

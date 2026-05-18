@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 11,
+    version: 12,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -38,6 +38,9 @@ function sampleData(): UserData {
     transactions: [],
     history: {},
     historyImports: {},
+    merchantHints: {},
+    recurringDismissals: [],
+    transferCollapseDismissals: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -91,6 +94,9 @@ describe("serializeUserData", () => {
       transactions: b.transactions,
       history: b.history,
       historyImports: b.historyImports,
+      merchantHints: b.merchantHints,
+      recurringDismissals: b.recurringDismissals,
+      transferCollapseDismissals: b.transferCollapseDismissals,
       settings: b.settings,
       version: b.version,
     } as UserData;
@@ -104,15 +110,18 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 9)).toEqual([
+    expect(topKeys.slice(0, 12)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "history",
       "historyImports",
+      "merchantHints",
+      "recurringDismissals",
       "settings",
       "sheets",
       "transactions",
+      "transferCollapseDismissals",
       "version",
     ]);
   });
@@ -585,6 +594,52 @@ describe("migrate", () => {
     }>;
     expect(sheets[0].items[0].rows[0].id).toBe("r1");
     expect(sheets[0].items[0].rows[0].glyph).toBeUndefined();
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+  });
+
+  it("v11 → v12: adds empty merchant-hint memory and dismissal allowlists", () => {
+    const v11 = {
+      version: 11,
+      activeSheetId: "s1",
+      categories: [],
+      transactions: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      history: {},
+      historyImports: {},
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v11);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    expect((data as unknown as UserData).merchantHints).toEqual({});
+    expect((data as unknown as UserData).recurringDismissals).toEqual([]);
+    expect((data as unknown as UserData).transferCollapseDismissals).toEqual(
+      [],
+    );
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });

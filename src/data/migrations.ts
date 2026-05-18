@@ -16,7 +16,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 11 as const;
+export const LATEST_VERSION = 12 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -193,6 +193,25 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
     version: 11,
     history: {},
     historyImports: {},
+  }),
+
+  // v11 → v12: introduces three correlation surfaces on top of the
+  // existing history data — `merchantHints` (a user's per-merchant
+  // category memory), `recurringDismissals` (normalised-description
+  // keys the user said "not recurring" to), and
+  // `transferCollapseDismissals` (cross-account pair keys the user
+  // said "never" to). HistoryEntry also gains an optional
+  // `collapsedIntoTransactionId` backref so the collapse flow is
+  // reversible; no row data needs rewriting because the new field is
+  // optional and absent entries continue to validate. All three new
+  // top-level collections default to empty so v11 records pass the
+  // v12 validator unchanged.
+  11: (v11) => ({
+    ...v11,
+    version: 12,
+    merchantHints: {},
+    recurringDismissals: [],
+    transferCollapseDismissals: [],
   }),
 };
 

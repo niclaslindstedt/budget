@@ -60,6 +60,9 @@ export const USER_DATA_SCHEMA = {
     "transactions",
     "history",
     "historyImports",
+    "merchantHints",
+    "recurringDismissals",
+    "transferCollapseDismissals",
     "settings",
   ],
   properties: {
@@ -149,6 +152,38 @@ export const USER_DATA_SCHEMA = {
         type: "array",
         items: { $ref: "#/$defs/HistoryImport" },
       },
+    },
+    merchantHints: {
+      type: "object",
+      description:
+        "Per-merchant category memory. Keys are normalised descriptions " +
+        "(lowercased, with dates / currency / long digit sequences " +
+        "stripped, whitespace collapsed) so 'SPOTIFY *123' and 'spotify' " +
+        "share a single hint. The recurring-candidate promote flow reads " +
+        "this to suggest a category; the suggestion is always shown to " +
+        "the user, never silently applied. Hints whose `categoryId` no " +
+        "longer references a known category are dropped on load.",
+      additionalProperties: { $ref: "#/$defs/MerchantHint" },
+    },
+    recurringDismissals: {
+      type: "array",
+      description:
+        "Normalised-description keys the user has dismissed with 'Not " +
+        "recurring' on the recurring-candidate panel. The detector " +
+        "skips matching buckets so the same noise doesn't keep coming " +
+        "back on every import. Settings has a clear-all so a misclick " +
+        "is recoverable.",
+      items: { type: "string", minLength: 1 },
+    },
+    transferCollapseDismissals: {
+      type: "array",
+      description:
+        "Pair keys the user has dismissed with 'Never' on the cross-" +
+        "account transfer-collapse modal. Each key is the two paired " +
+        "HistoryEntry ids joined by `|` in sorted order so dismissals " +
+        "stick to the specific pair, not to either entry on its own. " +
+        "Settings has a clear-all so a misclick is recoverable.",
+      items: { type: "string", minLength: 1 },
     },
     settings: {
       $ref: "#/$defs/Settings",
@@ -502,6 +537,51 @@ export const USER_DATA_SCHEMA = {
             "User-shelved noise (interest accruals, fee lines, …). True " +
             "filters the entry out of the budget projection but keeps it " +
             "in the data; absent means visible.",
+        },
+        collapsedIntoTransactionId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Set by the cross-account transfer auto-collapse flow when " +
+            "this entry and its mirror on the peer account were merged " +
+            "into a single `Transaction`. Both sides are flipped to " +
+            "`hidden: true` at the same time. Deleting the transaction " +
+            "must clear this field on both sides to restore the entry; " +
+            "the detector skips entries that carry this backref so the " +
+            "operation is idempotent.",
+        },
+      },
+    },
+    MerchantHint: {
+      type: "object",
+      additionalProperties: false,
+      required: ["categoryId", "hitCount", "lastUsedAt"],
+      description:
+        "One entry in `merchantHints`. Records the category the user " +
+        "has most recently assigned to a normalised-description key, " +
+        "plus how often they've reinforced that choice and when they " +
+        "last did so.",
+      properties: {
+        categoryId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Suggested category for any future row whose description " +
+            "normalises to this key. Must reference an entry in " +
+            "`categories`; dangling refs are dropped on load.",
+        },
+        hitCount: {
+          type: "integer",
+          minimum: 1,
+          description:
+            "Number of distinct category-assignment actions that have " +
+            "reinforced this hint. Resets to 1 when the user assigns a " +
+            "different category to the same merchant.",
+        },
+        lastUsedAt: {
+          type: "number",
+          description:
+            "Unix milliseconds of the most recent assignment. Used by " +
+            "the 'Merchant memory' settings section to render a 'last " +
+            "used …' label and as a tiebreaker between competing hints.",
         },
       },
     },
