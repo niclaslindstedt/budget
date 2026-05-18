@@ -101,7 +101,8 @@ export function ImportHistoryModal({
       <div className="flex flex-col gap-3 px-4 py-3">
         <p className="text-xs text-muted">
           Drop a bank statement file below, or click to pick one. Currently
-          supported: Skandiabanken (.xlsx), Swedbank (.xlsx), ICA Banken (.csv).
+          supported: Skandiabanken (.xlsx), Swedbank (.xlsx), Bank Norwegian
+          (.xlsx), ICA Banken (.csv).
         </p>
 
         <button
@@ -179,15 +180,17 @@ export function ImportHistoryModal({
               <span>Duplicates skipped</span>
               <span className="text-fg">{preview.duplicates}</span>
             </div>
-            <div className="flex justify-between text-muted">
-              <span>Opening balance</span>
-              <span className="font-mono text-fg">
-                {preview.openingBalance.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
+            {preview.openingBalance !== null && (
+              <div className="flex justify-between text-muted">
+                <span>Opening balance</span>
+                <span className="font-mono text-fg">
+                  {preview.openingBalance.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -223,7 +226,10 @@ function buildPreview(
   duplicates: number;
   rangeStart: string;
   rangeEnd: string;
-  openingBalance: number;
+  // `null` when the globally-earliest entry carries no balance — i.e.
+  // a credit-card import where the parser delivers amounts without a
+  // running total. The opening-balance row is suppressed in that case.
+  openingBalance: number | null;
 } {
   const existingIds = new Set(existing.map((e) => e.id));
   let added = 0;
@@ -241,7 +247,12 @@ function buildPreview(
   }
   // Combined-set opening balance: walk parsed + existing and pick the
   // globally earliest entry to mirror what the reducer will do.
-  let globalEarliest = earliest;
+  let globalEarliest: {
+    date: string;
+    description: string;
+    amount: number;
+    balance?: number;
+  } = earliest;
   for (const e of existing) {
     if (e.date < globalEarliest.date)
       globalEarliest = {
@@ -251,6 +262,9 @@ function buildPreview(
         balance: e.balance,
       };
   }
-  const openingBalance = globalEarliest.balance - globalEarliest.amount;
+  const openingBalance =
+    globalEarliest.balance === undefined
+      ? null
+      : globalEarliest.balance - globalEarliest.amount;
   return { added, duplicates, rangeStart, rangeEnd, openingBalance };
 }

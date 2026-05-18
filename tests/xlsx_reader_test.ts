@@ -1,19 +1,20 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import { readFirstSheet, parseColumnRef } from "../src/storage/xlsx-reader";
 
-function fixtureBuffer(name: string): ArrayBuffer {
-  const buf = readFileSync(resolve(__dirname, "fixtures", name));
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
+import { buildXlsx } from "./fixtures/build-xlsx";
 
 describe("xlsx-reader", () => {
-  it("decodes the Skandiabanken sample", async () => {
-    const sheet = await readFirstSheet(fixtureBuffer("skandia-sample.xlsx"));
-    expect(sheet.rows.length).toBeGreaterThanOrEqual(8);
+  it("decodes a small synthetic sheet end-to-end", async () => {
+    const xlsx = buildXlsx([
+      ["Kontonummer", "9150-897.480-4"],
+      ["Period", "2026-05-17 - 2026-05-18"],
+      [],
+      ["Bokf. datum", "Beskrivning", "Belopp", "Saldo"],
+      ["2026-05-18", "Swish till Amazon Sweden", -1346, 21280.51],
+    ]);
+    const sheet = await readFirstSheet(xlsx);
+    expect(sheet.rows.length).toBe(5);
     // Row 0: ["Kontonummer", "9150-897.480-4"]
     expect(sheet.rows[0].get(0)).toBe("Kontonummer");
     expect(sheet.rows[0].get(1)).toBe("9150-897.480-4");

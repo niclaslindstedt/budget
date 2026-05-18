@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,15 +9,33 @@ import {
 } from "../src/storage/bank-parsers";
 import { parseAccountCell } from "../src/storage/bank-skandia";
 
-function fixtureFile(name: string) {
-  const buf = readFileSync(resolve(__dirname, "fixtures", name));
-  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  return makeBankFile(name, ab);
+import { buildXlsx, type XlsxCell } from "./fixtures/build-xlsx";
+
+// Synthesises a Skandiabanken-shaped xlsx in memory matching the
+// layout described at the top of src/storage/bank-skandia.ts:
+//   Row 1: A="Kontonummer",  B="<clearing>-<account>"
+//   Row 2: A="Period",       B="YYYY-MM-DD - YYYY-MM-DD"
+//   Row 3: blank
+//   Row 4: header — A="Bokf. datum", B="Beskrivning", C="Belopp", D="Saldo"
+//   Row 5+: data rows
+const SAMPLE_ROWS: readonly (readonly XlsxCell[])[] = [
+  ["Kontonummer", "9150-897.480-4"],
+  ["Period", "2026-05-17 - 2026-05-18"],
+  [],
+  ["Bokf. datum", "Beskrivning", "Belopp", "Saldo"],
+  ["2026-05-18", "Swish till Amazon Sweden", -1346, 21280.51],
+  ["2026-05-18", "2026-05-15 APPLE.COM/BILL, 020100529", -39, 22626.51],
+  ["2026-05-18", "EL12-257 PRYLAR", 2942, 22665.51],
+  ["2026-05-18", "Swish till Tradera", -576, 19723.51],
+];
+
+function sampleFile(name = "skandia.xlsx") {
+  return makeBankFile(name, buildXlsx(SAMPLE_ROWS));
 }
 
 describe("bank-skandia", () => {
   it("parses the sample statement", async () => {
-    const parsed = await parseBankFile(fixtureFile("skandia-sample.xlsx"));
+    const parsed = await parseBankFile(sampleFile());
     expect(parsed.bankParserId).toBe("skandia-xlsx");
     expect(parsed.bankClearing).toBe("9150");
     expect(parsed.bankAccountNumber).toBe("897.480-4");
@@ -46,8 +61,7 @@ describe("bank-skandia", () => {
   });
 
   it("dedups on re-import with mergeHistory", async () => {
-    const file = fixtureFile("skandia-sample.xlsx");
-    const parsed = await parseBankFile(file);
+    const parsed = await parseBankFile(sampleFile());
     const first = mergeHistory([], parsed.entries, 1000);
     expect(first.addedCount).toBe(4);
     expect(first.duplicateCount).toBe(0);

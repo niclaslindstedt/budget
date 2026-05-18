@@ -75,14 +75,23 @@ export function HistoryModal({
   // the data so they don't claim more space than they need (which is
   // what was forcing the table off the right edge on narrow phones).
   // Description picks up whatever is left.
+  // Credit-card imports leave `balance` undefined on every row; if no
+  // entry carries one, we collapse the Balance column to zero width so
+  // the table doesn't leave a visible empty stripe.
+  const hasAnyBalance = useMemo(
+    () => sortedEntries.some((e) => e.balance !== undefined),
+    [sortedEntries],
+  );
   const colChars = useMemo(() => {
     let amount = 0;
     let balance = 0;
     for (const e of sortedEntries) {
       const a = formatBalance(e.amount, accountSettings).length;
-      const b = formatBalance(e.balance, accountSettings).length;
       if (a > amount) amount = a;
-      if (b > balance) balance = b;
+      if (e.balance !== undefined) {
+        const b = formatBalance(e.balance, accountSettings).length;
+        if (b > balance) balance = b;
+      }
     }
     return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
   }, [sortedEntries, accountSettings]);
@@ -109,7 +118,9 @@ export function HistoryModal({
               <col className="w-9 md:w-14" />
               <col />
               <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
-              <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
+              {hasAnyBalance && (
+                <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
+              )}
             </colgroup>
             <thead className="sticky top-0 z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted">
               <tr className="border-b border-line">
@@ -118,7 +129,9 @@ export function HistoryModal({
                 </th>
                 <th className="px-2 py-1.5 text-left">Description</th>
                 <th className="px-1 py-1.5 text-right md:px-2">Amount</th>
-                <th className="px-1 py-1.5 text-right md:px-2">Balance</th>
+                {hasAnyBalance && (
+                  <th className="px-1 py-1.5 text-right md:px-2">Balance</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -130,7 +143,7 @@ export function HistoryModal({
                   <Fragment key={group.monthKey}>
                     <tr className="border-b border-line bg-surface-2">
                       <td
-                        colSpan={4}
+                        colSpan={hasAnyBalance ? 4 : 3}
                         className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
                         style={monthColor ? { color: monthColor } : undefined}
                       >
@@ -165,9 +178,13 @@ export function HistoryModal({
                         >
                           {formatBalance(e.amount, accountSettings)}
                         </td>
-                        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
-                          {formatBalance(e.balance, accountSettings)}
-                        </td>
+                        {hasAnyBalance && (
+                          <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
+                            {e.balance !== undefined
+                              ? formatBalance(e.balance, accountSettings)
+                              : ""}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </Fragment>

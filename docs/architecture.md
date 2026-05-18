@@ -227,7 +227,9 @@ type HistoryEntry = {
   date: string;
   description: string;
   amount: number; // signed (negative = outgoing)
-  balance: number; // bank-reported running balance after this row
+  balance?: number; // bank-reported running balance after this row (omitted
+  // for credit-card exports, e.g. Bank Norwegian, that carry only a signed
+  // amount per row — Account.openingBalance stays user-set in that case)
   importedAt: number; // unix ms of first import
   hidden?: boolean; // user-shelved noise OR collapsed-into-transfer
   collapsedIntoTransactionId?: string; // backref into UserData.transactions

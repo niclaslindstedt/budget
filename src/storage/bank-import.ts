@@ -19,7 +19,11 @@ export type ParsedBankEntry = {
   date: string;
   description: string;
   amount: number;
-  balance: number;
+  // Optional because credit-card exports (e.g. Bank Norwegian) carry
+  // only a signed amount per row, with no per-row running balance.
+  // Checking-account parsers (Skandia, Swedbank, ICA) always populate
+  // it so the import flow can anchor `Account.openingBalance`.
+  balance?: number;
 };
 
 export type ParsedBankFile = {
@@ -95,9 +99,17 @@ export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
 // round-trips occasionally introduce a stray 1e-13 jitter that would
 // otherwise change the hash; the normalised description collapses
 // whitespace and lower-cases so re-exports with cosmetic tweaks dedup.
+//
+// When the bank export carries no per-row balance (credit-card
+// statements), the hash omits that segment entirely — which keeps
+// existing checking-account ids unchanged (they still hash
+// `date|amt|bal|desc`) while giving balance-less rows a stable id of
+// their own (`date|amt|desc`).
 export function historyEntryId(entry: ParsedBankEntry): string {
   const desc = entry.description.trim().replace(/\s+/g, " ").toLowerCase();
   const amt = Math.round(entry.amount * 100) / 100;
+  if (entry.balance === undefined)
+    return hashString(`${entry.date}|${amt}|${desc}`);
   const bal = Math.round(entry.balance * 100) / 100;
   return hashString(`${entry.date}|${amt}|${bal}|${desc}`);
 }
@@ -141,14 +153,15 @@ export function mergeHistory(
       duplicateCount++;
       continue;
     }
-    byId.set(id, {
+    const entry: HistoryEntry = {
       id,
       date: p.date,
       description: p.description,
       amount: p.amount,
-      balance: p.balance,
       importedAt: now,
-    });
+    };
+    if (p.balance !== undefined) entry.balance = p.balance;
+    byId.set(id, entry);
     addedCount++;
   }
   const merged = Array.from(byId.values()).sort((a, b) =>
@@ -161,8 +174,11 @@ export function mergeHistory(
 // what the account held the day before the statement started. The
 // import flow stashes this on `Account.openingBalance` so the
 // running balance computed from history rows reconciles with what
-// the bank says. Returns `null` if entries is empty or no dated
-// row is found.
+// the bank says. Returns `null` if entries is empty, or if the
+// earliest entry has no `balance` (credit-card exports) — without an
+// authoritative anchor on the earliest row the import flow leaves
+// `Account.openingBalance` untouched and the user can set it
+// manually via the "update balance" affordance.
 export function computeOpeningBalanceFromEntries(
   entries: readonly ParsedBankEntry[],
 ): number | null {
@@ -173,6 +189,7 @@ export function computeOpeningBalanceFromEntries(
   for (let i = 1; i < entries.length; i++) {
     if (entries[i].date < earliest.date) earliest = entries[i];
   }
+  if (earliest.balance === undefined) return null;
   return earliest.balance - earliest.amount;
 }
 
@@ -190,5 +207,6 @@ export function computeOpeningBalanceFromHistory(
   for (let i = 1; i < entries.length; i++) {
     if (entries[i].date < earliest.date) earliest = entries[i];
   }
+  if (earliest.balance === undefined) return null;
   return earliest.balance - earliest.amount;
 }

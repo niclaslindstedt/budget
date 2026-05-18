@@ -143,8 +143,16 @@ export type Account = {
 
 // One row from an imported bank statement. The four fields are the
 // raw shape every bank export carries; `id` is a deterministic content
-// hash (date + amount + balance + normalised description) so re-importing
+// hash (date + amount + balance + normalised description, with the
+// balance segment omitted when the export carries none) so re-importing
 // an overlapping statement is a no-op rather than a duplication.
+//
+// `balance` is optional because credit-card exports (e.g. Bank
+// Norwegian) don't carry a per-row running balance — only a signed
+// amount and a description. For checking-account exports
+// (Skandiabanken, Swedbank, ICA) the field is set and used to anchor
+// `Account.openingBalance` so the running total reconciles with what
+// the bank reports.
 //
 // `hidden` lets the user shelve noise (interest accruals, fee lines, …)
 // without losing the data — the entry still counts in the running
@@ -167,7 +175,7 @@ export type HistoryEntry = {
   date: string;
   description: string;
   amount: number;
-  balance: number;
+  balance?: number;
   importedAt: number;
   hidden?: boolean;
   collapsedIntoTransactionId?: string;
@@ -409,7 +417,7 @@ export type MatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 16;
+  version: 17;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
