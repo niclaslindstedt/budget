@@ -5,6 +5,7 @@ import {
   createDefaultAccountBudget,
   createDefaultSheet,
   currentFiscalMonthKey,
+  defaultCompletedForDate,
   findColumnByType,
   fiscalMonthSeedIso,
   getMonthKey,
@@ -450,5 +451,26 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
       { id: "empty", cells: {} },
     ];
     expect(userDataHasHalfDoneRows(data)).toBe(false);
+  });
+});
+
+describe("defaultCompletedForDate", () => {
+  const today = "2026-05-18";
+
+  it("marks past dates as done — those are history items the user is back-filling", () => {
+    expect(defaultCompletedForDate("2026-05-17", today)).toBe(true);
+    expect(defaultCompletedForDate("2020-01-01", today)).toBe(true);
+  });
+
+  it("leaves today and future dates open", () => {
+    expect(defaultCompletedForDate(today, today)).toBe(false);
+    expect(defaultCompletedForDate("2026-05-19", today)).toBe(false);
+    expect(defaultCompletedForDate("2030-12-31", today)).toBe(false);
+  });
+
+  it("treats missing or empty dates as not-done", () => {
+    expect(defaultCompletedForDate(null, today)).toBe(false);
+    expect(defaultCompletedForDate(undefined, today)).toBe(false);
+    expect(defaultCompletedForDate("", today)).toBe(false);
   });
 });

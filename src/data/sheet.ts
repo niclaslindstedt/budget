@@ -481,6 +481,17 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Past-dated rows default to completed: the user is back-filling
+// entries that already happened ("history items… obviously paid").
+// Today and future rows stay open so the user can mark them done
+// when they actually clear.
+export function defaultCompletedForDate(
+  date: string | null | undefined,
+  today: string = todayIso(),
+): boolean {
+  return typeof date === "string" && date !== "" && date < today;
+}
+
 // Rows in the same series with a date >= `anchor`'s date (anchor included).
 // Optionally clamped to an inclusive upper bound, used for the "until …"
 // option on edit-scope dialogs. For non-series anchors, returns just the
