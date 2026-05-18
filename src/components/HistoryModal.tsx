@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import type {
   Account,
@@ -48,6 +48,15 @@ export function HistoryModal({
       a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
     );
   }, [entries]);
+
+  // The description column wraps with break-words to fit narrow phone
+  // screens, which can mangle a long memo into a tower of two- or
+  // three-letter fragments. Tapping a description opens a read-only
+  // viewer that gives the text room to breathe.
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  useEffect(() => {
+    if (!open) setSelectedEntry(null);
+  }, [open]);
 
   const accountSettings = useMemo(
     () =>
@@ -168,8 +177,14 @@ export function HistoryModal({
                             {formatShortDate(e.date, settings.shortDateFormat)}
                           </span>
                         </td>
-                        <td className="px-2 py-1.5 align-top text-fg break-words">
-                          {e.description}
+                        <td className="align-top text-fg">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEntry(e)}
+                            className="block w-full cursor-pointer px-2 py-1.5 text-left break-words hover:text-fg-bright"
+                          >
+                            {e.description}
+                          </button>
                         </td>
                         <td
                           className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
@@ -194,6 +209,38 @@ export function HistoryModal({
           </table>
         )}
       </Modal.Body>
+
+      <Modal
+        open={open && account !== null && selectedEntry !== null}
+        onClose={() => setSelectedEntry(null)}
+        labelledBy="history-description-title"
+        size="max-w-md"
+        scrollableBody={false}
+      >
+        <Modal.Header
+          title="Description"
+          onClose={() => setSelectedEntry(null)}
+        />
+        {selectedEntry && (
+          <div className="flex flex-col gap-3 px-4 py-3">
+            <div className="flex items-center justify-between gap-3 text-xs text-muted">
+              <span className="font-mono whitespace-nowrap">
+                {formatShortDate(selectedEntry.date, settings.shortDateFormat)}
+              </span>
+              <span
+                className={`font-mono tabular-nums whitespace-nowrap ${
+                  selectedEntry.amount < 0 ? "text-negative" : "text-positive"
+                }`}
+              >
+                {formatBalance(selectedEntry.amount, accountSettings)}
+              </span>
+            </div>
+            <p className="text-sm break-words whitespace-pre-wrap text-fg">
+              {selectedEntry.description}
+            </p>
+          </div>
+        )}
+      </Modal>
 
       {imports.length > 0 && (
         <div className="border-t border-line bg-surface-2 px-4 py-2 text-xs text-muted">
