@@ -57,6 +57,7 @@ export const USER_DATA_SCHEMA = {
     "activeSheetId",
     "accounts",
     "categories",
+    "types",
     "transactions",
     "history",
     "historyImports",
@@ -106,6 +107,20 @@ export const USER_DATA_SCHEMA = {
         'category\'s id in the cell whose column has `type: "category"`. ' +
         "Renaming a category updates every tagged row automatically.",
       items: { $ref: "#/$defs/Category" },
+    },
+    types: {
+      type: "array",
+      description:
+        "Reusable entry types describing what kind of row this is — " +
+        "'Mortgage', 'Groceries', 'Restaurant', 'Salary'. A row references " +
+        "one via `Row.typeId`; the type carries the row's primary visual " +
+        "identity (glyph + colour + display name), so every row sharing a " +
+        "type renders identically. Sits between the row's free-text " +
+        "description (specific) and its category (groups across many rows " +
+        "for stats). Seeded with Swedish-typical defaults on first launch " +
+        "and on the v12 → v13 migration; users add their own through the " +
+        "type picker.",
+      items: { $ref: "#/$defs/EntryType" },
     },
     transactions: {
       type: "array",
@@ -292,13 +307,15 @@ export const USER_DATA_SCHEMA = {
             'recurring entry. Used to scope "edit / delete all future" ' +
             "operations. Absent on one-off rows.",
         },
-        glyph: {
-          $ref: "#/$defs/CategoryIcon",
+        typeId: {
+          $ref: "#/$defs/Id",
           description:
-            "Optional custom glyph the description cell renders in " +
-            "place of the default recurring icon. Every row in the same " +
-            "series carries the same value; absent rows render the " +
-            "default Repeat icon when seriesId is set, or no glyph at all.",
+            "Optional reference to an entry in the top-level `types` " +
+            "array. When set, the description cell renders the type's " +
+            "glyph + colour and uses the type's name as the row's " +
+            "primary label, demoting the description text to a secondary " +
+            "line revealed by tapping the chip. Dangling references are " +
+            "dropped on load (the row falls back to its description).",
         },
         isCorrection: {
           type: "boolean",
@@ -708,6 +725,22 @@ export const USER_DATA_SCHEMA = {
         name: { type: "string" },
         color: { $ref: "#/$defs/HexColor" },
         icon: { $ref: "#/$defs/CategoryIcon" },
+      },
+    },
+    EntryType: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "name", "color", "glyph"],
+      description:
+        "Reusable label assigned to a row. A row references this by id " +
+        "via `Row.typeId`; the type carries the visual identity (glyph + " +
+        "colour) the description cell renders. Renaming or recolouring a " +
+        "type updates every row that references it.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        name: { type: "string" },
+        color: { $ref: "#/$defs/HexColor" },
+        glyph: { $ref: "#/$defs/CategoryIcon" },
       },
     },
     Settings: {

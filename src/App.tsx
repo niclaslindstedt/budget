@@ -60,8 +60,8 @@ import type {
   Account,
   AccountBudget,
   Category,
-  CategoryIcon,
   CellValue,
+  EntryType,
   HistoryEntry,
   Row,
   Settings,
@@ -163,7 +163,7 @@ type ItemAction =
       itemId: string;
       rowId: string;
       futureDates: string[];
-      glyph: CategoryIcon | null;
+      typeId: string | null;
     }
   | {
       type: "editSeries";
@@ -228,6 +228,7 @@ type Action =
   | ItemAction
   | { type: "replace"; data: UserData }
   | { type: "addCategory"; category: Category }
+  | { type: "addType"; entryType: EntryType }
   | { type: "updateSettings"; settings: Settings }
   | { type: "renameSheet"; sheetId: string; name: string }
   | {
@@ -306,7 +307,7 @@ type Action =
       description: string;
       amount: number;
       categoryId: string | null;
-      glyph: CategoryIcon | null;
+      typeId: string | null;
       dates: string[];
       now: number;
     }
@@ -394,11 +395,11 @@ function applyPatch(
   if (cols.amountId && patch.amount !== null)
     next.cells[cols.amountId] = patch.amount;
   if (cols.categoryId) next.cells[cols.categoryId] = patch.categoryId ?? null;
-  // `undefined` means "don't touch"; explicit `null` clears the glyph
-  // back to the default recurring icon.
-  if (patch.glyph !== undefined) {
-    if (patch.glyph === null) delete next.glyph;
-    else next.glyph = patch.glyph;
+  // `undefined` means "don't touch"; explicit `null` clears the type
+  // and the row falls back to its description as the primary label.
+  if (patch.typeId !== undefined) {
+    if (patch.typeId === null) delete next.typeId;
+    else next.typeId = patch.typeId;
   }
   return next;
 }
@@ -441,7 +442,7 @@ function reduceAccountBudget(
           completed: false,
         });
         if (seriesId) row.seriesId = seriesId;
-        if (draft.glyph) row.glyph = draft.glyph;
+        if (draft.typeId) row.typeId = draft.typeId;
         return row;
       });
       return { ...item, rows: [...item.rows, ...newRows] };
@@ -452,8 +453,8 @@ function reduceAccountBudget(
       if (!anchor) return item;
       // Promote the anchor row into a series of its own. Future rows
       // inherit description, amount, and category from the anchor; the
-      // glyph comes from the modal so promotion and custom glyph
-      // selection happen in the same step.
+      // typeId comes from the modal so promotion and type selection
+      // happen in the same step.
       const seriesId = anchor.seriesId ?? newId();
       const descCol = findColumnByType(item.columns, "description");
       const amountCol = findColumnByType(item.columns, "amount");
@@ -476,7 +477,7 @@ function reduceAccountBudget(
           completed: false,
         });
         row.seriesId = seriesId;
-        if (action.glyph) row.glyph = action.glyph;
+        if (action.typeId) row.typeId = action.typeId;
         return row;
       });
       return {
@@ -485,8 +486,8 @@ function reduceAccountBudget(
           ...item.rows.map((r) => {
             if (r.id !== anchor.id) return r;
             const next: Row = { ...r, seriesId };
-            if (action.glyph) next.glyph = action.glyph;
-            else if (action.glyph === null) delete next.glyph;
+            if (action.typeId) next.typeId = action.typeId;
+            else if (action.typeId === null) delete next.typeId;
             return next;
           }),
           ...newRows,
@@ -635,7 +636,7 @@ function reduceAccountBudget(
             cells: { ...r.cells, [dateColId]: date },
             seriesId: r.seriesId,
           };
-          if (r.glyph) next.glyph = r.glyph;
+          if (r.typeId) next.typeId = r.typeId;
           additions.push(next);
         }
       }
@@ -654,6 +655,9 @@ function reducer(state: UserData, action: Action): UserData {
   if (action.type === "replace") return action.data;
   if (action.type === "addCategory") {
     return { ...state, categories: [...state.categories, action.category] };
+  }
+  if (action.type === "addType") {
+    return { ...state, types: [...state.types, action.entryType] };
   }
   if (action.type === "updateSettings") {
     return { ...state, settings: action.settings };
@@ -948,7 +952,7 @@ function reducer(state: UserData, action: Action): UserData {
             if (catCol) cells[catCol.id] = action.categoryId;
             const row: Row = { id: newId(), cells };
             if (seriesId) row.seriesId = seriesId;
-            if (action.glyph) row.glyph = action.glyph;
+            if (action.typeId) row.typeId = action.typeId;
             return row;
           });
           return { ...item, rows: [...item.rows, ...newRows] };
@@ -2244,6 +2248,26 @@ function BudgetView({
   const sheetId = activeSheet.id;
   const itemId = activeItem.id;
 
+  // Usage count for each EntryType, summed across every budget in the
+  // workspace. Feeds the TypePicker's "most used first" sort so the
+  // dropdown floats popular labels to the top, like a country picker's
+  // common-locales section. Walking every row on every render is cheap
+  // because the workspace is small (a few thousand rows at most) and
+  // `data` is referentially stable between edits.
+  const typeUsageById = useMemo<ReadonlyMap<string, number>>(() => {
+    const map = new Map<string, number>();
+    for (const sheet of data.sheets) {
+      for (const item of sheet.items) {
+        if (item.type !== "accountBudget") continue;
+        for (const row of item.rows) {
+          if (typeof row.typeId !== "string") continue;
+          map.set(row.typeId, (map.get(row.typeId) ?? 0) + 1);
+        }
+      }
+    }
+    return map;
+  }, [data.sheets]);
+
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
   // browser shows its own generic confirmation prompt; we just have
@@ -2493,6 +2517,14 @@ function BudgetView({
       const category: Category = { id: newId(), ...draft };
       dispatch({ type: "addCategory", category });
       return category;
+    },
+    [dispatch],
+  );
+  const onCreateType = useCallback(
+    (draft: Omit<EntryType, "id">): EntryType => {
+      const entryType: EntryType = { id: newId(), ...draft };
+      dispatch({ type: "addType", entryType });
+      return entryType;
     },
     [dispatch],
   );
@@ -2878,14 +2910,14 @@ function BudgetView({
     [dispatch, sheetId, itemId],
   );
   const onConvertToRecurring = useCallback(
-    (rowId: string, futureDates: string[], glyph: CategoryIcon | null) => {
+    (rowId: string, futureDates: string[], typeId: string | null) => {
       dispatch({
         type: "convertToRecurring",
         sheetId,
         itemId,
         rowId,
         futureDates,
-        glyph,
+        typeId,
       });
       setEditPrompt(null);
     },
@@ -3083,7 +3115,7 @@ function BudgetView({
       _rule: RecurrenceRule,
       dates: string[],
       categoryId: string | null,
-      glyph: CategoryIcon | null,
+      typeId: string | null,
     ) => {
       if (!activeBudget) return;
       if (dates.length === 0) return;
@@ -3095,7 +3127,7 @@ function BudgetView({
         description: candidate.description,
         amount: candidate.medianAmount,
         categoryId,
-        glyph,
+        typeId,
         dates,
         now: Date.now(),
       });
@@ -3322,6 +3354,7 @@ function BudgetView({
                 sheet={activeSheet}
                 item={activeItem}
                 categories={data.categories}
+                types={data.types}
                 accounts={data.accounts}
                 transactions={data.transactions}
                 history={
@@ -3466,22 +3499,28 @@ function BudgetView({
         open={complexOpen}
         initialDate={complexSeedDate}
         categories={data.categories}
+        types={data.types}
+        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setComplexOpen(false)}
         onCreate={onComplexSubmit}
         onCreateCategory={onCreateCategory}
+        onCreateType={onCreateType}
       />
       <EditEntryModal
         open={editPrompt !== null}
         row={editPrompt?.row ?? null}
         columns={activeItem.columns}
         categories={data.categories}
+        types={data.types}
+        typeUsageById={typeUsageById}
         settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
         onClose={() => setEditPrompt(null)}
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
         onCreateCategory={onCreateCategory}
+        onCreateType={onCreateType}
       />
       <ApplySeriesEditDialog
         open={pendingSeriesEdit !== null}

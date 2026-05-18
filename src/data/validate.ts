@@ -19,6 +19,7 @@ import type {
   ColumnType,
   DateFormat,
   DecimalSeparator,
+  EntryType,
   HistoryEntry,
   HistoryImport,
   MerchantHint,
@@ -120,9 +121,10 @@ function validateRow(
   raw: unknown,
   path: string,
   knownColumnIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, cells, seriesId, glyph, isCorrection } = raw;
+  const { id, cells, seriesId, typeId, isCorrection } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (!isObject(cells)) return fail(`${path}.cells`, "expected an object");
@@ -141,10 +143,14 @@ function validateRow(
       return fail(`${path}.seriesId`, "expected a non-empty string");
     row.seriesId = seriesId;
   }
-  if (glyph !== undefined) {
-    if (typeof glyph !== "string" || !CATEGORY_ICONS.has(glyph as CategoryIcon))
-      return fail(`${path}.glyph`, `unknown glyph "${String(glyph)}"`);
-    row.glyph = glyph as CategoryIcon;
+  if (typeId !== undefined && typeId !== null) {
+    if (typeof typeId !== "string" || typeId === "")
+      return fail(`${path}.typeId`, "expected a non-empty string");
+    // Drop dangling type references silently — a deleted EntryType
+    // shouldn't trap the row in zombie state. The cell renderer
+    // treats an unknown id as "no type" and falls back to the
+    // description.
+    if (knownTypeIds.has(typeId)) row.typeId = typeId;
   }
   if (isCorrection !== undefined) {
     if (typeof isCorrection !== "boolean")
@@ -160,6 +166,7 @@ function validateAccountBudget(
   raw: unknown,
   path: string,
   knownAccountIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
 ): Result<AccountBudget> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, type, accountId, columns, rows } = raw;
@@ -197,7 +204,12 @@ function validateAccountBudget(
   const validatedRows: Row[] = [];
   const seenRowIds = new Set<string>();
   for (let i = 0; i < rows.length; i++) {
-    const r = validateRow(rows[i], `${path}.rows[${i}]`, seenColumnIds);
+    const r = validateRow(
+      rows[i],
+      `${path}.rows[${i}]`,
+      seenColumnIds,
+      knownTypeIds,
+    );
     if (!r.ok) return r;
     if (seenRowIds.has(r.value.id))
       return fail(`${path}.rows[${i}].id`, `duplicate id "${r.value.id}"`);
@@ -234,11 +246,12 @@ function validateSheetItem(
   raw: unknown,
   path: string,
   knownAccountIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
 ): Result<SheetItem> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const type = (raw as { type?: unknown }).type;
   if (type === "accountBudget") {
-    return validateAccountBudget(raw, path, knownAccountIds);
+    return validateAccountBudget(raw, path, knownAccountIds, knownTypeIds);
   }
   if (type === "accountsView") {
     return validateAccountsView(raw, path);
@@ -250,6 +263,7 @@ function validateSheet(
   raw: unknown,
   path: string,
   knownAccountIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
 ): Result<Sheet> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, name, items } = raw;
@@ -266,6 +280,7 @@ function validateSheet(
       items[i],
       `${path}.items[${i}]`,
       knownAccountIds,
+      knownTypeIds,
     );
     if (!r.ok) return r;
     if (seenItemIds.has(r.value.id))
@@ -536,6 +551,23 @@ function validateCategory(raw: unknown, path: string): Result<Category> {
   };
 }
 
+function validateEntryType(raw: unknown, path: string): Result<EntryType> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, color, glyph } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  if (typeof color !== "string" || color === "")
+    return fail(`${path}.color`, "expected a non-empty string");
+  if (typeof glyph !== "string" || !CATEGORY_ICONS.has(glyph as CategoryIcon))
+    return fail(`${path}.glyph`, `unknown glyph "${String(glyph)}"`);
+  return {
+    ok: true,
+    value: { id, name, color, glyph: glyph as CategoryIcon },
+  };
+}
+
 // Soft-recovering settings validator: each field falls back to its
 // default when missing or invalid so a stray hand-edit can't lock the
 // user out of the app. The settings are display preferences, not data
@@ -661,6 +693,18 @@ export function validateUserData(raw: unknown): Result<UserData> {
     categories.push(r.value);
   }
 
+  const rawTypes = Array.isArray(raw.types) ? raw.types : [];
+  const types: EntryType[] = [];
+  const seenTypeIds = new Set<string>();
+  for (let i = 0; i < rawTypes.length; i++) {
+    const r = validateEntryType(rawTypes[i], `types[${i}]`);
+    if (!r.ok) return r;
+    if (seenTypeIds.has(r.value.id))
+      return fail(`types[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenTypeIds.add(r.value.id);
+    types.push(r.value);
+  }
+
   const rawTransactions = Array.isArray(raw.transactions)
     ? raw.transactions
     : [];
@@ -683,7 +727,12 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
   for (let i = 0; i < raw.sheets.length; i++) {
-    const r = validateSheet(raw.sheets[i], `sheets[${i}]`, seenAccountIds);
+    const r = validateSheet(
+      raw.sheets[i],
+      `sheets[${i}]`,
+      seenAccountIds,
+      seenTypeIds,
+    );
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
       return fail(`sheets[${i}].id`, `duplicate id "${r.value.id}"`);
@@ -771,6 +820,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       activeSheetId,
       accounts,
       categories,
+      types,
       transactions,
       history,
       historyImports,

@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "../data/constants";
+import { createSeedEntryTypes, DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
 import { parseUserData } from "./file";
@@ -9,11 +9,12 @@ export function freshUserData(): UserData {
   // app no longer fabricates a "Default" account on first run.
   const sheet = createDefaultSheet("Sheet 1");
   return {
-    version: 13,
+    version: 14,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     categories: [],
+    types: createSeedEntryTypes(),
     transactions: [],
     history: {},
     historyImports: {},

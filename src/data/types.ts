@@ -21,11 +21,14 @@ export type Row = {
   // recurrence. Used to scope "edit / delete all future" operations and
   // is undefined for one-off rows added inline.
   seriesId?: string;
-  // Optional custom glyph the description cell renders in place of the
-  // default recurring icon. Every row in the same series carries the
-  // same value (the entry modals propagate edits across the scope), so
-  // the cell can read it row-locally without a series lookup.
-  glyph?: CategoryIcon;
+  // Optional reference to a reusable `EntryType` in `UserData.types`.
+  // The description cell renders the type's glyph + color in place of
+  // the default recurring icon, and the type's name takes over from
+  // the description as the row's primary label (the description text
+  // is demoted to a secondary line behind the chip). Replaces the
+  // older `glyph` field — types subsume that role with a name and
+  // colour attached, which makes them usable for grouping and stats.
+  typeId?: string;
   // True when this row was minted by the "update balance" flow on the
   // Accounts page: its amount is the delta needed to bring the account's
   // running total to a user-asserted value. Rendered as a full-width
@@ -85,6 +88,21 @@ export type Category = {
   name: string;
   color: string;
   icon: CategoryIcon;
+};
+
+// Reusable label assigned to a row to describe what kind of entry it
+// is — "Mortgage", "Groceries", "Restaurant", "Salary". Sits between
+// the free-text description (which is specific to the row) and the
+// category (which groups across rows for statistical analysis). The
+// type's glyph and color replace the per-row `glyph` field that used
+// to live on `Row`: now every row that shares a type also shares a
+// visual identity, so the picker is the single source of truth for
+// what a row looks like.
+export type EntryType = {
+  id: string;
+  name: string;
+  color: string;
+  glyph: CategoryIcon;
 };
 
 // A real-world account (a bank account, credit card, cash envelope, …)
@@ -347,11 +365,15 @@ export type MerchantHint = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 13;
+  version: 14;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
   categories: Category[];
+  // Reusable entry types referenced by `Row.typeId`. Seeded with a
+  // handful of common Swedish-budget defaults on first launch and on
+  // migration from v12; users add their own via the type picker.
+  types: EntryType[];
   // Transfers between accounts. Each transaction renders as a read-only
   // synthesized row on every budget that tracks one of its endpoints,
   // and as a top-level row on the Accounts sheet's transaction log.
