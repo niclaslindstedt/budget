@@ -9,7 +9,7 @@ import {
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
-import { usePointerOutside } from "../hooks";
+import { useDesktopAutoFocus, usePointerOutside } from "../hooks";
 import { ColorPalette } from "./ColorPalette";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
@@ -82,6 +82,9 @@ export function SheetModal({
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(nameRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -162,6 +165,7 @@ export function SheetModal({
               <span className="text-xs text-muted">Name</span>
               <input
                 type="text"
+                ref={nameRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
@@ -172,7 +176,6 @@ export function SheetModal({
                 }}
                 className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 placeholder="Checking, Travel fund, Child account…"
-                autoFocus
               />
             </label>
           </div>

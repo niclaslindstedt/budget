@@ -3,6 +3,7 @@ import { CircleUser, Eye, EyeOff, Lock, UserPlus } from "lucide-react";
 
 import type { StoredUser } from "../data/types";
 import { findUserByUsername } from "../storage/users";
+import { Checkbox } from "./form";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -330,23 +331,12 @@ function SignUpForm({
       </label>
 
       {legacyBudgetAvailable && (
-        <label className="flex cursor-pointer items-start gap-2">
-          <input
-            type="checkbox"
-            checked={importLegacy}
-            onChange={(e) => setImportLegacy(e.target.checked)}
-            className="mt-1"
-          />
-          <span className="flex flex-col">
-            <span className="text-sm text-fg">
-              Import existing budget on this device
-            </span>
-            <span className="text-xs text-muted">
-              A budget from before accounts were introduced was found. Bring it
-              into this new account.
-            </span>
-          </span>
-        </label>
+        <Checkbox
+          checked={importLegacy}
+          onChange={setImportLegacy}
+          label="Import existing budget on this device"
+          description="A budget from before accounts were introduced was found. Bring it into this new account."
+        />
       )}
 
       {taken && (

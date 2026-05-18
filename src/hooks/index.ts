@@ -1,3 +1,4 @@
+export { useDesktopAutoFocus } from "./useDesktopAutoFocus";
 export { useEscapeKey } from "./useEscapeKey";
 export {
   type FloatingPlacement,
@@ -5,4 +6,6 @@ export {
   type FloatingWidth,
   useFloatingPosition,
 } from "./useFloatingPosition";
+export { useIsMobile } from "./useIsMobile";
 export { usePointerOutside } from "./usePointerOutside";
+export { useVirtualKeyboardInset } from "./useVirtualKeyboardInset";

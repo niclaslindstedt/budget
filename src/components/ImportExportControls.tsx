@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, EyeOff, Lock, Upload } from "lucide-react";
 
 import type { UserData } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import type { EncryptionMode } from "../storage/backend-preference";
 import { Modal } from "./Modal";
 import {
@@ -211,6 +212,9 @@ function ImportPasswordPrompt({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const passwordRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(passwordRef, open);
+
   useEffect(() => {
     if (!open) return;
     setPassword("");
@@ -283,7 +287,7 @@ function ImportPasswordPrompt({
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoFocus
+              ref={passwordRef}
               className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
             />
             <button

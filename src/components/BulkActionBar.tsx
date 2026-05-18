@@ -25,7 +25,10 @@ export function BulkActionBar({
 }: Props) {
   const disabled = count === 0;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-3">
+    <div
+      data-floating-chrome
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-3"
+    >
       <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-line bg-surface-2 px-3 py-1.5 shadow-2xl backdrop-blur">
         <span className="px-2 text-xs font-bold tracking-wider text-fg-bright tabular-nums uppercase">
           {count}

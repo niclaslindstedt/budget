@@ -20,6 +20,7 @@ import type {
 import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
 import { BackendPicker } from "./BackendPicker";
+import { Checkbox, SelectPicker } from "./form";
 import { ImportExportControls } from "./ImportExportControls";
 import { Modal } from "./Modal";
 
@@ -323,17 +324,19 @@ function MainView({
     <div className="flex flex-col">
       <Section title="Month">
         <Field label="Start of month">
-          <select
-            value={draft.startOfMonth}
-            onChange={(e) => onUpdate("startOfMonth", Number(e.target.value))}
-            className="field-input w-24 cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-          >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+          <div className="w-24">
+            <SelectPicker
+              value={draft.startOfMonth}
+              options={Array.from({ length: 28 }, (_, i) => ({
+                value: i + 1,
+                label: i + 1,
+              }))}
+              onChange={(v) => onUpdate("startOfMonth", v)}
+              ariaLabel="Start of month"
+              triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+              panelClassName="font-mono tabular-nums"
+            />
+          </div>
           <p className="text-xs text-muted">
             Day each month is considered to begin. Default 25 matches a Swedish
             payday.
@@ -343,38 +346,28 @@ function MainView({
 
       <Section title="Date">
         <Field label="Date format">
-          <select
+          <SelectPicker
             value={draft.dateFormat}
-            onChange={(e) =>
-              onUpdate("dateFormat", e.target.value as DateFormat)
-            }
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-          >
-            {DATE_FORMATS.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+            options={DATE_FORMATS.map((f) => ({ value: f, label: f }))}
+            onChange={(v) => onUpdate("dateFormat", v as DateFormat)}
+            ariaLabel="Date format"
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+            panelClassName="font-mono tabular-nums"
+          />
           <Preview>
             {formatDatePreview(datePreviewIso, draft.dateFormat)}
           </Preview>
         </Field>
 
         <Field label="Short date format">
-          <select
+          <SelectPicker
             value={draft.shortDateFormat}
-            onChange={(e) =>
-              onUpdate("shortDateFormat", e.target.value as ShortDateFormat)
-            }
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-          >
-            {SHORT_DATE_FORMATS.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+            options={SHORT_DATE_FORMATS.map((f) => ({ value: f, label: f }))}
+            onChange={(v) => onUpdate("shortDateFormat", v as ShortDateFormat)}
+            ariaLabel="Short date format"
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+            panelClassName="font-mono tabular-nums"
+          />
           <Preview>
             {formatShortDatePreview(datePreviewIso, draft.shortDateFormat)}
           </Preview>
@@ -431,17 +424,16 @@ function MainView({
 
       <Section title="Numbers">
         <Field label="Number format">
-          <select
+          <SelectPicker
             value={presetIdFor(draft)}
-            onChange={(e) => onApplyNumberFormat(e.target.value)}
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-          >
-            {NUMBER_FORMATS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+            options={NUMBER_FORMATS.map((f) => ({
+              value: f.id,
+              label: f.label,
+            }))}
+            onChange={onApplyNumberFormat}
+            ariaLabel="Number format"
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+          />
           <Preview>
             {previewNumber(
               numberPreviewSample,
@@ -683,19 +675,16 @@ function MainView({
           </p>
         </Field>
         <Field label="Session timeout">
-          <select
+          <SelectPicker
             value={draft.sessionTimeoutMinutes}
-            onChange={(e) =>
-              onUpdate("sessionTimeoutMinutes", Number(e.target.value))
-            }
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-          >
-            {SESSION_TIMEOUT_PRESETS.map((p) => (
-              <option key={p.minutes} value={p.minutes}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+            options={SESSION_TIMEOUT_PRESETS.map((p) => ({
+              value: p.minutes,
+              label: p.label,
+            }))}
+            onChange={(v) => onUpdate("sessionTimeoutMinutes", v)}
+            ariaLabel="Session timeout"
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+          />
           <p className="text-xs text-muted">
             Sign you out after this long without input. The clock resets on
             every click or keystroke, and you&apos;ll see a warning a minute
@@ -850,18 +839,12 @@ function ToggleRow({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-1"
-      />
-      <span className="flex flex-col">
-        <span className="text-sm text-fg">{label}</span>
-        {hint && <span className="text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
+    <Checkbox
+      checked={checked}
+      onChange={onChange}
+      label={label}
+      description={hint}
+    />
   );
 }
 

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
+import { useDesktopAutoFocus } from "../hooks";
 import type {
   Category,
   EntryType,
@@ -101,6 +102,9 @@ export function MatchRuleModal({
   const [typeId, setTypeId] = useState<string | null>(null);
   const [amountSign, setAmountSign] = useState<AmountSign>("any");
   const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
+
+  const patternRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(patternRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -223,10 +227,10 @@ export function MatchRuleModal({
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">Pattern</span>
             <input
+              ref={patternRef}
               type="text"
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
-              autoFocus
               spellCheck={false}
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               placeholder="*App Store*"

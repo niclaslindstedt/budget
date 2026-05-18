@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { SHEET_COLORS } from "../data/constants";
 import type { Account, CategoryIcon } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import { ColorPalette } from "./ColorPalette";
 import { GlyphPicker } from "./GlyphPicker";
 import { Modal } from "./Modal";
@@ -54,6 +55,9 @@ export function AccountModal({
   const [iban, setIban] = useState("");
   const [bic, setBic] = useState("");
   const [currency, setCurrency] = useState("");
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(nameRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +140,7 @@ export function AccountModal({
                 }}
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 placeholder="Checking, Travel fund, Cash…"
-                autoFocus
+                ref={nameRef}
               />
             </label>
           </div>

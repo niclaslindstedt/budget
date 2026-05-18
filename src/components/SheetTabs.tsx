@@ -28,7 +28,10 @@ export function SheetTabs({
   onAdd,
 }: Props) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-4 sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+    <div
+      data-floating-chrome
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:px-4 sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+    >
       <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-line bg-surface-2/95 px-2 py-1.5 shadow-2xl backdrop-blur">
         {sheets.map((sheet) => (
           <SheetTab

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import { nextOccurrenceWithSameDom } from "../data/recurrence";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -12,6 +13,7 @@ import {
 } from "../utils/format";
 import { Modal } from "./Modal";
 import { CategoryPicker } from "./CategoryPicker";
+import { Checkbox, Radio, RadioGroup } from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
 
@@ -198,6 +200,9 @@ export function EditEntryModal({
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
 
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
+
   useEffect(() => {
     if (!open) return;
     setDescription(initialDescription);
@@ -374,37 +379,24 @@ export function EditEntryModal({
 
             <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
               <legend className="px-1 text-xs text-muted">Scope</legend>
-              <div className="flex flex-col gap-2 text-sm text-fg">
-                <label className="inline-flex cursor-pointer items-center gap-2">
-                  <input
-                    type="radio"
-                    name="edit-scope"
-                    value="just-this"
-                    checked={scopeKind === "just-this"}
-                    onChange={() => setScopeKind("just-this")}
-                  />
-                  Only this entry ({initialDate || "no date"})
-                </label>
-                <label className="inline-flex cursor-pointer items-center gap-2">
-                  <input
-                    type="radio"
-                    name="edit-scope"
-                    value="future"
-                    checked={scopeKind === "future"}
-                    onChange={() => setScopeKind("future")}
-                  />
-                  This entry and all future
-                </label>
+              <RadioGroup
+                name="edit-scope"
+                value={scopeKind}
+                onChange={(v) => setScopeKind(v as "just-this" | "future")}
+              >
+                <Radio
+                  value="just-this"
+                  label={`Only this entry (${initialDate || "no date"})`}
+                />
+                <Radio value="future" label="This entry and all future" />
                 {scopeKind === "future" && (
                   <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
-                    <label className="inline-flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={untilEnabled}
-                        onChange={(e) => setUntilEnabled(e.target.checked)}
-                      />
-                      Stop after a date (temporary change)
-                    </label>
+                    <Checkbox
+                      checked={untilEnabled}
+                      onChange={setUntilEnabled}
+                      label="Stop after a date (temporary change)"
+                      className="items-center"
+                    />
                     {untilEnabled && (
                       <input
                         type="date"
@@ -415,7 +407,7 @@ export function EditEntryModal({
                     )}
                   </div>
                 )}
-              </div>
+              </RadioGroup>
             </fieldset>
           </>
         ) : isHistory ? (
@@ -429,10 +421,10 @@ export function EditEntryModal({
                 <span className="text-xs text-muted">Description</span>
                 <input
                   key={row.id}
+                  ref={descriptionRef}
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  autoFocus
                   className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 />
               </label>

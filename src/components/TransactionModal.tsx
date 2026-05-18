@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import type { Account, Category, Row } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -19,6 +20,7 @@ import {
 import { Modal } from "./Modal";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
+import { Checkbox } from "./form";
 import { CategoryIconGlyph } from "./icons";
 import type { Settings } from "../data/types";
 
@@ -117,6 +119,9 @@ export function TransactionModal({
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(descriptionRef, open);
 
   // Seed the form whenever the modal opens or the request changes. Each
   // mode has its own seeding strategy: promote-row pre-fills from the
@@ -291,6 +296,7 @@ export function TransactionModal({
             <span className="text-xs text-muted">Description</span>
             <input
               type="text"
+              ref={descriptionRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onKeyDown={(e) => {
@@ -301,7 +307,6 @@ export function TransactionModal({
               }}
               placeholder="What is this transfer for?"
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-              autoFocus
             />
           </label>
 
@@ -382,15 +387,12 @@ export function TransactionModal({
             />
           </div>
 
-          <label className="inline-flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={completed}
-              onChange={(e) => setCompleted(e.target.checked)}
-              className="h-4 w-4 cursor-pointer"
-            />
-            <span className="text-sm text-fg">Mark as done</span>
-          </label>
+          <Checkbox
+            checked={completed}
+            onChange={setCompleted}
+            label="Mark as done"
+            className="items-center"
+          />
         </div>
       </Modal.Body>
       <Modal.Footer className="justify-between">
