@@ -31,10 +31,12 @@
 //   - Shared strings come back with trailing spaces — descriptions
 //     are trimmed and inner whitespace collapsed for a clean key.
 
+import { debug } from "../utils/debug";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
 import { readFirstSheet, type XlsxCellValue } from "./xlsx-reader";
 
 const PARSER_ID = "bank-norwegian-xlsx";
+const log = debug("bank-norwegian");
 
 const HEADERS = [
   "TransactionDate",
@@ -62,7 +64,8 @@ registerBankParser({
     try {
       const sheet = await readFirstSheet(file.bytes);
       return matchesHeader(sheet.rows[0]);
-    } catch {
+    } catch (err) {
+      log.warn("sniff: readFirstSheet threw — treating as no match", err);
       return false;
     }
   },

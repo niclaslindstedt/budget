@@ -14,10 +14,12 @@
 // `xl/sharedStrings.xml` part in the file, no styles, and no
 // formulas — the minimal xlsx reader handles everything we need.
 
+import { debug } from "../utils/debug";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
 import { readFirstSheet } from "./xlsx-reader";
 
 const PARSER_ID = "skandia-xlsx";
+const log = debug("bank-skandia");
 
 // Header tokens we expect on row 4. Used both for sniffing (a file
 // matches when these strings appear in the first ~2 KB of the
@@ -36,7 +38,8 @@ registerBankParser({
     try {
       const sheet = await readFirstSheet(file.bytes);
       return matchesHeader(sheet.rows);
-    } catch {
+    } catch (err) {
+      log.warn("sniff: readFirstSheet threw — treating as no match", err);
       return false;
     }
   },

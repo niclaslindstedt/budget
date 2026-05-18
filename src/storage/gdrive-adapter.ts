@@ -1,5 +1,8 @@
+import { debug } from "../utils/debug";
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
 import { type OAuthConfig, completeAuth, startAuth } from "./oauth-pkce";
+
+const log = debug("gdrive");
 
 // Google-Drive-backed `StorageAdapter`. Talks to the Drive v3 REST
 // API directly (no SDK — Drive v3 is two endpoints away from "two
@@ -85,6 +88,7 @@ export function createGdriveAdapter(
   token: string,
   fetchImpl: FetchImpl = fetch,
 ): StorageAdapter {
+  log.log(`adapter created hasToken=${Boolean(token)}`);
   // The Drive file id never changes for the lifetime of the file, so
   // we look it up by name once and cache it in the closure. The
   // cache is invalidated on 404 (file deleted in Drive) so the next
@@ -96,45 +100,74 @@ export function createGdriveAdapter(
   }
 
   async function findFileId(): Promise<string | null> {
-    if (cachedFileId) return cachedFileId;
+    if (cachedFileId) {
+      log.log(`findFileId: cache hit ${cachedFileId}`);
+      return cachedFileId;
+    }
     const q = `name='${GDRIVE_FILE_NAME}' and trashed=false`;
     const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
       q,
     )}&spaces=drive&fields=files(id)`;
-    const res = await fetchImpl(url, { headers: authHeader() });
+    log.log(`findFileId: query ${q}`);
+    const start = performance.now();
+    let res: Response;
+    try {
+      res = await fetchImpl(url, { headers: authHeader() });
+    } catch (err) {
+      log.error("findFileId: network error", err);
+      throw err;
+    }
+    const ms = (performance.now() - start).toFixed(0);
+    log.log(`findFileId: → ${res.status} (${ms}ms)`);
     if (!res.ok) {
-      throw new Error(
-        `Google Drive search failed: ${res.status} ${await res.text()}`,
-      );
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`findFileId: failed ${res.status}`, body);
+      throw new Error(`Google Drive search failed: ${res.status} ${body}`);
     }
     const json = (await res.json()) as DriveListResponse;
     cachedFileId = json.files?.[0]?.id ?? null;
+    log.log(`findFileId: result ${cachedFileId ?? "<none>"}`);
     return cachedFileId;
   }
 
   async function load(): Promise<Snapshot | null> {
+    log.log("load: start");
     const fileId = await findFileId();
-    if (!fileId) return null;
-    const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}?alt=media`, {
-      headers: authHeader(),
-    });
+    if (!fileId) {
+      log.log("load: no file id — empty");
+      return null;
+    }
+    const url = `${DRIVE_FILES_API}/${fileId}?alt=media`;
+    const start = performance.now();
+    let res: Response;
+    try {
+      res = await fetchImpl(url, { headers: authHeader() });
+    } catch (err) {
+      log.error("load: network error", err);
+      throw err;
+    }
+    const ms = (performance.now() - start).toFixed(0);
+    log.log(`load: download → ${res.status} (${ms}ms)`);
     if (res.status === 404) {
       // File was deleted between the search and the download. Drop
       // the cache so the next save recreates it.
+      log.warn("load: 404 — cached id is stale, clearing");
       cachedFileId = null;
       return null;
     }
     if (!res.ok) {
-      throw new Error(
-        `Google Drive load failed: ${res.status} ${await res.text()}`,
-      );
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`load: failed ${res.status}`, body);
+      throw new Error(`Google Drive load failed: ${res.status} ${body}`);
     }
     const text = await res.text();
     const revision = res.headers.get("ETag") ?? undefined;
+    log.log(`load: bytes=${text.length} etag=${revision ?? "<none>"}`);
     return { text, revision };
   }
 
   async function create(text: string): Promise<Snapshot> {
+    log.log(`create: multipart upload bytes=${text.length}`);
     // Multipart upload — one part is the metadata (the file name),
     // the other is the body. Drive returns the new file id but not
     // the ETag in this response, so we issue a tiny follow-up HEAD
@@ -147,6 +180,7 @@ export function createGdriveAdapter(
       `--${boundary}\r\n` +
       `Content-Type: application/octet-stream\r\n\r\n${text}\r\n` +
       `--${boundary}--`;
+    const start = performance.now();
     const res = await fetchImpl(
       `${DRIVE_UPLOAD_API}?uploadType=multipart&fields=id`,
       {
@@ -158,13 +192,16 @@ export function createGdriveAdapter(
         body,
       },
     );
+    const ms = (performance.now() - start).toFixed(0);
+    log.log(`create: → ${res.status} (${ms}ms)`);
     if (!res.ok) {
-      throw new Error(
-        `Google Drive create failed: ${res.status} ${await res.text()}`,
-      );
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`create: failed ${res.status}`, body);
+      throw new Error(`Google Drive create failed: ${res.status} ${body}`);
     }
     const meta2 = (await res.json()) as DriveFile;
     cachedFileId = meta2.id;
+    log.log(`create: ok id=${cachedFileId}, fetching ETag`);
     const head = await fetchImpl(
       `${DRIVE_FILES_API}/${cachedFileId}?fields=id`,
       {
@@ -172,41 +209,53 @@ export function createGdriveAdapter(
       },
     );
     const revision = head.headers.get("ETag") ?? undefined;
+    log.log(`create: etag=${revision ?? "<none>"}`);
     return { text, revision };
   }
 
   async function save(text: string, baseRevision?: string): Promise<Snapshot> {
+    log.log(`save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`);
     const fileId = await findFileId();
-    if (!fileId) return create(text);
+    if (!fileId) {
+      log.log("save: no file id — creating");
+      return create(text);
+    }
     const headers: Record<string, string> = {
       ...authHeader(),
       "Content-Type": "application/octet-stream",
     };
     if (baseRevision) headers["If-Match"] = baseRevision;
+    const start = performance.now();
     const res = await fetchImpl(
       `${DRIVE_UPLOAD_API}/${fileId}?uploadType=media`,
       { method: "PATCH", headers, body: text },
     );
+    const ms = (performance.now() - start).toFixed(0);
+    log.log(`save: PATCH → ${res.status} (${ms}ms)`);
     if (res.status === 412) {
+      log.warn("save: 412 If-Match failed — re-reading remote");
       // Precondition failed — the remote ETag moved past our
       // baseRevision. Re-fetch so the hook can surface a proper
       // ConflictError with the current bytes.
       const remote = await load();
       if (remote) throw new ConflictError(remote);
+      log.error("save: 412 with no remote bytes");
       throw new Error("Google Drive save failed: 412 with no remote bytes");
     }
     if (res.status === 404) {
+      log.warn("save: 404 — cached id stale, recreating");
       // The cached fileId is stale (user deleted the file in Drive).
       // Drop the cache and recreate from scratch.
       cachedFileId = null;
       return create(text);
     }
     if (!res.ok) {
-      throw new Error(
-        `Google Drive save failed: ${res.status} ${await res.text()}`,
-      );
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`save: failed ${res.status}`, body);
+      throw new Error(`Google Drive save failed: ${res.status} ${body}`);
     }
     const revision = res.headers.get("ETag") ?? undefined;
+    log.log(`save: ok etag=${revision ?? "<none>"}`);
     return { text, revision };
   }
 

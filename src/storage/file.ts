@@ -1,6 +1,9 @@
 import { migrate, type Versioned } from "../data/migrations";
 import type { UserData } from "../data/types";
 import { validateUserData } from "../data/validate";
+import { debug } from "../utils/debug";
+
+const log = debug("parse");
 
 export const FILE_MIME_TYPE = "application/json";
 
@@ -23,19 +26,32 @@ export function parseUserData(text: string): ImportResult {
   try {
     parsed = JSON.parse(text);
   } catch (err) {
-    return { ok: false, error: `Invalid JSON: ${(err as Error).message}` };
+    const message = `Invalid JSON: ${(err as Error).message}`;
+    log.error(`parseUserData: ${message}`);
+    return { ok: false, error: message };
   }
   if (!hasNumericVersion(parsed)) {
+    log.error("parseUserData: missing or non-numeric 'version' field", parsed);
     return { ok: false, error: "Missing or non-numeric 'version' field" };
   }
   let migrated;
+  const fromVersion = (parsed as Versioned).version;
   try {
     migrated = migrate(parsed);
+    if (migrated.migrated) {
+      log.log(
+        `parseUserData: migrated v${fromVersion} → v${migrated.data.version}`,
+      );
+    }
   } catch (err) {
+    log.error(`parseUserData: migration from v${fromVersion} failed`, err);
     return { ok: false, error: (err as Error).message };
   }
   const validated = validateUserData(migrated.data);
-  if (!validated.ok) return { ok: false, error: validated.error };
+  if (!validated.ok) {
+    log.error(`parseUserData: validation failed: ${validated.error}`);
+    return { ok: false, error: validated.error };
+  }
   return { ok: true, data: validated.value, migrated: migrated.migrated };
 }
 

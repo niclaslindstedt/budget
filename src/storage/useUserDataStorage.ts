@@ -9,9 +9,12 @@ import {
 } from "react";
 
 import type { UserData } from "../data/types";
+import { debug } from "../utils/debug";
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
 import { serializeUserData } from "./file";
 import { freshUserData, readUserDataFromText } from "./local";
+
+const log = debug("storage-hook");
 
 // Orchestrates a `StorageAdapter` against a React reducer. The
 // reducer keeps its existing shape — pure `(state, action) => state`
@@ -129,22 +132,48 @@ export function useUserDataStorage<Action>(
   // effect was cleaned up while the request was in flight.
   const performSave = useCallback(
     async (text: string, isStale: () => boolean): Promise<void> => {
-      if (isStale()) return;
+      if (isStale()) {
+        log.log(`save skipped (stale before start) [${adapter.id}]`);
+        return;
+      }
       setStatus({ kind: "saving" });
+      log.log(
+        `save start [${adapter.id}] bytes=${text.length} baseRev=${
+          lastSnapshot.current?.revision ?? "<none>"
+        }`,
+      );
+      const start = performance.now();
       try {
         const next = await adapter.save(text, lastSnapshot.current?.revision);
-        if (isStale()) return;
+        const ms = (performance.now() - start).toFixed(0);
+        if (isStale()) {
+          log.log(`save ok but stale (${ms}ms) [${adapter.id}]`);
+          return;
+        }
         lastSnapshot.current = next;
         setLastSavedText(next.text);
         setStatus({ kind: "saved", at: Date.now() });
+        log.log(
+          `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+        );
       } catch (err) {
-        if (isStale()) return;
+        const ms = (performance.now() - start).toFixed(0);
+        if (isStale()) {
+          log.log(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
+          return;
+        }
         if (err instanceof ConflictError) {
+          log.warn(
+            `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
+              err.remote.revision ?? "<none>"
+            }`,
+          );
           const remote = readUserDataFromText(err.remote.text);
           lastSnapshot.current = err.remote;
           setStatus({ kind: "conflict", remote });
           return;
         }
+        log.error(`save failed (${ms}ms) [${adapter.id}]`, err);
         setStatus({
           kind: "error",
           message: err instanceof Error ? err.message : String(err),
@@ -156,13 +185,29 @@ export function useUserDataStorage<Action>(
 
   // Async load. Skipped when `loadSync` already handed us data.
   useEffect(() => {
-    if (adapter.loadSync) return;
+    if (adapter.loadSync) {
+      log.log(`adapter mount [${adapter.id}] sync — load skipped`);
+      return;
+    }
     let cancelled = false;
     setStatus({ kind: "loading" });
+    log.log(`adapter mount [${adapter.id}] async — load start`);
+    const start = performance.now();
     adapter
       .load()
       .then((snap) => {
-        if (cancelled) return;
+        const ms = (performance.now() - start).toFixed(0);
+        if (cancelled) {
+          log.log(`load ok (${ms}ms) [${adapter.id}] but cancelled`);
+          return;
+        }
+        log.log(
+          `load ok (${ms}ms) [${adapter.id}] ${
+            snap
+              ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"}`
+              : "<empty>"
+          }`,
+        );
         lastSnapshot.current = snap;
         skipNextSave.current = true;
         hasLoadedRef.current = true;
@@ -171,7 +216,12 @@ export function useUserDataStorage<Action>(
         setStatus({ kind: "idle" });
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        const ms = (performance.now() - start).toFixed(0);
+        if (cancelled) {
+          log.log(`load failed (${ms}ms) [${adapter.id}] but cancelled`, err);
+          return;
+        }
+        log.error(`load failed (${ms}ms) [${adapter.id}]`, err);
         setStatus({
           kind: "error",
           message: err instanceof Error ? err.message : String(err),
@@ -179,6 +229,7 @@ export function useUserDataStorage<Action>(
       });
     return () => {
       cancelled = true;
+      log.log(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
     };
   }, [adapter]);
 
@@ -228,7 +279,13 @@ export function useUserDataStorage<Action>(
   // another device pushes; local adapters typically don't supply it.
   useEffect(() => {
     if (!adapter.watch) return;
-    return adapter.watch((snap) => {
+    log.log(`watch subscribe [${adapter.id}]`);
+    const unsubscribe = adapter.watch((snap) => {
+      log.log(
+        `watch fired [${adapter.id}] bytes=${snap.text.length} rev=${
+          snap.revision ?? "<none>"
+        }`,
+      );
       lastSnapshot.current = snap;
       skipNextSave.current = true;
       hasLoadedRef.current = true;
@@ -236,6 +293,10 @@ export function useUserDataStorage<Action>(
       setLastSavedText(snap.text);
       setStatus({ kind: "idle" });
     });
+    return () => {
+      log.log(`watch unsubscribe [${adapter.id}]`);
+      unsubscribe();
+    };
   }, [adapter]);
 
   const currentText = useMemo(() => serializeUserData(data), [data]);

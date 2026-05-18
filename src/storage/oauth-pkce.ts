@@ -4,6 +4,10 @@
 // `sessionStorage` key for the verifier so parallel auth flows don't
 // race each other.
 
+import { debug } from "../utils/debug";
+
+const log = debug("oauth");
+
 function base64UrlEncode(bytes: Uint8Array): string {
   let s = "";
   for (const b of bytes) s += String.fromCharCode(b);
@@ -70,6 +74,9 @@ export type TokenResult = {
 // — the next thing that happens is a full-page redirect back to the
 // app with `?code=…&state=<config.state>` set.
 export async function startAuth(config: OAuthConfig): Promise<void> {
+  log.log(
+    `${config.providerName}: startAuth (redirect=${redirectUri()}, state=${config.state})`,
+  );
   const verifier = randomVerifier();
   sessionStorage.setItem(config.verifierKey, verifier);
   const challenge = await challengeFor(verifier);
@@ -82,7 +89,9 @@ export async function startAuth(config: OAuthConfig): Promise<void> {
     state: config.state,
     ...(config.extraAuthParams ?? {}),
   });
-  window.location.assign(`${config.authBase}?${params.toString()}`);
+  const dest = `${config.authBase}?${params.toString()}`;
+  log.log(`${config.providerName}: redirecting to ${config.authBase}`);
+  window.location.assign(dest);
 }
 
 // Trades the code from the redirect for an access (and, where the
@@ -94,8 +103,12 @@ export async function completeAuth(
   code: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<TokenResult> {
+  log.log(`${config.providerName}: completeAuth (code received)`);
   const verifier = sessionStorage.getItem(config.verifierKey);
   if (!verifier) {
+    log.error(
+      `${config.providerName}: completeAuth aborted — missing PKCE verifier (key=${config.verifierKey})`,
+    );
     throw new Error("Missing PKCE verifier — restart the connect flow");
   }
   sessionStorage.removeItem(config.verifierKey);
@@ -106,12 +119,23 @@ export async function completeAuth(
     redirect_uri: redirectUri(),
     code_verifier: verifier,
   });
-  const res = await fetchImpl(config.tokenEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
+  const start = performance.now();
+  let res: Response;
+  try {
+    res = await fetchImpl(config.tokenEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+  } catch (err) {
+    log.error(`${config.providerName}: token exchange network error`, err);
+    throw err;
+  }
+  const ms = (performance.now() - start).toFixed(0);
+  log.log(`${config.providerName}: token exchange → ${res.status} (${ms}ms)`);
   if (!res.ok) {
+    const body = await res.text().catch(() => "<unreadable>");
+    log.error(`${config.providerName}: token exchange failed`, body);
     throw new Error(
       `${config.providerName} token exchange failed: ${res.status}`,
     );
@@ -121,10 +145,14 @@ export async function completeAuth(
     refresh_token?: string;
   };
   if (!json.access_token) {
+    log.error(`${config.providerName}: response missing access_token`, json);
     throw new Error(
       `${config.providerName} token response missing access_token`,
     );
   }
+  log.log(
+    `${config.providerName}: tokens ok hasRefresh=${Boolean(json.refresh_token)}`,
+  );
   return {
     accessToken: json.access_token,
     refreshToken: json.refresh_token ?? null,
@@ -141,23 +169,39 @@ export async function refreshAccessToken(
   refreshToken: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<string> {
+  log.log(`${config.providerName}: refreshAccessToken`);
   const params = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: config.clientId,
   });
-  const res = await fetchImpl(config.tokenEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
+  const start = performance.now();
+  let res: Response;
+  try {
+    res = await fetchImpl(config.tokenEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+  } catch (err) {
+    log.error(`${config.providerName}: refresh network error`, err);
+    throw err;
+  }
+  const ms = (performance.now() - start).toFixed(0);
+  log.log(`${config.providerName}: refresh → ${res.status} (${ms}ms)`);
   if (!res.ok) {
+    const body = await res.text().catch(() => "<unreadable>");
+    log.error(`${config.providerName}: refresh failed`, body);
     throw new Error(
       `${config.providerName} token refresh failed: ${res.status}`,
     );
   }
   const json = (await res.json()) as { access_token?: string };
   if (!json.access_token) {
+    log.error(
+      `${config.providerName}: refresh response missing access_token`,
+      json,
+    );
     throw new Error(
       `${config.providerName} refresh response missing access_token`,
     );

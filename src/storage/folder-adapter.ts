@@ -1,4 +1,7 @@
+import { debug } from "../utils/debug";
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+
+const log = debug("folder");
 
 // `StorageAdapter` over a user-picked directory, via the File System
 // Access API. The adapter reads and writes a single file
@@ -52,11 +55,21 @@ export function createFolderAdapter(
       });
       return await handle.getFile();
     } catch (err) {
-      if (isNotFoundError(err)) return null;
-      if (isPermissionError(err)) onPermissionLost?.();
+      if (isNotFoundError(err)) {
+        log.log(`readFile: NotFoundError (${fileName} absent)`);
+        return null;
+      }
+      if (isPermissionError(err)) {
+        log.error("readFile: permission lost", err);
+        onPermissionLost?.();
+      } else {
+        log.error("readFile: error", err);
+      }
       throw err;
     }
   }
+
+  log.log(`adapter created file=${fileName}`);
 
   return {
     id: "folder",
@@ -64,13 +77,19 @@ export function createFolderAdapter(
     saveDebounceMs: 500,
 
     async load(): Promise<Snapshot | null> {
+      log.log("load: start");
       const file = await readFile();
-      if (!file) return null;
+      if (!file) {
+        log.log("load: no file");
+        return null;
+      }
       const text = await file.text();
+      log.log(`load: bytes=${text.length} mtime=${file.lastModified}`);
       return { text, revision: String(file.lastModified) };
     },
 
     async save(text: string, baseRevision?: string): Promise<Snapshot> {
+      log.log(`save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`);
       if (baseRevision !== undefined) {
         const current = await readFile();
         // If the file was deleted out from under us but the caller
@@ -79,11 +98,15 @@ export function createFolderAdapter(
         // it as an empty text so the storage hook can surface the
         // collision rather than silently overwriting.
         if (!current) {
+          log.warn("save: baseRev set but file gone — conflict (empty)");
           throw new ConflictError({ text: "", revision: undefined });
         }
         const currentRevision = String(current.lastModified);
         if (currentRevision !== baseRevision) {
           const currentText = await current.text();
+          log.warn(
+            `save: mtime drift (have ${currentRevision}, expected ${baseRevision}) — conflict`,
+          );
           throw new ConflictError({
             text: currentText,
             revision: currentRevision,
@@ -97,7 +120,12 @@ export function createFolderAdapter(
           create: true,
         });
       } catch (err) {
-        if (isPermissionError(err)) onPermissionLost?.();
+        if (isPermissionError(err)) {
+          log.error("save: permission lost during getFileHandle", err);
+          onPermissionLost?.();
+        } else {
+          log.error("save: getFileHandle failed", err);
+        }
         throw err;
       }
 
@@ -108,7 +136,12 @@ export function createFolderAdapter(
         await writable.write(text);
         await writable.close();
       } catch (err) {
-        if (isPermissionError(err)) onPermissionLost?.();
+        if (isPermissionError(err)) {
+          log.error("save: permission lost during write", err);
+          onPermissionLost?.();
+        } else {
+          log.error("save: write failed", err);
+        }
         throw err;
       }
 
@@ -118,6 +151,7 @@ export function createFolderAdapter(
       // time, and we need the value subsequent saves will compare
       // against.
       const written = await handle.getFile();
+      log.log(`save: ok mtime=${written.lastModified}`);
       return { text, revision: String(written.lastModified) };
     },
   };

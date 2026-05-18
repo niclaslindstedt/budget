@@ -5,6 +5,7 @@ import { App } from "./App.tsx";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { SchemaPage } from "./components/SchemaPage";
 import "./styles.css";
+import { announceDebugHint } from "./utils/debug";
 import { installSelectOnFocus } from "./utils/select-on-focus";
 
 const rootElement = document.getElementById("root");
@@ -13,6 +14,7 @@ if (!rootElement) {
 }
 
 installSelectOnFocus();
+announceDebugHint();
 
 // Trivial path-based switch. The build emits `dist/<alias>/index.html`
 // aliases (see `vite.config.ts`) so GitHub Pages serves the same SPA

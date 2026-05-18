@@ -1,7 +1,10 @@
 import { createSeedEntryTypes, DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
+import { debug } from "../utils/debug";
 import { parseUserData } from "./file";
+
+const log = debug("parse");
 
 export function freshUserData(): UserData {
   // Fresh budgets start with no account attached. Accounts are
@@ -31,7 +34,19 @@ export function freshUserData(): UserData {
 // the user. Consumed by both the local adapter and the storage hook so
 // every load path shares the same parse / migrate / validate pipeline.
 export function readUserDataFromText(raw: string | null): UserData {
-  if (!raw) return freshUserData();
+  if (!raw) {
+    log.log("readUserDataFromText: no bytes — seeding fresh budget");
+    return freshUserData();
+  }
   const result = parseUserData(raw);
-  return result.ok ? result.data : freshUserData();
+  if (result.ok) {
+    log.log(
+      `readUserDataFromText: parsed ok (migrated=${result.migrated}) bytes=${raw.length}`,
+    );
+    return result.data;
+  }
+  log.error(
+    `readUserDataFromText: parse failed — falling back to fresh budget. error=${result.error}`,
+  );
+  return freshUserData();
 }

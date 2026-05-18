@@ -1,3 +1,4 @@
+import { debug } from "../utils/debug";
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
 import {
   type OAuthConfig,
@@ -6,6 +7,8 @@ import {
   refreshAccessToken,
   startAuth,
 } from "./oauth-pkce";
+
+const log = debug("dropbox");
 
 // Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly
 // (no SDK — two endpoints don't justify ~100kB of bundle) and stores
@@ -113,15 +116,29 @@ export function createDropboxAdapter(
     refreshToken = auth.refreshToken;
     onAccessTokenRefreshed = auth.onAccessTokenRefreshed;
   }
+  log.log(
+    `adapter created hasAccessToken=${Boolean(currentAccessToken)} hasRefreshToken=${Boolean(refreshToken)}`,
+  );
 
   // Coalesce in-flight refreshes so a concurrent load + save burst
   // doesn't trade the refresh_token in twice.
   let pendingRefresh: Promise<string> | null = null;
   async function refreshOnce(): Promise<string | null> {
-    if (!refreshToken) return null;
+    if (!refreshToken) {
+      log.warn("refresh skipped — no refresh token (legacy connection)");
+      return null;
+    }
+    if (!pendingRefresh) {
+      log.log("refreshing access token");
+    } else {
+      log.log("refresh already in flight — joining");
+    }
     pendingRefresh ??= (async () => {
       try {
+        const start = performance.now();
         const fresh = await refreshDropboxAccessToken(refreshToken!, fetchImpl);
+        const ms = (performance.now() - start).toFixed(0);
+        log.log(`refresh ok (${ms}ms)`);
         currentAccessToken = fresh;
         onAccessTokenRefreshed?.(fresh);
         return fresh;
@@ -131,7 +148,8 @@ export function createDropboxAdapter(
     })();
     try {
       return await pendingRefresh;
-    } catch {
+    } catch (err) {
+      log.error("refresh failed", err);
       return null;
     }
   }
@@ -144,15 +162,39 @@ export function createDropboxAdapter(
     url: string,
     build: (token: string) => RequestInit,
   ): Promise<Response> {
-    let res = await fetchImpl(url, build(currentAccessToken));
+    const start = performance.now();
+    log.log(`fetch ${shortUrl(url)}`);
+    let res: Response;
+    try {
+      res = await fetchImpl(url, build(currentAccessToken));
+    } catch (err) {
+      log.error(`fetch network error ${shortUrl(url)}`, err);
+      throw err;
+    }
+    const ms = (performance.now() - start).toFixed(0);
+    log.log(`fetch ${shortUrl(url)} → ${res.status} (${ms}ms)`);
     if (res.status === 401) {
+      log.log("401 received — attempting silent refresh");
       const fresh = await refreshOnce();
-      if (fresh) res = await fetchImpl(url, build(fresh));
+      if (fresh) {
+        const retryStart = performance.now();
+        try {
+          res = await fetchImpl(url, build(fresh));
+        } catch (err) {
+          log.error(`retry network error ${shortUrl(url)}`, err);
+          throw err;
+        }
+        const retryMs = (performance.now() - retryStart).toFixed(0);
+        log.log(`retry ${shortUrl(url)} → ${res.status} (${retryMs}ms)`);
+      } else {
+        log.warn("no refresh available — surfacing original 401");
+      }
     }
     return res;
   }
 
   async function loadFromDropbox(): Promise<Snapshot | null> {
+    log.log(`load: download path=${DROPBOX_FILE_PATH}`);
     const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
       method: "POST",
       headers: {
@@ -164,14 +206,29 @@ export function createDropboxAdapter(
       // path/not_found — the app folder is empty (first run on a
       // freshly-connected account). Hand back null so the hook seeds
       // `freshUserData`.
+      log.log("load: 409 path/not_found — empty app folder");
       return null;
     }
     if (!res.ok) {
-      throw new Error(`Dropbox load failed: ${res.status} ${await res.text()}`);
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`load: failed ${res.status}`, body);
+      throw new Error(`Dropbox load failed: ${res.status} ${body}`);
     }
     const metaHeader = res.headers.get("Dropbox-API-Result");
-    const meta = metaHeader ? (JSON.parse(metaHeader) as FileMetadata) : null;
+    let meta: FileMetadata | null = null;
+    if (metaHeader) {
+      try {
+        meta = JSON.parse(metaHeader) as FileMetadata;
+      } catch (err) {
+        log.warn("load: Dropbox-API-Result header was not valid JSON", err);
+      }
+    }
+    const readStart = performance.now();
     const text = await res.text();
+    const readMs = (performance.now() - readStart).toFixed(0);
+    log.log(
+      `load: read body ${text.length} bytes (${readMs}ms) rev=${meta?.rev ?? "<none>"}`,
+    );
     return { text, revision: meta?.rev };
   }
 
@@ -188,6 +245,11 @@ export function createDropboxAdapter(
         mute: true,
         mode: baseRevision ? { ".tag": "update", update: baseRevision } : "add",
       };
+      log.log(
+        `save: upload bytes=${text.length} mode=${
+          baseRevision ? `update(${baseRevision})` : "add"
+        }`,
+      );
       const res = await authedFetch(UPLOAD_ENDPOINT, (token) => ({
         method: "POST",
         headers: {
@@ -198,6 +260,7 @@ export function createDropboxAdapter(
         body: text,
       }));
       if (res.status === 409) {
+        log.warn("save: 409 — re-reading remote to surface conflict");
         // Either a write_conflict (the remote moved past our
         // baseRevision) or an "add" mode collision (something else
         // got there first). Re-read so the hook can surface a
@@ -205,14 +268,16 @@ export function createDropboxAdapter(
         const remote = await loadFromDropbox();
         if (remote) throw new ConflictError(remote);
         const detail = await res.text().catch(() => "conflict");
+        log.error(`save: 409 with no remote bytes: ${detail}`);
         throw new Error(`Dropbox save failed: 409 ${detail}`);
       }
       if (!res.ok) {
-        throw new Error(
-          `Dropbox save failed: ${res.status} ${await res.text()}`,
-        );
+        const body = await res.text().catch(() => "<unreadable>");
+        log.error(`save: failed ${res.status}`, body);
+        throw new Error(`Dropbox save failed: ${res.status} ${body}`);
       }
       const meta = (await res.json()) as FileMetadata;
+      log.log(`save: ok rev=${meta.rev}`);
       return { text, revision: meta.rev };
     },
   };
@@ -248,4 +313,12 @@ export function refreshDropboxAccessToken(
   fetchImpl: FetchImpl = fetch,
 ): Promise<string> {
   return refreshAccessToken(DROPBOX_OAUTH, refreshToken, fetchImpl);
+}
+
+// Short tail of a URL, used in logs so each line stays readable
+// without dumping the full `content.dropboxapi.com/2/files/<endpoint>`
+// preamble every time.
+function shortUrl(url: string): string {
+  const idx = url.lastIndexOf("/");
+  return idx >= 0 ? url.slice(idx + 1) : url;
 }
