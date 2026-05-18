@@ -44,10 +44,13 @@
      accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
   --app-header-h: 61px;
 
-  /* Height of the sticky month-name h3 (text-xs line-height 1rem + py-1
-     above and below). Column headers stick directly below the month
-     header at app-header-h + month-header-h. */
-  --month-header-h: 24px;
+  /* Height of the sticky month-name h3 (text-xs line-height 1rem + pt-1
+     + pb-2). The bottom padding intentionally absorbs what used to be a
+     margin so the page-bg covers all the way down to where the column
+     headers stick — otherwise scrolled rows show through the gap.
+     Column headers stick directly below the month header at
+     app-header-h + month-header-h. */
+  --month-header-h: 28px;
 
   /* One Dark — default. */
   --page-bg: #1d2027;
@@ -133,7 +136,7 @@
 @media (min-width: 720px) {
   :root {
     --app-header-h: 69px;
-    --month-header-h: 28px;
+    --month-header-h: 36px;
   }
 }
 
