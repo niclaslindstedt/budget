@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Account, Settings } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import {
   formatAmountForInput,
   formatBalance,
@@ -65,18 +66,20 @@ export function UpdateBalanceModal({
     setText(formatAmountForInput(currentBalance, accountSettings));
   }, [open, account?.id, currentBalance, accountSettings]);
 
-  // Pre-select the seed so the next keystroke replaces it. `select()`
-  // from `onFocus` works on desktop but iOS's keyboard animation often
-  // clears the selection right after focus settles — defer the call to
-  // the next frame so the selection sticks once the keyboard is up.
-  // autoFocus on the <input> handles the keyboard pop itself (inside
-  // the click gesture); this effect only handles the selection.
+  // On desktop the input focuses immediately via `useDesktopAutoFocus`
+  // and the seed is selected so the next keystroke replaces it. On
+  // mobile we skip the autoFocus (popping the keyboard during the modal
+  // entrance shoves the field around) and wait for the user to tap the
+  // input themselves; `onFocus` handles the select() there.
   const inputRef = useRef<HTMLInputElement | null>(null);
+  useDesktopAutoFocus(inputRef, open && canRecord, account?.id);
   useEffect(() => {
     if (!open || !canRecord) return;
     const id = requestAnimationFrame(() => {
       const el = inputRef.current;
-      if (el) el.setSelectionRange(0, el.value.length);
+      if (el && document.activeElement === el) {
+        el.setSelectionRange(0, el.value.length);
+      }
     });
     return () => cancelAnimationFrame(id);
   }, [open, account?.id, canRecord]);
@@ -138,7 +141,6 @@ export function UpdateBalanceModal({
               type="text"
               inputMode="decimal"
               autoComplete="off"
-              autoFocus
               onFocus={(e) => e.currentTarget.select()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import type { Account, Category, Row } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -118,6 +119,9 @@ export function TransactionModal({
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(descriptionRef, open);
 
   // Seed the form whenever the modal opens or the request changes. Each
   // mode has its own seeding strategy: promote-row pre-fills from the
@@ -292,6 +296,7 @@ export function TransactionModal({
             <span className="text-xs text-muted">Description</span>
             <input
               type="text"
+              ref={descriptionRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onKeyDown={(e) => {
@@ -302,7 +307,6 @@ export function TransactionModal({
               }}
               placeholder="What is this transfer for?"
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-              autoFocus
             />
           </label>
 

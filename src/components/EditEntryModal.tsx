@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import { nextOccurrenceWithSameDom } from "../data/recurrence";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
+import { useDesktopAutoFocus } from "../hooks";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -198,6 +199,9 @@ export function EditEntryModal({
 
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
+
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
 
   useEffect(() => {
     if (!open) return;
@@ -417,10 +421,10 @@ export function EditEntryModal({
                 <span className="text-xs text-muted">Description</span>
                 <input
                   key={row.id}
+                  ref={descriptionRef}
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  autoFocus
                   className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 />
               </label>
