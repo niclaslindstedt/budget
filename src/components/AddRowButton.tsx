@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { Plus, Sparkles } from "lucide-react";
 
+import { useActiveRow } from "./useActiveRow";
+
 type Props = {
   onAdd: () => void;
   onComplex: () => void;
@@ -18,6 +20,11 @@ export function AddRowButton({ onAdd, onComplex }: Props) {
   const triggered = useRef(false);
   const startX = useRef(0);
   const startY = useRef(0);
+  // Disabled while any row in the same sheet is swiped or otherwise
+  // active. The first tap outside that row dismisses it via the
+  // ActiveRowProvider — we don't want the same tap to also add a new
+  // blank row when it landed on this button by mistake.
+  const disabled = useActiveRow()?.hasActive ?? false;
 
   function clearTimer() {
     if (timer.current !== null) {
@@ -70,7 +77,8 @@ export function AddRowButton({ onAdd, onComplex }: Props) {
   return (
     <button
       type="button"
-      className="add-row-button group relative flex w-full cursor-pointer items-center justify-center py-3 text-accent select-none hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+      disabled={disabled}
+      className="add-row-button group relative flex w-full cursor-pointer items-center justify-center py-3 text-accent select-none hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
       onClick={handleClick}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
