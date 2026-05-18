@@ -2,31 +2,35 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, CategoryIcon, Settings } from "../data/types";
+import type { Category, EntryType, Settings } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryPicker } from "./CategoryPicker";
-import { GlyphPicker } from "./GlyphPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
+import { TypePicker } from "./TypePicker";
 
 type Props = {
   open: boolean;
   initialDate: string;
   categories: Category[];
+  types: readonly EntryType[];
+  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onCreate: (entries: ComplexEntryDraft) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
 export type ComplexEntryDraft = {
   description: string;
   amount: number;
   categoryId: string | null;
-  // `null` = use the default recurring icon; otherwise stamp the chosen
-  // glyph on every generated row so the description cell can render it
-  // in place of the … trigger on mobile.
-  glyph: CategoryIcon | null;
+  // `null` = no type assigned (row falls back to its description as
+  // the primary label); a string stamps every generated row with that
+  // typeId so the cell renders the type's chip in the description
+  // column.
+  typeId: string | null;
   dates: string[];
 };
 
@@ -34,16 +38,19 @@ export function ComplexEntryModal({
   open,
   initialDate,
   categories,
+  types,
+  typeUsageById,
   settings,
   onClose,
   onCreate,
   onCreateCategory,
+  onCreateType,
 }: Props) {
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [glyph, setGlyph] = useState<CategoryIcon | null>(null);
+  const [typeId, setTypeId] = useState<string | null>(null);
   const [dates, setDates] = useState<string[]>([]);
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
@@ -56,7 +63,7 @@ export function ComplexEntryModal({
     setAmountText("");
     setNegative(true);
     setCategoryId(null);
-    setGlyph(null);
+    setTypeId(null);
     setDates([]);
     setResetKey((k) => k + 1);
   }, [open]);
@@ -106,7 +113,7 @@ export function ComplexEntryModal({
       description: description.trim(),
       amount: parsedAmount,
       categoryId,
-      glyph,
+      typeId,
       dates,
     });
   }
@@ -153,6 +160,17 @@ export function ComplexEntryModal({
                 placeholder="Rent, Spotify, Salary…"
               />
             </label>
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <span className="text-xs text-muted">Type</span>
+              <TypePicker
+                variant="field"
+                types={types}
+                selectedId={typeId}
+                onSelect={setTypeId}
+                onCreate={onCreateType}
+                usageById={typeUsageById}
+              />
+            </div>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted">Amount</span>
               <div className="relative flex">
@@ -196,10 +214,6 @@ export function ComplexEntryModal({
                 onSelect={setCategoryId}
                 onCreate={onCreateCategory}
               />
-            </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs text-muted">Glyph</span>
-              <GlyphPicker value={glyph} onChange={setGlyph} />
             </div>
           </div>
 

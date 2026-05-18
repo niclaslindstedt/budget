@@ -7,6 +7,7 @@
 // and add the next step here.
 
 import {
+  createSeedEntryTypes,
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
@@ -16,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 13 as const;
+export const LATEST_VERSION = 14 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -219,6 +220,52 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // don't carry the field, so no settings data needs rewriting — the
   // version bump just flags that this build understands the new shape.
   12: (v12) => ({ ...v12, version: 13 }),
+
+  // v13 → v14: introduces reusable `EntryType` records and a
+  // `Row.typeId` reference. Types replace the per-row `glyph` field —
+  // a type carries a name + colour + glyph that every row using it
+  // shares, so grouping for stats works while the visual identity
+  // moves with it. The migration seeds a handful of Swedish-typical
+  // defaults so the picker isn't empty on first promote, and strips
+  // any existing `row.glyph` (the user chose "drop, don't salvage" on
+  // the migration prompt). No rows gain a `typeId` automatically.
+  13: (v13) => {
+    const sheets = Array.isArray(v13.sheets) ? v13.sheets : [];
+    return {
+      ...v13,
+      version: 14,
+      types: createSeedEntryTypes(),
+      sheets: sheets.map((raw) => {
+        if (typeof raw !== "object" || raw === null) return raw;
+        const sheet = raw as { items?: unknown };
+        if (!Array.isArray(sheet.items)) return sheet;
+        return {
+          ...sheet,
+          items: sheet.items.map((rawItem) => {
+            if (typeof rawItem !== "object" || rawItem === null) return rawItem;
+            const item = rawItem as { type?: unknown; rows?: unknown };
+            if (item.type !== "accountBudget" || !Array.isArray(item.rows)) {
+              return item;
+            }
+            return {
+              ...item,
+              rows: item.rows.map((rawRow) => {
+                if (typeof rawRow !== "object" || rawRow === null)
+                  return rawRow;
+                const row = rawRow as Record<string, unknown>;
+                if (!("glyph" in row)) return row;
+                const rest: Record<string, unknown> = {};
+                for (const [k, v] of Object.entries(row)) {
+                  if (k !== "glyph") rest[k] = v;
+                }
+                return rest;
+              }),
+            };
+          }),
+        };
+      }),
+    };
+  },
 };
 
 export type MigrationResult = {

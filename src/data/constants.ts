@@ -1,5 +1,7 @@
 import type {
+  CategoryIcon,
   DateFormat,
+  EntryType,
   Settings,
   SheetGlyph,
   SheetType,
@@ -179,6 +181,53 @@ export const SHEET_TYPES: readonly {
 // months is enough to populate the next year's planning view without
 // flooding storage; users can re-run the modal to extend further.
 export const DEFAULT_RECURRENCE_MONTHS = 12;
+
+// Default entry types seeded on first launch and on the v12 → v13
+// migration. Aimed at a typical Swedish budget — bolån, hyra, mat,
+// SL-kortet, försäkring — so most users don't have to bootstrap the
+// picker themselves. Each call returns a fresh array with newly minted
+// ids so the seed is safe to invoke from both `freshUserData` and the
+// migration step without ids colliding.
+export function createSeedEntryTypes(): EntryType[] {
+  const C = CATEGORY_COLORS;
+  const seeds: ReadonlyArray<{
+    name: string;
+    color: string;
+    glyph: CategoryIcon;
+  }> = [
+    { name: "Mortgage", color: C[0], glyph: "home" },
+    { name: "Rent", color: C[1], glyph: "home" },
+    { name: "Groceries", color: C[3], glyph: "shopping-cart" },
+    { name: "Restaurant", color: C[2], glyph: "utensils" },
+    { name: "Coffee", color: C[7], glyph: "coffee" },
+    { name: "Transport", color: C[4], glyph: "car" },
+    { name: "Electricity", color: C[2], glyph: "zap" },
+    { name: "Insurance", color: C[8], glyph: "receipt" },
+    { name: "Streaming", color: C[6], glyph: "music" },
+    { name: "Healthcare", color: C[0], glyph: "stethoscope" },
+    { name: "Gift", color: C[6], glyph: "gift" },
+    { name: "Salary", color: C[3], glyph: "banknote" },
+    { name: "Savings", color: C[5], glyph: "piggy-bank" },
+    { name: "Subscription", color: C[8], glyph: "credit-card" },
+  ];
+  return seeds.map((s) => ({
+    id: seedEntryTypeId(),
+    name: s.name,
+    color: s.color,
+    glyph: s.glyph,
+  }));
+}
+
+// Local id generator for seed types. Mirrors `newId()` in
+// `src/data/sheet.ts` but the constants module shouldn't import from
+// `data/sheet` (which itself imports from constants). Twelve random
+// base-36 chars is plenty of entropy for a per-user array of a few
+// dozen entries.
+function seedEntryTypeId(): string {
+  return `t-${Math.random().toString(36).slice(2, 10)}${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
+}
 
 // Display order for the category icon picker. Kept in sync with the
 // `CategoryIcon` union in `types.ts` and the validator's allowlist —

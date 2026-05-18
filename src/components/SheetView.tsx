@@ -17,6 +17,7 @@ import type {
   AccountBudget,
   Category,
   CellValue,
+  EntryType,
   HistoryEntry,
   Row,
   Settings,
@@ -35,6 +36,7 @@ type Props = {
   // `sheet.items` and rendering one component per variant.
   item: AccountBudget;
   categories: Category[];
+  types: readonly EntryType[];
   // All accounts in the workspace. Needed so the view can look up the
   // peer account name when synthesizing a transaction row, and so the
   // running balance can mirror what the Accounts dashboard shows.
@@ -84,6 +86,7 @@ export function SheetView({
   sheet,
   item,
   categories,
+  types,
   accounts,
   transactions,
   history,
@@ -280,6 +283,7 @@ export function SheetView({
                   columns={mergedItem.columns}
                   balances={balances}
                   categories={categories}
+                  types={types}
                   settings={settings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}

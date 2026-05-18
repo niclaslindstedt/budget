@@ -11,9 +11,9 @@ import {
 
 import type {
   Category,
-  CategoryIcon,
   CellValue,
   Column,
+  EntryType,
   Settings,
 } from "../data/types";
 import {
@@ -41,10 +41,13 @@ type Props = {
   categories?: Category[];
   settings: Settings;
   isRecurring?: boolean;
-  // Custom glyph carried on the row. When set, the description cell
-  // renders this in place of the default recurring icon (and uses it as
-  // the mobile popover trigger so the row reads at a glance).
-  glyph?: CategoryIcon | null;
+  // Resolved EntryType for `row.typeId`. When set, the description cell
+  // renders a chip (glyph + name in the type's colour) as the primary
+  // affordance and demotes the description text to a popover revealed
+  // by tapping the chip. `null` falls back to the legacy plain-text
+  // description rendering with the default recurring icon for series
+  // rows.
+  entryType?: EntryType | null;
   // True when this row is a synthesized side of a Transaction. Disables
   // every editor (the row is sourced from `data.transactions`, not the
   // budget's `item.rows`) and swaps the description leading glyph to a
@@ -81,7 +84,7 @@ export function Cell({
   categories,
   settings,
   isRecurring,
-  glyph,
+  entryType,
   isTransaction,
   peerName,
   outgoing,
@@ -185,7 +188,7 @@ export function Cell({
           rowId={rowId}
           value={typeof value === "string" ? value : ""}
           isRecurring={!!isRecurring}
-          glyph={glyph ?? null}
+          entryType={entryType ?? null}
           onChange={onChange}
           onCommit={onCommit}
         />
@@ -495,21 +498,55 @@ function DescriptionCell({
   rowId,
   value,
   isRecurring,
-  glyph,
+  entryType,
   onChange,
   onCommit,
 }: {
   rowId: string;
   value: string;
   isRecurring: boolean;
-  glyph: CategoryIcon | null;
+  entryType: EntryType | null;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
-  // Pick the row's leading icon. A custom glyph wins over the default
-  // Repeat icon; for one-off rows we show nothing (the mobile trigger
-  // falls back to "…").
-  const hasIcon = glyph !== null || isRecurring;
+  // When a type is assigned the chip is the row's primary identity —
+  // the description is demoted to a popover revealed by tapping the
+  // chip. Keeps the row scannable at a glance even on dense screens.
+  if (entryType) {
+    return (
+      <TypedDescriptionCell
+        rowId={rowId}
+        value={value}
+        entryType={entryType}
+        onChange={onChange}
+        onCommit={onCommit}
+      />
+    );
+  }
+  return (
+    <PlainDescriptionCell
+      rowId={rowId}
+      value={value}
+      isRecurring={isRecurring}
+      onChange={onChange}
+      onCommit={onCommit}
+    />
+  );
+}
+
+function PlainDescriptionCell({
+  rowId,
+  value,
+  isRecurring,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  isRecurring: boolean;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeRow = useActiveRow();
   const tokenRef = useRef<number | null>(null);
@@ -543,23 +580,19 @@ function DescriptionCell({
       {/* Desktop: the description is inline as an auto-growing textarea —
          the column is wide enough that wrapping reads fine. */}
       <div className="hidden md:flex md:items-start">
-        {hasIcon && (
+        {isRecurring && (
           <span
-            aria-label={isRecurring ? "Recurring entry" : "Entry glyph"}
-            title={isRecurring ? "Recurring entry" : undefined}
+            aria-label="Recurring entry"
+            title="Recurring entry"
             className="flex shrink-0 items-center pt-2 pl-2 text-flag"
           >
-            {glyph !== null ? (
-              <CategoryIconGlyph name={glyph} size={12} />
-            ) : (
-              <Repeat size={12} aria-hidden focusable={false} />
-            )}
+            <Repeat size={12} aria-hidden focusable={false} />
           </span>
         )}
         <textarea
           ref={textareaRef}
           className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-            hasIcon ? "pl-1.5" : ""
+            isRecurring ? "pl-1.5" : ""
           }`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -570,14 +603,45 @@ function DescriptionCell({
         />
       </div>
       {/* Mobile: the column is narrow, so a long description wraps to many
-         lines and balloons the row. Render the row's glyph (or default
-         recurring icon, or "…") as the trigger so the row is identifiable
-         at a glance, and open the full editable description in a popover. */}
-      <DescriptionPopover
+         lines and balloons the row. Render the default recurring icon
+         (or "…") as the trigger so the row is identifiable at a glance,
+         and open the full editable description in a popover. */}
+      <PlainDescriptionPopover
         rowId={rowId}
         value={value}
         isRecurring={isRecurring}
-        glyph={glyph}
+        onChange={onChange}
+        onCommit={onCommit}
+      />
+    </td>
+  );
+}
+
+// Description cell variant for rows that carry a `typeId`. The chip
+// (glyph + name in the type's colour) becomes the row's primary
+// identity and the description text is demoted: clicking the chip
+// opens a popover with the description editor. The popover is shared
+// across desktop and mobile so the interaction reads the same on
+// every form factor.
+function TypedDescriptionCell({
+  rowId,
+  value,
+  entryType,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  entryType: EntryType;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
+  return (
+    <td className={`${CELL_BASE} align-middle md:w-full`}>
+      <TypedDescriptionPopover
+        rowId={rowId}
+        value={value}
+        entryType={entryType}
         onChange={onChange}
         onCommit={onCommit}
       />
@@ -610,18 +674,16 @@ function computeDescriptionPopoverPosition(rect: DOMRect): {
   return { top: rect.bottom + window.scrollY + 4, left, width };
 }
 
-function DescriptionPopover({
+function PlainDescriptionPopover({
   rowId,
   value,
   isRecurring,
-  glyph,
   onChange,
   onCommit,
 }: {
   rowId: string;
   value: string;
   isRecurring: boolean;
-  glyph: CategoryIcon | null;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
@@ -701,10 +763,6 @@ function DescriptionPopover({
   };
 
   const hasValue = value.length > 0;
-  // Show the row's glyph (custom, or the default Repeat for series rows)
-  // as the trigger. One-off rows fall back to the existing "…" so the
-  // popover stays reachable.
-  const hasGlyph = glyph !== null || isRecurring;
 
   return (
     <>
@@ -719,21 +777,13 @@ function DescriptionPopover({
         aria-expanded={open}
         aria-label={hasValue ? `Description: ${value}` : "Add description"}
       >
-        {hasGlyph ? (
-          glyph !== null ? (
-            <CategoryIconGlyph
-              name={glyph}
-              size={16}
-              className="shrink-0 text-flag"
-            />
-          ) : (
-            <Repeat
-              size={16}
-              aria-hidden
-              focusable={false}
-              className="shrink-0 text-flag"
-            />
-          )
+        {isRecurring ? (
+          <Repeat
+            size={16}
+            aria-hidden
+            focusable={false}
+            className="shrink-0 text-flag"
+          />
         ) : (
           <span>…</span>
         )}
@@ -743,6 +793,158 @@ function DescriptionPopover({
         createPortal(
           <div
             ref={popoverRef}
+            role="dialog"
+            aria-label="Description"
+            data-active-portal
+            className="absolute z-50 rounded border border-line bg-surface-2 shadow-lg"
+            style={{
+              top: position.top,
+              left: position.left,
+              width: position.width,
+            }}
+          >
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Description"
+              rows={1}
+              className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
+            />
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+// Variant of the description popover for rows that carry a typeId.
+// The trigger is the type's chip (glyph + name in the type's colour)
+// and the popover holds the description — so the chip carries the
+// row's primary identity and the description text only shows up when
+// the user explicitly taps in. Rendered on every form factor (no
+// desktop/mobile split) so the interaction reads the same anywhere.
+function TypedDescriptionPopover({
+  rowId,
+  value,
+  entryType,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  entryType: EntryType;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const openValueRef = useRef<string>(value);
+  const wasOpenRef = useRef(false);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeRow = useActiveRow();
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      openValueRef.current = value;
+    } else if (!open && wasOpenRef.current) {
+      if (onCommit && value !== openValueRef.current) onCommit(value);
+    }
+    wasOpenRef.current = open;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function updatePosition() {
+      if (!triggerRef.current) return;
+      setPosition(
+        computeDescriptionPopoverPosition(
+          triggerRef.current.getBoundingClientRect(),
+        ),
+      );
+    }
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !activeRow) return;
+    const token = activeRow.activate(rowId, () => setOpen(false));
+    return () => activeRow.deactivate(token);
+  }, [open, activeRow, rowId]);
+
+  useLayoutEffect(() => {
+    if (open) textareaRef.current?.focus();
+  }, [open]);
+
+  const handleToggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    if (!triggerRef.current) return;
+    setPosition(
+      computeDescriptionPopoverPosition(
+        triggerRef.current.getBoundingClientRect(),
+      ),
+    );
+    setOpen(true);
+  };
+
+  const hasValue = value.length > 0;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={handleToggle}
+        className="flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2 py-1.5 text-left font-mono outline-none focus-visible:bg-surface-2"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={
+          hasValue
+            ? `${entryType.name} — ${value}`
+            : `${entryType.name} (add description)`
+        }
+        title={hasValue ? value : undefined}
+      >
+        <span
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
+            borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
+            color: entryType.color,
+          }}
+        >
+          <CategoryIconGlyph name={entryType.glyph} size={12} />
+          <span className="truncate">{entryType.name}</span>
+        </span>
+        {hasValue && (
+          <span className="hidden truncate text-xs text-muted md:inline">
+            {value}
+          </span>
+        )}
+      </button>
+      {open &&
+        position &&
+        createPortal(
+          <div
             role="dialog"
             aria-label="Description"
             data-active-portal

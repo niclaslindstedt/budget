@@ -7,7 +7,6 @@ import { expandRecurrence, type RecurrenceRule } from "../data/recurrence";
 import { suggestCategoryForDescription } from "../data/merchant-hints";
 import type {
   Category,
-  CategoryIcon,
   HistoryEntry,
   MerchantHint,
   Settings,
@@ -34,7 +33,7 @@ type Props = {
     rule: RecurrenceRule,
     dates: string[],
     categoryId: string | null,
-    glyph: CategoryIcon | null,
+    typeId: string | null,
   ) => void;
   onDismiss: (key: string) => void;
 };

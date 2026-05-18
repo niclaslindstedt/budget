@@ -1,5 +1,12 @@
 import { findColumnByType } from "../data/sheet";
-import type { Category, CellValue, Column, Row, Settings } from "../data/types";
+import type {
+  Category,
+  CellValue,
+  Column,
+  EntryType,
+  Row,
+  Settings,
+} from "../data/types";
 import { formatNumber, withCurrency } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
@@ -12,6 +19,7 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   categories: Category[];
+  types: readonly EntryType[];
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -50,6 +58,7 @@ export function MonthTable({
   columns,
   balances,
   categories,
+  types,
   settings,
   selectMode,
   selectedIds,
@@ -192,6 +201,7 @@ export function MonthTable({
                   columns={columns}
                   balances={balances}
                   categories={categories}
+                  types={types}
                   settings={settings}
                   selectMode={selectMode}
                   selected={selectedIds.has(row.id)}

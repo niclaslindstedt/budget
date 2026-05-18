@@ -30,11 +30,12 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 13,
+    version: 14,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
+    types: [],
     transactions: [],
     history: {},
     historyImports: {},
@@ -91,6 +92,7 @@ describe("serializeUserData", () => {
       })),
       accounts: b.accounts,
       categories: b.categories,
+      types: b.types,
       transactions: b.transactions,
       history: b.history,
       historyImports: b.historyImports,
@@ -110,7 +112,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 12)).toEqual([
+    expect(topKeys.slice(0, 13)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -122,6 +124,7 @@ describe("serializeUserData", () => {
       "sheets",
       "transactions",
       "transferCollapseDismissals",
+      "types",
       "version",
     ]);
   });
@@ -827,6 +830,84 @@ describe("migrate", () => {
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });
+
+  it("v13 → v14: seeds entry types and strips legacy row glyphs", () => {
+    const v13 = {
+      version: 13,
+      activeSheetId: "s1",
+      categories: [],
+      transactions: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [{ id: "a1", name: "Default" }],
+      history: {},
+      historyImports: {},
+      merchantHints: {},
+      recurringDismissals: [],
+      transferCollapseDismissals: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [
+                {
+                  id: "r1",
+                  cells: { c1: "2026-05-01", c2: "Rent", c3: -1000 },
+                  glyph: "home",
+                },
+                {
+                  id: "r2",
+                  cells: { c1: "2026-05-02", c2: "Coffee", c3: -30 },
+                  glyph: "coffee",
+                  seriesId: "s-1",
+                },
+                {
+                  id: "r3",
+                  cells: { c1: "2026-05-03", c2: "Plain", c3: -50 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v13);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    // Seeded types are non-empty so the picker has options on first
+    // promote post-migration.
+    const types = (data as unknown as { types: unknown[] }).types;
+    expect(Array.isArray(types)).toBe(true);
+    expect(types.length).toBeGreaterThan(0);
+    // Glyph fields on every row are gone — the migration strips them
+    // and types take over the visual identity.
+    const sheets = data.sheets as Array<{
+      items: Array<{
+        rows: Array<{ id: string; glyph?: string; seriesId?: string }>;
+      }>;
+    }>;
+    const rows = sheets[0].items[0].rows;
+    for (const row of rows) {
+      expect(row.glyph).toBeUndefined();
+    }
+    // Non-glyph fields survive untouched.
+    expect(rows[1].seriesId).toBe("s-1");
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+  });
 });
 
 describe("nullable accountId & empty accounts", () => {
@@ -865,37 +946,46 @@ describe("nullable accountId & empty accounts", () => {
   });
 });
 
-describe("glyph field on rows", () => {
+describe("typeId field on rows", () => {
   it("round-trips through serialize/parse", () => {
     const b = sampleData();
-    firstItem(b).rows[0].glyph = "piggy-bank";
-    firstItem(b).rows[1].glyph = "coffee";
+    b.types = [
+      { id: "type-1", name: "Mortgage", color: "#e06c75", glyph: "home" },
+      { id: "type-2", name: "Coffee", color: "#d19a66", glyph: "coffee" },
+    ];
+    firstItem(b).rows[0].typeId = "type-1";
+    firstItem(b).rows[1].typeId = "type-2";
     const r = parseUserData(serializeUserData(b));
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(firstItem(r.data).rows[0].glyph).toBe("piggy-bank");
-      expect(firstItem(r.data).rows[1].glyph).toBe("coffee");
+      expect(firstItem(r.data).rows[0].typeId).toBe("type-1");
+      expect(firstItem(r.data).rows[1].typeId).toBe("type-2");
     }
   });
 
   it("is omitted from JSON when undefined", () => {
     const b = sampleData();
     const text = serializeUserData(b);
-    expect(text.includes('"glyph":') && text.includes("rows")).toBe(true);
-    // The rows themselves shouldn't carry a glyph key — only sheets do.
     const raw = JSON.parse(text);
     for (const row of raw.sheets[0].items[0].rows) {
-      expect(row.glyph).toBeUndefined();
+      expect(row.typeId).toBeUndefined();
     }
   });
 
-  it("rejects an unknown glyph name", () => {
+  it("drops a dangling typeId silently rather than rejecting the load", () => {
+    // Validator is forgiving here — same contract as Transaction's
+    // categoryId — so a deleted EntryType can't trap a row in zombie state.
     const b = sampleData();
+    b.types = [
+      { id: "type-1", name: "Mortgage", color: "#e06c75", glyph: "home" },
+    ];
     const raw = JSON.parse(serializeUserData(b));
-    raw.sheets[0].items[0].rows[0].glyph = "not-a-glyph";
+    raw.sheets[0].items[0].rows[0].typeId = "ghost";
     const r = parseUserData(JSON.stringify(raw));
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/glyph/);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(firstItem(r.data).rows[0].typeId).toBeUndefined();
+    }
   });
 });
 
