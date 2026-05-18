@@ -16,6 +16,11 @@ type Props = {
   // modals so re-opening doesn't keep stale values.
   resetKey: string | number;
   includeOnce?: boolean;
+  // Optional initial rule used to pre-fill the mode and field values on
+  // the first render after each `resetKey`. Lets parents like the
+  // recurring-candidate promote flow open the form already tuned to the
+  // detected cadence instead of the defaults derived from `seedDate`.
+  seedRule?: RecurrenceRule | null;
   onChange: (rule: RecurrenceRule | null, dates: string[]) => void;
 };
 
@@ -61,47 +66,138 @@ function endOfMonth(yyyyMm: string): string {
   return `${yyyyMm}-${String(last).padStart(2, "0")}`;
 }
 
+type RecurrenceFormState = {
+  mode: Mode;
+  onceDate: string;
+  datesList: string[];
+  everyNStart: string;
+  everyNEnd: string;
+  everyNDays: string;
+  monthlyStride: string;
+  monthlyDay: string;
+  monthlyOffset: string;
+  monthlyStartMonth: string;
+  monthlyEndMonth: string;
+};
+
+function initialStateFor(
+  seedRule: RecurrenceRule | null,
+  seedDate: string,
+  horizonEnd: string,
+  includeOnce: boolean,
+): RecurrenceFormState {
+  const defaults: RecurrenceFormState = {
+    mode: includeOnce ? "once" : "monthly",
+    onceDate: seedDate,
+    datesList: [seedDate],
+    everyNStart: seedDate,
+    everyNEnd: horizonEnd,
+    everyNDays: "14",
+    monthlyStride: "1",
+    monthlyDay: seedDayOfMonth(seedDate),
+    monthlyOffset: "0",
+    monthlyStartMonth: seedDate.slice(0, 7),
+    monthlyEndMonth: horizonEnd.slice(0, 7),
+  };
+  if (!seedRule) return defaults;
+  switch (seedRule.kind) {
+    case "once":
+      return includeOnce
+        ? { ...defaults, mode: "once", onceDate: seedRule.date }
+        : { ...defaults, mode: "dates", datesList: [seedRule.date] };
+    case "dates": {
+      const valid = seedRule.dates.filter(isIsoDate);
+      return {
+        ...defaults,
+        mode: "dates",
+        datesList: valid.length > 0 ? valid : [seedDate],
+      };
+    }
+    case "everyNDays":
+      return {
+        ...defaults,
+        mode: "everyNDays",
+        everyNStart: isIsoDate(seedRule.start) ? seedRule.start : seedDate,
+        everyNEnd: isIsoDate(seedRule.end) ? seedRule.end : horizonEnd,
+        everyNDays: String(Math.max(1, Math.floor(seedRule.intervalDays))),
+      };
+    case "everyNMonths":
+      return {
+        ...defaults,
+        mode: "monthly",
+        monthlyStride: String(Math.max(1, Math.floor(seedRule.intervalMonths))),
+        monthlyDay: String(
+          Math.min(31, Math.max(1, Math.floor(seedRule.dayOfMonth))),
+        ),
+        monthlyOffset: String(Math.floor(seedRule.offsetDays)),
+        monthlyStartMonth: isIsoDate(seedRule.start)
+          ? seedRule.start.slice(0, 7)
+          : seedDate.slice(0, 7),
+        monthlyEndMonth: isIsoDate(seedRule.end)
+          ? seedRule.end.slice(0, 7)
+          : horizonEnd.slice(0, 7),
+      };
+  }
+}
+
 export function RecurrenceForm({
   seedDate: rawSeed,
   resetKey,
   includeOnce = true,
+  seedRule,
   onChange,
 }: Props) {
   const seedDate = isIsoDate(rawSeed) ? rawSeed : todayIso();
   const horizonEnd = addMonthsIso(seedDate, DEFAULT_RECURRENCE_MONTHS);
 
-  const [mode, setMode] = useState<Mode>(includeOnce ? "once" : "monthly");
+  const initial = useMemo(
+    () => initialStateFor(seedRule ?? null, seedDate, horizonEnd, includeOnce),
+    // We only want to recompute the initial state for the first render
+    // and on `resetKey` changes — captured by the reset effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
-  const [onceDate, setOnceDate] = useState(seedDate);
+  const [mode, setMode] = useState<Mode>(initial.mode);
 
-  const [datesList, setDatesList] = useState<string[]>([seedDate]);
+  const [onceDate, setOnceDate] = useState(initial.onceDate);
 
-  const [everyNStart, setEveryNStart] = useState(seedDate);
-  const [everyNEnd, setEveryNEnd] = useState(horizonEnd);
-  const [everyNDays, setEveryNDays] = useState("14");
+  const [datesList, setDatesList] = useState<string[]>(initial.datesList);
 
-  const [monthlyStride, setMonthlyStride] = useState<string>("1");
-  const [monthlyDay, setMonthlyDay] = useState(seedDayOfMonth(seedDate));
-  const [monthlyOffset, setMonthlyOffset] = useState("0");
+  const [everyNStart, setEveryNStart] = useState(initial.everyNStart);
+  const [everyNEnd, setEveryNEnd] = useState(initial.everyNEnd);
+  const [everyNDays, setEveryNDays] = useState(initial.everyNDays);
+
+  const [monthlyStride, setMonthlyStride] = useState<string>(
+    initial.monthlyStride,
+  );
+  const [monthlyDay, setMonthlyDay] = useState(initial.monthlyDay);
+  const [monthlyOffset, setMonthlyOffset] = useState(initial.monthlyOffset);
   const [monthlyStartMonth, setMonthlyStartMonth] = useState(
-    seedDate.slice(0, 7),
+    initial.monthlyStartMonth,
   );
   const [monthlyEndMonth, setMonthlyEndMonth] = useState(
-    horizonEnd.slice(0, 7),
+    initial.monthlyEndMonth,
   );
 
   useEffect(() => {
-    setMode(includeOnce ? "once" : "monthly");
-    setOnceDate(seedDate);
-    setDatesList([seedDate]);
-    setEveryNStart(seedDate);
-    setEveryNEnd(horizonEnd);
-    setEveryNDays("14");
-    setMonthlyStride("1");
-    setMonthlyDay(seedDayOfMonth(seedDate));
-    setMonthlyOffset("0");
-    setMonthlyStartMonth(seedDate.slice(0, 7));
-    setMonthlyEndMonth(horizonEnd.slice(0, 7));
+    const next = initialStateFor(
+      seedRule ?? null,
+      seedDate,
+      horizonEnd,
+      includeOnce,
+    );
+    setMode(next.mode);
+    setOnceDate(next.onceDate);
+    setDatesList(next.datesList);
+    setEveryNStart(next.everyNStart);
+    setEveryNEnd(next.everyNEnd);
+    setEveryNDays(next.everyNDays);
+    setMonthlyStride(next.monthlyStride);
+    setMonthlyDay(next.monthlyDay);
+    setMonthlyOffset(next.monthlyOffset);
+    setMonthlyStartMonth(next.monthlyStartMonth);
+    setMonthlyEndMonth(next.monthlyEndMonth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
