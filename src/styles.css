@@ -151,12 +151,15 @@ body,
   padding: 0;
   background: var(--page-bg);
   color: var(--fg);
-  /* `dvh` tracks the dynamic viewport so the page matches the visible
-     area as the iOS Safari chrome expands and collapses. With `100vh`
-     the document is taller than the visible area when the chrome is
-     showing, which makes an empty budget scrollable with nothing to
-     scroll to. */
-  min-height: 100dvh;
+  /* `svh` is the smallest stable visible viewport — enough to fill the
+     screen when the address bar is fully expanded, but never larger.
+     iOS 26's Liquid Glass chrome floats over content, so the page
+     itself is allowed to extend behind the dynamic island at the top
+     and the floating address bar at the bottom; using `svh` here lets
+     the page background reach those areas without forcing an empty
+     budget to be artificially scrollable on older iOS where the chrome
+     used to consume viewport space. */
+  min-height: 100svh;
 }
 
 body {
@@ -177,15 +180,17 @@ body {
 @layer components {
   /* Sticky column headers: thead's containing block is the table so it
      keeps sticking until the table itself scrolls past. Offset sits
-     directly below the month header so the two stack cleanly. Ancestor
-     overflow must be `clip` (not `hidden`) — `hidden` establishes a
-     scroll container which would trap sticky positioning inside the
-     table wrapper. z-index sits above the amount cell's sign button
-     (z-10) so the negative sign in a scrolled-past row doesn't bleed
-     through the header. */
+     directly below the month header — the -1px overlap closes a
+     subpixel-rounded hairline that would otherwise let scrolled rows
+     bleed through between the two sticky bands on iOS Safari.
+     Ancestor overflow must be `clip` (not `hidden`) — `hidden`
+     establishes a scroll container which would trap sticky positioning
+     inside the table wrapper. z-index sits above the amount cell's
+     sign button (z-10) so the negative sign in a scrolled-past row
+     doesn't bleed through the header. */
   .sheet-table > thead {
     position: sticky;
-    top: calc(var(--app-header-h) + var(--month-header-h));
+    top: calc(var(--app-header-h) + var(--month-header-h) - 1px);
     z-index: 15;
   }
 
