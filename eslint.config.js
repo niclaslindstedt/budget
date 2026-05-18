@@ -23,6 +23,19 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+      // The native <select> renders the OS's own widget — wrong font on
+      // every platform, iOS wheel picker on mobile — which breaks the
+      // monospaced One Dark / One Light look. CLAUDE.md mandates custom
+      // pickers; SelectPicker (src/components/form/SelectPicker.tsx)
+      // is the drop-in replacement.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message:
+            "Native <select> is not allowed. Use <SelectPicker> from src/components/form instead.",
+        },
+      ],
     },
   },
 );
