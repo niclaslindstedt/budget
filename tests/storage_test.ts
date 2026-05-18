@@ -30,12 +30,14 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 10,
+    version: 11,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
     transactions: [],
+    history: {},
+    historyImports: {},
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -87,6 +89,8 @@ describe("serializeUserData", () => {
       accounts: b.accounts,
       categories: b.categories,
       transactions: b.transactions,
+      history: b.history,
+      historyImports: b.historyImports,
       settings: b.settings,
       version: b.version,
     } as UserData;
@@ -100,10 +104,12 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 7)).toEqual([
+    expect(topKeys.slice(0, 9)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
+      "history",
+      "historyImports",
       "settings",
       "sheets",
       "transactions",
@@ -581,6 +587,54 @@ describe("migrate", () => {
     expect(sheets[0].items[0].rows[0].glyph).toBeUndefined();
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
+  });
+
+  it("v10 → v11: adds empty history and historyImports maps and accepts an optional openingBalance on Account", () => {
+    const v10 = {
+      version: 10,
+      activeSheetId: "s1",
+      categories: [],
+      transactions: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [
+        { id: "a1", name: "Default", openingBalance: 1234 },
+        { id: "a2", name: "Other" },
+      ],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [
+            {
+              id: "i1",
+              type: "accountBudget",
+              accountId: "a1",
+              columns: [
+                { id: "c1", type: "date", label: "Date" },
+                { id: "c2", type: "description", label: "Description" },
+                { id: "c3", type: "amount", label: "Amount" },
+              ],
+              rows: [],
+            },
+          ],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v10);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    expect((data as unknown as UserData).history).toEqual({});
+    expect((data as unknown as UserData).historyImports).toEqual({});
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+    if (validated.ok) {
+      expect(validated.value.accounts[0].openingBalance).toBe(1234);
+      expect(validated.value.accounts[1].openingBalance).toBeUndefined();
+    }
   });
 
   it("v9 → v10: bare version bump that accepts the new optional isCorrection row field", () => {

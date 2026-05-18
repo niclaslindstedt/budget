@@ -58,6 +58,8 @@ export const USER_DATA_SCHEMA = {
     "accounts",
     "categories",
     "transactions",
+    "history",
+    "historyImports",
     "settings",
   ],
   properties: {
@@ -115,6 +117,38 @@ export const USER_DATA_SCHEMA = {
         "from the `fromAccountId` side; never double-count by also " +
         "reading the synthesized rows.",
       items: { $ref: "#/$defs/Transaction" },
+    },
+    history: {
+      type: "object",
+      description:
+        "Imported bank-statement entries keyed by account id. Each " +
+        "value is the chronologically-sorted (ascending date) list of " +
+        "entries pulled from one or more statements for that account. " +
+        "Stored independently of budget rows so the user can curate the " +
+        "ledger without losing the bank's ground truth. When summing an " +
+        "account's balance, seed the running total with the account's " +
+        "`openingBalance` (what the account held the day before the " +
+        "earliest entry) then add every entry's `amount` in date order " +
+        "— or simply read the `balance` field of the latest dated entry. " +
+        "Keys reference Account.id; entries for an unknown account are " +
+        "dropped on load.",
+      additionalProperties: {
+        type: "array",
+        items: { $ref: "#/$defs/HistoryEntry" },
+      },
+    },
+    historyImports: {
+      type: "object",
+      description:
+        "Audit trail of file imports keyed by account id. One record " +
+        "per `Import` button-press, used by the History modal to show " +
+        "'imported statement.xlsx on 2026-05-17 covering 2025-05 to " +
+        "2026-05'. Not authoritative — `history` is the data, this is " +
+        "just the log of how it got there.",
+      additionalProperties: {
+        type: "array",
+        items: { $ref: "#/$defs/HistoryImport" },
+      },
     },
     settings: {
       $ref: "#/$defs/Settings",
@@ -404,6 +438,121 @@ export const USER_DATA_SCHEMA = {
             "Free-form per-account currency token that overrides " +
             "`settings.currency` when rendering this account's balance. " +
             "Absent or empty means 'use the global setting'.",
+        },
+        openingBalance: {
+          type: "number",
+          description:
+            "Anchored opening balance derived from imported history. " +
+            "Equal to the earliest entry's `balance - amount` — i.e. " +
+            "what the account held the day before the first imported " +
+            "row. Lets the running-balance math reconstruct the bank's " +
+            "numbers exactly. Absent on accounts that have never been " +
+            "seeded from a statement.",
+        },
+      },
+    },
+    HistoryEntry: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "id",
+        "date",
+        "description",
+        "amount",
+        "balance",
+        "importedAt",
+      ],
+      description:
+        "One row from an imported bank statement. `amount` is signed " +
+        "(negative for outgoing) and `balance` is the bank's reported " +
+        "running balance immediately after this row's effect. `id` is a " +
+        "content hash so re-importing an overlapping statement dedups " +
+        "to the same key.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        date: {
+          type: "string",
+          description:
+            "ISO YYYY-MM-DD date the bank booked the row on (`Bokf. datum`).",
+        },
+        description: {
+          type: "string",
+          description: "Bank-provided description as imported.",
+        },
+        amount: {
+          type: "number",
+          description:
+            "Signed amount of this row's effect on the account. Negative " +
+            "for money out, positive for money in.",
+        },
+        balance: {
+          type: "number",
+          description:
+            "Bank-reported balance immediately after applying `amount`.",
+        },
+        importedAt: {
+          type: "number",
+          description:
+            "Unix milliseconds the entry was first imported. Stable " +
+            "across re-imports of the same row (existing wins on dedup).",
+        },
+        hidden: {
+          type: "boolean",
+          description:
+            "User-shelved noise (interest accruals, fee lines, …). True " +
+            "filters the entry out of the budget projection but keeps it " +
+            "in the data; absent means visible.",
+        },
+      },
+    },
+    HistoryImport: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "id",
+        "importedAt",
+        "filename",
+        "bankParserId",
+        "rangeStart",
+        "rangeEnd",
+        "addedCount",
+        "duplicateCount",
+      ],
+      description:
+        "Audit record for one file-import action. Not authoritative " +
+        "for the data — only for the 'what was imported when' log.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        importedAt: {
+          type: "number",
+          description: "Unix milliseconds the import was committed.",
+        },
+        filename: {
+          type: "string",
+          description: "Original filename as the user picked it.",
+        },
+        bankParserId: {
+          type: "string",
+          description:
+            "Stable identifier of the parser that decoded the file " +
+            "(e.g. `skandia-xlsx`). Used by future re-parse paths.",
+        },
+        rangeStart: {
+          type: "string",
+          description: "ISO date of the earliest entry in the file.",
+        },
+        rangeEnd: {
+          type: "string",
+          description: "ISO date of the latest entry in the file.",
+        },
+        addedCount: {
+          type: "integer",
+          description: "Entries that were new at import time.",
+        },
+        duplicateCount: {
+          type: "integer",
+          description:
+            "Entries dropped by the content-hash dedup at import time.",
         },
       },
     },

@@ -5,6 +5,7 @@ import type {
   CellValue,
   Column,
   ColumnType,
+  HistoryEntry,
   Row,
   Sheet,
   SheetGlyph,
@@ -177,13 +178,20 @@ export function sortRowsByDate(rows: Row[], dateColumnId: string): Row[] {
 
 // Running balance per row, chronological across the whole AccountBudget
 // so the total carries across months. Returns a map keyed by row id.
-export function computeBalances(item: AccountBudget): Map<string, number> {
+// `openingBalance` seeds the running total — it represents money the
+// account already held before the first row in the view (e.g. the
+// pre-statement balance anchored by an imported history file). Pass
+// 0 for the historical behaviour.
+export function computeBalances(
+  item: AccountBudget,
+  openingBalance = 0,
+): Map<string, number> {
   const result = new Map<string, number>();
   const dateCol = findColumnByType(item.columns, "date");
   const amountCol = findColumnByType(item.columns, "amount");
   if (!dateCol || !amountCol) return result;
   const sorted = sortRowsByDate(item.rows, dateCol.id);
-  let running = 0;
+  let running = openingBalance;
   for (const row of sorted) {
     const raw = row.cells[amountCol.id];
     const amount = typeof raw === "number" ? raw : Number(raw) || 0;
@@ -366,6 +374,46 @@ export function synthesizeTransactionRow(
   };
 }
 
+// Synthesize a Row from an imported bank-statement entry so the
+// budget view can interleave it alongside user-authored rows without
+// special-casing. Marker field `historyEntryId` flags the synthesized
+// origin — `Cell` / `SheetRow` read it to disable inline editing.
+// Like `synthesizeTransactionRow`, the row never reaches storage.
+// History entries don't carry a category yet; promote-to-recurring
+// is where the user assigns one.
+export function synthesizeHistoryRow(
+  entry: HistoryEntry,
+  columns: Column[],
+): Row {
+  const cells: Record<string, CellValue> = {};
+  for (const col of columns) {
+    switch (col.type) {
+      case "date":
+        cells[col.id] = entry.date;
+        break;
+      case "description":
+        cells[col.id] = entry.description;
+        break;
+      case "amount":
+        cells[col.id] = entry.amount;
+        break;
+      case "category":
+        cells[col.id] = null;
+        break;
+      case "completed":
+        // Imported bank entries already happened, so they're
+        // implicitly completed.
+        cells[col.id] = true;
+        break;
+    }
+  }
+  return {
+    id: `hist:${entry.id}`,
+    cells,
+    historyEntryId: entry.id,
+  };
+}
+
 // Sum of the account's budget rows' amounts plus signed transaction
 // amounts (outgoing subtract, incoming add), counting only entries
 // that have actually taken place — i.e. dated on or before `today`.
@@ -381,7 +429,18 @@ export function accountBalance(
   accountId: string,
   today: string = todayIso(),
 ): number {
-  let total = 0;
+  // Imported bank history anchors the sum: the account's
+  // `openingBalance` is what the account held the day BEFORE the
+  // earliest imported entry, so adding every historical amount on
+  // top of it reconstructs the bank's running balance. Accounts
+  // without imported history use 0 as the implicit opening.
+  const account = data.accounts.find((a) => a.id === accountId);
+  let total = account?.openingBalance ?? 0;
+  const history = data.history[accountId] ?? [];
+  for (const entry of history) {
+    if (entry.date > today) continue;
+    total += entry.amount;
+  }
   for (const sheet of data.sheets) {
     for (const item of sheet.items) {
       if (item.type !== "accountBudget") continue;

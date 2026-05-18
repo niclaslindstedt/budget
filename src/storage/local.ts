@@ -9,12 +9,14 @@ export function freshUserData(): UserData {
   // app no longer fabricates a "Default" account on first run.
   const sheet = createDefaultSheet("Sheet 1");
   return {
-    version: 10,
+    version: 11,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     categories: [],
     transactions: [],
+    history: {},
+    historyImports: {},
     settings: { ...DEFAULT_SETTINGS },
   };
 }

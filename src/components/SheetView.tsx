@@ -8,6 +8,7 @@ import {
   groupRowsByMonth,
   sortMonthKeys,
   sortRowsByDate,
+  synthesizeHistoryRow,
   synthesizeTransactionRow,
   transactionsForAccount,
 } from "../data/sheet";
@@ -16,6 +17,7 @@ import type {
   AccountBudget,
   Category,
   CellValue,
+  HistoryEntry,
   Row,
   Settings,
   Sheet,
@@ -41,10 +43,20 @@ type Props = {
   // peer account name when synthesizing a transaction row, and so the
   // running balance can mirror what the Accounts dashboard shows.
   accounts: Account[];
+  // Seeds the running balance for the budget. Reads `openingBalance`
+  // on the budget's account so the per-row balance column lines up
+  // with what the bank says after a history import. Optional and
+  // defaults to 0.
+  openingBalance?: number;
   // Every cross-account transaction in the workspace. The view filters
   // to the ones involving `item.accountId` and interleaves them into
   // the rows displayed in each month.
   transactions: Transaction[];
+  // Imported bank-statement entries for `item.accountId`. Projected
+  // into the budget view as read-only rows that the user can promote
+  // to recurring later. Defaults to an empty array on accounts that
+  // have never been seeded from a statement.
+  history: readonly HistoryEntry[];
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -78,6 +90,8 @@ export function SheetView({
   categories,
   accounts,
   transactions,
+  history,
+  openingBalance = 0,
   settings,
   selectMode,
   selectedIds,
@@ -125,12 +139,29 @@ export function SheetView({
     );
   }, [item.accountId, item.columns, transactions, accountsById]);
 
+  // Project imported bank-statement entries the same way transactions
+  // are projected: synthesized read-only rows the month grouping and
+  // running balance handle uniformly. Hidden entries (user-shelved
+  // noise) are filtered out so they don't clutter the budget view.
+  const historyRows = useMemo(() => {
+    if (!item.accountId) return [] as Row[];
+    return history
+      .filter((e) => !e.hidden)
+      .map((e) => synthesizeHistoryRow(e, item.columns));
+  }, [item.accountId, item.columns, history]);
+
   const mergedItem = useMemo<AccountBudget>(
-    () => ({ ...item, rows: [...item.rows, ...transactionRows] }),
-    [item, transactionRows],
+    () => ({
+      ...item,
+      rows: [...item.rows, ...transactionRows, ...historyRows],
+    }),
+    [item, transactionRows, historyRows],
   );
 
-  const balances = useMemo(() => computeBalances(mergedItem), [mergedItem]);
+  const balances = useMemo(
+    () => computeBalances(mergedItem, openingBalance),
+    [mergedItem, openingBalance],
+  );
 
   // Each month renders as its own CSS grid, so amount/balance columns
   // sized with `max-content` end up different widths per month. Compute
