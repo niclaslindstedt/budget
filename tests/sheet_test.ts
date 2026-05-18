@@ -13,6 +13,7 @@ import {
   isRowHalfDone,
   isRowSavable,
   moveColumn,
+  previousMonthKey,
   propagateCellInSeries,
   rowsInSeriesFrom,
   shiftIsoToMonth,
@@ -102,6 +103,20 @@ describe("currentFiscalMonthKey", () => {
   it("returns the previous month when day < startOfMonth", () => {
     expect(currentFiscalMonthKey(25, new Date(2026, 4, 24))).toBe("2026-04");
     expect(currentFiscalMonthKey(25, new Date(2026, 0, 1))).toBe("2025-12");
+  });
+});
+
+describe("previousMonthKey", () => {
+  it("steps back one calendar month", () => {
+    expect(previousMonthKey("2026-05")).toBe("2026-04");
+    expect(previousMonthKey("2026-12")).toBe("2026-11");
+  });
+  it("rolls year backward when crossing January", () => {
+    expect(previousMonthKey("2026-01")).toBe("2025-12");
+  });
+  it("passes non-month keys through unchanged", () => {
+    expect(previousMonthKey("undated")).toBe("undated");
+    expect(previousMonthKey("")).toBe("");
   });
 });
 

@@ -162,6 +162,22 @@ export function currentFiscalMonthKey(
   return getMonthKey(iso, startOfMonth);
 }
 
+// Step one fiscal month backwards on a `YYYY-MM` key, rolling the year
+// when crossing the January / December boundary. Non-month input (e.g.
+// "undated") is returned unchanged so callers can iterate through a
+// month set without filtering.
+export function previousMonthKey(key: string): string {
+  if (!/^\d{4}-\d{2}$/.test(key)) return key;
+  let y = Number(key.slice(0, 4));
+  let m = Number(key.slice(5, 7));
+  m -= 1;
+  if (m < 1) {
+    m = 12;
+    y -= 1;
+  }
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+}
+
 export function sortMonthKeys(keys: Iterable<string>): string[] {
   return [...keys].sort((a, b) => {
     if (a === "undated") return 1;

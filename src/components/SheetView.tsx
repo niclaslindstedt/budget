@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   computeBalances,
@@ -6,6 +6,7 @@ import {
   findColumnByType,
   fiscalMonthSeedIso,
   groupRowsByMonth,
+  previousMonthKey,
   sortMonthKeys,
   sortRowsByDate,
   synthesizeHistoryRow,
@@ -93,6 +94,13 @@ function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+// History pagination: the view starts with the current fiscal month plus
+// one previous month, and "Show more" reveals three additional months
+// each click. Older months stay grouped behind the button so a long
+// statement history doesn't bury the months the user actually edits.
+const DEFAULT_HISTORY_MONTHS = 1;
+const HISTORY_PAGE_SIZE = 3;
 
 export function SheetView({
   sheet,
@@ -218,11 +226,55 @@ export function SheetView({
 
   const today = todayIso();
 
+  // Number of extra historical months past the default 1-month window
+  // the user has opted into via "Show more". Resets when the active
+  // sheet changes so switching budgets starts each one collapsed.
+  const [extraHistory, setExtraHistory] = useState(0);
+  useEffect(() => {
+    setExtraHistory(0);
+  }, [sheet.id]);
+
+  const oldestVisibleMonth = useMemo(() => {
+    let key = currentMonth;
+    for (let i = 0; i < DEFAULT_HISTORY_MONTHS + extraHistory; i += 1) {
+      key = previousMonthKey(key);
+    }
+    return key;
+  }, [currentMonth, extraHistory]);
+
   const visibleMonths = useMemo(() => {
-    const keys = new Set(monthGroups.keys());
-    keys.add(currentMonth);
+    const keys = new Set<string>();
+    // Always render the current fiscal month plus the configured
+    // window of past months, even when those buckets have no rows
+    // yet — the AddRowButton inside each table is how the user adds
+    // entries to a fresh month.
+    let cursor = currentMonth;
+    keys.add(cursor);
+    for (let i = 0; i < DEFAULT_HISTORY_MONTHS + extraHistory; i += 1) {
+      cursor = previousMonthKey(cursor);
+      keys.add(cursor);
+    }
+    // Months with rows that aren't reached by stepping back from
+    // current — future-dated entries and the special "undated"
+    // bucket — stay visible. Past months older than the window stay
+    // hidden behind the "Show more" button.
+    for (const key of monthGroups.keys()) {
+      if (key === "undated") {
+        keys.add(key);
+        continue;
+      }
+      if (key >= cursor) keys.add(key);
+    }
     return sortMonthKeys(keys);
-  }, [monthGroups, currentMonth]);
+  }, [monthGroups, currentMonth, extraHistory]);
+
+  const hasMoreHistory = useMemo(() => {
+    for (const key of monthGroups.keys()) {
+      if (key === "undated") continue;
+      if (key < oldestVisibleMonth) return true;
+    }
+    return false;
+  }, [monthGroups, oldestVisibleMonth]);
 
   // Scroll the current fiscal month into view on first mount and any time
   // the user changes `startOfMonth` (which shifts which month "current"
@@ -277,6 +329,19 @@ export function SheetView({
           </h2>
         </header>
         <div className="flex flex-col gap-3 md:gap-6">
+          {hasMoreHistory && (
+            <button
+              type="button"
+              onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
+              className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              <span aria-hidden className="h-px flex-1 bg-line" />
+              <span className="whitespace-nowrap">
+                Show {HISTORY_PAGE_SIZE} earlier months
+              </span>
+              <span aria-hidden className="h-px flex-1 bg-line" />
+            </button>
+          )}
           {visibleMonths.map((monthKey) => {
             const monthRows = dateCol
               ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
