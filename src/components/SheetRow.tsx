@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Repeat, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
@@ -10,7 +10,7 @@ import type {
   Row,
   Settings,
 } from "../data/types";
-import { useActiveRow } from "./useActiveRow";
+import { useBlocksSheet } from "./useBlocksSheet";
 import { Cell } from "./Cell";
 
 type Props = {
@@ -68,16 +68,11 @@ export function SheetRow({
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
   const moved = useRef(false);
-  const activeRow = useActiveRow();
 
-  // A swiped row exposes destructive action buttons; treat it as an
-  // active state so a click outside only dismisses the swipe instead of
-  // also firing the button that was tapped.
-  useEffect(() => {
-    if (!swiped || !activeRow) return;
-    const token = activeRow.activate(row.id, () => setSwiped(false));
-    return () => activeRow.deactivate(token);
-  }, [swiped, activeRow, row.id]);
+  // A swiped row exposes destructive action buttons; mark it active so
+  // a tap outside only dismisses the swipe instead of also firing the
+  // button that was tapped.
+  useBlocksSheet(row.id, swiped, () => setSwiped(false));
 
   const completedCol = findColumnByType(columns, "completed");
   const isCompleted =

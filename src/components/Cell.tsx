@@ -29,7 +29,7 @@ import {
   useEscapeKey,
   useFloatingPosition,
 } from "../hooks";
-import { useActiveRow } from "./useActiveRow";
+import { useBlocksSheet } from "./useBlocksSheet";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
@@ -314,27 +314,18 @@ function AmountCell({
   // the user types against the precise value.
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const activeRow = useActiveRow();
-  const tokenRef = useRef<number | null>(null);
   // Snapshot the signed value at focus time so blur can decide whether
   // the edit actually changed anything before bubbling a commit signal.
   const focusValueRef = useRef<number | null>(externalNumber);
+  useBlocksSheet(rowId, focused, () => inputRef.current?.blur());
 
   function handleFocus() {
     setFocused(true);
     focusValueRef.current = externalNumber;
-    if (!activeRow || tokenRef.current !== null) return;
-    tokenRef.current = activeRow.activate(rowId, () =>
-      inputRef.current?.blur(),
-    );
   }
 
   function handleBlur() {
     setFocused(false);
-    if (activeRow && tokenRef.current !== null) {
-      activeRow.deactivate(tokenRef.current);
-      tokenRef.current = null;
-    }
     if (!onCommit) return;
     const abs = parseAmount(text);
     const signed =
@@ -549,26 +540,20 @@ function PlainDescriptionCell({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
+  const [focused, setFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const activeRow = useActiveRow();
-  const tokenRef = useRef<number | null>(null);
   // Snapshot the value at focus so blur only emits a commit when the
   // text actually changed — avoids prompting after a no-op click in.
   const focusValueRef = useRef<string>(value);
+  useBlocksSheet(rowId, focused, () => textareaRef.current?.blur());
 
   function handleFocus() {
+    setFocused(true);
     focusValueRef.current = value;
-    if (!activeRow || tokenRef.current !== null) return;
-    tokenRef.current = activeRow.activate(rowId, () =>
-      textareaRef.current?.blur(),
-    );
   }
 
   function handleBlur() {
-    if (activeRow && tokenRef.current !== null) {
-      activeRow.deactivate(tokenRef.current);
-      tokenRef.current = null;
-    }
+    setFocused(false);
     if (!onCommit) return;
     if (value !== focusValueRef.current) onCommit(value);
   }
@@ -683,7 +668,6 @@ function PlainDescriptionPopover({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const activeRow = useActiveRow();
   const position = useFloatingPosition(
     triggerRef,
     open,
@@ -701,14 +685,7 @@ function PlainDescriptionPopover({
   }, [open]);
 
   useEscapeKey(open, () => setOpen(false));
-
-  // While open, register with the active-row coordinator so clicks
-  // outside dismiss the popover without also firing whatever was clicked.
-  useEffect(() => {
-    if (!open || !activeRow) return;
-    const token = activeRow.activate(rowId, () => setOpen(false));
-    return () => activeRow.deactivate(token);
-  }, [open, activeRow, rowId]);
+  useBlocksSheet(rowId, open, () => setOpen(false));
 
   useLayoutEffect(() => {
     if (open) textareaRef.current?.focus();
@@ -794,7 +771,6 @@ function TypedDescriptionPopover({
   const wasOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const activeRow = useActiveRow();
   const position = useFloatingPosition(
     triggerRef,
     open,
@@ -812,12 +788,7 @@ function TypedDescriptionPopover({
   }, [open]);
 
   useEscapeKey(open, () => setOpen(false));
-
-  useEffect(() => {
-    if (!open || !activeRow) return;
-    const token = activeRow.activate(rowId, () => setOpen(false));
-    return () => activeRow.deactivate(token);
-  }, [open, activeRow, rowId]);
+  useBlocksSheet(rowId, open, () => setOpen(false));
 
   useLayoutEffect(() => {
     if (open) textareaRef.current?.focus();
