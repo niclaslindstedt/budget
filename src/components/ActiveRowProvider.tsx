@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { ActiveRowContext } from "./useActiveRow";
 
@@ -30,11 +37,13 @@ const SWALLOWED_EVENTS = [
 export function ActiveRowProvider({ children }: { children: ReactNode }) {
   const registrationsRef = useRef<Registration[]>([]);
   const nextTokenRef = useRef(1);
+  const [hasActive, setHasActive] = useState(false);
 
   const dismissAll = useCallback(() => {
     const entries = registrationsRef.current;
     if (entries.length === 0) return;
     registrationsRef.current = [];
+    setHasActive(false);
     for (const entry of entries) {
       try {
         entry.dismiss();
@@ -54,6 +63,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
       }
       const token = nextTokenRef.current++;
       registrationsRef.current.push({ token, rowId, dismiss });
+      setHasActive(true);
       return token;
     },
     [dismissAll],
@@ -63,6 +73,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
     registrationsRef.current = registrationsRef.current.filter(
       (r) => r.token !== token,
     );
+    if (registrationsRef.current.length === 0) setHasActive(false);
   }, []);
 
   useEffect(() => {
@@ -149,8 +160,8 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
   }, [dismissAll]);
 
   const value = useMemo(
-    () => ({ activate, deactivate }),
-    [activate, deactivate],
+    () => ({ activate, deactivate, hasActive }),
+    [activate, deactivate, hasActive],
   );
 
   return (
