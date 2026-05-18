@@ -229,9 +229,18 @@ function seedEntryTypeId(): string {
     .slice(2, 6)}`;
 }
 
-// Display order for the category icon picker. Kept in sync with the
-// `CategoryIcon` union in `types.ts` and the validator's allowlist —
-// adding an icon means touching all three.
+// Master allowlist of glyph names. Used by the validator (rejects
+// values outside this set) and as the source of truth that mirrors
+// the `CategoryIcon` union in `types.ts`. Adding a glyph means
+// touching this array, the union, and the `CATEGORY_ICONS` map in
+// `components/icons.tsx`.
+//
+// The picker grids do NOT iterate this directly — each context picks
+// from a curated subset (`SHEET_GLYPH_NAMES`, `ACCOUNT_GLYPH_NAMES`,
+// `CATEGORY_GLYPH_NAMES`, `TYPE_GLYPH_NAMES`) so the user sees
+// relevant choices for what they're labelling. Cross-context values
+// still validate (a category tagged `wallet` is fine; the picker just
+// won't offer it in the category grid).
 export const CATEGORY_ICON_NAMES = [
   "tag",
   "home",
@@ -258,4 +267,232 @@ export const CATEGORY_ICON_NAMES = [
   "zap",
   "sparkles",
   "star",
+  "cookie",
+  "cake",
+  "ice-cream",
+  "beer",
+  "wine",
+  "bus",
+  "train",
+  "bike",
+  "fuel",
+  "bed",
+  "sofa",
+  "lightbulb",
+  "droplet",
+  "flame",
+  "wifi",
+  "key",
+  "wrench",
+  "hammer",
+  "smartphone",
+  "laptop",
+  "headphones",
+  "camera",
+  "shirt",
+  "scissors",
+  "ticket",
+  "gamepad-2",
+  "book-open",
+  "dumbbell",
+  "dog",
+  "cat",
+  "paw-print",
+  "tree-pine",
+  "baby",
+  "heart-pulse",
+  "coins",
+  "hand-coins",
+  "landmark",
+  "building-2",
+  "vault",
+  "gem",
+  "bitcoin",
+  "scale",
+  "trending-up",
+  "line-chart",
+  "pie-chart",
+  "calendar-days",
+  "globe",
+  "arrow-down-circle",
+  "arrow-up-circle",
+] as const;
+
+// Sheets are workspace containers and planners — what's being tracked.
+// The palette leans toward money, planning, and high-level financial
+// concepts; fine-grained entries (gasoline, restaurant visits) belong
+// on EntryTypes, not on the sheet tab.
+export const SHEET_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "wallet",
+  "piggy-bank",
+  "banknote",
+  "credit-card",
+  "coins",
+  "landmark",
+  "vault",
+  "calendar-days",
+  "pie-chart",
+  "line-chart",
+  "trending-up",
+  "scale",
+  "home",
+  "car",
+  "plane",
+  "briefcase",
+  "graduation-cap",
+  "baby",
+  "heart-pulse",
+  "gift",
+  "receipt",
+  "star",
+] as const;
+
+// Accounts are real-world money stores — bank accounts, cards, cash,
+// brokerage, crypto, loans. The palette covers the spectrum so users
+// can express checking vs. mortgage vs. mobile-pay app at a glance.
+export const ACCOUNT_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "wallet",
+  "coins",
+  "banknote",
+  "credit-card",
+  "landmark",
+  "building-2",
+  "vault",
+  "piggy-bank",
+  "gift",
+  "baby",
+  "trending-up",
+  "line-chart",
+  "gem",
+  "bitcoin",
+  "scale",
+  "home",
+  "car",
+  "graduation-cap",
+  "smartphone",
+  "globe",
+  "briefcase",
+] as const;
+
+// Categories are broad buckets used for cross-row analysis: Home,
+// Food, Car, Travel, Health, Bills. The palette stays high-level so
+// fine-grained icons (gasoline vs. bus vs. train) don't pollute what
+// is meant to be a summary axis.
+export const CATEGORY_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "home",
+  "utensils",
+  "shopping-bag",
+  "shopping-cart",
+  "shirt",
+  "car",
+  "plane",
+  "heart-pulse",
+  "pill",
+  "receipt",
+  "banknote",
+  "piggy-bank",
+  "credit-card",
+  "graduation-cap",
+  "book-open",
+  "baby",
+  "heart",
+  "gift",
+  "zap",
+  "wifi",
+  "film",
+  "music",
+  "gamepad-2",
+  "dumbbell",
+  "paw-print",
+  "tree-pine",
+  "briefcase",
+  "wrench",
+  "landmark",
+  "sparkles",
+  "star",
+  "tag",
+] as const;
+
+// EntryTypes are concrete, frequently-repeating entries: Rent,
+// Gasoline, Restaurant visit, Coffee, Streaming, Salary. The palette
+// is the widest of the four so users have a glyph for almost any
+// real-world line item they want to label.
+export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
+  // Food & drink
+  "utensils",
+  "coffee",
+  "pizza",
+  "cookie",
+  "cake",
+  "ice-cream",
+  "beer",
+  "wine",
+  "shopping-cart",
+  // Transport
+  "car",
+  "fuel",
+  "bus",
+  "train",
+  "bike",
+  "plane",
+  // Home & utilities
+  "home",
+  "key",
+  "bed",
+  "sofa",
+  "lightbulb",
+  "droplet",
+  "flame",
+  "zap",
+  "wifi",
+  "wrench",
+  "hammer",
+  // Tech & gadgets
+  "smartphone",
+  "laptop",
+  "headphones",
+  "camera",
+  // Lifestyle
+  "shopping-bag",
+  "shirt",
+  "scissors",
+  "ticket",
+  "film",
+  "music",
+  "gamepad-2",
+  "book-open",
+  "dumbbell",
+  "dog",
+  "cat",
+  "paw-print",
+  "tree-pine",
+  "baby",
+  "gift",
+  "heart",
+  // Health
+  "stethoscope",
+  "pill",
+  "heart-pulse",
+  // Work & education
+  "briefcase",
+  "graduation-cap",
+  // Money
+  "banknote",
+  "coins",
+  "credit-card",
+  "wallet",
+  "piggy-bank",
+  "hand-coins",
+  "receipt",
+  "arrow-down-circle",
+  "arrow-up-circle",
+  "trending-up",
+  "scale",
+  "landmark",
+  "bitcoin",
+  // Misc
+  "calendar-days",
+  "sparkles",
+  "star",
+  "tag",
 ] as const;

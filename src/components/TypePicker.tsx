@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
-import { CATEGORY_COLORS, CATEGORY_ICON_NAMES } from "../data/constants";
+import { CATEGORY_COLORS, TYPE_GLYPH_NAMES } from "../data/constants";
 import type { CategoryIcon, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { ColorPalette } from "./ColorPalette";
@@ -272,11 +272,7 @@ function TypeCreator({
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>Glyph</span>
-        <GlyphGrid
-          icons={CATEGORY_ICON_NAMES}
-          value={glyph}
-          onChange={setGlyph}
-        />
+        <GlyphGrid icons={TYPE_GLYPH_NAMES} value={glyph} onChange={setGlyph} />
       </div>
       <div className="mt-1 flex justify-end gap-2">
         <button

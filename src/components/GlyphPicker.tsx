@@ -18,6 +18,11 @@ type Props = {
   // to the name.
   defaultIcon?: CategoryIcon;
   defaultLabel?: string;
+  // Optional curated palette. Defaults to the full allowlist so legacy
+  // call sites (the cell-level recurring-glyph picker) keep showing
+  // every glyph. Context-specific call sites pass a narrower list
+  // (e.g. AccountModal passes ACCOUNT_GLYPH_NAMES).
+  icons?: readonly CategoryIcon[];
 };
 
 export function GlyphPicker({
@@ -27,6 +32,7 @@ export function GlyphPicker({
   defaultLabel = defaultIcon
     ? `Default (${defaultIcon})`
     : "Default (recurring)",
+  icons = CATEGORY_ICON_NAMES,
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -87,7 +93,7 @@ export function GlyphPicker({
           className="absolute z-30 mt-1 w-full rounded border border-line bg-surface-2 p-2 shadow-lg"
         >
           <GlyphGrid
-            icons={CATEGORY_ICON_NAMES}
+            icons={icons}
             value={value}
             onChange={pick}
             defaultSlot={{
