@@ -58,6 +58,7 @@ export function MonthTable({
   columns,
   balances,
   categories,
+  types,
   settings,
   selectMode,
   selectedIds,
@@ -200,6 +201,7 @@ export function MonthTable({
                   columns={columns}
                   balances={balances}
                   categories={categories}
+                  types={types}
                   settings={settings}
                   selectMode={selectMode}
                   selected={selectedIds.has(row.id)}

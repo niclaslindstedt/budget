@@ -250,10 +250,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
             return {
               ...item,
               rows: item.rows.map((rawRow) => {
-                if (typeof rawRow !== "object" || rawRow === null) return rawRow;
+                if (typeof rawRow !== "object" || rawRow === null)
+                  return rawRow;
                 const row = rawRow as Record<string, unknown>;
                 if (!("glyph" in row)) return row;
-                const { glyph: _glyph, ...rest } = row;
+                const rest: Record<string, unknown> = {};
+                for (const [k, v] of Object.entries(row)) {
+                  if (k !== "glyph") rest[k] = v;
+                }
                 return rest;
               }),
             };

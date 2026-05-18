@@ -3,13 +3,7 @@ import { Minus, Plus, X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
-import type {
-  Category,
-  CategoryIcon,
-  Column,
-  Row,
-  Settings,
-} from "../data/types";
+import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -17,14 +11,19 @@ import {
 } from "../utils/format";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryPicker } from "./CategoryPicker";
-import { GlyphPicker } from "./GlyphPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
+import { TypePicker } from "./TypePicker";
 
 type Props = {
   open: boolean;
   row: Row | null;
   columns: Column[];
   categories: Category[];
+  types: readonly EntryType[];
+  // Per-type usage counts so the picker can float popular labels to the
+  // top of its dropdown. Optional — the picker falls back to insertion
+  // order without it.
+  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.
@@ -33,19 +32,21 @@ type Props = {
   onConvertToRecurring: (
     rowId: string,
     dates: string[],
-    glyph: CategoryIcon | null,
+    typeId: string | null,
   ) => void;
   onEditSeries: (rowId: string, patch: EditPatch, scope: EditScope) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
 export type EditPatch = {
   description: string;
   amount: number | null;
   categoryId: string | null;
-  // `undefined` = don't touch the row's glyph; `null` = clear back to
-  // the default recurring icon; a `CategoryIcon` = set the custom glyph.
-  glyph?: CategoryIcon | null;
+  // `undefined` = don't touch the row's type; `null` = clear it (the
+  // row falls back to its description as the primary label); a string
+  // sets the typeId.
+  typeId?: string | null;
 };
 
 export type EditScope =
@@ -57,12 +58,15 @@ export function EditEntryModal({
   row,
   columns,
   categories,
+  types,
+  typeUsageById,
   settings,
   lastSeriesDate,
   onClose,
   onConvertToRecurring,
   onEditSeries,
   onCreateCategory,
+  onCreateType,
 }: Props) {
   const descCol = useMemo(
     () => findColumnByType(columns, "description"),
@@ -103,7 +107,7 @@ export function EditEntryModal({
     dateCol && row && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
       : "";
-  const initialGlyph: CategoryIcon | null = row?.glyph ?? null;
+  const initialTypeId: string | null = row?.typeId ?? null;
 
   const isSeries = !!row?.seriesId;
 
@@ -113,7 +117,7 @@ export function EditEntryModal({
   const [categoryId, setCategoryId] = useState<string | null>(
     initialCategoryId,
   );
-  const [glyph, setGlyph] = useState<CategoryIcon | null>(initialGlyph);
+  const [typeId, setTypeId] = useState<string | null>(initialTypeId);
 
   // "Just this" vs "this and all future"; the latter optionally clamped
   // to a date so temporary price changes can revert later.
@@ -136,7 +140,7 @@ export function EditEntryModal({
     setAmount(initialAmountText);
     setNegative(initialNegative);
     setCategoryId(initialCategoryId);
-    setGlyph(initialGlyph);
+    setTypeId(initialTypeId);
     setScopeKind("just-this");
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
@@ -184,7 +188,7 @@ export function EditEntryModal({
     setNegative((s) => !s);
   }
 
-  const glyphTouched = glyph !== initialGlyph;
+  const typeTouched = typeId !== initialTypeId;
 
   function handleSaveEdit() {
     if (!row) return;
@@ -194,7 +198,7 @@ export function EditEntryModal({
         description: description.trim(),
         amount: amountTouched ? parsedAmount : null,
         categoryId,
-        glyph: glyphTouched ? glyph : undefined,
+        typeId: typeTouched ? typeId : undefined,
       },
       scopeKind === "just-this"
         ? { kind: "just-this" }
@@ -209,7 +213,7 @@ export function EditEntryModal({
     // the action payload minimal.
     const extras = recurringDates.filter((d) => d !== initialDate);
     if (extras.length === 0) return;
-    onConvertToRecurring(row.id, extras, glyph);
+    onConvertToRecurring(row.id, extras, typeId);
   }
 
   return (
@@ -253,6 +257,17 @@ export function EditEntryModal({
                     className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                   />
                 </label>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <span className="text-xs text-muted">Type</span>
+                  <TypePicker
+                    variant="field"
+                    types={types}
+                    selectedId={typeId}
+                    onSelect={setTypeId}
+                    onCreate={onCreateType}
+                    usageById={typeUsageById}
+                  />
+                </div>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-muted">Amount</span>
                   <div className="relative flex">
@@ -295,10 +310,6 @@ export function EditEntryModal({
                     onSelect={setCategoryId}
                     onCreate={onCreateCategory}
                   />
-                </div>
-                <div className="flex flex-col gap-1 sm:col-span-2">
-                  <span className="text-xs text-muted">Glyph</span>
-                  <GlyphPicker value={glyph} onChange={setGlyph} />
                 </div>
               </div>
 
@@ -355,8 +366,15 @@ export function EditEntryModal({
                 The current row stays as-is and joins the new series.
               </p>
               <div className="mb-4 flex flex-col gap-1">
-                <span className="text-xs text-muted">Glyph</span>
-                <GlyphPicker value={glyph} onChange={setGlyph} />
+                <span className="text-xs text-muted">Type</span>
+                <TypePicker
+                  variant="field"
+                  types={types}
+                  selectedId={typeId}
+                  onSelect={setTypeId}
+                  onCreate={onCreateType}
+                  usageById={typeUsageById}
+                />
               </div>
               <RecurrenceForm
                 seedDate={initialDate}

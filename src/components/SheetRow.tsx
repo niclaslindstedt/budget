@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Repeat, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
-import type { Category, CellValue, Column, Row, Settings } from "../data/types";
+import type {
+  Category,
+  CellValue,
+  Column,
+  EntryType,
+  Row,
+  Settings,
+} from "../data/types";
 import { useActiveRow } from "./useActiveRow";
 import { Cell } from "./Cell";
 
@@ -11,6 +18,7 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   categories: Category[];
+  types: readonly EntryType[];
   settings: Settings;
   selectMode: boolean;
   selected: boolean;
@@ -38,6 +46,7 @@ export function SheetRow({
   columns,
   balances,
   categories,
+  types,
   settings,
   selectMode,
   selected,
@@ -50,6 +59,11 @@ export function SheetRow({
   onToggleSelect,
   onCreateCategory,
 }: Props) {
+  const entryType = useMemo<EntryType | null>(
+    () =>
+      row.typeId ? (types.find((t) => t.id === row.typeId) ?? null) : null,
+    [row.typeId, types],
+  );
   const [swiped, setSwiped] = useState(false);
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
@@ -194,7 +208,7 @@ export function SheetRow({
           categories={categories}
           settings={settings}
           isRecurring={isSeries}
-          glyph={row.glyph ?? null}
+          entryType={entryType}
           isTransaction={isTransaction}
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}
