@@ -4,7 +4,7 @@ import { ArrowRight, X } from "lucide-react";
 import type { TransferCandidate } from "../data/transfer-collapse";
 import { detectTransferCandidates } from "../data/transfer-collapse";
 import type { Account, HistoryEntry, Settings } from "../data/types";
-import { formatAmountForInput, withCurrency } from "../utils/format";
+import { formatNumber, withCurrency } from "../utils/format";
 import { formatShortDate } from "../utils/format";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
@@ -207,7 +207,7 @@ function PairRow({
   onNever: () => void;
 }) {
   const formattedAmount = withCurrency(
-    formatAmountForInput(candidate.amount, settings),
+    formatNumber(candidate.amount, settings),
     settings,
   );
   return (

@@ -1,6 +1,6 @@
 import { findColumnByType } from "../data/sheet";
 import type { Category, CellValue, Column, Row, Settings } from "../data/types";
-import { formatAmountForInput, withCurrency } from "../utils/format";
+import { formatNumber, withCurrency } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
@@ -241,7 +241,7 @@ function CorrectionLine({
 }) {
   const sign = amount >= 0 ? "+" : "−";
   const magnitude = withCurrency(
-    formatAmountForInput(Math.abs(amount), settings),
+    formatNumber(Math.abs(amount), settings),
     settings,
   );
   const amountClass = amount >= 0 ? "text-positive" : "text-negative";

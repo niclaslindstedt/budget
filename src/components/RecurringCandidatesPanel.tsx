@@ -13,7 +13,7 @@ import type {
   Settings,
 } from "../data/types";
 import { CategoryChip } from "./CategoryPicker";
-import { formatAmountForInput, withCurrency } from "../utils/format";
+import { formatNumber, withCurrency } from "../utils/format";
 
 type Props = {
   // History entries for the budget's account. The panel runs detection
@@ -154,10 +154,7 @@ function CandidateRow({
     return dates.filter((d) => d > today);
   }, [dates]);
 
-  const amountText = formatAmountForInput(
-    Math.abs(candidate.medianAmount),
-    settings,
-  );
+  const amountText = formatNumber(Math.abs(candidate.medianAmount), settings);
   const sign = candidate.medianAmount >= 0 ? "+" : "−";
   const formattedAmount = withCurrency(amountText, settings);
 

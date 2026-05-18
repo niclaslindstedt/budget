@@ -21,6 +21,7 @@ import {
   formatBalance,
   formatDate,
   formatDayOnly,
+  formatNumber,
   formatShortDate,
   normalizeAmountInput,
   parseAmount,
@@ -288,6 +289,12 @@ function AmountCell({
   const [negative, setNegative] = useState(
     externalNumber !== null ? externalNumber < 0 : true,
   );
+  // The cell is itself the input. When the user isn't editing it we
+  // swap the visible value to the display-formatted form (decimals
+  // hidden, "12K"-style abbreviation, …) so the budget view honours
+  // those settings; on focus we revert to the raw editable text so
+  // the user types against the precise value.
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeRow = useActiveRow();
   const tokenRef = useRef<number | null>(null);
@@ -296,6 +303,7 @@ function AmountCell({
   const focusValueRef = useRef<number | null>(externalNumber);
 
   function handleFocus() {
+    setFocused(true);
     focusValueRef.current = externalNumber;
     if (!activeRow || tokenRef.current !== null) return;
     tokenRef.current = activeRow.activate(rowId, () =>
@@ -304,6 +312,7 @@ function AmountCell({
   }
 
   function handleBlur() {
+    setFocused(false);
     if (activeRow && tokenRef.current !== null) {
       activeRow.deactivate(tokenRef.current);
       tokenRef.current = null;
@@ -357,6 +366,16 @@ function AmountCell({
 
   const parsed = parseAmount(text);
   const hasValue = parsed !== null && parsed > 0;
+  // Display value used when the cell isn't focused — abs value put
+  // through the full display pipeline so `showDecimals`,
+  // `formatNumbers` and `abbreviateNumbers` all take effect. The sign
+  // is conveyed by the +/- glyph button next to the cell, so we omit
+  // it from the displayed number.
+  const displayText =
+    externalNumber !== null
+      ? formatNumber(Math.abs(externalNumber), settings)
+      : "";
+  const inputValue = focused ? text : displayText || text;
 
   return (
     <td className={CELL_BASE}>
@@ -376,15 +395,18 @@ function AmountCell({
             <Plus size={14} aria-hidden focusable={false} />
           )}
         </button>
-        {/* Hidden mirror of the input value so the cell's intrinsic width
-           tracks its content — the input itself reports a fixed intrinsic
-           size driven by the `size` attribute, so it can't drive grid
-           auto-sizing on its own. */}
+        {/* Hidden mirror of the visible value so the cell's intrinsic
+           width tracks its content — the input itself reports a fixed
+           intrinsic size driven by the `size` attribute, so it can't
+           drive grid auto-sizing on its own. Mirrors whatever the
+           input is actually showing (raw text when focused, the
+           display-formatted text otherwise) so the column doesn't
+           jitter as focus moves. */}
         <span
           aria-hidden
           className="invisible px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre"
         >
-          {withCurrency(text || "0", settings)}
+          {withCurrency(inputValue || "0", settings)}
         </span>
         <input
           ref={inputRef}
@@ -406,7 +428,7 @@ function AmountCell({
                 : "text-positive"
               : "text-fg"
           }`}
-          value={text}
+          value={inputValue}
           onChange={(e) => commit(e.target.value, negative)}
           onFocus={handleFocus}
           onBlur={handleBlur}
@@ -786,7 +808,11 @@ function ReadonlyAmountCell({
 }) {
   const negative = value !== null && value < 0;
   const abs = value !== null ? Math.abs(value) : null;
-  const body = abs !== null ? formatAmountForInput(abs, settings) : "";
+  // Read-only display reuses the editable cell's display pipeline so
+  // synthesized transaction rows honour `showDecimals` /
+  // `abbreviateNumbers` exactly like a regular amount cell would
+  // when it isn't focused.
+  const body = abs !== null ? formatNumber(abs, settings) : "";
   return (
     <td className={CELL_BASE}>
       <div className="relative flex items-stretch">

@@ -16,7 +16,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 12 as const;
+export const LATEST_VERSION = 13 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -213,6 +213,12 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
     recurringDismissals: [],
     transferCollapseDismissals: [],
   }),
+
+  // v12 → v13: introduces the `abbreviateNumbers` display toggle. The
+  // validator falls back to the default (off) for v12 records that
+  // don't carry the field, so no settings data needs rewriting — the
+  // version bump just flags that this build understands the new shape.
+  12: (v12) => ({ ...v12, version: 13 }),
 };
 
 export type MigrationResult = {

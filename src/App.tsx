@@ -125,7 +125,7 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
-import { formatAmountForInput, withCurrency } from "./utils/format";
+import { formatNumber, withCurrency } from "./utils/format";
 import {
   createDefaultUser,
   createUser,
@@ -2467,7 +2467,7 @@ function BudgetView({
           : 0;
       const sign = amount >= 0 ? "+" : "−";
       const deltaText = `${sign}${withCurrency(
-        formatAmountForInput(Math.abs(amount), data.settings),
+        formatNumber(Math.abs(amount), data.settings),
         data.settings,
       )}`;
       setCorrectionDeletePrompt({

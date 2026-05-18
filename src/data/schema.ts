@@ -725,6 +725,7 @@ export const USER_DATA_SCHEMA = {
         "formatNumbers",
         "showCurrency",
         "showDecimals",
+        "abbreviateNumbers",
         "sessionTimeoutMinutes",
       ],
       description:
@@ -805,6 +806,15 @@ export const USER_DATA_SCHEMA = {
           type: "boolean",
           default: DEFAULT_SETTINGS.showDecimals,
           description: "Render the fractional part. Off rounds to whole units.",
+        },
+        abbreviateNumbers: {
+          type: "boolean",
+          default: DEFAULT_SETTINGS.abbreviateNumbers,
+          description:
+            "Collapse displayed amounts >= 10 000 to a compact form " +
+            '("12K", "1.2M") so cramped rows fit on narrow viewports. ' +
+            "Affects display only — editable inputs always show the " +
+            "full value.",
         },
         sessionTimeoutMinutes: {
           type: "integer",

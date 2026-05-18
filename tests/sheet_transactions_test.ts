@@ -16,7 +16,7 @@ import type { AccountBudget, Transaction, UserData } from "../src/data/types";
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 12,
+    version: 13,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [

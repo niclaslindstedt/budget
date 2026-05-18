@@ -48,11 +48,47 @@ export type FormatNumberOpts = {
   alwaysTwoFractionDigits?: boolean;
 };
 
+// Threshold at which `abbreviateNumbers` kicks in. Below this the
+// regular formatter runs, so small amounts keep their precision and
+// the K-suffix isn't applied to "9000" → "9K" (which would round in a
+// way users find surprising).
+const ABBREVIATE_THRESHOLD = 10_000;
+
+function abbreviateValue(n: number, settings: Settings): string {
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  // Round to thousands first so we can detect the K → M boundary by
+  // value rather than by raw magnitude — 999 500 rounds up to 1000K,
+  // which reads better as "1M".
+  const roundedK = Math.round(abs / 1_000);
+  if (abs >= 1_000_000 || roundedK >= 1_000) {
+    const m = abs / 1_000_000;
+    // Single-digit millions keep one fractional digit when decimals
+    // are enabled, so "1.2M" survives. Larger values drop to integer
+    // because "12.3M" rarely tells the user more than "12M".
+    if (!settings.showDecimals || m >= 10) {
+      return `${sign}${Math.round(m)}M`;
+    }
+    const oneDec = Math.round(m * 10) / 10;
+    const [intPart, fracPart] = oneDec.toFixed(1).split(".");
+    return fracPart === "0"
+      ? `${sign}${intPart}M`
+      : `${sign}${intPart}${settings.decimalSeparator}${fracPart}M`;
+  }
+  return `${sign}${roundedK}K`;
+}
+
 export function formatNumber(
   n: number,
   settings: Settings,
   opts: FormatNumberOpts = {},
 ): string {
+  // Abbreviation wins over the standard grouping/decimal pipeline —
+  // the user opted into a compact form, and threading thousands
+  // separators or trailing zeros through "12K" makes no sense.
+  if (settings.abbreviateNumbers && Math.abs(n) >= ABBREVIATE_THRESHOLD) {
+    return abbreviateValue(n, settings);
+  }
   // `showDecimals` off wins over `alwaysTwoFractionDigits` — the user has
   // asked to hide the fractional portion everywhere, so balances drop
   // their cents too.
