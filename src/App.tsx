@@ -47,6 +47,7 @@ import {
   accountBalance,
   createDefaultSheet,
   createEmptyRow,
+  defaultCompletedForDate,
   findColumnByType,
   getMonthKey,
   isRowSavable,
@@ -445,9 +446,10 @@ function reduceAccountBudget(
 
     case "addRow": {
       const dateCol = findColumnByType(item.columns, "date");
+      const date = dateCol && action.date ? action.date : null;
       const newRow: Row = createEmptyRow(item.columns, {
-        date: dateCol && action.date ? action.date : null,
-        completed: false,
+        date,
+        completed: defaultCompletedForDate(date),
       });
       return { ...item, rows: [...item.rows, newRow] };
     }
@@ -463,7 +465,7 @@ function reduceAccountBudget(
           description: draft.description,
           amount: draft.amount,
           category: draft.categoryId,
-          completed: false,
+          completed: defaultCompletedForDate(date),
         });
         if (seriesId) row.seriesId = seriesId;
         if (draft.typeId) row.typeId = draft.typeId;
