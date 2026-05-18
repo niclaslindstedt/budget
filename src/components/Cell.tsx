@@ -159,20 +159,35 @@ export function Cell({
         const selectedId = typeof value === "string" ? value : null;
         const category = categories?.find((c) => c.id === selectedId) ?? null;
         return (
-          <td className={`${CELL_BASE} px-2 py-1.5 align-middle`}>
-            {category ? (
-              <span
-                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs"
-                style={{
-                  color: category.color,
-                  backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
-                }}
-              >
-                <span className="truncate">{category.name}</span>
-              </span>
-            ) : (
-              <span className="text-xs text-muted">—</span>
-            )}
+          <td className={`${CELL_BASE} p-0`} aria-readonly="true">
+            <span className="flex h-full min-h-9 w-full items-center justify-center px-2 py-1 font-mono text-xs md:justify-start">
+              {category ? (
+                <>
+                  {/* Mobile: glyph only, in the category's colour. */}
+                  <span
+                    className="inline-flex items-center justify-center md:hidden"
+                    style={{ color: category.color }}
+                    aria-hidden
+                  >
+                    <CategoryIconGlyph name={category.icon} size={18} />
+                  </span>
+                  {/* Desktop: chip with glyph + name. */}
+                  <span
+                    className="hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex"
+                    style={{
+                      backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
+                      borderColor: `color-mix(in srgb, ${category.color} 55%, transparent)`,
+                      color: category.color,
+                    }}
+                  >
+                    <CategoryIconGlyph name={category.icon} size={12} />
+                    <span className="truncate">{category.name}</span>
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </span>
           </td>
         );
       }
@@ -909,7 +924,7 @@ function TypedDescriptionPopover({
         ref={triggerRef}
         type="button"
         onClick={handleToggle}
-        className="flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2 py-1.5 text-left font-mono outline-none focus-visible:bg-surface-2"
+        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1.5 font-mono outline-none focus-visible:bg-surface-2 md:justify-start md:text-left"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={
@@ -919,8 +934,17 @@ function TypedDescriptionPopover({
         }
         title={hasValue ? value : undefined}
       >
+        {/* Mobile: type glyph only, in the type's colour, prominent. */}
         <span
-          className="inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
+          className="inline-flex items-center justify-center md:hidden"
+          style={{ color: entryType.color }}
+          aria-hidden
+        >
+          <CategoryIconGlyph name={entryType.glyph} size={18} />
+        </span>
+        {/* Desktop: full chip with glyph + name in the type's colour. */}
+        <span
+          className="hidden min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium md:inline-flex"
           style={{
             backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
             borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
