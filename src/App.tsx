@@ -62,6 +62,7 @@ import type {
   Category,
   CategoryIcon,
   CellValue,
+  HistoryEntry,
   Row,
   Settings,
   Sheet,
@@ -69,6 +70,15 @@ import type {
   Transaction,
   UserData,
 } from "./data/types";
+import { type HintRecording, recordMerchantHints } from "./data/merchant-hints";
+import { RecurringCandidatesPanel } from "./components/RecurringCandidatesPanel";
+import { TransferCollapseModal } from "./components/TransferCollapseModal";
+import type { RecurringCandidate } from "./data/recurring-detection";
+import {
+  detectTransferCandidates,
+  type TransferCandidate,
+} from "./data/transfer-collapse";
+import type { RecurrenceRule } from "./data/recurrence";
 import type { Snapshot, StorageAdapter } from "./storage/adapter";
 import {
   type BackendId,
@@ -280,7 +290,95 @@ type Action =
       bankAccountNumber?: string;
       entries: ParsedBankEntry[];
       now: number;
-    };
+    }
+  | {
+      // Promote a recurring-detection candidate into a real series of
+      // budget rows on the active budget. The action carries the full
+      // payload the reducer needs — description, amount, glyph,
+      // categoryId, dates — so the dispatcher stays a pure function of
+      // its inputs (the candidate + the user's confirmed category).
+      // The reducer also records the chosen categoryId as a merchant
+      // hint so the next import's suggestion stays current.
+      type: "promoteRecurringCandidate";
+      sheetId: string;
+      itemId: string;
+      key: string;
+      description: string;
+      amount: number;
+      categoryId: string | null;
+      glyph: CategoryIcon | null;
+      dates: string[];
+      now: number;
+    }
+  | {
+      // Persist a "Not recurring" dismissal so the detector skips this
+      // bucket on every subsequent import. `key` is the candidate's
+      // normalised description (the same key the detector and hint
+      // store use). The settings UI clears the whole list via
+      // `clearRecurringDismissals` so a misclick is recoverable.
+      type: "dismissRecurringCandidate";
+      key: string;
+    }
+  | { type: "clearRecurringDismissals" }
+  | {
+      // Collapse one detected cross-account pair into a single
+      // Transaction and mark both HistoryEntrys as `hidden: true` with
+      // the new transaction's id stored on `collapsedIntoTransactionId`
+      // so the operation is reversible (delete the tx → clear the
+      // backref → un-hide) and idempotent (subsequent runs skip
+      // already-collapsed pairs).
+      type: "collapseTransferPair";
+      fromAccountId: string;
+      toAccountId: string;
+      fromEntryId: string;
+      toEntryId: string;
+      date: string;
+      description: string;
+      amount: number;
+    }
+  | {
+      // Persist a "Never collapse this pair" dismissal so the detector
+      // stops re-surfacing it. The key is the pair's stable identifier
+      // (sorted entry ids joined). `clearTransferDismissals` unwinds
+      // the list from settings.
+      type: "dismissTransferPair";
+      pairKey: string;
+    }
+  | { type: "clearTransferDismissals" }
+  | { type: "clearMerchantHints" };
+
+// Walk an AccountBudget's before/after rows and collect the
+// description+categoryId pairs that need to be folded into the
+// merchant-hint store. Anything that newly carries a string category
+// (or whose category changed) counts; rows whose category was cleared
+// emit a recording with `categoryId: null` so `recordMerchantHints`
+// can drop the stale hint.
+function hintRecordingsFromBudget(
+  prev: AccountBudget,
+  next: AccountBudget,
+): HintRecording[] {
+  const descId = findColumnByType(next.columns, "description")?.id;
+  const categoryId = findColumnByType(next.columns, "category")?.id;
+  if (!descId || !categoryId) return [];
+  const prevById = new Map<string, Row>();
+  for (const r of prev.rows) prevById.set(r.id, r);
+  const out: HintRecording[] = [];
+  for (const row of next.rows) {
+    const before = prevById.get(row.id);
+    const afterCat = row.cells[categoryId];
+    const beforeCat = before?.cells[categoryId];
+    if (afterCat === beforeCat) continue;
+    const desc = row.cells[descId];
+    if (typeof desc !== "string" || desc.trim() === "") continue;
+    if (typeof afterCat === "string" && afterCat !== "") {
+      out.push({ description: desc, categoryId: afterCat });
+    } else if (typeof beforeCat === "string" && beforeCat !== "") {
+      // Cell was cleared back to null — drop the hint.
+      out.push({ description: desc, categoryId: null });
+    }
+  }
+  return out;
+}
 
 function applyPatch(
   row: Row,
@@ -552,17 +650,6 @@ function reduceAccountBudget(
   }
 }
 
-function reduceSheet(sheet: Sheet, action: ItemAction): Sheet {
-  return {
-    ...sheet,
-    items: sheet.items.map((item) =>
-      item.id === action.itemId && item.type === "accountBudget"
-        ? reduceAccountBudget(item, action)
-        : item,
-    ),
-  };
-}
-
 function reducer(state: UserData, action: Action): UserData {
   if (action.type === "replace") return action.data;
   if (action.type === "addCategory") {
@@ -730,29 +817,79 @@ function reducer(state: UserData, action: Action): UserData {
     };
   }
   if (action.type === "createTransaction") {
-    return {
+    const next = {
       ...state,
       transactions: [...state.transactions, action.transaction],
     };
+    return recordMerchantHints(
+      next,
+      [
+        {
+          description: action.transaction.description,
+          categoryId: action.transaction.categoryId ?? null,
+        },
+      ],
+      Date.now(),
+    );
   }
   if (action.type === "updateTransaction") {
-    return {
+    const prev = state.transactions.find((t) => t.id === action.transactionId);
+    const next = {
       ...state,
       transactions: state.transactions.map((tx) =>
         tx.id === action.transactionId ? { ...tx, ...action.patch } : tx,
       ),
     };
+    // Only fire a hint recording when the category was actually
+    // touched by this update; otherwise unrelated edits (date,
+    // amount, …) would re-stamp `lastUsedAt` on an unrelated hint.
+    if (prev && action.patch.categoryId !== undefined) {
+      const description =
+        action.patch.description !== undefined
+          ? action.patch.description
+          : prev.description;
+      return recordMerchantHints(
+        next,
+        [{ description, categoryId: action.patch.categoryId ?? null }],
+        Date.now(),
+      );
+    }
+    return next;
   }
   if (action.type === "deleteTransaction") {
+    // Also clear the `collapsedIntoTransactionId` backref on any
+    // history entry that pointed at this transaction, and un-hide
+    // those entries — collapse is reversible only if the entries
+    // come back when the transaction goes away. We don't try to
+    // distinguish "this transaction was a collapse" from "this was
+    // a user-created transfer" because the backref disambiguates: an
+    // entry only un-hides if it's pointing at the deleted tx.
+    const txId = action.transactionId;
+    let touchedHistory = false;
+    const history: Record<string, HistoryEntry[]> = {};
+    for (const [accountId, entries] of Object.entries(state.history)) {
+      let touched = false;
+      const next = entries.map((e) => {
+        if (e.collapsedIntoTransactionId !== txId) return e;
+        touched = true;
+        const restored: HistoryEntry = { ...e };
+        delete restored.collapsedIntoTransactionId;
+        delete restored.hidden;
+        return restored;
+      });
+      history[accountId] = touched ? next : entries;
+      if (touched) touchedHistory = true;
+    }
     return {
       ...state,
       transactions: state.transactions.filter(
         (tx) => tx.id !== action.transactionId,
       ),
+      history: touchedHistory ? history : state.history,
     };
   }
   if (action.type === "promoteRowToTransaction") {
-    return {
+    const next = {
       ...state,
       transactions: [...state.transactions, action.transaction],
       sheets: state.sheets.map((sheet) =>
@@ -771,6 +908,134 @@ function reducer(state: UserData, action: Action): UserData {
           : sheet,
       ),
     };
+    return recordMerchantHints(
+      next,
+      [
+        {
+          description: action.transaction.description,
+          categoryId: action.transaction.categoryId ?? null,
+        },
+      ],
+      Date.now(),
+    );
+  }
+  if (action.type === "promoteRecurringCandidate") {
+    // Mint a fresh series from a recurring-detection candidate.
+    // Mirrors `addRowsFromComplex` (which the user-driven complex
+    // entry modal uses) so the resulting series is indistinguishable
+    // from one the user typed in by hand — same seriesId semantics,
+    // same glyph propagation, same row shape.
+    const seriesId = action.dates.length > 1 ? newId() : undefined;
+    const nextSheets = state.sheets.map((sheet) => {
+      if (sheet.id !== action.sheetId) return sheet;
+      return {
+        ...sheet,
+        items: sheet.items.map((item) => {
+          if (item.id !== action.itemId || item.type !== "accountBudget") {
+            return item;
+          }
+          const dateCol = findColumnByType(item.columns, "date");
+          const descCol = findColumnByType(item.columns, "description");
+          const amountCol = findColumnByType(item.columns, "amount");
+          const catCol = findColumnByType(item.columns, "category");
+          if (!dateCol || !descCol || !amountCol) return item;
+          const newRows: Row[] = action.dates.map((date) => {
+            const cells: Record<string, CellValue> = {
+              [dateCol.id]: date,
+              [descCol.id]: action.description,
+              [amountCol.id]: action.amount,
+            };
+            if (catCol) cells[catCol.id] = action.categoryId;
+            const row: Row = { id: newId(), cells };
+            if (seriesId) row.seriesId = seriesId;
+            if (action.glyph) row.glyph = action.glyph;
+            return row;
+          });
+          return { ...item, rows: [...item.rows, ...newRows] };
+        }),
+      };
+    });
+    const next = { ...state, sheets: nextSheets };
+    if (action.categoryId === null) return next;
+    return recordMerchantHints(
+      next,
+      [{ description: action.description, categoryId: action.categoryId }],
+      action.now,
+    );
+  }
+  if (action.type === "dismissRecurringCandidate") {
+    if (state.recurringDismissals.includes(action.key)) return state;
+    return {
+      ...state,
+      recurringDismissals: [...state.recurringDismissals, action.key],
+    };
+  }
+  if (action.type === "clearRecurringDismissals") {
+    if (state.recurringDismissals.length === 0) return state;
+    return { ...state, recurringDismissals: [] };
+  }
+  if (action.type === "collapseTransferPair") {
+    // Mint a new Transaction and stamp the two source entries as
+    // collapsed + hidden. Idempotent: a re-run that finds the same
+    // pair already carrying a backref skips the action entirely.
+    const fromEntries = state.history[action.fromAccountId] ?? [];
+    const toEntries = state.history[action.toAccountId] ?? [];
+    const fromEntry = fromEntries.find((e) => e.id === action.fromEntryId);
+    const toEntry = toEntries.find((e) => e.id === action.toEntryId);
+    if (!fromEntry || !toEntry) return state;
+    if (fromEntry.collapsedIntoTransactionId) return state;
+    if (toEntry.collapsedIntoTransactionId) return state;
+    const transaction: Transaction = {
+      id: newId(),
+      date: action.date,
+      description: action.description,
+      amount: action.amount,
+      fromAccountId: action.fromAccountId,
+      toAccountId: action.toAccountId,
+    };
+    return {
+      ...state,
+      transactions: [...state.transactions, transaction],
+      history: {
+        ...state.history,
+        [action.fromAccountId]: fromEntries.map((e) =>
+          e.id === action.fromEntryId
+            ? {
+                ...e,
+                hidden: true,
+                collapsedIntoTransactionId: transaction.id,
+              }
+            : e,
+        ),
+        [action.toAccountId]: toEntries.map((e) =>
+          e.id === action.toEntryId
+            ? {
+                ...e,
+                hidden: true,
+                collapsedIntoTransactionId: transaction.id,
+              }
+            : e,
+        ),
+      },
+    };
+  }
+  if (action.type === "dismissTransferPair") {
+    if (state.transferCollapseDismissals.includes(action.pairKey)) return state;
+    return {
+      ...state,
+      transferCollapseDismissals: [
+        ...state.transferCollapseDismissals,
+        action.pairKey,
+      ],
+    };
+  }
+  if (action.type === "clearTransferDismissals") {
+    if (state.transferCollapseDismissals.length === 0) return state;
+    return { ...state, transferCollapseDismissals: [] };
+  }
+  if (action.type === "clearMerchantHints") {
+    if (Object.keys(state.merchantHints).length === 0) return state;
+    return { ...state, merchantHints: {} };
   }
   if (action.type === "renameSheet") {
     return {
@@ -831,12 +1096,28 @@ function reducer(state: UserData, action: Action): UserData {
       ),
     };
   }
-  return {
-    ...state,
-    sheets: state.sheets.map((sheet) =>
-      sheet.id === action.sheetId ? reduceSheet(sheet, action) : sheet,
-    ),
-  };
+  // Item-level dispatch tail. Reduces the targeted sheet, then walks
+  // the before/after of the targeted AccountBudget to extract any
+  // newly-assigned categories so the merchant-hint store stays in
+  // sync with what the user is doing in the grid. Only the touched
+  // budget contributes recordings; sheets the action didn't reach are
+  // referentially identical and short-circuit the diff.
+  const recordings: HintRecording[] = [];
+  const sheets = state.sheets.map((sheet) => {
+    if (sheet.id !== action.sheetId) return sheet;
+    const items = sheet.items.map((item) => {
+      if (item.id !== action.itemId || item.type !== "accountBudget") {
+        return item;
+      }
+      const next = reduceAccountBudget(item, action);
+      if (next === item) return item;
+      recordings.push(...hintRecordingsFromBudget(item, next));
+      return next;
+    });
+    return { ...sheet, items };
+  });
+  const next = { ...state, sheets };
+  return recordMerchantHints(next, recordings, Date.now());
 }
 
 type DeletePrompt = { kind: "delete"; row: Row };
@@ -2789,6 +3070,115 @@ function BudgetView({
     },
     [dispatch, sheetId, itemId],
   );
+
+  // Recurring-candidate promote / dismiss. Promote translates the
+  // detector's cadence into a `RecurrenceRule`, expands it with the
+  // existing recurrence machinery, and dispatches one batch action
+  // that mints the series rows AND records the merchant-hint
+  // suggestion. Dismiss just persists the key to
+  // `recurringDismissals` so subsequent scans skip the bucket.
+  const onPromoteRecurringCandidate = useCallback(
+    (
+      candidate: RecurringCandidate,
+      _rule: RecurrenceRule,
+      dates: string[],
+      categoryId: string | null,
+      glyph: CategoryIcon | null,
+    ) => {
+      if (!activeBudget) return;
+      if (dates.length === 0) return;
+      dispatch({
+        type: "promoteRecurringCandidate",
+        sheetId,
+        itemId: activeBudget.id,
+        key: candidate.key,
+        description: candidate.description,
+        amount: candidate.medianAmount,
+        categoryId,
+        glyph,
+        dates,
+        now: Date.now(),
+      });
+    },
+    [dispatch, sheetId, activeBudget],
+  );
+  const onDismissRecurringCandidate = useCallback(
+    (key: string) => {
+      dispatch({ type: "dismissRecurringCandidate", key });
+    },
+    [dispatch],
+  );
+
+  // Transfer-collapse modal handlers. Open is driven by the user
+  // (a button on the Accounts page) and auto-opens after an import
+  // when new candidates are detected — see the effect below.
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  // Snapshot of the candidate count at the previous import so the
+  // auto-open trigger only fires when a fresh import actually
+  // introduced new pairs (not every render, not after a dismissal).
+  const previousImportCountRef = useRef<number>(
+    Object.values(data.historyImports).reduce(
+      (acc, list) => acc + list.length,
+      0,
+    ),
+  );
+  useEffect(() => {
+    const totalImports = Object.values(data.historyImports).reduce(
+      (acc, list) => acc + list.length,
+      0,
+    );
+    if (totalImports <= previousImportCountRef.current) {
+      previousImportCountRef.current = totalImports;
+      return;
+    }
+    previousImportCountRef.current = totalImports;
+    const dismissed = new Set(data.transferCollapseDismissals);
+    const candidates = detectTransferCandidates({
+      history: data.history,
+      dismissedPairKeys: dismissed,
+    });
+    if (candidates.length > 0) setTransferModalOpen(true);
+  }, [data.historyImports, data.history, data.transferCollapseDismissals]);
+  const onCollapseTransferPair = useCallback(
+    (candidate: TransferCandidate) => {
+      dispatch({
+        type: "collapseTransferPair",
+        fromAccountId: candidate.fromAccountId,
+        toAccountId: candidate.toAccountId,
+        fromEntryId: candidate.fromEntry.id,
+        toEntryId: candidate.toEntry.id,
+        date: candidate.date,
+        description: candidate.fromEntry.description,
+        amount: candidate.amount,
+      });
+    },
+    [dispatch],
+  );
+  const onDismissTransferPair = useCallback(
+    (pairKey: string) => {
+      dispatch({ type: "dismissTransferPair", pairKey });
+    },
+    [dispatch],
+  );
+  const onOpenTransferCollapse = useCallback(() => {
+    setTransferModalOpen(true);
+  }, []);
+
+  // Settings clear-all handlers for the merchant-hint memory and the
+  // two dismissal allowlists. Each dispatches a single action; the
+  // reducer no-ops when the collection is already empty.
+  const onClearMerchantHints = useCallback(
+    () => dispatch({ type: "clearMerchantHints" }),
+    [dispatch],
+  );
+  const onClearRecurringDismissals = useCallback(
+    () => dispatch({ type: "clearRecurringDismissals" }),
+    [dispatch],
+  );
+  const onClearTransferDismissals = useCallback(
+    () => dispatch({ type: "clearTransferDismissals" }),
+    [dispatch],
+  );
   const handleMoveCopySubmit = useCallback(
     (targetMonths: string[]) => {
       if (!moveCopyPrompt) return;
@@ -2911,42 +3301,58 @@ function BudgetView({
               onEditTransaction={onOpenEditTransaction}
               onImportHistory={onOpenImportHistory}
               onViewHistory={onOpenViewHistory}
+              onFindTransfers={onOpenTransferCollapse}
             />
           ) : (
-            <SheetView
-              sheet={activeSheet}
-              item={activeItem}
-              categories={data.categories}
-              accounts={data.accounts}
-              transactions={data.transactions}
-              history={
-                activeItem.accountId
-                  ? (data.history[activeItem.accountId] ?? [])
-                  : []
-              }
-              openingBalance={
-                activeItem.accountId
-                  ? (data.accounts.find((a) => a.id === activeItem.accountId)
-                      ?.openingBalance ?? 0)
-                  : 0
-              }
-              settings={data.settings}
-              selectMode={selectMode}
-              selectedIds={selectedIds}
-              scrollToTodayTick={scrollToTodayTick}
-              onUpdateCell={onUpdateCell}
-              onCommitCell={onCommitCell}
-              onAddRow={onAddRow}
-              onAddComplex={onAddComplex}
-              onDeleteRequest={onDeleteRequest}
-              onEditRequest={onEditRequest}
-              onTransactionRequest={onTransactionRequest}
-              onCorrectionDeleteRequest={onCorrectionDeleteRequest}
-              onReorderColumns={onReorderColumns}
-              onToggleSelect={onToggleSelect}
-              onToggleSelectMonth={onToggleSelectMonth}
-              onCreateCategory={onCreateCategory}
-            />
+            <>
+              <RecurringCandidatesPanel
+                history={
+                  activeItem.accountId
+                    ? (data.history[activeItem.accountId] ?? [])
+                    : []
+                }
+                dismissedKeys={data.recurringDismissals}
+                merchantHints={data.merchantHints}
+                categories={data.categories}
+                settings={data.settings}
+                onPromote={onPromoteRecurringCandidate}
+                onDismiss={onDismissRecurringCandidate}
+              />
+              <SheetView
+                sheet={activeSheet}
+                item={activeItem}
+                categories={data.categories}
+                accounts={data.accounts}
+                transactions={data.transactions}
+                history={
+                  activeItem.accountId
+                    ? (data.history[activeItem.accountId] ?? [])
+                    : []
+                }
+                openingBalance={
+                  activeItem.accountId
+                    ? (data.accounts.find((a) => a.id === activeItem.accountId)
+                        ?.openingBalance ?? 0)
+                    : 0
+                }
+                settings={data.settings}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                scrollToTodayTick={scrollToTodayTick}
+                onUpdateCell={onUpdateCell}
+                onCommitCell={onCommitCell}
+                onAddRow={onAddRow}
+                onAddComplex={onAddComplex}
+                onDeleteRequest={onDeleteRequest}
+                onEditRequest={onEditRequest}
+                onTransactionRequest={onTransactionRequest}
+                onCorrectionDeleteRequest={onCorrectionDeleteRequest}
+                onReorderColumns={onReorderColumns}
+                onToggleSelect={onToggleSelect}
+                onToggleSelectMonth={onToggleSelectMonth}
+                onCreateCategory={onCreateCategory}
+              />
+            </>
           )}
         </main>
         {status.kind === "loading" ? null : selectMode ? (
@@ -3032,6 +3438,16 @@ function BudgetView({
         }
         settings={data.settings}
         onCancel={() => setViewHistoryForId(null)}
+      />
+      <TransferCollapseModal
+        open={transferModalOpen}
+        history={data.history}
+        accounts={data.accounts}
+        dismissedPairKeys={data.transferCollapseDismissals}
+        settings={data.settings}
+        onClose={() => setTransferModalOpen(false)}
+        onCollapse={onCollapseTransferPair}
+        onDismiss={onDismissTransferPair}
       />
       <TransactionModal
         open={transactionRequest !== null}
@@ -3143,6 +3559,9 @@ function BudgetView({
         gdriveConnected={gdriveConnected}
         encryption={encryption}
         isGuest={isGuest}
+        merchantHintCount={Object.keys(data.merchantHints).length}
+        recurringDismissalCount={data.recurringDismissals.length}
+        transferDismissalCount={data.transferCollapseDismissals.length}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}
         onConnectDropbox={onConnectDropbox}
@@ -3151,6 +3570,9 @@ function BudgetView({
         onDisconnectGdrive={onDisconnectGdrive}
         onSelectLocal={onSelectLocal}
         onSetEncryption={onSetEncryption}
+        onClearMerchantHints={onClearMerchantHints}
+        onClearRecurringDismissals={onClearRecurringDismissals}
+        onClearTransferDismissals={onClearTransferDismissals}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}

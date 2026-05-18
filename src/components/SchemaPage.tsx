@@ -309,18 +309,28 @@ function Section({
 // than the schema module because the schema must be a valid JSON
 // Schema document.
 const OVERVIEW_TEXT = `UserData
-├─ version: 10                             schema version (this build)
+├─ version: 12                             schema version (this build)
 ├─ activeSheetId: string                   id of the sheet to open first
 ├─ accounts: Account[]                     real-world accounts (may be empty)
 │  └─ Account { id, name,
 │              description?, glyph?, color?, bank?,
-│              clearing?, accountNumber?, iban?, bic?, currency? }
+│              clearing?, accountNumber?, iban?, bic?, currency?,
+│              openingBalance? }
 ├─ categories: Category[]                  category records
 │  └─ Category { id, name, color, icon }
 ├─ transactions: Transaction[]             transfers between accounts
 │  └─ Transaction { id, date, description, amount (>= 0),
 │                   fromAccountId, toAccountId,
 │                   categoryId?, completed? }
+├─ history: { [accountId]: HistoryEntry[] } imported bank-statement rows
+│  └─ HistoryEntry { id, date, description, amount (signed),
+│                    balance, importedAt, hidden?,
+│                    collapsedIntoTransactionId? }
+├─ historyImports: { [accountId]: HistoryImport[] } file-import audit log
+├─ merchantHints: { [normalisedDesc]: MerchantHint } per-merchant category memory
+│  └─ MerchantHint { categoryId, hitCount, lastUsedAt }
+├─ recurringDismissals: string[]           normalised keys dismissed as "Not recurring"
+├─ transferCollapseDismissals: string[]    pair keys dismissed as "Never collapse"
 ├─ settings: Settings                      display + entry preferences
 │  ├─ startOfMonth: 1..28                  fiscal-month rollover day
 │  ├─ dateFormat / shortDateFormat

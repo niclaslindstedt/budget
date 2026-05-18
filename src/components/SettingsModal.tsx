@@ -32,6 +32,13 @@ type Props = {
   // Disables the encryption toggle (there's no key to derive without
   // a password) and tweaks the help text to point at "Create account".
   isGuest: boolean;
+  // Sizes of the merchant-hint memory and the two dismissal
+  // allowlists. Surfaced in the "Memory" section so the user can see
+  // what's accumulated and clear it. Zero counts collapse the
+  // sections to a single hint line.
+  merchantHintCount: number;
+  recurringDismissalCount: number;
+  transferDismissalCount: number;
   onClose: () => void;
   onSave: (next: Settings) => void;
   onConnectDropbox: () => void;
@@ -40,6 +47,9 @@ type Props = {
   onDisconnectGdrive: () => void;
   onSelectLocal: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
+  onClearMerchantHints: () => void;
+  onClearRecurringDismissals: () => void;
+  onClearTransferDismissals: () => void;
 };
 
 type CloudId = Exclude<BackendId, "local">;
@@ -89,6 +99,9 @@ export function SettingsModal({
   gdriveConnected,
   encryption,
   isGuest,
+  merchantHintCount,
+  recurringDismissalCount,
+  transferDismissalCount,
   onClose,
   onSave,
   onConnectDropbox,
@@ -97,6 +110,9 @@ export function SettingsModal({
   onDisconnectGdrive,
   onSelectLocal,
   onSetEncryption,
+  onClearMerchantHints,
+  onClearRecurringDismissals,
+  onClearTransferDismissals,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
@@ -189,6 +205,9 @@ export function SettingsModal({
             gdriveConnected={gdriveConnected}
             encryption={encryption}
             isGuest={isGuest}
+            merchantHintCount={merchantHintCount}
+            recurringDismissalCount={recurringDismissalCount}
+            transferDismissalCount={transferDismissalCount}
             onUpdate={update}
             onApplyNumberFormat={applyNumberFormat}
             onApplyDecimal={applyDecimal}
@@ -198,6 +217,9 @@ export function SettingsModal({
             onDisconnectGdrive={onDisconnectGdrive}
             onSelectLocal={onSelectLocal}
             onSetEncryption={onSetEncryption}
+            onClearMerchantHints={onClearMerchantHints}
+            onClearRecurringDismissals={onClearRecurringDismissals}
+            onClearTransferDismissals={onClearTransferDismissals}
           />
         </div>
 
@@ -238,6 +260,9 @@ function MainView({
   gdriveConnected,
   encryption,
   isGuest,
+  merchantHintCount,
+  recurringDismissalCount,
+  transferDismissalCount,
   onUpdate,
   onApplyNumberFormat,
   onApplyDecimal,
@@ -247,6 +272,9 @@ function MainView({
   onDisconnectGdrive,
   onSelectLocal,
   onSetEncryption,
+  onClearMerchantHints,
+  onClearRecurringDismissals,
+  onClearTransferDismissals,
 }: {
   draft: Settings;
   backend: BackendId;
@@ -254,6 +282,9 @@ function MainView({
   gdriveConnected: boolean;
   encryption: EncryptionMode;
   isGuest: boolean;
+  merchantHintCount: number;
+  recurringDismissalCount: number;
+  transferDismissalCount: number;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   onApplyNumberFormat: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
@@ -263,6 +294,9 @@ function MainView({
   onDisconnectGdrive: () => void;
   onSelectLocal: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
+  onClearMerchantHints: () => void;
+  onClearRecurringDismissals: () => void;
+  onClearTransferDismissals: () => void;
 }) {
   const numberPreviewSample = 1234567.89;
   const datePreviewIso = "2026-05-16";
@@ -583,6 +617,36 @@ function MainView({
         </Field>
       </Section>
 
+      <Section title="Memory">
+        <ClearRow
+          label="Merchant memory"
+          count={merchantHintCount}
+          singleHint="One merchant remembered. Cleared on demand below."
+          pluralHint={`${merchantHintCount} merchants remembered. The recurring-candidate panel uses these to suggest categories on future imports.`}
+          emptyHint="No merchants remembered yet. Assigning a category to a row teaches one entry."
+          buttonLabel="Clear merchant memory"
+          onClear={onClearMerchantHints}
+        />
+        <ClearRow
+          label="Recurring dismissals"
+          count={recurringDismissalCount}
+          singleHint="One recurring suggestion dismissed."
+          pluralHint={`${recurringDismissalCount} recurring suggestions dismissed. Clear to let them resurface on the budget view.`}
+          emptyHint="No dismissals. Pressing × on a recurring candidate adds one here."
+          buttonLabel="Clear dismissals"
+          onClear={onClearRecurringDismissals}
+        />
+        <ClearRow
+          label="Transfer dismissals"
+          count={transferDismissalCount}
+          singleHint="One transfer pair dismissed."
+          pluralHint={`${transferDismissalCount} transfer pairs dismissed. Clear to let them resurface on the Accounts page.`}
+          emptyHint='No dismissals. Pressing "Never" on a transfer pair adds one here.'
+          buttonLabel="Clear dismissals"
+          onClear={onClearTransferDismissals}
+        />
+      </Section>
+
       {/* Opens in a new tab so an in-flight settings edit isn't lost
           when the user navigates away to read these. The schema page
           exposes the JSON Schema for the exported data so an LLM (or
@@ -648,6 +712,42 @@ function Preview({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center rounded border border-line bg-surface px-2 py-1 font-mono text-xs text-path">
       {children}
     </span>
+  );
+}
+
+function ClearRow({
+  label,
+  count,
+  singleHint,
+  pluralHint,
+  emptyHint,
+  buttonLabel,
+  onClear,
+}: {
+  label: string;
+  count: number;
+  singleHint: string;
+  pluralHint: string;
+  emptyHint: string;
+  buttonLabel: string;
+  onClear: () => void;
+}) {
+  const hint = count === 0 ? emptyHint : count === 1 ? singleHint : pluralHint;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm text-fg">{label}</span>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={count === 0}
+          className="cursor-pointer rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {buttonLabel}
+        </button>
+      </div>
+      <p className="text-xs text-muted">{hint}</p>
+    </div>
   );
 }
 

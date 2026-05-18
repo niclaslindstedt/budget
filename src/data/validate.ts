@@ -21,6 +21,7 @@ import type {
   DecimalSeparator,
   HistoryEntry,
   HistoryImport,
+  MerchantHint,
   Row,
   Settings,
   Sheet,
@@ -373,7 +374,43 @@ function validateHistoryEntry(
       return fail(`${path}.hidden`, "expected a boolean");
     if (raw.hidden) entry.hidden = true;
   }
+  if (raw.collapsedIntoTransactionId !== undefined) {
+    if (
+      typeof raw.collapsedIntoTransactionId !== "string" ||
+      raw.collapsedIntoTransactionId === ""
+    ) {
+      return fail(
+        `${path}.collapsedIntoTransactionId`,
+        "expected a non-empty string",
+      );
+    }
+    entry.collapsedIntoTransactionId = raw.collapsedIntoTransactionId;
+  }
   return { ok: true, value: entry };
+}
+
+// Merchant-hint validator. Drops hints whose categoryId no longer
+// references a known category (same way Transaction does for dangling
+// category refs) so deleting a category can't trap a hint in zombie
+// state. Bogus shapes return null so the caller can skip the entry
+// rather than rejecting the whole load — hints are advisory.
+function validateMerchantHint(
+  raw: unknown,
+  knownCategoryIds: ReadonlySet<string>,
+): MerchantHint | null {
+  if (!isObject(raw)) return null;
+  const { categoryId, hitCount, lastUsedAt } = raw;
+  if (typeof categoryId !== "string" || categoryId === "") return null;
+  if (!knownCategoryIds.has(categoryId)) return null;
+  if (typeof hitCount !== "number" || !Number.isFinite(hitCount)) return null;
+  if (typeof lastUsedAt !== "number" || !Number.isFinite(lastUsedAt)) {
+    return null;
+  }
+  return {
+    categoryId,
+    hitCount: Math.max(0, Math.floor(hitCount)),
+    lastUsedAt,
+  };
 }
 
 function validateHistoryImport(
@@ -698,6 +735,27 @@ export function validateUserData(raw: unknown): Result<UserData> {
     if (imports.length > 0) historyImports[accountId] = imports;
   }
 
+  // Merchant-hint memory. Each entry is independent and advisory, so
+  // a single bad hint should never reject the whole load — bogus
+  // entries are silently dropped. Hints whose categoryId no longer
+  // resolves are also dropped so a deleted category doesn't leave
+  // zombies behind.
+  const rawHints = isObject(raw.merchantHints) ? raw.merchantHints : {};
+  const merchantHints: Record<string, MerchantHint> = {};
+  for (const [key, value] of Object.entries(rawHints)) {
+    if (typeof key !== "string" || key === "") continue;
+    const hint = validateMerchantHint(value, seenCategoryIds);
+    if (hint) merchantHints[key] = hint;
+  }
+
+  // Dismissal allowlists. Both are plain string arrays — we strip
+  // duplicates and empty values so a hand-edited file can't bloat
+  // the lookup sets the detectors build from them.
+  const recurringDismissals = sanitizeStringArray(raw.recurringDismissals);
+  const transferCollapseDismissals = sanitizeStringArray(
+    raw.transferCollapseDismissals,
+  );
+
   const settings = validateSettings(raw.settings);
 
   return {
@@ -711,7 +769,23 @@ export function validateUserData(raw: unknown): Result<UserData> {
       transactions,
       history,
       historyImports,
+      merchantHints,
+      recurringDismissals,
+      transferCollapseDismissals,
       settings,
     },
   };
+}
+
+function sanitizeStringArray(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of raw) {
+    if (typeof v !== "string" || v === "") continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
 }

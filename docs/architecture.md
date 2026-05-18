@@ -101,13 +101,36 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 9;
+  version: 12;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
   categories: Category[];
   transactions: Transaction[]; // cross-account transfers; see below
+  history: Record<string /* accountId */, HistoryEntry[]>; // imported bank rows
+  historyImports: Record<string /* accountId */, HistoryImport[]>; // audit log
+  // Per-merchant category memory, keyed by the normalised description
+  // (lowercase, dates / long digit sequences / Swedish bank-noise
+  // prefixes stripped). The recurring-candidate panel reads this to
+  // suggest a category before the user confirms a promotion; the
+  // suggestion is always visible, never silently applied. Hints whose
+  // categoryId no longer references a known category are dropped on
+  // load.
+  merchantHints: Record<string /* normalised description */, MerchantHint>;
+  // Normalised-description keys the user dismissed with "Not
+  // recurring" on the candidates panel; the detector skips these on
+  // every import. Cleared from the Memory section in Settings.
+  recurringDismissals: string[];
+  // Pair keys the user dismissed with "Never" on the transfer-collapse
+  // modal; same allowlist shape, same Memory section.
+  transferCollapseDismissals: string[];
   settings: Settings;
+};
+
+type MerchantHint = {
+  categoryId: string;
+  hitCount: number; // re-resets to 1 when the assigned category changes
+  lastUsedAt: number; // unix ms of the most recent assignment
 };
 
 type Account = {
@@ -187,6 +210,18 @@ type Row = {
   glyph?: CategoryIcon; // optional custom glyph for the description cell;
   // absent rows render the default recurring icon when `seriesId` is set,
   // and on mobile this replaces the "…" popover trigger.
+  isCorrection?: boolean; // see Account.openingBalance / "update balance" flow
+};
+
+type HistoryEntry = {
+  id: string; // content hash so re-importing dedups
+  date: string;
+  description: string;
+  amount: number; // signed (negative = outgoing)
+  balance: number; // bank-reported running balance after this row
+  importedAt: number; // unix ms of first import
+  hidden?: boolean; // user-shelved noise OR collapsed-into-transfer
+  collapsedIntoTransactionId?: string; // backref into UserData.transactions
 };
 
 type Transaction = {
@@ -262,7 +297,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `9`. The chain has eight steps:
+Current `LATEST_VERSION` is `12`. The chain has eleven steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -298,6 +333,20 @@ Current `LATEST_VERSION` is `9`. The chain has eight steps:
   `accountNumber`, `iban`, `bic`, `currency` metadata. The migration
   is a bare add of `transactions: []`; every new field is optional so
   v8 records pass the v9 validator unchanged.
+- **v9 → v10** — version bump only. Introduces an optional
+  `Row.isCorrection` flag so the "update balance" flow on the Accounts
+  page can render its delta rows as a full-width divider.
+- **v10 → v11** — adds top-level `history: {}` and `historyImports: {}`
+  for imported bank-statement entries, and an optional
+  `Account.openingBalance` so the running balance can anchor to what
+  the bank says.
+- **v11 → v12** — adds `merchantHints: {}` (per-merchant category
+  memory), `recurringDismissals: []` (normalised keys dismissed as
+  "Not recurring"), and `transferCollapseDismissals: []` (pair keys
+  dismissed as "Never" on the transfer-collapse modal). `HistoryEntry`
+  also gains an optional `collapsedIntoTransactionId` backref so the
+  transfer-collapse flow is reversible (deleting the resulting
+  transaction restores both source entries).
 
 ## Complex entries
 
@@ -340,6 +389,52 @@ Inline cell edits on series rows remain local — they only change
 that one row, so day-to-day tweaks (marking a single payment as
 done, correcting one date) don't trigger a scope prompt. The repeat
 icon is the dedicated path for changes meant to propagate.
+
+## Detection over imported history
+
+Three pure modules under `src/data/` correlate imported
+`HistoryEntry`s into actionable suggestions, all keyed off a single
+shared `normaliseDescription` so a Spotify charge that's detected as
+recurring also memorises its category under the same key the next
+import looks up:
+
+- `description-normaliser.ts` collapses cosmetic differences — case,
+  whitespace, ISO/short dates, currency suffixes, long digit
+  sequences (transaction reference numbers), and a small allowlist
+  of Swedish bank-noise prefixes (`Kortköp`, `Överföring`, `Swish`,
+  …) — into a stable key. Used by all three modules below.
+- `recurring-detection.ts` buckets entries by normalised key, ranks
+  each bucket by cadence regularity, amount stability, and
+  occurrence count, and emits `RecurringCandidate`s the
+  `RecurringCandidatesPanel` surfaces on the budget view. Promotion
+  dispatches `promoteRecurringCandidate`, which mints a series of
+  budget rows (using the existing `expandRecurrence` machinery) and
+  records the chosen category as a merchant hint. Dismissals persist
+  in `recurringDismissals` so the noise doesn't keep coming back.
+- `transfer-collapse.ts` finds mirror pairs across accounts —
+  opposite signs, equal magnitude, dates within three days, bonus
+  confidence for Swish / Överföring keywords — and emits
+  `TransferCandidate`s the `TransferCollapseModal` lists with bulk
+  Collapse / Skip / Never controls. Collapsing dispatches
+  `collapseTransferPair`, which mints a `Transaction` and stamps
+  both source entries with `hidden: true` plus a
+  `collapsedIntoTransactionId` backref so the operation is
+  reversible (deleting the transaction restores both entries) and
+  idempotent (the detector skips entries that already carry a
+  backref). Dismissals persist in `transferCollapseDismissals`.
+- `merchant-hints.ts` records the per-merchant category memory.
+  `recordMerchantHints` runs at the tail of every category-assigning
+  reducer action (budget row edits, recurring promotion, transaction
+  create / update), keyed by the same normalised description. The
+  recurring-candidates panel reads `suggestCategoryForDescription`
+  to render a "Suggested: <chip>" hint on each candidate — always
+  visible to the user, never silently applied. Hints whose
+  `categoryId` no longer references a known category are dropped on
+  load.
+
+The Settings → "Memory" section surfaces the size of each store and
+a Clear-all so a misclick on either dismissal list (or a wholesale
+reset of the merchant memory) is one tap away.
 
 ## Import / export
 

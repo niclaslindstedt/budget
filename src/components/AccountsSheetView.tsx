@@ -5,11 +5,13 @@ import {
   History,
   Pencil,
   Plus,
+  Repeat,
   Upload,
   Wallet,
 } from "lucide-react";
 
 import { accountBalance } from "../data/sheet";
+import { detectTransferCandidates } from "../data/transfer-collapse";
 import type {
   Account,
   Category,
@@ -34,6 +36,10 @@ type Props = {
   // Opens the read-only history viewer for the clicked account.
   // Only enabled when the account already has imported entries.
   onViewHistory: (accountId: string) => void;
+  // Opens the cross-account transfer-collapse modal. The link is
+  // disabled when the detector finds nothing — no point sending the
+  // user to an empty modal.
+  onFindTransfers: () => void;
 };
 
 export function AccountsSheetView({
@@ -47,6 +53,7 @@ export function AccountsSheetView({
   onEditTransaction,
   onImportHistory,
   onViewHistory,
+  onFindTransfers,
 }: Props) {
   // Pre-compute every account's balance once per render. The helper
   // walks every budget item in the workspace plus every transaction,
@@ -89,6 +96,17 @@ export function AccountsSheetView({
       a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
     );
   }, [data.transactions]);
+
+  // How many transfer pairs the detector currently sees. Drives the
+  // badge on the "Find transfers" link and whether the link is
+  // enabled at all — clicking through to an empty modal would be a
+  // dead end.
+  const transferCandidateCount = useMemo(() => {
+    return detectTransferCandidates({
+      history: data.history,
+      dismissedPairKeys: new Set(data.transferCollapseDismissals),
+    }).length;
+  }, [data.history, data.transferCollapseDismissals]);
 
   return (
     <section>
@@ -268,9 +286,32 @@ export function AccountsSheetView({
       </section>
 
       <section>
-        <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
-          Transactions
-        </h3>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold tracking-wider uppercase text-fg-bright">
+            Transactions
+          </h3>
+          <button
+            type="button"
+            onClick={onFindTransfers}
+            disabled={transferCandidateCount === 0}
+            title={
+              transferCandidateCount === 0
+                ? "No matching pairs in imported history"
+                : `Review ${transferCandidateCount} detected transfer pair${
+                    transferCandidateCount === 1 ? "" : "s"
+                  }`
+            }
+            className="inline-flex cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Repeat size={11} aria-hidden focusable={false} />
+            Find transfers
+            {transferCandidateCount > 0 && (
+              <span className="rounded bg-accent/15 px-1 text-accent">
+                {transferCandidateCount}
+              </span>
+            )}
+          </button>
+        </div>
         <div className="overflow-clip rounded border border-line bg-surface">
           <table className="w-full border-collapse text-sm">
             <thead>
