@@ -140,11 +140,27 @@ export function CategoryPicker({
         aria-label={!selected && isChip ? "Add category" : undefined}
       >
         {selected ? (
-          <CategoryChip
-            category={selected}
-            compact={isChip}
-            hideNameOnMobile={isChip}
-          />
+          isChip ? (
+            <>
+              {/* Mobile: glyph only, in the category's colour, prominent.
+                 The cell is 40px wide on mobile — a chip with a tinted
+                 background fades into the row, so render the bare icon
+                 instead and let the colour carry the identity. */}
+              <span
+                className="inline-flex items-center justify-center md:hidden"
+                style={{ color: selected.color }}
+                aria-hidden
+              >
+                <CategoryIconGlyph name={selected.icon} size={18} />
+              </span>
+              {/* Desktop: full chip with glyph + name. */}
+              <span className="hidden md:inline-flex">
+                <CategoryChip category={selected} compact />
+              </span>
+            </>
+          ) : (
+            <CategoryChip category={selected} />
+          )
         ) : isChip ? (
           <Plus
             size={16}
@@ -248,11 +264,9 @@ export function CategoryPicker({
 export function CategoryChip({
   category,
   compact = false,
-  hideNameOnMobile = false,
 }: {
   category: Category;
   compact?: boolean;
-  hideNameOnMobile?: boolean;
 }) {
   return (
     <span
@@ -268,11 +282,7 @@ export function CategoryChip({
       }}
     >
       <CategoryIconGlyph name={category.icon} size={compact ? 12 : 13} />
-      <span
-        className={hideNameOnMobile ? "hidden truncate md:inline" : "truncate"}
-      >
-        {category.name}
-      </span>
+      <span className="truncate">{category.name}</span>
     </span>
   );
 }
