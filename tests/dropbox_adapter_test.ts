@@ -132,10 +132,10 @@ describe("dropbox adapter", () => {
     });
   });
 
-  it("sets a 5-minute debounce so saves coalesce", () => {
+  it("sets a 1-second debounce so keystrokes coalesce", () => {
     const { fn } = fakeFetch(() => makeResponse({ status: 200, body: "{}" }));
     const adapter = createDropboxAdapter("token-123", fn);
-    expect(adapter.saveDebounceMs).toBe(5 * 60 * 1000);
+    expect(adapter.saveDebounceMs).toBe(1000);
   });
 
   it("uses update mode when a baseRevision is supplied", async () => {

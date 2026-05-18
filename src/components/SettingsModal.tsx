@@ -65,7 +65,7 @@ function cloudCopy(id: CloudId): CloudCopy {
     return {
       name: "Dropbox",
       connectedHint:
-        "Synced to your Dropbox app folder every few minutes, or when you press Save.",
+        "Synced to your Dropbox app folder on every change, or when you press Save.",
       unconnectedHint:
         "Authorize to keep your budget in your Dropbox app folder.",
     };
@@ -73,7 +73,7 @@ function cloudCopy(id: CloudId): CloudCopy {
   return {
     name: "Google Drive",
     connectedHint:
-      "Synced to your Google Drive every few minutes, or when you press Save.",
+      "Synced to your Google Drive on every change, or when you press Save.",
     unconnectedHint: "Authorize to keep your budget in your Google Drive.",
   };
 }
