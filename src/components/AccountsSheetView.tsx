@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { ArrowLeftRight, ArrowRight, Pencil, Plus, Wallet } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  History,
+  Pencil,
+  Plus,
+  Upload,
+  Wallet,
+} from "lucide-react";
 
 import { accountBalance } from "../data/sheet";
 import type {
@@ -21,6 +29,11 @@ type Props = {
   onUpdateBalance: (accountId: string) => void;
   onCreateTransaction: () => void;
   onEditTransaction: (transactionId: string) => void;
+  // Opens the import-history modal scoped to the clicked account.
+  onImportHistory: (accountId: string) => void;
+  // Opens the read-only history viewer for the clicked account.
+  // Only enabled when the account already has imported entries.
+  onViewHistory: (accountId: string) => void;
 };
 
 export function AccountsSheetView({
@@ -32,6 +45,8 @@ export function AccountsSheetView({
   onUpdateBalance,
   onCreateTransaction,
   onEditTransaction,
+  onImportHistory,
+  onViewHistory,
 }: Props) {
   // Pre-compute every account's balance once per render. The helper
   // walks every budget item in the workspace plus every transaction,
@@ -95,7 +110,7 @@ export function AccountsSheetView({
                   Bank
                 </th>
                 <th className="px-2 py-1.5 text-right">Balance</th>
-                <th className="w-10 px-2 py-1.5"></th>
+                <th className="w-24 px-2 py-1.5"></th>
               </tr>
             </thead>
             <tbody>
@@ -114,6 +129,7 @@ export function AccountsSheetView({
                 const accountSettings = account.currency
                   ? { ...settings, currency: account.currency }
                   : settings;
+                const historyCount = data.history[account.id]?.length ?? 0;
                 return (
                   <tr
                     key={account.id}
@@ -193,15 +209,41 @@ export function AccountsSheetView({
                         </span>
                       )}
                     </td>
-                    <td className="w-10 px-2 py-2 text-right align-middle">
-                      <button
-                        type="button"
-                        onClick={() => onEditAccount(account.id)}
-                        aria-label={`Edit ${account.name}`}
-                        className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent"
-                      >
-                        <Pencil size={14} aria-hidden focusable={false} />
-                      </button>
+                    <td className="w-24 px-2 py-2 text-right align-middle">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => onImportHistory(account.id)}
+                          aria-label={`Import history into ${account.name}`}
+                          title="Import bank history"
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent"
+                        >
+                          <Upload size={14} aria-hidden focusable={false} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={historyCount === 0}
+                          onClick={() => onViewHistory(account.id)}
+                          aria-label={`View history for ${account.name}`}
+                          title={
+                            historyCount === 0
+                              ? "No history imported yet"
+                              : `View ${historyCount} history entries`
+                          }
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <History size={14} aria-hidden focusable={false} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onEditAccount(account.id)}
+                          aria-label={`Edit ${account.name}`}
+                          title="Edit account"
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent"
+                        >
+                          <Pencil size={14} aria-hidden focusable={false} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

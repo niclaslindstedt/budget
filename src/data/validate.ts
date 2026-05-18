@@ -19,6 +19,8 @@ import type {
   ColumnType,
   DateFormat,
   DecimalSeparator,
+  HistoryEntry,
+  HistoryImport,
   Row,
   Settings,
   Sheet,
@@ -332,7 +334,92 @@ function validateAccount(raw: unknown, path: string): Result<Account> {
   if (typeof raw.bic === "string") account.bic = raw.bic;
   if (typeof raw.currency === "string" && raw.currency.length > 0)
     account.currency = raw.currency;
+  if (
+    typeof raw.openingBalance === "number" &&
+    Number.isFinite(raw.openingBalance)
+  )
+    account.openingBalance = raw.openingBalance;
   return { ok: true, value: account };
+}
+
+function validateHistoryEntry(
+  raw: unknown,
+  path: string,
+): Result<HistoryEntry> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, date, description, amount, balance, importedAt } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof date !== "string" || date === "")
+    return fail(`${path}.date`, "expected an ISO date string");
+  if (typeof description !== "string")
+    return fail(`${path}.description`, "expected a string");
+  if (typeof amount !== "number" || !Number.isFinite(amount))
+    return fail(`${path}.amount`, "expected a finite number");
+  if (typeof balance !== "number" || !Number.isFinite(balance))
+    return fail(`${path}.balance`, "expected a finite number");
+  if (typeof importedAt !== "number" || !Number.isFinite(importedAt))
+    return fail(`${path}.importedAt`, "expected a finite number");
+  const entry: HistoryEntry = {
+    id,
+    date,
+    description,
+    amount,
+    balance,
+    importedAt,
+  };
+  if (raw.hidden !== undefined) {
+    if (typeof raw.hidden !== "boolean")
+      return fail(`${path}.hidden`, "expected a boolean");
+    if (raw.hidden) entry.hidden = true;
+  }
+  return { ok: true, value: entry };
+}
+
+function validateHistoryImport(
+  raw: unknown,
+  path: string,
+): Result<HistoryImport> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const {
+    id,
+    importedAt,
+    filename,
+    bankParserId,
+    rangeStart,
+    rangeEnd,
+    addedCount,
+    duplicateCount,
+  } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof importedAt !== "number" || !Number.isFinite(importedAt))
+    return fail(`${path}.importedAt`, "expected a finite number");
+  if (typeof filename !== "string")
+    return fail(`${path}.filename`, "expected a string");
+  if (typeof bankParserId !== "string")
+    return fail(`${path}.bankParserId`, "expected a string");
+  if (typeof rangeStart !== "string")
+    return fail(`${path}.rangeStart`, "expected a string");
+  if (typeof rangeEnd !== "string")
+    return fail(`${path}.rangeEnd`, "expected a string");
+  if (typeof addedCount !== "number" || !Number.isFinite(addedCount))
+    return fail(`${path}.addedCount`, "expected a finite number");
+  if (typeof duplicateCount !== "number" || !Number.isFinite(duplicateCount))
+    return fail(`${path}.duplicateCount`, "expected a finite number");
+  return {
+    ok: true,
+    value: {
+      id,
+      importedAt,
+      filename,
+      bankParserId,
+      rangeStart,
+      rangeEnd,
+      addedCount,
+      duplicateCount,
+    },
+  };
 }
 
 function validateTransaction(
@@ -567,6 +654,50 @@ export function validateUserData(raw: unknown): Result<UserData> {
     ? raw.activeSheetId
     : sheets[0].id;
 
+  // `history` and `historyImports` are per-account maps. Entries
+  // belonging to a deleted account are silently dropped so removing
+  // an account can't make the workspace unloadable, and duplicate
+  // entry ids within an account collapse to one (the parser is
+  // expected to dedup, but a hand-edited file shouldn't crash).
+  const rawHistory = isObject(raw.history) ? raw.history : {};
+  const history: Record<string, HistoryEntry[]> = {};
+  for (const [accountId, rawEntries] of Object.entries(rawHistory)) {
+    if (!seenAccountIds.has(accountId)) continue;
+    if (!Array.isArray(rawEntries)) continue;
+    const entries: HistoryEntry[] = [];
+    const seenIds = new Set<string>();
+    for (let i = 0; i < rawEntries.length; i++) {
+      const r = validateHistoryEntry(
+        rawEntries[i],
+        `history.${accountId}[${i}]`,
+      );
+      if (!r.ok) return r;
+      if (seenIds.has(r.value.id)) continue;
+      seenIds.add(r.value.id);
+      entries.push(r.value);
+    }
+    if (entries.length > 0) history[accountId] = entries;
+  }
+
+  const rawHistoryImports = isObject(raw.historyImports)
+    ? raw.historyImports
+    : {};
+  const historyImports: Record<string, HistoryImport[]> = {};
+  for (const [accountId, rawImports] of Object.entries(rawHistoryImports)) {
+    if (!seenAccountIds.has(accountId)) continue;
+    if (!Array.isArray(rawImports)) continue;
+    const imports: HistoryImport[] = [];
+    for (let i = 0; i < rawImports.length; i++) {
+      const r = validateHistoryImport(
+        rawImports[i],
+        `historyImports.${accountId}[${i}]`,
+      );
+      if (!r.ok) return r;
+      imports.push(r.value);
+    }
+    if (imports.length > 0) historyImports[accountId] = imports;
+  }
+
   const settings = validateSettings(raw.settings);
 
   return {
@@ -578,6 +709,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       accounts,
       categories,
       transactions,
+      history,
+      historyImports,
       settings,
     },
   };

@@ -31,7 +31,9 @@ import {
   type EditPatch,
   type EditScope,
 } from "./components/EditEntryModal";
+import { HistoryModal } from "./components/HistoryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
+import { ImportHistoryModal } from "./components/ImportHistoryModal";
 import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
@@ -92,6 +94,12 @@ import {
   createDropboxAdapter,
   startDropboxAuth,
 } from "./storage/dropbox-adapter";
+import {
+  computeOpeningBalanceFromHistory,
+  mergeHistory,
+  type ParsedBankEntry,
+  type ParsedBankFile,
+} from "./storage/bank-parsers";
 import { serializeUserData } from "./storage/file";
 import {
   completeGdriveAuth,
@@ -253,7 +261,24 @@ type Action =
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
-  | { type: "selectSheet"; sheetId: string };
+  | { type: "selectSheet"; sheetId: string }
+  | {
+      // Merge a parsed bank statement into the named account. The
+      // reducer dedups entries against existing history (by content
+      // hash), records a `HistoryImport` audit row, re-anchors the
+      // account's `openingBalance` to the earliest entry's pre-row
+      // balance, and back-fills `clearing` / `accountNumber` on the
+      // account when those fields are empty. Pure: every payload
+      // field is data, so the action can be replayed for tests.
+      type: "importBankHistory";
+      accountId: string;
+      bankParserId: string;
+      filename: string;
+      bankClearing?: string;
+      bankAccountNumber?: string;
+      entries: ParsedBankEntry[];
+      now: number;
+    };
 
 function applyPatch(
   row: Row,
@@ -561,6 +586,12 @@ function reducer(state: UserData, action: Action): UserData {
     // free-standing ledgers, and drop any transactions that touched
     // it (a transfer between two known accounts loses its other half
     // once one side is gone, so the cleanest answer is removal).
+    // Imported history and import audit rows belong to the account
+    // and are dropped alongside it.
+    const nextHistory = { ...state.history };
+    delete nextHistory[action.accountId];
+    const nextHistoryImports = { ...state.historyImports };
+    delete nextHistoryImports[action.accountId];
     return {
       ...state,
       accounts: state.accounts.filter((a) => a.id !== action.accountId),
@@ -577,6 +608,58 @@ function reducer(state: UserData, action: Action): UserData {
           tx.fromAccountId !== action.accountId &&
           tx.toAccountId !== action.accountId,
       ),
+      history: nextHistory,
+      historyImports: nextHistoryImports,
+    };
+  }
+  if (action.type === "importBankHistory") {
+    const existing = state.history[action.accountId] ?? [];
+    const { merged, addedCount, duplicateCount } = mergeHistory(
+      existing,
+      action.entries,
+      action.now,
+    );
+    // Re-anchor the opening balance from the earliest entry in the
+    // merged set so the running balance lines up with what the bank
+    // says, even if the user later imports an older statement that
+    // pushes the earliest date back further.
+    const opening = computeOpeningBalanceFromHistory(merged);
+    const importRecord = {
+      id: newId(),
+      importedAt: action.now,
+      filename: action.filename,
+      bankParserId: action.bankParserId,
+      rangeStart: action.entries.reduce(
+        (min, e) => (min === "" || e.date < min ? e.date : min),
+        "",
+      ),
+      rangeEnd: action.entries.reduce(
+        (max, e) => (e.date > max ? e.date : max),
+        "",
+      ),
+      addedCount,
+      duplicateCount,
+    };
+    const priorImports = state.historyImports[action.accountId] ?? [];
+    return {
+      ...state,
+      accounts: state.accounts.map((a) => {
+        if (a.id !== action.accountId) return a;
+        const patch: Partial<typeof a> = {};
+        if (opening !== null) patch.openingBalance = opening;
+        // Back-fill clearing / accountNumber only when they're empty,
+        // so a manual override isn't clobbered by a re-import.
+        if (!a.clearing && action.bankClearing)
+          patch.clearing = action.bankClearing;
+        if (!a.accountNumber && action.bankAccountNumber)
+          patch.accountNumber = action.bankAccountNumber;
+        return { ...a, ...patch };
+      }),
+      history: { ...state.history, [action.accountId]: merged },
+      historyImports: {
+        ...state.historyImports,
+        [action.accountId]: [...priorImports, importRecord],
+      },
     };
   }
   if (action.type === "correctAccountBalance") {
@@ -1800,6 +1883,13 @@ function BudgetView({
   const [updateBalanceForId, setUpdateBalanceForId] = useState<string | null>(
     null,
   );
+  // Account ids for the import-history and view-history modals.
+  // Same null-or-id pattern as `updateBalanceForId` so a concurrent
+  // delete / rename doesn't leave a stale snapshot in state.
+  const [importHistoryForId, setImportHistoryForId] = useState<string | null>(
+    null,
+  );
+  const [viewHistoryForId, setViewHistoryForId] = useState<string | null>(null);
   // null = closed; otherwise the id of the correction row queued for
   // deletion (set when the user clicks the divider line in the budget
   // view). The ConfirmDialog renders against this state to ask for
@@ -2231,6 +2321,49 @@ function BudgetView({
     });
     setAccountModal(null);
   }, [dispatch, accountModal]);
+
+  // Bank-history import / viewer flows. The Accounts page surfaces a
+  // per-row Upload button (always enabled) and a History viewer
+  // button (enabled when entries exist). Both are scoped to the
+  // clicked account so the import flow never has to ask "which
+  // account is this for?".
+  const onOpenImportHistory = useCallback((accountId: string) => {
+    setImportHistoryForId(accountId);
+  }, []);
+  const onOpenViewHistory = useCallback((accountId: string) => {
+    setViewHistoryForId(accountId);
+  }, []);
+  const importHistoryAccount = useMemo(
+    () =>
+      importHistoryForId
+        ? (data.accounts.find((a) => a.id === importHistoryForId) ?? null)
+        : null,
+    [importHistoryForId, data.accounts],
+  );
+  const viewHistoryAccount = useMemo(
+    () =>
+      viewHistoryForId
+        ? (data.accounts.find((a) => a.id === viewHistoryForId) ?? null)
+        : null,
+    [viewHistoryForId, data.accounts],
+  );
+  const onConfirmImportHistory = useCallback(
+    (parsed: ParsedBankFile, filename: string) => {
+      if (!importHistoryAccount) return;
+      dispatch({
+        type: "importBankHistory",
+        accountId: importHistoryAccount.id,
+        bankParserId: parsed.bankParserId,
+        bankClearing: parsed.bankClearing,
+        bankAccountNumber: parsed.bankAccountNumber,
+        filename,
+        entries: parsed.entries,
+        now: Date.now(),
+      });
+      setImportHistoryForId(null);
+    },
+    [dispatch, importHistoryAccount],
+  );
 
   // Balance-correction flow. The Accounts page surfaces a clickable
   // balance per account; clicking opens UpdateBalanceModal, which lets
@@ -2747,6 +2880,8 @@ function BudgetView({
               onUpdateBalance={onOpenUpdateBalance}
               onCreateTransaction={onOpenCreateTransaction}
               onEditTransaction={onOpenEditTransaction}
+              onImportHistory={onOpenImportHistory}
+              onViewHistory={onOpenViewHistory}
             />
           ) : (
             <SheetView
@@ -2755,6 +2890,17 @@ function BudgetView({
               categories={data.categories}
               accounts={data.accounts}
               transactions={data.transactions}
+              history={
+                activeItem.accountId
+                  ? (data.history[activeItem.accountId] ?? [])
+                  : []
+              }
+              openingBalance={
+                activeItem.accountId
+                  ? (data.accounts.find((a) => a.id === activeItem.accountId)
+                      ?.openingBalance ?? 0)
+                  : 0
+              }
               settings={data.settings}
               selectMode={selectMode}
               selectedIds={selectedIds}
@@ -2831,6 +2977,32 @@ function BudgetView({
         canRecord={updateBalanceHasBudget}
         onConfirm={onConfirmUpdateBalance}
         onCancel={() => setUpdateBalanceForId(null)}
+      />
+      <ImportHistoryModal
+        open={importHistoryAccount !== null}
+        account={importHistoryAccount}
+        existing={
+          importHistoryAccount
+            ? (data.history[importHistoryAccount.id] ?? [])
+            : []
+        }
+        settings={data.settings}
+        onCancel={() => setImportHistoryForId(null)}
+        onConfirm={onConfirmImportHistory}
+      />
+      <HistoryModal
+        open={viewHistoryAccount !== null}
+        account={viewHistoryAccount}
+        entries={
+          viewHistoryAccount ? (data.history[viewHistoryAccount.id] ?? []) : []
+        }
+        imports={
+          viewHistoryAccount
+            ? (data.historyImports[viewHistoryAccount.id] ?? [])
+            : []
+        }
+        settings={data.settings}
+        onCancel={() => setViewHistoryForId(null)}
       />
       <TransactionModal
         open={transactionRequest !== null}

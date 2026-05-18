@@ -44,6 +44,13 @@ export type Row = {
   transactionId?: string;
   peerAccountId?: string;
   peerAccountName?: string;
+  // Runtime-only marker populated by `synthesizeHistoryRow` when an
+  // imported bank-statement entry is projected into a budget view.
+  // Like the transaction markers, this is never persisted — history
+  // rows live in `UserData.history`, not in `item.rows`. The cell
+  // renderer reads it to disable inline editing and surface a
+  // "promote to recurring" action in place of the usual edit dialog.
+  historyEntryId?: string;
 };
 
 export type CategoryIcon =
@@ -107,6 +114,53 @@ export type Account = {
   // rendering this account's balance. Empty / undefined means "use
   // the global setting".
   currency?: string;
+  // Anchored opening balance derived from imported history. When a
+  // bank statement is imported, the earliest entry's `balance` minus
+  // its `amount` is the account's balance just before that entry —
+  // we stash it here so the running balance computed from history
+  // entries lines up with what the bank says. Undefined on accounts
+  // that have never been seeded from history.
+  openingBalance?: number;
+};
+
+// One row from an imported bank statement. The four fields are the
+// raw shape every bank export carries; `id` is a deterministic content
+// hash (date + amount + balance + normalised description) so re-importing
+// an overlapping statement is a no-op rather than a duplication.
+//
+// `hidden` lets the user shelve noise (interest accruals, fee lines, …)
+// without losing the data — the entry still counts in the running
+// balance but is filtered out of budget projections and the history
+// modal's default view.
+//
+// `importedAt` records the millisecond timestamp the entry was first
+// loaded so a future "undo last import" affordance can roll back a
+// session-worth of writes by timestamp.
+export type HistoryEntry = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  balance: number;
+  importedAt: number;
+  hidden?: boolean;
+};
+
+// Per-account metadata recorded each time the user imports a file.
+// Lets the History modal show "imported `statement.xlsx` on 2026-05-17
+// covering 2025-05 to 2026-05, 312 entries" and is the hook a future
+// "undo last import" affordance reads. Stored alongside the entries
+// rather than computed because filenames and dropped-duplicate counts
+// don't survive a re-walk of the data.
+export type HistoryImport = {
+  id: string;
+  importedAt: number;
+  filename: string;
+  bankParserId: string;
+  rangeStart: string;
+  rangeEnd: string;
+  addedCount: number;
+  duplicateCount: number;
 };
 
 // One transfer between two accounts. Stored at the UserData level so a
@@ -259,7 +313,7 @@ export type Settings = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 10;
+  version: 11;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -269,6 +323,21 @@ export type UserData = {
   // and as a top-level row on the Accounts sheet's transaction log.
   // Empty on a fresh budget and on v8 imports the v9 migration upgrades.
   transactions: Transaction[];
+  // Imported bank-statement entries, keyed by account id. Each entry
+  // is the raw bank row — date, description, amount, balance — kept
+  // independently of any budget rows the user has authored. The
+  // History modal on the Accounts page reads it directly, and the
+  // budget view projects entries inline so the user can promote them
+  // to real recurring rows. Stored as a Record (rather than an array
+  // on each Account) so `Account` stays a small display-metadata
+  // object and future per-account streaming / partitioning has a
+  // natural seam.
+  history: Record<string, HistoryEntry[]>;
+  // One record per file the user has imported, scoped by account. The
+  // History modal renders this as an audit trail and a future
+  // "undo last import" affordance reads it back to filter `history`
+  // by `importedAt`.
+  historyImports: Record<string, HistoryImport[]>;
   settings: Settings;
 };
 

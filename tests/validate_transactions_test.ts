@@ -10,7 +10,7 @@ import { validateUserData } from "../src/data/validate";
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 10,
+    version: 11,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -19,6 +19,8 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
     ],
     categories: [],
     transactions: [],
+    history: {},
+    historyImports: {},
     settings: { ...DEFAULT_SETTINGS },
   };
   return { ...base, transactions };
@@ -116,7 +118,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 10,
+      version: 11,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -136,6 +138,8 @@ describe("validateUserData — accounts metadata", () => {
       ],
       categories: [],
       transactions: [],
+      history: {},
+      historyImports: {},
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);
@@ -151,12 +155,14 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 10,
+      version: 11,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
       categories: [],
       transactions: [],
+      history: {},
+      historyImports: {},
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);

@@ -16,7 +16,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 10 as const;
+export const LATEST_VERSION = 11 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -181,6 +181,19 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // rewriting; bumping the version flags that this build understands
   // the new shape so older builds know not to silently drop the field.
   9: (v9) => ({ ...v9, version: 10 }),
+
+  // v10 → v11: introduces imported bank-statement history at the
+  // UserData level (`history`, `historyImports`) and an optional
+  // anchored `openingBalance` field on Account. Both collections
+  // default to empty so v10 records pass the v11 validator unchanged
+  // and the runtime balance math is undisturbed until the user
+  // imports a statement.
+  10: (v10) => ({
+    ...v10,
+    version: 11,
+    history: {},
+    historyImports: {},
+  }),
 };
 
 export type MigrationResult = {

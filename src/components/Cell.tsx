@@ -52,6 +52,13 @@ type Props = {
   isTransaction?: boolean;
   peerName?: string;
   outgoing?: boolean;
+  // True when this row is a synthesized projection of an imported
+  // bank-statement entry. Disables every editor (the source data
+  // lives in `data.history`, not the budget's rows) and renders the
+  // description cell as plain readonly text — no transfer arrow,
+  // no peer name. The action column hides edit/delete buttons too,
+  // gated upstream in SheetRow.
+  isHistory?: boolean;
   onChange: (value: CellValue) => void;
   // Fires when the user finishes editing a cell (blur for the typed
   // inputs, the selection event for picker-style cells). Distinct from
@@ -77,6 +84,7 @@ export function Cell({
   isTransaction,
   peerName,
   outgoing,
+  isHistory,
   onChange,
   onCommit,
   onCreateCategory,
@@ -88,7 +96,7 @@ export function Cell({
   // modal). The dedicated transaction layouts only differ from the
   // regular layouts in two ways: no input element, and the description
   // cell shows a transfer arrow + peer-account name.
-  if (isTransaction) {
+  if (isTransaction || isHistory) {
     switch (column.type) {
       case "date":
         return (
@@ -98,11 +106,15 @@ export function Cell({
           />
         );
       case "description":
-        return (
+        return isTransaction ? (
           <TransactionDescriptionCell
             value={typeof value === "string" ? value : ""}
             peerName={peerName ?? ""}
             outgoing={!!outgoing}
+          />
+        ) : (
+          <ReadonlyDescriptionCell
+            value={typeof value === "string" ? value : ""}
           />
         );
       case "amount":
@@ -824,6 +836,23 @@ function ReadonlyAmountCell({
 // arrow leading into the peer account name, then the transaction
 // description as plain text. Mirrors the editable description cell's
 // desktop / mobile split so the row collapses cleanly on small screens.
+// Read-only description cell for synthesized history rows. No
+// transfer arrow, no peer name — just the bank's description text in
+// the same muted style the transaction variant uses, so the row
+// reads as "imported, not edited" at a glance.
+function ReadonlyDescriptionCell({ value }: { value: string }) {
+  return (
+    <td className={`${CELL_BASE} align-middle md:w-full`}>
+      <div className="hidden md:block md:px-2.5 md:py-2">
+        <span className="truncate text-fg">{value || "—"}</span>
+      </div>
+      <div className="flex h-full min-h-9 w-full items-center px-2.5 py-2 font-mono text-fg md:hidden">
+        <span className="truncate">{value || "—"}</span>
+      </div>
+    </td>
+  );
+}
+
 function TransactionDescriptionCell({
   value,
   peerName,
