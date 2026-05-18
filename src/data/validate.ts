@@ -22,6 +22,7 @@ import type {
   EntryType,
   HistoryEntry,
   HistoryImport,
+  MatchRule,
   MerchantHint,
   Row,
   Settings,
@@ -439,6 +440,59 @@ function validateMerchantHint(
   return hint;
 }
 
+// Match-rule validator. Drops rules whose categoryId / typeId no
+// longer resolve so a deleted category or type can't trap a rule in
+// zombie state. Returns null for unsalvageable shapes (no pattern, no
+// id) so the loader can skip the row rather than rejecting the whole
+// file — rules are advisory like merchant hints.
+function validateMatchRule(
+  raw: unknown,
+  knownCategoryIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
+): MatchRule | null {
+  if (!isObject(raw)) return null;
+  const { id, pattern } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof pattern !== "string" || pattern === "") return null;
+  const rule: MatchRule = { id, pattern };
+  if (typeof raw.description === "string" && raw.description.trim() !== "") {
+    rule.description = raw.description;
+  }
+  if (raw.categoryId === null) {
+    rule.categoryId = null;
+  } else if (
+    typeof raw.categoryId === "string" &&
+    raw.categoryId !== "" &&
+    knownCategoryIds.has(raw.categoryId)
+  ) {
+    rule.categoryId = raw.categoryId;
+  }
+  if (raw.typeId === null) {
+    rule.typeId = null;
+  } else if (
+    typeof raw.typeId === "string" &&
+    raw.typeId !== "" &&
+    knownTypeIds.has(raw.typeId)
+  ) {
+    rule.typeId = raw.typeId;
+  }
+  if (
+    raw.amountSign === "any" ||
+    raw.amountSign === "positive" ||
+    raw.amountSign === "negative"
+  ) {
+    rule.amountSign = raw.amountSign;
+  }
+  if (
+    raw.transferFilter === "any" ||
+    raw.transferFilter === "exclude" ||
+    raw.transferFilter === "only"
+  ) {
+    rule.transferFilter = raw.transferFilter;
+  }
+  return rule;
+}
+
 function validateHistoryImport(
   raw: unknown,
   path: string,
@@ -821,6 +875,22 @@ export function validateUserData(raw: unknown): Result<UserData> {
     raw.transferCollapseDismissals,
   );
 
+  // User-authored wildcard match rules. Like merchant hints, each
+  // rule is advisory and independent — a bogus entry is silently
+  // dropped rather than rejecting the load. Duplicate ids collapse
+  // to the first occurrence so a hand-edited file can't trap the
+  // loader in a referentially ambiguous state.
+  const rawRules = Array.isArray(raw.matchRules) ? raw.matchRules : [];
+  const matchRules: MatchRule[] = [];
+  const seenRuleIds = new Set<string>();
+  for (const rawRule of rawRules) {
+    const rule = validateMatchRule(rawRule, seenCategoryIds, seenTypeIds);
+    if (!rule) continue;
+    if (seenRuleIds.has(rule.id)) continue;
+    seenRuleIds.add(rule.id);
+    matchRules.push(rule);
+  }
+
   const settings = validateSettings(raw.settings);
 
   return {
@@ -838,6 +908,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       merchantHints,
       recurringDismissals,
       transferCollapseDismissals,
+      matchRules,
       settings,
     },
   };

@@ -9,7 +9,7 @@ export function freshUserData(): UserData {
   // app no longer fabricates a "Default" account on first run.
   const sheet = createDefaultSheet("Sheet 1");
   return {
-    version: 15,
+    version: 16,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -21,6 +21,7 @@ export function freshUserData(): UserData {
     merchantHints: {},
     recurringDismissals: [],
     transferCollapseDismissals: [],
+    matchRules: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }

@@ -35,6 +35,10 @@ import {
 import { HistoryModal } from "./components/HistoryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
 import { ImportHistoryModal } from "./components/ImportHistoryModal";
+import {
+  MatchRuleModal,
+  type MatchRuleDraft,
+} from "./components/MatchRuleModal";
 import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
@@ -65,6 +69,7 @@ import type {
   CellValue,
   EntryType,
   HistoryEntry,
+  MatchRule,
   Row,
   Settings,
   Sheet,
@@ -371,7 +376,24 @@ type Action =
       pairKey: string;
     }
   | { type: "clearTransferDismissals" }
-  | { type: "clearMerchantHints" };
+  | { type: "clearMerchantHints" }
+  | {
+      // Append a new wildcard match rule to `UserData.matchRules`. The
+      // rule labels every history entry whose raw description matches
+      // its pattern; rendered through `synthesizeHistoryRow` so past
+      // and future imports both pick it up without rewriting any
+      // stored entries.
+      type: "createMatchRule";
+      rule: MatchRule;
+    }
+  | {
+      // Replace one rule in place, identified by `rule.id`. No-op if
+      // the id is unknown so a stale modal can't silently append a
+      // new rule under an old id.
+      type: "updateMatchRule";
+      rule: MatchRule;
+    }
+  | { type: "deleteMatchRule"; ruleId: string };
 
 // Walk an AccountBudget's before/after rows and collect the
 // description+categoryId pairs that need to be folded into the
@@ -1123,6 +1145,25 @@ function reducer(state: UserData, action: Action): UserData {
   if (action.type === "clearMerchantHints") {
     if (Object.keys(state.merchantHints).length === 0) return state;
     return { ...state, merchantHints: {} };
+  }
+  if (action.type === "createMatchRule") {
+    // Append, not prepend: rules earlier in the array win, and a
+    // fresh rule should defer to whatever the user already set up
+    // unless they reorder later. Reordering UI lives in a future
+    // settings panel.
+    return { ...state, matchRules: [...state.matchRules, action.rule] };
+  }
+  if (action.type === "updateMatchRule") {
+    const idx = state.matchRules.findIndex((r) => r.id === action.rule.id);
+    if (idx < 0) return state;
+    const next = state.matchRules.slice();
+    next[idx] = action.rule;
+    return { ...state, matchRules: next };
+  }
+  if (action.type === "deleteMatchRule") {
+    const next = state.matchRules.filter((r) => r.id !== action.ruleId);
+    if (next.length === state.matchRules.length) return state;
+    return { ...state, matchRules: next };
   }
   if (action.type === "renameSheet") {
     return {
@@ -2301,6 +2342,13 @@ function BudgetView({
   // create / edit). The TransactionModal seeds itself from the request.
   const [transactionRequest, setTransactionRequest] =
     useState<TransactionModalRequest | null>(null);
+  // null = closed; otherwise the history entry the user invoked the
+  // pattern-rule modal from. Looked up by id each render so a
+  // concurrent re-import / delete can't leave a stale entry snapshot
+  // stranded in state; if the entry is gone the modal closes.
+  const [matchRulePrompt, setMatchRulePrompt] = useState<{
+    entryId: string;
+  } | null>(null);
 
   const activeSheet =
     data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
@@ -2561,6 +2609,12 @@ function BudgetView({
   );
   const onEditRequest = useCallback((row: Row) => {
     setEditPrompt({ kind: "edit", row });
+  }, []);
+  const onMatchRuleRequest = useCallback((row: Row) => {
+    // Only history rows render the button, but the prop type is the
+    // generic Row shape so guard the marker explicitly.
+    if (!row.historyEntryId) return;
+    setMatchRulePrompt({ entryId: row.historyEntryId });
   }, []);
   const onCorrectionDeleteRequest = useCallback(
     (row: Row) => {
@@ -3077,6 +3131,44 @@ function BudgetView({
     return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
   }, [editPrompt, activeItem.rows, dateCol]);
 
+  // Resolve the seed entry for the pattern-rule modal from
+  // `matchRulePrompt.entryId`. Looked up fresh each render so a
+  // concurrent delete / re-import doesn't strand a stale snapshot.
+  const matchRuleSeedEntry = useMemo<HistoryEntry | null>(() => {
+    if (!matchRulePrompt) return null;
+    const accountId = activeItem.accountId;
+    if (!accountId) return null;
+    const entries = data.history[accountId] ?? [];
+    return entries.find((e) => e.id === matchRulePrompt.entryId) ?? null;
+  }, [matchRulePrompt, activeItem.accountId, data.history]);
+
+  // Every history entry on the active account, fed into the rule
+  // modal's live preview so the user sees what their pattern matches
+  // before they save it.
+  const matchRuleAllEntries = useMemo<readonly HistoryEntry[]>(() => {
+    const accountId = activeItem.accountId;
+    if (!accountId) return [];
+    return data.history[accountId] ?? [];
+  }, [activeItem.accountId, data.history]);
+
+  const onSubmitMatchRule = useCallback(
+    (draft: MatchRuleDraft) => {
+      const rule: MatchRule = {
+        id: newId(),
+        pattern: draft.pattern,
+      };
+      if (draft.description) rule.description = draft.description;
+      if (draft.categoryId) rule.categoryId = draft.categoryId;
+      if (draft.typeId) rule.typeId = draft.typeId;
+      if (draft.amountSign !== "any") rule.amountSign = draft.amountSign;
+      if (draft.transferFilter !== "any")
+        rule.transferFilter = draft.transferFilter;
+      dispatch({ type: "createMatchRule", rule });
+      setMatchRulePrompt(null);
+    },
+    [dispatch],
+  );
+
   // Pre-fill values for the history-row promote modal. Looks the
   // active history entry up by id (the synthesized row carries only
   // the overlaid description), normalises its raw bank text, and
@@ -3509,6 +3601,7 @@ function BudgetView({
                     : []
                 }
                 merchantHints={data.merchantHints}
+                matchRules={data.matchRules}
                 openingBalance={
                   activeItem.accountId
                     ? (data.accounts.find((a) => a.id === activeItem.accountId)
@@ -3526,6 +3619,7 @@ function BudgetView({
                 onDeleteRequest={onDeleteRequest}
                 onEditRequest={onEditRequest}
                 onTransactionRequest={onTransactionRequest}
+                onMatchRuleRequest={onMatchRuleRequest}
                 onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                 onReorderColumns={onReorderColumns}
                 onToggleSelect={onToggleSelect}
@@ -3668,6 +3762,20 @@ function BudgetView({
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
         onPromoteHistory={onPromoteHistory}
+        onCreateCategory={onCreateCategory}
+        onCreateType={onCreateType}
+      />
+      <MatchRuleModal
+        open={matchRulePrompt !== null && matchRuleSeedEntry !== null}
+        seedEntry={matchRuleSeedEntry}
+        allEntries={matchRuleAllEntries}
+        existing={null}
+        categories={data.categories}
+        types={data.types}
+        typeUsageById={typeUsageById}
+        settings={data.settings}
+        onClose={() => setMatchRulePrompt(null)}
+        onSubmit={onSubmitMatchRule}
         onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />

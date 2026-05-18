@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 15,
+    version: 16,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -42,6 +42,7 @@ function sampleData(): UserData {
     merchantHints: {},
     recurringDismissals: [],
     transferCollapseDismissals: [],
+    matchRules: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -99,6 +100,7 @@ describe("serializeUserData", () => {
       merchantHints: b.merchantHints,
       recurringDismissals: b.recurringDismissals,
       transferCollapseDismissals: b.transferCollapseDismissals,
+      matchRules: b.matchRules,
       settings: b.settings,
       version: b.version,
     } as UserData;
@@ -112,12 +114,13 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 13)).toEqual([
+    expect(topKeys.slice(0, 14)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "history",
       "historyImports",
+      "matchRules",
       "merchantHints",
       "recurringDismissals",
       "settings",
@@ -907,6 +910,40 @@ describe("migrate", () => {
     expect(rows[1].seriesId).toBe("s-1");
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
+  });
+
+  it("v15 → v16: seeds an empty matchRules array", () => {
+    const v15 = {
+      version: 15,
+      activeSheetId: "s1",
+      categories: [],
+      types: [],
+      transactions: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [],
+      history: {},
+      historyImports: {},
+      merchantHints: {},
+      recurringDismissals: [],
+      transferCollapseDismissals: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v15);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    expect((data as unknown as { matchRules: unknown[] }).matchRules).toEqual(
+      [],
+    );
   });
 });
 

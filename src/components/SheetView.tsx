@@ -19,6 +19,7 @@ import type {
   CellValue,
   EntryType,
   HistoryEntry,
+  MatchRule,
   MerchantHint,
   Row,
   Settings,
@@ -61,6 +62,10 @@ type Props = {
   // hint's category, typeId, and user-typed description so past
   // entries display under the user's label.
   merchantHints: Readonly<Record<string, MerchantHint>>;
+  // User-authored wildcard match rules. Layered on top of merchant
+  // hints — a rule that matches an entry's raw description overrides
+  // the hint's labels on the synthesized row.
+  matchRules: readonly MatchRule[];
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -76,6 +81,7 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
+  onMatchRuleRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
@@ -97,6 +103,7 @@ export function SheetView({
   transactions,
   history,
   merchantHints,
+  matchRules,
   openingBalance = 0,
   settings,
   selectMode,
@@ -109,6 +116,7 @@ export function SheetView({
   onDeleteRequest,
   onEditRequest,
   onTransactionRequest,
+  onMatchRuleRequest,
   onCorrectionDeleteRequest,
   onReorderColumns,
   onToggleSelect,
@@ -153,8 +161,10 @@ export function SheetView({
     if (!item.accountId) return [] as Row[];
     return history
       .filter((e) => !e.hidden)
-      .map((e) => synthesizeHistoryRow(e, item.columns, merchantHints));
-  }, [item.accountId, item.columns, history, merchantHints]);
+      .map((e) =>
+        synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
+      );
+  }, [item.accountId, item.columns, history, merchantHints, matchRules]);
 
   const mergedItem = useMemo<AccountBudget>(
     () => ({
@@ -304,6 +314,7 @@ export function SheetView({
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
                   onTransactionRequest={onTransactionRequest}
+                  onMatchRuleRequest={onMatchRuleRequest}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}
