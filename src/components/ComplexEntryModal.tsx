@@ -16,10 +16,31 @@ type Props = {
   types: readonly EntryType[];
   typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
+  // Optional initial values used to pre-fill the form when the modal
+  // opens. The recurring-candidate promote flow passes one so the user
+  // can adjust the detected description / amount / cadence before
+  // committing. When `seed` is null the modal opens blank (the existing
+  // "New entry" behaviour from the budget add-row button).
+  seed?: ComplexEntrySeed | null;
+  // Optional title override. Defaults to "New entry"; the promote flow
+  // sets "Promote candidate" so the modal's purpose is obvious.
+  title?: string;
+  // Optional submit-button label override. Defaults to "Add"; the
+  // promote flow sets "Promote" so the action verb matches the title.
+  submitVerb?: string;
   onClose: () => void;
   onCreate: (entries: ComplexEntryDraft) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+};
+
+export type ComplexEntrySeed = {
+  description: string;
+  // Signed: negative seeds the sign toggle as "−"; positive as "+".
+  amount: number;
+  categoryId: string | null;
+  typeId: string | null;
+  rule: import("../data/recurrence").RecurrenceRule | null;
 };
 
 export type ComplexEntryDraft = {
@@ -41,6 +62,9 @@ export function ComplexEntryModal({
   types,
   typeUsageById,
   settings,
+  seed,
+  title,
+  submitVerb,
   onClose,
   onCreate,
   onCreateCategory,
@@ -57,14 +81,25 @@ export function ComplexEntryModal({
 
   useEffect(() => {
     if (!open) return;
-    setDescription("");
-    setAmountText("");
-    setNegative(true);
-    setCategoryId(null);
-    setTypeId(null);
+    if (seed) {
+      setDescription(seed.description);
+      const abs = Math.abs(seed.amount);
+      setAmountText(
+        abs === 0 ? "" : normalizeAmountInput(String(abs), settings),
+      );
+      setNegative(seed.amount < 0);
+      setCategoryId(seed.categoryId);
+      setTypeId(seed.typeId);
+    } else {
+      setDescription("");
+      setAmountText("");
+      setNegative(true);
+      setCategoryId(null);
+      setTypeId(null);
+    }
     setDates([]);
     setResetKey((k) => k + 1);
-  }, [open]);
+  }, [open, seed, settings]);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, nextDates: string[]) => {
@@ -114,7 +149,7 @@ export function ComplexEntryModal({
       labelledBy="complex-entry-title"
       size="max-w-2xl"
     >
-      <Modal.Header title="New entry" onClose={onClose} />
+      <Modal.Header title={title ?? "New entry"} onClose={onClose} />
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
@@ -189,6 +224,7 @@ export function ComplexEntryModal({
           <RecurrenceForm
             seedDate={initialDate}
             resetKey={resetKey}
+            seedRule={seed?.rule ?? null}
             onChange={handleRuleChange}
           />
         </div>
@@ -207,7 +243,7 @@ export function ComplexEntryModal({
           disabled={!canSubmit}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Add{" "}
+          {submitVerb ?? "Add"}{" "}
           {dates.length > 0
             ? `${dates.length} ${dates.length === 1 ? "row" : "rows"}`
             : "rows"}

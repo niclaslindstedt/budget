@@ -24,6 +24,7 @@ import { SheetTabs } from "./components/SheetTabs";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
+  type ComplexEntrySeed,
 } from "./components/ComplexEntryModal";
 import { ConfirmDialog, type ConfirmAction } from "./components/ConfirmDialog";
 import {
@@ -85,7 +86,7 @@ import {
   detectTransferCandidates,
   type TransferCandidate,
 } from "./data/transfer-collapse";
-import type { RecurrenceRule } from "./data/recurrence";
+import { expandRecurrence, type RecurrenceRule } from "./data/recurrence";
 import type { Snapshot, StorageAdapter } from "./storage/adapter";
 import {
   type BackendId,
@@ -315,13 +316,22 @@ type Action =
       // budget rows on the active budget. The action carries the full
       // payload the reducer needs — description, amount, glyph,
       // categoryId, dates — so the dispatcher stays a pure function of
-      // its inputs (the candidate + the user's confirmed category).
+      // its inputs (the candidate + the user's confirmed adjustments).
       // The reducer also records the chosen categoryId as a merchant
-      // hint so the next import's suggestion stays current.
+      // hint (keyed by `sourceDescription` so future imports of the same
+      // bank text resolve to it) and adds `key` to
+      // `recurringDismissals` so the candidate disappears from the
+      // panel — consumed candidates don't keep resurfacing on every
+      // subsequent import.
       type: "promoteRecurringCandidate";
       sheetId: string;
       itemId: string;
       key: string;
+      // Raw bank text from the detected candidate. Used as the
+      // merchant-hint normalisation key so the hint matches future
+      // imports of the same merchant, even when the user adjusted the
+      // displayed `description` on the promote modal.
+      sourceDescription: string;
       description: string;
       amount: number;
       categoryId: string | null;
@@ -986,7 +996,10 @@ function reducer(state: UserData, action: Action): UserData {
     // Mirrors `addRowsFromComplex` (which the user-driven complex
     // entry modal uses) so the resulting series is indistinguishable
     // from one the user typed in by hand — same seriesId semantics,
-    // same glyph propagation, same row shape.
+    // same glyph propagation, same row shape. The candidate's key is
+    // pushed onto `recurringDismissals` after row creation so the
+    // panel drops it on the next render and future imports won't
+    // resurface a series the user has already promoted.
     const seriesId = action.dates.length > 1 ? newId() : undefined;
     const nextSheets = state.sheets.map((sheet) => {
       if (sheet.id !== action.sheetId) return sheet;
@@ -1017,11 +1030,34 @@ function reducer(state: UserData, action: Action): UserData {
         }),
       };
     });
-    const next = { ...state, sheets: nextSheets };
+    const dismissals = state.recurringDismissals.includes(action.key)
+      ? state.recurringDismissals
+      : [...state.recurringDismissals, action.key];
+    const next = {
+      ...state,
+      sheets: nextSheets,
+      recurringDismissals: dismissals,
+    };
     if (action.categoryId === null) return next;
+    // Key the merchant hint by the raw bank text (`sourceDescription`)
+    // so future imports of the same merchant pick up the suggestion
+    // even when the user edited the displayed description. When the
+    // edit differs from the bank text, record it as an override so
+    // synthesized history rows surface the user's label too.
+    const override =
+      action.description.trim() !== action.sourceDescription.trim()
+        ? action.description
+        : undefined;
     return recordMerchantHints(
       next,
-      [{ description: action.description, categoryId: action.categoryId }],
+      [
+        {
+          description: action.sourceDescription,
+          categoryId: action.categoryId,
+          typeId: action.typeId,
+          description_override: override,
+        },
+      ],
       action.now,
     );
   }
@@ -1273,6 +1309,16 @@ type PendingSeriesEdit = {
   value: CellValue;
 };
 
+// In-flight recurring-candidate promotion. Captured when the user
+// clicks Promote on the recurring-candidate panel and consumed by
+// the ComplexEntryModal's submit so the dispatcher knows the
+// candidate key to mark as consumed and the raw bank text for the
+// merchant-hint key.
+type RecurringPromoteContext = {
+  key: string;
+  sourceDescription: string;
+};
+
 // Auth is rooted in the per-device user registry. Three states:
 //   "signed-out"  — no active user; the auth screen is shown with the
 //                   sign-in form (or sign-up if the registry is empty).
@@ -1330,6 +1376,61 @@ type PendingFolderLink = {
   remoteSnapshot: Snapshot | null;
   sourceText: string | null;
 };
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addMonthsIso(iso: string, months: number): string {
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7));
+  const d = Number(iso.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return iso;
+  }
+  const target = new Date(Date.UTC(y, m - 1 + months, d));
+  const ty = target.getUTCFullYear();
+  const tm = String(target.getUTCMonth() + 1).padStart(2, "0");
+  const td = String(target.getUTCDate()).padStart(2, "0");
+  return `${ty}-${tm}-${td}`;
+}
+
+// Shift a candidate-derived rule so its first occurrence is on or
+// after `today`. The recurring-candidate detector emits a rule whose
+// `start` is the last historical occurrence — useful for cadence
+// inference, but the user only ever wants to schedule future rows.
+// When every expanded date is already past `today` (the candidate
+// has gone quiet) we fall back to the rule's original window so the
+// user still sees the detected cadence in the form.
+function shiftRuleStartToFuture(
+  rule: RecurrenceRule,
+  today: string,
+): RecurrenceRule {
+  const all = expandRecurrence(rule);
+  const firstFuture = all.find((d) => d > today);
+  if (!firstFuture) return rule;
+  switch (rule.kind) {
+    case "once":
+      return { kind: "once", date: firstFuture };
+    case "dates":
+      return { kind: "dates", dates: rule.dates.filter((d) => d > today) };
+    case "everyNDays":
+      return {
+        ...rule,
+        start: firstFuture,
+        end: addMonthsIso(firstFuture, 12),
+      };
+    case "everyNMonths": {
+      const span = rule.intervalMonths >= 12 ? 24 : 12;
+      return {
+        ...rule,
+        start: firstFuture,
+        end: addMonthsIso(firstFuture, span),
+      };
+    }
+  }
+}
 
 // Resolve the auth state to land on at boot. If sessionStorage still
 // holds a non-expired password for a known user, jump straight back
@@ -2768,6 +2869,17 @@ function BudgetView({
   }, [currentDataRef, data]);
   const [complexOpen, setComplexOpen] = useState(false);
   const [complexSeedDate, setComplexSeedDate] = useState("");
+  // Pre-fill payload for the ComplexEntryModal. `null` keeps the modal's
+  // existing blank-form behaviour for the budget add-row button; a
+  // populated seed comes from the recurring-candidate promote flow.
+  const [complexSeed, setComplexSeed] = useState<ComplexEntrySeed | null>(null);
+  // Promote-flow context. When set, the ComplexEntryModal opens pre-
+  // filled with the candidate's detected description / amount / cadence
+  // and a submit dispatches `promoteRecurringCandidate` (instead of
+  // `addRowsFromComplex`) so the candidate is consumed and the merchant
+  // hint is recorded against the original bank text.
+  const [recurringPromoteContext, setRecurringPromoteContext] =
+    useState<RecurringPromoteContext | null>(null);
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
   const [editPrompt, setEditPrompt] = useState<EditPrompt | null>(null);
   // Captures the most recent inline edit on a recurring row so the user
@@ -3082,6 +3194,8 @@ function BudgetView({
   );
   const onAddComplex = useCallback((date: string) => {
     setComplexSeedDate(date);
+    setComplexSeed(null);
+    setRecurringPromoteContext(null);
     setComplexOpen(true);
   }, []);
   const onDeleteRequest = useCallback(
@@ -3530,10 +3644,28 @@ function BudgetView({
   );
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
-      dispatch({ type: "addRowsFromComplex", sheetId, itemId, draft });
+      if (recurringPromoteContext) {
+        dispatch({
+          type: "promoteRecurringCandidate",
+          sheetId,
+          itemId,
+          key: recurringPromoteContext.key,
+          sourceDescription: recurringPromoteContext.sourceDescription,
+          description: draft.description,
+          amount: draft.amount,
+          categoryId: draft.categoryId,
+          typeId: draft.typeId,
+          dates: draft.dates,
+          now: Date.now(),
+        });
+      } else {
+        dispatch({ type: "addRowsFromComplex", sheetId, itemId, draft });
+      }
       setComplexOpen(false);
+      setComplexSeed(null);
+      setRecurringPromoteContext(null);
     },
-    [dispatch, sheetId, itemId],
+    [dispatch, sheetId, itemId, recurringPromoteContext],
   );
   const onConvertToRecurring = useCallback(
     (rowId: string, futureDates: string[], typeId: string | null) => {
@@ -3790,36 +3922,39 @@ function BudgetView({
     [dispatch, sheetId, itemId],
   );
 
-  // Recurring-candidate promote / dismiss. Promote translates the
-  // detector's cadence into a `RecurrenceRule`, expands it with the
-  // existing recurrence machinery, and dispatches one batch action
-  // that mints the series rows AND records the merchant-hint
-  // suggestion. Dismiss just persists the key to
-  // `recurringDismissals` so subsequent scans skip the bucket.
+  // Recurring-candidate promote / dismiss. Promote opens the complex-
+  // entry modal pre-seeded with the detected description, amount, and
+  // cadence so the user can adjust before committing — submit then
+  // dispatches `promoteRecurringCandidate`, which mints the series
+  // rows, records a merchant hint against the candidate's bank text,
+  // and consumes the candidate by adding its key to
+  // `recurringDismissals` (so the panel drops it). Dismiss persists
+  // the key directly without minting anything.
   const onPromoteRecurringCandidate = useCallback(
     (
       candidate: RecurringCandidate,
-      _rule: RecurrenceRule,
-      dates: string[],
+      rule: RecurrenceRule,
+      _dates: string[],
       categoryId: string | null,
       typeId: string | null,
     ) => {
       if (!activeBudget) return;
-      if (dates.length === 0) return;
-      dispatch({
-        type: "promoteRecurringCandidate",
-        sheetId,
-        itemId: activeBudget.id,
+      const shifted = shiftRuleStartToFuture(rule, todayIso());
+      setRecurringPromoteContext({
         key: candidate.key,
+        sourceDescription: candidate.description,
+      });
+      setComplexSeedDate(shifted.kind === "once" ? shifted.date : todayIso());
+      setComplexSeed({
         description: candidate.description,
         amount: candidate.medianAmount,
         categoryId,
         typeId,
-        dates,
-        now: Date.now(),
+        rule: shifted,
       });
+      setComplexOpen(true);
     },
-    [dispatch, sheetId, activeBudget],
+    [activeBudget],
   );
   const onDismissRecurringCandidate = useCallback(
     (key: string) => {
@@ -4230,7 +4365,14 @@ function BudgetView({
         types={data.types}
         typeUsageById={typeUsageById}
         settings={data.settings}
-        onClose={() => setComplexOpen(false)}
+        seed={complexSeed}
+        title={recurringPromoteContext ? "Promote candidate" : undefined}
+        submitVerb={recurringPromoteContext ? "Promote" : undefined}
+        onClose={() => {
+          setComplexOpen(false);
+          setComplexSeed(null);
+          setRecurringPromoteContext(null);
+        }}
         onCreate={onComplexSubmit}
         onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
