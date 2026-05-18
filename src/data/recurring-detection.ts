@@ -45,8 +45,14 @@ export type RecurringCandidate = {
   // Original-case representative description, picked from the most
   // recent occurrence so the user sees a real string from their bank.
   description: string;
-  // Signed median amount (a salary lands positive, Spotify negative).
-  medianAmount: number;
+  // Signed amount we suggest seeding the promoted series with. For
+  // stable patterns (Spotify always 119 kr) this is just the recurring
+  // value. For amounts that drift between occurrences (utility bills,
+  // groceries) it's the mean of the last three occurrences so the
+  // seed reflects the recent trend rather than ancient history — a
+  // salary that got a raise six months ago should suggest the new
+  // figure, not the old one. Salary lands positive, Spotify negative.
+  suggestedAmount: number;
   cadence: DetectedCadence;
   occurrenceCount: number;
   // 0..1 score combining cadence regularity, amount stability, and
@@ -128,11 +134,19 @@ export function detectRecurringCandidates(
 
     const amounts = bucket.map((e) => e.amount);
     const medianAmount = median(amounts);
+    // Bucket is already date-sorted ascending, so the tail is the most
+    // recent slice. Three entries is "last quarter-ish" for a monthly
+    // cadence and degrades gracefully for shorter histories. For
+    // perfectly stable amounts the mean equals the recurring value, so
+    // this is a strict generalisation of the previous median seed.
+    const recentAmounts = amounts.slice(-3);
+    const suggestedAmount =
+      recentAmounts.reduce((a, b) => a + b, 0) / recentAmounts.length;
 
     // Skip suggestions that are mostly zero (interest-free statements,
     // empty reversals); the panel would render a row that promotes to
     // a zero-amount series, which is pointless.
-    if (Math.abs(medianAmount) < 0.005) continue;
+    if (Math.abs(suggestedAmount) < 0.005) continue;
 
     // Active-window guard: latest occurrence must be recent relative
     // to the cadence. Three medians of headroom keeps a "missed one
@@ -174,7 +188,7 @@ export function detectRecurringCandidates(
       // name (which is also what `description` lookups against the
       // hint store will round-trip on the next import).
       description: bucket[bucket.length - 1].description,
-      medianAmount,
+      suggestedAmount,
       cadence,
       occurrenceCount: bucket.length,
       confidence,

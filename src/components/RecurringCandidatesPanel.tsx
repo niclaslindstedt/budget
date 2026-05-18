@@ -153,8 +153,11 @@ function CandidateRow({
     return dates.filter((d) => d > today);
   }, [dates]);
 
-  const amountText = formatNumber(Math.abs(candidate.medianAmount), settings);
-  const sign = candidate.medianAmount >= 0 ? "+" : "−";
+  const amountText = formatNumber(
+    Math.abs(candidate.suggestedAmount),
+    settings,
+  );
+  const sign = candidate.suggestedAmount >= 0 ? "+" : "−";
   const formattedAmount = withCurrency(amountText, settings);
 
   return (
@@ -166,7 +169,7 @@ function CandidateRow({
           </span>
           <span
             className={`font-mono text-xs tabular-nums ${
-              candidate.medianAmount >= 0 ? "text-positive" : "text-negative"
+              candidate.suggestedAmount >= 0 ? "text-positive" : "text-negative"
             }`}
           >
             {sign}
