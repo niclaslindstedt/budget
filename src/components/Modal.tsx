@@ -1,15 +1,30 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-import { useEscapeKey } from "../hooks";
+import { useEscapeKey, useIsMobile, useVirtualKeyboardInset } from "../hooks";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
-// Shared shell for every modal dialog in the app. Owns the overlay
-// (50% black backdrop + click-outside-to-close), the bordered surface
-// shell (mobile bottom-sheet rounding, desktop centered card), the
-// keyboard dismissal, the body scroll lock, and — on mobile only —
-// a swipe-down-to-dismiss gesture from the drag handle.
+// Shared shell for every modal dialog in the app. Owns:
+//
+// * The overlay — opaque `bg-surface` filling the screen on mobile
+//   (true sub-screen layout, every pixel goes to content), translucent
+//   black backdrop with a centered card on desktop. Clicking the
+//   backdrop dismisses; on mobile the modal covers the whole viewport
+//   so there's nothing exposed to click anyway.
+//
+// * The bordered surface shell — edge-to-edge `100svh` on mobile,
+//   capped to `min(95svh, viewport - 2rem)` for the desktop card.
+//
+// * Keyboard dismissal (Escape) and body scroll lock.
+//
+// * iOS soft-keyboard handling — on iOS the layout viewport stays the
+//   full device height while the visual viewport shifts up to fit the
+//   keyboard, so a `100svh` shell would have its footer hidden under
+//   the keyboard. The shell shrinks by `useVirtualKeyboardInset()` on
+//   mobile so the footer stays visible. Android Chrome with
+//   `interactive-widget=resizes-content` (set in `index.html`) resizes
+//   the layout viewport itself so the math collapses to ~0 there.
 //
 // Usage:
 //
@@ -18,12 +33,6 @@ import { useBodyScrollLock } from "../utils/scroll-lock";
 //       <Modal.Body>...</Modal.Body>
 //       <Modal.Footer>...</Modal.Footer>
 //     </Modal>
-//
-// Bodies differ wildly across modals (scroll regions, tabs, action
-// stacks); compound slots keep the shell rigid while letting bodies
-// own their own structure. `Modal.Footer` is optional — modals like
-// `ConfirmDialog` skip it and render their own action stack inside
-// `Modal.Body`.
 
 type LabelCtx = { id: string };
 const ModalLabelContext = createContext<LabelCtx | null>(null);
@@ -36,26 +45,19 @@ type RootProps = {
   labelledBy: string;
   // Use `"alertdialog"` for destructive confirmations (ConfirmDialog).
   role?: "dialog" | "alertdialog";
-  // Tailwind max-width class for the inner shell. Defaults to `max-w-lg`.
+  // Tailwind max-width class. Defaults to `max-w-lg`. On mobile the
+  // shell always fills the viewport horizontally — `size` only matters
+  // on desktop. (On a typical phone the viewport is narrower than any
+  // `max-w-*` we ship, so `w-full` wins anyway.)
   size?: string;
-  // When true, the inner shell uses `max-h-[95vh] flex-col
-  // overflow-hidden` so `Modal.Body` can be a scrolling middle and
-  // `Modal.Footer` stays stuck to the bottom. Default true.
+  // When true (default), the inner shell uses flex column +
+  // `overflow-hidden` so `Modal.Body` is a scrolling middle and
+  // `Modal.Footer` stays pinned to the bottom. Set to false for short
+  // content where neither scrolling nor a sticky footer is desired
+  // (e.g. ConfirmDialog, DatePickerModal).
   scrollableBody?: boolean;
   children: React.ReactNode;
 };
-
-// Pull the handle this far past its rest position to dismiss the
-// sheet outright. Below this distance — and without a flick — the
-// sheet snaps back to 0.
-const DISMISS_DISTANCE_PX = 120;
-// Flick threshold: a quick downward gesture (>= this many px/ms over
-// a non-trivial distance) also dismisses, so the user doesn't have
-// to drag all the way past DISMISS_DISTANCE_PX.
-const FLICK_VELOCITY_PX_MS = 0.5;
-const FLICK_MIN_DISTANCE_PX = 30;
-// Animation duration for the snap-back and the dismiss slide-off.
-const SETTLE_MS = 200;
 
 export function Modal({
   open,
@@ -69,108 +71,41 @@ export function Modal({
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
 
-  const shellRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{
-    y: number;
-    pointerId: number;
-    time: number;
-  } | null>(null);
-  const closeTimerRef = useRef<number | null>(null);
-  const [dragY, setDragY] = useState(0);
-  const [settling, setSettling] = useState(false);
+  const isMobile = useIsMobile();
+  const keyboardInset = useVirtualKeyboardInset();
 
-  // Reset transient drag state whenever the modal closes so the next
-  // open starts from a clean slate.
+  // Adds a class to <body> while any modal is open so the fixed
+  // mobile chrome (sheet tabs, bulk action bar) can hide via CSS —
+  // they otherwise hover above the modal during keyboard interactions
+  // because the visual viewport shrinks but their `bottom: …` value
+  // doesn't update.
   useEffect(() => {
-    if (open) return;
-    setDragY(0);
-    setSettling(false);
-    if (closeTimerRef.current != null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-  }, [open]);
-
-  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add("modal-open");
     return () => {
-      if (closeTimerRef.current != null) {
-        window.clearTimeout(closeTimerRef.current);
-      }
+      document.body.classList.remove("modal-open");
     };
-  }, []);
+  }, [open]);
 
   if (!open) return null;
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    dragRef.current = {
-      y: e.clientY,
-      pointerId: e.pointerId,
-      time: performance.now(),
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setSettling(false);
-  };
+  // Always flex-col + overflow-hidden on mobile so Footer is pinned
+  // by flex layout and Body owns its own scroll. Desktop drops the
+  // 100svh constraint and (when scrollableBody) caps the height.
+  const shellLayout = scrollableBody
+    ? `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[min(95svh,calc(100svh-2rem))]`
+    : `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[95svh]`;
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const start = dragRef.current;
-    if (!start || start.pointerId !== e.pointerId) return;
-    setDragY(Math.max(0, e.clientY - start.y));
-  };
-
-  const finishDrag = (
-    e: React.PointerEvent<HTMLDivElement>,
-    cancelled: boolean,
-  ) => {
-    const start = dragRef.current;
-    if (!start || start.pointerId !== e.pointerId) return;
-    dragRef.current = null;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // Pointer was already released — ignore.
-    }
-
-    if (cancelled) {
-      setSettling(true);
-      setDragY(0);
-      return;
-    }
-
-    const dy = e.clientY - start.y;
-    const dt = Math.max(1, performance.now() - start.time);
-    const velocity = dy / dt;
-    const dismiss =
-      dy >= DISMISS_DISTANCE_PX ||
-      (velocity >= FLICK_VELOCITY_PX_MS && dy >= FLICK_MIN_DISTANCE_PX);
-
-    if (dismiss) {
-      const height =
-        shellRef.current?.getBoundingClientRect().height ?? window.innerHeight;
-      setSettling(true);
-      setDragY(height + 80);
-      closeTimerRef.current = window.setTimeout(() => {
-        closeTimerRef.current = null;
-        onClose();
-      }, SETTLE_MS);
-    } else {
-      setSettling(true);
-      setDragY(0);
-    }
-  };
-
-  const shellSize = scrollableBody
-    ? `flex max-h-[95vh] w-full ${size} flex-col overflow-hidden`
-    : `w-full ${size}`;
-
-  const dragging = dragRef.current !== null;
-  const shellStyle: React.CSSProperties = {
-    transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-    transition:
-      !dragging && settling
-        ? `transform ${SETTLE_MS}ms cubic-bezier(0.2, 0.6, 0.2, 1)`
-        : undefined,
-  };
+  // On iOS the visual viewport shifts up to fit the keyboard but the
+  // layout viewport (and therefore `100svh`) stays the same — the
+  // shell's bottom ends up under the keyboard. Shrink the shell so
+  // the footer rides above the keyboard. Desktop never needs this;
+  // Android with `interactive-widget=resizes-content` reports an
+  // inset of 0 (the layout viewport already shrunk for us).
+  const shellStyle: React.CSSProperties | undefined =
+    isMobile && keyboardInset > 0
+      ? { height: `calc(100svh - ${keyboardInset}px)` }
+      : undefined;
 
   // Portal to document.body so the modal escapes any `inert` ancestor —
   // the app-wide [data-modal-background] wrapper flips inert on the
@@ -185,32 +120,15 @@ export function Modal({
       role={role}
       aria-modal="true"
       aria-labelledby={labelledBy}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50 sm:p-4"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        ref={shellRef}
-        className={`${shellSize} rounded-t-lg bg-surface shadow-2xl sm:rounded-lg`}
+        className={`${shellLayout} bg-surface sm:rounded-lg sm:shadow-2xl`}
         style={shellStyle}
-        onTransitionEnd={() => setSettling(false)}
       >
-        {/* Drag handle — only rendered in the mobile bottom-sheet
-            layout (sm:hidden). Pulling it down past DISMISS_DISTANCE_PX
-            (or flicking it) dismisses the modal; otherwise it snaps
-            back. The desktop centered card relies on the X button,
-            Escape, and backdrop click instead. */}
-        <div
-          aria-hidden
-          className="flex w-full cursor-grab touch-none select-none justify-center pb-1 pt-2 active:cursor-grabbing sm:hidden"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={(e) => finishDrag(e, false)}
-          onPointerCancel={(e) => finishDrag(e, true)}
-        >
-          <div className="h-1 w-10 rounded-full bg-line" />
-        </div>
         <ModalLabelContext.Provider value={{ id: labelledBy }}>
           {children}
         </ModalLabelContext.Provider>
@@ -228,7 +146,12 @@ type HeaderProps = {
 function Header({ title, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
   return (
-    <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
+    <header
+      className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 py-3"
+      style={{
+        paddingTop: `calc(0.75rem + env(safe-area-inset-top))`,
+      }}
+    >
       <h2
         id={ctx?.id}
         className="text-sm font-bold tracking-wide text-fg-bright"
@@ -239,9 +162,9 @@ function Header({ title, onClose }: HeaderProps) {
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+        className="-mr-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
       >
-        <X size={18} aria-hidden focusable={false} />
+        <X size={20} aria-hidden focusable={false} />
       </button>
     </header>
   );
@@ -255,7 +178,7 @@ type BodyProps = {
 function Body({ children, className = "" }: BodyProps) {
   return (
     <div
-      className={`flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 ${className}`.trim()}
+      className={`flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4 ${className}`.trim()}
     >
       {children}
     </div>
@@ -270,7 +193,10 @@ type FooterProps = {
 function Footer({ children, className = "" }: FooterProps) {
   return (
     <footer
-      className={`flex items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3 ${className}`.trim()}
+      className={`flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 pt-3 ${className}`.trim()}
+      style={{
+        paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
+      }}
     >
       {children}
     </footer>

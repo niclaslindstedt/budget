@@ -211,6 +211,21 @@ body {
     -webkit-touch-callout: none;
   }
 
+  /* While a modal is open on mobile, hide the bottom-pinned floating
+     chrome (SheetTabs, BulkActionBar). These are `position: fixed` and
+     on iOS Safari they hover above the modal during keyboard
+     interactions because the visual viewport shrinks but their
+     `bottom: …` value doesn't update. Mobile modals are true sub-
+     screens that cover the viewport edge-to-edge, so the chrome should
+     be visually absent for the duration. Desktop modals are centered
+     cards with a translucent backdrop, so the chrome can stay visible
+     in the background. */
+  @media (max-width: 639.98px) {
+    body.modal-open [data-floating-chrome] {
+      display: none;
+    }
+  }
+
   /* Mobile: convert table to block + per-row grid for full-width layout
      and to make swipe-to-delete possible inside table rows */
   @media (max-width: 720px) {
