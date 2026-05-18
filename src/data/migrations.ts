@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 16 as const;
+export const LATEST_VERSION = 17 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -283,6 +283,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // list — no rules have been authored yet, so behaviour matches
   // pre-v16 builds until the user creates one.
   15: (v15) => ({ ...v15, version: 16, matchRules: [] }),
+
+  // v16 → v17: `HistoryEntry.balance` becomes optional so credit-card
+  // exports without a per-row running balance (e.g. Bank Norwegian)
+  // can be imported. Existing entries carry a balance and continue to
+  // validate — no payload rewrite, the bump only signals that this
+  // build understands the looser shape so older builds don't silently
+  // drop unrelated fields when they encounter a v17 file.
+  16: (v16) => ({ ...v16, version: 17 }),
 };
 
 export type MigrationResult = {

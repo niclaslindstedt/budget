@@ -520,20 +520,15 @@ export const USER_DATA_SCHEMA = {
     HistoryEntry: {
       type: "object",
       additionalProperties: false,
-      required: [
-        "id",
-        "date",
-        "description",
-        "amount",
-        "balance",
-        "importedAt",
-      ],
+      required: ["id", "date", "description", "amount", "importedAt"],
       description:
         "One row from an imported bank statement. `amount` is signed " +
-        "(negative for outgoing) and `balance` is the bank's reported " +
-        "running balance immediately after this row's effect. `id` is a " +
-        "content hash so re-importing an overlapping statement dedups " +
-        "to the same key.",
+        "(negative for outgoing) and `balance` (when present) is the " +
+        "bank's reported running balance immediately after this row's " +
+        "effect. Credit-card exports (e.g. Bank Norwegian) omit " +
+        "`balance` because the file carries no per-row running total. " +
+        "`id` is a content hash so re-importing an overlapping " +
+        "statement dedups to the same key.",
       properties: {
         id: { $ref: "#/$defs/Id" },
         date: {
@@ -554,7 +549,9 @@ export const USER_DATA_SCHEMA = {
         balance: {
           type: "number",
           description:
-            "Bank-reported balance immediately after applying `amount`.",
+            "Bank-reported balance immediately after applying `amount`. " +
+            "Omitted for credit-card statements that carry only a signed " +
+            "amount per row.",
         },
         importedAt: {
           type: "number",

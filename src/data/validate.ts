@@ -373,7 +373,10 @@ function validateHistoryEntry(
     return fail(`${path}.description`, "expected a string");
   if (typeof amount !== "number" || !Number.isFinite(amount))
     return fail(`${path}.amount`, "expected a finite number");
-  if (typeof balance !== "number" || !Number.isFinite(balance))
+  if (
+    balance !== undefined &&
+    (typeof balance !== "number" || !Number.isFinite(balance))
+  )
     return fail(`${path}.balance`, "expected a finite number");
   if (typeof importedAt !== "number" || !Number.isFinite(importedAt))
     return fail(`${path}.importedAt`, "expected a finite number");
@@ -382,9 +385,9 @@ function validateHistoryEntry(
     date,
     description,
     amount,
-    balance,
     importedAt,
   };
+  if (balance !== undefined) entry.balance = balance;
   if (raw.hidden !== undefined) {
     if (typeof raw.hidden !== "boolean")
       return fail(`${path}.hidden`, "expected a boolean");
