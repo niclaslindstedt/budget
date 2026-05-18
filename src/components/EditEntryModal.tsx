@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
@@ -198,12 +198,6 @@ export function EditEntryModal({
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
 
-  // Description input ref so we can focus + select-all when the
-  // modal opens on a history row. The global `installSelectOnFocus`
-  // handler will pick the focus event up and select; we just need to
-  // drive the focus.
-  const descriptionInputRef = useRef<HTMLInputElement | null>(null);
-
   useBodyScrollLock(open && !!row);
 
   useEffect(() => {
@@ -218,15 +212,6 @@ export function EditEntryModal({
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
     setRecurringDates([]);
     setRecurrenceResetKey((k) => k + 1);
-    if (isHistory) {
-      // Focus the description input on the next frame so the global
-      // select-on-focus handler can run after the modal has mounted
-      // and laid out — focusing inside the same tick races with the
-      // pointer event that opened the modal on iOS Safari.
-      requestAnimationFrame(() => {
-        descriptionInputRef.current?.focus();
-      });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
 
@@ -469,10 +454,11 @@ export function EditEntryModal({
                 <label className="flex flex-col gap-1 sm:col-span-2">
                   <span className="text-xs text-muted">Description</span>
                   <input
-                    ref={descriptionInputRef}
+                    key={row.id}
                     type="text"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    autoFocus
                     className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                   />
                 </label>
