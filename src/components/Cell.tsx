@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -24,14 +23,11 @@ import {
   parseAmount,
   withCurrency,
 } from "../utils/format";
-import {
-  type FloatingPlacement,
-  useEscapeKey,
-  useFloatingPosition,
-} from "../hooks";
+import type { FloatingPlacement } from "../hooks";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
+import { FloatingPanel } from "./FloatingPanel";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
 import { CELL_BASE, INPUT_BASE } from "./cells/constants";
 import { DateCellDisplay } from "./cells/DateCellDisplay";
@@ -680,13 +676,7 @@ function PlainDescriptionPopover({
   const openValueRef = useRef<string>(value);
   const wasOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const position = useFloatingPosition(
-    triggerRef,
-    open,
-    DESCRIPTION_POPOVER_PLACEMENT,
-  );
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -697,9 +687,6 @@ function PlainDescriptionPopover({
     wasOpenRef.current = open;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  useEscapeKey(open, () => setOpen(false));
-  useBlocksSheet(rowId, open, () => setOpen(false));
 
   useLayoutEffect(() => {
     if (open) textareaRef.current?.focus();
@@ -731,32 +718,22 @@ function PlainDescriptionPopover({
           <span>…</span>
         )}
       </button>
-      {open &&
-        position &&
-        createPortal(
-          <div
-            ref={popoverRef}
-            role="dialog"
-            aria-label="Description"
-            data-active-portal
-            className="absolute z-50 rounded border border-line bg-surface-2 shadow-lg"
-            style={{
-              top: position.top,
-              left: position.left,
-              width: position.width,
-            }}
-          >
-            <textarea
-              ref={textareaRef}
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="Description"
-              rows={1}
-              className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
-            />
-          </div>,
-          document.body,
-        )}
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={DESCRIPTION_POPOVER_PLACEMENT}
+        rowId={rowId}
+      >
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Description"
+          rows={1}
+          className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
+        />
+      </FloatingPanel>
     </>
   );
 }
@@ -785,11 +762,6 @@ function TypedDescriptionPopover({
   const wasOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const position = useFloatingPosition(
-    triggerRef,
-    open,
-    DESCRIPTION_POPOVER_PLACEMENT,
-  );
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -800,9 +772,6 @@ function TypedDescriptionPopover({
     wasOpenRef.current = open;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  useEscapeKey(open, () => setOpen(false));
-  useBlocksSheet(rowId, open, () => setOpen(false));
 
   useLayoutEffect(() => {
     if (open) textareaRef.current?.focus();
@@ -852,31 +821,22 @@ function TypedDescriptionPopover({
           </span>
         )}
       </button>
-      {open &&
-        position &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-label="Description"
-            data-active-portal
-            className="absolute z-50 rounded border border-line bg-surface-2 shadow-lg"
-            style={{
-              top: position.top,
-              left: position.left,
-              width: position.width,
-            }}
-          >
-            <textarea
-              ref={textareaRef}
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="Description"
-              rows={1}
-              className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
-            />
-          </div>,
-          document.body,
-        )}
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={DESCRIPTION_POPOVER_PLACEMENT}
+        rowId={rowId}
+      >
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Description"
+          rows={1}
+          className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
+        />
+      </FloatingPanel>
     </>
   );
 }
