@@ -267,9 +267,11 @@ type Action =
       // reducer dedups entries against existing history (by content
       // hash), records a `HistoryImport` audit row, re-anchors the
       // account's `openingBalance` to the earliest entry's pre-row
-      // balance, and back-fills `clearing` / `accountNumber` on the
-      // account when those fields are empty. Pure: every payload
-      // field is data, so the action can be replayed for tests.
+      // balance, back-fills `clearing` / `accountNumber` on the
+      // account when those fields are empty, and drops any balance
+      // corrections whose date falls inside the imported range (the
+      // bank is now authoritative there). Pure: every payload field
+      // is data, so the action can be replayed for tests.
       type: "importBankHistory";
       accountId: string;
       bankParserId: string;
@@ -641,6 +643,32 @@ function reducer(state: UserData, action: Action): UserData {
       duplicateCount,
     };
     const priorImports = state.historyImports[action.accountId] ?? [];
+    // Sweep balance corrections out of the imported date range: once the
+    // bank has authoritative entries for those dates, a manual delta
+    // sitting in the same window would just double-count.
+    const { rangeStart, rangeEnd } = importRecord;
+    const sheets =
+      rangeStart === "" || rangeEnd === ""
+        ? state.sheets
+        : state.sheets.map((sheet) => {
+            let touched = false;
+            const items = sheet.items.map((item) => {
+              if (item.type !== "accountBudget") return item;
+              if (item.accountId !== action.accountId) return item;
+              const dateCol = findColumnByType(item.columns, "date");
+              if (!dateCol) return item;
+              const filtered = item.rows.filter((r) => {
+                if (!r.isCorrection) return true;
+                const d = r.cells[dateCol.id];
+                if (typeof d !== "string") return true;
+                return d < rangeStart || d > rangeEnd;
+              });
+              if (filtered.length === item.rows.length) return item;
+              touched = true;
+              return { ...item, rows: filtered };
+            });
+            return touched ? { ...sheet, items } : sheet;
+          });
     return {
       ...state,
       accounts: state.accounts.map((a) => {
@@ -655,6 +683,7 @@ function reducer(state: UserData, action: Action): UserData {
           patch.accountNumber = action.bankAccountNumber;
         return { ...a, ...patch };
       }),
+      sheets,
       history: { ...state.history, [action.accountId]: merged },
       historyImports: {
         ...state.historyImports,
