@@ -62,11 +62,12 @@ export function FloatingPanel({
     <div
       ref={dropdownRef}
       data-active-portal
-      className={`${positionClass} z-50 rounded border border-line bg-surface-2 shadow-lg ${className}`.trim()}
+      className={`${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg ${className}`.trim()}
       style={{
         top: position.top,
         left: position.left,
         minWidth: position.width,
+        maxHeight: position.maxHeight,
       }}
     >
       {children}
