@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { ShieldAlert, ShieldCheck, X } from "lucide-react";
 
 import {
@@ -125,14 +127,7 @@ export function SettingsModal({
     setDraft(settings);
   }, [open, settings]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   if (!open) return null;
 

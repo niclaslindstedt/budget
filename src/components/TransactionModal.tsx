@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import {
   ArrowDown,
   ArrowLeftRight,
@@ -164,14 +166,7 @@ export function TransactionModal({
     setToOpen(false);
   }, [open, request, settings]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   if (!open || !request) return null;
 

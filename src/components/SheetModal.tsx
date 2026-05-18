@@ -9,6 +9,7 @@ import {
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
+import { useEscapeKey } from "../hooks";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 import { CategoryIconGlyph } from "./icons";
 
@@ -100,14 +101,7 @@ export function SheetModal({
     if (creatingAccount) newAccountInputRef.current?.focus();
   }, [creatingAccount]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   if (!open) return null;
 

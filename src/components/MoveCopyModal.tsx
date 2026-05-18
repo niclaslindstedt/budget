@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import type { Row } from "../data/types";
+import { useEscapeKey } from "../hooks";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
 type Props = {
@@ -46,14 +47,7 @@ export function MoveCopyModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   const months = useMemo(
     () =>

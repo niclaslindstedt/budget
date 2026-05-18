@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   CloudAlert,
   CloudCheck,
@@ -17,6 +16,7 @@ import {
 } from "../storage/dropbox-adapter";
 import { GDRIVE_FILE_NAME, gdriveWebUrl } from "../storage/gdrive-adapter";
 import type { SaveStatus } from "../storage/useUserDataStorage";
+import { useEscapeKey } from "../hooks";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
 type Props = {
@@ -138,14 +138,7 @@ export function SyncDetailsModal({
 }: Props) {
   useBodyScrollLock(open);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   if (!open) return null;
   const view = providerView(backend);

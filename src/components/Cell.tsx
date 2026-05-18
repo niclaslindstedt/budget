@@ -27,6 +27,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../utils/format";
+import { useEscapeKey } from "../hooks";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { useActiveRow } from "./useActiveRow";
 import { CategoryPicker } from "./CategoryPicker";
@@ -712,11 +713,10 @@ function PlainDescriptionPopover({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useEscapeKey(open, () => setOpen(false));
+
   useEffect(() => {
     if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
     function updatePosition() {
       if (!triggerRef.current) return;
       setPosition(
@@ -725,12 +725,10 @@ function PlainDescriptionPopover({
         ),
       );
     }
-    document.addEventListener("keydown", handleKey);
     window.addEventListener("resize", updatePosition);
     // Capture phase catches scrolls on any ancestor (e.g. the page body).
     window.addEventListener("scroll", updatePosition, true);
     return () => {
-      document.removeEventListener("keydown", handleKey);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
@@ -859,11 +857,10 @@ function TypedDescriptionPopover({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useEscapeKey(open, () => setOpen(false));
+
   useEffect(() => {
     if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
     function updatePosition() {
       if (!triggerRef.current) return;
       setPosition(
@@ -872,11 +869,9 @@ function TypedDescriptionPopover({
         ),
       );
     }
-    document.addEventListener("keydown", handleKey);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     return () => {
-      document.removeEventListener("keydown", handleKey);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };

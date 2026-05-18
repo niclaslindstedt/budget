@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { Upload, X } from "lucide-react";
 
 import {
@@ -55,14 +57,7 @@ export function ImportHistoryModal({
     }
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   const handleFile = useCallback(async (file: File) => {
     setState({ kind: "parsing", filename: file.name });

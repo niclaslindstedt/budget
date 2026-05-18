@@ -1,4 +1,6 @@
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useMemo } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { X } from "lucide-react";
 
 import type {
@@ -46,14 +48,7 @@ export function HistoryModal({
 }: Props) {
   useBodyScrollLock(open);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) =>

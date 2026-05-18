@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { X } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
@@ -107,14 +109,7 @@ export function BulkEditModal({
     setRecurrenceResetKey((k) => k + 1);
   }, [open, seedDate, sharedAmount, settings]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, dates: string[]) => {

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import type { StoredUser } from "../data/types";
+import { useEscapeKey, usePointerOutside } from "../hooks";
 
 type Props = {
   user: StoredUser;
@@ -44,24 +45,10 @@ export function UserMenu({
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"main" | "delete">("main");
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const close = useCallback(() => setOpen(false), []);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (!rootRef.current) return;
-      if (rootRef.current.contains(e.target as Node)) return;
-      setOpen(false);
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
+  useEscapeKey(open, close);
+  usePointerOutside(open, [rootRef], close);
 
   useEffect(() => {
     if (!open) setView("main");

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import { isIsoDate } from "../data/recurrence";
@@ -74,14 +76,7 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
     setViewMonth(m);
   }, [open, value]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {

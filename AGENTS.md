@@ -95,6 +95,9 @@ src/
 │   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
 │   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
+├── hooks/
+│   ├── useEscapeKey.ts       # close-on-Escape listener
+│   └── usePointerOutside.ts  # close-on-outside-click listener
 ├── storage/
 │   ├── adapter.ts             # StorageAdapter interface + ConflictError
 │   ├── local-adapter.ts       # localStorage adapter (load + save)
@@ -120,6 +123,7 @@ that way.
 | Change                           | Location                                                                              |
 | -------------------------------- | ------------------------------------------------------------------------------------- |
 | New UI section / page            | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                 |
+| Reusable React hook              | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                       |
 | Persisted-data shape changes     | `src/data/` (add types + a migration if needed)                                       |
 | Public JSON Schema document      | `src/data/schema.ts` (rendered at `/schema`)                                          |
 | Read/write to `localStorage`     | `src/storage/local.ts`                                                                |
