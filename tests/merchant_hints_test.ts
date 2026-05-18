@@ -6,16 +6,17 @@ import {
   suggestCategoryForDescription,
 } from "../src/data/merchant-hints";
 import { createDefaultSheet } from "../src/data/sheet";
-import type { Category, UserData } from "../src/data/types";
+import type { Category, EntryType, UserData } from "../src/data/types";
 
-function makeState(categories: Category[]): UserData {
+function makeState(categories: Category[], types: EntryType[] = []): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 13,
+    version: 15,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     categories,
+    types,
     transactions: [],
     history: {},
     historyImports: {},
@@ -130,6 +131,76 @@ describe("recordMerchantHints", () => {
   it("returns the same reference when nothing changes", () => {
     const state = makeState([food]);
     expect(recordMerchantHints(state, [], 1000)).toBe(state);
+  });
+
+  it("stamps typeId and description overrides from the history-promote flow", () => {
+    const sub: EntryType = {
+      id: "type-sub",
+      name: "Subscription",
+      color: "#56b6c2",
+      glyph: "music",
+    };
+    const state = makeState([ent], [sub]);
+    const next = recordMerchantHints(
+      state,
+      [
+        {
+          description: "SPOTIFY AB",
+          categoryId: ent.id,
+          typeId: sub.id,
+          description_override: "Spotify",
+        },
+      ],
+      1000,
+    );
+    expect(next.merchantHints["spotify ab"]).toEqual({
+      categoryId: ent.id,
+      hitCount: 1,
+      lastUsedAt: 1000,
+      typeId: sub.id,
+      description: "Spotify",
+    });
+  });
+
+  it("drops an unknown typeId but keeps the rest of the hint", () => {
+    const state = makeState([ent]);
+    const next = recordMerchantHints(
+      state,
+      [
+        {
+          description: "Spotify",
+          categoryId: ent.id,
+          typeId: "ghost-type",
+        },
+      ],
+      1000,
+    );
+    expect(next.merchantHints["spotify"]).toEqual({
+      categoryId: ent.id,
+      hitCount: 1,
+      lastUsedAt: 1000,
+    });
+  });
+
+  it("preserves a prior typeId when a later recording leaves it undefined", () => {
+    const sub: EntryType = {
+      id: "type-sub",
+      name: "Subscription",
+      color: "#56b6c2",
+      glyph: "music",
+    };
+    let state = makeState([ent], [sub]);
+    state = recordMerchantHints(
+      state,
+      [{ description: "Spotify", categoryId: ent.id, typeId: sub.id }],
+      1000,
+    );
+    state = recordMerchantHints(
+      state,
+      [{ description: "Spotify", categoryId: ent.id }],
+      2000,
+    );
+    expect(state.merchantHints["spotify"]?.typeId).toBe(sub.id);
   });
 });
 

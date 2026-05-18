@@ -1,4 +1,5 @@
 import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "./constants";
+import { normaliseDescription } from "./description-normaliser";
 import type {
   AccountBudget,
   AccountsView,
@@ -6,6 +7,7 @@ import type {
   Column,
   ColumnType,
   HistoryEntry,
+  MerchantHint,
   Row,
   Sheet,
   SheetGlyph,
@@ -379,12 +381,20 @@ export function synthesizeTransactionRow(
 // special-casing. Marker field `historyEntryId` flags the synthesized
 // origin — `Cell` / `SheetRow` read it to disable inline editing.
 // Like `synthesizeTransactionRow`, the row never reaches storage.
-// History entries don't carry a category yet; promote-to-recurring
-// is where the user assigns one.
+//
+// `hints` is the workspace merchant-hint store: when an entry's
+// normalised description matches a hint, the row inherits the hint's
+// category, typeId, and (if present) user-typed description. That's
+// how promoting one history row to a recurring series backfills
+// every other entry sharing the same merchant — the hint is
+// authoritative, and re-rendering picks it up without rewriting the
+// stored history.
 export function synthesizeHistoryRow(
   entry: HistoryEntry,
   columns: Column[],
+  hints: Readonly<Record<string, MerchantHint>> = {},
 ): Row {
+  const hint = hints[normaliseDescription(entry.description)];
   const cells: Record<string, CellValue> = {};
   for (const col of columns) {
     switch (col.type) {
@@ -392,13 +402,13 @@ export function synthesizeHistoryRow(
         cells[col.id] = entry.date;
         break;
       case "description":
-        cells[col.id] = entry.description;
+        cells[col.id] = hint?.description ?? entry.description;
         break;
       case "amount":
         cells[col.id] = entry.amount;
         break;
       case "category":
-        cells[col.id] = null;
+        cells[col.id] = hint?.categoryId ?? null;
         break;
       case "completed":
         // Imported bank entries already happened, so they're
@@ -407,11 +417,13 @@ export function synthesizeHistoryRow(
         break;
     }
   }
-  return {
+  const row: Row = {
     id: `hist:${entry.id}`,
     cells,
     historyEntryId: entry.id,
   };
+  if (hint?.typeId) row.typeId = hint.typeId;
+  return row;
 }
 
 // Sum of the account's budget rows' amounts plus signed transaction

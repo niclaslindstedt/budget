@@ -4,11 +4,18 @@ import { DEFAULT_SETTINGS } from "../src/data/constants";
 import {
   accountBalance,
   createDefaultSheet,
+  synthesizeHistoryRow,
   synthesizeTransactionRow,
   transactionsForAccount,
   userDataWithSavableRows,
 } from "../src/data/sheet";
-import type { AccountBudget, Transaction, UserData } from "../src/data/types";
+import type {
+  AccountBudget,
+  HistoryEntry,
+  MerchantHint,
+  Transaction,
+  UserData,
+} from "../src/data/types";
 
 // Build a minimal workspace with two accounts, one budget, and an
 // optional list of transactions. Tests use this as a fixture so each
@@ -16,7 +23,7 @@ import type { AccountBudget, Transaction, UserData } from "../src/data/types";
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 13,
+    version: 15,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -24,9 +31,13 @@ function workspace(transactions: Transaction[] = []): UserData {
       { id: "savings-id", name: "Savings" },
     ],
     categories: [],
+    types: [],
     transactions,
     history: {},
     historyImports: {},
+    merchantHints: {},
+    recurringDismissals: [],
+    transferCollapseDismissals: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -143,6 +154,70 @@ describe("synthesizeTransactionRow", () => {
     const saved = userDataWithSavableRows(data);
     const item = saved.sheets[0].items[0] as AccountBudget;
     expect(item.rows.every((r) => r.transactionId === undefined)).toBe(true);
+  });
+});
+
+describe("synthesizeHistoryRow", () => {
+  function budgetColumns() {
+    const sheet = createDefaultSheet("Tmp", "checking-id");
+    return (sheet.items[0] as AccountBudget).columns;
+  }
+  const entry: HistoryEntry = {
+    id: "h1",
+    date: "2026-02-26",
+    description: "ICA SUPERMARKET 12345",
+    amount: -421,
+    balance: 1000,
+    importedAt: 0,
+  };
+
+  it("renders raw bank text when no hint matches", () => {
+    const cols = budgetColumns();
+    const row = synthesizeHistoryRow(entry, cols, {});
+    const descCol = cols.find((c) => c.type === "description")!;
+    const catCol = cols.find((c) => c.type === "category")!;
+    expect(row.cells[descCol.id]).toBe("ICA SUPERMARKET 12345");
+    expect(row.cells[catCol.id]).toBeNull();
+    expect(row.typeId).toBeUndefined();
+    expect(row.historyEntryId).toBe("h1");
+  });
+
+  it("overlays the hint description, category, and typeId when one matches", () => {
+    const cols = budgetColumns();
+    // Key is the normalised form of the bank text — the synthesizer
+    // computes the key itself so callers just pass the hint store.
+    const hints: Record<string, MerchantHint> = {
+      "ica supermarket": {
+        categoryId: "groceries",
+        typeId: "type-grocery",
+        description: "Groceries",
+        hitCount: 1,
+        lastUsedAt: 0,
+      },
+    };
+    const row = synthesizeHistoryRow(entry, cols, hints);
+    const descCol = cols.find((c) => c.type === "description")!;
+    const catCol = cols.find((c) => c.type === "category")!;
+    expect(row.cells[descCol.id]).toBe("Groceries");
+    expect(row.cells[catCol.id]).toBe("groceries");
+    expect(row.typeId).toBe("type-grocery");
+  });
+
+  it("keeps raw description when the hint has no description override", () => {
+    const cols = budgetColumns();
+    const hints: Record<string, MerchantHint> = {
+      "ica supermarket": {
+        categoryId: "groceries",
+        hitCount: 1,
+        lastUsedAt: 0,
+      },
+    };
+    const row = synthesizeHistoryRow(entry, cols, hints);
+    const descCol = cols.find((c) => c.type === "description")!;
+    const catCol = cols.find((c) => c.type === "category")!;
+    expect(row.cells[descCol.id]).toBe("ICA SUPERMARKET 12345");
+    expect(row.cells[catCol.id]).toBe("groceries");
+    expect(row.typeId).toBeUndefined();
   });
 });
 

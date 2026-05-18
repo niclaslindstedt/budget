@@ -576,7 +576,10 @@ export const USER_DATA_SCHEMA = {
         "One entry in `merchantHints`. Records the category the user " +
         "has most recently assigned to a normalised-description key, " +
         "plus how often they've reinforced that choice and when they " +
-        "last did so.",
+        "last did so. The history-row promote-to-recurring flow may " +
+        "also stamp a `typeId` and a user-typed `description` here so " +
+        "synthesized history rows display under the user's label " +
+        "instead of the raw bank text.",
       properties: {
         categoryId: {
           $ref: "#/$defs/Id",
@@ -599,6 +602,25 @@ export const USER_DATA_SCHEMA = {
             "Unix milliseconds of the most recent assignment. Used by " +
             "the 'Merchant memory' settings section to render a 'last " +
             "used …' label and as a tiebreaker between competing hints.",
+        },
+        typeId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Optional `EntryType` id assigned alongside the category. " +
+            "Synthesized history rows pick it up so the type chip and " +
+            "colour render in place of the raw bank text. Dangling " +
+            "refs are dropped on load.",
+        },
+        description: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Optional user-typed label that overrides the bank's " +
+            "description wherever this merchant appears. Set by the " +
+            "history-row promote flow so 'ICA SUPERMARKET 12345' can " +
+            "display as 'Groceries'. The raw bank text is preserved " +
+            "on each `HistoryEntry` and the normalised key still " +
+            "drives lookups; this field only changes presentation.",
         },
       },
     },

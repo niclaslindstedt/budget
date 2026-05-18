@@ -65,6 +65,39 @@ function daysInMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
 
+// Pick the first date on or after `today` whose day-of-month matches
+// the day of `sourceIso`. Used to seed the recurrence form when the
+// user promotes a past history entry: a Feb-26 charge promoted on
+// May 27 should default to June 26 (the 26th has already passed this
+// month), while the same charge promoted on May 25 should default to
+// May 26 (the next 26th hasn't happened yet). Day-of-month is
+// clamped to the target month's length so a 31st-of-month entry
+// promoted in April lands on April 30. Returns `sourceIso`
+// unchanged if either input is malformed so callers can fall back
+// gracefully.
+export function nextOccurrenceWithSameDom(
+  sourceIso: string,
+  today: string,
+): string {
+  if (!isIsoDate(sourceIso) || !isIsoDate(today)) return sourceIso;
+  const sourceDay = Number(sourceIso.slice(8, 10));
+  const todayDate = parseIso(today);
+  if (!todayDate || !Number.isFinite(sourceDay)) return sourceIso;
+  let y = todayDate.getUTCFullYear();
+  let m = todayDate.getUTCMonth();
+  const todayDay = todayDate.getUTCDate();
+  // Skip to next month when today is already past this month's anchor.
+  if (todayDay > sourceDay) {
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  const day = Math.min(sourceDay, daysInMonth(y, m));
+  return toIso(new Date(Date.UTC(y, m, day)));
+}
+
 export function expandRecurrence(rule: RecurrenceRule): string[] {
   const out = new Set<string>();
   switch (rule.kind) {

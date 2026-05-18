@@ -30,6 +30,7 @@ import {
   EditEntryModal,
   type EditPatch,
   type EditScope,
+  type HistoryPromotePrefill,
 } from "./components/EditEntryModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { ImportExportControls } from "./components/ImportExportControls";
@@ -71,6 +72,7 @@ import type {
   UserData,
 } from "./data/types";
 import { type HintRecording, recordMerchantHints } from "./data/merchant-hints";
+import { normaliseDescription } from "./data/description-normaliser";
 import { RecurringCandidatesPanel } from "./components/RecurringCandidatesPanel";
 import { TransferCollapseModal } from "./components/TransferCollapseModal";
 import type { RecurringCandidate } from "./data/recurring-detection";
@@ -304,6 +306,28 @@ type Action =
       sheetId: string;
       itemId: string;
       key: string;
+      description: string;
+      amount: number;
+      categoryId: string | null;
+      typeId: string | null;
+      dates: string[];
+      now: number;
+    }
+  | {
+      // Promote a single imported history entry into a recurring
+      // series on the active budget. Mirrors `promoteRecurringCandidate`
+      // for the row-minting half, then extends the recorded merchant
+      // hint with the user-typed description and typeId so every
+      // other history entry that normalises to the same merchant key
+      // displays under the user's label without further writes.
+      type: "promoteHistoryToRecurring";
+      sheetId: string;
+      itemId: string;
+      // The bank-supplied description on the source history entry.
+      // Used to normalise into the merchant-hint key — the user's
+      // typed label drives the overlay but the key itself is bank-
+      // text-derived so the lookup matches future imports too.
+      sourceDescription: string;
       description: string;
       amount: number;
       categoryId: string | null;
@@ -964,6 +988,63 @@ function reducer(state: UserData, action: Action): UserData {
     return recordMerchantHints(
       next,
       [{ description: action.description, categoryId: action.categoryId }],
+      action.now,
+    );
+  }
+  if (action.type === "promoteHistoryToRecurring") {
+    // Mint a series like the recurring-candidate promote does, then
+    // stamp the merchant hint with the user's chosen typeId and
+    // description override so every synthesized history row that
+    // normalises to the same key inherits the labels on the next
+    // render. The source description (raw bank text) is what we feed
+    // to `recordMerchantHints` so the normalised key matches future
+    // imports too.
+    const seriesId = action.dates.length > 1 ? newId() : undefined;
+    const nextSheets = state.sheets.map((sheet) => {
+      if (sheet.id !== action.sheetId) return sheet;
+      return {
+        ...sheet,
+        items: sheet.items.map((item) => {
+          if (item.id !== action.itemId || item.type !== "accountBudget") {
+            return item;
+          }
+          const dateCol = findColumnByType(item.columns, "date");
+          const descCol = findColumnByType(item.columns, "description");
+          const amountCol = findColumnByType(item.columns, "amount");
+          const catCol = findColumnByType(item.columns, "category");
+          if (!dateCol || !descCol || !amountCol) return item;
+          const newRows: Row[] = action.dates.map((date) => {
+            const cells: Record<string, CellValue> = {
+              [dateCol.id]: date,
+              [descCol.id]: action.description,
+              [amountCol.id]: action.amount,
+            };
+            if (catCol) cells[catCol.id] = action.categoryId;
+            const row: Row = { id: newId(), cells };
+            if (seriesId) row.seriesId = seriesId;
+            if (action.typeId) row.typeId = action.typeId;
+            return row;
+          });
+          return { ...item, rows: [...item.rows, ...newRows] };
+        }),
+      };
+    });
+    const next = { ...state, sheets: nextSheets };
+    // The hint must carry categoryId (the existing contract of
+    // `recordMerchantHints`), so skip the recording when the user
+    // declined to set one. The new rows still got minted; the user
+    // can backfill labels later by promoting again with a category.
+    if (action.categoryId === null) return next;
+    return recordMerchantHints(
+      next,
+      [
+        {
+          description: action.sourceDescription,
+          categoryId: action.categoryId,
+          typeId: action.typeId,
+          description_override: action.description,
+        },
+      ],
       action.now,
     );
   }
@@ -2994,6 +3075,29 @@ function BudgetView({
     return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
   }, [editPrompt, activeItem.rows, dateCol]);
 
+  // Pre-fill values for the history-row promote modal. Looks the
+  // active history entry up by id (the synthesized row carries only
+  // the overlaid description), normalises its raw bank text, and
+  // hands the matching merchant hint's labels back to the modal so a
+  // returning user sees their last choices rather than blanks.
+  const editHistoryHintPrefill = useMemo<HistoryPromotePrefill | null>(() => {
+    const row = editPrompt?.row;
+    if (!row?.historyEntryId) return null;
+    const accountId = activeItem.accountId;
+    if (!accountId) return null;
+    const entries = data.history[accountId] ?? [];
+    const entry = entries.find((e) => e.id === row.historyEntryId);
+    if (!entry) return null;
+    const key = normaliseDescription(entry.description);
+    const hint = data.merchantHints[key];
+    if (!hint) return null;
+    return {
+      description: hint.description ?? null,
+      categoryId: hint.categoryId ?? null,
+      typeId: hint.typeId ?? null,
+    };
+  }, [editPrompt, activeItem.accountId, data.history, data.merchantHints]);
+
   const deleteActions: ConfirmAction[] = useMemo(() => {
     if (!deletePrompt) return [];
     const row = deletePrompt.row;
@@ -3139,6 +3243,46 @@ function BudgetView({
       dispatch({ type: "dismissRecurringCandidate", key });
     },
     [dispatch],
+  );
+
+  // Promote a single history entry the user clicked on into a real
+  // recurring series. Routes through the same future-row minting as
+  // the recurring-candidate panel but also stamps the merchant hint
+  // with the user-typed description and typeId so past entries
+  // sharing the merchant key adopt the label on the next render.
+  const onPromoteHistory = useCallback(
+    (
+      historyEntryId: string,
+      sourceDescription: string,
+      promotion: {
+        description: string;
+        amount: number;
+        categoryId: string | null;
+        typeId: string | null;
+        dates: string[];
+      },
+    ) => {
+      if (!activeBudget) return;
+      if (promotion.dates.length === 0) return;
+      dispatch({
+        type: "promoteHistoryToRecurring",
+        sheetId,
+        itemId: activeBudget.id,
+        sourceDescription,
+        description: promotion.description,
+        amount: promotion.amount,
+        categoryId: promotion.categoryId,
+        typeId: promotion.typeId,
+        dates: promotion.dates,
+        now: Date.now(),
+      });
+      setEditPrompt(null);
+      // Silences the unused parameter warning while keeping the id in
+      // the API surface for future use (e.g. selectively hiding the
+      // source row or recording the promotion against its id).
+      void historyEntryId;
+    },
+    [dispatch, sheetId, activeBudget],
   );
 
   // Transfer-collapse modal handlers. Open is driven by the user
@@ -3362,6 +3506,7 @@ function BudgetView({
                     ? (data.history[activeItem.accountId] ?? [])
                     : []
                 }
+                merchantHints={data.merchantHints}
                 openingBalance={
                   activeItem.accountId
                     ? (data.accounts.find((a) => a.id === activeItem.accountId)
@@ -3516,9 +3661,11 @@ function BudgetView({
         typeUsageById={typeUsageById}
         settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
+        historyHintPrefill={editHistoryHintPrefill}
         onClose={() => setEditPrompt(null)}
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
+        onPromoteHistory={onPromoteHistory}
         onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />

@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 14 as const;
+export const LATEST_VERSION = 15 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -266,6 +266,15 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
       }),
     };
   },
+
+  // v14 → v15: `MerchantHint` gains optional `typeId` and
+  // `description` fields. The history-row promote-to-recurring flow
+  // writes them so past and future synthesized history rows can
+  // display the user's label and entry type instead of the raw bank
+  // text. Existing hints carry neither field — they're optional and
+  // readers fall through to the raw description and no-type
+  // rendering, so no payload rewrite is needed.
+  14: (v14) => ({ ...v14, version: 15 }),
 };
 
 export type MigrationResult = {

@@ -19,6 +19,17 @@ export type HintRecording = {
   // `null` clears any existing hint for the key — used when the user
   // strips a category off a row. `string` means "assign / reinforce".
   categoryId: string | null;
+  // Optional EntryType id to stamp on the hint alongside the
+  // category. The history-row promote-to-recurring flow sets it so
+  // past and future synthesized history rows pick up the type chip;
+  // other call sites leave it undefined and the existing typeId (if
+  // any) is preserved.
+  typeId?: string | null;
+  // Optional user-typed label that overrides the raw bank
+  // description on synthesized history rows sharing the normalised
+  // key. Undefined means "don't touch"; explicit empty string clears
+  // any existing override.
+  description_override?: string;
 };
 
 // Apply a batch of hint recordings to a state. Returns a new state
@@ -31,7 +42,8 @@ export function recordMerchantHints(
   now: number,
 ): UserData {
   if (recordings.length === 0) return state;
-  const known = new Set(state.categories.map((c) => c.id));
+  const knownCategories = new Set(state.categories.map((c) => c.id));
+  const knownTypes = new Set(state.types.map((t) => t.id));
   let next: Record<string, MerchantHint> | null = null;
   for (const r of recordings) {
     const key = normaliseDescription(r.description);
@@ -47,15 +59,33 @@ export function recordMerchantHints(
       delete next[key];
       continue;
     }
-    if (!known.has(r.categoryId)) continue;
+    if (!knownCategories.has(r.categoryId)) continue;
     const existing = (next ?? state.merchantHints)[key] ?? null;
     if (next === null) next = { ...state.merchantHints };
-    next[key] = {
+    const hint: MerchantHint = {
       categoryId: r.categoryId,
       hitCount:
         (existing?.categoryId === r.categoryId ? existing.hitCount : 0) + 1,
       lastUsedAt: now,
     };
+    // typeId: explicit null clears, undefined preserves prior value,
+    // a known type id assigns. Unknown ids are ignored so a stale
+    // recording can't trap a dangling ref.
+    if (r.typeId === null) {
+      // dropped
+    } else if (typeof r.typeId === "string" && knownTypes.has(r.typeId)) {
+      hint.typeId = r.typeId;
+    } else if (existing?.typeId) {
+      hint.typeId = existing.typeId;
+    }
+    // description_override: undefined preserves, empty string clears,
+    // any other string assigns.
+    if (r.description_override === undefined) {
+      if (existing?.description) hint.description = existing.description;
+    } else if (r.description_override.trim() !== "") {
+      hint.description = r.description_override;
+    }
+    next[key] = hint;
   }
   if (next === null) return state;
   return { ...state, merchantHints: next };
