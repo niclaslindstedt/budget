@@ -101,7 +101,7 @@ export function ImportHistoryModal({
       <div className="flex flex-col gap-3 px-4 py-3">
         <p className="text-xs text-muted">
           Drop a bank statement file below, or click to pick one. Currently
-          supported: Skandiabanken (.xlsx), ICA Banken (.csv).
+          supported: Skandiabanken (.xlsx), Swedbank (.xlsx), ICA Banken (.csv).
         </p>
 
         <button
