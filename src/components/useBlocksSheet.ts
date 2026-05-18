@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { useActiveRow } from "./useActiveRow";
 
@@ -17,11 +17,21 @@ import { useActiveRow } from "./useActiveRow";
 // stray row" family of bugs; if a new interactive element shows up in
 // the sheet, this hook is what wires it into the coordinator.
 //
-// `dismiss` is captured by ref so callers don't need to memoise it —
-// inline arrow functions are fine. `rowId` may be `undefined` (the
-// FloatingPanel reuses the same shell for non-sheet contexts where
-// there's no row to register against); in that case the hook is a
-// no-op.
+// Design notes:
+//
+// - `dismiss` and the context value are captured by ref so the
+//   registration is taken down and torn up exactly once per
+//   open/close cycle. Naive deps that include the context value
+//   cause a deactivate/activate ping-pong every time `hasActive`
+//   flips, because the provider's `useMemo` returns a new object on
+//   every state change — the ping-pong is brief but coincides
+//   exactly with the user's tap.
+// - Registration runs in a layout effect so it lands before paint;
+//   if it ran in `useEffect`, the popover/picker would be on screen
+//   for a paint cycle before the AddRowButton learned about it, and
+//   a tap during that gap would slip through.
+// - Callers pass plain inline arrow functions; no memoisation
+//   needed.
 export function useBlocksSheet(
   rowId: string | undefined,
   active: boolean,
@@ -29,12 +39,15 @@ export function useBlocksSheet(
 ): void {
   const activeRow = useActiveRow();
   const dismissRef = useRef(dismiss);
-  useEffect(() => {
-    dismissRef.current = dismiss;
-  });
-  useEffect(() => {
-    if (!active || !activeRow || !rowId) return;
-    const token = activeRow.activate(rowId, () => dismissRef.current());
-    return () => activeRow.deactivate(token);
-  }, [active, activeRow, rowId]);
+  const activeRowRef = useRef(activeRow);
+  dismissRef.current = dismiss;
+  activeRowRef.current = activeRow;
+
+  useLayoutEffect(() => {
+    if (!active || !rowId) return;
+    const coordinator = activeRowRef.current;
+    if (!coordinator) return;
+    const token = coordinator.activate(rowId, () => dismissRef.current());
+    return () => coordinator.deactivate(token);
+  }, [active, rowId]);
 }

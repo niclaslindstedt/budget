@@ -194,7 +194,14 @@ export function Cell({
   }
   switch (column.type) {
     case "date": {
-      return <DateCell value={value} settings={settings} onChange={onChange} />;
+      return (
+        <DateCell
+          rowId={rowId}
+          value={value}
+          settings={settings}
+          onChange={onChange}
+        />
+      );
     }
 
     case "description":
@@ -458,16 +465,23 @@ function AmountCell({
 }
 
 function DateCell({
+  rowId,
   value,
   settings,
   onChange,
 }: {
+  rowId: string;
   value: CellValue;
   settings: Settings;
   onChange: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
   const iso = typeof value === "string" ? value : "";
+  // Wire the date modal into the active-row coordinator. While the
+  // calendar is open the AddRowButton greys itself out and a tap on it
+  // (or anywhere else outside the modal) only dismisses, mirroring how
+  // amount focus and the description popover behave.
+  useBlocksSheet(rowId, open, () => setOpen(false));
 
   return (
     <>
