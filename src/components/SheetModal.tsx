@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Plus, Trash2, Wallet } from "lucide-react";
 
 import {
-  CATEGORY_ICON_NAMES,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
   SHEET_COLORS,
+  SHEET_GLYPH_NAMES,
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
@@ -265,7 +265,7 @@ export function SheetModal({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted">Glyph</span>
             <GlyphGrid
-              icons={CATEGORY_ICON_NAMES}
+              icons={SHEET_GLYPH_NAMES}
               value={glyph}
               onChange={setGlyph}
               size={8}

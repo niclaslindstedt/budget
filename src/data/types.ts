@@ -56,7 +56,16 @@ export type Row = {
   historyEntryId?: string;
 };
 
+// Master allowlist of glyph names used anywhere in the app. The picker
+// grids for sheets, accounts, categories, and types each render a
+// curated subset of this union (see `*_GLYPH_NAMES` in
+// `data/constants.ts`) so the user sees relevant choices in each
+// context, but the persisted data model accepts any value from the
+// full union. That keeps cross-context moves (an icon used for a
+// category today, promoted to a sheet glyph tomorrow) free.
 export type CategoryIcon =
+  // Originals — kept first to preserve existing display order in
+  // contexts that still iterate the full allowlist.
   | "tag"
   | "home"
   | "car"
@@ -81,7 +90,63 @@ export type CategoryIcon =
   | "wallet"
   | "zap"
   | "sparkles"
-  | "star";
+  | "star"
+  // Food & drink
+  | "cookie"
+  | "cake"
+  | "ice-cream"
+  | "beer"
+  | "wine"
+  // Transport
+  | "bus"
+  | "train"
+  | "bike"
+  | "fuel"
+  // Home & utilities
+  | "bed"
+  | "sofa"
+  | "lightbulb"
+  | "droplet"
+  | "flame"
+  | "wifi"
+  | "key"
+  | "wrench"
+  | "hammer"
+  // Tech & gadgets
+  | "smartphone"
+  | "laptop"
+  | "headphones"
+  | "camera"
+  // Lifestyle
+  | "shirt"
+  | "scissors"
+  | "ticket"
+  | "gamepad-2"
+  | "book-open"
+  | "dumbbell"
+  | "dog"
+  | "cat"
+  | "paw-print"
+  | "tree-pine"
+  | "baby"
+  // Health
+  | "heart-pulse"
+  // Money & finance
+  | "coins"
+  | "hand-coins"
+  | "landmark"
+  | "building-2"
+  | "vault"
+  | "gem"
+  | "bitcoin"
+  | "scale"
+  | "trending-up"
+  | "line-chart"
+  | "pie-chart"
+  | "calendar-days"
+  | "globe"
+  | "arrow-down-circle"
+  | "arrow-up-circle";
 
 export type Category = {
   id: string;

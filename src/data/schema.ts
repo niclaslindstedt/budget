@@ -243,8 +243,11 @@ export const USER_DATA_SCHEMA = {
       type: "string",
       enum: [...CATEGORY_ICON_NAMES],
       description:
-        "Glyph identifier from the fixed allowlist. The same set is " +
-        "reused for sheet glyphs (a sheet's glyph is a CategoryIcon).",
+        "Glyph identifier from the fixed allowlist. The same union is " +
+        "used for category icons, entry-type glyphs, account glyphs, " +
+        "and sheet glyphs — the picker UI shows a curated subset per " +
+        "context, but any value from this enum validates anywhere a " +
+        "CategoryIcon is accepted.",
     },
     SheetType: {
       type: "string",

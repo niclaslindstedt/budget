@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
-import { CATEGORY_COLORS, CATEGORY_ICON_NAMES } from "../data/constants";
+import { CATEGORY_COLORS, CATEGORY_GLYPH_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { ColorPalette } from "./ColorPalette";
@@ -278,7 +278,7 @@ function CategoryCreator({
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>Icon</span>
         <GlyphGrid
-          icons={CATEGORY_ICON_NAMES}
+          icons={CATEGORY_GLYPH_NAMES}
           value={icon}
           onChange={setIcon}
         />

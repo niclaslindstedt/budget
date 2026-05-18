@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
-import { SHEET_COLORS } from "../data/constants";
+import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../data/constants";
 import type { Account, CategoryIcon } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { ColorPalette } from "./ColorPalette";
@@ -162,6 +162,7 @@ export function AccountModal({
               value={glyph}
               onChange={setGlyph}
               defaultIcon="wallet"
+              icons={ACCOUNT_GLYPH_NAMES}
             />
           </div>
 
