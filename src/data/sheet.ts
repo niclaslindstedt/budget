@@ -1,5 +1,6 @@
 import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "./constants";
 import { normaliseDescription } from "./description-normaliser";
+import { findMatchingRule } from "./match-rules";
 import type {
   AccountBudget,
   AccountsView,
@@ -7,6 +8,7 @@ import type {
   Column,
   ColumnType,
   HistoryEntry,
+  MatchRule,
   MerchantHint,
   Row,
   Sheet,
@@ -382,19 +384,42 @@ export function synthesizeTransactionRow(
 // origin — `Cell` / `SheetRow` read it to disable inline editing.
 // Like `synthesizeTransactionRow`, the row never reaches storage.
 //
-// `hints` is the workspace merchant-hint store: when an entry's
-// normalised description matches a hint, the row inherits the hint's
-// category, typeId, and (if present) user-typed description. That's
-// how promoting one history row to a recurring series backfills
-// every other entry sharing the same merchant — the hint is
-// authoritative, and re-rendering picks it up without rewriting the
-// stored history.
+// Labels stack with rules winning over hints: an explicit pattern
+// rule (user-authored glob) overrides any merchant hint (auto-
+// recorded from the lossy normalised description) on the same
+// entry. Either source contributes a category, typeId, and user-
+// typed description; the entry's bank text is preserved on storage,
+// only presentation changes.
 export function synthesizeHistoryRow(
   entry: HistoryEntry,
   columns: Column[],
   hints: Readonly<Record<string, MerchantHint>> = {},
+  rules: readonly MatchRule[] = [],
 ): Row {
+  const rule = findMatchingRule(rules, entry);
   const hint = hints[normaliseDescription(entry.description)];
+  // Field-by-field merge: prefer rule when it sets a label, fall back
+  // to hint, fall back to the raw entry. `null` on a rule field is
+  // distinct from "absent" in the validator but the renderer reads
+  // null the same way as undefined here — both mean "no override".
+  const description =
+    (rule?.description && rule.description.trim() !== ""
+      ? rule.description
+      : null) ??
+    hint?.description ??
+    entry.description;
+  const categoryId =
+    (rule && rule.categoryId !== undefined && rule.categoryId !== null
+      ? rule.categoryId
+      : null) ??
+    hint?.categoryId ??
+    null;
+  const typeId =
+    (rule && rule.typeId !== undefined && rule.typeId !== null
+      ? rule.typeId
+      : null) ??
+    hint?.typeId ??
+    null;
   const cells: Record<string, CellValue> = {};
   for (const col of columns) {
     switch (col.type) {
@@ -402,13 +427,13 @@ export function synthesizeHistoryRow(
         cells[col.id] = entry.date;
         break;
       case "description":
-        cells[col.id] = hint?.description ?? entry.description;
+        cells[col.id] = description;
         break;
       case "amount":
         cells[col.id] = entry.amount;
         break;
       case "category":
-        cells[col.id] = hint?.categoryId ?? null;
+        cells[col.id] = categoryId;
         break;
       case "completed":
         // Imported bank entries already happened, so they're
@@ -422,7 +447,7 @@ export function synthesizeHistoryRow(
     cells,
     historyEntryId: entry.id,
   };
-  if (hint?.typeId) row.typeId = hint.typeId;
+  if (typeId) row.typeId = typeId;
   return row;
 }
 

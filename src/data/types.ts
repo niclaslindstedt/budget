@@ -369,6 +369,39 @@ export type MerchantHint = {
   description?: string;
 };
 
+// User-defined rule that relabels imported bank-history entries by
+// wildcard-matching against their raw description. Distinct from
+// `MerchantHint` (which keys off the lossy normalised description and
+// is auto-populated by promote flows): a `MatchRule` is explicit
+// memory, edited by hand through the pattern modal so a noisy
+// merchant like "App Store *Buzzer 9XXX" can be collapsed under a
+// single user-typed label by matching `*App Store*`.
+//
+// Pattern is a simple glob: `*` matches any run of characters
+// (including empty), other characters match themselves literally and
+// case-insensitively. The pattern is implicitly anchored — wrap with
+// `*…*` for substring matching.
+//
+// `amountSign` filters by transaction direction so a "BAUHAUS" rule
+// labels incoming refunds only or outgoing purchases only. The
+// `transferFilter` follows the same shape applied to whether the
+// entry is part of a cross-account transfer (i.e. carries a
+// `collapsedIntoTransactionId`) — useful when a description token
+// like "BAUHAUS" can appear both on real purchases and on transfers
+// the user labelled themselves.
+//
+// All three filter fields default to `any`; absent fields on disk
+// are normalised by the validator to the same default.
+export type MatchRule = {
+  id: string;
+  pattern: string;
+  description?: string;
+  categoryId?: string | null;
+  typeId?: string | null;
+  amountSign?: "any" | "positive" | "negative";
+  transferFilter?: "any" | "exclude" | "only";
+};
+
 // Top-level persisted blob for one signed-in user. Holds everything
 // that user owns: their sheets, the categories they've defined, and
 // their display preferences. The user account itself (id, username,
@@ -376,7 +409,7 @@ export type MerchantHint = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 15;
+  version: 16;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -419,6 +452,14 @@ export type UserData = {
   // collapse modal. Same shape and contract as `recurringDismissals`:
   // detector reads it as an allowlist, settings UI offers a clear-all.
   transferCollapseDismissals: string[];
+  // Wildcard-pattern overlays for synthesized history rows. Each
+  // rule is created from the history-row pattern button; the rule
+  // labels every matching entry (past + future imports) with the
+  // user-typed description / category / type. Distinct from
+  // `merchantHints` — those are auto-recorded via the lossy
+  // normalised description, these are explicit globs with sign /
+  // transfer filters the user owns.
+  matchRules: MatchRule[];
   settings: Settings;
 };
 

@@ -64,6 +64,7 @@ export const USER_DATA_SCHEMA = {
     "merchantHints",
     "recurringDismissals",
     "transferCollapseDismissals",
+    "matchRules",
     "settings",
   ],
   properties: {
@@ -199,6 +200,19 @@ export const USER_DATA_SCHEMA = {
         "stick to the specific pair, not to either entry on its own. " +
         "Settings has a clear-all so a misclick is recoverable.",
       items: { type: "string", minLength: 1 },
+    },
+    matchRules: {
+      type: "array",
+      description:
+        "User-authored wildcard rules that relabel synthesized history " +
+        "rows by matching against their raw description. Distinct from " +
+        "`merchantHints` (which keys off the lossy normalised description " +
+        "and is auto-recorded by promote flows) — a `MatchRule` is " +
+        "explicit memory the user owns and can sharpen with sign / " +
+        "transfer filters. Rules apply in array order; the first match " +
+        "wins. Order is significant for layering specific rules on top " +
+        "of broader catch-alls.",
+      items: { $ref: "#/$defs/MatchRule" },
     },
     settings: {
       $ref: "#/$defs/Settings",
@@ -565,6 +579,75 @@ export const USER_DATA_SCHEMA = {
             "must clear this field on both sides to restore the entry; " +
             "the detector skips entries that carry this backref so the " +
             "operation is idempotent.",
+        },
+      },
+    },
+    MatchRule: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "pattern"],
+      description:
+        "One entry in `matchRules`. Labels synthesized history rows whose " +
+        "raw bank description matches `pattern` (simple glob: `*` matches " +
+        "any run of characters, everything else matches literally, case- " +
+        "insensitively, and the pattern is implicitly anchored). When a " +
+        "rule matches an entry its `description` / `categoryId` / `typeId` " +
+        "overlay the entry's synthesized row at render time; the stored " +
+        "`HistoryEntry` is never rewritten so removing a rule reverts " +
+        "presentation cleanly. `amountSign` and `transferFilter` narrow " +
+        "the match: a rule for 'BAUHAUS' can fire only on outgoing " +
+        "purchases (negative amounts) and ignore transfers between the " +
+        "user's own accounts.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        pattern: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Wildcard pattern. `*` matches any run of characters including " +
+            "empty; every other character matches itself literally and " +
+            "case-insensitively. Anchored implicitly — wrap with `*…*` " +
+            "for substring matching.",
+        },
+        description: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Optional user-typed label that overrides the bank's text on " +
+            "every matching synthesized history row. The raw text is " +
+            "preserved on the underlying `HistoryEntry`; only presentation " +
+            "changes.",
+        },
+        categoryId: {
+          oneOf: [{ $ref: "#/$defs/Id" }, { type: "null" }],
+          description:
+            "Optional category id assigned to every matching row. Must " +
+            "reference `categories`; dangling refs are dropped on load.",
+        },
+        typeId: {
+          oneOf: [{ $ref: "#/$defs/Id" }, { type: "null" }],
+          description:
+            "Optional `EntryType` id assigned alongside the category. " +
+            "Dangling refs are dropped on load.",
+        },
+        amountSign: {
+          type: "string",
+          enum: ["any", "positive", "negative"],
+          description:
+            "Filter by transaction direction. `any` (default) matches " +
+            "both signs; `negative` matches outgoing money; `positive` " +
+            "matches incoming. Useful when one description token can " +
+            "appear on both a purchase and its refund.",
+        },
+        transferFilter: {
+          type: "string",
+          enum: ["any", "exclude", "only"],
+          description:
+            "Filter by whether the entry is part of a cross-account " +
+            "transfer (carries `collapsedIntoTransactionId`). `any` " +
+            "(default) ignores the distinction; `exclude` skips entries " +
+            "that were collapsed into a Transaction; `only` matches " +
+            "exclusively those.",
         },
       },
     },

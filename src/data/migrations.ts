@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 15 as const;
+export const LATEST_VERSION = 16 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -275,6 +275,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // readers fall through to the raw description and no-type
   // rendering, so no payload rewrite is needed.
   14: (v14) => ({ ...v14, version: 15 }),
+
+  // v15 → v16: introduces `matchRules`, a list of user-authored
+  // wildcard rules that relabel synthesized history rows by pattern
+  // (distinct from the lossy normalised-description matching that
+  // drives `merchantHints`). Existing exports default to an empty
+  // list — no rules have been authored yet, so behaviour matches
+  // pre-v16 builds until the user creates one.
+  15: (v15) => ({ ...v15, version: 16, matchRules: [] }),
 };
 
 export type MigrationResult = {

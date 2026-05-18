@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ArrowLeftRight, Repeat, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Repeat, Tags, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
 import type {
@@ -35,6 +35,11 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
+  // Fires when the user clicks the pattern button on a synthesized
+  // history row. Opens the wildcard rule modal seeded from the row's
+  // bank text; ignored when called on non-history rows since the
+  // button only renders there.
+  onMatchRuleRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
@@ -56,6 +61,7 @@ export function SheetRow({
   onDeleteRequest,
   onEditRequest,
   onTransactionRequest,
+  onMatchRuleRequest,
   onToggleSelect,
   onCreateCategory,
 }: Props) {
@@ -226,6 +232,20 @@ export function SheetRow({
               }}
             >
               <Repeat size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {isHistory && (
+            <button
+              type="button"
+              className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label="Label by pattern"
+              title="Label every history entry matching a wildcard pattern"
+              onClick={() => {
+                setSwiped(false);
+                onMatchRuleRequest(row);
+              }}
+            >
+              <Tags size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isHistory && (

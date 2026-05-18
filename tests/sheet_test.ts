@@ -18,10 +18,18 @@ import {
   shiftIsoToMonth,
   sortMonthKeys,
   sortRowsByDate,
+  synthesizeHistoryRow,
   userDataHasHalfDoneRows,
   userDataWithSavableRows,
 } from "../src/data/sheet";
-import type { AccountBudget, Row, UserData } from "../src/data/types";
+import type {
+  AccountBudget,
+  HistoryEntry,
+  MatchRule,
+  MerchantHint,
+  Row,
+  UserData,
+} from "../src/data/types";
 
 const TEST_ACCOUNT_ID = "acct-1";
 
@@ -451,6 +459,107 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
       { id: "empty", cells: {} },
     ];
     expect(userDataHasHalfDoneRows(data)).toBe(false);
+  });
+});
+
+describe("synthesizeHistoryRow", () => {
+  const item = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+  const dateId = findColumnByType(item.columns, "date")!.id;
+  const descId = findColumnByType(item.columns, "description")!.id;
+  const amountId = findColumnByType(item.columns, "amount")!.id;
+  const categoryId = findColumnByType(item.columns, "category")!.id;
+  const completedId = findColumnByType(item.columns, "completed")!.id;
+
+  const baseEntry: HistoryEntry = {
+    id: "h1",
+    date: "2026-04-12",
+    description: "APP STORE APL*Z123",
+    amount: -49,
+    balance: 0,
+    importedAt: 1,
+  };
+
+  it("falls back to the raw bank text when no hint or rule matches", () => {
+    const row = synthesizeHistoryRow(baseEntry, item.columns, {}, []);
+    expect(row.cells[descId]).toBe("APP STORE APL*Z123");
+    expect(row.cells[categoryId]).toBeNull();
+    expect(row.cells[completedId]).toBe(true);
+    expect(row.typeId).toBeUndefined();
+    expect(row.historyEntryId).toBe("h1");
+    expect(row.cells[dateId]).toBe("2026-04-12");
+    expect(row.cells[amountId]).toBe(-49);
+  });
+
+  it("applies the matching rule's labels", () => {
+    const rule: MatchRule = {
+      id: "r1",
+      pattern: "*App Store*",
+      description: "App Store",
+      categoryId: "cat-1",
+      typeId: "type-1",
+    };
+    const row = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
+    expect(row.cells[descId]).toBe("App Store");
+    expect(row.cells[categoryId]).toBe("cat-1");
+    expect(row.typeId).toBe("type-1");
+  });
+
+  it("rule labels override hint labels when both match", () => {
+    const hint: MerchantHint = {
+      categoryId: "hint-cat",
+      hitCount: 1,
+      lastUsedAt: 1,
+      typeId: "hint-type",
+      description: "Hint label",
+    };
+    const rule: MatchRule = {
+      id: "r1",
+      pattern: "*App Store*",
+      description: "Rule label",
+      categoryId: "rule-cat",
+      typeId: "rule-type",
+    };
+    // Hint key normalises the bank text: "APP STORE APL*Z123" →
+    // lowercase, `*` stripped → "app store apl z123".
+    const row = synthesizeHistoryRow(
+      baseEntry,
+      item.columns,
+      { "app store apl z123": hint },
+      [rule],
+    );
+    expect(row.cells[descId]).toBe("Rule label");
+    expect(row.cells[categoryId]).toBe("rule-cat");
+    expect(row.typeId).toBe("rule-type");
+  });
+
+  it("a rule with only a pattern (no labels) falls through to the hint", () => {
+    const hint: MerchantHint = {
+      categoryId: "hint-cat",
+      hitCount: 1,
+      lastUsedAt: 1,
+      description: "Hint label",
+    };
+    const rule: MatchRule = { id: "r1", pattern: "*App Store*" };
+    const row = synthesizeHistoryRow(
+      baseEntry,
+      item.columns,
+      { "app store apl z123": hint },
+      [rule],
+    );
+    expect(row.cells[descId]).toBe("Hint label");
+    expect(row.cells[categoryId]).toBe("hint-cat");
+  });
+
+  it("skips a rule whose amountSign excludes the entry's direction", () => {
+    const rule: MatchRule = {
+      id: "r1",
+      pattern: "*App Store*",
+      description: "App Store",
+      amountSign: "positive",
+    };
+    const row = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
+    // Entry is -49, rule wants positive → no overlay.
+    expect(row.cells[descId]).toBe("APP STORE APL*Z123");
   });
 });
 
