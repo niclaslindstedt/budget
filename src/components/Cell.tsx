@@ -114,6 +114,7 @@ export function Cell({
           />
         ) : (
           <ReadonlyDescriptionCell
+            rowId={rowId}
             value={typeof value === "string" ? value : ""}
           />
         );
@@ -861,16 +862,45 @@ function ReadonlyDateCell({
 // Read-only description cell for synthesized history rows. No
 // transfer arrow, no peer name — just the bank's description text in
 // the same muted style the transaction variant uses, so the row
-// reads as "imported, not edited" at a glance.
-function ReadonlyDescriptionCell({ value }: { value: string }) {
+// reads as "imported, not edited" at a glance. Bank memos are often
+// long enough to truncate (the column is narrow on phones), so tapping
+// the cell opens a popover with the full text.
+function ReadonlyDescriptionCell({
+  rowId,
+  value,
+}: {
+  rowId: string;
+  value: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const hasValue = value.length > 0;
+
   return (
     <td className={`${CELL_BASE} align-middle md:w-full`}>
-      <div className="hidden md:block md:px-2.5 md:py-2">
-        <span className="truncate text-fg">{value || "—"}</span>
-      </div>
-      <div className="flex h-full min-h-9 w-full items-center px-2.5 py-2 font-mono text-fg md:hidden">
-        <span className="truncate">{value || "—"}</span>
-      </div>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => hasValue && setOpen((v) => !v)}
+        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2.5 py-2 text-left font-mono text-fg outline-none focus-visible:bg-surface-2 md:justify-start"
+        aria-haspopup={hasValue ? "dialog" : undefined}
+        aria-expanded={hasValue ? open : undefined}
+        aria-label={hasValue ? `Description: ${value}` : undefined}
+        title={value || undefined}
+      >
+        <span className="block w-full truncate">{value || "—"}</span>
+      </button>
+      <FloatingPanel
+        open={open && hasValue}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={DESCRIPTION_POPOVER_PLACEMENT}
+        rowId={rowId}
+      >
+        <p className="block px-2 py-1.5 font-mono text-sm leading-snug break-words whitespace-pre-wrap text-fg">
+          {value}
+        </p>
+      </FloatingPanel>
     </td>
   );
 }
