@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 
 import type {
@@ -7,8 +7,20 @@ import type {
   HistoryImport,
   Settings,
 } from "../data/types";
-import { formatBalance, formatShortDate } from "../utils/format";
+import { formatBalance, formatDayOnly, formatShortDate } from "../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { useBodyScrollLock } from "../utils/scroll-lock";
+
+const monthFormat = new Intl.DateTimeFormat(undefined, {
+  month: "long",
+  year: "numeric",
+});
+
+function formatMonth(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  if (!y || !m) return key;
+  return monthFormat.format(new Date(y, m - 1, 1));
+}
 
 type Props = {
   open: boolean;
@@ -57,6 +69,36 @@ export function HistoryModal({
     [account, settings],
   );
 
+  // Walk the sorted (newest-first) entries and emit one group per
+  // `YYYY-MM` so the table can drop a colored month-marker row between
+  // groups. Sequential entries that share a month stay together.
+  const groups = useMemo(() => {
+    const result: { monthKey: string; entries: HistoryEntry[] }[] = [];
+    for (const e of sortedEntries) {
+      const key = e.date.slice(0, 7);
+      const last = result[result.length - 1];
+      if (last && last.monthKey === key) last.entries.push(e);
+      else result.push({ monthKey: key, entries: [e] });
+    }
+    return result;
+  }, [sortedEntries]);
+
+  // Size amount + balance columns from the longest formatted value in
+  // the data so they don't claim more space than they need (which is
+  // what was forcing the table off the right edge on narrow phones).
+  // Description picks up whatever is left.
+  const colChars = useMemo(() => {
+    let amount = 0;
+    let balance = 0;
+    for (const e of sortedEntries) {
+      const a = formatBalance(e.amount, accountSettings).length;
+      const b = formatBalance(e.balance, accountSettings).length;
+      if (a > amount) amount = a;
+      if (b > balance) balance = b;
+    }
+    return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
+  }, [sortedEntries, accountSettings]);
+
   if (!open || !account) return null;
 
   return (
@@ -87,47 +129,86 @@ export function HistoryModal({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto">
           {sortedEntries.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-muted">
               No history yet. Import a bank statement to populate this view.
             </p>
           ) : (
-            <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 bg-surface-3 text-xs tracking-wider uppercase text-muted">
+            <table className="w-full table-fixed border-collapse text-sm">
+              <colgroup>
+                <col className="w-9 md:w-14" />
+                <col />
+                <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
+                <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted">
                 <tr className="border-b border-line">
-                  <th className="px-2 py-1.5 text-left">Date</th>
+                  <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
+                    Date
+                  </th>
                   <th className="px-2 py-1.5 text-left">Description</th>
-                  <th className="px-2 py-1.5 text-right">Amount</th>
-                  <th className="px-2 py-1.5 text-right">Balance</th>
+                  <th className="px-1 py-1.5 text-right md:px-2">Amount</th>
+                  <th className="px-1 py-1.5 text-right md:px-2">Balance</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedEntries.map((e) => (
-                  <tr
-                    key={e.id}
-                    className={`border-b border-line last:border-b-0 ${
-                      e.hidden ? "opacity-50" : ""
-                    }`}
-                  >
-                    <td className="px-2 py-1.5 align-middle font-mono text-xs text-muted whitespace-nowrap">
-                      {formatShortDate(e.date, settings.shortDateFormat)}
-                    </td>
-                    <td className="px-2 py-1.5 align-middle text-fg">
-                      {e.description}
-                    </td>
-                    <td
-                      className={`px-2 py-1.5 text-right align-middle font-mono tabular-nums whitespace-nowrap ${
-                        e.amount < 0 ? "text-negative" : "text-positive"
-                      }`}
-                    >
-                      {formatBalance(e.amount, accountSettings)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right align-middle font-mono tabular-nums whitespace-nowrap text-muted">
-                      {formatBalance(e.balance, accountSettings)}
-                    </td>
-                  </tr>
-                ))}
+                {groups.map((group) => {
+                  const monthNum = monthNumberFromKey(group.monthKey);
+                  const monthColor =
+                    monthNum !== null ? monthColorVar(monthNum) : undefined;
+                  return (
+                    <Fragment key={group.monthKey}>
+                      <tr className="border-b border-line bg-surface-2">
+                        <td
+                          colSpan={4}
+                          className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                          style={monthColor ? { color: monthColor } : undefined}
+                        >
+                          {formatMonth(group.monthKey)}
+                        </td>
+                      </tr>
+                      {group.entries.map((e) => (
+                        <tr
+                          key={e.id}
+                          className={`border-b border-line last:border-b-0 ${
+                            e.hidden ? "opacity-50" : ""
+                          }`}
+                        >
+                          <td
+                            className="px-1 py-1.5 text-center align-top font-mono text-xs font-bold whitespace-nowrap md:px-2 md:text-left md:font-normal"
+                            style={
+                              monthColor ? { color: monthColor } : undefined
+                            }
+                          >
+                            <span className="md:hidden">
+                              {formatDayOnly(e.date)}
+                            </span>
+                            <span className="hidden md:inline">
+                              {formatShortDate(
+                                e.date,
+                                settings.shortDateFormat,
+                              )}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1.5 align-top text-fg break-words">
+                            {e.description}
+                          </td>
+                          <td
+                            className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
+                              e.amount < 0 ? "text-negative" : "text-positive"
+                            }`}
+                          >
+                            {formatBalance(e.amount, accountSettings)}
+                          </td>
+                          <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
+                            {formatBalance(e.balance, accountSettings)}
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}
