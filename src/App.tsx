@@ -3385,7 +3385,11 @@ function BudgetView({
   );
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 pb-20 md:px-5">
+    // Bottom padding is just the home-indicator safe area: the SheetTabs
+    // pill and iOS 26's Liquid Glass URL bar are both translucent, so
+    // the table is allowed to scroll behind them rather than be clamped
+    // clear of the bottom edge.
+    <div className="mx-auto flex min-h-svh max-w-full flex-col px-1 pb-[env(safe-area-inset-bottom)] md:px-5">
       {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
           flips `inert` on every match, freezing focus and pointer
