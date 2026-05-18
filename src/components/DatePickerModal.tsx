@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { isIsoDate } from "../data/recurrence";
+import { SelectPicker } from "./form";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -150,37 +151,26 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
             <ChevronLeft size={16} aria-hidden focusable={false} />
           </button>
 
-          <label className="sr-only" htmlFor="date-picker-month">
-            Month
-          </label>
-          <select
-            id="date-picker-month"
-            value={viewMonth}
-            onChange={(e) => setViewMonth(Number(e.target.value))}
-            className="field-input flex-1 cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright"
-          >
-            {MONTH_NAMES.map((name, i) => (
-              <option key={name} value={i + 1}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <div className="flex-1">
+            <SelectPicker
+              value={viewMonth}
+              options={MONTH_NAMES.map((name, i) => ({
+                value: i + 1,
+                label: name,
+              }))}
+              onChange={setViewMonth}
+              ariaLabel="Month"
+            />
+          </div>
 
-          <label className="sr-only" htmlFor="date-picker-year">
-            Year
-          </label>
-          <select
-            id="date-picker-year"
+          <SelectPicker
             value={viewYear}
-            onChange={(e) => setViewYear(Number(e.target.value))}
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+            options={yearOptions.map((y) => ({ value: y, label: y }))}
+            onChange={setViewYear}
+            ariaLabel="Year"
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+            panelClassName="font-mono tabular-nums"
+          />
 
           <button
             type="button"
