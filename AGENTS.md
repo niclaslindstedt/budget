@@ -106,7 +106,9 @@ src/
 │   └── useFloatingPosition.ts   # anchor a float to a trigger element
 ├── storage/
 │   ├── adapter.ts             # StorageAdapter interface + ConflictError
-│   ├── local-adapter.ts       # localStorage adapter (load + save)
+│   ├── local-adapter.ts       # localStorage adapter (id "browser")
+│   ├── folder-adapter.ts      # File System Access adapter (id "folder")
+│   ├── folder-handle-store.ts # IDB persistence + permission helpers for the folder handle
 │   ├── dropbox-adapter.ts     # Dropbox HTTP adapter + OAuth (PKCE)
 │   ├── gdrive-adapter.ts      # Google Drive HTTP adapter + OAuth (PKCE)
 │   ├── oauth-pkce.ts          # Shared PKCE helpers (verifier, challenge)

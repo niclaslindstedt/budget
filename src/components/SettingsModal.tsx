@@ -15,10 +15,12 @@ import type {
   Settings,
   ShortDateFormat,
   ThousandsSeparator,
+  UserData,
 } from "../data/types";
 import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
 import { BackendPicker } from "./BackendPicker";
+import { ImportExportControls } from "./ImportExportControls";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -27,6 +29,16 @@ type Props = {
   backend: BackendId;
   dropboxConnected: boolean;
   gdriveConnected: boolean;
+  // Whether the per-user folder handle is live in IndexedDB and the
+  // OS-level permission is still granted. False either when the user
+  // has never connected a folder, or when permission needs re-granting
+  // — `folderReconnectNeeded` distinguishes those.
+  folderConnected: boolean;
+  // Feature-detection result from `isFolderBackendAvailable()`. False
+  // on Firefox / Safari etc.; the picker shows the option as disabled
+  // with an explainer.
+  folderAvailable: boolean;
+  folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
   // True when the active user is the no-password "guest" account.
   // Disables the encryption toggle (there's no key to derive without
@@ -39,20 +51,30 @@ type Props = {
   merchantHintCount: number;
   recurringDismissalCount: number;
   transferDismissalCount: number;
+  // Pass-through for the embedded Import / Export controls — they
+  // used to live next to the Save button in the header, now they sit
+  // inside Storage so the connection and the data-movement actions
+  // are colocated.
+  data: UserData;
+  onImport: (data: UserData) => void;
+  getEncryptionPassword: () => string | null;
   onClose: () => void;
   onSave: (next: Settings) => void;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
   onConnectGdrive: () => void;
   onDisconnectGdrive: () => void;
-  onSelectLocal: () => void;
+  onConnectFolder: () => void;
+  onReconnectFolder: () => void;
+  onDisconnectFolder: () => void;
+  onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
 };
 
-type CloudId = Exclude<BackendId, "local">;
+type CloudId = "dropbox" | "gdrive";
 
 type CloudCopy = {
   name: string;
@@ -97,18 +119,27 @@ export function SettingsModal({
   backend,
   dropboxConnected,
   gdriveConnected,
+  folderConnected,
+  folderAvailable,
+  folderReconnectNeeded,
   encryption,
   isGuest,
   merchantHintCount,
   recurringDismissalCount,
   transferDismissalCount,
+  data,
+  onImport,
+  getEncryptionPassword,
   onClose,
   onSave,
   onConnectDropbox,
   onDisconnectDropbox,
   onConnectGdrive,
   onDisconnectGdrive,
-  onSelectLocal,
+  onConnectFolder,
+  onReconnectFolder,
+  onDisconnectFolder,
+  onSelectBrowser,
   onSetEncryption,
   onClearMerchantHints,
   onClearRecurringDismissals,
@@ -165,11 +196,17 @@ export function SettingsModal({
           backend={backend}
           dropboxConnected={dropboxConnected}
           gdriveConnected={gdriveConnected}
+          folderConnected={folderConnected}
+          folderAvailable={folderAvailable}
+          folderReconnectNeeded={folderReconnectNeeded}
           encryption={encryption}
           isGuest={isGuest}
           merchantHintCount={merchantHintCount}
           recurringDismissalCount={recurringDismissalCount}
           transferDismissalCount={transferDismissalCount}
+          data={data}
+          onImport={onImport}
+          getEncryptionPassword={getEncryptionPassword}
           onUpdate={update}
           onApplyNumberFormat={applyNumberFormat}
           onApplyDecimal={applyDecimal}
@@ -177,7 +214,10 @@ export function SettingsModal({
           onDisconnectDropbox={onDisconnectDropbox}
           onConnectGdrive={onConnectGdrive}
           onDisconnectGdrive={onDisconnectGdrive}
-          onSelectLocal={onSelectLocal}
+          onConnectFolder={onConnectFolder}
+          onReconnectFolder={onReconnectFolder}
+          onDisconnectFolder={onDisconnectFolder}
+          onSelectBrowser={onSelectBrowser}
           onSetEncryption={onSetEncryption}
           onClearMerchantHints={onClearMerchantHints}
           onClearRecurringDismissals={onClearRecurringDismissals}
@@ -218,11 +258,17 @@ function MainView({
   backend,
   dropboxConnected,
   gdriveConnected,
+  folderConnected,
+  folderAvailable,
+  folderReconnectNeeded,
   encryption,
   isGuest,
   merchantHintCount,
   recurringDismissalCount,
   transferDismissalCount,
+  data,
+  onImport,
+  getEncryptionPassword,
   onUpdate,
   onApplyNumberFormat,
   onApplyDecimal,
@@ -230,7 +276,10 @@ function MainView({
   onDisconnectDropbox,
   onConnectGdrive,
   onDisconnectGdrive,
-  onSelectLocal,
+  onConnectFolder,
+  onReconnectFolder,
+  onDisconnectFolder,
+  onSelectBrowser,
   onSetEncryption,
   onClearMerchantHints,
   onClearRecurringDismissals,
@@ -240,11 +289,17 @@ function MainView({
   backend: BackendId;
   dropboxConnected: boolean;
   gdriveConnected: boolean;
+  folderConnected: boolean;
+  folderAvailable: boolean;
+  folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
   isGuest: boolean;
   merchantHintCount: number;
   recurringDismissalCount: number;
   transferDismissalCount: number;
+  data: UserData;
+  onImport: (data: UserData) => void;
+  getEncryptionPassword: () => string | null;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   onApplyNumberFormat: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
@@ -252,7 +307,10 @@ function MainView({
   onDisconnectDropbox: () => void;
   onConnectGdrive: () => void;
   onDisconnectGdrive: () => void;
-  onSelectLocal: () => void;
+  onConnectFolder: () => void;
+  onReconnectFolder: () => void;
+  onDisconnectFolder: () => void;
+  onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
@@ -453,20 +511,33 @@ function MainView({
           <BackendPicker
             value={backend}
             onSelect={(next) => {
-              if (next === "local") onSelectLocal();
+              if (next === "browser") onSelectBrowser();
+              else if (next === "folder") onConnectFolder();
               else if (next === "dropbox") onConnectDropbox();
               else onConnectGdrive();
             }}
           />
           <p className="text-xs text-muted">
-            {backend === "local"
+            {backend === "browser"
               ? "Stored locally in this browser. Export to JSON to move it elsewhere."
-              : (() => {
-                  const copy = cloudCopy(backend);
-                  const connected =
-                    backend === "dropbox" ? dropboxConnected : gdriveConnected;
-                  return connected ? copy.connectedHint : copy.unconnectedHint;
-                })()}
+              : backend === "folder"
+                ? folderConnected
+                  ? "Saved as budget.json inside the folder you picked. Bytes never leave this device."
+                  : folderReconnectNeeded
+                    ? "Folder access was revoked. Reconnect to restore writes — your budget stays in this browser until then."
+                    : folderAvailable
+                      ? "Pick a folder on this device — the app writes budget.json into it. Single-device only; no automatic cross-device sync."
+                      : "The Local-folder backend needs Chrome, Edge, or another Chromium browser."
+                : (() => {
+                    const copy = cloudCopy(backend);
+                    const connected =
+                      backend === "dropbox"
+                        ? dropboxConnected
+                        : gdriveConnected;
+                    return connected
+                      ? copy.connectedHint
+                      : copy.unconnectedHint;
+                  })()}
           </p>
           <p className="text-xs text-muted">
             Switching backends doesn&apos;t delete the budget at the other
@@ -474,15 +545,51 @@ function MainView({
             later.
           </p>
         </Field>
-        {backend !== "local" &&
+        {backend === "folder" && (
+          <div className="flex items-center gap-2">
+            {folderConnected ? (
+              <button
+                type="button"
+                onClick={onDisconnectFolder}
+                className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+              >
+                Disconnect folder
+              </button>
+            ) : folderReconnectNeeded ? (
+              <button
+                type="button"
+                onClick={onReconnectFolder}
+                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
+              >
+                Reconnect folder
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onConnectFolder}
+                disabled={!folderAvailable}
+                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Pick folder
+              </button>
+            )}
+            {folderConnected && (
+              <span className="text-xs text-success">Connected</span>
+            )}
+          </div>
+        )}
+        {(backend === "dropbox" || backend === "gdrive") &&
           (() => {
-            const copy = cloudCopy(backend);
+            const cloudBackend: CloudId = backend;
+            const copy = cloudCopy(cloudBackend);
             const connected =
-              backend === "dropbox" ? dropboxConnected : gdriveConnected;
+              cloudBackend === "dropbox" ? dropboxConnected : gdriveConnected;
             const onConnect =
-              backend === "dropbox" ? onConnectDropbox : onConnectGdrive;
+              cloudBackend === "dropbox" ? onConnectDropbox : onConnectGdrive;
             const onDisconnect =
-              backend === "dropbox" ? onDisconnectDropbox : onDisconnectGdrive;
+              cloudBackend === "dropbox"
+                ? onDisconnectDropbox
+                : onDisconnectGdrive;
             return (
               <div className="flex items-center gap-2">
                 {connected ? (
@@ -508,6 +615,18 @@ function MainView({
               </div>
             );
           })()}
+        <Field label="Backup">
+          <ImportExportControls
+            data={data}
+            onImport={onImport}
+            encryption={encryption}
+            getEncryptionPassword={getEncryptionPassword}
+          />
+          <p className="text-xs text-muted">
+            Export downloads the current budget as JSON (encrypted when Security
+            is on). Import replaces it with a file you pick.
+          </p>
+        </Field>
       </Section>
 
       <Section title="Security">

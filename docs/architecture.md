@@ -15,7 +15,7 @@ src/
 │   ├── SettingsModal.tsx          # app-level settings (formats, storage, etc.)
 │   ├── SheetTabs.tsx              # bottom tab bar — sheet glyphs + `+`
 │   ├── SheetModal.tsx             # new / edit sheet form (name, type, glyph, …)
-│   ├── BackendPicker.tsx          # local vs Dropbox backend chooser
+│   ├── BackendPicker.tsx          # browser / folder / Dropbox / Drive picker
 │   ├── DropboxGlyph.tsx           # Dropbox brand mark for the picker
 │   ├── SyncStatus.tsx             # syncing / saved indicator for cloud backends
 │   ├── SaveStateButton.tsx        # manual "save now" affordance
@@ -48,8 +48,11 @@ src/
 ├── storage/
 │   ├── adapter.ts                 # StorageAdapter interface (load/save/clear)
 │   ├── local.ts                   # bootstrap helpers — freshUserData() + readUserDataFromText()
-│   ├── local-adapter.ts           # StorageAdapter implementation over localStorage
+│   ├── local-adapter.ts           # StorageAdapter implementation over localStorage (id "browser")
+│   ├── folder-adapter.ts          # StorageAdapter over a picked directory (File System Access)
+│   ├── folder-handle-store.ts     # IDB persistence + permission helpers for the folder handle
 │   ├── dropbox-adapter.ts         # StorageAdapter over the Dropbox HTTP API
+│   ├── gdrive-adapter.ts          # StorageAdapter over the Google Drive HTTP API
 │   ├── encrypting-adapter.ts      # AES-GCM envelope wrapper around any adapter
 │   ├── crypto.ts                  # PBKDF2 + AES-GCM primitives
 │   ├── backend-preference.ts      # per-user backend + encryption choice
