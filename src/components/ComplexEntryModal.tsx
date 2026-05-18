@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { Minus, Plus, X } from "lucide-react";
 
 import type { RecurrenceRule } from "../data/recurrence";
@@ -68,14 +70,7 @@ export function ComplexEntryModal({
     setResetKey((k) => k + 1);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, nextDates: string[]) => {

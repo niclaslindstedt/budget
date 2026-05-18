@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { X } from "lucide-react";
 
 import { useBodyScrollLock } from "../utils/scroll-lock";
@@ -42,14 +44,7 @@ export function ApplySeriesEditDialog({
     setUntilDate(lastSeriesDate ?? anchorDate);
   }, [open, anchorDate, lastSeriesDate]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   if (!open) return null;
 

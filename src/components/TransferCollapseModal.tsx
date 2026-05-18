@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { ArrowRight, X } from "lucide-react";
 
 import type { TransferCandidate } from "../data/transfer-collapse";
@@ -46,14 +48,7 @@ export function TransferCollapseModal({
 }: Props) {
   useBodyScrollLock(open);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   const dismissed = useMemo(
     () => new Set(dismissedPairKeys),

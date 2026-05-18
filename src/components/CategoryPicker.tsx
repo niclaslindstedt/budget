@@ -1,9 +1,16 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
 import { CATEGORY_COLORS, CATEGORY_ICON_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
+import { useEscapeKey, usePointerOutside } from "../hooks";
 import { useActiveRow } from "./useActiveRow";
 import { CategoryIconGlyph } from "./icons";
 
@@ -54,6 +61,10 @@ export function CategoryPicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const activeRow = useActiveRow();
+  const close = useCallback(() => {
+    setOpen(false);
+    setCreating(false);
+  }, []);
 
   const selected = categories.find((c) => c.id === selectedId) ?? null;
 
@@ -62,17 +73,17 @@ export function CategoryPicker({
   // Only applies inside a sheet row — modals do not provide a context.
   useEffect(() => {
     if (!open || !activeRow || !rowId) return;
-    const token = activeRow.activate(rowId, () => {
-      setOpen(false);
-      setCreating(false);
-    });
+    const token = activeRow.activate(rowId, close);
     return () => activeRow.deactivate(token);
-  }, [open, activeRow, rowId]);
+  }, [open, activeRow, rowId, close]);
 
   useLayoutEffect(() => {
     if (!open || !rootRef.current) return;
     setPosition(computePosition(rootRef.current.getBoundingClientRect()));
   }, [open, creating]);
+
+  useEscapeKey(open, close);
+  usePointerOutside(open, [rootRef, dropdownRef], close);
 
   useEffect(() => {
     if (!open) return;
@@ -80,27 +91,10 @@ export function CategoryPicker({
       if (!rootRef.current) return;
       setPosition(computePosition(rootRef.current.getBoundingClientRect()));
     }
-    function handlePointer(e: PointerEvent) {
-      const target = e.target as Node;
-      if (rootRef.current?.contains(target)) return;
-      if (dropdownRef.current?.contains(target)) return;
-      setOpen(false);
-      setCreating(false);
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setCreating(false);
-      }
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    document.addEventListener("keydown", handleKey);
     window.addEventListener("resize", updatePosition);
     // Capture phase catches scrolls on any ancestor (e.g. the page).
     window.addEventListener("scroll", updatePosition, true);
     return () => {
-      document.removeEventListener("pointerdown", handlePointer);
-      document.removeEventListener("keydown", handleKey);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };

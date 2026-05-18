@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ChevronDown, Repeat } from "lucide-react";
 
 import { CATEGORY_ICON_NAMES } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
+import { useEscapeKey, usePointerOutside } from "../hooks";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -28,23 +29,10 @@ export function GlyphPicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
 
-  useEffect(() => {
-    if (!open) return;
-    function handlePointer(e: PointerEvent) {
-      if (rootRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointer);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
+  useEscapeKey(open, close);
+  usePointerOutside(open, [rootRef], close);
 
   function pick(next: CategoryIcon | null) {
     onChange(next);

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { X } from "lucide-react";
 
 import type { Account, Settings } from "../data/types";
@@ -84,14 +86,7 @@ export function UpdateBalanceModal({
     return () => cancelAnimationFrame(id);
   }, [open, account?.id, canRecord]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   if (!open || !account) return null;
 

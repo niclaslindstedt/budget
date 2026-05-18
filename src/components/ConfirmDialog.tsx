@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import { X } from "lucide-react";
 
+import { useEscapeKey } from "../hooks";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
 type Tone = "default" | "danger";
@@ -39,14 +39,7 @@ export function ConfirmDialog({
 }: Props) {
   useBodyScrollLock(open);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   if (!open) return null;
 

@@ -1,7 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, HardDrive } from "lucide-react";
 
+import { useEscapeKey, usePointerOutside } from "../hooks";
 import type { BackendId } from "../storage/backend-preference";
 import { DropboxGlyph } from "./DropboxGlyph";
 import { GoogleDriveGlyph } from "./GoogleDriveGlyph";
@@ -56,6 +63,7 @@ export function BackendPicker({ value, onSelect }: Props) {
   const [position, setPosition] = useState<Position | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
 
   const selected = OPTIONS.find((o) => o.id === value) ?? OPTIONS[0];
 
@@ -64,28 +72,18 @@ export function BackendPicker({ value, onSelect }: Props) {
     setPosition(computePosition(rootRef.current.getBoundingClientRect()));
   }, [open]);
 
+  useEscapeKey(open, close);
+  usePointerOutside(open, [rootRef, dropdownRef], close);
+
   useEffect(() => {
     if (!open) return;
     function updatePosition() {
       if (!rootRef.current) return;
       setPosition(computePosition(rootRef.current.getBoundingClientRect()));
     }
-    function handlePointer(e: PointerEvent) {
-      const target = e.target as Node;
-      if (rootRef.current?.contains(target)) return;
-      if (dropdownRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    document.addEventListener("keydown", handleKey);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     return () => {
-      document.removeEventListener("pointerdown", handlePointer);
-      document.removeEventListener("keydown", handleKey);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };

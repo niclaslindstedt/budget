@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+import { useEscapeKey } from "../hooks";
 import { Trash2, X } from "lucide-react";
 
 import { SHEET_COLORS } from "../data/constants";
@@ -70,14 +72,7 @@ export function AccountModal({
     setCurrency(account?.currency ?? "");
   }, [open, account]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   if (!open) return null;
 

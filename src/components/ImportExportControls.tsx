@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, EyeOff, Lock, Upload, X } from "lucide-react";
 
 import type { UserData } from "../data/types";
+import { useEscapeKey } from "../hooks";
 import type { EncryptionMode } from "../storage/backend-preference";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 import {
@@ -221,14 +222,7 @@ function ImportPasswordPrompt({
     setError(null);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   if (!open) return null;
 
