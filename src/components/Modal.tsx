@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import { useEscapeKey } from "../hooks";
@@ -61,7 +62,15 @@ export function Modal({
     ? `flex max-h-[95vh] w-full ${size} flex-col overflow-hidden`
     : `w-full ${size}`;
 
-  return (
+  // Portal to document.body so the modal escapes any `inert` ancestor —
+  // the app-wide [data-modal-background] wrapper flips inert on the
+  // sheet content while a modal is open, and an inline-mounted modal
+  // (e.g. DatePickerModal opened from a row's date cell) would
+  // otherwise inherit that inert and become un-tappable. The portal
+  // also lifts the dialog out of the data-sheet-content subtree so
+  // ActiveRowProvider's "block other buttons" rule never applies to
+  // anything inside a modal.
+  return createPortal(
     <div
       role={role}
       aria-modal="true"
@@ -78,7 +87,8 @@ export function Modal({
           {children}
         </ModalLabelContext.Provider>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 
@@ -8,7 +8,7 @@ import {
   useFloatingPosition,
   usePointerOutside,
 } from "../hooks";
-import { useActiveRow } from "./useActiveRow";
+import { useBlocksSheet } from "./useBlocksSheet";
 
 type Props = {
   open: boolean;
@@ -45,17 +45,11 @@ export function FloatingPanel({
   children,
 }: Props) {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const activeRow = useActiveRow();
   const position = useFloatingPosition(triggerRef, open, placement);
 
   useEscapeKey(open, onClose);
   usePointerOutside(open, [triggerRef, dropdownRef], onClose);
-
-  useEffect(() => {
-    if (!open || !activeRow || !rowId) return;
-    const token = activeRow.activate(rowId, onClose);
-    return () => activeRow.deactivate(token);
-  }, [open, activeRow, rowId, onClose]);
+  useBlocksSheet(rowId, open, onClose);
 
   if (!open || !position) return null;
 
