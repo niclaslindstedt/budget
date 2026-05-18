@@ -131,6 +131,12 @@ type MerchantHint = {
   categoryId: string;
   hitCount: number; // re-resets to 1 when the assigned category changes
   lastUsedAt: number; // unix ms of the most recent assignment
+  // Optional fields set by the history-row promote-to-recurring flow.
+  // Both backfill synthesized history rows that share this merchant
+  // key: the row picks up the type chip and shows under the user's
+  // label instead of the raw bank text.
+  typeId?: string;
+  description?: string;
 };
 
 type Account = {
@@ -347,6 +353,13 @@ Current `LATEST_VERSION` is `12`. The chain has eleven steps:
   also gains an optional `collapsedIntoTransactionId` backref so the
   transfer-collapse flow is reversible (deleting the resulting
   transaction restores both source entries).
+- **v14 → v15** — `MerchantHint` gains optional `typeId` and
+  `description` fields. The "promote history entry to recurring" flow
+  writes them so synthesized history rows that normalise to the same
+  merchant key display the user's chosen entry-type chip and label
+  instead of the raw bank text. Existing hints don't carry either
+  field; both are optional and readers fall through to the bank text
+  unchanged.
 
 ## Complex entries
 

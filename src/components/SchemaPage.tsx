@@ -328,7 +328,7 @@ const OVERVIEW_TEXT = `UserData
 │                    collapsedIntoTransactionId? }
 ├─ historyImports: { [accountId]: HistoryImport[] } file-import audit log
 ├─ merchantHints: { [normalisedDesc]: MerchantHint } per-merchant category memory
-│  └─ MerchantHint { categoryId, hitCount, lastUsedAt }
+│  └─ MerchantHint { categoryId, hitCount, lastUsedAt, typeId?, description? }
 ├─ recurringDismissals: string[]           normalised keys dismissed as "Not recurring"
 ├─ transferCollapseDismissals: string[]    pair keys dismissed as "Never collapse"
 ├─ settings: Settings                      display + entry preferences

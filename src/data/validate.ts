@@ -412,20 +412,31 @@ function validateHistoryEntry(
 function validateMerchantHint(
   raw: unknown,
   knownCategoryIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
 ): MerchantHint | null {
   if (!isObject(raw)) return null;
-  const { categoryId, hitCount, lastUsedAt } = raw;
+  const { categoryId, hitCount, lastUsedAt, typeId, description } = raw;
   if (typeof categoryId !== "string" || categoryId === "") return null;
   if (!knownCategoryIds.has(categoryId)) return null;
   if (typeof hitCount !== "number" || !Number.isFinite(hitCount)) return null;
   if (typeof lastUsedAt !== "number" || !Number.isFinite(lastUsedAt)) {
     return null;
   }
-  return {
+  const hint: MerchantHint = {
     categoryId,
     hitCount: Math.max(0, Math.floor(hitCount)),
     lastUsedAt,
   };
+  // Drop a dangling typeId the same way a dangling categoryId is
+  // dropped — a deleted EntryType must not trap the hint in zombie
+  // state. The hint stays usable for its category and description.
+  if (typeof typeId === "string" && typeId !== "" && knownTypeIds.has(typeId)) {
+    hint.typeId = typeId;
+  }
+  if (typeof description === "string" && description.trim() !== "") {
+    hint.description = description;
+  }
+  return hint;
 }
 
 function validateHistoryImport(
@@ -798,7 +809,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const merchantHints: Record<string, MerchantHint> = {};
   for (const [key, value] of Object.entries(rawHints)) {
     if (typeof key !== "string" || key === "") continue;
-    const hint = validateMerchantHint(value, seenCategoryIds);
+    const hint = validateMerchantHint(value, seenCategoryIds, seenTypeIds);
     if (hint) merchantHints[key] = hint;
   }
 

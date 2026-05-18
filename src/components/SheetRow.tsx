@@ -220,7 +220,7 @@ export function SheetRow({
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <div className="action-stack flex h-full w-full items-stretch">
-          {!isTransaction && !isHistory && (
+          {!isTransaction && (
             <button
               type="button"
               className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
@@ -272,11 +272,6 @@ export function SheetRow({
             >
               <Trash2 size={16} aria-hidden focusable={false} />
             </button>
-          )}
-          {isHistory && (
-            <span className="action-btn inline-flex h-full flex-1 items-center justify-center p-2 text-muted opacity-60">
-              <Repeat size={16} aria-hidden focusable={false} />
-            </span>
           )}
         </div>
       </td>

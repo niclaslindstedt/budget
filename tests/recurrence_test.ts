@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { expandRecurrence, isIsoDate } from "../src/data/recurrence";
+import {
+  expandRecurrence,
+  isIsoDate,
+  nextOccurrenceWithSameDom,
+} from "../src/data/recurrence";
 
 describe("isIsoDate", () => {
   it("accepts well-formed dates", () => {
@@ -138,5 +142,45 @@ describe("expandRecurrence", () => {
         end: "2026-12-31",
       }),
     ).toEqual([]);
+  });
+});
+
+describe("nextOccurrenceWithSameDom", () => {
+  it("skips to next month when today is past the source day", () => {
+    // History entry on Feb 26, promoted on May 27 → June 26.
+    expect(nextOccurrenceWithSameDom("2026-02-26", "2026-05-27")).toBe(
+      "2026-06-26",
+    );
+  });
+
+  it("stays in the current month when the day has not yet passed", () => {
+    // History entry on Feb 26, promoted on May 25 → May 26.
+    expect(nextOccurrenceWithSameDom("2026-02-26", "2026-05-25")).toBe(
+      "2026-05-26",
+    );
+  });
+
+  it("skips to next month when today equals the source day", () => {
+    expect(nextOccurrenceWithSameDom("2026-02-26", "2026-05-26")).toBe(
+      "2026-05-26",
+    );
+  });
+
+  it("rolls into the next year when today is December past the day", () => {
+    expect(nextOccurrenceWithSameDom("2026-01-15", "2026-12-20")).toBe(
+      "2027-01-15",
+    );
+  });
+
+  it("clamps day-of-month to the target month length", () => {
+    // 31st-of-month entry promoted in early April lands April 30.
+    expect(nextOccurrenceWithSameDom("2026-01-31", "2026-04-01")).toBe(
+      "2026-04-30",
+    );
+  });
+
+  it("returns the source unchanged when inputs are malformed", () => {
+    expect(nextOccurrenceWithSameDom("nope", "2026-05-27")).toBe("nope");
+    expect(nextOccurrenceWithSameDom("2026-02-26", "nope")).toBe("2026-02-26");
   });
 });

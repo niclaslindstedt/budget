@@ -19,6 +19,7 @@ import type {
   CellValue,
   EntryType,
   HistoryEntry,
+  MerchantHint,
   Row,
   Settings,
   Sheet,
@@ -55,6 +56,11 @@ type Props = {
   // to recurring later. Defaults to an empty array on accounts that
   // have never been seeded from a statement.
   history: readonly HistoryEntry[];
+  // Merchant-hint store. When a history entry's normalised
+  // description matches a hint, the synthesized row picks up the
+  // hint's category, typeId, and user-typed description so past
+  // entries display under the user's label.
+  merchantHints: Readonly<Record<string, MerchantHint>>;
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -90,6 +96,7 @@ export function SheetView({
   accounts,
   transactions,
   history,
+  merchantHints,
   openingBalance = 0,
   settings,
   selectMode,
@@ -146,8 +153,8 @@ export function SheetView({
     if (!item.accountId) return [] as Row[];
     return history
       .filter((e) => !e.hidden)
-      .map((e) => synthesizeHistoryRow(e, item.columns));
-  }, [item.accountId, item.columns, history]);
+      .map((e) => synthesizeHistoryRow(e, item.columns, merchantHints));
+  }, [item.accountId, item.columns, history, merchantHints]);
 
   const mergedItem = useMemo<AccountBudget>(
     () => ({

@@ -341,9 +341,11 @@ export type Settings = {
 // merchant. Keyed by the normalised description so cosmetic
 // differences ("Spotify *123", "SPOTIFY") map to a single hint. The
 // recurring-candidate promote flow reads this to pre-suggest a
-// category; future "bulk categorise history" sweeps will read it
-// too. Always advisory — the UI surfaces the suggestion to the user,
-// never auto-applies silently.
+// category; the history-row promote-to-recurring flow extends the
+// same hint with a typeId and a user-typed description so past and
+// future history entries display under the user's label rather than
+// the raw bank text. Always advisory — the UI surfaces the
+// suggestion to the user, never auto-applies silently.
 export type MerchantHint = {
   categoryId: string;
   // How many times the user has assigned this category to this
@@ -356,6 +358,15 @@ export type MerchantHint = {
   // validator already enforces a single hint per key, but the field
   // costs nothing and keeps the door open).
   lastUsedAt: number;
+  // Optional `EntryType` id assigned alongside the category by the
+  // history-row promote flow. Synthesized history rows pick it up so
+  // the type chip + colour render in place of the raw bank text.
+  typeId?: string;
+  // Optional user-typed label that overrides the bank's description
+  // wherever this merchant shows up. Set by the history-row promote
+  // flow so a row of "ICA SUPERMARKET 12345" can display as
+  // "Groceries" once the user names it.
+  description?: string;
 };
 
 // Top-level persisted blob for one signed-in user. Holds everything
@@ -365,7 +376,7 @@ export type MerchantHint = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 14;
+  version: 15;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
