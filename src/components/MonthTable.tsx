@@ -97,7 +97,7 @@ export function MonthTable({
   return (
     <section>
       <h3
-        className={`sticky top-[var(--app-header-h)] z-20 mb-1 bg-page-bg py-1 text-xs font-bold tracking-wider uppercase md:mb-2 md:py-1.5 ${
+        className={`sticky top-[var(--app-header-h)] z-20 bg-page-bg pt-1 pb-2 pl-2 text-xs font-bold tracking-wider uppercase md:pt-1.5 md:pb-3.5 md:pl-3 ${
           headerColor ? "" : "text-fg-bright"
         }`}
         style={headerColor ? { color: headerColor } : undefined}
