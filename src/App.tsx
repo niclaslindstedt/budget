@@ -3958,7 +3958,7 @@ function BudgetView({
       setComplexSeedDate(shifted.kind === "once" ? shifted.date : todayIso());
       setComplexSeed({
         description: candidate.description,
-        amount: candidate.medianAmount,
+        amount: candidate.suggestedAmount,
         categoryId,
         typeId,
         rule: shifted,

@@ -42,7 +42,7 @@ describe("detectRecurringCandidates", () => {
     expect(out).toHaveLength(1);
     expect(out[0].cadence.kind).toBe("monthly");
     expect(out[0].occurrenceCount).toBe(5);
-    expect(out[0].medianAmount).toBe(-119);
+    expect(out[0].suggestedAmount).toBe(-119);
     expect(out[0].confidence).toBeGreaterThan(0.7);
   });
 
@@ -60,7 +60,30 @@ describe("detectRecurringCandidates", () => {
     });
     expect(out).toHaveLength(1);
     expect(out[0].cadence.kind).toBe("biweekly");
-    expect(out[0].medianAmount).toBe(32000);
+    expect(out[0].suggestedAmount).toBe(32000);
+  });
+
+  it("seeds varying amounts from the average of the last three months", () => {
+    // A utility bill that swings month to month — the user wants the
+    // promoted series seeded with the recent trend, not the median
+    // pulled down by a cheap month from a year ago.
+    const entries: HistoryEntry[] = [
+      entry("2025-11-15", "Electricity provider", -200),
+      entry("2025-12-15", "Electricity provider", -250),
+      entry("2026-01-15", "Electricity provider", -300),
+      entry("2026-02-15", "Electricity provider", -600),
+      entry("2026-03-15", "Electricity provider", -900),
+      entry("2026-04-15", "Electricity provider", -1200),
+    ];
+    const out = detectRecurringCandidates({
+      entries,
+      referenceDate: "2026-04-20",
+    });
+    expect(out).toHaveLength(1);
+    // Average of the last three: (-600 + -900 + -1200) / 3 = -900.
+    // The median across all six would be -450, which would
+    // under-seed the series.
+    expect(out[0].suggestedAmount).toBe(-900);
   });
 
   it("respects dismissed keys", () => {
