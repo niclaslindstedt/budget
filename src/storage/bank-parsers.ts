@@ -4,6 +4,7 @@
 // the registry is populated before `parseBankFile` is called.
 
 import "./bank-skandia";
+import "./bank-ica";
 
 export {
   type BankFile,

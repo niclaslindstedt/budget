@@ -101,7 +101,7 @@ export function ImportHistoryModal({
       <div className="flex flex-col gap-3 px-4 py-3">
         <p className="text-xs text-muted">
           Drop a bank statement file below, or click to pick one. Currently
-          supported: Skandiabanken (.xlsx).
+          supported: Skandiabanken (.xlsx), ICA Banken (.csv).
         </p>
 
         <button
@@ -124,12 +124,12 @@ export function ImportHistoryModal({
             Drop file here, or{" "}
             <span className="text-accent">click to pick</span>
           </span>
-          <span className="text-xs text-muted">.xlsx</span>
+          <span className="text-xs text-muted">.xlsx, .csv</span>
         </button>
         <input
           ref={inputRef}
           type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.csv,text/csv"
           className="hidden"
           onChange={onFileChosen}
         />
