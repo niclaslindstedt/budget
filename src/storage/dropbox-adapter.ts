@@ -1,5 +1,11 @@
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
-import { challengeFor, randomVerifier, redirectUri } from "./oauth-pkce";
+import {
+  type OAuthConfig,
+  type TokenResult,
+  completeAuth,
+  refreshAccessToken,
+  startAuth,
+} from "./oauth-pkce";
 
 // Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly
 // (no SDK — two endpoints don't justify ~100kB of bundle) and stores
@@ -211,99 +217,32 @@ export function createDropboxAdapter(
 
 // ---- OAuth (PKCE) ---------------------------------------------------
 
-// Kicks the user out to Dropbox's consent page. Returns nothing — the
-// next thing that happens is a full-page redirect back to the app
-// with `?code=…` set.
-export async function startDropboxAuth(): Promise<void> {
-  const verifier = randomVerifier();
-  sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
-  const challenge = await challengeFor(verifier);
-  const params = new URLSearchParams({
-    client_id: DROPBOX_APP_KEY,
-    response_type: "code",
-    redirect_uri: redirectUri(),
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-    token_access_type: "offline",
-    // Tag the redirect so a multi-provider app can route the ?code=
-    // back to the right token exchange. Dropbox echoes `state` back
-    // unchanged.
-    state: "dropbox",
-  });
-  window.location.assign(`${AUTH_BASE}?${params.toString()}`);
-}
-
-// Trades the code from the redirect for an access + refresh token
-// pair. Caller is responsible for persisting both and cleaning the
-// URL. `refreshToken` is null only when Dropbox omits it (shouldn't
-// happen with `token_access_type=offline`, but treat as best-effort).
-// Throws on any failure so the caller can surface the error in the UI.
-export type DropboxAuthResult = {
-  accessToken: string;
-  refreshToken: string | null;
+const DROPBOX_OAUTH: OAuthConfig = {
+  authBase: AUTH_BASE,
+  tokenEndpoint: TOKEN_ENDPOINT,
+  clientId: DROPBOX_APP_KEY,
+  state: "dropbox",
+  verifierKey: PKCE_VERIFIER_KEY,
+  providerName: "Dropbox",
+  extraAuthParams: { token_access_type: "offline" },
 };
 
-export async function completeDropboxAuth(
+export type DropboxAuthResult = TokenResult;
+
+export function startDropboxAuth(): Promise<void> {
+  return startAuth(DROPBOX_OAUTH);
+}
+
+export function completeDropboxAuth(
   code: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<DropboxAuthResult> {
-  const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
-  if (!verifier) {
-    throw new Error("Missing PKCE verifier — restart the connect flow");
-  }
-  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
-  const params = new URLSearchParams({
-    code,
-    grant_type: "authorization_code",
-    client_id: DROPBOX_APP_KEY,
-    redirect_uri: redirectUri(),
-    code_verifier: verifier,
-  });
-  const res = await fetchImpl(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-  if (!res.ok) {
-    throw new Error(`Dropbox token exchange failed: ${res.status}`);
-  }
-  const json = (await res.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-  };
-  if (!json.access_token) {
-    throw new Error("Dropbox token response missing access_token");
-  }
-  return {
-    accessToken: json.access_token,
-    refreshToken: json.refresh_token ?? null,
-  };
+  return completeAuth(DROPBOX_OAUTH, code, fetchImpl);
 }
 
-// Trades a refresh token for a fresh access token. Dropbox keeps the
-// refresh token stable across calls under the PKCE flow, so the
-// caller only needs to persist the new access token. Throws on any
-// failure so the adapter can fall back to surfacing the original 401.
-export async function refreshDropboxAccessToken(
+export function refreshDropboxAccessToken(
   refreshToken: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<string> {
-  const params = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-    client_id: DROPBOX_APP_KEY,
-  });
-  const res = await fetchImpl(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-  if (!res.ok) {
-    throw new Error(`Dropbox token refresh failed: ${res.status}`);
-  }
-  const json = (await res.json()) as { access_token?: string };
-  if (!json.access_token) {
-    throw new Error("Dropbox refresh response missing access_token");
-  }
-  return json.access_token;
+  return refreshAccessToken(DROPBOX_OAUTH, refreshToken, fetchImpl);
 }

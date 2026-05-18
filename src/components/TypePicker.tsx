@@ -1,36 +1,23 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
 import { CATEGORY_COLORS, CATEGORY_ICON_NAMES } from "../data/constants";
 import type { CategoryIcon, EntryType } from "../data/types";
-import { useEscapeKey, usePointerOutside } from "../hooks";
-import { useActiveRow } from "./useActiveRow";
+import type { FloatingPlacement } from "../hooks";
+import { ColorPalette } from "./ColorPalette";
+import { FloatingPanel } from "./FloatingPanel";
+import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
-const DROPDOWN_MIN_WIDTH = 240;
-const VIEWPORT_MARGIN = 8;
-
-type Position = { top: number; left: number; minWidth: number };
-
-function computePosition(rect: DOMRect): Position {
-  // Mirrors CategoryPicker: prefer aligning the dropdown's right edge
-  // with the trigger so it opens "down and to the left" of a narrow
-  // chip, but clamp into the viewport so it never goes off-screen.
-  const minWidth = Math.max(DROPDOWN_MIN_WIDTH, rect.width);
-  let left = rect.right - minWidth;
-  const maxLeft = window.innerWidth - VIEWPORT_MARGIN - minWidth;
-  if (left > maxLeft) left = maxLeft;
-  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
-  return { top: rect.bottom + 4, left, minWidth };
-}
+// Mirrors CategoryPicker: prefer aligning the dropdown's right edge
+// with the trigger so it opens "down and to the left" of a narrow
+// chip, but the hook clamps into the viewport so it never goes off
+// screen.
+const PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "right",
+  coordinateSpace: "viewport",
+};
 
 type Props = {
   // When rendered inside a sheet row, the row's id wires the picker
@@ -63,10 +50,7 @@ export function TypePicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [position, setPosition] = useState<Position | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const activeRow = useActiveRow();
   const close = useCallback(() => {
     setOpen(false);
     setCreating(false);
@@ -87,34 +71,6 @@ export function TypePicker({
       return a.name.localeCompare(b.name);
     });
   }, [types, usageById]);
-
-  useEffect(() => {
-    if (!open || !activeRow || !rowId) return;
-    const token = activeRow.activate(rowId, close);
-    return () => activeRow.deactivate(token);
-  }, [open, activeRow, rowId, close]);
-
-  useLayoutEffect(() => {
-    if (!open || !rootRef.current) return;
-    setPosition(computePosition(rootRef.current.getBoundingClientRect()));
-  }, [open, creating]);
-
-  useEscapeKey(open, close);
-  usePointerOutside(open, [rootRef, dropdownRef], close);
-
-  useEffect(() => {
-    if (!open) return;
-    function updatePosition() {
-      if (!rootRef.current) return;
-      setPosition(computePosition(rootRef.current.getBoundingClientRect()));
-    }
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open]);
 
   function handlePick(id: string | null) {
     onSelect(id);
@@ -171,79 +127,69 @@ export function TypePicker({
         )}
       </button>
 
-      {open &&
-        position &&
-        createPortal(
-          <div
-            ref={dropdownRef}
-            data-active-portal
-            className="fixed z-50 rounded border border-line bg-surface-2 shadow-lg"
-            style={{
-              top: position.top,
-              left: position.left,
-              minWidth: position.minWidth,
-            }}
-          >
-            {creating ? (
-              <TypeCreator
-                onCancel={() => setCreating(false)}
-                onSubmit={handleCreated}
-              />
-            ) : (
-              <ul role="listbox" className="max-h-72 overflow-auto py-1">
-                {sortedTypes.length === 0 && (
-                  <li className="px-3 py-2 text-xs text-muted">
-                    No types yet.
-                  </li>
-                )}
-                {sortedTypes.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={t.id === selectedId}
-                      onClick={() => handlePick(t.id)}
-                      className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <TypeChip type={t} compact />
-                      {t.id === selectedId && (
-                        <Check
-                          size={14}
-                          className="ml-auto text-accent"
-                          aria-hidden
-                          focusable={false}
-                        />
-                      )}
-                    </button>
-                  </li>
-                ))}
-                {selectedId && (
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handlePick(null)}
-                      className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <X size={12} aria-hidden focusable={false} />
-                      Clear type
-                    </button>
-                  </li>
-                )}
-                <li className="mt-1 border-t border-line">
-                  <button
-                    type="button"
-                    onClick={() => setCreating(true)}
-                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                  >
-                    <Plus size={14} aria-hidden focusable={false} />
-                    New type
-                  </button>
-                </li>
-              </ul>
+      <FloatingPanel
+        open={open}
+        onClose={close}
+        triggerRef={rootRef}
+        placement={PLACEMENT}
+        rowId={rowId}
+      >
+        {creating ? (
+          <TypeCreator
+            onCancel={() => setCreating(false)}
+            onSubmit={handleCreated}
+          />
+        ) : (
+          <ul role="listbox" className="max-h-72 overflow-auto py-1">
+            {sortedTypes.length === 0 && (
+              <li className="px-3 py-2 text-xs text-muted">No types yet.</li>
             )}
-          </div>,
-          document.body,
+            {sortedTypes.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={t.id === selectedId}
+                  onClick={() => handlePick(t.id)}
+                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                >
+                  <TypeChip type={t} compact />
+                  {t.id === selectedId && (
+                    <Check
+                      size={14}
+                      className="ml-auto text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                  )}
+                </button>
+              </li>
+            ))}
+            {selectedId && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handlePick(null)}
+                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                >
+                  <X size={12} aria-hidden focusable={false} />
+                  Clear type
+                </button>
+              </li>
+            )}
+            <li className="mt-1 border-t border-line">
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+                New type
+              </button>
+            </li>
+          </ul>
         )}
+      </FloatingPanel>
     </div>
   );
 }
@@ -317,42 +263,20 @@ function TypeCreator({
       </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>Color</span>
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORY_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Color ${c}`}
-              aria-pressed={c === color}
-              onClick={() => setColor(c)}
-              className={`h-5 w-5 cursor-pointer rounded-full border-2 ${
-                c === color ? "border-fg-bright" : "border-transparent"
-              }`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
+        <ColorPalette
+          colors={CATEGORY_COLORS}
+          value={color}
+          onChange={setColor}
+          size={5}
+        />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>Glyph</span>
-        <div className="grid grid-cols-8 gap-1">
-          {CATEGORY_ICON_NAMES.map((name) => (
-            <button
-              key={name}
-              type="button"
-              aria-label={`Glyph ${name}`}
-              aria-pressed={name === glyph}
-              onClick={() => setGlyph(name)}
-              className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border ${
-                name === glyph
-                  ? "border-accent text-accent"
-                  : "border-line text-muted hover:border-fg"
-              }`}
-            >
-              <CategoryIconGlyph name={name} size={14} />
-            </button>
-          ))}
-        </div>
+        <GlyphGrid
+          icons={CATEGORY_ICON_NAMES}
+          value={glyph}
+          onChange={setGlyph}
+        />
       </div>
       <div className="mt-1 flex justify-end gap-2">
         <button

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { useEscapeKey } from "../hooks";
-import { Minus, Plus, X } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import { nextOccurrenceWithSameDom } from "../data/recurrence";
@@ -12,7 +10,7 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { Modal } from "./Modal";
 import { CategoryPicker } from "./CategoryPicker";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
@@ -200,8 +198,6 @@ export function EditEntryModal({
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
 
-  useBodyScrollLock(open && !!row);
-
   useEffect(() => {
     if (!open) return;
     setDescription(initialDescription);
@@ -216,8 +212,6 @@ export function EditEntryModal({
     setRecurrenceResetKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
-
-  useEscapeKey(open, onClose);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, dates: string[]) => {
@@ -293,246 +287,36 @@ export function EditEntryModal({
     isHistory && parsedAmount !== null && recurringDates.length > 0;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-entry-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open={open && !!row}
+      onClose={onClose}
+      labelledBy="edit-entry-title"
+      size="max-w-2xl"
     >
-      <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl sm:rounded-lg">
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="edit-entry-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
-          >
-            {isSeries
-              ? "Edit recurring entry"
-              : isHistory
-                ? "Promote history entry to recurring"
-                : "Promote to recurring"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-          >
-            <X size={18} aria-hidden focusable={false} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {isSeries ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 sm:col-span-2">
-                  <span className="text-xs text-muted">Description</span>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                  />
-                </label>
-                <div className="flex flex-col gap-1 sm:col-span-2">
-                  <span className="text-xs text-muted">Type</span>
-                  <TypePicker
-                    variant="field"
-                    types={types}
-                    selectedId={typeId}
-                    onSelect={setTypeId}
-                    onCreate={onCreateType}
-                    usageById={typeUsageById}
-                  />
-                </div>
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">Amount</span>
-                  <div className="relative flex">
-                    <button
-                      type="button"
-                      onClick={toggleSign}
-                      aria-label={negative ? "Make positive" : "Make negative"}
-                      tabIndex={-1}
-                      className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-                        negative ? "text-negative" : "text-positive"
-                      }`}
-                    >
-                      {negative ? (
-                        <Minus size={14} aria-hidden focusable={false} />
-                      ) : (
-                        <Plus size={14} aria-hidden focusable={false} />
-                      )}
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={amount}
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                      className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
-                        parsedAbs !== null && parsedAbs !== 0
-                          ? negative
-                            ? "text-negative"
-                            : "text-positive"
-                          : "text-fg"
-                      }`}
-                    />
-                  </div>
-                </label>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">Category</span>
-                  <CategoryPicker
-                    variant="field"
-                    categories={categories}
-                    selectedId={categoryId}
-                    onSelect={setCategoryId}
-                    onCreate={onCreateCategory}
-                  />
-                </div>
-              </div>
-
-              <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
-                <legend className="px-1 text-xs text-muted">Scope</legend>
-                <div className="flex flex-col gap-2 text-sm text-fg">
-                  <label className="inline-flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="edit-scope"
-                      value="just-this"
-                      checked={scopeKind === "just-this"}
-                      onChange={() => setScopeKind("just-this")}
-                    />
-                    Only this entry ({initialDate || "no date"})
-                  </label>
-                  <label className="inline-flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="edit-scope"
-                      value="future"
-                      checked={scopeKind === "future"}
-                      onChange={() => setScopeKind("future")}
-                    />
-                    This entry and all future
-                  </label>
-                  {scopeKind === "future" && (
-                    <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
-                      <label className="inline-flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={untilEnabled}
-                          onChange={(e) => setUntilEnabled(e.target.checked)}
-                        />
-                        Stop after a date (temporary change)
-                      </label>
-                      {untilEnabled && (
-                        <input
-                          type="date"
-                          value={untilDate}
-                          onChange={(e) => setUntilDate(e.target.value)}
-                          className="field-input rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </fieldset>
-            </>
-          ) : isHistory ? (
-            <>
-              <p className="mb-3 text-sm text-muted">
-                Generate future entries for this merchant and label past entries
-                from your imported history.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 sm:col-span-2">
-                  <span className="text-xs text-muted">Description</span>
-                  <input
-                    key={row.id}
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    autoFocus
-                    className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">Amount</span>
-                  <div className="relative flex">
-                    <button
-                      type="button"
-                      onClick={toggleSign}
-                      aria-label={negative ? "Make positive" : "Make negative"}
-                      tabIndex={-1}
-                      className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-                        negative ? "text-negative" : "text-positive"
-                      }`}
-                    >
-                      {negative ? (
-                        <Minus size={14} aria-hidden focusable={false} />
-                      ) : (
-                        <Plus size={14} aria-hidden focusable={false} />
-                      )}
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={amount}
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                      className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
-                        parsedAbs !== null && parsedAbs !== 0
-                          ? negative
-                            ? "text-negative"
-                            : "text-positive"
-                          : "text-fg"
-                      }`}
-                    />
-                  </div>
-                </label>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">Category</span>
-                  <CategoryPicker
-                    variant="field"
-                    categories={categories}
-                    selectedId={categoryId}
-                    onSelect={setCategoryId}
-                    onCreate={onCreateCategory}
-                  />
-                </div>
-                <div className="flex flex-col gap-1 sm:col-span-2">
-                  <span className="text-xs text-muted">Type</span>
-                  <TypePicker
-                    variant="field"
-                    types={types}
-                    selectedId={typeId}
-                    onSelect={setTypeId}
-                    onCreate={onCreateType}
-                    usageById={typeUsageById}
-                  />
-                </div>
-              </div>
-              <div className="mt-4">
-                <RecurrenceForm
-                  seedDate={historySeedDate}
-                  resetKey={recurrenceResetKey}
-                  includeOnce={false}
-                  onChange={handleRuleChange}
+      <Modal.Header
+        title={
+          isSeries
+            ? "Edit recurring entry"
+            : isHistory
+              ? "Promote history entry to recurring"
+              : "Promote to recurring"
+        }
+        onClose={onClose}
+      />
+      <Modal.Body>
+        {isSeries ? (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">Description</span>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 />
-              </div>
-              <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
-                Past history entries that match this merchant will adopt the
-                description, type, and category above. The bank's original text
-                is kept as-is — only the on-screen label changes.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="mb-3 text-sm text-muted">
-                Generate future entries from this row using a recurrence rule.
-                The current row stays as-is and joins the new series.
-              </p>
-              <div className="mb-4 flex flex-col gap-1">
+              </label>
+              <div className="flex flex-col gap-1 sm:col-span-2">
                 <span className="text-xs text-muted">Type</span>
                 <TypePicker
                   variant="field"
@@ -543,63 +327,254 @@ export function EditEntryModal({
                   usageById={typeUsageById}
                 />
               </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-muted">Amount</span>
+                <div className="relative flex">
+                  <button
+                    type="button"
+                    onClick={toggleSign}
+                    aria-label={negative ? "Make positive" : "Make negative"}
+                    tabIndex={-1}
+                    className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
+                      negative ? "text-negative" : "text-positive"
+                    }`}
+                  >
+                    {negative ? (
+                      <Minus size={14} aria-hidden focusable={false} />
+                    ) : (
+                      <Plus size={14} aria-hidden focusable={false} />
+                    )}
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
+                      parsedAbs !== null && parsedAbs !== 0
+                        ? negative
+                          ? "text-negative"
+                          : "text-positive"
+                        : "text-fg"
+                    }`}
+                  />
+                </div>
+              </label>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">Category</span>
+                <CategoryPicker
+                  variant="field"
+                  categories={categories}
+                  selectedId={categoryId}
+                  onSelect={setCategoryId}
+                  onCreate={onCreateCategory}
+                />
+              </div>
+            </div>
+
+            <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
+              <legend className="px-1 text-xs text-muted">Scope</legend>
+              <div className="flex flex-col gap-2 text-sm text-fg">
+                <label className="inline-flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="edit-scope"
+                    value="just-this"
+                    checked={scopeKind === "just-this"}
+                    onChange={() => setScopeKind("just-this")}
+                  />
+                  Only this entry ({initialDate || "no date"})
+                </label>
+                <label className="inline-flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="edit-scope"
+                    value="future"
+                    checked={scopeKind === "future"}
+                    onChange={() => setScopeKind("future")}
+                  />
+                  This entry and all future
+                </label>
+                {scopeKind === "future" && (
+                  <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
+                    <label className="inline-flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={untilEnabled}
+                        onChange={(e) => setUntilEnabled(e.target.checked)}
+                      />
+                      Stop after a date (temporary change)
+                    </label>
+                    {untilEnabled && (
+                      <input
+                        type="date"
+                        value={untilDate}
+                        onChange={(e) => setUntilDate(e.target.value)}
+                        className="field-input rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </fieldset>
+          </>
+        ) : isHistory ? (
+          <>
+            <p className="mb-3 text-sm text-muted">
+              Generate future entries for this merchant and label past entries
+              from your imported history.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">Description</span>
+                <input
+                  key={row.id}
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  autoFocus
+                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-muted">Amount</span>
+                <div className="relative flex">
+                  <button
+                    type="button"
+                    onClick={toggleSign}
+                    aria-label={negative ? "Make positive" : "Make negative"}
+                    tabIndex={-1}
+                    className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
+                      negative ? "text-negative" : "text-positive"
+                    }`}
+                  >
+                    {negative ? (
+                      <Minus size={14} aria-hidden focusable={false} />
+                    ) : (
+                      <Plus size={14} aria-hidden focusable={false} />
+                    )}
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
+                      parsedAbs !== null && parsedAbs !== 0
+                        ? negative
+                          ? "text-negative"
+                          : "text-positive"
+                        : "text-fg"
+                    }`}
+                  />
+                </div>
+              </label>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">Category</span>
+                <CategoryPicker
+                  variant="field"
+                  categories={categories}
+                  selectedId={categoryId}
+                  onSelect={setCategoryId}
+                  onCreate={onCreateCategory}
+                />
+              </div>
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">Type</span>
+                <TypePicker
+                  variant="field"
+                  types={types}
+                  selectedId={typeId}
+                  onSelect={setTypeId}
+                  onCreate={onCreateType}
+                  usageById={typeUsageById}
+                />
+              </div>
+            </div>
+            <div className="mt-4">
               <RecurrenceForm
-                seedDate={initialDate}
+                seedDate={historySeedDate}
                 resetKey={recurrenceResetKey}
                 includeOnce={false}
                 onChange={handleRuleChange}
               />
-            </>
-          )}
-        </div>
-
-        <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3">
+            </div>
+            <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
+              Past history entries that match this merchant will adopt the
+              description, type, and category above. The bank's original text is
+              kept as-is — only the on-screen label changes.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mb-3 text-sm text-muted">
+              Generate future entries from this row using a recurrence rule. The
+              current row stays as-is and joins the new series.
+            </p>
+            <div className="mb-4 flex flex-col gap-1">
+              <span className="text-xs text-muted">Type</span>
+              <TypePicker
+                variant="field"
+                types={types}
+                selectedId={typeId}
+                onSelect={setTypeId}
+                onCreate={onCreateType}
+                usageById={typeUsageById}
+              />
+            </div>
+            <RecurrenceForm
+              seedDate={initialDate}
+              resetKey={recurrenceResetKey}
+              includeOnce={false}
+              onChange={handleRuleChange}
+            />
+          </>
+        )}
+      </Modal.Body>
+      <Modal.Footer>
+        <button
+          type="button"
+          onClick={onClose}
+          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+        >
+          Cancel
+        </button>
+        {isSeries ? (
           <button
             type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+            onClick={handleSaveEdit}
+            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
           >
-            Cancel
+            Save
           </button>
-          {isSeries ? (
-            <button
-              type="button"
-              onClick={handleSaveEdit}
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-            >
-              Save
-            </button>
-          ) : isHistory ? (
-            <button
-              type="button"
-              onClick={handlePromoteHistory}
-              disabled={!canPromoteHistory}
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {(() => {
-                const n = recurringDates.length;
-                return `Add ${n} ${n === 1 ? "future entry" : "future entries"}`;
-              })()}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleConvert}
-              disabled={
-                recurringDates.filter((d) => d !== initialDate).length === 0
-              }
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {(() => {
-                const n = recurringDates.filter(
-                  (d) => d !== initialDate,
-                ).length;
-                return `Add ${n} ${n === 1 ? "future entry" : "future entries"}`;
-              })()}
-            </button>
-          )}
-        </footer>
-      </div>
-    </div>
+        ) : isHistory ? (
+          <button
+            type="button"
+            onClick={handlePromoteHistory}
+            disabled={!canPromoteHistory}
+            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {(() => {
+              const n = recurringDates.length;
+              return `Add ${n} ${n === 1 ? "future entry" : "future entries"}`;
+            })()}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleConvert}
+            disabled={
+              recurringDates.filter((d) => d !== initialDate).length === 0
+            }
+            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {(() => {
+              const n = recurringDates.filter((d) => d !== initialDate).length;
+              return `Add ${n} ${n === 1 ? "future entry" : "future entries"}`;
+            })()}
+          </button>
+        )}
+      </Modal.Footer>
+    </Modal>
   );
 }

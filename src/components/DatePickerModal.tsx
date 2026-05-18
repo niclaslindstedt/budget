@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import { useEscapeKey } from "../hooks";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { isIsoDate } from "../data/recurrence";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { Modal } from "./Modal";
 
 type Props = {
   open: boolean;
@@ -63,8 +61,6 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
   const [viewYear, setViewYear] = useState(iy);
   const [viewMonth, setViewMonth] = useState(im);
 
-  useBodyScrollLock(open);
-
   // Re-sync view to the incoming value each time the modal opens, so
   // re-opening on the same row jumps back to that row's month rather than
   // wherever the user last navigated.
@@ -75,16 +71,6 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
     setViewYear(y);
     setViewMonth(m);
   }, [open, value]);
-
-  useEscapeKey(open, onClose);
-
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    // Move focus into the dialog so Escape works and assistive tech
-    // announces the modal correctly.
-    dialogRef.current?.focus();
-  }, [open]);
 
   const cells = useMemo(() => {
     const dim = daysInMonth(viewYear, viewMonth);
@@ -130,8 +116,6 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
     return out;
   }, [viewYear]);
 
-  if (!open) return null;
-
   const today = todayIso();
   const selected = isIsoDate(value) ? value : "";
 
@@ -147,157 +131,132 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="date-picker-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="date-picker-title"
+      size="max-w-sm"
+      scrollableBody={false}
     >
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        className="flex w-full max-w-sm flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl outline-none sm:rounded-lg"
-      >
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="date-picker-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
+      <Modal.Header title="Pick a date" onClose={onClose} />
+      <div className="px-4 py-3">
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => shiftMonth(-1)}
+            aria-label="Previous month"
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
           >
-            Pick a date
-          </h2>
+            <ChevronLeft size={16} aria-hidden focusable={false} />
+          </button>
+
+          <label className="sr-only" htmlFor="date-picker-month">
+            Month
+          </label>
+          <select
+            id="date-picker-month"
+            value={viewMonth}
+            onChange={(e) => setViewMonth(Number(e.target.value))}
+            className="field-input flex-1 cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright"
+          >
+            {MONTH_NAMES.map((name, i) => (
+              <option key={name} value={i + 1}>
+                {name}
+              </option>
+            ))}
+          </select>
+
+          <label className="sr-only" htmlFor="date-picker-year">
+            Year
+          </label>
+          <select
+            id="date-picker-year"
+            value={viewYear}
+            onChange={(e) => setViewYear(Number(e.target.value))}
+            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => shiftMonth(1)}
+            aria-label="Next month"
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
+          >
+            <ChevronRight size={16} aria-hidden focusable={false} />
+          </button>
+        </div>
+
+        <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] tracking-wide text-muted uppercase">
+          {WEEKDAY_LABELS.map((w) => (
+            <div key={w} className="py-1">
+              {w}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((cell) => {
+            const isSelected = cell.iso === selected;
+            const isToday = cell.iso === today;
+            const base =
+              "inline-flex h-9 w-full cursor-pointer items-center justify-center rounded border font-mono text-sm tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
+            const cls = isSelected
+              ? "border-accent bg-accent/20 text-accent"
+              : isToday
+                ? "border-path text-path hover:bg-surface-2"
+                : cell.inMonth
+                  ? "border-transparent text-fg hover:border-line hover:bg-surface-2"
+                  : "border-transparent text-muted/60 hover:border-line hover:bg-surface-2";
+            return (
+              <button
+                key={cell.iso}
+                type="button"
+                onClick={() => commit(cell.iso)}
+                className={`${base} ${cls}`}
+                aria-pressed={isSelected}
+                aria-label={cell.iso}
+              >
+                {cell.day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <Modal.Footer className="justify-between">
+        <button
+          type="button"
+          onClick={() => {
+            onSelect(null);
+            onClose();
+          }}
+          disabled={!selected}
+          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Clear
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => commit(today)}
+            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
+          >
+            Today
+          </button>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            <X size={18} aria-hidden focusable={false} />
+            Cancel
           </button>
-        </header>
-
-        <div className="px-4 py-3">
-          <div className="mb-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => shiftMonth(-1)}
-              aria-label="Previous month"
-              className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
-            >
-              <ChevronLeft size={16} aria-hidden focusable={false} />
-            </button>
-
-            <label className="sr-only" htmlFor="date-picker-month">
-              Month
-            </label>
-            <select
-              id="date-picker-month"
-              value={viewMonth}
-              onChange={(e) => setViewMonth(Number(e.target.value))}
-              className="field-input flex-1 cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright"
-            >
-              {MONTH_NAMES.map((name, i) => (
-                <option key={name} value={i + 1}>
-                  {name}
-                </option>
-              ))}
-            </select>
-
-            <label className="sr-only" htmlFor="date-picker-year">
-              Year
-            </label>
-            <select
-              id="date-picker-year"
-              value={viewYear}
-              onChange={(e) => setViewYear(Number(e.target.value))}
-              className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm tabular-nums text-fg-bright"
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => shiftMonth(1)}
-              aria-label="Next month"
-              className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
-            >
-              <ChevronRight size={16} aria-hidden focusable={false} />
-            </button>
-          </div>
-
-          <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] tracking-wide text-muted uppercase">
-            {WEEKDAY_LABELS.map((w) => (
-              <div key={w} className="py-1">
-                {w}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((cell) => {
-              const isSelected = cell.iso === selected;
-              const isToday = cell.iso === today;
-              const base =
-                "inline-flex h-9 w-full cursor-pointer items-center justify-center rounded border font-mono text-sm tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
-              const cls = isSelected
-                ? "border-accent bg-accent/20 text-accent"
-                : isToday
-                  ? "border-path text-path hover:bg-surface-2"
-                  : cell.inMonth
-                    ? "border-transparent text-fg hover:border-line hover:bg-surface-2"
-                    : "border-transparent text-muted/60 hover:border-line hover:bg-surface-2";
-              return (
-                <button
-                  key={cell.iso}
-                  type="button"
-                  onClick={() => commit(cell.iso)}
-                  className={`${base} ${cls}`}
-                  aria-pressed={isSelected}
-                  aria-label={cell.iso}
-                >
-                  {cell.day}
-                </button>
-              );
-            })}
-          </div>
         </div>
-
-        <footer className="flex items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => {
-              onSelect(null);
-              onClose();
-            }}
-            disabled={!selected}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => commit(today)}
-              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-            >
-              Cancel
-            </button>
-          </div>
-        </footer>
-      </div>
-    </div>
+      </Modal.Footer>
+    </Modal>
   );
 }

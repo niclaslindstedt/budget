@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-
-import { useEscapeKey } from "../hooks";
-import { ShieldAlert, ShieldCheck, X } from "lucide-react";
+import { ShieldAlert, ShieldCheck } from "lucide-react";
 
 import {
   DATE_FORMATS,
@@ -20,8 +18,8 @@ import type {
 } from "../data/types";
 import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
-import { useBodyScrollLock } from "../utils/scroll-lock";
 import { BackendPicker } from "./BackendPicker";
+import { Modal } from "./Modal";
 
 type Props = {
   open: boolean;
@@ -120,16 +118,10 @@ export function SettingsModal({
   // each time the modal opens with whatever the store holds.
   const [draft, setDraft] = useState<Settings>(settings);
 
-  useBodyScrollLock(open);
-
   useEffect(() => {
     if (!open) return;
     setDraft(settings);
   }, [open, settings]);
-
-  useEscapeKey(open, onClose);
-
-  if (!open) return null;
 
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -165,86 +157,59 @@ export function SettingsModal({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="flex max-h-[95vh] w-full max-w-lg flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl sm:rounded-lg">
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="settings-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
-          >
-            Settings
-          </h2>
+    <Modal open={open} onClose={onClose} labelledBy="settings-title">
+      <Modal.Header title="Settings" onClose={onClose} />
+      <Modal.Body>
+        <MainView
+          draft={draft}
+          backend={backend}
+          dropboxConnected={dropboxConnected}
+          gdriveConnected={gdriveConnected}
+          encryption={encryption}
+          isGuest={isGuest}
+          merchantHintCount={merchantHintCount}
+          recurringDismissalCount={recurringDismissalCount}
+          transferDismissalCount={transferDismissalCount}
+          onUpdate={update}
+          onApplyNumberFormat={applyNumberFormat}
+          onApplyDecimal={applyDecimal}
+          onConnectDropbox={onConnectDropbox}
+          onDisconnectDropbox={onDisconnectDropbox}
+          onConnectGdrive={onConnectGdrive}
+          onDisconnectGdrive={onDisconnectGdrive}
+          onSelectLocal={onSelectLocal}
+          onSetEncryption={onSetEncryption}
+          onClearMerchantHints={onClearMerchantHints}
+          onClearRecurringDismissals={onClearRecurringDismissals}
+          onClearTransferDismissals={onClearTransferDismissals}
+        />
+      </Modal.Body>
+      <Modal.Footer className="justify-between">
+        <button
+          type="button"
+          onClick={handleReset}
+          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+        >
+          Reset to defaults
+        </button>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-          >
-            <X size={18} aria-hidden focusable={false} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <MainView
-            draft={draft}
-            backend={backend}
-            dropboxConnected={dropboxConnected}
-            gdriveConnected={gdriveConnected}
-            encryption={encryption}
-            isGuest={isGuest}
-            merchantHintCount={merchantHintCount}
-            recurringDismissalCount={recurringDismissalCount}
-            transferDismissalCount={transferDismissalCount}
-            onUpdate={update}
-            onApplyNumberFormat={applyNumberFormat}
-            onApplyDecimal={applyDecimal}
-            onConnectDropbox={onConnectDropbox}
-            onDisconnectDropbox={onDisconnectDropbox}
-            onConnectGdrive={onConnectGdrive}
-            onDisconnectGdrive={onDisconnectGdrive}
-            onSelectLocal={onSelectLocal}
-            onSetEncryption={onSetEncryption}
-            onClearMerchantHints={onClearMerchantHints}
-            onClearRecurringDismissals={onClearRecurringDismissals}
-            onClearTransferDismissals={onClearTransferDismissals}
-          />
-        </div>
-
-        <footer className="flex items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
-          <button
-            type="button"
-            onClick={handleReset}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Reset to defaults
+            Cancel
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-            >
-              Save
-            </button>
-          </div>
-        </footer>
-      </div>
-    </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
+          >
+            Save
+          </button>
+        </div>
+      </Modal.Footer>
+    </Modal>
   );
 }
 

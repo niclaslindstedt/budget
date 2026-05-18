@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-
-import { useEscapeKey } from "../hooks";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import type { TransferCandidate } from "../data/transfer-collapse";
 import { detectTransferCandidates } from "../data/transfer-collapse";
 import type { Account, HistoryEntry, Settings } from "../data/types";
 import { formatNumber, withCurrency } from "../utils/format";
 import { formatShortDate } from "../utils/format";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { Modal } from "./Modal";
 
 type Props = {
   open: boolean;
@@ -46,10 +44,6 @@ export function TransferCollapseModal({
   onCollapse,
   onDismiss,
 }: Props) {
-  useBodyScrollLock(open);
-
-  useEscapeKey(open, onClose);
-
   const dismissed = useMemo(
     () => new Set(dismissedPairKeys),
     [dismissedPairKeys],
@@ -76,111 +70,87 @@ export function TransferCollapseModal({
     if (open) setSkipped(new Set());
   }, [open]);
 
-  if (!open) return null;
-
   const remaining = candidates.filter((c) => !skipped.has(c.pairKey));
   const hasAny = remaining.length > 0;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="transfer-collapse-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="transfer-collapse-title"
+      size="max-w-2xl"
     >
-      <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg bg-surface shadow-2xl sm:rounded-lg">
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <h2
-            id="transfer-collapse-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
-          >
-            Cross-account transfers
-          </h2>
+      <Modal.Header title="Cross-account transfers" onClose={onClose} />
+      <Modal.Body>
+        {!hasAny ? (
+          <p className="text-sm text-muted">
+            {candidates.length === 0
+              ? "No matching pairs found in your imported history. A pair must have the same magnitude, opposite signs, and dates within three days."
+              : "Every detected pair has been skipped in this session. Close the dialog to dismiss it."}
+          </p>
+        ) : (
+          <>
+            <p className="mb-3 text-xs text-muted">
+              Mirror pairs found in your imported history. Collapse merges them
+              into a single transfer transaction and hides both source entries;
+              Skip leaves the pair untouched for this session; Never hides the
+              pair from future scans.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {remaining.map((c) => (
+                <PairRow
+                  key={c.pairKey}
+                  candidate={c}
+                  fromName={
+                    accountNameById.get(c.fromAccountId) ?? "Unknown account"
+                  }
+                  toName={
+                    accountNameById.get(c.toAccountId) ?? "Unknown account"
+                  }
+                  settings={settings}
+                  onCollapse={() => onCollapse(c)}
+                  onSkip={() =>
+                    setSkipped((prev) => {
+                      const next = new Set(prev);
+                      next.add(c.pairKey);
+                      return next;
+                    })
+                  }
+                  onNever={() => onDismiss(c.pairKey)}
+                />
+              ))}
+            </ul>
+          </>
+        )}
+      </Modal.Body>
+      <Modal.Footer className="justify-between">
+        <span className="text-xs text-muted">
+          {hasAny
+            ? `${remaining.length} pair${remaining.length === 1 ? "" : "s"} pending`
+            : ""}
+        </span>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            <X size={18} aria-hidden focusable={false} />
+            Close
           </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {!hasAny ? (
-            <p className="text-sm text-muted">
-              {candidates.length === 0
-                ? "No matching pairs found in your imported history. A pair must have the same magnitude, opposite signs, and dates within three days."
-                : "Every detected pair has been skipped in this session. Close the dialog to dismiss it."}
-            </p>
-          ) : (
-            <>
-              <p className="mb-3 text-xs text-muted">
-                Mirror pairs found in your imported history. Collapse merges
-                them into a single transfer transaction and hides both source
-                entries; Skip leaves the pair untouched for this session; Never
-                hides the pair from future scans.
-              </p>
-              <ul className="flex flex-col gap-2">
-                {remaining.map((c) => (
-                  <PairRow
-                    key={c.pairKey}
-                    candidate={c}
-                    fromName={
-                      accountNameById.get(c.fromAccountId) ?? "Unknown account"
-                    }
-                    toName={
-                      accountNameById.get(c.toAccountId) ?? "Unknown account"
-                    }
-                    settings={settings}
-                    onCollapse={() => onCollapse(c)}
-                    onSkip={() =>
-                      setSkipped((prev) => {
-                        const next = new Set(prev);
-                        next.add(c.pairKey);
-                        return next;
-                      })
-                    }
-                    onNever={() => onDismiss(c.pairKey)}
-                  />
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-
-        <footer className="flex items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
-          <span className="text-xs text-muted">
-            {hasAny
-              ? `${remaining.length} pair${remaining.length === 1 ? "" : "s"} pending`
-              : ""}
-          </span>
-          <div className="flex items-center gap-2">
+          {hasAny && (
             <button
               type="button"
-              onClick={onClose}
-              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
+              onClick={() => {
+                for (const c of remaining) onCollapse(c);
+              }}
+              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
             >
-              Close
+              Collapse all
             </button>
-            {hasAny && (
-              <button
-                type="button"
-                onClick={() => {
-                  for (const c of remaining) onCollapse(c);
-                }}
-                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-              >
-                Collapse all
-              </button>
-            )}
-          </div>
-        </footer>
-      </div>
-    </div>
+          )}
+        </div>
+      </Modal.Footer>
+    </Modal>
   );
 }
 

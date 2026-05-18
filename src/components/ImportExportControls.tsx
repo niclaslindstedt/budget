@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Eye, EyeOff, Lock, Upload, X } from "lucide-react";
+import { Download, Eye, EyeOff, Lock, Upload } from "lucide-react";
 
 import type { UserData } from "../data/types";
-import { useEscapeKey } from "../hooks";
 import type { EncryptionMode } from "../storage/backend-preference";
-import { useBodyScrollLock } from "../utils/scroll-lock";
+import { Modal } from "./Modal";
 import {
   decryptEnvelope,
   encryptText,
@@ -212,8 +211,6 @@ function ImportPasswordPrompt({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useBodyScrollLock(open);
-
   useEffect(() => {
     if (!open) return;
     setPassword("");
@@ -221,10 +218,6 @@ function ImportPasswordPrompt({
     setBusy(false);
     setError(null);
   }, [open]);
-
-  useEscapeKey(open, onCancel);
-
-  if (!open) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -240,109 +233,94 @@ function ImportPasswordPrompt({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="import-pwd-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+    <Modal
+      open={open}
+      onClose={onCancel}
+      labelledBy="import-pwd-title"
+      size="max-w-sm"
+      scrollableBody={false}
     >
-      <form
-        id="budget-import-decrypt"
-        onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-3 overflow-hidden rounded-t-lg bg-surface p-0 shadow-2xl sm:rounded-lg"
-      >
-        <header className="flex items-center justify-between border-b border-line bg-surface-3 px-4 py-3">
-          <div className="flex items-center gap-2">
+      <Modal.Header
+        title={
+          <>
             <Lock
               size={16}
               aria-hidden
               focusable={false}
               className="text-pipe"
             />
-            <h2
-              id="import-pwd-title"
-              className="text-sm font-bold tracking-wide text-fg-bright"
+            Encrypted budget
+          </>
+        }
+        onClose={onCancel}
+      />
+      <form
+        id="budget-import-decrypt"
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-3 px-4 pt-2 pb-4"
+      >
+        <p className="text-xs text-muted">
+          This file is encrypted. Enter the password it was exported with.
+        </p>
+
+        <input
+          type="text"
+          name="username"
+          autoComplete="username"
+          value="budget"
+          readOnly
+          hidden
+          aria-hidden="true"
+        />
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted">Password</span>
+          <div className="relative flex items-center">
+            <input
+              id="budget-import-password"
+              name="current-password"
+              type={show ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+              className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              aria-label={show ? "Hide password" : "Show password"}
+              className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
             >
-              Encrypted budget
-            </h2>
+              {show ? (
+                <EyeOff size={16} aria-hidden focusable={false} />
+              ) : (
+                <Eye size={16} aria-hidden focusable={false} />
+              )}
+            </button>
           </div>
+        </label>
+
+        {error && <p className="text-xs text-danger">{error}</p>}
+
+        <div className="mt-1 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+            disabled={busy}
+            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <X size={16} aria-hidden focusable={false} />
+            Cancel
           </button>
-        </header>
-
-        <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
-          <p className="text-xs text-muted">
-            This file is encrypted. Enter the password it was exported with.
-          </p>
-
-          <input
-            type="text"
-            name="username"
-            autoComplete="username"
-            value="budget"
-            readOnly
-            hidden
-            aria-hidden="true"
-          />
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Password</span>
-            <div className="relative flex items-center">
-              <input
-                id="budget-import-password"
-                name="current-password"
-                type={show ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoFocus
-                className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
-              />
-              <button
-                type="button"
-                onClick={() => setShow((v) => !v)}
-                aria-label={show ? "Hide password" : "Show password"}
-                className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
-              >
-                {show ? (
-                  <EyeOff size={16} aria-hidden focusable={false} />
-                ) : (
-                  <Eye size={16} aria-hidden focusable={false} />
-                )}
-              </button>
-            </div>
-          </label>
-
-          {error && <p className="text-xs text-danger">{error}</p>}
-
-          <div className="mt-1 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={busy}
-              className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={busy || password.length === 0}
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {busy ? "Decrypting…" : "Decrypt & import"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={busy || password.length === 0}
+            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? "Decrypting…" : "Decrypt & import"}
+          </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

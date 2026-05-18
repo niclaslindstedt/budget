@@ -1,5 +1,5 @@
 import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
-import { challengeFor, randomVerifier, redirectUri } from "./oauth-pkce";
+import { type OAuthConfig, completeAuth, startAuth } from "./oauth-pkce";
 
 // Google-Drive-backed `StorageAdapter`. Talks to the Drive v3 REST
 // API directly (no SDK — Drive v3 is two endpoints away from "two
@@ -228,62 +228,31 @@ function randomBoundary(): string {
 
 // ---- OAuth (PKCE) ---------------------------------------------------
 
-// Kicks the user out to Google's consent screen. Returns nothing —
-// the next thing that happens is a full-page redirect back to the
-// app with `?code=…&state=gdrive` set.
-export async function startGdriveAuth(): Promise<void> {
-  const verifier = randomVerifier();
-  sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
-  const challenge = await challengeFor(verifier);
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    response_type: "code",
-    redirect_uri: redirectUri(),
+const GDRIVE_OAUTH: OAuthConfig = {
+  authBase: AUTH_BASE,
+  tokenEndpoint: TOKEN_ENDPOINT,
+  clientId: GOOGLE_CLIENT_ID,
+  state: "gdrive",
+  verifierKey: PKCE_VERIFIER_KEY,
+  providerName: "Google",
+  extraAuthParams: {
     scope: GDRIVE_SCOPE,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
     // Short-lived access token only. Refresh tokens for browser-
     // based clients are discouraged by Google; the user reconnects
     // manually when the access token expires (~1h).
     access_type: "online",
     include_granted_scopes: "true",
-    // Tag the redirect so the app can tell a Google ?code= from a
-    // Dropbox one and route it to the right token exchange.
-    state: "gdrive",
-  });
-  window.location.assign(`${AUTH_BASE}?${params.toString()}`);
+  },
+};
+
+export function startGdriveAuth(): Promise<void> {
+  return startAuth(GDRIVE_OAUTH);
 }
 
-// Trades the code from the redirect for an access token. Caller is
-// responsible for persisting the result and cleaning the URL. Throws
-// on any failure so the caller can surface the error in the UI.
 export async function completeGdriveAuth(
   code: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<string> {
-  const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
-  if (!verifier) {
-    throw new Error("Missing PKCE verifier — restart the connect flow");
-  }
-  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
-  const params = new URLSearchParams({
-    code,
-    grant_type: "authorization_code",
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri(),
-    code_verifier: verifier,
-  });
-  const res = await fetchImpl(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-  if (!res.ok) {
-    throw new Error(`Google token exchange failed: ${res.status}`);
-  }
-  const json = (await res.json()) as { access_token?: string };
-  if (!json.access_token) {
-    throw new Error("Google token response missing access_token");
-  }
-  return json.access_token;
+  const result = await completeAuth(GDRIVE_OAUTH, code, fetchImpl);
+  return result.accessToken;
 }

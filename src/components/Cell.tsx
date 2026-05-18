@@ -19,19 +19,22 @@ import type {
 import {
   formatAmountForInput,
   formatBalance,
-  formatDate,
-  formatDayOnly,
   formatNumber,
-  formatShortDate,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
 } from "../utils/format";
-import { useEscapeKey } from "../hooks";
-import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
+import {
+  type FloatingPlacement,
+  useEscapeKey,
+  useFloatingPosition,
+} from "../hooks";
 import { useActiveRow } from "./useActiveRow";
 import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
+import { AmountCellDisplay } from "./cells/AmountCellDisplay";
+import { CELL_BASE, INPUT_BASE } from "./cells/constants";
+import { DateCellDisplay } from "./cells/DateCellDisplay";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -72,10 +75,6 @@ type Props = {
   onCommit?: (value: CellValue) => void;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
-
-const CELL_BASE = "border-r border-b border-line bg-surface last:border-r-0";
-const INPUT_BASE =
-  "field-input w-full border-0 bg-transparent px-2.5 py-2 font-mono text-inherit outline-none";
 
 export function Cell({
   rowId,
@@ -124,7 +123,7 @@ export function Cell({
         );
       case "amount":
         return (
-          <ReadonlyAmountCell
+          <AmountCellDisplay
             value={typeof value === "number" ? value : null}
             settings={settings}
           />
@@ -478,35 +477,22 @@ function DateCell({
 }) {
   const [open, setOpen] = useState(false);
   const iso = typeof value === "string" ? value : "";
-  const short = iso ? formatShortDate(iso, settings.shortDateFormat) : "";
-  const dayOnly = iso ? formatDayOnly(iso) : "";
-  const formatted = iso ? formatDate(iso, settings.dateFormat) : "";
-  // Colour follows the date's *calendar* month, so a row whose date is
-  // in April but whose fiscal-month bucket is May still reads as April.
-  const monthNum = iso ? monthNumberFromKey(iso) : null;
-  const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
 
   return (
-    <td className={`${CELL_BASE} relative p-0`}>
-      <button
-        type="button"
-        className={`block w-full cursor-pointer border-0 bg-transparent px-1 py-2 text-center font-mono font-bold tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:font-normal md:text-right ${
-          iso ? "" : "text-muted"
-        }`}
-        style={iso && monthColor ? { color: monthColor } : undefined}
-        aria-label={iso ? `Change date (${formatted})` : "Pick a date"}
+    <>
+      <DateCellDisplay
+        iso={iso}
+        settings={settings}
+        mode="trigger"
         onClick={() => setOpen(true)}
-      >
-        <span className="md:hidden">{dayOnly || "—"}</span>
-        <span className="hidden md:inline">{short || "—"}</span>
-      </button>
+      />
       <DatePickerModal
         open={open}
         value={iso}
         onClose={() => setOpen(false)}
         onSelect={(next) => onChange(next)}
       />
-    </td>
+    </>
   );
 }
 
@@ -665,30 +651,16 @@ function TypedDescriptionCell({
   );
 }
 
-const POPOVER_MAX_WIDTH = 280;
-const POPOVER_VIEWPORT_MARGIN = 8;
-
-// Document-coord position so the popover scrolls with the trigger row when
-// iOS shifts the page up to fit the on-screen keyboard. `position: fixed`
-// stays anchored to the layout viewport — which iOS moves out from under
-// the popover when the keyboard appears, leaving the field off-screen.
-function computeDescriptionPopoverPosition(rect: DOMRect): {
-  top: number;
-  left: number;
-  width: number;
-} {
-  const width = Math.min(
-    window.innerWidth - 2 * POPOVER_VIEWPORT_MARGIN,
-    POPOVER_MAX_WIDTH,
-  );
-  let left = rect.left + window.scrollX;
-  const maxLeft =
-    window.innerWidth + window.scrollX - POPOVER_VIEWPORT_MARGIN - width;
-  if (left > maxLeft) left = maxLeft;
-  if (left < window.scrollX + POPOVER_VIEWPORT_MARGIN)
-    left = window.scrollX + POPOVER_VIEWPORT_MARGIN;
-  return { top: rect.bottom + window.scrollY + 4, left, width };
-}
+// Document-coord position so the popover scrolls with the trigger row
+// when iOS shifts the page up to fit the on-screen keyboard. `position:
+// fixed` stays anchored to the layout viewport — which iOS moves out
+// from under the popover when the keyboard appears, leaving the field
+// off screen.
+const DESCRIPTION_POPOVER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "max", maxPx: 280 },
+  anchor: "left",
+  coordinateSpace: "document",
+};
 
 function PlainDescriptionPopover({
   rowId,
@@ -708,15 +680,15 @@ function PlainDescriptionPopover({
   // when the user actually changed the description before closing.
   const openValueRef = useRef<string>(value);
   const wasOpenRef = useRef(false);
-  const [position, setPosition] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeRow = useActiveRow();
+  const position = useFloatingPosition(
+    triggerRef,
+    open,
+    DESCRIPTION_POPOVER_PLACEMENT,
+  );
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -730,25 +702,6 @@ function PlainDescriptionPopover({
 
   useEscapeKey(open, () => setOpen(false));
 
-  useEffect(() => {
-    if (!open) return;
-    function updatePosition() {
-      if (!triggerRef.current) return;
-      setPosition(
-        computeDescriptionPopoverPosition(
-          triggerRef.current.getBoundingClientRect(),
-        ),
-      );
-    }
-    window.addEventListener("resize", updatePosition);
-    // Capture phase catches scrolls on any ancestor (e.g. the page body).
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open]);
-
   // While open, register with the active-row coordinator so clicks
   // outside dismiss the popover without also firing whatever was clicked.
   useEffect(() => {
@@ -761,20 +714,6 @@ function PlainDescriptionPopover({
     if (open) textareaRef.current?.focus();
   }, [open]);
 
-  const handleToggle = () => {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    if (!triggerRef.current) return;
-    setPosition(
-      computeDescriptionPopoverPosition(
-        triggerRef.current.getBoundingClientRect(),
-      ),
-    );
-    setOpen(true);
-  };
-
   const hasValue = value.length > 0;
 
   return (
@@ -782,7 +721,7 @@ function PlainDescriptionPopover({
       <button
         ref={triggerRef}
         type="button"
-        onClick={handleToggle}
+        onClick={() => setOpen((v) => !v)}
         className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-center font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
           isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"
         }`}
@@ -853,14 +792,14 @@ function TypedDescriptionPopover({
   const [open, setOpen] = useState(false);
   const openValueRef = useRef<string>(value);
   const wasOpenRef = useRef(false);
-  const [position, setPosition] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeRow = useActiveRow();
+  const position = useFloatingPosition(
+    triggerRef,
+    open,
+    DESCRIPTION_POPOVER_PLACEMENT,
+  );
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -875,24 +814,6 @@ function TypedDescriptionPopover({
   useEscapeKey(open, () => setOpen(false));
 
   useEffect(() => {
-    if (!open) return;
-    function updatePosition() {
-      if (!triggerRef.current) return;
-      setPosition(
-        computeDescriptionPopoverPosition(
-          triggerRef.current.getBoundingClientRect(),
-        ),
-      );
-    }
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
     if (!open || !activeRow) return;
     const token = activeRow.activate(rowId, () => setOpen(false));
     return () => activeRow.deactivate(token);
@@ -902,20 +823,6 @@ function TypedDescriptionPopover({
     if (open) textareaRef.current?.focus();
   }, [open]);
 
-  const handleToggle = () => {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    if (!triggerRef.current) return;
-    setPosition(
-      computeDescriptionPopoverPosition(
-        triggerRef.current.getBoundingClientRect(),
-      ),
-    );
-    setOpen(true);
-  };
-
   const hasValue = value.length > 0;
 
   return (
@@ -923,7 +830,7 @@ function TypedDescriptionPopover({
       <button
         ref={triggerRef}
         type="button"
-        onClick={handleToggle}
+        onClick={() => setOpen((v) => !v)}
         className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1.5 font-mono outline-none focus-visible:bg-surface-2 md:justify-start md:text-left"
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -999,84 +906,7 @@ function ReadonlyDateCell({
   value: string;
   settings: Settings;
 }) {
-  const short = value ? formatShortDate(value, settings.shortDateFormat) : "";
-  const dayOnly = value ? formatDayOnly(value) : "";
-  const monthNum = value ? monthNumberFromKey(value) : null;
-  const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
-  return (
-    <td
-      className={`${CELL_BASE} relative px-1 py-2 text-center font-mono font-bold tabular-nums whitespace-nowrap md:px-2.5 md:font-normal md:text-right ${
-        value ? "" : "text-muted"
-      }`}
-      style={value && monthColor ? { color: monthColor } : undefined}
-      aria-readonly="true"
-    >
-      <span className="md:hidden">{dayOnly || "—"}</span>
-      <span className="hidden md:inline">{short || "—"}</span>
-    </td>
-  );
-}
-
-// Read-only amount cell for synthesized transaction rows. Mirrors the
-// editable variant's coloured sign + currency suffix but renders as
-// plain text so the row reads identically without becoming editable.
-function ReadonlyAmountCell({
-  value,
-  settings,
-}: {
-  value: number | null;
-  settings: Settings;
-}) {
-  const negative = value !== null && value < 0;
-  const abs = value !== null ? Math.abs(value) : null;
-  // Read-only display reuses the editable cell's display pipeline so
-  // synthesized transaction rows honour `showDecimals` /
-  // `abbreviateNumbers` exactly like a regular amount cell would
-  // when it isn't focused.
-  const body = abs !== null ? formatNumber(abs, settings) : "";
-  return (
-    <td className={CELL_BASE}>
-      <div className="relative flex items-stretch">
-        <span
-          className={`pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center ${
-            negative ? "text-negative" : "text-positive"
-          }`}
-          aria-hidden
-        >
-          {negative ? (
-            <Minus size={14} aria-hidden focusable={false} />
-          ) : (
-            <Plus size={14} aria-hidden focusable={false} />
-          )}
-        </span>
-        <span
-          className={`block w-full px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre text-right ${
-            settings.showCurrency && settings.currencyPosition === "after"
-              ? "pr-8"
-              : ""
-          } ${
-            abs !== null
-              ? negative
-                ? "text-negative"
-                : "text-positive"
-              : "text-muted"
-          }`}
-        >
-          {body || "—"}
-        </span>
-        {settings.showCurrency && abs !== null && (
-          <span
-            aria-hidden
-            className={`pointer-events-none absolute inset-y-0 ${
-              settings.currencyPosition === "before" ? "left-6" : "right-2"
-            } flex items-center font-mono text-xs text-muted`}
-          >
-            {settings.currency}
-          </span>
-        )}
-      </div>
-    </td>
-  );
+  return <DateCellDisplay iso={value} settings={settings} mode="static" />;
 }
 
 // Description cell for synthesized transaction rows. Shows a transfer
