@@ -1,13 +1,20 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
-// {top, left, width} for a floating element (dropdown, popover) anchored
-// to a trigger element. `null` until the first measurement lands — call
-// sites short-circuit rendering until then.
+// {top, left, width, maxHeight} for a floating element (dropdown,
+// popover) anchored to a trigger element. `null` until the first
+// measurement lands — call sites short-circuit rendering until then.
+// `maxHeight` is the room left between the floating element's top and
+// the bottom of the visible visual viewport (accounting for the iOS
+// soft-keyboard inset). Call sites apply it as `max-height` with
+// `overflow-y: auto` so the panel scrolls internally when its content
+// is taller than the available space — keeps an input inside the panel
+// reachable when the keyboard opens.
 export type FloatingRect = {
   top: number;
   left: number;
   width: number;
+  maxHeight: number;
 };
 
 // How wide the floating element should be.
@@ -38,7 +45,55 @@ export type FloatingPlacement = {
   coordinateSpace: "viewport" | "document";
 };
 
-function compute(rect: DOMRect, placement: FloatingPlacement): FloatingRect {
+type VisualViewportSnapshot = {
+  offsetTop: number;
+  height: number;
+};
+
+function readVisualViewport(): VisualViewportSnapshot {
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  if (!vv) {
+    return {
+      offsetTop: 0,
+      height: typeof window !== "undefined" ? window.innerHeight : 0,
+    };
+  }
+  return { offsetTop: vv.offsetTop, height: vv.height };
+}
+
+// Exported for unit tests. Production callers go through
+// `useFloatingPosition`, which reads `vv` from `window.visualViewport`
+// directly.
+export function computeFloatingRect(
+  rect: DOMRect,
+  placement: FloatingPlacement,
+  vv: VisualViewportSnapshot,
+  win: {
+    innerWidth: number;
+    innerHeight: number;
+    scrollX: number;
+    scrollY: number;
+  },
+): FloatingRect {
+  return compute(rect, placement, vv, win);
+}
+
+function compute(
+  rect: DOMRect,
+  placement: FloatingPlacement,
+  vv: VisualViewportSnapshot,
+  win: {
+    innerWidth: number;
+    innerHeight: number;
+    scrollX: number;
+    scrollY: number;
+  } = {
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+  },
+): FloatingRect {
   const gap = placement.gap ?? 4;
   const margin = placement.viewportMargin ?? 8;
   const document = placement.coordinateSpace === "document";
@@ -47,31 +102,61 @@ function compute(rect: DOMRect, placement: FloatingPlacement): FloatingRect {
   if (placement.width.kind === "min") {
     width = Math.max(placement.width.minPx, rect.width);
   } else {
-    width = Math.min(placement.width.maxPx, window.innerWidth - 2 * margin);
+    width = Math.min(placement.width.maxPx, win.innerWidth - 2 * margin);
   }
 
-  const scrollX = document ? window.scrollX : 0;
-  const scrollY = document ? window.scrollY : 0;
+  const scrollX = document ? win.scrollX : 0;
+  const scrollY = document ? win.scrollY : 0;
 
   let left =
     placement.anchor === "right"
       ? rect.right - width + scrollX
       : rect.left + scrollX;
   const minLeft = scrollX + margin;
-  const maxLeft = scrollX + window.innerWidth - margin - width;
+  const maxLeft = scrollX + win.innerWidth - margin - width;
   if (left > maxLeft) left = maxLeft;
   if (left < minLeft) left = minLeft;
 
-  return { top: rect.bottom + gap + scrollY, left, width };
+  // Visible viewport bounds. With `coordinateSpace: "viewport"` and
+  // `position: fixed` the panel is positioned relative to the layout
+  // viewport; iOS shifts the visual viewport up by `offsetTop` to fit
+  // the focused input above the keyboard, so use those layout-viewport
+  // coordinates of the visible region to clamp the panel into view.
+  // With `coordinateSpace: "document"` the visible region needs page
+  // scroll added so the bounds compare with the panel's document-
+  // relative coordinates.
+  const visibleTop = vv.offsetTop + (document ? scrollY : 0);
+  const visibleBottom = visibleTop + vv.height;
+
+  let top = rect.bottom + gap + scrollY;
+  // Clamp the top into the visible area so iOS's visual-viewport shift
+  // (which doesn't drag fixed elements along with it) can't park the
+  // panel above the visible region. The trigger button itself stays
+  // anchored to its place inside the modal, so on iOS its rect.bottom
+  // is below `visibleTop` when the keyboard scrolls the input area
+  // upward — clamping is what keeps the panel reachable.
+  if (top < visibleTop + margin) {
+    top = visibleTop + margin;
+  }
+  // Don't park the panel below the visible region either — better to
+  // let it cover the trigger than render off-screen at the bottom.
+  const maxTop = visibleBottom - margin - 80;
+  if (top > maxTop) top = Math.max(visibleTop + margin, maxTop);
+
+  const maxHeight = Math.max(120, visibleBottom - top - margin);
+
+  return { top, left, width, maxHeight };
 }
 
 // Measures `triggerRef` while `open` is true and returns its
-// {top, left, width}. Recomputes on window resize and on any
-// ancestor scroll (capture phase). Reads `placement` through a
-// latest-ref, so callers can pass a fresh placement object each
-// render without re-attaching listeners or re-measuring needlessly —
-// the placement that wins is whichever one applies at the next
-// measurement (open, resize, or scroll).
+// {top, left, width, maxHeight}. Recomputes on window resize, on any
+// ancestor scroll (capture phase), and on visualViewport resize /
+// scroll — the last two fire on iOS when the soft keyboard opens or
+// closes and we need the panel to re-clamp into the visible region.
+// Reads `placement` through a latest-ref, so callers can pass a fresh
+// placement object each render without re-attaching listeners or re-
+// measuring needlessly — the placement that wins is whichever one
+// applies at the next measurement (open, resize, or scroll).
 export function useFloatingPosition(
   triggerRef: RefObject<HTMLElement | null>,
   open: boolean,
@@ -89,15 +174,26 @@ export function useFloatingPosition(
     function measure() {
       const el = triggerRef.current;
       if (!el) return;
-      setRect(compute(el.getBoundingClientRect(), placementRef.current));
+      setRect(
+        compute(
+          el.getBoundingClientRect(),
+          placementRef.current,
+          readVisualViewport(),
+        ),
+      );
     }
     measure();
     window.addEventListener("resize", measure);
     // Capture phase catches scrolls on any ancestor (e.g. the page body).
     window.addEventListener("scroll", measure, true);
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    vv?.addEventListener("resize", measure);
+    vv?.addEventListener("scroll", measure);
     return () => {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
+      vv?.removeEventListener("resize", measure);
+      vv?.removeEventListener("scroll", measure);
     };
   }, [open, triggerRef]);
 

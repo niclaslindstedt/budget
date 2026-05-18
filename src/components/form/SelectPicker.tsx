@@ -201,7 +201,7 @@ export function SelectPicker<T extends string | number>({
         triggerRef={triggerRef}
         placement={finalPlacement}
         rowId={rowId}
-        className={`max-h-72 overflow-y-auto py-1 ${panelClassName ?? ""}`.trim()}
+        className={`py-1 ${panelClassName ?? ""}`.trim()}
       >
         <div
           id={listboxId}
