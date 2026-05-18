@@ -61,6 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
   formatNumbers: true,
   showCurrency: true,
   showDecimals: false,
+  abbreviateNumbers: false,
   sessionTimeoutMinutes: 15,
 };
 

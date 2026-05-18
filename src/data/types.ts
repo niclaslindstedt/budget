@@ -304,10 +304,14 @@ export type Settings = {
   // Display toggles. `formatNumbers` controls whether amounts/balances
   // render with thousands grouping; `showCurrency` controls whether the
   // currency token is appended; `showDecimals` controls whether the
-  // fractional portion is rendered at all (off rounds to whole units).
+  // fractional portion is rendered at all (off rounds to whole units);
+  // `abbreviateNumbers` collapses values >= 10 000 to "12K" / "1.2M"
+  // so cramped mobile rows fit. Editable inputs stay precise — the
+  // setting only affects display.
   formatNumbers: boolean;
   showCurrency: boolean;
   showDecimals: boolean;
+  abbreviateNumbers: boolean;
   // Minutes the decrypted password may sit in the tab's sessionStorage
   // before the user is auto-signed-out. The clock resets on every user
   // input, so this is an idle timeout, not a hard ceiling. Bounded
@@ -343,7 +347,7 @@ export type MerchantHint = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 12;
+  version: 13;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

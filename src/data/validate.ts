@@ -597,6 +597,10 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.showDecimals === "boolean"
       ? raw.showDecimals
       : DEFAULT_SETTINGS.showDecimals;
+  const abbreviateNumbers =
+    typeof raw.abbreviateNumbers === "boolean"
+      ? raw.abbreviateNumbers
+      : DEFAULT_SETTINGS.abbreviateNumbers;
   const sessionTimeoutMinutes =
     typeof raw.sessionTimeoutMinutes === "number" &&
     Number.isFinite(raw.sessionTimeoutMinutes) &&
@@ -616,6 +620,7 @@ function validateSettings(raw: unknown): Settings {
     formatNumbers,
     showCurrency,
     showDecimals,
+    abbreviateNumbers,
     sessionTimeoutMinutes,
   };
 }

@@ -83,6 +83,52 @@ describe("formatNumber", () => {
       formatNumber(100, settings(), { alwaysTwoFractionDigits: true }),
     ).toBe("100");
   });
+
+  it("abbreviates values >= 10 000 when abbreviateNumbers is on", () => {
+    const s = settings({ abbreviateNumbers: true });
+    // Below the threshold the regular pipeline still runs.
+    expect(formatNumber(9999, s)).toBe("9 999");
+    expect(formatNumber(10_000, s)).toBe("10K");
+    expect(formatNumber(12_894, s)).toBe("13K");
+    expect(formatNumber(999_499, s)).toBe("999K");
+    // Edge case: 999 500 would round to 1000K, so we bump to M.
+    expect(formatNumber(999_500, s)).toBe("1M");
+    expect(formatNumber(1_000_000, s)).toBe("1M");
+    expect(formatNumber(12_500_000, s)).toBe("13M");
+  });
+
+  it("keeps one fractional digit on sub-10M abbreviations when showDecimals is on", () => {
+    const s = settings({ abbreviateNumbers: true, showDecimals: true });
+    expect(formatNumber(1_234_567, s)).toBe("1,2M");
+    // Trailing ".0" is stripped so "1M" stays clean.
+    expect(formatNumber(1_000_000, s)).toBe("1M");
+    expect(formatNumber(9_950_000, s)).toBe("10M");
+  });
+
+  it("rounds abbreviated millions to an integer when showDecimals is off", () => {
+    const s = settings({ abbreviateNumbers: true });
+    expect(formatNumber(1_234_567, s)).toBe("1M");
+    expect(formatNumber(1_500_000, s)).toBe("2M");
+  });
+
+  it("preserves the sign on abbreviated values", () => {
+    const s = settings({ abbreviateNumbers: true });
+    expect(formatNumber(-12_894, s)).toBe("-13K");
+    expect(formatNumber(-1_500_000, s)).toBe("-2M");
+  });
+
+  it("uses the configured decimal char in fractional millions", () => {
+    expect(
+      formatNumber(
+        1_234_567,
+        settings({
+          abbreviateNumbers: true,
+          showDecimals: true,
+          decimalSeparator: ".",
+        }),
+      ),
+    ).toBe("1.2M");
+  });
 });
 
 describe("formatAmount / formatBalance", () => {

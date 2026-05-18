@@ -478,6 +478,14 @@ function MainView({
           checked={draft.showDecimals}
           onChange={(v) => onUpdate("showDecimals", v)}
         />
+        <ToggleRow
+          label="Abbreviate large numbers"
+          hint={
+            'Collapse displayed amounts ≥ 10 000 to "12K" / "1.2M" so cramped mobile rows fit. Editable inputs always show the full value.'
+          }
+          checked={draft.abbreviateNumbers}
+          onChange={(v) => onUpdate("abbreviateNumbers", v)}
+        />
       </Section>
 
       <Section title="Storage">

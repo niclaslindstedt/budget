@@ -309,7 +309,7 @@ function Section({
 // than the schema module because the schema must be a valid JSON
 // Schema document.
 const OVERVIEW_TEXT = `UserData
-├─ version: 12                             schema version (this build)
+├─ version: 13                             schema version (this build)
 ├─ activeSheetId: string                   id of the sheet to open first
 ├─ accounts: Account[]                     real-world accounts (may be empty)
 │  └─ Account { id, name,
@@ -336,7 +336,7 @@ const OVERVIEW_TEXT = `UserData
 │  ├─ dateFormat / shortDateFormat
 │  ├─ currency / currencyPosition / currencySpace
 │  ├─ decimalSeparator / thousandsSeparator
-│  ├─ formatNumbers / showCurrency / showDecimals
+│  ├─ formatNumbers / showCurrency / showDecimals / abbreviateNumbers
 │  └─ sessionTimeoutMinutes: 1..1440
 └─ sheets: Sheet[] (non-empty)
    └─ Sheet { id, name, type, glyph, color, description, items }

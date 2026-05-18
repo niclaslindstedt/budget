@@ -23,11 +23,7 @@ import type {
   Sheet,
   Transaction,
 } from "../data/types";
-import {
-  formatAmountForInput,
-  formatBalance,
-  withCurrency,
-} from "../utils/format";
+import { formatNumber, formatBalance, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
 
@@ -176,7 +172,7 @@ export function SheetView({
       for (const row of mergedItem.rows) {
         const v = row.cells[amountCol.id];
         if (typeof v !== "number") continue;
-        const body = formatAmountForInput(Math.abs(v), settings);
+        const body = formatNumber(Math.abs(v), settings);
         const full = withCurrency(body, settings);
         if (full.length > amountChars) amountChars = full.length;
       }

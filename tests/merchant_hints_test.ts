@@ -11,7 +11,7 @@ import type { Category, UserData } from "../src/data/types";
 function makeState(categories: Category[]): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 12,
+    version: 13,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
