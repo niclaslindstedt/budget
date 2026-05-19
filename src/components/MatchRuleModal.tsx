@@ -292,7 +292,8 @@ export function MatchRuleModal({
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">
           Label every history entry whose description matches this pattern. Use{" "}
-          <code className="text-flag">*</code> to match any characters; matching
+          <code className="text-flag">*</code> for any run of characters and{" "}
+          <code className="text-flag">?</code> for a single character; matching
           is case-insensitive. Applies to past entries and future imports.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
