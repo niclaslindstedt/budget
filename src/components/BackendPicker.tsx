@@ -3,7 +3,9 @@ import { Check, ChevronDown, FolderOpen, HardDrive } from "lucide-react";
 
 import type { FloatingPlacement } from "../hooks";
 import type { BackendId } from "../storage/backend-preference";
+import { isDropboxConfigured } from "../storage/dropbox-adapter";
 import { isFolderBackendAvailable } from "../storage/folder-handle-store";
+import { isGdriveConfigured } from "../storage/gdrive-adapter";
 import { DropboxGlyph } from "./DropboxGlyph";
 import { FloatingPanel } from "./FloatingPanel";
 import { GoogleDriveGlyph } from "./GoogleDriveGlyph";
@@ -37,6 +39,8 @@ export function BackendPicker({ value, onSelect }: Props) {
 
   const options = useMemo<Option[]>(() => {
     const folderAvailable = isFolderBackendAvailable();
+    const dropboxConfigured = isDropboxConfigured();
+    const gdriveConfigured = isGdriveConfigured();
     return [
       {
         id: "browser",
@@ -59,11 +63,17 @@ export function BackendPicker({ value, onSelect }: Props) {
         id: "dropbox",
         label: "Dropbox",
         Glyph: ({ size = 16 }) => <DropboxGlyph size={size} />,
+        disabledReason: dropboxConfigured
+          ? undefined
+          : "Not configured for this build (set VITE_DROPBOX_APP_KEY).",
       },
       {
         id: "gdrive",
         label: "Google Drive",
         Glyph: ({ size = 16 }) => <GoogleDriveGlyph size={size} />,
+        disabledReason: gdriveConfigured
+          ? undefined
+          : "Not configured for this build (set VITE_GOOGLE_CLIENT_ID).",
       },
     ];
   }, []);

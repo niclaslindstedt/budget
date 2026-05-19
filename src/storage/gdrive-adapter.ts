@@ -28,8 +28,13 @@ const log = debug("gdrive");
 
 // Public OAuth client id. PKCE makes the client secret unnecessary
 // for browser-based public clients, and the id itself is published in
-// the deployed JS bundle either way — bake it in for zero env-var
-// infrastructure.
+// the deployed JS bundle either way — but it's read from a build-time
+// env var so a fork can plug in its own Google Cloud project without
+// inheriting the upstream developer's identifier. Set
+// `VITE_GOOGLE_CLIENT_ID` in `.env.local` for dev and as a GitHub
+// Actions secret for the production build (see
+// `.github/workflows/pages.yml`). Unset means the Google Drive
+// backend is disabled in the picker.
 //
 // Setup:
 //   1. Create a Google Cloud project at
@@ -49,9 +54,12 @@ const log = debug("gdrive");
 //        http://localhost:5173
 //   5. The credential page issues a client secret. PKCE makes it
 //      optional — ignore it here.
-//   6. Paste the client id below.
-export const GOOGLE_CLIENT_ID =
-  "945081762861-mgrai26dghkrtpt4csrnspvj54afjvib.apps.googleusercontent.com";
+//   6. Expose the client id to the build as `VITE_GOOGLE_CLIENT_ID`.
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+
+export function isGdriveConfigured(): boolean {
+  return GOOGLE_CLIENT_ID.length > 0;
+}
 
 // Name of the single file the app reads / writes inside the user's
 // My Drive. Surfaced to the user in `SyncDetailsModal`.
