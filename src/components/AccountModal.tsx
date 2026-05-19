@@ -163,6 +163,7 @@ export function AccountModal({
               onChange={setGlyph}
               defaultIcon="wallet"
               icons={ACCOUNT_GLYPH_NAMES}
+              tintColor={color}
             />
           </div>
 

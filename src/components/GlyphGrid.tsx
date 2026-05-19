@@ -43,6 +43,9 @@ export function GlyphGrid({
 }: Props) {
   const dim = size === 7 ? "h-7 w-7" : "h-8 w-8";
   const iconSize = size === 7 ? 14 : 16;
+  const defaultTinted = Boolean(
+    defaultSlot && tintColor && defaultSlot.selected,
+  );
   return (
     <div className="grid grid-cols-8 gap-1">
       {defaultSlot && (
@@ -53,10 +56,20 @@ export function GlyphGrid({
           aria-pressed={defaultSlot.selected}
           title={defaultSlot.label}
           className={`flex ${dim} cursor-pointer items-center justify-center rounded border ${
-            defaultSlot.selected
-              ? "border-accent text-accent"
-              : "border-line text-muted hover:border-fg"
+            defaultTinted
+              ? "border-current"
+              : defaultSlot.selected
+                ? "border-accent text-accent"
+                : "border-line text-muted hover:border-fg"
           }`}
+          style={
+            defaultTinted
+              ? {
+                  color: tintColor,
+                  backgroundColor: `color-mix(in srgb, ${tintColor} 18%, transparent)`,
+                }
+              : undefined
+          }
         >
           {defaultSlot.render()}
         </button>

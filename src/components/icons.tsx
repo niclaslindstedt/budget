@@ -78,6 +78,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 
 import type { CategoryIcon, ColumnType } from "../data/types";
 
@@ -186,13 +187,21 @@ export function CategoryIconGlyph({
   name,
   size = 14,
   className,
+  style,
 }: {
   name: CategoryIcon;
   size?: number;
   className?: string;
+  style?: CSSProperties;
 }) {
   const Icon = CATEGORY_ICONS[name];
   return (
-    <Icon size={size} className={className} aria-hidden focusable={false} />
+    <Icon
+      size={size}
+      className={className}
+      style={style}
+      aria-hidden
+      focusable={false}
+    />
   );
 }

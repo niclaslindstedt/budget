@@ -281,6 +281,7 @@ function CategoryCreator({
           icons={CATEGORY_GLYPH_NAMES}
           value={icon}
           onChange={setIcon}
+          tintColor={color}
         />
       </div>
       <div className="mt-1 flex justify-end gap-2">
