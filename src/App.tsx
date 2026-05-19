@@ -4348,6 +4348,7 @@ function BudgetView({
               onImportHistory={onOpenImportHistory}
               onViewHistory={onOpenViewHistory}
               onFindTransfers={onOpenTransferCollapse}
+              onEditSheet={onOpenEditSheet}
             />
           ) : (
             <>
@@ -4402,6 +4403,7 @@ function BudgetView({
                 onToggleSelect={onToggleSelect}
                 onToggleSelectMonth={onToggleSelectMonth}
                 onCreateCategory={onCreateCategory}
+                onEditSheet={onOpenEditSheet}
               />
             </>
           )}
