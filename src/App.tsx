@@ -152,14 +152,11 @@ import {
 } from "./storage/bank-parsers";
 import { serializeUserData } from "./storage/file";
 import {
-  completeGdriveAuth,
   createGdriveAdapter,
-  hasPendingGdriveAuth,
   startGdriveAuth,
 } from "./storage/gdrive-adapter";
 import { withEncryption } from "./storage/encrypting-adapter";
 import { createFolderAdapter } from "./storage/folder-adapter";
-import { pickOauthProvider } from "./storage/oauth-pkce";
 import {
   clearDirectoryHandle,
   ensurePermission,
@@ -2075,22 +2072,16 @@ export function App() {
     [buildSourceRawAdapter, wrapWithActiveEncryption],
   );
 
-  // Complete the cloud-backend OAuth round-trip when the redirect
-  // lands back here. The user signed in before clicking Connect, so
-  // by the time this fires they should already be signed-in again
-  // (or about to be — we wait for that transition). Errors surface in
-  // the console only; a future polish pass can surface them in UI.
+  // Complete the Dropbox OAuth round-trip when the redirect lands
+  // back here. The user signed in before clicking Connect, so by the
+  // time this fires they should already be signed-in again (or about
+  // to be — we wait for that transition). Errors surface in the
+  // console only; a future polish pass can surface them in UI.
   //
-  // Which provider issued the `?code=` is read primarily from the
-  // PKCE verifier in `sessionStorage`: `startDropboxAuth` /
-  // `startGdriveAuth` each stash one under a per-provider key right
-  // before redirecting, and exactly one of them is live whenever a
-  // redirect is in flight. The URL's `state` param is treated as a
-  // hint that breaks ties only when both verifiers happen to be
-  // present (an aborted prior flow left one behind). Defaulting off
-  // `state` alone caused a real bug — Google occasionally redirects
-  // without echoing `state` cleanly, landing a successful Google
-  // auth on the Dropbox completion path.
+  // Google Drive uses a popup-based GIS token client (no redirect),
+  // so only Dropbox arrives via this codepath. Pending-verifier check
+  // guards against picking up a stray `?code=` from some other source
+  // before kicking off the token exchange.
   //
   // Before flipping the backend we probe both sides — the target
   // cloud (so the dialog knows whether it already holds a budget)
@@ -2113,7 +2104,6 @@ export function App() {
     const authCode = code;
     const state = params.get("state");
     const oauthErr = params.get("error");
-    const gdrivePending = hasPendingGdriveAuth();
     const dropboxPending = hasPendingDropboxAuth();
     // Echo the raw query string (sans the code, which is a secret) so
     // a misbehaving redirect chain — extra params, dropped `state`,
@@ -2121,7 +2111,7 @@ export function App() {
     // of being inferred from the routing decision below.
     const sanitisedSearch = rawSearch.replace(/(code=)[^&]*/, "$1<redacted>");
     log.log(
-      `oauth: redirect landed — search=${sanitisedSearch || "<empty>"} state=${state ?? "<none>"} error=${oauthErr ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}`,
+      `oauth: redirect landed — search=${sanitisedSearch || "<empty>"} state=${state ?? "<none>"} error=${oauthErr ?? "<none>"} dropboxPending=${dropboxPending}`,
     );
     if (oauthErr) {
       log.error(
@@ -2130,17 +2120,9 @@ export function App() {
       cleanCodeFromUrl();
       return;
     }
-    const provider = pickOauthProvider({
-      state,
-      gdrivePending,
-      dropboxPending,
-    });
-    log.log(
-      `oauth: pickOauthProvider → ${provider ?? "<null>"} (state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending})`,
-    );
-    if (!provider) {
+    if (!dropboxPending) {
       log.error(
-        `oauth: cannot determine provider — state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}; aborting and cleaning URL`,
+        `oauth: ?code= present but no Dropbox verifier — ignoring and cleaning URL (state=${state ?? "<none>"})`,
       );
       cleanCodeFromUrl();
       return;
@@ -2149,14 +2131,13 @@ export function App() {
     const userId = auth.user.id;
     const fromBackend = getBackend(userId);
     log.log(
-      `oauth: ?code= present provider=${provider} (state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}) fromBackend=${fromBackend}`,
+      `oauth: ?code= present provider=dropbox (state=${state ?? "<none>"}) fromBackend=${fromBackend}`,
     );
 
-    const run = provider === "gdrive" ? doGdrive() : doDropbox();
-    void run
+    void doDropbox()
       .catch((err: unknown) => {
-        log.error(`oauth: ${provider} connect failed`, err);
-        console.error(`${provider} connect failed:`, err);
+        log.error("oauth: dropbox connect failed", err);
+        console.error("dropbox connect failed:", err);
       })
       .finally(cleanCodeFromUrl);
 
@@ -2195,39 +2176,6 @@ export function App() {
       setPendingCloudLink({
         provider: "dropbox",
         auth: result,
-        fromBackend,
-        remoteSnapshot: remote,
-        sourceText,
-      });
-    }
-
-    async function doGdrive(): Promise<void> {
-      log.log("oauth(gdrive): exchanging code for tokens");
-      const token = await completeGdriveAuth(authCode);
-      if (cancelled || auth.kind !== "signed-in") {
-        log.log("oauth(gdrive): aborted after token exchange (cancelled)");
-        return;
-      }
-      log.log("oauth(gdrive): probing remote + source in parallel");
-      const probe = createGdriveAdapter(token);
-      const [remote, sourceText] = await Promise.all([
-        probe.load().catch((err: unknown) => {
-          log.error("oauth(gdrive): probe failed", err);
-          console.error("Google Drive probe failed during link:", err);
-          return null;
-        }),
-        loadSourceText(userId, fromBackend),
-      ]);
-      if (cancelled || auth.kind !== "signed-in") {
-        log.log("oauth(gdrive): aborted after probe (cancelled)");
-        return;
-      }
-      log.log(
-        `oauth(gdrive): probe done remoteHasBytes=${Boolean(remote)} sourceHasBytes=${Boolean(sourceText)} — opening confirmation`,
-      );
-      setPendingCloudLink({
-        provider: "gdrive",
-        accessToken: token,
         fromBackend,
         remoteSnapshot: remote,
         sourceText,
@@ -2426,9 +2374,52 @@ export function App() {
     void startDropboxAuth();
   }, []);
 
-  const handleConnectGdrive = useCallback(() => {
-    void startGdriveAuth();
-  }, []);
+  // Google Drive uses GIS token client — popup, not redirect — so the
+  // probe-and-park-pendingCloudLink dance that Dropbox runs from the
+  // URL-redirect handler happens inline here, awaiting the popup
+  // result.
+  const handleConnectGdrive = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    const userId = auth.user.id;
+    const fromBackend = getBackend(userId);
+    let token: string;
+    try {
+      log.log("oauth(gdrive): launching GIS popup");
+      token = await startGdriveAuth();
+    } catch (err) {
+      log.error("oauth(gdrive): popup failed", err);
+      console.error("gdrive connect failed:", err);
+      return;
+    }
+    if (auth.kind !== "signed-in") {
+      log.log("oauth(gdrive): aborted after token (signed out)");
+      return;
+    }
+    log.log("oauth(gdrive): probing remote + source in parallel");
+    const probe = createGdriveAdapter(token);
+    const [remote, sourceText] = await Promise.all([
+      probe.load().catch((err: unknown) => {
+        log.error("oauth(gdrive): probe failed", err);
+        console.error("Google Drive probe failed during link:", err);
+        return null;
+      }),
+      loadSourceText(userId, fromBackend),
+    ]);
+    if (auth.kind !== "signed-in") {
+      log.log("oauth(gdrive): aborted after probe (signed out)");
+      return;
+    }
+    log.log(
+      `oauth(gdrive): probe done remoteHasBytes=${Boolean(remote)} sourceHasBytes=${Boolean(sourceText)} — opening confirmation`,
+    );
+    setPendingCloudLink({
+      provider: "gdrive",
+      accessToken: token,
+      fromBackend,
+      remoteSnapshot: remote,
+      sourceText,
+    });
+  }, [auth, loadSourceText]);
 
   const handleSelectBrowser = useCallback(() => {
     if (auth.kind !== "signed-in") return;

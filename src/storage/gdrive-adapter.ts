@@ -1,4 +1,4 @@
-import { nsCloudPath, nsKey } from "../data/constants";
+import { nsCloudPath } from "../data/constants";
 import { debug } from "../utils/debug";
 import {
   type BackupOps,
@@ -11,7 +11,6 @@ import {
   parseBackupIndex,
   serializeBackupIndex,
 } from "./backup-index";
-import { type OAuthConfig, completeAuth, startAuth } from "./oauth-pkce";
 
 const log = debug("gdrive");
 
@@ -27,11 +26,13 @@ const log = debug("gdrive");
 // passes it back via `If-Match`. A 412 surfaces as `ConflictError`
 // carrying the fresh remote snapshot.
 
-// Public OAuth client id. PKCE makes the client secret unnecessary
-// for browser-based public clients, and the id itself is published in
-// the deployed JS bundle either way — but it's read from a build-time
-// env var so a fork can plug in its own Google Cloud project without
-// inheriting the upstream developer's identifier. Set
+// Public OAuth client id. The Drive flow uses Google Identity
+// Services' token client (popup + postMessage), which is the SPA-
+// friendly path Google steers public clients to today — no client
+// secret, no redirect URI, no code-for-token exchange. The id itself
+// is published in the deployed JS bundle either way; it's read from a
+// build-time env var so a fork can plug in its own Google Cloud
+// project without inheriting the upstream developer's identifier. Set
 // `VITE_GOOGLE_CLIENT_ID` in `.env.local` for dev and as a GitHub
 // Actions secret for the production build (see
 // `.github/workflows/pages.yml`). Unset means the Google Drive
@@ -44,18 +45,19 @@ const log = debug("gdrive");
 //      Library → "Google Drive API" → Enable).
 //   3. Create an OAuth 2.0 Client ID (APIs & Services → Credentials →
 //      "Create Credentials" → "OAuth client ID" → Application type
-//      "Web application").
-//   4. Authorized JavaScript origins:
+//      "Web application"). The token client works with this type.
+//   4. Authorized JavaScript origins (the only origin check GIS runs
+//      against — it matches `window.location.origin` of the page that
+//      calls `requestAccessToken`):
 //        https://budget.niclaslindstedt.se
 //        http://localhost:5173
-//      Authorized redirect URIs (no trailing slash — Google rejects
-//      that, and `redirectUri()` matches by returning the bare
-//      origin):
-//        https://budget.niclaslindstedt.se
-//        http://localhost:5173
-//   5. The credential page issues a client secret. PKCE makes it
-//      optional — ignore it here.
-//   6. Expose the client id to the build as `VITE_GOOGLE_CLIENT_ID`.
+//   5. Authorized redirect URIs: leave empty. The token client uses a
+//      Google-hosted popup that posts results back via `postMessage`;
+//      the app's origin is never the target of a redirect.
+//   6. The credential page issues a client secret. Ignore it — public
+//      clients running in a browser can't keep one, and the token
+//      client never asks for it.
+//   7. Expose the client id to the build as `VITE_GOOGLE_CLIENT_ID`.
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
 
 export function isGdriveConfigured(): boolean {
@@ -82,8 +84,6 @@ export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 export const GDRIVE_BACKUPS_FOLDER_NAME = nsCloudPath("budget-backups");
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
-const AUTH_BASE = "https://accounts.google.com/o/oauth2/v2/auth";
-const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const DRIVE_FILES_API = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 
@@ -92,12 +92,6 @@ const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 // active cloud backend. Rapid keystrokes inside a single edit gesture
 // collapse into one network save; `saveNow()` bypasses this.
 const SAVE_DEBOUNCE_MS = 1000;
-
-// `sessionStorage` survives the OAuth redirect round-trip but is
-// scoped to the tab, so a parallel auth flow in another tab can't
-// race with this one. Per-provider key so the Dropbox and Drive
-// verifiers can coexist if the user kicks off both.
-const PKCE_VERIFIER_KEY = nsKey("budget.gdrive.pkce.verifier");
 
 export type FetchImpl = typeof fetch;
 
@@ -478,45 +472,135 @@ function randomBoundary(): string {
   return s;
 }
 
-// ---- OAuth (PKCE) ---------------------------------------------------
+// ---- OAuth (GIS token client) --------------------------------------
 
-const GDRIVE_OAUTH: OAuthConfig = {
-  authBase: AUTH_BASE,
-  tokenEndpoint: TOKEN_ENDPOINT,
-  clientId: GOOGLE_CLIENT_ID,
-  state: "gdrive",
-  verifierKey: PKCE_VERIFIER_KEY,
-  providerName: "Google",
-  extraAuthParams: {
-    scope: GDRIVE_SCOPE,
-    // Short-lived access token only. Refresh tokens for browser-
-    // based clients are discouraged by Google; the user reconnects
-    // manually when the access token expires (~1h).
-    access_type: "online",
-    include_granted_scopes: "true",
-  },
+// Google Identity Services token client. The popup flow is the modern
+// SPA path — no redirect URI, no `/token` exchange, no client secret.
+// `requestAccessToken` opens a Google-hosted consent popup; the popup
+// posts the result back to GIS via `postMessage`, and GIS hands us an
+// access token through `callback`. Tokens are short-lived (~1h) and
+// there is no refresh token; the user reconnects when an API call
+// returns 401.
+//
+// The GIS script is loaded lazily on first connect so an offline app
+// load doesn't hang on accounts.google.com.
+
+const GIS_SCRIPT_URL = "https://accounts.google.com/gsi/client";
+
+type GisTokenResponse = {
+  access_token?: string;
+  expires_in?: number;
+  scope?: string;
+  token_type?: string;
+  error?: string;
+  error_description?: string;
 };
 
-export function startGdriveAuth(): Promise<void> {
-  return startAuth(GDRIVE_OAUTH);
+type GisTokenClientConfig = {
+  client_id: string;
+  scope: string;
+  callback: (response: GisTokenResponse) => void;
+  error_callback?: (err: GisErrorResponse) => void;
+};
+
+type GisTokenClient = {
+  requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
+};
+
+type GisErrorResponse = {
+  type: string;
+  message?: string;
+};
+
+type GisGlobal = {
+  accounts: {
+    oauth2: {
+      initTokenClient(config: GisTokenClientConfig): GisTokenClient;
+    };
+  };
+};
+
+declare global {
+  interface Window {
+    google?: GisGlobal;
+  }
 }
 
-// True when a Google Drive OAuth flow is mid-flight — i.e.
-// `startGdriveAuth` stashed a PKCE verifier in `sessionStorage` and the
-// redirect back from Google has not yet been consumed by
-// `completeGdriveAuth`. Used by the OAuth completion handler in
-// `App.tsx` to identify which provider issued an inbound `?code=` when
-// the URL's `state` param has been stripped or mangled in transit.
-export function hasPendingGdriveAuth(): boolean {
-  const present = sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
-  log.log(`hasPendingGdriveAuth: key=${PKCE_VERIFIER_KEY} present=${present}`);
-  return present;
+let gisLoaderPromise: Promise<void> | null = null;
+
+function loadGisScript(): Promise<void> {
+  if (typeof window !== "undefined" && window.google?.accounts?.oauth2) {
+    return Promise.resolve();
+  }
+  if (gisLoaderPromise) return gisLoaderPromise;
+  log.log("loadGisScript: injecting <script>");
+  gisLoaderPromise = new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = GIS_SCRIPT_URL;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google?.accounts?.oauth2) {
+        log.log("loadGisScript: ready");
+        resolve();
+      } else {
+        log.error("loadGisScript: loaded but globals missing");
+        gisLoaderPromise = null;
+        reject(
+          new Error("Google Identity Services loaded but globals missing"),
+        );
+      }
+    };
+    script.onerror = () => {
+      log.error("loadGisScript: network error");
+      gisLoaderPromise = null;
+      reject(new Error("Failed to load Google Identity Services script"));
+    };
+    document.head.appendChild(script);
+  });
+  return gisLoaderPromise;
 }
 
-export async function completeGdriveAuth(
-  code: string,
-  fetchImpl: FetchImpl = fetch,
-): Promise<string> {
-  const result = await completeAuth(GDRIVE_OAUTH, code, fetchImpl);
-  return result.accessToken;
+// Opens the Google consent popup and resolves with a short-lived
+// access token. Throws when the user dismisses the popup, the popup
+// is blocked, or Google returns an error. Caller persists the token
+// (via `commitGdriveLink`) once any post-auth confirmation is done.
+export async function startGdriveAuth(): Promise<string> {
+  log.log("startGdriveAuth: loading GIS");
+  await loadGisScript();
+  const gis = window.google?.accounts?.oauth2;
+  if (!gis) {
+    throw new Error("Google Identity Services unavailable after load");
+  }
+  log.log("startGdriveAuth: opening consent popup");
+  return new Promise<string>((resolve, reject) => {
+    const client = gis.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GDRIVE_SCOPE,
+      callback: (resp) => {
+        if (resp.error) {
+          const desc = resp.error_description ?? resp.error;
+          log.error(`token client: error ${resp.error} (${desc})`);
+          reject(new Error(`Google sign-in failed: ${desc}`));
+          return;
+        }
+        if (!resp.access_token) {
+          log.error("token client: no access_token in response");
+          reject(new Error("Google did not return an access token"));
+          return;
+        }
+        log.log(`token client: token received expires_in=${resp.expires_in}`);
+        resolve(resp.access_token);
+      },
+      error_callback: (err) => {
+        log.error(`token client: error_callback type=${err.type}`);
+        reject(
+          new Error(
+            err.message ?? `Google sign-in ${err.type ?? "failed"}`,
+          ),
+        );
+      },
+    });
+    client.requestAccessToken();
+  });
 }
