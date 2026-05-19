@@ -40,6 +40,7 @@ type Props = {
   // disabled when the detector finds nothing — no point sending the
   // user to an empty modal.
   onFindTransfers: () => void;
+  onEditSheet: (sheetId: string) => void;
 };
 
 export function AccountsSheetView({
@@ -54,6 +55,7 @@ export function AccountsSheetView({
   onImportHistory,
   onViewHistory,
   onFindTransfers,
+  onEditSheet,
 }: Props) {
   // Pre-compute every account's balance once per render. The helper
   // walks every budget item in the workspace plus every transaction,
@@ -112,6 +114,15 @@ export function AccountsSheetView({
     <section>
       <header className="mb-4 flex items-center gap-2">
         <h2 className="m-0 text-base font-bold text-fg-bright">{sheet.name}</h2>
+        <button
+          type="button"
+          onClick={() => onEditSheet(sheet.id)}
+          aria-label={`Edit ${sheet.name}`}
+          title="Edit sheet"
+          className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+        >
+          <Pencil size={14} aria-hidden focusable={false} />
+        </button>
       </header>
 
       <section className="mb-6">

@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import type { Sheet } from "../data/types";
 import { CategoryIconGlyph } from "./icons";
@@ -124,8 +124,21 @@ function SheetTab({
   }
 
   return (
-    <div
-      className={`sheet-tab inline-flex shrink-0 items-center rounded-full border text-sm transition-colors ${
+    <button
+      type="button"
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onContextMenu={handleContextMenu}
+      aria-pressed={active}
+      aria-label={`${sheet.name} (long-press to edit)`}
+      title={
+        sheet.description ? `${sheet.name} — ${sheet.description}` : sheet.name
+      }
+      className={`sheet-tab inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
         active ? "border-current" : "border-transparent hover:bg-surface"
       }`}
       style={{
@@ -135,38 +148,10 @@ function SheetTab({
           : undefined,
       }}
     >
-      <button
-        type="button"
-        onClick={handleClick}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        onContextMenu={handleContextMenu}
-        aria-pressed={active}
-        aria-label={`${sheet.name} (long-press to edit)`}
-        title={
-          sheet.description
-            ? `${sheet.name} — ${sheet.description}`
-            : sheet.name
-        }
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full py-1 pl-2 pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg md:pr-1"
-      >
-        <CategoryIconGlyph name={sheet.glyph} size={16} />
-        <span className="hidden max-w-[10rem] truncate text-xs font-bold tracking-wide md:inline">
-          {sheet.name}
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={onEdit}
-        aria-label={`Edit ${sheet.name}`}
-        title="Edit sheet"
-        className="hidden cursor-pointer items-center justify-center rounded-full py-1 pl-0.5 pr-2 opacity-60 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg md:inline-flex"
-      >
-        <Pencil size={12} aria-hidden focusable={false} />
-      </button>
-    </div>
+      <CategoryIconGlyph name={sheet.glyph} size={16} />
+      <span className="hidden max-w-[10rem] truncate text-xs font-bold tracking-wide md:inline">
+        {sheet.name}
+      </span>
+    </button>
   );
 }

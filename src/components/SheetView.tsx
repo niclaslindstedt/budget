@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 
 import {
   computeBalances,
@@ -89,6 +90,7 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onEditSheet: (sheetId: string) => void;
 };
 
 function todayIso(): string {
@@ -166,6 +168,7 @@ export function SheetView({
   onToggleSelect,
   onToggleSelectMonth,
   onCreateCategory,
+  onEditSheet,
 }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const dateCol = useMemo(
@@ -356,6 +359,15 @@ export function SheetView({
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>
+          <button
+            type="button"
+            onClick={() => onEditSheet(sheet.id)}
+            aria-label={`Edit ${sheet.name}`}
+            title="Edit sheet"
+            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
+            <Pencil size={14} aria-hidden focusable={false} />
+          </button>
         </header>
         <div className="flex flex-col gap-3 md:gap-6">
           {hasMoreHistory && (
