@@ -359,15 +359,17 @@ export function SheetView({
 
   const visibleMonths = useMemo(() => {
     const keys = new Set<string>();
-    // Always render the current fiscal month plus the configured
-    // window of past months, even when those buckets have no rows
-    // yet — the AddRowButton inside each table is how the user adds
-    // entries to a fresh month.
+    // Always render the current fiscal month — even when empty, the
+    // AddRowButton inside it is how the user adds the first entry.
+    // Past months in the default-history window only appear when they
+    // contain rows, so a freshly created budget shows a single empty
+    // current month instead of a stack of empty placeholders.
     let cursor = currentMonth;
     keys.add(cursor);
     for (let i = 0; i < DEFAULT_HISTORY_MONTHS + extraHistory; i += 1) {
       cursor = previousMonthKey(cursor);
-      keys.add(cursor);
+      const rows = monthGroups.get(cursor);
+      if (rows && rows.length > 0) keys.add(cursor);
     }
     // Months with rows that aren't reached by stepping back from
     // current — future-dated entries and the special "undated"
