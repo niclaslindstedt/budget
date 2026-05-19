@@ -397,6 +397,18 @@ export function startDropboxAuth(): Promise<void> {
   return startAuth(DROPBOX_OAUTH);
 }
 
+// True when a Dropbox OAuth flow is mid-flight — i.e. `startDropboxAuth`
+// stashed a PKCE verifier in `sessionStorage` and the redirect back
+// from Dropbox has not yet been consumed by `completeDropboxAuth`.
+// Used by the OAuth completion handler in `App.tsx` to identify which
+// provider issued an inbound `?code=` when the URL's `state` param has
+// been stripped or mangled in transit.
+export function hasPendingDropboxAuth(): boolean {
+  const present = sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
+  log.log(`hasPendingDropboxAuth: key=${PKCE_VERIFIER_KEY} present=${present}`);
+  return present;
+}
+
 export function completeDropboxAuth(
   code: string,
   fetchImpl: FetchImpl = fetch,

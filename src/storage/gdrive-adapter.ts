@@ -501,6 +501,18 @@ export function startGdriveAuth(): Promise<void> {
   return startAuth(GDRIVE_OAUTH);
 }
 
+// True when a Google Drive OAuth flow is mid-flight — i.e.
+// `startGdriveAuth` stashed a PKCE verifier in `sessionStorage` and the
+// redirect back from Google has not yet been consumed by
+// `completeGdriveAuth`. Used by the OAuth completion handler in
+// `App.tsx` to identify which provider issued an inbound `?code=` when
+// the URL's `state` param has been stripped or mangled in transit.
+export function hasPendingGdriveAuth(): boolean {
+  const present = sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
+  log.log(`hasPendingGdriveAuth: key=${PKCE_VERIFIER_KEY} present=${present}`);
+  return present;
+}
+
 export async function completeGdriveAuth(
   code: string,
   fetchImpl: FetchImpl = fetch,
