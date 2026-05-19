@@ -135,13 +135,20 @@ function compute(
   const visibleBottom = visibleTop + vv.height;
 
   let top = rect.bottom + gap + scrollY;
-  // Clamp the top into the visible area so iOS's visual-viewport shift
-  // (which doesn't drag fixed elements along with it) can't park the
-  // panel above the visible region. The trigger button itself stays
-  // anchored to its place inside the modal, so on iOS its rect.bottom
-  // is below `visibleTop` when the keyboard scrolls the input area
-  // upward — clamping is what keeps the panel reachable.
-  if (top < visibleTop + margin) {
+  // Push the panel into the visible region only when the trigger
+  // itself has already been pushed above it (e.g. a fixed-position
+  // picker inside a modal whose visual viewport iOS shifted up for
+  // the keyboard — the trigger is out of sight, so there's no arrow
+  // connection left to preserve and the panel must reposition to
+  // stay reachable). When the trigger is still on screen, leave the
+  // panel anchored at the natural offset below it; otherwise the
+  // panel "chases" the visible region while the sheet row stays
+  // put and the arrow ends up dangling off the row above. That's
+  // the regression where iOS's keyboard animation was throwing the
+  // description popover off its trigger row.
+  const triggerBottomCoord = rect.bottom + scrollY;
+  const triggerHiddenAbove = triggerBottomCoord < visibleTop;
+  if (triggerHiddenAbove && top < visibleTop + margin) {
     top = visibleTop + margin;
   }
   // Don't park the panel below the visible region either — better to
