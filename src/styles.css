@@ -159,15 +159,16 @@ body,
   padding: 0;
   background: var(--page-bg);
   color: var(--fg);
-  /* `svh` is the smallest stable visible viewport — enough to fill the
-     screen when the address bar is fully expanded, but never larger.
-     iOS 26's Liquid Glass chrome floats over content, so the page
-     itself is allowed to extend behind the dynamic island at the top
-     and the floating address bar at the bottom; using `svh` here lets
-     the page background reach those areas without forcing an empty
-     budget to be artificially scrollable on older iOS where the chrome
-     used to consume viewport space. */
-  min-height: 100svh;
+  /* `dvh` follows the visual viewport including the area covered by
+     iOS 26 Safari's floating Liquid Glass chrome — so the page (and
+     anything scrolled into its lower band) is composited behind the
+     translucent address bar and the bar can sample real pixels for
+     its tint instead of falling back to the canvas colour. `svh`
+     here would size the document to the chrome-excluded inner box,
+     leaving the address-bar footprint to show the propagated
+     html-canvas background as a flat slab. Older iOS without a
+     floating bar reports dvh ≈ svh ≈ lvh so this stays inert. */
+  min-height: 100dvh;
 }
 
 body {

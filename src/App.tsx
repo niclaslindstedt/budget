@@ -2783,7 +2783,7 @@ export function App() {
       <div
         role="status"
         aria-live="polite"
-        className="flex min-h-svh items-center justify-center px-4 text-sm text-muted"
+        className="flex min-h-dvh items-center justify-center px-4 text-sm text-muted"
       >
         Restoring folder access…
       </div>
@@ -4546,11 +4546,13 @@ function BudgetView({
   );
 
   return (
-    // Outer pb covers the home-indicator safe area. `<main>` adds extra
-    // bottom padding so the AddRowButton at the foot of the last month
-    // can scroll clear of the floating SheetTabs pill instead of ending
-    // its scroll underneath it.
-    <div className="mx-auto flex min-h-svh max-w-full flex-col px-1 pb-[env(safe-area-inset-bottom)] md:px-5">
+    // No outer bottom padding: iOS 26 Safari's Liquid Glass address bar
+    // is translucent and samples page pixels for its tint, so the sheet
+    // is allowed to extend behind it. `<main>` owns the bottom padding
+    // — large enough that the AddRowButton at the foot of the last
+    // month clears both the safe-area band and the floating SheetTabs
+    // pill instead of ending its scroll under either.
+    <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 md:px-5">
       {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
           flips `inert` on every match, freezing focus and pointer
@@ -4629,7 +4631,7 @@ function BudgetView({
             />
           </div>
         </header>
-        <main className="flex-1 pb-16 sm:pb-20">
+        <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
           {status.kind === "loading" ? (
             <BudgetLoading />
           ) : activeSheet.type === "accounts" ? (
