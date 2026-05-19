@@ -8,7 +8,7 @@ import {
 } from "../storage/bank-parsers";
 import type { Account, HistoryEntry, Settings } from "../data/types";
 import { historyEntryId } from "../storage/bank-parsers";
-import { formatShortDate } from "../utils/format";
+import { formatDate, formatShortDate } from "../utils/format";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -168,8 +168,7 @@ export function ImportHistoryModal({
             <div className="flex justify-between text-muted">
               <span>Range</span>
               <span className="font-mono text-fg">
-                {formatShortDate(preview.rangeStart, settings.shortDateFormat)}{" "}
-                → {formatShortDate(preview.rangeEnd, settings.shortDateFormat)}
+                {formatRange(preview.rangeStart, preview.rangeEnd, settings)}
               </span>
             </div>
             <div className="flex justify-between text-muted">
@@ -216,6 +215,31 @@ export function ImportHistoryModal({
       </Modal.Footer>
     </Modal>
   );
+}
+
+// Render the range with the year included whenever either bound
+// falls outside the current calendar year — bank statements routinely
+// span multiple years (e.g. "18/7 → 18/5" hides four years of drift),
+// so a year-less short format is only safe within the current year.
+function formatRange(
+  startIso: string,
+  endIso: string,
+  settings: Settings,
+): string {
+  const currentYear = String(new Date().getFullYear());
+  const startYear = startIso.slice(0, 4);
+  const endYear = endIso.slice(0, 4);
+  const needsYear = startYear !== currentYear || endYear !== currentYear;
+  if (needsYear) {
+    return `${formatDate(startIso, settings.dateFormat)} → ${formatDate(
+      endIso,
+      settings.dateFormat,
+    )}`;
+  }
+  return `${formatShortDate(startIso, settings.shortDateFormat)} → ${formatShortDate(
+    endIso,
+    settings.shortDateFormat,
+  )}`;
 }
 
 function buildPreview(
