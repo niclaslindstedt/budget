@@ -355,7 +355,7 @@ export function SheetView({
   return (
     <ActiveRowProvider>
       <section ref={sectionRef} data-sheet-content>
-        <header className="mb-4 flex items-center gap-2">
+        <header className="mb-4 flex items-center justify-center gap-2">
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>

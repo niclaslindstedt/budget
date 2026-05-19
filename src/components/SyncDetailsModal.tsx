@@ -75,7 +75,7 @@ function statusView(
       };
     case "saving":
       return {
-        Icon: CloudUpload,
+        Icon: Loader,
         label: "Syncing now…",
         tone: "busy",
         spin: true,

@@ -1,24 +1,31 @@
-import { CloudAlert, CloudCheck, Loader, RefreshCw } from "lucide-react";
+import { CloudAlert, CloudCheck, Loader, Save } from "lucide-react";
 
 import type { SaveStatus } from "../storage/useUserDataStorage";
 
-// Renders the active backend's sync state next to `SaveStateButton`.
-// Mounted only when a cloud backend is active — local saves are
-// instantaneous and a permanent "synced" indicator there would be
-// chrome noise. Clicking opens the sync-details modal.
+// Single header affordance for cloud-backed sessions: collapses the
+// separate "save now" disk and "sync status" cloud into one glyph
+// that morphs with state. Disk when there are unsaved edits (tap to
+// save), spinner while a save is in flight, green cloud-check when
+// the remote is in sync, red cloud-alert when something has gone
+// wrong. Errors take precedence over the dirty disk because if the
+// cloud round-trip is failing, "save now" can't make progress until
+// the user sees the modal and acts on it. Tapping the disk saves;
+// every other state opens the sync-details modal.
 
 type Props = {
   providerName: string;
   status: SaveStatus;
   dirty: boolean;
-  onClick: () => void;
+  onSave: () => void;
+  onOpenDetails: () => void;
 };
 
 type View = {
   Icon: typeof CloudCheck;
   label: string;
-  tone: "ok" | "busy" | "warn" | "err";
+  tone: "ok" | "busy" | "warn" | "err" | "accent";
   spin?: boolean;
+  action: "save" | "open";
 };
 
 function viewFor(
@@ -28,47 +35,82 @@ function viewFor(
 ): View {
   switch (status.kind) {
     case "loading":
-      return { Icon: Loader, label: "Loading…", tone: "busy", spin: true };
+      return {
+        Icon: Loader,
+        label: "Loading…",
+        tone: "busy",
+        spin: true,
+        action: "open",
+      };
     case "saving":
-      return { Icon: Loader, label: "Syncing…", tone: "busy", spin: true };
+      return {
+        Icon: Loader,
+        label: "Saving…",
+        tone: "busy",
+        spin: true,
+        action: "open",
+      };
     case "error":
       return {
         Icon: CloudAlert,
         label: `Sync failed: ${status.message}`,
         tone: "err",
+        action: "open",
       };
     case "conflict":
-      return { Icon: CloudAlert, label: "Sync conflict", tone: "warn" };
+      return {
+        Icon: CloudAlert,
+        label: "Sync conflict",
+        tone: "warn",
+        action: "open",
+      };
     case "saved":
     case "idle":
       return dirty
-        ? { Icon: RefreshCw, label: "Pending sync", tone: "busy" }
+        ? {
+            Icon: Save,
+            label: "Save unsaved changes",
+            tone: "accent",
+            action: "save",
+          }
         : {
             Icon: CloudCheck,
             label: `Synced to ${providerName}`,
             tone: "ok",
+            action: "open",
           };
   }
 }
 
 const TONE_CLASS: Record<View["tone"], string> = {
   ok: "border-success/40 text-success hover:bg-success/10",
-  busy: "border-line text-muted hover:bg-surface-2",
+  busy: "border-line text-muted",
   warn: "border-pipe/50 text-pipe hover:bg-pipe/10",
   err: "border-danger/50 text-danger hover:bg-danger/10",
+  accent: "border-accent bg-accent/15 text-accent hover:bg-accent/25",
 };
 
-export function SyncStatus({ providerName, status, dirty, onClick }: Props) {
+export function SyncStatus({
+  providerName,
+  status,
+  dirty,
+  onSave,
+  onOpenDetails,
+}: Props) {
   const view = viewFor(status, dirty, providerName);
+  const busy = status.kind === "saving" || status.kind === "loading";
+  const onClick = view.action === "save" ? onSave : onOpenDetails;
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={busy}
       title={view.label}
       aria-label={view.label}
-      className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-        TONE_CLASS[view.tone]
-      }`}
+      aria-busy={busy || undefined}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded border bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+        busy ? "cursor-not-allowed" : "cursor-pointer"
+      } ${TONE_CLASS[view.tone]}`}
     >
       <view.Icon
         size={18}
