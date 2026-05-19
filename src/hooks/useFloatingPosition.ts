@@ -10,11 +10,17 @@ import type { RefObject } from "react";
 // `overflow-y: auto` so the panel scrolls internally when its content
 // is taller than the available space — keeps an input inside the panel
 // reachable when the keyboard opens.
+// `arrowLeft` is the trigger's horizontal centre, expressed in panel-
+// local coordinates (pixels from the panel's left edge), and clamped
+// into the panel's interior so it stays a sensible tip position even
+// when the panel got shoved sideways to fit the viewport. Used by
+// `FloatingPanel` to pin an optional upward pointer to the trigger.
 export type FloatingRect = {
   top: number;
   left: number;
   width: number;
   maxHeight: number;
+  arrowLeft: number;
 };
 
 // How wide the floating element should be.
@@ -145,7 +151,16 @@ function compute(
 
   const maxHeight = Math.max(120, visibleBottom - top - margin);
 
-  return { top, left, width, maxHeight };
+  // Trigger centre in panel-local coordinates, clamped to leave room
+  // for the rounded corner + the arrow's own half-width so the tip
+  // never tucks under the panel's border radius.
+  const triggerCentreX = rect.left + rect.width / 2 + scrollX;
+  const arrowGutter = 14;
+  let arrowLeft = triggerCentreX - left;
+  if (arrowLeft < arrowGutter) arrowLeft = arrowGutter;
+  if (arrowLeft > width - arrowGutter) arrowLeft = width - arrowGutter;
+
+  return { top, left, width, maxHeight, arrowLeft };
 }
 
 // Measures `triggerRef` while `open` is true and returns its
