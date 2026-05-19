@@ -22,12 +22,12 @@ export type Row = {
   // is undefined for one-off rows added inline.
   seriesId?: string;
   // Optional reference to a reusable `EntryType` in `UserData.types`.
-  // The description cell renders the type's glyph + color in place of
-  // the default recurring icon, and the type's name takes over from
-  // the description as the row's primary label (the description text
-  // is demoted to a secondary line behind the chip). Replaces the
-  // older `glyph` field — types subsume that role with a name and
-  // colour attached, which makes them usable for grouping and stats.
+  // The dedicated `type` column renders the type's glyph (mobile) or
+  // glyph + name chip (desktop) in the type's colour; the description
+  // column stays untouched so the row reads as "description + type"
+  // rather than mixing the two. Replaces the older `glyph` field —
+  // types subsume that role with a name and colour attached, which
+  // makes them usable for grouping and stats.
   typeId?: string;
   // True when this row was minted by the "update balance" flow on the
   // Accounts page: its amount is the delta needed to bring the account's
