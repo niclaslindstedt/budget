@@ -4268,7 +4268,11 @@ function BudgetView({
             </span>
           </button>
           <div className="ml-auto inline-flex items-center gap-2">
-            <SaveStateButton dirty={dirty} onSave={saveNow} />
+            <SaveStateButton
+              dirty={dirty}
+              saving={status.kind === "saving"}
+              onSave={saveNow}
+            />
             {(backend === "dropbox" || backend === "gdrive") && (
               <SyncStatus
                 providerName={
