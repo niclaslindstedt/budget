@@ -139,12 +139,14 @@ export function GeneralTab({
           checked={draft.abbreviateNumbers}
           onChange={(v) => onUpdate("abbreviateNumbers", v)}
         />
-        <ToggleRow
-          label="Always abbreviate balance column"
-          hint="When abbreviation is on, also abbreviate small balances so every row in the running-balance column reads as a uniform stack of compact figures. Amounts stay precise below 10 000 because the amount is the primary value while the balance is a derived snapshot."
-          checked={draft.alwaysAbbreviateBalance}
-          onChange={(v) => onUpdate("alwaysAbbreviateBalance", v)}
-        />
+        {draft.abbreviateNumbers && (
+          <ToggleRow
+            label="Always abbreviate balance column"
+            hint="Also abbreviate small balances so every row in the running-balance column reads as a uniform stack of compact figures. Amounts stay precise below 10 000 because the amount is the primary value while the balance is a derived snapshot."
+            checked={draft.alwaysAbbreviateBalance}
+            onChange={(v) => onUpdate("alwaysAbbreviateBalance", v)}
+          />
+        )}
       </Section>
     </>
   );
