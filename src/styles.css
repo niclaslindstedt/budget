@@ -296,16 +296,26 @@ body {
      screens that cover the viewport edge-to-edge, so the chrome should
      be visually absent for the duration. Desktop modals are centered
      cards with a translucent backdrop, so the chrome can stay visible
-     in the background. */
-  @media (max-width: 639.98px) {
+     in the background. The short-height clause catches landscape
+     phones (~390px tall) whose width exceeds 640px but still need the
+     mobile chrome-hide treatment. */
+  @media (max-width: 639.98px), (max-height: 500px) {
     body.modal-open [data-floating-chrome] {
       display: none;
     }
   }
 
   /* Mobile: convert table to block + per-row grid for full-width layout
-     and to make swipe-to-delete possible inside table rows */
-  @media (max-width: 720px) {
+     and to make swipe-to-delete possible inside table rows. The short-
+     height clause catches phones held in landscape — those report a
+     viewport width > 720 (iPhone 12+: 844–932px) but a height of only
+     375–430px, so width-only detection would fall through to the
+     desktop layout. That's wrong on a touch device: the swipe-reveal
+     transforms below never apply (the gesture handler in SheetRow
+     flips `is-swiped` but nothing visible happens), and hover-only
+     action icons are unreachable. Tablets in landscape report
+     heights well above 500px so they keep the desktop layout. */
+  @media (max-width: 720px), (max-height: 500px) {
     .sheet-table,
     .sheet-table > thead,
     .sheet-table > tbody,
@@ -424,8 +434,11 @@ body {
     }
   }
 
-  /* Desktop completed row tint */
-  @media (min-width: 720px) {
+  /* Desktop completed row tint. The min-height clause excludes
+     landscape phones so the mobile completed-row rule above (which
+     skips the absolutely-positioned action-cell) isn't overridden by
+     this `> td` selector when both media queries match. */
+  @media (min-width: 720px) and (min-height: 501px) {
     .sheet-table > tbody > tr.is-completed > td {
       background: color-mix(in srgb, var(--success) 10%, var(--surface));
     }
