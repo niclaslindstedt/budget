@@ -194,7 +194,14 @@ export function SettingsModal({
     if (!open) return;
     setDraft(settings);
     setActiveTab("general");
-  }, [open, settings]);
+    // Re-sync the draft and reset to the General tab only when the
+    // modal transitions from closed to open. Depending on `settings`
+    // here would yank the user off whatever tab they're on every time
+    // the store updates (e.g. after switching storage backend and
+    // clicking "Start fresh", which reloads `data` with a fresh
+    // `settings` reference).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));

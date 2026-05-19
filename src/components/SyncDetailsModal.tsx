@@ -13,7 +13,11 @@ import {
   DROPBOX_FILE_PATH,
   dropboxWebUrl,
 } from "../storage/dropbox-adapter";
-import { GDRIVE_FILE_NAME, gdriveWebUrl } from "../storage/gdrive-adapter";
+import {
+  GDRIVE_APP_FOLDER_NAME,
+  GDRIVE_FILE_NAME,
+  gdriveWebUrl,
+} from "../storage/gdrive-adapter";
 import type { SaveStatus } from "../storage/useUserDataStorage";
 import { Modal } from "./Modal";
 
@@ -43,7 +47,7 @@ function providerView(backend: BackendId): ProviderView | null {
   if (backend === "gdrive") {
     return {
       name: "Google Drive",
-      path: `My Drive/${GDRIVE_FILE_NAME}`,
+      path: `My Drive/${GDRIVE_APP_FOLDER_NAME}/${GDRIVE_FILE_NAME}`,
       // Drive home page — we don't carry the file id through here,
       // and the user can scroll to the file from My Drive.
       url: gdriveWebUrl(null),

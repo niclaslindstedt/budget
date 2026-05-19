@@ -180,7 +180,8 @@ export function PrivacyPage() {
             <li>
               <strong className="text-fg-bright">What is uploaded.</strong> A
               single file named <code className="text-meta">budget.json</code>{" "}
-              in your My Drive, containing the same bytes the app would
+              inside a <code className="text-meta">budget/</code> folder at the
+              root of your My Drive, containing the same bytes the app would
               otherwise write to{" "}
               <code className="mx-1 text-meta">localStorage</code> — encrypted
               by default, plaintext if you opted out of encryption.
