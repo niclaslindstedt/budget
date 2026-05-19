@@ -22,3 +22,23 @@ jobs:
       - run: make lint
       - run: make build
       - run: make test
+
+  changeset:
+    # Enforces that every PR touching user-visible code drops a
+    # changelog fragment under .changes/unreleased/, or opts out via
+    # the `no-changelog` label. Pure refactors, CI/build tweaks, and
+    # docs-only edits pass via the skip-list inside the script.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Check for changelog fragment
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: node scripts/release/check-changeset.mjs

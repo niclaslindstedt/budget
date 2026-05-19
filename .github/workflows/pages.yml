@@ -4,6 +4,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Allow release.yml to chain into us after a tag is pushed. The tag
+  # passes in via `release_ref`; otherwise we resolve the latest `v*`
+  # tag with `git describe`. Before the first release ever exists,
+  # both lookups come up empty and we fall back to serving `main` at
+  # `/` — same as the pre-release-pipeline behaviour.
+  workflow_call:
+    inputs:
+      release_ref:
+        description: "Tag or sha to build for the production '/' slot."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -19,15 +30,90 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: make build
+
+      # ---- Resolve which tag to serve at `/` (if any) ----
+      - name: Resolve production tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.release_ref }}" ]; then
+            REF="${{ inputs.release_ref }}"
+          else
+            REF=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          fi
+          if [ -n "$REF" ]; then
+            echo "ref=$REF" >> "$GITHUB_OUTPUT"
+            echo "has_release=true" >> "$GITHUB_OUTPUT"
+            echo "Resolved production ref: $REF"
+          else
+            echo "ref=" >> "$GITHUB_OUTPUT"
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+            echo "No release tag found — will serve main at /."
+          fi
+
+      # ---- Production build (latest tag, root path) ----
+      - name: Checkout production tag
+        if: steps.tag.outputs.has_release == 'true'
+        run: git checkout ${{ steps.tag.outputs.ref }}
+
+      - name: Reinstall deps for production tag
+        if: steps.tag.outputs.has_release == 'true'
+        run: npm ci
+
+      - name: Build production
+        if: steps.tag.outputs.has_release == 'true'
+        run: make build
         env:
+          VITE_BASE_PATH: /
           VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+
+      - name: Stash production dist
+        if: steps.tag.outputs.has_release == 'true'
+        run: mv dist dist-prod
+
+      - name: Return to triggering ref
+        if: steps.tag.outputs.has_release == 'true'
+        run: git checkout ${{ github.sha }}
+
+      - name: Reinstall main's deps
+        if: steps.tag.outputs.has_release == 'true'
+        run: npm ci
+
+      # ---- Preview build (current main, /preview/ path) ----
+      - name: Build preview
+        run: make build
+        env:
+          # When no release exists yet this build serves at `/`; the
+          # merge step below short-circuits and ships this dist as-is.
+          # Once the first release lands, this becomes the /preview/
+          # build instead.
+          VITE_BASE_PATH: ${{ steps.tag.outputs.has_release == 'true' && '/preview/' || '/' }}
+          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+
+      # ---- Merge ----
+      - name: Merge builds
+        run: |
+          if [ -d dist-prod ]; then
+            mv dist dist-preview
+            mv dist-prod dist
+            mkdir -p dist/preview
+            # Only one CNAME may exist in the artifact (Pages picks the
+            # root). Drop the preview copy before merging in.
+            rm -f dist-preview/CNAME
+            cp -R dist-preview/. dist/preview/
+            echo "Merged: / = ${{ steps.tag.outputs.ref }}, /preview/ = ${{ github.sha }}"
+          else
+            echo "No release yet — serving main at / (no /preview/ slot)."
+          fi
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
