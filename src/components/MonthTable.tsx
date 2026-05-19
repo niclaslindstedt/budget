@@ -32,6 +32,7 @@ type Props = {
   onAddComplex: () => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  onEditRowRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
@@ -72,6 +73,7 @@ export function MonthTable({
   onAddComplex,
   onDeleteRequest,
   onEditRequest,
+  onEditRowRequest,
   onTransactionRequest,
   onMatchRuleRequest,
   onCorrectionDeleteRequest,
@@ -212,6 +214,7 @@ export function MonthTable({
                   onCommitCell={onCommitCell}
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
+                  onEditRowRequest={onEditRowRequest}
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onToggleSelect={onToggleSelect}

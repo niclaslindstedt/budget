@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ArrowLeftRight, Repeat, Tags, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Pencil, Repeat, Tags, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
 import type {
@@ -34,6 +34,11 @@ type Props = {
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  // Opens the generic edit-row modal that edits every field at once.
+  // Fired by the pen action button and by long-pressing the row.
+  // Suppressed for synthesized rows (transactions / history) since
+  // those have their own edit flows.
+  onEditRowRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   // Fires when the user clicks the pattern button on a synthesized
   // history row. Opens the wildcard rule modal seeded from the row's
@@ -45,6 +50,8 @@ type Props = {
 };
 
 const SWIPE_THRESHOLD = 40;
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_PX = 8;
 
 export function SheetRow({
   row,
@@ -60,6 +67,7 @@ export function SheetRow({
   onCommitCell,
   onDeleteRequest,
   onEditRequest,
+  onEditRowRequest,
   onTransactionRequest,
   onMatchRuleRequest,
   onToggleSelect,
@@ -74,6 +82,15 @@ export function SheetRow({
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
   const moved = useRef(false);
+  // Long-press → open the generic edit-row modal. Same coordinator
+  // pattern as `AddRowButton` / `SheetTabs`: the timer fires after
+  // LONG_PRESS_MS and `longPressTriggered` guards the trailing click
+  // so the tap that produced the long-press doesn't also fire a cell
+  // editor underneath the modal.
+  const longPressTimer = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
+  const longPressStartX = useRef(0);
+  const longPressStartY = useRef(0);
 
   // A swiped row exposes destructive action buttons; mark it active so
   // a tap outside only dismisses the swipe instead of also firing the
@@ -139,6 +156,98 @@ export function SheetRow({
     else if (dx > SWIPE_THRESHOLD) setSwiped(false);
   };
 
+  // Synthesized rows have their own edit affordances (TransactionModal
+  // for transactions, the promote flow for history) and balance-
+  // correction rows are display-only — long-press is a no-op on all of
+  // them. The select-mode tap toggles selection so we leave it alone
+  // there too.
+  const longPressEligible =
+    !selectMode && !isTransaction && !isHistory && !row.isCorrection;
+
+  function clearLongPress() {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLTableRowElement>) {
+    if (!longPressEligible) return;
+    if (e.button !== 0) return;
+    // Action-cell taps and select-cell taps drive their own handlers —
+    // starting a long-press there would race with the button click and
+    // pop the modal on top of whatever action the user meant to fire.
+    // Inputs / buttons / textareas inside data cells are skipped too so
+    // a tap on a description input still focuses the field, a tap on a
+    // category chip still opens its picker, and iOS's text-selection
+    // long-press inside an input keeps working. The pen button stays
+    // available for users who want the modal from inside a cell.
+    const target = e.target as HTMLElement;
+    if (
+      target.closest(".action-cell") ||
+      target.closest("[data-select-cell]") ||
+      target.closest("input, textarea, select, button")
+    ) {
+      return;
+    }
+    longPressTriggered.current = false;
+    longPressStartX.current = e.clientX;
+    longPressStartY.current = e.clientY;
+    clearLongPress();
+    longPressTimer.current = window.setTimeout(() => {
+      longPressTriggered.current = true;
+      longPressTimer.current = null;
+      setSwiped(false);
+      onEditRowRequest(row);
+    }, LONG_PRESS_MS);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLTableRowElement>) {
+    if (longPressTimer.current === null) return;
+    const dx = e.clientX - longPressStartX.current;
+    const dy = e.clientY - longPressStartY.current;
+    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_PX) clearLongPress();
+  }
+
+  function onPointerUp() {
+    clearLongPress();
+  }
+
+  function onContextMenu(e: React.MouseEvent<HTMLTableRowElement>) {
+    if (!longPressEligible) return;
+    // Right-click on desktop opens the same modal — mirrors the
+    // sheet-tab / add-row affordance so power users don't have to wait
+    // out the long-press timer. Skipped on action / select cells and
+    // on interactive cell controls for the same reason `onPointerDown`
+    // skips them: the native context menu (or the cell's own handler)
+    // should win there.
+    const target = e.target as HTMLElement;
+    if (
+      target.closest(".action-cell") ||
+      target.closest("[data-select-cell]") ||
+      target.closest("input, textarea, select, button")
+    ) {
+      return;
+    }
+    e.preventDefault();
+    clearLongPress();
+    longPressTriggered.current = true;
+    setSwiped(false);
+    onEditRowRequest(row);
+  }
+
+  function onClickCapture(e: React.MouseEvent<HTMLTableRowElement>) {
+    // Long-press triggered while the pointer was still down — the
+    // following click would otherwise reach the cell underneath and
+    // open its inline editor on top of the modal. Swallow it here in
+    // the capture phase so descendants never see it.
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }
+
   const rowClass = [
     swiped && !selectMode ? "is-swiped" : "",
     isCompleted ? "is-completed" : "",
@@ -165,7 +274,14 @@ export function SheetRow({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onPointerLeave={onPointerUp}
       onClick={handleRowClick}
+      onClickCapture={onClickCapture}
+      onContextMenu={onContextMenu}
       aria-selected={selectMode ? selected : undefined}
     >
       {selectMode && (
@@ -276,6 +392,19 @@ export function SheetRow({
               }}
             >
               <ArrowLeftRight size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {!isTransaction && !isHistory && (
+            <button
+              type="button"
+              className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label="Edit row"
+              onClick={() => {
+                setSwiped(false);
+                onEditRowRequest(row);
+              }}
+            >
+              <Pencil size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isTransaction && !isHistory && (

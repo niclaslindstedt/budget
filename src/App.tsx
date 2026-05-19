@@ -33,6 +33,11 @@ import {
   type EditScope,
   type HistoryPromotePrefill,
 } from "./components/EditEntryModal";
+import {
+  EditRowModal,
+  type EditRowPatch,
+  type EditRowScope,
+} from "./components/EditRowModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { ImportHistoryModal } from "./components/ImportHistoryModal";
 import {
@@ -1296,6 +1301,7 @@ function reducer(state: UserData, action: Action): UserData {
 
 type DeletePrompt = { kind: "delete"; row: Row };
 type EditPrompt = { kind: "edit"; row: Row };
+type EditRowPrompt = { kind: "edit-row"; row: Row };
 type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 type PendingSeriesEdit = {
@@ -2930,6 +2936,12 @@ function BudgetView({
     useState<RecurringPromoteContext | null>(null);
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
   const [editPrompt, setEditPrompt] = useState<EditPrompt | null>(null);
+  // Generic row editor — opens on long-press or the pen action button.
+  // Distinct from `editPrompt`, which drives `EditEntryModal` (the
+  // recurring promote / series editor).
+  const [editRowPrompt, setEditRowPrompt] = useState<EditRowPrompt | null>(
+    null,
+  );
   // Captures the most recent inline edit on a recurring row so the user
   // can choose to fan the change out to every following entry in the
   // series. `null` while no prompt is pending.
@@ -3236,6 +3248,14 @@ function BudgetView({
     );
     if (!exists) setPendingSeriesEdit(null);
   }, [pendingSeriesEdit, activeItem.rows]);
+  // Same guard for the generic edit-row modal: if the row vanishes
+  // while the modal is open the user would be staring at a stale
+  // snapshot, so close it.
+  useEffect(() => {
+    if (!editRowPrompt) return;
+    const exists = activeItem.rows.some((r) => r.id === editRowPrompt.row.id);
+    if (!exists) setEditRowPrompt(null);
+  }, [editRowPrompt, activeItem.rows]);
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
@@ -3260,6 +3280,15 @@ function BudgetView({
   );
   const onEditRequest = useCallback((row: Row) => {
     setEditPrompt({ kind: "edit", row });
+  }, []);
+  const onEditRowRequest = useCallback((row: Row) => {
+    // Synthesized rows (transaction / history) and balance-correction
+    // rows have their own edit flows; the row component already
+    // suppresses the long-press and the pen button on them, but guard
+    // here too so a stray dispatch never opens the modal on a row it
+    // can't meaningfully edit.
+    if (row.transactionId || row.historyEntryId || row.isCorrection) return;
+    setEditRowPrompt({ kind: "edit-row", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
     // Only history rows render the button, but the prop type is the
@@ -3736,6 +3765,53 @@ function BudgetView({
     },
     [dispatch, sheetId, itemId],
   );
+  const onSaveEditRow = useCallback(
+    (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
+      // Description / amount / category / type are series-wide fields —
+      // `editSeries` with a `just-this` scope is the same as a single-
+      // row write, so the same dispatch covers both the one-off and
+      // recurring cases uniformly. Date and completed are inherently
+      // per-occurrence, so they always land on the anchor row via
+      // `updateCell` regardless of scope.
+      dispatch({
+        type: "editSeries",
+        sheetId,
+        itemId,
+        rowId,
+        patch: {
+          description: patch.description,
+          amount: patch.amount,
+          categoryId: patch.categoryId,
+          typeId: patch.typeId,
+        },
+        scope,
+      });
+      const dateCol = findColumnByType(activeItem.columns, "date");
+      if (dateCol) {
+        dispatch({
+          type: "updateCell",
+          sheetId,
+          itemId,
+          rowId,
+          columnId: dateCol.id,
+          value: patch.date,
+        });
+      }
+      const completedCol = findColumnByType(activeItem.columns, "completed");
+      if (completedCol) {
+        dispatch({
+          type: "updateCell",
+          sheetId,
+          itemId,
+          rowId,
+          columnId: completedCol.id,
+          value: patch.completed,
+        });
+      }
+      setEditRowPrompt(null);
+    },
+    [activeItem.columns, dispatch, sheetId, itemId],
+  );
 
   const onToggleSelect = useCallback((rowId: string) => {
     setSelectedIds((prev) => {
@@ -3799,6 +3875,16 @@ function BudgetView({
       .filter((d): d is string => typeof d === "string");
     return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
   }, [editPrompt, activeItem.rows, dateCol]);
+  // Same defaulting for the generic edit-row modal's scope picker.
+  const editRowLastSeriesDate = useMemo<string | null>(() => {
+    const row = editRowPrompt?.row;
+    if (!row?.seriesId || !dateCol) return null;
+    const dates = activeItem.rows
+      .filter((r) => r.seriesId === row.seriesId)
+      .map((r) => r.cells[dateCol.id])
+      .filter((d): d is string => typeof d === "string");
+    return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
+  }, [editRowPrompt, activeItem.rows, dateCol]);
 
   // Resolve the seed entry for the pattern-rule modal from
   // `matchRulePrompt.entryId`. Looked up fresh each render so a
@@ -4288,6 +4374,7 @@ function BudgetView({
                 onAddComplex={onAddComplex}
                 onDeleteRequest={onDeleteRequest}
                 onEditRequest={onEditRequest}
+                onEditRowRequest={onEditRowRequest}
                 onTransactionRequest={onTransactionRequest}
                 onMatchRuleRequest={onMatchRuleRequest}
                 onCorrectionDeleteRequest={onCorrectionDeleteRequest}
@@ -4439,6 +4526,20 @@ function BudgetView({
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
         onPromoteHistory={onPromoteHistory}
+        onCreateCategory={onCreateCategory}
+        onCreateType={onCreateType}
+      />
+      <EditRowModal
+        open={editRowPrompt !== null}
+        row={editRowPrompt?.row ?? null}
+        columns={activeItem.columns}
+        categories={data.categories}
+        types={data.types}
+        typeUsageById={typeUsageById}
+        settings={data.settings}
+        lastSeriesDate={editRowLastSeriesDate}
+        onClose={() => setEditRowPrompt(null)}
+        onSave={onSaveEditRow}
         onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />
