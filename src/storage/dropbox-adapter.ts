@@ -1,3 +1,4 @@
+import { nsCloudPath, nsKey } from "../data/constants";
 import { debug } from "../utils/debug";
 import {
   type BackupOps,
@@ -56,8 +57,11 @@ export function isDropboxConfigured(): boolean {
 // the user will see when browsing Dropbox in their file manager.
 export const DROPBOX_APP_FOLDER = "budget.niclaslindstedt.se";
 
-export const DROPBOX_FILE_PATH = "/budget.json";
-export const DROPBOX_BACKUPS_FOLDER = "/backups";
+// Preview build writes to a `/preview/` subfolder inside the same
+// registered Dropbox app folder so it cannot read or overwrite the
+// production budget file or its backups.
+export const DROPBOX_FILE_PATH = nsCloudPath("/budget.json");
+export const DROPBOX_BACKUPS_FOLDER = nsCloudPath("/backups");
 export const DROPBOX_BACKUPS_INDEX_PATH = `${DROPBOX_BACKUPS_FOLDER}/index.json`;
 
 // Web URL that opens the budget file's parent folder in Dropbox's web
@@ -83,7 +87,7 @@ const SAVE_DEBOUNCE_MS = 1000;
 // `sessionStorage` survives the OAuth redirect round-trip but is
 // scoped to the tab, so a parallel auth flow in another tab can't
 // race with this one.
-const PKCE_VERIFIER_KEY = "budget.dropbox.pkce.verifier";
+const PKCE_VERIFIER_KEY = nsKey("budget.dropbox.pkce.verifier");
 
 export type FetchImpl = typeof fetch;
 

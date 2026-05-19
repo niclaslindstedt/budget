@@ -416,6 +416,13 @@ export type Settings = {
   // input, so this is an idle timeout, not a hard ceiling. Bounded
   // 1..1440 (one minute to 24 hours).
   sessionTimeoutMinutes: number;
+  // Version string of the changelog the user last acknowledged. Null on
+  // a fresh install — the app records the current version silently on
+  // first run so an existing user never sees a popup the moment they
+  // upgrade. When the running APP_VERSION compares greater than this,
+  // the "What's new" modal opens and writes the current version here
+  // on dismissal.
+  lastSeenChangelogVersion: string | null;
 };
 
 // Persistent memory of which category the user assigned to which
@@ -490,7 +497,7 @@ export type MatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 18;
+  version: 19;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

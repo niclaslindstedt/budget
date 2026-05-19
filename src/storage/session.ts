@@ -12,7 +12,9 @@
 // default below applies before the user's settings have loaded (e.g.
 // the very first `saveSession` on sign-in).
 
-const SESSION_KEY = "budget.session.v1";
+import { nsKey } from "../data/constants";
+
+const SESSION_KEY = nsKey("budget.session.v1");
 
 export const SESSION_TTL_MS = 15 * 60 * 1000;
 

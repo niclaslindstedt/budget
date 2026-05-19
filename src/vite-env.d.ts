@@ -17,3 +17,12 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Build-time constants injected via `vite.config.ts`'s `define` block.
+// `__APP_VERSION__` is the version string from `package.json`.
+// `__IS_PREVIEW__` is true when the bundle is built with a non-root
+// `VITE_BASE_PATH` (i.e. the `/preview/` build); used at runtime to
+// namespace storage keys so production data is never touched by
+// preview migrations.
+declare const __APP_VERSION__: string;
+declare const __IS_PREVIEW__: boolean;

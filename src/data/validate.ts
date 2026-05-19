@@ -717,6 +717,10 @@ function validateSettings(raw: unknown): Settings {
     raw.sessionTimeoutMinutes <= MAX_SESSION_TIMEOUT_MINUTES
       ? Math.round(raw.sessionTimeoutMinutes)
       : DEFAULT_SETTINGS.sessionTimeoutMinutes;
+  const lastSeenChangelogVersion =
+    typeof raw.lastSeenChangelogVersion === "string"
+      ? raw.lastSeenChangelogVersion
+      : null;
   return {
     startOfMonth,
     dateFormat,
@@ -732,6 +736,7 @@ function validateSettings(raw: unknown): Settings {
     abbreviateNumbers,
     fontScale,
     sessionTimeoutMinutes,
+    lastSeenChangelogVersion,
   };
 }
 

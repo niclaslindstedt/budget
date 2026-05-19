@@ -12,6 +12,7 @@ import { AccountsSheetView } from "./components/AccountsSheetView";
 import { ApplySeriesEditDialog } from "./components/ApplySeriesEditDialog";
 import { AuthScreen } from "./components/AuthScreen";
 import { BudgetLoading } from "./components/BudgetLoading";
+import { ChangelogModal } from "./components/ChangelogModal";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { BulkEditModal, type BulkPatch } from "./components/BulkEditModal";
 import { SheetModal, type SheetDraft } from "./components/SheetModal";
@@ -146,8 +147,10 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
+import { APP_VERSION } from "./utils/build-env";
 import { debug } from "./utils/debug";
 import { formatNumber, withCurrency } from "./utils/format";
+import { cmpSemver } from "./utils/semver";
 
 const log = debug("app");
 import {
@@ -2959,6 +2962,7 @@ function BudgetView({
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   // Bumped each time the user clicks the budget icon/title in the
   // header. SheetView watches this counter and re-scrolls to today's
   // row (or the current fiscal month) on every increment, even when
@@ -3365,6 +3369,50 @@ function BudgetView({
     (settings: Settings) => dispatch({ type: "updateSettings", settings }),
     [dispatch],
   );
+
+  // "What's new" popup gate. On the very first mount of the budget
+  // view (per browser profile per user), the user's
+  // `lastSeenChangelogVersion` is null — silently stamp the running
+  // version so an existing user never sees release notes for software
+  // they just installed. On subsequent mounts, open the modal only
+  // when the persisted version is strictly older than APP_VERSION.
+  // Effect intentionally runs once per mount; the closing handler
+  // writes the running version back through the same `updateSettings`
+  // action the rest of Settings uses, so the next mount won't re-open.
+  const lastSeenChangelogVersion = data.settings.lastSeenChangelogVersion;
+  const settingsRef = useRef(data.settings);
+  useEffect(() => {
+    settingsRef.current = data.settings;
+  }, [data.settings]);
+  useEffect(() => {
+    if (lastSeenChangelogVersion === null) {
+      dispatch({
+        type: "updateSettings",
+        settings: {
+          ...settingsRef.current,
+          lastSeenChangelogVersion: APP_VERSION,
+        },
+      });
+      return;
+    }
+    if (cmpSemver(lastSeenChangelogVersion, APP_VERSION) < 0) {
+      setChangelogOpen(true);
+    }
+    // Effect intentionally fires once per mount of the budget view.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onCloseChangelog = useCallback(() => {
+    setChangelogOpen(false);
+    dispatch({
+      type: "updateSettings",
+      settings: {
+        ...settingsRef.current,
+        lastSeenChangelogVersion: APP_VERSION,
+      },
+    });
+  }, [dispatch]);
+
   const onSelectSheet = useCallback(
     (id: string) => dispatch({ type: "selectSheet", sheetId: id }),
     [dispatch],
@@ -4681,6 +4729,11 @@ function BudgetView({
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
+      />
+      <ChangelogModal
+        open={changelogOpen}
+        onClose={onCloseChangelog}
+        since={lastSeenChangelogVersion}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}

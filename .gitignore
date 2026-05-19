@@ -21,3 +21,7 @@ test-results/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Build-time generated TS (rebuilt on every `make build` from
+# CHANGELOG.md by vite/changelog-plugin.ts; never edit by hand).
+src/generated/

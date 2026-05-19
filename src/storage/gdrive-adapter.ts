@@ -1,3 +1,4 @@
+import { nsCloudPath, nsKey } from "../data/constants";
 import { debug } from "../utils/debug";
 import {
   type BackupOps,
@@ -62,8 +63,10 @@ export function isGdriveConfigured(): boolean {
 }
 
 // Name of the single file the app reads / writes inside the user's
-// My Drive. Surfaced to the user in `SyncDetailsModal`.
-export const GDRIVE_FILE_NAME = "budget.json";
+// My Drive. Surfaced to the user in `SyncDetailsModal`. The preview
+// build writes to `budget-preview.json` instead, so the two builds
+// share an OAuth registration but never share a file.
+export const GDRIVE_FILE_NAME = nsCloudPath("budget.json");
 
 // `drive.file` lets the app see and manage only files it created.
 // The file is visible to the user in Drive's UI, which mirrors the
@@ -74,7 +77,9 @@ export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 // Name of the folder Drive backups live inside. Sibling to the main
 // `budget.json` file at the root of My Drive — the user can browse
 // it directly to spot-check backups or hand them to another tool.
-export const GDRIVE_BACKUPS_FOLDER_NAME = "budget-backups";
+// Preview build uses `budget-backups-preview` so production backups
+// are untouched.
+export const GDRIVE_BACKUPS_FOLDER_NAME = nsCloudPath("budget-backups");
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
 const AUTH_BASE = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -92,7 +97,7 @@ const SAVE_DEBOUNCE_MS = 1000;
 // scoped to the tab, so a parallel auth flow in another tab can't
 // race with this one. Per-provider key so the Dropbox and Drive
 // verifiers can coexist if the user kicks off both.
-const PKCE_VERIFIER_KEY = "budget.gdrive.pkce.verifier";
+const PKCE_VERIFIER_KEY = nsKey("budget.gdrive.pkce.verifier");
 
 export type FetchImpl = typeof fetch;
 

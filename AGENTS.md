@@ -128,19 +128,24 @@ that way.
 
 ## Where new code goes
 
-| Change                           | Location                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------- |
-| New UI section / page            | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                 |
-| Reusable React hook              | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                       |
-| Persisted-data shape changes     | `src/data/` (add types + a migration if needed)                                       |
-| Public JSON Schema document      | `src/data/schema.ts` (rendered at `/schema`)                                          |
-| Read/write to `localStorage`     | `src/storage/local.ts`                                                                |
-| Export / import file format      | `src/storage/file.ts`                                                                 |
-| Vite config (base path, plugins) | `vite.config.ts`                                                                      |
-| SEO copy / per-route head        | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                          |
-| Site-wide discovery files        | `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, `public/og-default.png` |
-| ESLint rules, TS config          | `eslint.config.js`, `tsconfig.app.json`                                               |
-| New `make` target                | `Makefile` + the README Usage table + `ci.yml`                                        |
+| Change                                  | Location                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------- |
+| New UI section / page                   | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                 |
+| Reusable React hook                     | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                       |
+| Persisted-data shape changes            | `src/data/` (add types + a migration if needed)                                       |
+| Public JSON Schema document             | `src/data/schema.ts` (rendered at `/schema`)                                          |
+| Read/write to `localStorage`            | `src/storage/local.ts`                                                                |
+| Export / import file format             | `src/storage/file.ts`                                                                 |
+| Vite config (base path, plugins)        | `vite.config.ts`                                                                      |
+| Vite plugin (build-time codegen)        | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                      |
+| Build-time generated TS                 | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                        |
+| New persisted storage key               | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`        |
+| SEO copy / per-route head               | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                          |
+| Site-wide discovery files               | `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, `public/og-default.png` |
+| ESLint rules, TS config                 | `eslint.config.js`, `tsconfig.app.json`                                               |
+| New `make` target                       | `Makefile` + the README Usage table + `ci.yml`                                        |
+| Changelog fragment (user-affecting PRs) | `.changes/unreleased/<unix-ts>-<slug>.md`                                             |
+| Release / changelog tooling             | `scripts/release/*.mjs` (collator, extractor, PR check)                               |
 
 ## Conventions
 
@@ -193,13 +198,16 @@ in).
 
 ## Documentation sync points
 
-| If you change …          | Also update …                                                                      |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| `package.json` scripts   | `Makefile`, `README.md` Usage section                                              |
-| `Makefile` targets       | `README.md` Usage section, `ci.yml`                                                |
-| `src/` top-level layout  | `README.md`, this file                                                             |
-| Node version in `.nvmrc` | `ci.yml`, `pages.yml`, `README.md`                                                 |
-| Persisted-data shape     | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`) |
+| If you change …                                 | Also update …                                                                                                         |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `package.json` scripts                          | `Makefile`, `README.md` Usage section                                                                                 |
+| `Makefile` targets                              | `README.md` Usage section, `ci.yml`                                                                                   |
+| `src/` top-level layout                         | `README.md`, this file                                                                                                |
+| Node version in `.nvmrc`                        | `ci.yml`, `pages.yml`, `README.md`                                                                                    |
+| Persisted-data shape                            | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`)                                    |
+| CHANGELOG fragment format                       | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below |
+| `nsKey` / `nsCloudPath` / `nsIdbName` semantics | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`       |
+| Vite `base` handling                            | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                |
 
 ## Agent analysis — the JSON Schema at `/schema`
 
@@ -258,6 +266,142 @@ When you change the persisted shape:
   `vite.config.ts` (to `"/<repo>/"`) and the README live-site URL,
   and remove `public/CNAME`.
 
+## Releases and changelog
+
+### Semver and release cadence
+
+The app uses semantic versioning. Bumps are chosen at release time
+via the `bump` input on `.github/workflows/release.yml`
+(`workflow_dispatch` only):
+
+- `patch` — bug fixes, no visible behaviour change beyond the fix.
+- `minor` — new user-facing feature, additive change, or visible
+  behaviour change. Default and most common.
+- `major` — breaking change to the persisted-data shape that an
+  older build cannot read, or a deliberate UX overhaul.
+
+The first release ever cut bumps `0.0.1` → `0.1.0`. The running
+bundle exposes its version as `__APP_VERSION__` (injected by Vite's
+`define` block from `package.json`); `src/utils/build-env.ts`
+re-exports it as `APP_VERSION` for app code.
+
+### Changeset fragments
+
+When a PR introduces a **user-visible** change, drop a small markdown
+file in `.changes/unreleased/<unix-ts>-<slug>.md`:
+
+```
+---
+type: Added
+---
+
+One-line description users will read in the "What's new" popup.
+```
+
+`type:` is one of `Added | Changed | Fixed | Removed | Security |
+Deprecated` (Keep a Changelog). The body is markdown; one line is
+usually plenty, multi-line bodies are fine and render under one
+bullet. The timestamp prefix on the filename keeps the lexical sort
+deterministic so concatenation roughly mirrors commit order.
+
+**Only add a fragment when the change affects users.** Skip a
+fragment for: pure refactors, build / CI / test tweaks, dependency
+bumps that don't change behaviour, doc-only edits (`*.md`,
+`docs/`), and tooling changes (`eslint.config.js`,
+`tsconfig*.json`, `.prettierrc*`, etc.). The `changeset` job in
+`ci.yml` enforces a fragment per PR; opt out by labelling the PR
+`no-changelog` when the change genuinely has no user-visible
+impact. The script's skip-list lives in
+`scripts/release/check-changeset.mjs` — extend it when adding new
+"obviously not user-visible" path patterns.
+
+### End-to-end release flow
+
+1. Maintainer dispatches the `Release` workflow with a
+   `patch | minor | major` bump.
+2. The workflow runs `npm version <bump> --no-git-tag-version` and
+   `scripts/release/collate-changelog.mjs`, which converts
+   `.changes/unreleased/*.md` into a new `## [X.Y.Z] - YYYY-MM-DD`
+   section in `CHANGELOG.md` and deletes the consumed fragments.
+3. The workflow commits the bump + changelog + fragment deletion,
+   tags `vX.Y.Z`, and pushes both to `main`.
+4. `gh release create` publishes a GitHub Release whose body is the
+   new section (sliced by `scripts/release/extract-section.mjs`).
+5. The workflow chains into `pages.yml` via `workflow_call` so the
+   new tag is served at `/` immediately, instead of waiting for the
+   next push to trigger Pages.
+
+The CHANGELOG.md surface is rendered inside the app in two places —
+both fed by the build-time parser in `vite/changelog-plugin.ts`,
+which emits `src/generated/changelog.ts`:
+
+- `src/components/ChangelogPage.tsx` at `/changelog/` (linked from
+  the Settings footer next to Privacy policy and Data schema).
+- `src/components/ChangelogModal.tsx` — the "What's new" popup
+  that auto-opens on first mount after an upgrade, gated by
+  `Settings.lastSeenChangelogVersion`. Silent on a fresh install:
+  the running version is stamped to last-seen so existing users
+  don't get spammed with notes for software they just installed.
+
+### Preview deploy and data isolation
+
+`/preview/` always serves the current `main`. Every push to `main`
+triggers `pages.yml`, which:
+
+1. Resolves the latest `v*` tag with `git describe`. If a tag
+   exists, checks it out and builds with `VITE_BASE_PATH=/`. If
+   not (i.e. before the first release), the workflow falls back to
+   serving `main` at `/` with no preview slot — same as the
+   pre-release-pipeline behaviour, so the change was safe to land
+   ahead of the first dispatch.
+2. Returns to `main` and builds with `VITE_BASE_PATH=/preview/`.
+3. Merges the two `dist/` trees into one Pages artifact, deleting
+   the preview's `CNAME` first (only the root copy is allowed).
+
+The preview build sets `<meta name="robots" content="noindex,nofollow">`
+on every emitted alias so search engines never index a second copy
+of the app. JSON-LD `@id`s remain canonical (point at the
+production `SITE_URL`) so the preview doesn't fork structured-data
+entities.
+
+**Data isolation.** Vite's `define` block exposes
+`__IS_PREVIEW__` to the bundle when `VITE_BASE_PATH !== "/"`.
+That flips on a `STORAGE_NS = "preview"` constant inside
+`src/data/constants.ts`, which threads through three helpers that
+every persistence surface must be routed through:
+
+- `nsKey(key)` — for any `localStorage` / `sessionStorage` key
+  starting with `budget.` (data buckets, users registry, backend
+  preference, cloud tokens, encryption mode, session cache, PKCE
+  verifiers, the new `lastSeenChangelogVersion` is in `Settings`
+  so it rides the bucket key automatically).
+- `nsCloudPath(path)` — for cloud storage paths and bare cloud
+  filenames. Dropbox writes to `/preview/budget.json` and
+  `/preview/backups/` inside the same registered app folder;
+  GDrive writes to `budget-preview.json` and a
+  `budget-preview-backups` folder in My Drive.
+- `nsIdbName(name)` — for IndexedDB database names. The
+  FileSystem-handle DB becomes `budget-folder-handles-preview`.
+
+When introducing a new persisted surface, route it through the
+appropriate helper from day one. Forgetting one is a silent way to
+break the "preview cannot touch production data" invariant.
+
+The OAuth redirect URI helper at
+`src/storage/oauth-pkce.ts:37-39` already derives the URI from
+`window.location.origin + pathname`, so the preview flow requests
+`https://budget.niclaslindstedt.se/preview` as its redirect
+automatically. **Manual one-time setup:** add that URL to the
+authorized redirect URI list on both the Dropbox app console and
+the Google Cloud OAuth consent screen, or the preview's "Connect"
+buttons return an `unauthorized redirect` error from the provider.
+Documented in the release skill's pre-flight checklist.
+
+The user-picked folder backend (File System Access API) is the one
+surface where the namespace can't intercede — the user chose the
+directory. Picking the same directory in both builds is on them;
+the in-app folder picker would write to `budget.json` either way.
+
 ## OSS*SPEC.md exceptions — the website \_is* the project
 
 `OSS_SPEC.md` is written for a hypothetical project shape where the
@@ -280,7 +424,6 @@ list before touching anything.
 
 | Spec section                                                                                                                | Why it does not apply here                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| §10.3 release pipeline (`version-bump.yml`, `release.yml`, `scripts/`)                                                      | There is nothing to "release". The single deliverable is a static bundle that GitHub Pages redeploys on every push to `main` (see `pages.yml`). No registry publishes — no npm, no crates, no PyPI — and therefore no need for trusted publishing, OIDC, version bumps, `CHANGELOG.md` regeneration, or matrix release builds. `CHANGELOG.md` exists as a courtesy stub but is not driven by a workflow.                                                                                                                                                                                                                                                                                                                 |
 | §10.5 release toolchain pin file beyond `.nvmrc`                                                                            | Node is the only toolchain. `.nvmrc` already pins it and `ci.yml` / `pages.yml` read from it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | §11.2 `website/` directory + source-extraction script                                                                       | There is no separate website to keep in sync with the product — the product IS the website. The source-extraction pattern (`website/scripts/extract-source-data.*` emitting `website/src/generated/sourceData.*`) exists to prevent a showcase from drifting out of sync with the thing it showcases; here there is nothing to mirror.                                                                                                                                                                                                                                                                                                                                                                                   |
 | §11.3 SEO scaffolding — partial: per-route prerendering of app content, per-content OG image generator, RSS/Atom/JSON feeds | The user's ledger lives in `localStorage` — there is nothing to prerender for the app's `/` route, and there is no time-ordered content stream to feed. The three static surfaces the site exposes (`/`, `/privacy/`, `/schema/`) DO get the §11.3.2 head requirements, JSON-LD, sitemap, robots, llms.txt, and a single shared 1200×630 OG image — wired by the `emit-path-alias-with-seo` plugin in `vite.config.ts` from the route table in `src/seo/routes.ts`. Adding per-route prerendered bodies, per-content OG images, or RSS/Atom feeds would be cargo-culted noise here; an inline `<noscript>` fallback in `index.html` gives crawlers enough body content to avoid the soft-404 trap §11.3.1 worries about. |
@@ -312,16 +455,20 @@ Agent-driven maintenance playbooks live under
 discovery paths (`.claude/skills/`) are symlinks to `.agent/skills/`
 so every tool sees the same canonical set.
 
-| Skill           | Run when                                                                                                                                                                                                                       | Run order |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| `update-docs`   | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates. | 1         |
-| `update-readme` | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                             | 2         |
-| `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                            | last      |
-| `maintenance`   | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                       | umbrella  |
+| Skill           | Run when                                                                                                                                                                                                                                                                      | Run order |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `update-docs`   | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                | 1         |
+| `update-readme` | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                            | 2         |
+| `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                           | last      |
+| `maintenance`   | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                      | umbrella  |
+| `release`       | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe. | manual    |
 
 `update-manpages` and `update-website` are listed in `OSS_SPEC.md`
 §21.5 but are intentionally omitted here — see the "OSS_SPEC.md
-exceptions" section above. New skills go in this table in the order
+exceptions" section above. The `release` skill is a manual playbook
+(maintainer dispatches a workflow), so it is **not** part of the
+`maintenance` umbrella — that umbrella only runs automatic sync
+skills. New automatic-sync skills go in this table in the order
 they should run — upstream fixes first, downstream mirrors last;
 `sync-oss-spec` always runs last to catch residual violations, and
 the `maintenance` umbrella reflects the same order in its own

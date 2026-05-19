@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 18,
+    version: 19,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -984,6 +984,48 @@ describe("migrate", () => {
       expect(validated.value.settings.fontScale).toBe(
         DEFAULT_SETTINGS.fontScale,
       );
+    }
+  });
+
+  it("v18 → v19: bumps version, lets the validator default lastSeenChangelogVersion to null", () => {
+    const v18 = {
+      version: 18,
+      activeSheetId: "s1",
+      categories: [],
+      types: [],
+      transactions: [],
+      // Settings as they'd look pre-v19: no lastSeenChangelogVersion field.
+      settings: (() => {
+        const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+        delete s.lastSeenChangelogVersion;
+        return s;
+      })(),
+      accounts: [],
+      history: {},
+      historyImports: {},
+      merchantHints: {},
+      recurringDismissals: [],
+      transferCollapseDismissals: [],
+      matchRules: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v18);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+    if (validated.ok) {
+      expect(validated.value.settings.lastSeenChangelogVersion).toBeNull();
     }
   });
 

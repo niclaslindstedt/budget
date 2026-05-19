@@ -1,3 +1,4 @@
+import { nsKey } from "../data/constants";
 import {
   clearRawStorage,
   readRawStorage,
@@ -30,23 +31,23 @@ const GDRIVE_TOKEN_PREFIX = "budget.gdrive.token.";
 const ENCRYPTION_PREFIX = "budget.encryption.";
 
 function backendKey(userId: string): string {
-  return `${BACKEND_PREFIX}${userId}`;
+  return nsKey(`${BACKEND_PREFIX}${userId}`);
 }
 
 function dropboxTokenKey(userId: string): string {
-  return `${DROPBOX_TOKEN_PREFIX}${userId}`;
+  return nsKey(`${DROPBOX_TOKEN_PREFIX}${userId}`);
 }
 
 function dropboxRefreshKey(userId: string): string {
-  return `${DROPBOX_REFRESH_PREFIX}${userId}`;
+  return nsKey(`${DROPBOX_REFRESH_PREFIX}${userId}`);
 }
 
 function gdriveTokenKey(userId: string): string {
-  return `${GDRIVE_TOKEN_PREFIX}${userId}`;
+  return nsKey(`${GDRIVE_TOKEN_PREFIX}${userId}`);
 }
 
 function encryptionKey(userId: string): string {
-  return `${ENCRYPTION_PREFIX}${userId}`;
+  return nsKey(`${ENCRYPTION_PREFIX}${userId}`);
 }
 
 export function getBackend(userId: string): BackendId {

@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 18 as const;
+export const LATEST_VERSION = 19 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -298,6 +298,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // rewriting — the version bump just flags that this build understands
   // the new shape.
   17: (v17) => ({ ...v17, version: 18 }),
+
+  // v18 → v19: introduces `Settings.lastSeenChangelogVersion`, the
+  // version string the user last acknowledged on the "What's new"
+  // popup. The validator defaults missing values to null so v18
+  // records pass the v19 validator unchanged — the field flips to a
+  // real version string the first time the running app's mount-time
+  // check stamps it.
+  18: (v18) => ({ ...v18, version: 19 }),
 };
 
 export type MigrationResult = {

@@ -179,8 +179,58 @@ export const SCHEMA_ROUTE: RouteSeo = {
   ],
 };
 
+export const CHANGELOG_ROUTE: RouteSeo = {
+  path: "/changelog/",
+  title: "Changelog — Budget",
+  description:
+    "Release notes for the Budget app. Each version lists the user-" +
+    "visible additions, changes, and fixes shipped in that release, " +
+    "following Keep a Changelog conventions and semantic versioning.",
+  ogType: "article",
+  jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "@id": `${absoluteUrl("/changelog/")}#article`,
+      url: absoluteUrl("/changelog/"),
+      headline: "Budget changelog",
+      description:
+        "Release notes for the Budget app, by version, following Keep " +
+        "a Changelog conventions and semantic versioning.",
+      inLanguage: SITE_LANGUAGE,
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#app` },
+      author: { "@id": `${SITE_URL}/#author` },
+      publisher: { "@id": `${SITE_URL}/#author` },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": absoluteUrl("/changelog/"),
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: `${SITE_URL}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Changelog",
+          item: absoluteUrl("/changelog/"),
+        },
+      ],
+    },
+  ],
+};
+
 export const ROUTES: readonly RouteSeo[] = [
   HOME_ROUTE,
   PRIVACY_ROUTE,
   SCHEMA_ROUTE,
+  CHANGELOG_ROUTE,
 ];
