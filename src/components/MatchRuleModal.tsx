@@ -25,9 +25,10 @@ type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
 // UI-only mode that extends the persisted `amountSign` with a fourth
 // "range" option. Range mode is mutually exclusive with the sign
 // filters: picking it hides the sign filter and surfaces the bounded
-// amount inputs below; picking Any/Negative/Positive clears the
-// bounds. The persisted `amountSign` stays "any" while in range mode
-// — the bounds carry their own sign — so the data model is unchanged.
+// amount inputs between Amount and Transfers; picking Any / Negative /
+// Positive clears the bounds. The persisted `amountSign` stays "any"
+// while in range mode — the bounds carry their own sign — so the
+// data model is unchanged.
 type SignMode = AmountSign | "range";
 
 export type MatchRuleDraft = {
@@ -345,68 +346,65 @@ export function MatchRuleModal({
           </div>
         </div>
 
-        <fieldset className="mt-4 rounded border border-line bg-surface-3 p-3">
+        <fieldset className="mt-4 flex flex-col gap-3 rounded border border-line bg-surface-3 p-3">
           <legend className="px-1 text-xs text-muted">Filters</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Amount</span>
-              <SegmentedRadio
-                name="amount-sign"
-                value={signMode}
-                onChange={(v) => setSignMode(v as SignMode)}
-                options={[
-                  { value: "any", label: "Any" },
-                  { value: "negative", label: "Negative" },
-                  { value: "positive", label: "Positive" },
-                  { value: "range", label: "Range" },
-                ]}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Transfers</span>
-              <SegmentedRadio
-                name="transfer-filter"
-                value={transferFilter}
-                onChange={(v) => setTransferFilter(v as TransferFilter)}
-                options={[
-                  { value: "any", label: "Any" },
-                  { value: "exclude", label: "Exclude" },
-                  { value: "only", label: "Only" },
-                ]}
-              />
-            </div>
-          </div>
-          {isRangeMode && (
-            <div className="mt-3 flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Range</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <SignedAmountInput
-                  value={amountMinText}
-                  negative={amountMinNegative}
-                  placeholder="From"
-                  settings={settings}
-                  onChangeText={setAmountMinText}
-                  onToggleSign={() => setAmountMinNegative((s) => !s)}
-                  ariaLabel="Amount from"
-                />
-                <span className="text-xs text-muted">to</span>
-                <SignedAmountInput
-                  value={amountMaxText}
-                  negative={amountMaxNegative}
-                  placeholder="To"
-                  settings={settings}
-                  onChangeText={setAmountMaxText}
-                  onToggleSign={() => setAmountMaxNegative((s) => !s)}
-                  ariaLabel="Amount to"
-                />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Amount</span>
+            <SegmentedRadio
+              name="amount-sign"
+              value={signMode}
+              onChange={(v) => setSignMode(v as SignMode)}
+              options={[
+                { value: "any", label: "Any" },
+                { value: "negative", label: "Negative" },
+                { value: "positive", label: "Positive" },
+                { value: "range", label: "Range" },
+              ]}
+            />
+            {isRangeMode && (
+              <div className="mt-1 flex flex-col gap-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SignedAmountInput
+                    value={amountMinText}
+                    negative={amountMinNegative}
+                    placeholder="From"
+                    settings={settings}
+                    onChangeText={setAmountMinText}
+                    onToggleSign={() => setAmountMinNegative((s) => !s)}
+                    ariaLabel="Amount from"
+                  />
+                  <span className="text-xs text-muted">to</span>
+                  <SignedAmountInput
+                    value={amountMaxText}
+                    negative={amountMaxNegative}
+                    placeholder="To"
+                    settings={settings}
+                    onChangeText={setAmountMaxText}
+                    onToggleSign={() => setAmountMaxNegative((s) => !s)}
+                    ariaLabel="Amount to"
+                  />
+                </div>
+                {rangeInverted && (
+                  <p className="text-xs text-danger">
+                    "From" must be less than or equal to "To".
+                  </p>
+                )}
               </div>
-              {rangeInverted && (
-                <p className="text-xs text-danger">
-                  "From" must be less than or equal to "To".
-                </p>
-              )}
-            </div>
-          )}
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Transfers</span>
+            <SegmentedRadio
+              name="transfer-filter"
+              value={transferFilter}
+              onChange={(v) => setTransferFilter(v as TransferFilter)}
+              options={[
+                { value: "any", label: "Any" },
+                { value: "exclude", label: "Exclude" },
+                { value: "only", label: "Only" },
+              ]}
+            />
+          </div>
         </fieldset>
 
         <div className="mt-4">
