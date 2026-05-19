@@ -705,6 +705,10 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.abbreviateNumbers === "boolean"
       ? raw.abbreviateNumbers
       : DEFAULT_SETTINGS.abbreviateNumbers;
+  const alwaysAbbreviateBalance =
+    typeof raw.alwaysAbbreviateBalance === "boolean"
+      ? raw.alwaysAbbreviateBalance
+      : DEFAULT_SETTINGS.alwaysAbbreviateBalance;
   const fontScale =
     typeof raw.fontScale === "number" &&
     Number.isFinite(raw.fontScale) &&
@@ -736,6 +740,7 @@ function validateSettings(raw: unknown): Settings {
     showCurrency,
     showDecimals,
     abbreviateNumbers,
+    alwaysAbbreviateBalance,
     fontScale,
     sessionTimeoutMinutes,
     lastSeenChangelogVersion,

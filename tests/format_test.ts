@@ -9,6 +9,7 @@ import {
   formatDate,
   formatDayOnly,
   formatNumber,
+  formatRunningBalance,
   formatShortDate,
   normalizeAmountInput,
   parseAmount,
@@ -129,6 +130,18 @@ describe("formatNumber", () => {
       ),
     ).toBe("1.2M");
   });
+
+  it("bypasses the threshold when alwaysAbbreviate is on", () => {
+    const s = settings({ abbreviateNumbers: true });
+    expect(formatNumber(0, s, { alwaysAbbreviate: true })).toBe("0K");
+    expect(formatNumber(900, s, { alwaysAbbreviate: true })).toBe("1K");
+    expect(formatNumber(9_999, s, { alwaysAbbreviate: true })).toBe("10K");
+  });
+
+  it("ignores alwaysAbbreviate when abbreviateNumbers is off", () => {
+    const s = settings({ abbreviateNumbers: false });
+    expect(formatNumber(9_999, s, { alwaysAbbreviate: true })).toBe("9 999");
+  });
 });
 
 describe("formatAmount / formatBalance", () => {
@@ -238,6 +251,37 @@ describe("formatAmount / formatBalance", () => {
         }),
       ),
     ).toBe("1 234");
+  });
+});
+
+describe("formatRunningBalance", () => {
+  it("matches formatBalance when alwaysAbbreviateBalance is off", () => {
+    const s = settings({
+      abbreviateNumbers: true,
+      alwaysAbbreviateBalance: false,
+    });
+    expect(formatRunningBalance(1234, s)).toBe(formatBalance(1234, s));
+    expect(formatRunningBalance(12_345, s)).toBe(formatBalance(12_345, s));
+  });
+
+  it("abbreviates small balances when both toggles are on", () => {
+    const s = settings({
+      abbreviateNumbers: true,
+      alwaysAbbreviateBalance: true,
+    });
+    expect(formatRunningBalance(1234, s)).toBe("1K kr");
+    expect(formatRunningBalance(9_999, s)).toBe("10K kr");
+    // Above the threshold the same compact form appears either way.
+    expect(formatRunningBalance(12_500, s)).toBe("13K kr");
+  });
+
+  it("falls back to the precise pipeline when abbreviation is off", () => {
+    const s = settings({
+      abbreviateNumbers: false,
+      alwaysAbbreviateBalance: true,
+      showDecimals: true,
+    });
+    expect(formatRunningBalance(1234, s)).toBe("1 234,00 kr");
   });
 });
 

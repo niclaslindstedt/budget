@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 20,
+    version: 21,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -1032,6 +1032,52 @@ describe("migrate", () => {
     expect(validated.ok).toBe(true);
     if (validated.ok) {
       expect(validated.value.settings.lastSeenChangelogVersion).toBeNull();
+    }
+  });
+
+  it("v20 → v21: bumps version, lets the validator default alwaysAbbreviateBalance", () => {
+    const v20 = {
+      version: 20,
+      activeSheetId: "s1",
+      categories: [],
+      types: [],
+      hiddenPresetTypeIds: [],
+      hiddenPresetCategoryIds: [],
+      transactions: [],
+      // Settings as they'd look pre-v21: no alwaysAbbreviateBalance field.
+      settings: (() => {
+        const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+        delete s.alwaysAbbreviateBalance;
+        return s;
+      })(),
+      accounts: [],
+      history: {},
+      historyImports: {},
+      merchantHints: {},
+      recurringDismissals: [],
+      transferCollapseDismissals: [],
+      matchRules: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v20);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+    if (validated.ok) {
+      expect(validated.value.settings.alwaysAbbreviateBalance).toBe(
+        DEFAULT_SETTINGS.alwaysAbbreviateBalance,
+      );
     }
   });
 

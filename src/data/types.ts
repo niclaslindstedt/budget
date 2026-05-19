@@ -403,6 +403,13 @@ export type Settings = {
   showCurrency: boolean;
   showDecimals: boolean;
   abbreviateNumbers: boolean;
+  // Bypass the 10 000 abbreviation threshold for the running-balance
+  // column on the main sheet view, so a column reads as uniformly
+  // abbreviated rather than a mix of "12K" and "9 432". Has no effect
+  // unless `abbreviateNumbers` is also on, and never affects the amount
+  // column — small amounts stay precise because the amount is the
+  // primary value while the balance is a derived snapshot.
+  alwaysAbbreviateBalance: boolean;
   // Multiplier applied to the base UI font size. 1 is the default;
   // smaller values fit more on screen, larger values help readability.
   // Stored as a plain number (not a preset id) so a future slider can
@@ -497,7 +504,7 @@ export type MatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 20;
+  version: 21;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

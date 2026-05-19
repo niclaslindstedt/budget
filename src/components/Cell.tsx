@@ -17,8 +17,8 @@ import type {
 } from "../data/types";
 import {
   formatAmountForInput,
-  formatBalance,
   formatNumber,
+  formatRunningBalance,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
@@ -134,7 +134,7 @@ export function Cell({
             }`}
             aria-readonly="true"
           >
-            <span className="block">{formatBalance(n, settings)}</span>
+            <span className="block">{formatRunningBalance(n, settings)}</span>
           </td>
         );
       }
@@ -238,7 +238,7 @@ export function Cell({
              display:flex) gets a full-width child for `text-right` to bite
              on — otherwise the bare text node becomes a narrow anonymous
              flex item that sits at the start of the cell. */}
-          <span className="block">{formatBalance(n, settings)}</span>
+          <span className="block">{formatRunningBalance(n, settings)}</span>
         </td>
       );
     }
