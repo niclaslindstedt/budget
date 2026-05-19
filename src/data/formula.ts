@@ -12,9 +12,14 @@
 //   arg       := expr | STRING
 //   ident-path := IDENT ("." IDENT)*
 //
-// Sheet references are stored as `sheet("<sheetId>")` so they survive
-// a rename; the editor swaps the id for the current name on open
-// (`formulaToDisplay`) and back to id on submit (`formulaToStored`).
+// Cross-sheet references are written as
+// `sheet("<sheetId>", <variable>)` and stored with the target's stable
+// id so they survive a rename. The editor swaps the id for the current
+// name on open (`formulaToDisplay`) and back to id on submit
+// (`formulaToStored`). The legacy `sheet("<sheetId>").<prop>` dotted
+// form is still accepted by the parser so existing exports keep
+// resolving — the parser packs the trailing path into a trailing
+// string argument so both forms share the same evaluator shape.
 
 import type { Sheet } from "./types";
 
@@ -231,7 +236,9 @@ class Parser {
           while (this.match("op", ",")) args.push(this.parseArg());
           this.expect("op", ")");
         }
-        // method-chain: sheet("…").endOfMonthBalance — re-enter dot path.
+        // Legacy method-chain form: `sheet("…").endOfMonthBalance`.
+        // Kept so older exports continue to parse — new entries use
+        // the comma form `sheet("…", endOfMonthBalance)` instead.
         if (this.match("op", ".")) {
           const path: string[] = [];
           path.push(String(this.expect("ident").value));
@@ -244,7 +251,8 @@ class Parser {
             args: [
               ...args,
               // Trailing ident-path goes in as a string arg so the
-              // evaluator can dispatch on `sheet(id).<prop>` uniformly.
+              // legacy and comma-arg forms reach the evaluator with
+              // the same shape.
               { kind: "string", value: path.join(".") },
             ],
           };
@@ -452,19 +460,35 @@ function resolveCall(
         : ctx.thisMonth.byType;
     return map.get(id) ?? 0;
   }
-  // sheet("<id>").property — the parser packs the dotted property into
-  // the last string arg.
+  // Two surface forms map to the same shape here:
+  //   `sheet("<id>", <variable>)`  — new, the variable is an identifier
+  //   `sheet("<id>", "<prop>")`    — same idea but the prop is a string
+  //   `sheet("<id>").<prop>`       — legacy; the parser packs the
+  //                                  trailing dot-path into a string
+  // arg, so it reaches us looking like the second form. All three end
+  // up as (string id, prop-name) before we hit `lookupSheet`.
   if (name === "sheet") {
-    if (
-      args.length !== 2 ||
-      args[0].kind !== "string" ||
-      args[1].kind !== "string"
-    )
+    if (args.length !== 2 || args[0].kind !== "string")
       throw new Error(
-        'sheet("<id>").<prop> — expected one string id and one property',
+        'sheet("<name>", <variable>) — expected a sheet name and a variable',
       );
     const sheetId = args[0].value;
-    const prop = args[1].value;
+    const second = args[1];
+    let prop: string;
+    if (second.kind === "string") {
+      prop = second.value;
+    } else if (second.kind === "var" && second.path.length >= 1) {
+      // A bare identifier (the new pill-friendly form) or a dotted path
+      // like `prevMonth.income`. lookupSheet receives the full path
+      // joined with `.` so the cross-sheet resolver can decide how to
+      // split it (it already understands `prevMonth.*` on the local
+      // side, the implementation just needs to plumb it through).
+      prop = second.path.join(".");
+    } else {
+      throw new Error(
+        "sheet(…) second argument must be a variable name (e.g. endOfMonthBalance)",
+      );
+    }
     const v = ctx.lookupSheet(sheetId, prop);
     if (v === null) throw new Error(`Unknown sheet "${sheetId}"`);
     return v;
@@ -472,24 +496,47 @@ function resolveCall(
   throw new Error(`Unknown function "${name}"`);
 }
 
+// Names every formula author may invoke. Exported so the editor can
+// highlight function-call sites distinctly from plain variables and
+// from numeric literals, without re-deriving the list from the
+// suggestion table.
+export const FORMULA_FUNCTION_NAMES: ReadonlySet<string> = new Set([
+  "min",
+  "max",
+  "clamp",
+  "abs",
+  "round",
+  "categoryTotal",
+  "typeTotal",
+  "sheet",
+]);
+
 // ---------- Name ↔ id transforms ----------
 
-// Replace every `sheet("<id>")` token in the stored form with
-// `sheet("<currentName>")` so the editor renders human-readable names.
-// Unknown ids pass through verbatim — the editor surfaces them so the
-// user sees what's broken.
+// Replace every `sheet("<id>"` token in the stored form with
+// `sheet("<currentName>"` so the editor renders human-readable names.
+// The regex matches the literal up to but not including the closing
+// `)` or `,`, so both surface forms (`sheet("X")` and `sheet("X", Y)`)
+// are handled with a single rule. Unknown ids pass through verbatim
+// — the editor surfaces them so the user sees what's broken.
 export function formulaToDisplay(
   stored: string,
   sheets: readonly Sheet[],
 ): string {
   const byId = new Map<string, string>();
   for (const s of sheets) byId.set(s.id, s.name);
-  return stored.replace(/sheet\(\s*"([^"]*)"\s*\)/g, (_match, id: string) => {
-    const name = byId.get(id);
-    return name === undefined
-      ? `sheet("${id}")`
-      : `sheet(${JSON.stringify(name)})`;
-  });
+  return stored.replace(
+    /sheet\(\s*"([^"]*)"\s*(?=[,)])/g,
+    (_match, id: string) => {
+      // The lookahead leaves the original `)` or `,` in place, so the
+      // replacement must NOT re-emit the closing paren — only the
+      // `sheet("<name>"` prefix gets rewritten.
+      const name = byId.get(id);
+      return name === undefined
+        ? `sheet("${id}"`
+        : `sheet(${JSON.stringify(name)}`;
+    },
+  );
 }
 
 // Reverse direction. Resolves each `sheet("<name>")` to its id; rejects
@@ -506,12 +553,17 @@ export function formulaToStored(
   }
   const knownIds = new Set(sheets.map((s) => s.id));
   let err: string | null = null;
+  // The lookahead leaves the closing `)` or `,` in place so both surface
+  // forms (`sheet("X")` legacy and `sheet("X", Y)` new) round-trip
+  // cleanly. We only ever rewrite the first quoted argument — the
+  // optional second argument (the property / variable) is left alone.
   const out = displayed.replace(
-    /sheet\(\s*"([^"]*)"\s*\)/g,
+    /sheet\(\s*"([^"]*)"\s*(?=[,)])/g,
     (_match, token: string) => {
-      // Pass-through if the token is already a known id — the user can
-      // paste an id from JSON export and it'll just work.
-      if (knownIds.has(token)) return `sheet("${token}")`;
+      // The lookahead leaves the original `)` or `,` in place, so the
+      // replacement must NOT re-emit the closing paren — only the
+      // `sheet("<id>"` prefix gets rewritten.
+      if (knownIds.has(token)) return `sheet("${token}"`;
       const matches = byName.get(token) ?? [];
       if (matches.length === 0) {
         err = `Unknown sheet "${token}"`;
@@ -521,7 +573,7 @@ export function formulaToStored(
         err = `Multiple sheets named "${token}" — rename one to disambiguate`;
         return _match;
       }
-      return `sheet("${matches[0]}")`;
+      return `sheet("${matches[0]}"`;
     },
   );
   if (err) return { ok: false, error: err };
@@ -600,9 +652,9 @@ export const FORMULA_FUNCTIONS: FormulaSuggestion[] = [
     description: "Sum in this month for the given type id.",
   },
   {
-    insert: 'sheet("").endOfMonthBalance',
-    label: 'sheet("<name>").endOfMonthBalance',
-    description: "Closing balance of the named sheet for this row's month.",
+    insert: 'sheet("", endOfMonthBalance)',
+    label: 'sheet("<name>", <variable>)',
+    description: "Read a variable from another sheet for this row's month.",
   },
   {
     insert: "min(, )",
