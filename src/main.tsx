@@ -6,6 +6,7 @@ import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { SchemaPage } from "./components/SchemaPage";
 import "./styles.css";
+import { BUILD_LABEL } from "./utils/build-env";
 import { announceDebugHint } from "./utils/debug";
 import { installSelectOnFocus } from "./utils/select-on-focus";
 
@@ -13,6 +14,13 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element #root not found in index.html");
 }
+
+// Suffix the static page title baked into the HTML with the build
+// label so the browser tab shows which version is running. The static
+// title (set per-route by the build-time SEO splicer) stays intact for
+// search-engine crawlers and link unfurlers; only the live tab title
+// gains the suffix.
+document.title = `${document.title} (${BUILD_LABEL})`;
 
 installSelectOnFocus();
 announceDebugHint();

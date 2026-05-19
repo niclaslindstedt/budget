@@ -10,6 +10,7 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __IS_PREVIEW__: JSON.stringify(false),
+    __BUILD_LABEL__: JSON.stringify(`v${pkg.version}`),
   },
   test: {
     include: ["tests/**/*_test.ts", "tests/**/*_tests.ts"],
