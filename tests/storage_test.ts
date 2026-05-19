@@ -30,12 +30,14 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 19,
+    version: 20,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
     types: [],
+    hiddenPresetTypeIds: [],
+    hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},
     historyImports: {},
@@ -94,6 +96,8 @@ describe("serializeUserData", () => {
       accounts: b.accounts,
       categories: b.categories,
       types: b.types,
+      hiddenPresetTypeIds: b.hiddenPresetTypeIds,
+      hiddenPresetCategoryIds: b.hiddenPresetCategoryIds,
       transactions: b.transactions,
       history: b.history,
       historyImports: b.historyImports,
@@ -114,10 +118,12 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 14)).toEqual([
+    expect(topKeys.slice(0, 16)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
+      "hiddenPresetCategoryIds",
+      "hiddenPresetTypeIds",
       "history",
       "historyImports",
       "matchRules",
@@ -1026,6 +1032,44 @@ describe("migrate", () => {
     expect(validated.ok).toBe(true);
     if (validated.ok) {
       expect(validated.value.settings.lastSeenChangelogVersion).toBeNull();
+    }
+  });
+
+  it("v19 → v20: seeds empty hide-lists for preset types and categories", () => {
+    const v19 = {
+      version: 19,
+      activeSheetId: "s1",
+      categories: [],
+      types: [],
+      transactions: [],
+      settings: { ...DEFAULT_SETTINGS },
+      accounts: [],
+      history: {},
+      historyImports: {},
+      merchantHints: {},
+      recurringDismissals: [],
+      transferCollapseDismissals: [],
+      matchRules: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v19);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+    if (validated.ok) {
+      expect(validated.value.hiddenPresetTypeIds).toEqual([]);
+      expect(validated.value.hiddenPresetCategoryIds).toEqual([]);
     }
   });
 

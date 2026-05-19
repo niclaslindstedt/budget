@@ -23,7 +23,7 @@ import type {
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 19,
+    version: 20,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -32,6 +32,8 @@ function workspace(transactions: Transaction[] = []): UserData {
     ],
     categories: [],
     types: [],
+    hiddenPresetTypeIds: [],
+    hiddenPresetCategoryIds: [],
     transactions,
     history: {},
     historyImports: {},

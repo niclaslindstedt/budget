@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { allCategories } from "../data/presets";
 import { accountBalance } from "../data/sheet";
 import { detectTransferCandidates } from "../data/transfer-collapse";
 import type {
@@ -87,9 +88,12 @@ export function AccountsSheetView({
   }, [data.accounts]);
   const categoriesById = useMemo(() => {
     const m = new Map<string, Category>();
-    for (const c of data.categories) m.set(c.id, c);
+    // Resolve both user-added and built-in preset categories so the
+    // transaction log renders a chip even when its categoryId points
+    // at a preset.
+    for (const c of allCategories(data)) m.set(c.id, c);
     return m;
-  }, [data.categories]);
+  }, [data]);
   // Transactions sorted with the newest first so the log reads as a
   // recency-first ledger, mirroring how the user thinks about
   // transfers ("the dinner cover was last week").

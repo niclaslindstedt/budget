@@ -52,7 +52,13 @@ import { SheetView } from "./components/SheetView";
 import { SyncDetailsModal } from "./components/SyncDetailsModal";
 import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
-import { STORAGE_KEY, userDataKey } from "./data/constants";
+import {
+  PRESET_CATEGORY_IDS,
+  PRESET_ENTRY_TYPE_IDS,
+  STORAGE_KEY,
+  userDataKey,
+} from "./data/constants";
+import { allCategories, allTypes } from "./data/presets";
 import {
   accountBalance,
   createDefaultSheet,
@@ -258,7 +264,21 @@ type Action =
   | ItemAction
   | { type: "replace"; data: UserData }
   | { type: "addCategory"; category: Category }
+  | {
+      type: "updateCategory";
+      categoryId: string;
+      patch: Partial<Omit<Category, "id">>;
+    }
+  | { type: "deleteCategory"; categoryId: string }
+  | { type: "setPresetCategoryHidden"; presetId: string; hidden: boolean }
   | { type: "addType"; entryType: EntryType }
+  | {
+      type: "updateType";
+      typeId: string;
+      patch: Partial<Omit<EntryType, "id">>;
+    }
+  | { type: "deleteType"; typeId: string }
+  | { type: "setPresetTypeHidden"; presetId: string; hidden: boolean }
   | { type: "updateSettings"; settings: Settings }
   | { type: "renameSheet"; sheetId: string; name: string }
   | {
@@ -735,8 +755,136 @@ function reducer(state: UserData, action: Action): UserData {
   if (action.type === "addCategory") {
     return { ...state, categories: [...state.categories, action.category] };
   }
+  if (action.type === "updateCategory") {
+    // Presets are immutable — Settings hides the Edit button for them
+    // and the action is a no-op if the id somehow targets a preset.
+    if (PRESET_CATEGORY_IDS.has(action.categoryId)) return state;
+    return {
+      ...state,
+      categories: state.categories.map((c) =>
+        c.id === action.categoryId ? { ...c, ...action.patch } : c,
+      ),
+    };
+  }
+  if (action.type === "deleteCategory") {
+    // Deleting a category cascades: every transaction / merchant hint /
+    // match rule that references it gets the reference cleared so the
+    // app doesn't hang onto zombie ids. Row cells of category columns
+    // are cleared too. Presets are immutable, same as updateCategory.
+    if (PRESET_CATEGORY_IDS.has(action.categoryId)) return state;
+    const id = action.categoryId;
+    return {
+      ...state,
+      categories: state.categories.filter((c) => c.id !== id),
+      sheets: state.sheets.map((sheet) => ({
+        ...sheet,
+        items: sheet.items.map((item) => {
+          if (item.type !== "accountBudget") return item;
+          const categoryColIds = new Set(
+            item.columns.filter((c) => c.type === "category").map((c) => c.id),
+          );
+          if (categoryColIds.size === 0) return item;
+          return {
+            ...item,
+            rows: item.rows.map((r) => {
+              let changed = false;
+              const nextCells = { ...r.cells };
+              for (const colId of categoryColIds) {
+                if (nextCells[colId] === id) {
+                  nextCells[colId] = null;
+                  changed = true;
+                }
+              }
+              return changed ? { ...r, cells: nextCells } : r;
+            }),
+          };
+        }),
+      })),
+      transactions: state.transactions.map((tx) =>
+        tx.categoryId === id ? { ...tx, categoryId: null } : tx,
+      ),
+      merchantHints: Object.fromEntries(
+        Object.entries(state.merchantHints).filter(
+          ([, hint]) => hint.categoryId !== id,
+        ),
+      ),
+      matchRules: state.matchRules.map((rule) =>
+        rule.categoryId === id ? { ...rule, categoryId: null } : rule,
+      ),
+    };
+  }
+  if (action.type === "setPresetCategoryHidden") {
+    if (!PRESET_CATEGORY_IDS.has(action.presetId)) return state;
+    const current = state.hiddenPresetCategoryIds;
+    const isHidden = current.includes(action.presetId);
+    if (action.hidden === isHidden) return state;
+    return {
+      ...state,
+      hiddenPresetCategoryIds: action.hidden
+        ? [...current, action.presetId]
+        : current.filter((id) => id !== action.presetId),
+    };
+  }
   if (action.type === "addType") {
     return { ...state, types: [...state.types, action.entryType] };
+  }
+  if (action.type === "updateType") {
+    if (PRESET_ENTRY_TYPE_IDS.has(action.typeId)) return state;
+    return {
+      ...state,
+      types: state.types.map((t) =>
+        t.id === action.typeId ? { ...t, ...action.patch } : t,
+      ),
+    };
+  }
+  if (action.type === "deleteType") {
+    // Deleting a type cascades: every row's `typeId`, every merchant
+    // hint's `typeId`, and every match rule's `typeId` that referenced
+    // it gets the reference dropped. Presets are hide-only.
+    if (PRESET_ENTRY_TYPE_IDS.has(action.typeId)) return state;
+    const id = action.typeId;
+    return {
+      ...state,
+      types: state.types.filter((t) => t.id !== id),
+      sheets: state.sheets.map((sheet) => ({
+        ...sheet,
+        items: sheet.items.map((item) => {
+          if (item.type !== "accountBudget") return item;
+          return {
+            ...item,
+            rows: item.rows.map((r) => {
+              if (r.typeId !== id) return r;
+              const { typeId: _drop, ...rest } = r;
+              void _drop;
+              return rest;
+            }),
+          };
+        }),
+      })),
+      merchantHints: Object.fromEntries(
+        Object.entries(state.merchantHints).map(([key, hint]) => {
+          if (hint.typeId !== id) return [key, hint];
+          const { typeId: _drop, ...rest } = hint;
+          void _drop;
+          return [key, rest];
+        }),
+      ),
+      matchRules: state.matchRules.map((rule) =>
+        rule.typeId === id ? { ...rule, typeId: null } : rule,
+      ),
+    };
+  }
+  if (action.type === "setPresetTypeHidden") {
+    if (!PRESET_ENTRY_TYPE_IDS.has(action.presetId)) return state;
+    const current = state.hiddenPresetTypeIds;
+    const isHidden = current.includes(action.presetId);
+    if (action.hidden === isHidden) return state;
+    return {
+      ...state,
+      hiddenPresetTypeIds: action.hidden
+        ? [...current, action.presetId]
+        : current.filter((id) => id !== action.presetId),
+    };
   }
   if (action.type === "updateSettings") {
     return { ...state, settings: action.settings };
@@ -3111,6 +3259,16 @@ function BudgetView({
   // common-locales section. Walking every row on every render is cheap
   // because the workspace is small (a few thousand rows at most) and
   // `data` is referentially stable between edits.
+  // Merged category / type lists exposed to every picker, renderer,
+  // and resolver. Built-in `PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES`
+  // come first (minus the ones the user has hidden via Settings),
+  // followed by the user-added entries on `data.categories` /
+  // `data.types`. Computing them once here keeps the merge rules in
+  // one place — pickers downstream stay unaware of the preset / user
+  // split.
+  const allCategoriesMerged = useMemo(() => allCategories(data), [data]);
+  const allTypesMerged = useMemo(() => allTypes(data), [data]);
+
   const typeUsageById = useMemo<ReadonlyMap<string, number>>(() => {
     const map = new Map<string, number>();
     for (const sheet of data.sheets) {
@@ -3418,12 +3576,40 @@ function BudgetView({
     },
     [dispatch],
   );
+  const onUpdateCategory = useCallback(
+    (categoryId: string, patch: Partial<Omit<Category, "id">>) =>
+      dispatch({ type: "updateCategory", categoryId, patch }),
+    [dispatch],
+  );
+  const onDeleteCategory = useCallback(
+    (categoryId: string) => dispatch({ type: "deleteCategory", categoryId }),
+    [dispatch],
+  );
+  const onSetPresetCategoryHidden = useCallback(
+    (presetId: string, hidden: boolean) =>
+      dispatch({ type: "setPresetCategoryHidden", presetId, hidden }),
+    [dispatch],
+  );
   const onCreateType = useCallback(
     (draft: Omit<EntryType, "id">): EntryType => {
       const entryType: EntryType = { id: newId(), ...draft };
       dispatch({ type: "addType", entryType });
       return entryType;
     },
+    [dispatch],
+  );
+  const onUpdateType = useCallback(
+    (typeId: string, patch: Partial<Omit<EntryType, "id">>) =>
+      dispatch({ type: "updateType", typeId, patch }),
+    [dispatch],
+  );
+  const onDeleteType = useCallback(
+    (typeId: string) => dispatch({ type: "deleteType", typeId }),
+    [dispatch],
+  );
+  const onSetPresetTypeHidden = useCallback(
+    (presetId: string, hidden: boolean) =>
+      dispatch({ type: "setPresetTypeHidden", presetId, hidden }),
     [dispatch],
   );
   const onSaveSettings = useCallback(
@@ -4471,7 +4657,7 @@ function BudgetView({
                 }
                 dismissedKeys={data.recurringDismissals}
                 merchantHints={data.merchantHints}
-                categories={data.categories}
+                categories={allCategoriesMerged}
                 settings={data.settings}
                 onPromote={onPromoteRecurringCandidate}
                 onDismiss={onDismissRecurringCandidate}
@@ -4479,8 +4665,8 @@ function BudgetView({
               <SheetView
                 sheet={activeSheet}
                 item={activeItem}
-                categories={data.categories}
-                types={data.types}
+                categories={allCategoriesMerged}
+                types={allTypesMerged}
                 accounts={data.accounts}
                 transactions={data.transactions}
                 history={
@@ -4617,7 +4803,7 @@ function BudgetView({
         open={transactionRequest !== null}
         request={transactionRequest}
         accounts={data.accounts}
-        categories={data.categories}
+        categories={allCategoriesMerged}
         settings={data.settings}
         onClose={() => setTransactionRequest(null)}
         onPromote={onPromoteTransaction}
@@ -4629,8 +4815,8 @@ function BudgetView({
       <ComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}
-        categories={data.categories}
-        types={data.types}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
         typeUsageById={typeUsageById}
         settings={data.settings}
         seed={complexSeed}
@@ -4649,8 +4835,8 @@ function BudgetView({
         open={editPrompt !== null}
         row={editPrompt?.row ?? null}
         columns={activeItem.columns}
-        categories={data.categories}
-        types={data.types}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
         typeUsageById={typeUsageById}
         settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
@@ -4666,8 +4852,8 @@ function BudgetView({
         open={editRowPrompt !== null}
         row={editRowPrompt?.row ?? null}
         columns={activeItem.columns}
-        categories={data.categories}
-        types={data.types}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
         typeUsageById={typeUsageById}
         settings={data.settings}
         lastSeriesDate={editRowLastSeriesDate}
@@ -4681,8 +4867,8 @@ function BudgetView({
         seedEntry={matchRuleSeedEntry}
         allEntries={matchRuleAllEntries}
         existing={null}
-        categories={data.categories}
-        types={data.types}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
         typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setMatchRulePrompt(null)}
@@ -4702,7 +4888,7 @@ function BudgetView({
         open={bulkEditOpen && selectedRows.length > 0}
         rows={selectedRows}
         columns={activeItem.columns}
-        categories={data.categories}
+        categories={allCategoriesMerged}
         settings={data.settings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}
@@ -4790,6 +4976,14 @@ function BudgetView({
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
+        onCreateCategory={onCreateCategory}
+        onUpdateCategory={onUpdateCategory}
+        onDeleteCategory={onDeleteCategory}
+        onSetPresetCategoryHidden={onSetPresetCategoryHidden}
+        onCreateType={onCreateType}
+        onUpdateType={onUpdateType}
+        onDeleteType={onDeleteType}
+        onSetPresetTypeHidden={onSetPresetTypeHidden}
       />
       <ChangelogModal
         open={changelogOpen}

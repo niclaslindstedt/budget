@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 19 as const;
+export const LATEST_VERSION = 20 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -306,6 +306,20 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // real version string the first time the running app's mount-time
   // check stamps it.
   18: (v18) => ({ ...v18, version: 19 }),
+
+  // v19 → v20: introduces built-in preset entry types and preset
+  // categories (`PRESET_ENTRY_TYPES`, `PRESET_CATEGORIES` in
+  // `data/constants.ts`) plus per-user hide lists for each.
+  // Existing user-added types and categories are kept as-is; the
+  // migration just initialises both hide arrays as empty so every
+  // preset shows up until the user toggles one off from
+  // Settings → Types / Categories.
+  19: (v19) => ({
+    ...v19,
+    version: 20,
+    hiddenPresetTypeIds: [],
+    hiddenPresetCategoryIds: [],
+  }),
 };
 
 export type MigrationResult = {

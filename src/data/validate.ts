@@ -7,6 +7,8 @@ import {
   MAX_SESSION_TIMEOUT_MINUTES,
   MIN_FONT_SCALE,
   MIN_SESSION_TIMEOUT_MINUTES,
+  PRESET_CATEGORY_IDS,
+  PRESET_ENTRY_TYPE_IDS,
   SHORT_DATE_FORMATS,
 } from "./constants";
 import { LATEST_VERSION } from "./migrations";
@@ -772,6 +774,14 @@ export function validateUserData(raw: unknown): Result<UserData> {
     if (!r.ok) return r;
     if (seenCategoryIds.has(r.value.id))
       return fail(`categories[${i}].id`, `duplicate id "${r.value.id}"`);
+    // Reject user-added rows that collide with a preset id — preset
+    // ids are reserved so the runtime can always resolve them to the
+    // built-in definition.
+    if (PRESET_CATEGORY_IDS.has(r.value.id))
+      return fail(
+        `categories[${i}].id`,
+        `collides with preset id "${r.value.id}"`,
+      );
     seenCategoryIds.add(r.value.id);
     categories.push(r.value);
   }
@@ -784,9 +794,25 @@ export function validateUserData(raw: unknown): Result<UserData> {
     if (!r.ok) return r;
     if (seenTypeIds.has(r.value.id))
       return fail(`types[${i}].id`, `duplicate id "${r.value.id}"`);
+    if (PRESET_ENTRY_TYPE_IDS.has(r.value.id))
+      return fail(`types[${i}].id`, `collides with preset id "${r.value.id}"`);
     seenTypeIds.add(r.value.id);
     types.push(r.value);
   }
+
+  // Resolvable id sets used everywhere a reference is checked. Preset
+  // ids resolve to the built-in definitions in `data/constants.ts`;
+  // user-added ids resolve to entries in the arrays above. Hidden
+  // presets stay resolvable — hiding only affects picker / admin
+  // visibility, not referential integrity.
+  const knownCategoryIds = new Set<string>([
+    ...PRESET_CATEGORY_IDS,
+    ...seenCategoryIds,
+  ]);
+  const knownTypeIds = new Set<string>([
+    ...PRESET_ENTRY_TYPE_IDS,
+    ...seenTypeIds,
+  ]);
 
   const rawTransactions = Array.isArray(raw.transactions)
     ? raw.transactions
@@ -798,7 +824,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       rawTransactions[i],
       `transactions[${i}]`,
       seenAccountIds,
-      seenCategoryIds,
+      knownCategoryIds,
     );
     if (!r.ok) return r;
     if (seenTransactionIds.has(r.value.id))
@@ -814,7 +840,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       raw.sheets[i],
       `sheets[${i}]`,
       seenAccountIds,
-      seenTypeIds,
+      knownTypeIds,
     );
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
@@ -881,7 +907,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const merchantHints: Record<string, MerchantHint> = {};
   for (const [key, value] of Object.entries(rawHints)) {
     if (typeof key !== "string" || key === "") continue;
-    const hint = validateMerchantHint(value, seenCategoryIds, seenTypeIds);
+    const hint = validateMerchantHint(value, knownCategoryIds, knownTypeIds);
     if (hint) merchantHints[key] = hint;
   }
 
@@ -902,12 +928,24 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const matchRules: MatchRule[] = [];
   const seenRuleIds = new Set<string>();
   for (const rawRule of rawRules) {
-    const rule = validateMatchRule(rawRule, seenCategoryIds, seenTypeIds);
+    const rule = validateMatchRule(rawRule, knownCategoryIds, knownTypeIds);
     if (!rule) continue;
     if (seenRuleIds.has(rule.id)) continue;
     seenRuleIds.add(rule.id);
     matchRules.push(rule);
   }
+
+  // Hide-list allowlists for preset entries. Both arrays are
+  // sanitised (duplicates / empty strings stripped) and intersected
+  // with the active preset id sets so an entry that no longer matches
+  // a known preset — e.g. a preset removed in a later app version —
+  // is silently dropped on load.
+  const hiddenPresetTypeIds = sanitizeStringArray(
+    raw.hiddenPresetTypeIds,
+  ).filter((id) => PRESET_ENTRY_TYPE_IDS.has(id));
+  const hiddenPresetCategoryIds = sanitizeStringArray(
+    raw.hiddenPresetCategoryIds,
+  ).filter((id) => PRESET_CATEGORY_IDS.has(id));
 
   const settings = validateSettings(raw.settings);
 
@@ -920,6 +958,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       accounts,
       categories,
       types,
+      hiddenPresetTypeIds,
+      hiddenPresetCategoryIds,
       transactions,
       history,
       historyImports,
