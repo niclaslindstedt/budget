@@ -12,6 +12,12 @@
 interface ImportMetaEnv {
   readonly VITE_DROPBOX_APP_KEY?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  // Optional donate-button target URL (PayPal, Stripe link, Ko-fi,
+  // GitHub Sponsors, anything). Empty / undefined hides the button
+  // in Settings entirely. Not a secret (ships in the bundle); routed
+  // through a GitHub Actions secret so forks don't inherit the
+  // upstream maintainer's personal donate URL.
+  readonly VITE_DONATE_URL?: string;
 }
 
 interface ImportMeta {

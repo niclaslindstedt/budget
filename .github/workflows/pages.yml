@@ -73,6 +73,7 @@ jobs:
           VITE_BASE_PATH: /
           VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
 
       - name: Stash production dist
         if: steps.tag.outputs.has_release == 'true'
@@ -97,6 +98,7 @@ jobs:
           VITE_BASE_PATH: ${{ steps.tag.outputs.has_release == 'true' && '/preview/' || '/' }}
           VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
 
       # ---- Merge ----
       - name: Merge builds
