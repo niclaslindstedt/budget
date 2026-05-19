@@ -81,6 +81,7 @@ type Props = {
   onAddComplex: (date: string) => void;
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
+  onEditRowRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
@@ -157,6 +158,7 @@ export function SheetView({
   onAddComplex,
   onDeleteRequest,
   onEditRequest,
+  onEditRowRequest,
   onTransactionRequest,
   onMatchRuleRequest,
   onCorrectionDeleteRequest,
@@ -405,6 +407,7 @@ export function SheetView({
                   onAddComplex={() => onAddComplex(seedDate)}
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
+                  onEditRowRequest={onEditRowRequest}
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}

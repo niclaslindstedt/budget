@@ -204,11 +204,20 @@ body {
   /* iOS long-press would select the icon and pop the share/copy callout
      on the add-row button; suppress both since long-press is reserved for
      opening the recurring-entry modal. The same gesture opens the sheet-
-     edit modal on the bottom tab bar, so it gets the same treatment. */
+     edit modal on the bottom tab bar, and the edit-row modal on every
+     sheet row, so they all get the same treatment. Row cells override
+     this with `auto` so editable inputs still allow text selection. */
   .add-row-button,
-  .sheet-tab {
+  .sheet-tab,
+  .sheet-table > tbody > tr {
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+  }
+  .sheet-table > tbody > tr input,
+  .sheet-table > tbody > tr textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+    -webkit-touch-callout: default;
   }
 
   /* While a modal is open on mobile, hide the bottom-pinned floating
@@ -297,7 +306,7 @@ body {
       transition: transform 200ms ease;
     }
     .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
-      transform: translateX(-112px);
+      transform: translateX(-160px);
       background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
     .sheet-table > thead > tr > .action-cell,
@@ -306,7 +315,7 @@ body {
       top: 0;
       right: 0;
       bottom: 0;
-      width: 112px;
+      width: 160px;
       transform: translateX(100%);
       transition: transform 200ms ease;
       background: var(--page-bg);
@@ -319,11 +328,18 @@ body {
     .sheet-table > tbody > tr.is-swiped > .action-cell {
       transform: translateX(0);
     }
-    /* Split the revealed area into two equal-width action buttons. The
-       left one (pen) is the accent colour, the right one (trash) is the
-       danger colour, so the gesture telegraphs both options at a glance. */
+    /* Split the revealed area into equal-width action buttons so the
+       gesture telegraphs each option at a glance. Repeat is accent
+       green ("make recurring"), the pen is meta yellow ("edit row"),
+       and trash is danger red — the Transaction button (when shown)
+       inherits the row's transparent default and reads as the muted
+       middle option. */
     .sheet-table > tbody > tr > .action-cell .action-btn-edit {
       background: var(--accent);
+      color: var(--surface);
+    }
+    .sheet-table > tbody > tr > .action-cell .action-btn-pen {
+      background: var(--meta);
       color: var(--surface);
     }
     .sheet-table > tbody > tr > .action-cell .action-btn-delete {
