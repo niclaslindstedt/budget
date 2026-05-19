@@ -26,6 +26,11 @@ type Props = {
   rowId?: string;
   // Extra Tailwind classes appended to the panel root.
   className?: string;
+  // When `"up"`, render a small upward-pointing arrow whose tip aligns
+  // with the trigger's horizontal centre. Used by popovers that open
+  // below their trigger and would otherwise read as detached from the
+  // row above (e.g. description reveal on phones).
+  arrow?: "up";
   children: React.ReactNode;
 };
 
@@ -42,6 +47,7 @@ export function FloatingPanel({
   placement,
   rowId,
   className = "",
+  arrow,
   children,
 }: Props) {
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -58,20 +64,42 @@ export function FloatingPanel({
   const positionClass =
     placement.coordinateSpace === "viewport" ? "fixed" : "absolute";
 
+  // The arrow is a rotated square whose centre sits on the panel's top
+  // edge: the top-left and top-right edges of the diamond stick up out
+  // of the panel (the visible arrow), the bottom-left and bottom-right
+  // edges are hidden behind the panel. Rendered before the panel in
+  // DOM order so the panel's opaque background paints over the hidden
+  // half. `overflow-y-auto` on the panel would otherwise clip the tip,
+  // which is why the arrow lives outside the panel rather than inside.
+  const ARROW_SIZE = 12;
   return createPortal(
-    <div
-      ref={dropdownRef}
-      data-active-portal
-      className={`${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg ${className}`.trim()}
-      style={{
-        top: position.top,
-        left: position.left,
-        minWidth: position.width,
-        maxHeight: position.maxHeight,
-      }}
-    >
-      {children}
-    </div>,
+    <>
+      {arrow === "up" && (
+        <div
+          aria-hidden
+          className={`${positionClass} z-40 rotate-45 border-t border-l border-line bg-surface-2`}
+          style={{
+            top: position.top - ARROW_SIZE / 2,
+            left: position.left + position.arrowLeft - ARROW_SIZE / 2,
+            width: ARROW_SIZE,
+            height: ARROW_SIZE,
+          }}
+        />
+      )}
+      <div
+        ref={dropdownRef}
+        data-active-portal
+        className={`${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg ${className}`.trim()}
+        style={{
+          top: position.top,
+          left: position.left,
+          minWidth: position.width,
+          maxHeight: position.maxHeight,
+        }}
+      >
+        {children}
+      </div>
+    </>,
     document.body,
   );
 }

@@ -725,6 +725,7 @@ function PlainDescriptionPopover({
         triggerRef={triggerRef}
         placement={DESCRIPTION_POPOVER_PLACEMENT}
         rowId={rowId}
+        arrow="up"
       >
         <textarea
           ref={textareaRef}
@@ -828,6 +829,7 @@ function TypedDescriptionPopover({
         triggerRef={triggerRef}
         placement={DESCRIPTION_POPOVER_PLACEMENT}
         rowId={rowId}
+        arrow="up"
       >
         <textarea
           ref={textareaRef}
@@ -896,6 +898,7 @@ function ReadonlyDescriptionCell({
         triggerRef={triggerRef}
         placement={DESCRIPTION_POPOVER_PLACEMENT}
         rowId={rowId}
+        arrow="up"
       >
         <p className="block px-2 py-1.5 font-mono text-sm leading-snug break-words whitespace-pre-wrap text-fg">
           {value}

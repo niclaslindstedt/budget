@@ -122,4 +122,36 @@ describe("computeFloatingRect", () => {
     // top = rect.bottom (232) + gap (4) + scrollY (1000) = 1236
     expect(result.top).toBe(1236);
   });
+
+  it("aligns arrowLeft with the trigger's horizontal centre", () => {
+    // Trigger spans x=100..300 (width 200), panel anchors to the left
+    // edge of the trigger. Arrow tip should point at the trigger's
+    // centre (x=200), which is 100px into the panel.
+    const result = computeFloatingRect(
+      rectAt(400),
+      DOCUMENT_PLACEMENT,
+      { offsetTop: 0, height: 844 },
+      PHONE_WINDOW,
+    );
+    expect(result.left).toBe(100);
+    expect(result.arrowLeft).toBe(100);
+  });
+
+  it("clamps arrowLeft into the panel when the panel got shoved sideways", () => {
+    // Narrow trigger at the far-right edge of the viewport. The panel
+    // gets shoved left to fit, but the trigger centre sits past the
+    // panel's right edge. Arrow must clamp to a sensible tip position
+    // inside the panel rather than escape its border radius.
+    const result = computeFloatingRect(
+      rectAt(400, 32, 380, 10),
+      DOCUMENT_PLACEMENT,
+      { offsetTop: 0, height: 844 },
+      PHONE_WINDOW,
+    );
+    // Panel gets pushed left to fit within viewport (390 - 8 - 280 = 102).
+    expect(result.left).toBe(102);
+    // Trigger centre = 385, which sits 283px into the panel — past the
+    // 280px panel width, so clamp to width - 14 = 266.
+    expect(result.arrowLeft).toBe(result.width - 14);
+  });
 });
