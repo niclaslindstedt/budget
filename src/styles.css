@@ -432,24 +432,6 @@ body {
       > td:not(.action-cell) {
       background: color-mix(in srgb, var(--success) 12%, var(--surface));
     }
-
-    /* Drop the column-header label text on landscape phones — the
-       desktop layout's `md:inline` would otherwise show "DA…",
-       "AMOUN…", "BALAN…" truncated to a couple of characters in the
-       narrow mobile grid. Mirror portrait mobile and let the icon
-       carry the column identity. Scoped under the existing landscape
-       gate so this only fires on the same viewports as the mobile
-       grid layout above; portrait mobile already hides the label via
-       Tailwind's `hidden md:inline` pair so no extra rule is needed. */
-    @media (max-height: 500px) {
-      .sheet-table .column-header-label {
-        display: none;
-      }
-      .sheet-table .column-header-cell {
-        justify-content: center;
-        gap: 0.375rem;
-      }
-    }
   }
 
   /* Desktop completed row tint. The min-height clause excludes
@@ -469,5 +451,24 @@ body {
     .sheet-table > tbody > tr.is-selecting-row.is-selected > td {
       background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     }
+  }
+}
+
+/* Landscape phones (≤ 500px tall, e.g. iPhone 12+ in landscape at
+   844–932 × 375–430) get the mobile grid layout via `@layer
+   components` above, but the column-header label still leaks back
+   in because Tailwind's `md:inline` utility (in the `utilities`
+   layer, which beats `components` in the cascade) matches at
+   ≥ 720px wide. Override unlayered here so the cascade picks this
+   rule over `.md\:inline`. Portrait mobile already hides the label
+   via `.hidden` (no media query needed) so this rule doesn't need
+   to cover that case. */
+@media (max-height: 500px) {
+  .sheet-table .column-header-label {
+    display: none;
+  }
+  .sheet-table .column-header-cell {
+    justify-content: center;
+    gap: 0.375rem;
   }
 }
