@@ -16,10 +16,13 @@ const log = debug("gdrive");
 
 // Google-Drive-backed `StorageAdapter`. Talks to the Drive v3 REST
 // API directly (no SDK — Drive v3 is two endpoints away from "two
-// fetch calls", same shape as the Dropbox adapter). Bytes land at
-// `/budget.json` in the user's My Drive, written under the
-// `drive.file` scope so the file is visible to the user (they can
-// browse it, share it, or delete it directly from drive.google.com).
+// fetch calls", same shape as the Dropbox adapter). Bytes land in a
+// dedicated `budget/` folder at the root of the user's My Drive,
+// written under the `drive.file` scope so the files are visible to
+// the user (they can browse, share, or delete them directly from
+// drive.google.com). Mirrors Dropbox's "App folder" model — keeps
+// the user's drive root tidy and leaves room for additional files
+// (sheets, exports, etc.) going forward.
 //
 // Concurrency rides on Drive's ETag: `Snapshot.revision` is the ETag
 // returned from the previous `load` / `save`, and the next `save`
@@ -64,11 +67,16 @@ export function isGdriveConfigured(): boolean {
   return GOOGLE_CLIENT_ID.length > 0;
 }
 
-// Name of the single file the app reads / writes inside the user's
-// My Drive. Surfaced to the user in `SyncDetailsModal`. The preview
-// build writes to `budget-preview.json` instead, so the two builds
-// share an OAuth registration but never share a file.
-export const GDRIVE_FILE_NAME = nsCloudPath("budget.json");
+// Name of the app folder at the root of the user's My Drive. All
+// files this adapter manages live inside it. The preview build uses
+// `budget-preview` so the two builds share an OAuth registration but
+// never collide on disk.
+export const GDRIVE_APP_FOLDER_NAME = nsCloudPath("budget");
+
+// Name of the single budget file the app reads / writes, stored
+// inside `GDRIVE_APP_FOLDER_NAME`. Surfaced to the user in
+// `SyncDetailsModal`. Not namespaced — the parent folder already is.
+export const GDRIVE_FILE_NAME = "budget.json";
 
 // `drive.file` lets the app see and manage only files it created.
 // The file is visible to the user in Drive's UI, which mirrors the
@@ -76,12 +84,19 @@ export const GDRIVE_FILE_NAME = nsCloudPath("budget.json");
 // `drive.appdata` would hide the file but is not what the user picked.
 export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 
-// Name of the folder Drive backups live inside. Sibling to the main
-// `budget.json` file at the root of My Drive — the user can browse
-// it directly to spot-check backups or hand them to another tool.
-// Preview build uses `budget-backups-preview` so production backups
-// are untouched.
-export const GDRIVE_BACKUPS_FOLDER_NAME = nsCloudPath("budget-backups");
+// Name of the folder Drive backups live inside, nested under the
+// app folder (so the layout is `My Drive/<app>/backups/`). Not
+// namespaced — the parent already is.
+const GDRIVE_BACKUPS_FOLDER_NAME = "backups";
+
+// Names the adapter looked for before the subfolder layout landed:
+// `budget.json` (or `budget-preview.json`) and `budget-backups` (or
+// `budget-backups-preview`) at the My Drive root. Used by the one-
+// shot migration that moves them into the new app folder on first
+// load after upgrade.
+const LEGACY_FILE_NAME_AT_ROOT = nsCloudPath("budget.json");
+const LEGACY_BACKUPS_FOLDER_NAME_AT_ROOT = nsCloudPath("budget-backups");
+
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
 const DRIVE_FILES_API = "https://www.googleapis.com/drive/v3/files";
@@ -117,9 +132,104 @@ export function createGdriveAdapter(
   // cache is invalidated on 404 (file deleted in Drive) so the next
   // save recreates it.
   let cachedFileId: string | null = null;
+  let cachedAppFolderId: string | null = null;
 
   function authHeader(): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
+  }
+
+  async function searchOne(query: string): Promise<string | null> {
+    const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
+      query,
+    )}&spaces=drive&fields=files(id)`;
+    log.log(`search: ${query}`);
+    const start = performance.now();
+    let res: Response;
+    try {
+      res = await fetchImpl(url, { headers: authHeader() });
+    } catch (err) {
+      log.error("search: network error", err);
+      throw err;
+    }
+    const ms = (performance.now() - start).toFixed(0);
+    log.log(`search: → ${res.status} (${ms}ms)`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`search: failed ${res.status}`, body);
+      throw new Error(`Google Drive search failed: ${res.status} ${body}`);
+    }
+    const json = (await res.json()) as DriveListResponse;
+    return json.files?.[0]?.id ?? null;
+  }
+
+  async function findAppFolderId(): Promise<string | null> {
+    if (cachedAppFolderId) return cachedAppFolderId;
+    const id = await searchOne(
+      `name='${GDRIVE_APP_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and trashed=false`,
+    );
+    if (id) cachedAppFolderId = id;
+    return id;
+  }
+
+  async function ensureAppFolder(): Promise<string> {
+    const existing = await findAppFolderId();
+    if (existing) return existing;
+    log.log("appFolder: creating");
+    const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
+      method: "POST",
+      headers: { ...authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: GDRIVE_APP_FOLDER_NAME,
+        mimeType: FOLDER_MIME_TYPE,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(
+        `Google Drive app folder create failed: ${res.status} ${body}`,
+      );
+    }
+    const meta = (await res.json()) as DriveFile;
+    cachedAppFolderId = meta.id;
+    return meta.id;
+  }
+
+  // One-shot migration: pre-subfolder builds wrote `budget.json` (and
+  // a `budget-backups` folder) at the My Drive root. When we don't
+  // find the file inside the new app folder, look for the legacy one
+  // at root and reparent / rename it into place. `drive.file` scope
+  // means only files this app created are visible, so this can't
+  // accidentally adopt the user's own unrelated documents.
+  async function migrateLegacyAtRoot(): Promise<string | null> {
+    const legacyId = await searchOne(
+      `name='${LEGACY_FILE_NAME_AT_ROOT}' and 'root' in parents` +
+        ` and trashed=false`,
+    );
+    if (!legacyId) return null;
+    log.warn(`migrate: moving legacy ${LEGACY_FILE_NAME_AT_ROOT} into folder`);
+    const folderId = await ensureAppFolder();
+    const params = new URLSearchParams({
+      addParents: folderId,
+      removeParents: "root",
+      fields: "id",
+    });
+    const headers: Record<string, string> = { ...authHeader() };
+    let body: string | undefined;
+    if (LEGACY_FILE_NAME_AT_ROOT !== GDRIVE_FILE_NAME) {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify({ name: GDRIVE_FILE_NAME });
+    }
+    const res = await fetchImpl(`${DRIVE_FILES_API}/${legacyId}?${params}`, {
+      method: "PATCH",
+      headers,
+      body,
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "<unreadable>");
+      throw new Error(`Google Drive migrate failed: ${res.status} ${errBody}`);
+    }
+    return legacyId;
   }
 
   async function findFileId(): Promise<string | null> {
@@ -127,28 +237,20 @@ export function createGdriveAdapter(
       log.log(`findFileId: cache hit ${cachedFileId}`);
       return cachedFileId;
     }
-    const q = `name='${GDRIVE_FILE_NAME}' and trashed=false`;
-    const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
-      q,
-    )}&spaces=drive&fields=files(id)`;
-    log.log(`findFileId: query ${q}`);
-    const start = performance.now();
-    let res: Response;
-    try {
-      res = await fetchImpl(url, { headers: authHeader() });
-    } catch (err) {
-      log.error("findFileId: network error", err);
-      throw err;
+    const folderId = await findAppFolderId();
+    if (folderId) {
+      const id = await searchOne(
+        `name='${GDRIVE_FILE_NAME}' and '${folderId}' in parents` +
+          ` and trashed=false`,
+      );
+      if (id) {
+        cachedFileId = id;
+        log.log(`findFileId: in folder ${id}`);
+        return id;
+      }
     }
-    const ms = (performance.now() - start).toFixed(0);
-    log.log(`findFileId: → ${res.status} (${ms}ms)`);
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      log.error(`findFileId: failed ${res.status}`, body);
-      throw new Error(`Google Drive search failed: ${res.status} ${body}`);
-    }
-    const json = (await res.json()) as DriveListResponse;
-    cachedFileId = json.files?.[0]?.id ?? null;
+    const migrated = await migrateLegacyAtRoot();
+    cachedFileId = migrated;
     log.log(`findFileId: result ${cachedFileId ?? "<none>"}`);
     return cachedFileId;
   }
@@ -191,11 +293,15 @@ export function createGdriveAdapter(
 
   async function create(text: string): Promise<Snapshot> {
     log.log(`create: multipart upload bytes=${text.length}`);
-    // Multipart upload — one part is the metadata (the file name),
-    // the other is the body. Drive returns the new file id but not
-    // the ETag in this response, so we issue a tiny follow-up HEAD
-    // to pick up the revision token.
-    const meta = JSON.stringify({ name: GDRIVE_FILE_NAME });
+    // Multipart upload — one part is the metadata (the file name +
+    // parent folder), the other is the body. Drive returns the new
+    // file id but not the ETag in this response, so we issue a tiny
+    // follow-up HEAD to pick up the revision token.
+    const folderId = await ensureAppFolder();
+    const meta = JSON.stringify({
+      name: GDRIVE_FILE_NAME,
+      parents: [folderId],
+    });
     const boundary = `budget-${randomBoundary()}`;
     const body =
       `--${boundary}\r\n` +
@@ -289,26 +395,47 @@ export function createGdriveAdapter(
 
   async function ensureBackupsFolder(): Promise<string> {
     if (cachedBackupsFolderId) return cachedBackupsFolderId;
-    const q =
+    const appFolderId = await ensureAppFolder();
+    const existing = await searchOne(
       `name='${GDRIVE_BACKUPS_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
-      ` and trashed=false`;
-    const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
-      q,
-    )}&spaces=drive&fields=files(id)`;
-    log.log(`backups: ensureFolder query`);
-    const res = await fetchImpl(url, { headers: authHeader() });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      throw new Error(
-        `Google Drive folder lookup failed: ${res.status} ${body}`,
-      );
-    }
-    const json = (await res.json()) as DriveListResponse;
-    const existing = json.files?.[0]?.id;
+        ` and '${appFolderId}' in parents and trashed=false`,
+    );
     if (existing) {
       cachedBackupsFolderId = existing;
       log.log(`backups: folder found ${existing}`);
       return existing;
+    }
+    // Pre-subfolder builds parked the backups folder at the root of
+    // My Drive under a namespaced name (`budget-backups[-preview]`).
+    // Move it into the new app folder and rename it to plain
+    // `backups` so the layout matches a fresh install.
+    const legacyId = await searchOne(
+      `name='${LEGACY_BACKUPS_FOLDER_NAME_AT_ROOT}'` +
+        ` and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and 'root' in parents and trashed=false`,
+    );
+    if (legacyId) {
+      log.warn(
+        `backups: migrating legacy ${LEGACY_BACKUPS_FOLDER_NAME_AT_ROOT}`,
+      );
+      const params = new URLSearchParams({
+        addParents: appFolderId,
+        removeParents: "root",
+        fields: "id",
+      });
+      const res = await fetchImpl(`${DRIVE_FILES_API}/${legacyId}?${params}`, {
+        method: "PATCH",
+        headers: { ...authHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ name: GDRIVE_BACKUPS_FOLDER_NAME }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw new Error(
+          `Google Drive backups migrate failed: ${res.status} ${body}`,
+        );
+      }
+      cachedBackupsFolderId = legacyId;
+      return legacyId;
     }
     log.log("backups: folder missing — creating");
     const createRes = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
@@ -317,6 +444,7 @@ export function createGdriveAdapter(
       body: JSON.stringify({
         name: GDRIVE_BACKUPS_FOLDER_NAME,
         mimeType: FOLDER_MIME_TYPE,
+        parents: [appFolderId],
       }),
     });
     if (!createRes.ok) {

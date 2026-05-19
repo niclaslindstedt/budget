@@ -71,6 +71,14 @@ function isMetadata(url: string): boolean {
   );
 }
 
+// Drive folders (the app folder + the backups folder) are created
+// via a non-upload POST against `?fields=id` carrying the folder
+// metadata as the body. Distinct from the multipart `isCreate`
+// path which uploads file bytes.
+function isFolderCreate(url: string): boolean {
+  return url === "https://www.googleapis.com/drive/v3/files?fields=id";
+}
+
 function isCreate(url: string): boolean {
   return url.startsWith(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
@@ -129,6 +137,14 @@ describe("gdrive adapter", () => {
           body: JSON.stringify({ files: [] }),
         });
       }
+      if (isFolderCreate(call.url)) {
+        // The first save also has to spin up the `budget/` app
+        // folder before the file can be parented under it.
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id: "app-folder-id" }),
+        });
+      }
       if (isCreate(call.url)) {
         return makeResponse({
           status: 200,
@@ -148,6 +164,12 @@ describe("gdrive adapter", () => {
     const saved = await adapter.save("payload-1");
     expect(saved).toEqual({ text: "payload-1", revision: '"etag-new"' });
 
+    const folderCreate = calls.find((c) => isFolderCreate(c.url));
+    expect(folderCreate?.init?.method).toBe("POST");
+    const folderBody = JSON.parse((folderCreate?.init?.body as string) ?? "{}");
+    expect(folderBody.name).toBe("budget");
+    expect(folderBody.mimeType).toBe("application/vnd.google-apps.folder");
+
     const createCall = calls.find((c) => isCreate(c.url));
     expect(createCall?.init?.method).toBe("POST");
     const ct = (createCall?.init?.headers as Record<string, string>)[
@@ -156,6 +178,7 @@ describe("gdrive adapter", () => {
     expect(ct).toMatch(/^multipart\/related; boundary=/);
     const body = createCall?.init?.body as string;
     expect(body).toContain('"name":"budget.json"');
+    expect(body).toContain('"parents":["app-folder-id"]');
     expect(body).toContain("payload-1");
   });
 
@@ -287,9 +310,79 @@ describe("gdrive adapter", () => {
     const saved = await adapter.save("payload");
     expect(saved).toEqual({ text: "payload", revision: '"etag-fresh"' });
     expect(updateCalls).toBe(1);
-    // One initial search; the recovery path does not search again
-    // because `create` populates `cachedFileId` directly.
-    expect(searchCalls).toBe(1);
+    // The recovery path does not re-search after the 404 — `create`
+    // populates `cachedFileId` directly and reuses the cached app
+    // folder id. The two pre-PATCH searches are the app-folder
+    // lookup and the in-folder file lookup.
+    expect(searchCalls).toBe(2);
+  });
+
+  it("migrates a legacy budget.json from My Drive root into the app folder", async () => {
+    // Pre-subfolder builds wrote `budget.json` at My Drive root.
+    // First load after upgrade should: see no file inside the new
+    // `budget/` folder, find the legacy file at root, ensure the
+    // folder, and reparent the file via PATCH addParents/removeParents.
+    const { fn, calls } = fakeFetch((call) => {
+      if (isSearch(call.url)) {
+        const q = decodeURIComponent(
+          new URL(call.url).searchParams.get("q") ?? "",
+        );
+        // App folder lookup at root: not yet created.
+        if (q.includes("mimeType='application/vnd.google-apps.folder'")) {
+          return makeResponse({
+            status: 200,
+            body: JSON.stringify({ files: [] }),
+          });
+        }
+        // Legacy file lookup at root — the migration entry point.
+        if (q.includes("'root' in parents")) {
+          return makeResponse({
+            status: 200,
+            body: JSON.stringify({ files: [{ id: "legacy-file-id" }] }),
+          });
+        }
+        throw new Error(`Unexpected search: ${q}`);
+      }
+      if (isFolderCreate(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id: "app-folder-id" }),
+        });
+      }
+      if (isMetadata(call.url) && call.init?.method === "PATCH") {
+        // The reparent PATCH the migration issues — Drive returns
+        // the file id; the body / params carry addParents and
+        // removeParents.
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id: "legacy-file-id" }),
+        });
+      }
+      if (isDownload(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: '{"version":8}',
+          headers: { ETag: '"etag-legacy"' },
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createGdriveAdapter("token", fn);
+    const loaded = await adapter.load();
+    expect(loaded).toEqual({
+      text: '{"version":8}',
+      revision: '"etag-legacy"',
+    });
+
+    const move = calls.find(
+      (c) => isMetadata(c.url) && c.init?.method === "PATCH",
+    );
+    expect(move?.url).toContain("addParents=app-folder-id");
+    expect(move?.url).toContain("removeParents=root");
+    expect(move?.url).toContain("/legacy-file-id?");
+    // The download targets the migrated file id.
+    const download = calls.find((c) => isDownload(c.url));
+    expect(download?.url).toContain("/legacy-file-id");
   });
 
   it("sets a 1-second debounce so keystrokes coalesce", () => {
@@ -351,15 +444,14 @@ describe("gdrive backups", () => {
         const q = params.get("q") ?? "";
         const nameMatch = q.match(/name='([^']+)'/);
         const parentMatch = q.match(/'([^']+)' in parents/);
-        const isFolder = q.includes(
-          "mimeType='application/vnd.google-apps.folder'",
-        );
+        // No mime-type filtering — name + parent uniquely identifies
+        // every record this fake cares about (the `budget` app
+        // folder, the `backups` folder inside it, the budget file,
+        // and the backup blobs).
         let matches = files;
         if (nameMatch) matches = matches.filter((f) => f.name === nameMatch[1]);
         if (parentMatch)
           matches = matches.filter((f) => f.parent === parentMatch[1]);
-        if (isFolder)
-          matches = matches.filter((f) => f.name.startsWith("budget-backups"));
         return makeResponse({
           status: 200,
           body: JSON.stringify({
