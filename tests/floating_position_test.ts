@@ -137,6 +137,51 @@ describe("computeFloatingRect", () => {
     expect(result.arrowLeft).toBe(100);
   });
 
+  it("keeps a document-coord popover attached to a visible trigger when the keyboard opens", () => {
+    // iOS opens the keyboard for a focused textarea inside the
+    // description popover. The trigger button (the row's "…" tap
+    // target) is visible inside the post-keyboard visual viewport.
+    // Earlier behaviour would clamp the panel toward the visible
+    // region whenever its natural top sat outside it — but for a
+    // `position: absolute` popover that already scrolls with the
+    // page, that clamp pushed the popover off its row and broke the
+    // arrow's visual connection to the trigger. The clamps must only
+    // fire when the trigger itself is hidden.
+    const result = computeFloatingRect(
+      // Trigger at layout y=200, height 40 (rect.bottom=240). With
+      // scrollY=400 the trigger sits at document y=600..640.
+      rectAt(200, 40),
+      DOCUMENT_PLACEMENT,
+      // Visual viewport shrank for the keyboard but stayed at the top
+      // of the layout viewport: document visible region is 400..960.
+      // Trigger (doc y=600..640) sits well inside that.
+      { offsetTop: 0, height: 560 },
+      { ...PHONE_WINDOW, scrollY: 400 },
+    );
+    // Natural position wins: rect.bottom (240) + gap (4) + scrollY
+    // (400) = 644. The panel stays right under the trigger row, not
+    // yanked to visibleTop+margin (= 408) above it.
+    expect(result.top).toBe(644);
+  });
+
+  it("clamps a document-coord popover only when the trigger itself scrolled off the top", () => {
+    // Same popover, but iOS shifted the visual viewport far enough
+    // that the trigger row has scrolled above the visible region.
+    // Here the clamp does need to step in — without it the panel
+    // would render entirely above the visible area, leaving its
+    // textarea unreachable. The trigger's already invisible so
+    // there's no arrow connection left to preserve.
+    const result = computeFloatingRect(
+      rectAt(100, 40),
+      DOCUMENT_PLACEMENT,
+      { offsetTop: 600, height: 340 },
+      { ...PHONE_WINDOW, scrollY: 0 },
+    );
+    // visibleTop = 600 + 0 = 600. trigger.bottom (140) sits above it,
+    // so the clamp pulls the panel down to visibleTop + margin.
+    expect(result.top).toBe(608);
+  });
+
   it("clamps arrowLeft into the panel when the panel got shoved sideways", () => {
     // Narrow trigger at the far-right edge of the viewport. The panel
     // gets shoved left to fit, but the trigger centre sits past the
