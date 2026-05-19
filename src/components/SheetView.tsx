@@ -99,8 +99,8 @@ type Props = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onEditSheet: (sheetId: string) => void;
   // Full workspace state — needed by the formula resolver so
-  // `sheet("<id>").endOfMonthBalance` references can look up other
-  // sheets' running balances at this row's month.
+  // `sheet("<id>", <variable>)` references can look up other sheets'
+  // running balances at this row's month.
   data: UserData;
 };
 

@@ -5182,6 +5182,7 @@ function BudgetView({
         typeUsageById={typeUsageById}
         settings={data.settings}
         sheets={data.sheets}
+        currentSheetId={activeSheet.id}
         seed={complexSeed}
         title={recurringPromoteContext ? "Promote candidate" : undefined}
         submitVerb={recurringPromoteContext ? "Promote" : undefined}

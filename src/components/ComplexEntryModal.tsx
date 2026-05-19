@@ -6,6 +6,8 @@ import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
+import { FormulaHelpButton } from "./FormulaHelpButton";
+import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
 import { FormulaVariableHelper } from "./FormulaVariableHelper";
 import { Modal } from "./Modal";
 import { RecurrenceForm } from "./RecurrenceForm";
@@ -23,6 +25,12 @@ type Props = {
   // on submit (`formulaToStored`) so the persisted form always holds
   // stable sheet ids.
   sheets: readonly Sheet[];
+  // The sheet the new entry is being added to. Used by the formula
+  // helper to hide the current sheet from the "other sheets" cross-
+  // reference section — the bare variable forms (`endOfMonthBalance`,
+  // …) already mean "this sheet's value", so a redundant per-sheet
+  // entry would just clutter the dropdown.
+  currentSheetId?: string | null;
   // Optional initial values used to pre-fill the form when the modal
   // opens. The recurring-candidate promote flow passes one so the user
   // can adjust the detected description / amount / cadence before
@@ -78,6 +86,7 @@ export function ComplexEntryModal({
   typeUsageById,
   settings,
   sheets,
+  currentSheetId,
   seed,
   title,
   submitVerb,
@@ -93,15 +102,17 @@ export function ComplexEntryModal({
   const [typeId, setTypeId] = useState<string | null>(null);
   const [dates, setDates] = useState<string[]>([]);
   // fx mode swaps the numeric amount input for a formula textarea
-  // (`endOfMonthBalance - 5000`, `sheet("Wife").endOfMonthBalance`, …).
+  // (`endOfMonthBalance - 5000`, `sheet("Wife", endOfMonthBalance)`, …).
   // The displayed text shows sheet **names** for readability; on
   // submit, `formulaToStored` rewrites them to stable sheet ids so
   // renames don't break the formula.
   const [formulaMode, setFormulaMode] = useState(false);
   const [formulaText, setFormulaText] = useState("");
   // Lets the variable-helper dropdown splice tokens at the caret and
-  // restore focus + cursor position afterwards.
-  const formulaInputRef = useRef<HTMLInputElement>(null);
+  // restore focus + cursor position afterwards. The FormulaInput is a
+  // contentEditable pill renderer so the ref points at its imperative
+  // handle, not a raw DOM input.
+  const formulaInputRef = useRef<FormulaInputHandle>(null);
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
 
@@ -171,38 +182,12 @@ export function ComplexEntryModal({
   const toggleSign = () => setNegative((s) => !s);
   const toggleFormulaMode = () => setFormulaMode((m) => !m);
 
-  const insertFormulaToken = useCallback(
-    (text: string) => {
-      const el = formulaInputRef.current;
-      const start = el?.selectionStart ?? formulaText.length;
-      const end = el?.selectionEnd ?? formulaText.length;
-      const next = formulaText.slice(0, start) + text + formulaText.slice(end);
-
-      // Drop the caret into the first "hole" of the inserted snippet so
-      // the user can keep typing without manually navigating: between
-      // empty quotes for id/name arguments, or right after the open
-      // paren when the function takes multiple arguments. Plain
-      // variables and the bare `()` form fall through to "end of
-      // insert".
-      let caretInInsert = text.length;
-      const emptyQuotes = text.indexOf('("")');
-      const argSep = text.indexOf(", ");
-      const emptyParens = text.indexOf("()");
-      if (emptyQuotes >= 0) caretInInsert = emptyQuotes + 2;
-      else if (argSep >= 0) caretInInsert = argSep;
-      else if (emptyParens >= 0) caretInInsert = emptyParens + 1;
-
-      setFormulaText(next);
-      requestAnimationFrame(() => {
-        const inp = formulaInputRef.current;
-        if (!inp) return;
-        inp.focus();
-        const caret = start + caretInInsert;
-        inp.setSelectionRange(caret, caret);
-      });
-    },
-    [formulaText],
-  );
+  const insertFormulaToken = useCallback((text: string) => {
+    // FormulaInput owns its own caret model (text-offset, not DOM
+    // selection) and handles the "drop caret into first hole"
+    // post-insert reposition internally. We just forward the snippet.
+    formulaInputRef.current?.insertAtCaret(text);
+  }, []);
 
   function handleSubmit() {
     if (dates.length === 0) return;
@@ -307,18 +292,20 @@ export function ComplexEntryModal({
             </span>
             {formulaMode ? (
               <div className="flex gap-1.5">
-                <input
+                <FormulaInput
                   ref={formulaInputRef}
-                  type="text"
                   value={formulaText}
-                  onChange={(e) => setFormulaText(e.target.value)}
-                  className="field-input flex-1 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                  onChange={setFormulaText}
                   placeholder="endOfMonthBalance - 5000"
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
+                  ariaLabel="Amount formula"
+                  className="formula-input field-input flex-1 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
-                <FormulaVariableHelper onInsert={insertFormulaToken} />
+                <FormulaVariableHelper
+                  onInsert={insertFormulaToken}
+                  sheets={sheets}
+                  currentSheetId={currentSheetId ?? null}
+                />
+                <FormulaHelpButton />
               </div>
             ) : (
               <div className="relative flex">

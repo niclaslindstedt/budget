@@ -133,6 +133,22 @@ describe("evaluateFormula — functions", () => {
     if (!r.ok) expect(r.error).toMatch(/Unknown sheet "missing"/);
   });
 
+  it("sheet(id, variable) — new comma form with an identifier arg", () => {
+    const c = ctx({
+      lookupSheet: (id, prop) =>
+        id === "sht_wife" && prop === "endOfMonthBalance" ? 1234 : null,
+    });
+    expect(evalOk('5000 - sheet("sht_wife", endOfMonthBalance)', c)).toBe(3766);
+  });
+
+  it("sheet(id, variable) — comma form accepts a quoted property too", () => {
+    const c = ctx({
+      lookupSheet: (id, prop) =>
+        id === "sht_wife" && prop === "net" ? 42 : null,
+    });
+    expect(evalOk('sheet("sht_wife", "net")', c)).toBe(42);
+  });
+
   it("division by zero errors", () => {
     const p = parseFormula("1 / 0");
     if (!p.ok) throw new Error("parse");
@@ -208,5 +224,17 @@ describe("formulaToDisplay / formulaToStored", () => {
     expect(formulaToDisplay('sheet("sht_gone").net', sheets)).toBe(
       'sheet("sht_gone").net',
     );
+  });
+
+  it("display rewrites ids in the new comma form too", () => {
+    expect(formulaToDisplay('sheet("sht_a", endOfMonthBalance)', sheets)).toBe(
+      'sheet("Wife", endOfMonthBalance)',
+    );
+  });
+
+  it("stored rewrites names in the new comma form too", () => {
+    const r = formulaToStored('sheet("Wife", endOfMonthBalance)', sheets);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.formula).toBe('sheet("sht_a", endOfMonthBalance)');
   });
 });

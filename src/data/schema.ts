@@ -413,9 +413,12 @@ export const USER_DATA_SCHEMA = {
             "`prevMonth.income`, `prevMonth.expenses`. " +
             'Functions: `categoryTotal("<categoryId>")`, ' +
             '`typeTotal("<typeId>")`, `min`, `max`, `clamp`, `abs`, ' +
-            '`round`, and `sheet("<sheetId>").endOfMonthBalance` ' +
-            "(plus `.openingBalance`, `.income`, `.expenses`, `.net`) " +
-            "for cross-sheet references. " +
+            '`round`, and `sheet("<sheetId>", <variable>)` for cross-' +
+            "sheet references — the second argument can be a bare " +
+            "identifier (`endOfMonthBalance`, `openingBalance`, " +
+            "`income`, `expenses`, `net`) or a quoted string. The " +
+            'legacy `sheet("<sheetId>").<variable>` dotted form is ' +
+            "still accepted on read so older exports keep working. " +
             "Sheet references are stored as the target's stable sheet " +
             "**id**, not its mutable display name, so renames don't " +
             "break formulas — the editor renders the current name. " +

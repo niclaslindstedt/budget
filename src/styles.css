@@ -213,6 +213,62 @@ body {
     outline: none;
   }
 
+  /* Formula input — a contentEditable host that renders recognised
+     variable names (`endOfMonthBalance`, `prevMonth.income`, …) as
+     compact pills so they read as one unit and a single backspace
+     erases the whole token. The host itself is styled to look like
+     the project's monospaced field-input; the pill children carry
+     their own background + border so they pop against the field
+     background but stay in the One Dark / One Light palette. */
+  .formula-input {
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    line-height: 1.5rem;
+  }
+  .formula-input:empty[data-placeholder]::before {
+    content: attr(data-placeholder);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .formula-pill {
+    display: inline-block;
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    /* Slight vertical squeeze so the pill aligns with adjacent
+       monospaced glyphs without growing the line box. */
+    line-height: 1.25rem;
+    vertical-align: baseline;
+    /* The whole pill behaves as one unit — disable text selection
+       inside so a triple-click or drag on the pill selects the pill
+       node (via the parent's caret model) rather than the inner
+       characters. */
+    -webkit-user-select: none;
+    user-select: none;
+    caret-color: transparent;
+  }
+  /* Variables (`endOfMonthBalance`, `prevMonth.income`, …) — flag
+     colour, the same orange the sheet uses for numeric literals so
+     amount-shaped tokens read consistently. */
+  .formula-pill-var {
+    background: color-mix(in srgb, var(--flag) 14%, var(--surface-2));
+    color: var(--flag);
+  }
+  /* Function call names (`sheet`, `min`, `clamp`, …) — pipe colour
+     (purple), distinct from variables so the eye can pick the call
+     site out of a long expression. */
+  .formula-pill-fn {
+    background: color-mix(in srgb, var(--pipe) 14%, var(--surface-2));
+    color: var(--pipe);
+  }
+  /* Sheet-name argument inside `sheet("…", …)` — path colour (cyan),
+     reusing the same hue the sheet uses for date columns so the
+     "navigate to another location" feel carries through. */
+  .formula-pill-sheet {
+    background: color-mix(in srgb, var(--path) 14%, var(--surface-2));
+    color: var(--path);
+  }
+
   /* iOS long-press would select the icon and pop the share/copy callout
      on the add-row button; suppress both since long-press is reserved for
      opening the recurring-entry modal. The same gesture opens the sheet-
