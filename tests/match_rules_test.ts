@@ -74,6 +74,51 @@ describe("ruleMatchesEntry — amountSign", () => {
   });
 });
 
+describe("ruleMatchesEntry — amountMin / amountMax", () => {
+  it("includes entries inside the band", () => {
+    const r = rule({ pattern: "*", amountMin: -380, amountMax: -250 });
+    expect(ruleMatchesEntry(r, entry({ amount: -300 }))).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ amount: -250 }))).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ amount: -380 }))).toBe(true);
+  });
+
+  it("excludes entries below the lower bound", () => {
+    const r = rule({ pattern: "*", amountMin: -380, amountMax: -250 });
+    expect(ruleMatchesEntry(r, entry({ amount: -500 }))).toBe(false);
+  });
+
+  it("excludes entries above the upper bound", () => {
+    const r = rule({ pattern: "*", amountMin: -380, amountMax: -250 });
+    expect(ruleMatchesEntry(r, entry({ amount: -100 }))).toBe(false);
+  });
+
+  it("treats a missing lower bound as open-ended (no floor)", () => {
+    const r = rule({ pattern: "*", amountMax: 100 });
+    expect(ruleMatchesEntry(r, entry({ amount: -1_000_000 }))).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ amount: 100 }))).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ amount: 101 }))).toBe(false);
+  });
+
+  it("treats a missing upper bound as open-ended (no ceiling)", () => {
+    const r = rule({ pattern: "*", amountMin: 100 });
+    expect(ruleMatchesEntry(r, entry({ amount: 100 }))).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ amount: 1_000_000 }))).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ amount: 99 }))).toBe(false);
+  });
+
+  it("composes with amountSign — both filters must pass", () => {
+    const r = rule({
+      pattern: "*",
+      amountSign: "negative",
+      amountMin: -380,
+      amountMax: -250,
+    });
+    expect(ruleMatchesEntry(r, entry({ amount: -300 }))).toBe(true);
+    // In-band by value but the sign filter rejects positives.
+    expect(ruleMatchesEntry(r, entry({ amount: 300 }))).toBe(false);
+  });
+});
+
 describe("ruleMatchesEntry — transferFilter", () => {
   it("any ignores the collapse marker", () => {
     const r = rule({ pattern: "*", transferFilter: "any" });

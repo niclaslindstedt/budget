@@ -58,7 +58,7 @@ function workspace(item: AccountBudget, extra: Sheet[] = []): UserData {
     items: [item],
   };
   return {
-    version: 23,
+    version: 24,
     sheets: [main, ...extra],
     activeSheetId: "sht_main",
     accounts: [],

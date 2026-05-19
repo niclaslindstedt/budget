@@ -503,6 +503,22 @@ function validateMatchRule(
   ) {
     rule.transferFilter = raw.transferFilter;
   }
+  if (typeof raw.amountMin === "number" && Number.isFinite(raw.amountMin)) {
+    rule.amountMin = raw.amountMin;
+  }
+  if (typeof raw.amountMax === "number" && Number.isFinite(raw.amountMax)) {
+    rule.amountMax = raw.amountMax;
+  }
+  // Drop an inverted band silently — a rule with min > max could
+  // never fire and almost certainly indicates a hand-edited typo.
+  if (
+    rule.amountMin !== undefined &&
+    rule.amountMax !== undefined &&
+    rule.amountMin > rule.amountMax
+  ) {
+    delete rule.amountMin;
+    delete rule.amountMax;
+  }
   return rule;
 }
 

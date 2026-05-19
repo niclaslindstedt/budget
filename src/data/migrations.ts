@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 23 as const;
+export const LATEST_VERSION = 24 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -343,6 +343,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // shape so older builds refuse to open snapshots that may contain
   // formulas they can't evaluate.
   22: (v22) => ({ ...v22, version: 23 }),
+
+  // v23 → v24: introduces optional `amountMin` / `amountMax` bounds on
+  // `MatchRule` so a rule can narrow to a specific price band on top
+  // of the existing sign filter. The validator falls back to absent
+  // bounds for v23 records that don't carry the fields, so no data
+  // needs rewriting — the version bump just flags that this build
+  // understands the new shape.
+  23: (v23) => ({ ...v23, version: 24 }),
 };
 
 export type MigrationResult = {

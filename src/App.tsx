@@ -4586,6 +4586,8 @@ function BudgetView({
       if (draft.amountSign !== "any") rule.amountSign = draft.amountSign;
       if (draft.transferFilter !== "any")
         rule.transferFilter = draft.transferFilter;
+      if (draft.amountMin !== undefined) rule.amountMin = draft.amountMin;
+      if (draft.amountMax !== undefined) rule.amountMax = draft.amountMax;
       dispatch({ type: "createMatchRule", rule });
       setMatchRulePrompt(null);
     },

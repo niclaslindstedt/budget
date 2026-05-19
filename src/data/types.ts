@@ -507,6 +507,14 @@ export type MatchRule = {
   typeId?: string | null;
   amountSign?: "any" | "positive" | "negative";
   transferFilter?: "any" | "exclude" | "only";
+  // Signed lower / upper bounds on the entry amount, applied on top
+  // of `amountSign`. Either may be absent — a missing bound is open-
+  // ended in that direction. Useful when one description token
+  // covers several services and only one falls in a given price
+  // band (e.g. an autogiro line that bills 250–380 kr for one
+  // insurance product and a different amount for another).
+  amountMin?: number;
+  amountMax?: number;
 };
 
 // User-defined rule that auto-reconciles future bank-history entries
@@ -540,7 +548,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 23;
+  version: 24;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

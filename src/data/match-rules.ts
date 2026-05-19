@@ -33,6 +33,12 @@ export function ruleMatchesEntry(
   const sign = rule.amountSign ?? "any";
   if (sign === "positive" && entry.amount < 0) return false;
   if (sign === "negative" && entry.amount > 0) return false;
+  if (rule.amountMin !== undefined && entry.amount < rule.amountMin) {
+    return false;
+  }
+  if (rule.amountMax !== undefined && entry.amount > rule.amountMax) {
+    return false;
+  }
   const transfer = rule.transferFilter ?? "any";
   const isTransfer = entry.collapsedIntoTransactionId !== undefined;
   if (transfer === "exclude" && isTransfer) return false;
