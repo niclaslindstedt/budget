@@ -725,6 +725,22 @@ export const USER_DATA_SCHEMA = {
             "that were collapsed into a Transaction; `only` matches " +
             "exclusively those.",
         },
+        amountMin: {
+          type: "number",
+          description:
+            "Optional signed lower bound on `HistoryEntry.amount`. " +
+            "Entries below this value are skipped. Applied on top of " +
+            "`amountSign`. Use together with `amountMax` to scope a " +
+            "rule to a specific price band.",
+        },
+        amountMax: {
+          type: "number",
+          description:
+            "Optional signed upper bound on `HistoryEntry.amount`. " +
+            "Entries above this value are skipped. Applied on top of " +
+            "`amountSign`. Loaders drop the pair when `amountMin > " +
+            "amountMax` since such a rule could never fire.",
+        },
       },
     },
     SeriesMatchRule: {

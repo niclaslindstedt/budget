@@ -427,6 +427,18 @@ Current `LATEST_VERSION` is `19`. The chain has eighteen steps:
   row + history entry pair silently without re-prompting. Existing
   exports default to an empty list — no rules have been confirmed
   yet, so behaviour matches pre-v22 builds.
+- **v22 → v23** — introduces optional `Row.amountFormula`, a formula
+  string evaluated at render time to produce the row's effective
+  amount. Pre-v23 rows have no formula and continue to use the
+  literal value in their amount cell; the bump only flags that this
+  build understands the new shape so older builds refuse to open
+  snapshots that may contain formulas they can't evaluate.
+- **v23 → v24** — introduces optional `amountMin` / `amountMax`
+  signed bounds on `MatchRule` so a rule can narrow to a specific
+  price band on top of `amountSign`. Existing rules don't carry
+  either field; both are optional and absent bounds are treated as
+  open-ended. The validator drops an inverted `amountMin > amountMax`
+  pair silently since such a rule could never fire.
 
 ## Complex entries
 

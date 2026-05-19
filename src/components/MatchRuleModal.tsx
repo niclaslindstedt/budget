@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Minus, Plus } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
 import { useDesktopAutoFocus } from "../hooks";
@@ -9,7 +10,13 @@ import type {
   MatchRule,
   Settings,
 } from "../data/types";
-import { formatBalance, formatShortDate } from "../utils/format";
+import {
+  formatAmountForInput,
+  formatBalance,
+  formatShortDate,
+  normalizeAmountInput,
+  parseAmount,
+} from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
@@ -24,6 +31,10 @@ export type MatchRuleDraft = {
   typeId: string | null;
   amountSign: AmountSign;
   transferFilter: TransferFilter;
+  // Signed bounds. `undefined` means "no constraint" — either end of
+  // the band can be open.
+  amountMin: number | undefined;
+  amountMax: number | undefined;
 };
 
 type Props = {
@@ -102,6 +113,13 @@ export function MatchRuleModal({
   const [typeId, setTypeId] = useState<string | null>(null);
   const [amountSign, setAmountSign] = useState<AmountSign>("any");
   const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
+  // The "between" range. Each bound has a magnitude (text) and a
+  // sign, mirroring the +/- toggle pattern used by the other amount
+  // inputs in the app. An empty text means "no bound".
+  const [amountMinText, setAmountMinText] = useState("");
+  const [amountMinNegative, setAmountMinNegative] = useState(true);
+  const [amountMaxText, setAmountMaxText] = useState("");
+  const [amountMaxNegative, setAmountMaxNegative] = useState(true);
 
   const patternRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(patternRef, open);
@@ -115,6 +133,24 @@ export function MatchRuleModal({
       setTypeId(existing.typeId ?? null);
       setAmountSign(existing.amountSign ?? "any");
       setTransferFilter(existing.transferFilter ?? "any");
+      if (existing.amountMin !== undefined) {
+        setAmountMinText(
+          formatAmountForInput(Math.abs(existing.amountMin), settings),
+        );
+        setAmountMinNegative(existing.amountMin < 0);
+      } else {
+        setAmountMinText("");
+        setAmountMinNegative(true);
+      }
+      if (existing.amountMax !== undefined) {
+        setAmountMaxText(
+          formatAmountForInput(Math.abs(existing.amountMax), settings),
+        );
+        setAmountMaxNegative(existing.amountMax < 0);
+      } else {
+        setAmountMaxText("");
+        setAmountMaxNegative(true);
+      }
       return;
     }
     setPattern(seedPatternFromDescription(seedEntry?.description ?? ""));
@@ -133,7 +169,14 @@ export function MatchRuleModal({
       setAmountSign("any");
     }
     setTransferFilter("exclude");
-  }, [open, existing, seedEntry]);
+    setAmountMinText("");
+    setAmountMaxText("");
+    // Default the toggles to the seed's direction so the user can
+    // type magnitudes without first remembering to flip the sign.
+    const seedNeg = seedEntry ? seedEntry.amount < 0 : true;
+    setAmountMinNegative(seedNeg);
+    setAmountMaxNegative(seedNeg);
+  }, [open, existing, seedEntry, settings]);
 
   // Compile the regex once per pattern; an empty pattern yields no
   // matches without throwing. Wrapped in useMemo so the live preview
@@ -147,6 +190,23 @@ export function MatchRuleModal({
     }
   }, [pattern]);
 
+  // Resolve each bound to a signed JS number (or undefined when the
+  // user left the field blank). Done once so the preview, the draft,
+  // and the submit handler all agree on what "this band means".
+  const amountMin = useMemo(
+    () => parseSignedAmount(amountMinText, amountMinNegative),
+    [amountMinText, amountMinNegative],
+  );
+  const amountMax = useMemo(
+    () => parseSignedAmount(amountMaxText, amountMaxNegative),
+    [amountMaxText, amountMaxNegative],
+  );
+  // Reject a band where the user has typed both ends but inverted
+  // them (min > max). The preview falls through to zero matches so
+  // the user sees the mistake immediately.
+  const rangeInverted =
+    amountMin !== undefined && amountMax !== undefined && amountMin > amountMax;
+
   const draft = useMemo<MatchRule>(
     () => ({
       id: existing?.id ?? "preview",
@@ -156,6 +216,8 @@ export function MatchRuleModal({
       typeId,
       amountSign,
       transferFilter,
+      amountMin: rangeInverted ? undefined : amountMin,
+      amountMax: rangeInverted ? undefined : amountMax,
     }),
     [
       existing,
@@ -165,23 +227,29 @@ export function MatchRuleModal({
       typeId,
       amountSign,
       transferFilter,
+      amountMin,
+      amountMax,
+      rangeInverted,
     ],
   );
 
   // All history entries the rule would match. Recomputed on every
   // field change so the preview reflects current filters. The list
   // can be long; we trim it to PREVIEW_LIMIT in the renderer below.
+  // An inverted band would short-circuit `ruleMatchesEntry` anyway,
+  // but force zero matches up front so the preview shows no rows.
   const matches = useMemo<HistoryEntry[]>(() => {
-    if (!compiled) return [];
+    if (!compiled || rangeInverted) return [];
     return allEntries.filter((e) => ruleMatchesEntry(draft, e));
-  }, [allEntries, draft, compiled]);
+  }, [allEntries, draft, compiled, rangeInverted]);
 
   const shownMatches = useMemo(
     () => previewEntries(matches, seedEntry),
     [matches, seedEntry],
   );
 
-  const canSave = pattern.trim().length > 0 && compiled !== null;
+  const canSave =
+    pattern.trim().length > 0 && compiled !== null && !rangeInverted;
 
   const handleSubmit = useCallback(() => {
     if (!canSave) return;
@@ -192,6 +260,8 @@ export function MatchRuleModal({
       typeId,
       amountSign,
       transferFilter,
+      amountMin,
+      amountMax,
     });
   }, [
     canSave,
@@ -202,6 +272,8 @@ export function MatchRuleModal({
     typeId,
     amountSign,
     transferFilter,
+    amountMin,
+    amountMax,
   ]);
 
   if (!open) return null;
@@ -299,6 +371,35 @@ export function MatchRuleModal({
               />
             </div>
           </div>
+          <div className="mt-3 flex flex-col gap-1.5">
+            <span className="text-xs text-muted">Between</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <SignedAmountInput
+                value={amountMinText}
+                negative={amountMinNegative}
+                placeholder="From"
+                settings={settings}
+                onChangeText={setAmountMinText}
+                onToggleSign={() => setAmountMinNegative((s) => !s)}
+                ariaLabel="Amount from"
+              />
+              <span className="text-xs text-muted">to</span>
+              <SignedAmountInput
+                value={amountMaxText}
+                negative={amountMaxNegative}
+                placeholder="To"
+                settings={settings}
+                onChangeText={setAmountMaxText}
+                onToggleSign={() => setAmountMaxNegative((s) => !s)}
+                ariaLabel="Amount to"
+              />
+            </div>
+            {rangeInverted && (
+              <p className="text-xs text-danger">
+                "From" must be less than or equal to "To".
+              </p>
+            )}
+          </div>
         </fieldset>
 
         <div className="mt-4">
@@ -378,6 +479,86 @@ export function MatchRuleModal({
         </button>
       </Modal.Footer>
     </Modal>
+  );
+}
+
+// Convert one bound's magnitude text + sign toggle into a signed
+// number. Returns `undefined` when the field is blank (no bound) so
+// the caller can leave that end of the band open.
+function parseSignedAmount(
+  text: string,
+  negative: boolean,
+): number | undefined {
+  if (text.trim() === "") return undefined;
+  const abs = parseAmount(text);
+  if (abs === null) return undefined;
+  const mag = Math.abs(abs);
+  if (mag === 0) return 0;
+  return negative ? -mag : mag;
+}
+
+type SignedAmountInputProps = {
+  value: string;
+  negative: boolean;
+  placeholder: string;
+  settings: Settings;
+  onChangeText: (next: string) => void;
+  onToggleSign: () => void;
+  ariaLabel: string;
+};
+
+// One side of the "between" band: a +/- toggle that lives flush with
+// the input, mirroring the pattern used by `ComplexEntryModal` and
+// `Cell.tsx` so the sign lives on the button, not in the text.
+function SignedAmountInput({
+  value,
+  negative,
+  placeholder,
+  settings,
+  onChangeText,
+  onToggleSign,
+  ariaLabel,
+}: SignedAmountInputProps) {
+  const handleChange = (next: string) => {
+    // The toggle owns the sign — strip any minus the keyboard or a
+    // paste introduces so the input shows only the magnitude.
+    const stripped = next.replace(/-/g, "");
+    onChangeText(normalizeAmountInput(stripped, settings));
+  };
+  const parsed = parseAmount(value);
+  const tone =
+    parsed !== null && parsed !== 0
+      ? negative
+        ? "text-negative"
+        : "text-positive"
+      : "text-fg";
+  return (
+    <div className="relative flex w-32">
+      <button
+        type="button"
+        onClick={onToggleSign}
+        aria-label={negative ? "Make positive" : "Make negative"}
+        tabIndex={-1}
+        className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
+          negative ? "text-negative" : "text-positive"
+        }`}
+      >
+        {negative ? (
+          <Minus size={14} aria-hidden focusable={false} />
+        ) : (
+          <Plus size={14} aria-hidden focusable={false} />
+        )}
+      </button>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className={`field-input w-full rounded border border-line bg-surface-2 py-1 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${tone}`}
+      />
+    </div>
   );
 }
 
