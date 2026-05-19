@@ -115,11 +115,22 @@ export function Modal({
   // also lifts the dialog out of the data-sheet-content subtree so
   // ActiveRowProvider's "block other buttons" rule never applies to
   // anything inside a modal.
+  // `data-active-portal` opts the modal out of ActiveRowProvider's
+  // document-level dismiss handler. A modal opened from inside a sheet
+  // row (e.g. DatePickerModal from a date cell) leaves the row
+  // registered as active for the lifetime of the modal; without the
+  // marker, the very first pointerdown inside the portaled modal would
+  // be treated as "outside the active row" and dismiss the row — which
+  // closes the modal and swallows the trailing click, so the picker
+  // never sees the tap on a date. Modals opened from outside a sheet
+  // row have no registration to dismiss, so the marker is a no-op for
+  // them.
   return createPortal(
     <div
       role={role}
       aria-modal="true"
       aria-labelledby={labelledBy}
+      data-active-portal
       className="fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50 sm:p-4"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
