@@ -38,6 +38,33 @@ export function redirectUri(): string {
   return window.location.origin;
 }
 
+// Pick which cloud provider issued an inbound OAuth `?code=`. The
+// authoritative signal is the PKCE verifier we stashed in
+// `sessionStorage` before redirecting to the provider's consent
+// screen — exactly one is live during a redirect, so its presence
+// alone identifies the flow. The URL's `state` query param is used
+// only to disambiguate when both happen to be present (an aborted
+// prior flow left a stale verifier behind). Returns `null` when
+// nothing identifies the flow — caller should log and bail rather
+// than fall through to a hardcoded provider, since defaulting was
+// what landed a successful Google auth on the Dropbox completion
+// path when Google occasionally swallowed `state`.
+export function pickOauthProvider(args: {
+  state: string | null;
+  gdrivePending: boolean;
+  dropboxPending: boolean;
+}): "gdrive" | "dropbox" | null {
+  const { state, gdrivePending, dropboxPending } = args;
+  if (gdrivePending && !dropboxPending) return "gdrive";
+  if (dropboxPending && !gdrivePending) return "dropbox";
+  if (gdrivePending && dropboxPending) {
+    if (state === "gdrive") return "gdrive";
+    if (state === "dropbox") return "dropbox";
+    return null;
+  }
+  return null;
+}
+
 export type FetchImpl = typeof fetch;
 
 // All the per-provider knobs the three flow helpers below need. The
@@ -75,7 +102,7 @@ export type TokenResult = {
 // app with `?code=…&state=<config.state>` set.
 export async function startAuth(config: OAuthConfig): Promise<void> {
   log.log(
-    `${config.providerName}: startAuth (redirect=${redirectUri()}, state=${config.state})`,
+    `${config.providerName}: startAuth (redirect=${redirectUri()}, state=${config.state}, verifierKey=${config.verifierKey})`,
   );
   const verifier = randomVerifier();
   sessionStorage.setItem(config.verifierKey, verifier);
@@ -90,7 +117,13 @@ export async function startAuth(config: OAuthConfig): Promise<void> {
     ...(config.extraAuthParams ?? {}),
   });
   const dest = `${config.authBase}?${params.toString()}`;
-  log.log(`${config.providerName}: redirecting to ${config.authBase}`);
+  // Echo the outbound query keys (not values — `code_challenge` is
+  // sensitive enough that we'd rather not surface it) so a comparison
+  // against the inbound query on return is mechanical.
+  const sentKeys = [...params.keys()].sort().join(",");
+  log.log(
+    `${config.providerName}: redirecting to ${config.authBase} sentKeys=${sentKeys}`,
+  );
   window.location.assign(dest);
 }
 

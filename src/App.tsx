@@ -116,6 +116,7 @@ import {
   type DropboxAuthResult,
   completeDropboxAuth,
   createDropboxAdapter,
+  hasPendingDropboxAuth,
   startDropboxAuth,
 } from "./storage/dropbox-adapter";
 import {
@@ -128,10 +129,12 @@ import { serializeUserData } from "./storage/file";
 import {
   completeGdriveAuth,
   createGdriveAdapter,
+  hasPendingGdriveAuth,
   startGdriveAuth,
 } from "./storage/gdrive-adapter";
 import { withEncryption } from "./storage/encrypting-adapter";
 import { createFolderAdapter } from "./storage/folder-adapter";
+import { pickOauthProvider } from "./storage/oauth-pkce";
 import {
   clearDirectoryHandle,
   ensurePermission,
@@ -1743,11 +1746,19 @@ export function App() {
   // Complete the cloud-backend OAuth round-trip when the redirect
   // lands back here. The user signed in before clicking Connect, so
   // by the time this fires they should already be signed-in again
-  // (or about to be — we wait for that transition). The `state`
-  // query param tags which provider issued the code; we default to
-  // Dropbox for backwards compatibility with the legacy auth URL
-  // that didn't set `state`. Errors surface in the console only; a
-  // future polish pass can surface them in UI.
+  // (or about to be — we wait for that transition). Errors surface in
+  // the console only; a future polish pass can surface them in UI.
+  //
+  // Which provider issued the `?code=` is read primarily from the
+  // PKCE verifier in `sessionStorage`: `startDropboxAuth` /
+  // `startGdriveAuth` each stash one under a per-provider key right
+  // before redirecting, and exactly one of them is live whenever a
+  // redirect is in flight. The URL's `state` param is treated as a
+  // hint that breaks ties only when both verifiers happen to be
+  // present (an aborted prior flow left one behind). Defaulting off
+  // `state` alone caused a real bug — Google occasionally redirects
+  // without echoing `state` cleanly, landing a successful Google
+  // auth on the Dropbox completion path.
   //
   // Before flipping the backend we probe both sides — the target
   // cloud (so the dialog knows whether it already holds a budget)
@@ -1760,19 +1771,61 @@ export function App() {
   // confusion.
   useEffect(() => {
     if (auth.kind !== "signed-in") return;
-    const params = new URLSearchParams(window.location.search);
+    const rawSearch = window.location.search;
+    const params = new URLSearchParams(rawSearch);
     const code = params.get("code");
     if (!code) return;
     // Pin the narrowed string into a local — TypeScript's
     // `if (!code) return` narrowing doesn't reach the nested function
     // declarations below, which would otherwise see `string | null`.
     const authCode = code;
-    const provider = params.get("state") === "gdrive" ? "gdrive" : "dropbox";
+    const state = params.get("state");
+    const oauthErr = params.get("error");
+    const gdrivePending = hasPendingGdriveAuth();
+    const dropboxPending = hasPendingDropboxAuth();
+    // Echo the raw query string (sans the code, which is a secret) so
+    // a misbehaving redirect chain — extra params, dropped `state`,
+    // unexpected fragments — shows up in the console verbatim instead
+    // of being inferred from the routing decision below.
+    const sanitisedSearch = rawSearch.replace(/(code=)[^&]*/, "$1<redacted>");
+    log.log(
+      `oauth: redirect landed — search=${sanitisedSearch || "<empty>"} state=${state ?? "<none>"} error=${oauthErr ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}`,
+    );
+    if (oauthErr) {
+      log.error(
+        `oauth: provider returned error=${oauthErr} desc=${params.get("error_description") ?? "<none>"}; aborting and cleaning URL`,
+      );
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("state");
+      url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+      window.history.replaceState({}, "", url.toString());
+      return;
+    }
+    const provider = pickOauthProvider({
+      state,
+      gdrivePending,
+      dropboxPending,
+    });
+    log.log(
+      `oauth: pickOauthProvider → ${provider ?? "<null>"} (state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending})`,
+    );
+    if (!provider) {
+      log.error(
+        `oauth: cannot determine provider — state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}; aborting and cleaning URL`,
+      );
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("state");
+      window.history.replaceState({}, "", url.toString());
+      return;
+    }
     let cancelled = false;
     const userId = auth.user.id;
     const fromBackend = getBackend(userId);
     log.log(
-      `oauth: ?code= present provider=${provider} fromBackend=${fromBackend}`,
+      `oauth: ?code= present provider=${provider} (state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}) fromBackend=${fromBackend}`,
     );
 
     const run = provider === "gdrive" ? doGdrive() : doDropbox();
