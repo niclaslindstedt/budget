@@ -13,3 +13,22 @@ instead. See `AGENTS.md` for the format and the rules about when to
 write a fragment.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-05-19
+
+### Added
+
+- "What's new" popup that surfaces release notes once after each upgrade,
+  plus a browsable [Changelog page](/changelog) linked from the Settings
+  footer next to Privacy policy and Data schema.
+- Two-track deploy: the released app lives at `/`, the current `main` is
+  previewed at `/preview/`. Visiting the preview never reads or writes
+  your production data — local storage, the cloud-sync file, and the
+  folder-handle database all carry a `preview` namespace.
+
+### Changed
+
+- The app now follows semantic versioning. The version string is shown
+  in the "What's new" popup and on the Changelog page; the bundle's
+  own `__APP_VERSION__` mirrors `package.json`.
+
