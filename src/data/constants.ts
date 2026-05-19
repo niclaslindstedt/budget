@@ -123,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showCurrency: true,
   showDecimals: false,
   abbreviateNumbers: false,
+  alwaysAbbreviateBalance: true,
   fontScale: 1,
   sessionTimeoutMinutes: 15,
   lastSeenChangelogVersion: null,

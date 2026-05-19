@@ -28,7 +28,11 @@ import type {
   Sheet,
   Transaction,
 } from "../data/types";
-import { formatNumber, formatBalance, withCurrency } from "../utils/format";
+import {
+  formatNumber,
+  formatRunningBalance,
+  withCurrency,
+} from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
 
@@ -251,7 +255,7 @@ export function SheetView({
     }
     if (balanceCol) {
       for (const b of balances.values()) {
-        const text = formatBalance(b, settings);
+        const text = formatRunningBalance(b, settings);
         if (text.length > balanceChars) balanceChars = text.length;
       }
     }

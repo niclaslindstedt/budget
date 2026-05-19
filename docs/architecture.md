@@ -107,7 +107,7 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 12;
+  version: 21;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -399,6 +399,18 @@ Current `LATEST_VERSION` is `19`. The chain has eighteen steps:
   v19 validator unchanged; the app's mount-time check stamps the
   current `APP_VERSION` silently on a fresh install so existing users
   never see the popup the moment they upgrade.
+- **v19 → v20** — introduces built-in preset entry types and preset
+  categories (`PRESET_ENTRY_TYPES` / `PRESET_CATEGORIES` in
+  `data/constants.ts`) plus per-user hide lists for each. Existing
+  user-added types and categories stay as-is; the migration
+  initialises `hiddenPresetTypeIds` and `hiddenPresetCategoryIds` as
+  empty arrays so every preset shows up until the user toggles one off
+  from Settings.
+- **v20 → v21** — version bump only. Introduces the
+  `Settings.alwaysAbbreviateBalance` display toggle that bypasses the
+  10 000 abbreviation threshold for the running-balance column on the
+  main sheet view. The validator falls back to the default for v20
+  records that don't carry the field.
 
 ## Complex entries
 

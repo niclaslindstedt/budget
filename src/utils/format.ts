@@ -46,6 +46,12 @@ export type FormatNumberOpts = {
   // cells leave this off so whole-number entries don't grow trailing
   // ".00" the moment they leave focus.
   alwaysTwoFractionDigits?: boolean;
+  // Bypass the `ABBREVIATE_THRESHOLD` so even small values render as
+  // "0K" / "8K" when `abbreviateNumbers` is on. Set by the running-
+  // balance column on the main sheet so the column reads as a uniform
+  // stack of compact figures; amount cells leave this off so a small
+  // amount keeps its precision.
+  alwaysAbbreviate?: boolean;
 };
 
 // Threshold at which `abbreviateNumbers` kicks in. Below this the
@@ -85,8 +91,13 @@ export function formatNumber(
 ): string {
   // Abbreviation wins over the standard grouping/decimal pipeline —
   // the user opted into a compact form, and threading thousands
-  // separators or trailing zeros through "12K" makes no sense.
-  if (settings.abbreviateNumbers && Math.abs(n) >= ABBREVIATE_THRESHOLD) {
+  // separators or trailing zeros through "12K" makes no sense. The
+  // `alwaysAbbreviate` opt bypasses the threshold so the balance
+  // column can keep every row compact when its dedicated setting is on.
+  if (
+    settings.abbreviateNumbers &&
+    (opts.alwaysAbbreviate || Math.abs(n) >= ABBREVIATE_THRESHOLD)
+  ) {
     return abbreviateValue(n, settings);
   }
   // `showDecimals` off wins over `alwaysTwoFractionDigits` — the user has
@@ -128,6 +139,21 @@ export function formatAmount(n: number, settings: Settings): string {
 export function formatBalance(n: number, settings: Settings): string {
   return withCurrency(
     formatNumber(n, settings, { alwaysTwoFractionDigits: true }),
+    settings,
+  );
+}
+
+// Variant for the running-balance column on the main sheet view, which
+// honours `alwaysAbbreviateBalance` so the column reads uniformly when
+// the user opted into compact rendering. Other "balance"-like surfaces
+// (account snapshots, history) keep using `formatBalance` so their
+// values stay precise unless they crossed the abbreviate threshold.
+export function formatRunningBalance(n: number, settings: Settings): string {
+  return withCurrency(
+    formatNumber(n, settings, {
+      alwaysTwoFractionDigits: true,
+      alwaysAbbreviate: settings.alwaysAbbreviateBalance,
+    }),
     settings,
   );
 }

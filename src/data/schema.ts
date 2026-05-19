@@ -898,6 +898,7 @@ export const USER_DATA_SCHEMA = {
         "showCurrency",
         "showDecimals",
         "abbreviateNumbers",
+        "alwaysAbbreviateBalance",
         "fontScale",
         "sessionTimeoutMinutes",
         "lastSeenChangelogVersion",
@@ -989,6 +990,18 @@ export const USER_DATA_SCHEMA = {
             '("12K", "1.2M") so cramped rows fit on narrow viewports. ' +
             "Affects display only — editable inputs always show the " +
             "full value.",
+        },
+        alwaysAbbreviateBalance: {
+          type: "boolean",
+          default: DEFAULT_SETTINGS.alwaysAbbreviateBalance,
+          description:
+            "Bypass the 10 000 abbreviation threshold for the running-" +
+            "balance column on the main sheet view so it reads as a " +
+            "uniform stack of compact figures instead of a mix of " +
+            'precise ("9 432") and abbreviated ("12K") values. No effect ' +
+            "unless `abbreviateNumbers` is also on; the amount column is " +
+            "always left at the threshold rule so small amounts stay " +
+            "precise.",
         },
         fontScale: {
           type: "number",
