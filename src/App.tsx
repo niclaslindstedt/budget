@@ -1498,28 +1498,54 @@ export function App() {
     boot.auth.kind === "signed-in" ? boot.auth.password : null,
   );
 
-  // Per-user device-local storage preferences. Loaded lazily on sign-
-  // in so a fresh-device session lands on local until the user
-  // reconnects Dropbox here. Lives in App so the adapter `useMemo`
-  // can rebuild when the user flips the choice from Settings.
-  const [backend, setBackendState] = useState<BackendId>("browser");
-  const [dropboxToken, setDropboxTokenState] = useState<string | null>(null);
+  // Per-user device-local storage preferences. Seeded from boot so the
+  // very first adapter built by the `useMemo` below matches what the
+  // auth effect would later set — same fix shape as encryption below.
+  // Without this, a refresh on a cloud-backed account boots with
+  // backend="browser", builds a local adapter whose `loadSync()` hands
+  // back whatever stale bytes happen to live under `userDataKey(uid)`,
+  // shows them on screen for a frame, then the auth effect swaps the
+  // adapter to the real cloud one — which races a queued auto-save of
+  // the stale bytes against the in-flight cloud load. On mobile this
+  // surfaces as the real budget flashing in for a moment ("blink") and
+  // then collapsing back to a fresh "Sheet 1" with the save button lit
+  // up dirty (the empty in-memory state vs. the bytes the racing save
+  // wrote into `lastSavedText`).
+  const [backend, setBackendState] = useState<BackendId>(() =>
+    boot.auth.kind === "signed-in" ? getBackend(boot.auth.user.id) : "browser",
+  );
+  const [dropboxToken, setDropboxTokenState] = useState<string | null>(() =>
+    boot.auth.kind === "signed-in" ? getDropboxToken(boot.auth.user.id) : null,
+  );
   // The refresh token is held in a ref rather than React state because
   // silent refreshes update the access token in localStorage and inside
   // the adapter's closure — bouncing it through `setState` would
   // rebuild the `adapter` useMemo and trigger a needless reload of the
   // user's data.
-  const dropboxRefreshTokenRef = useRef<string | null>(null);
-  const [gdriveToken, setGdriveTokenState] = useState<string | null>(null);
+  const dropboxRefreshTokenRef = useRef<string | null>(
+    boot.auth.kind === "signed-in"
+      ? getDropboxRefreshToken(boot.auth.user.id)
+      : null,
+  );
+  const [gdriveToken, setGdriveTokenState] = useState<string | null>(() =>
+    boot.auth.kind === "signed-in" ? getGdriveToken(boot.auth.user.id) : null,
+  );
   // Live `FileSystemDirectoryHandle` for the folder backend, restored
   // from IndexedDB after auth flips. `folderHandleLoaded` distinguishes
   // "still probing IDB" from "no handle exists" so the `adapter`
   // useMemo can hold off on building anything during the async restore
   // (returning `null` from the memo, which the storage hook treats as
-  // a no-op — same contract as the auth handshake).
+  // a no-op — same contract as the auth handshake). Seeded `true` for
+  // non-folder users so the adapter useMemo isn't gated on a probe
+  // that has nothing to find — without this gate, every cloud-backed
+  // refresh would flicker through `folderHandleLoaded=false → true`
+  // and rebuild the adapter for no reason.
   const [folderHandle, setFolderHandle] =
     useState<FileSystemDirectoryHandle | null>(null);
-  const [folderHandleLoaded, setFolderHandleLoaded] = useState(false);
+  const [folderHandleLoaded, setFolderHandleLoaded] = useState<boolean>(() => {
+    if (boot.auth.kind !== "signed-in") return true;
+    return getBackend(boot.auth.user.id) !== "folder";
+  });
   // Set when a boot-time `queryPermission` returns anything other than
   // "granted" — the App keeps the IDB record around so the user can
   // re-grant with one click, but the Settings hint flips to a
@@ -2108,6 +2134,17 @@ export function App() {
       return;
     }
     const userId = auth.user.id;
+    // Skip the probe when the user isn't on folder backend — the
+    // adapter useMemo only consults `folderHandle` / `folderHandleLoaded`
+    // when `backend === "folder"`, so probing IDB on every refresh for
+    // every cloud / browser user just churns state and rebuilds the
+    // adapter for nothing.
+    if (getBackend(userId) !== "folder") {
+      setFolderHandle(null);
+      setFolderHandleLoaded(true);
+      setFolderReconnectNeeded(false);
+      return;
+    }
     let cancelled = false;
     setFolderHandleLoaded(false);
     setFolderReconnectNeeded(false);
