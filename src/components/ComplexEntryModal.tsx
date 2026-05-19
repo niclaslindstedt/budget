@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 import { formulaToStored, parseFormula } from "../data/formula";
@@ -6,6 +6,7 @@ import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
+import { FormulaVariableHelper } from "./FormulaVariableHelper";
 import { Modal } from "./Modal";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
@@ -98,6 +99,9 @@ export function ComplexEntryModal({
   // renames don't break the formula.
   const [formulaMode, setFormulaMode] = useState(false);
   const [formulaText, setFormulaText] = useState("");
+  // Lets the variable-helper dropdown splice tokens at the caret and
+  // restore focus + cursor position afterwards.
+  const formulaInputRef = useRef<HTMLInputElement>(null);
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
 
@@ -166,6 +170,39 @@ export function ComplexEntryModal({
 
   const toggleSign = () => setNegative((s) => !s);
   const toggleFormulaMode = () => setFormulaMode((m) => !m);
+
+  const insertFormulaToken = useCallback(
+    (text: string) => {
+      const el = formulaInputRef.current;
+      const start = el?.selectionStart ?? formulaText.length;
+      const end = el?.selectionEnd ?? formulaText.length;
+      const next = formulaText.slice(0, start) + text + formulaText.slice(end);
+
+      // Drop the caret into the first "hole" of the inserted snippet so
+      // the user can keep typing without manually navigating: between
+      // empty quotes for id/name arguments, or right after the open
+      // paren when the function takes multiple arguments. Plain
+      // variables and the bare `()` form fall through to "end of
+      // insert".
+      let caretInInsert = text.length;
+      const emptyQuotes = text.indexOf('("")');
+      const argSep = text.indexOf(", ");
+      const emptyParens = text.indexOf("()");
+      if (emptyQuotes >= 0) caretInInsert = emptyQuotes + 2;
+      else if (argSep >= 0) caretInInsert = argSep;
+      else if (emptyParens >= 0) caretInInsert = emptyParens + 1;
+
+      setFormulaText(next);
+      requestAnimationFrame(() => {
+        const inp = formulaInputRef.current;
+        if (!inp) return;
+        inp.focus();
+        const caret = start + caretInInsert;
+        inp.setSelectionRange(caret, caret);
+      });
+    },
+    [formulaText],
+  );
 
   function handleSubmit() {
     if (dates.length === 0) return;
@@ -269,16 +306,20 @@ export function ComplexEntryModal({
               </button>
             </span>
             {formulaMode ? (
-              <input
-                type="text"
-                value={formulaText}
-                onChange={(e) => setFormulaText(e.target.value)}
-                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
-                placeholder="endOfMonthBalance - 5000"
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-              />
+              <div className="flex gap-1.5">
+                <input
+                  ref={formulaInputRef}
+                  type="text"
+                  value={formulaText}
+                  onChange={(e) => setFormulaText(e.target.value)}
+                  className="field-input flex-1 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                  placeholder="endOfMonthBalance - 5000"
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                />
+                <FormulaVariableHelper onInsert={insertFormulaToken} />
+              </div>
             ) : (
               <div className="relative flex">
                 <button
