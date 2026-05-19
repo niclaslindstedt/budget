@@ -258,18 +258,10 @@ export function ComplexEntryModal({
               placeholder="Rent, Spotify, Salary…"
             />
           </label>
+          {/* Not a <label>: the fx toggle button is labelable, so wrapping
+              the formula input in a <label> makes a tap on the formula
+              field activate the fx button instead and toggle the mode off. */}
           <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Type</span>
-            <TypePicker
-              variant="field"
-              types={types}
-              selectedId={typeId}
-              onSelect={setTypeId}
-              onCreate={onCreateType}
-              usageById={typeUsageById}
-            />
-          </div>
-          <label className="flex flex-col gap-1">
             <span className="flex items-center justify-between text-xs text-muted">
               <span>Amount</span>
               <button
@@ -329,6 +321,7 @@ export function ComplexEntryModal({
                   inputMode="decimal"
                   value={amountText}
                   onChange={(e) => handleAmountChange(e.target.value)}
+                  aria-label="Amount"
                   className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
                     parsedAbs !== null && parsedAbs !== 0
                       ? negative
@@ -360,7 +353,18 @@ export function ComplexEntryModal({
                 Formula evaluated per row at render time.
               </span>
             ) : null}
-          </label>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Type</span>
+            <TypePicker
+              variant="field"
+              types={types}
+              selectedId={typeId}
+              onSelect={setTypeId}
+              onCreate={onCreateType}
+              usageById={typeUsageById}
+            />
+          </div>
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">Category</span>
             <CategoryPicker
