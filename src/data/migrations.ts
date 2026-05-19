@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 25 as const;
+export const LATEST_VERSION = 26 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -374,6 +374,53 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   //   migration above does, so a future picker can still surface
   //   them as "Food (generic)" / "Bills (generic)" / etc.
   24: (v24) => migrateV24ToV25(v24),
+
+  // v25 → v26: re-introduces a dedicated `"type"` column on every
+  // AccountBudget. The v24 → v25 step removed the legacy `"category"`
+  // column once category became derived from `row.typeId`; users still
+  // wanted a visible column for the row's type, so this step inserts
+  // one just after `"description"` (matching where the legacy category
+  // column lived). The column has no associated cell value — the
+  // `updateCell` reducer routes writes for it straight into
+  // `row.typeId`, which already carries the source-of-truth id.
+  // Idempotent: budgets that somehow already carry a `"type"` column
+  // are left alone.
+  25: (v25) => {
+    const sheets = Array.isArray(v25.sheets) ? v25.sheets : [];
+    return {
+      ...v25,
+      version: 26,
+      sheets: sheets.map((rawSheet) => {
+        if (!isObj(rawSheet)) return rawSheet;
+        const items = Array.isArray(rawSheet.items) ? rawSheet.items : [];
+        return {
+          ...rawSheet,
+          items: items.map((rawItem) => {
+            if (!isObj(rawItem)) return rawItem;
+            if (rawItem.type !== "accountBudget") return rawItem;
+            const columns = Array.isArray(rawItem.columns)
+              ? rawItem.columns
+              : [];
+            const hasTypeColumn = columns.some(
+              (c) => isObj(c) && c.type === "type",
+            );
+            if (hasTypeColumn) return rawItem;
+            const descIdx = columns.findIndex(
+              (c) => isObj(c) && c.type === "description",
+            );
+            const insertAt = descIdx >= 0 ? descIdx + 1 : columns.length;
+            const nextColumns = [...columns];
+            nextColumns.splice(insertAt, 0, {
+              id: newId(),
+              type: "type",
+              label: "Type",
+            });
+            return { ...rawItem, columns: nextColumns };
+          }),
+        };
+      }),
+    };
+  },
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by

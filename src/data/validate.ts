@@ -55,6 +55,7 @@ export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
   "date",
   "description",
+  "type",
   "amount",
   "balance",
   "completed",

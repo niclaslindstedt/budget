@@ -1,6 +1,7 @@
 export type ColumnType =
   | "date"
   | "description"
+  | "type"
   | "amount"
   | "balance"
   | "completed";
@@ -552,7 +553,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 25;
+  version: 26;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

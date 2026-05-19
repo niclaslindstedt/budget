@@ -541,7 +541,28 @@ function reduceAccountBudget(
   action: ItemAction,
 ): AccountBudget {
   switch (action.type) {
-    case "updateCell":
+    case "updateCell": {
+      // The `type` column is a virtual view of `row.typeId` — it has
+      // no entry in the row's `cells` map. Route writes into `typeId`
+      // directly so the picker, the description chip, and every
+      // downstream consumer (modals, merchant hints) read from one
+      // source of truth.
+      const targetCol = item.columns.find((c) => c.id === action.columnId);
+      if (targetCol?.type === "type") {
+        return {
+          ...item,
+          rows: item.rows.map((r) => {
+            if (r.id !== action.rowId) return r;
+            const next: Row = { ...r };
+            if (typeof action.value === "string" && action.value !== "") {
+              next.typeId = action.value;
+            } else {
+              delete next.typeId;
+            }
+            return next;
+          }),
+        };
+      }
       return {
         ...item,
         rows: item.rows.map((r) =>
@@ -550,6 +571,7 @@ function reduceAccountBudget(
             : r,
         ),
       };
+    }
 
     case "addRow": {
       const dateCol = findColumnByType(item.columns, "date");
@@ -4954,6 +4976,9 @@ function BudgetView({
                 item={activeItem}
                 data={data}
                 types={allTypesMerged}
+                categories={allCategoriesMerged}
+                typeUsageById={typeUsageById}
+                onCreateType={onCreateType}
                 accounts={data.accounts}
                 transactions={data.transactions}
                 history={

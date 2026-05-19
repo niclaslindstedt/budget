@@ -60,7 +60,7 @@ function workspace(
     items: [item],
   };
   return {
-    version: 25,
+    version: 26,
     sheets: [main, ...extra],
     activeSheetId: "sht_main",
     accounts: [],

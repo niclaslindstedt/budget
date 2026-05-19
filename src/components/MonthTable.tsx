@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type {
+  Category,
   CellValue,
   Column,
   EntryType,
@@ -20,6 +21,9 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   types: readonly EntryType[];
+  categories: readonly Category[];
+  typeUsageById: ReadonlyMap<string, number>;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -66,6 +70,9 @@ export function MonthTable({
   columns,
   balances,
   types,
+  categories,
+  typeUsageById,
+  onCreateType,
   settings,
   selectMode,
   selectedIds,
@@ -229,6 +236,9 @@ export function MonthTable({
                   columns={columns}
                   balances={balances}
                   types={types}
+                  categories={categories}
+                  typeUsageById={typeUsageById}
+                  onCreateType={onCreateType}
                   settings={settings}
                   selectMode={selectMode}
                   selected={selectedIds.has(row.id)}

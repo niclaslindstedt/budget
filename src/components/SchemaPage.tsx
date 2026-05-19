@@ -78,6 +78,19 @@ export function SchemaPage() {
               every type belongs to exactly one.
             </li>
             <li>
+              A row's <em>type</em> is also derived from{" "}
+              <code className="text-meta">row.typeId</code>. The sheet renders a
+              dedicated <code className="text-meta">"type"</code> column for it,
+              but the column has{" "}
+              <strong className="text-fg-bright">no stored cell</strong> —{" "}
+              <code className="text-meta">row.cells</code> never carries a value
+              under the type column's id. Read the chip's text and colour by
+              resolving the row's <code className="text-meta">typeId</code>{" "}
+              against <code className="text-meta">UserData.types</code> (plus
+              the built-in <code className="text-meta">PRESET_ENTRY_TYPES</code>{" "}
+              list).
+            </li>
+            <li>
               Rows generated from a recurring entry share a{" "}
               <code className="text-meta">seriesId</code>. Use it to group "this
               and all future" operations.

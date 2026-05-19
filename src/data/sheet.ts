@@ -32,6 +32,7 @@ export function createDefaultAccountBudget(
   const columns: Column[] = [
     { id: newId(), type: "date", label: "Date" },
     { id: newId(), type: "description", label: "Description" },
+    { id: newId(), type: "type", label: "Type" },
     { id: newId(), type: "amount", label: "Amount" },
     { id: newId(), type: "balance", label: "Balance" },
     { id: newId(), type: "completed", label: "Done" },
