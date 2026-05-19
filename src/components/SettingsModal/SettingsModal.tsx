@@ -9,6 +9,7 @@ import {
   Settings as SettingsIcon,
   Sliders,
   Tag,
+  X,
 } from "lucide-react";
 
 import { DEFAULT_SETTINGS, NUMBER_FORMATS } from "../../data/constants";
@@ -238,14 +239,17 @@ export function SettingsModal({
       // into a narrow column.
       size="max-w-3xl"
     >
-      <Modal.Header title="Settings" onClose={onClose} />
+      <SettingsHeader
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onClose={onClose}
+      />
       {/* Custom body: skip Modal.Body so we can host a row-flex
           sidebar+content split that owns its own per-column overflow,
           instead of inheriting the body's single vertical scroll. */}
       <div className="flex flex-1 overflow-hidden">
         <TabSidebar activeTab={activeTab} onSelect={setActiveTab} />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TabBurger activeTab={activeTab} onSelect={setActiveTab} />
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4">
             {activeTab === "general" && (
               <GeneralTab
@@ -381,75 +385,93 @@ function TabSidebar({
   );
 }
 
-// Mobile-only burger trigger that opens a popover listing the same
-// tabs. Lives directly above the scrolling tab content so the active
-// section name is always visible at the top of the panel.
-function TabBurger({
+// Custom header so the mobile burger trigger can sit to the left of
+// the "Settings" title instead of taking its own row below the
+// header. The burger is hidden on `sm:` and up — the desktop sidebar
+// already owns section selection there.
+function SettingsHeader({
   activeTab,
-  onSelect,
+  onSelectTab,
+  onClose,
 }: {
   activeTab: TabId;
-  onSelect: (id: TabId) => void;
+  onSelectTab: (id: TabId) => void;
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const close = useCallback(() => setOpen(false), []);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const burgerRef = useRef<HTMLDivElement | null>(null);
+  const close = useCallback(() => setMenuOpen(false), []);
 
-  useEscapeKey(open, close);
-  usePointerOutside(open, [rootRef], close);
-
-  const current = TAB_DEFS.find((t) => t.id === activeTab) ?? TAB_DEFS[0];
-  const CurrentIcon = current.icon;
+  useEscapeKey(menuOpen, close);
+  usePointerOutside(menuOpen, [burgerRef], close);
 
   return (
-    <div
-      ref={rootRef}
-      className="relative shrink-0 border-b border-line bg-surface-3 sm:hidden"
+    <header
+      className="relative flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3"
+      style={{
+        paddingTop: `calc(0.75rem + env(safe-area-inset-top))`,
+      }}
     >
+      <div className="flex min-w-0 items-center gap-2">
+        <div ref={burgerRef} className="relative sm:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label="Choose settings section"
+            className="-ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <Menu size={18} aria-hidden focusable={false} />
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute left-0 top-full z-30 mt-1 flex w-48 flex-col gap-0.5 rounded border border-line bg-surface-3 p-2 shadow-lg"
+            >
+              {TAB_DEFS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = tab.id === activeTab;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSelectTab(tab.id);
+                      setMenuOpen(false);
+                    }}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex w-full cursor-pointer items-center gap-2 rounded border px-2 py-2 text-left text-sm ${
+                      isActive
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-transparent text-fg hover:border-line hover:bg-surface-2"
+                    }`}
+                  >
+                    <Icon size={14} aria-hidden />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <h2
+          id="settings-title"
+          className="text-sm font-bold tracking-wide text-fg-bright"
+        >
+          Settings
+        </h2>
+      </div>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Choose settings section"
-        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm text-fg hover:bg-surface-2"
+        onClick={onClose}
+        aria-label="Close"
+        className="-mr-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
       >
-        <Menu size={16} aria-hidden className="text-muted" />
-        <CurrentIcon size={14} aria-hidden />
-        <span className="font-bold text-fg-bright">{current.label}</span>
+        <X size={20} aria-hidden focusable={false} />
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute inset-x-0 top-full z-30 flex flex-col gap-0.5 border-b border-line bg-surface-3 p-2 shadow-lg"
-        >
-          {TAB_DEFS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = tab.id === activeTab;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onSelect(tab.id);
-                  setOpen(false);
-                }}
-                aria-current={isActive ? "page" : undefined}
-                className={`flex w-full cursor-pointer items-center gap-2 rounded border px-2 py-2 text-left text-sm ${
-                  isActive
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-transparent text-fg hover:border-line hover:bg-surface-2"
-                }`}
-              >
-                <Icon size={14} aria-hidden />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    </header>
   );
 }
 
