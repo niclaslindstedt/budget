@@ -31,7 +31,12 @@ const log = debug("dropbox");
 
 // Public app key. Dropbox's PKCE flow doesn't require a client secret,
 // and the key itself is published in the deployed JS bundle either
-// way — bake it in for zero env-var infrastructure.
+// way — but it's read from a build-time env var so a fork can plug in
+// its own Dropbox app without inheriting the upstream developer's
+// identifier. Set `VITE_DROPBOX_APP_KEY` in `.env.local` for dev and
+// as a GitHub Actions secret for the production build (see
+// `.github/workflows/pages.yml`). Unset means the Dropbox backend is
+// disabled in the picker.
 //
 // The matching app is registered at
 // https://www.dropbox.com/developers/apps as "Scoped access" with
@@ -40,7 +45,11 @@ const log = debug("dropbox");
 // (prod) and `http://localhost:5173` (dev), no trailing slash —
 // `startDropboxAuth` derives the URI from `window.location.origin`
 // and Dropbox requires an exact match.
-export const DROPBOX_APP_KEY = "fjk4dj166rrzuiw";
+export const DROPBOX_APP_KEY = import.meta.env.VITE_DROPBOX_APP_KEY ?? "";
+
+export function isDropboxConfigured(): boolean {
+  return DROPBOX_APP_KEY.length > 0;
+}
 
 // Public folder name inside the user's Dropbox `Apps/` directory. This
 // matches the Dropbox app registration's "App folder" name and is what
