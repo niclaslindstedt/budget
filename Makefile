@@ -1,4 +1,4 @@
-.PHONY: install dev build preview lint typecheck fmt fmt-check test clean changelog
+.PHONY: install dev build preview lint typecheck fmt fmt-check test clean changelog codegen
 
 install:
 	npm ci
@@ -6,17 +6,26 @@ install:
 dev:
 	npm run dev
 
-build:
+# Codegen step that emits src/generated/changelog.ts from CHANGELOG.md.
+# Needed before tsc -b runs (typecheck / lint / build) because the
+# generated module is gitignored. The Vite dev server / `vite build`
+# also re-emit via vite/changelog-plugin.ts, but the standalone script
+# means a fresh CI checkout can run `make lint` without first
+# running `make build`.
+codegen:
+	node scripts/codegen/changelog.mjs
+
+build: codegen
 	npm run build
 
 preview:
 	npm run preview
 
-lint:
+lint: codegen
 	npm run lint
 	npm run typecheck
 
-typecheck:
+typecheck: codegen
 	npm run typecheck
 
 fmt:
