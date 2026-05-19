@@ -1,5 +1,5 @@
 import { debug } from "../utils/debug";
-import type { Snapshot, StorageAdapter } from "./adapter";
+import type { BackupOps, Snapshot, StorageAdapter } from "./adapter";
 import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto";
 
 const log = debug("encrypt");
@@ -22,10 +22,50 @@ export function withEncryption(
   inner: StorageAdapter,
   passwordRef: PasswordRef,
 ): StorageAdapter {
+  const wrappedBackups: BackupOps | undefined = inner.backups
+    ? {
+        list: () => inner.backups!.list(),
+        async create(text, metadata) {
+          const password = passwordRef.current;
+          if (!password) {
+            log.warn(
+              `backup create: no password — writing plaintext (${text.length} B)`,
+            );
+            await inner.backups!.create(text, {
+              ...metadata,
+              encrypted: false,
+            });
+            return;
+          }
+          log.log(`backup create: encrypting (${text.length} B)`);
+          const payload = await encryptText(text, password);
+          await inner.backups!.create(payload, {
+            ...metadata,
+            encrypted: true,
+          });
+        },
+        async read(filename) {
+          const raw = await inner.backups!.read(filename);
+          if (!isEncryptedEnvelope(raw)) {
+            log.log(`backup read: ${filename} is plaintext`);
+            return raw;
+          }
+          const password = passwordRef.current;
+          if (!password) {
+            log.error(`backup read: ${filename} encrypted but no password`);
+            throw new Error("Backup is encrypted; password is required");
+          }
+          log.log(`backup read: decrypting ${filename}`);
+          return decryptEnvelope(raw, password);
+        },
+      }
+    : undefined;
+
   return {
     id: inner.id,
     label: `${inner.label} (encrypted)`,
     saveDebounceMs: inner.saveDebounceMs,
+    backups: wrappedBackups,
 
     // No `loadSync`: even when the inner adapter can hand back bytes
     // synchronously, decryption is asynchronous. Callers fall back to

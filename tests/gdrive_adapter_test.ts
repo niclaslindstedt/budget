@@ -332,6 +332,134 @@ describe("gdrive adapter", () => {
   });
 });
 
+describe("gdrive backups", () => {
+  // Fake a Drive workspace just rich enough for the backup ops.
+  // Each file has a synthetic id, a parent folder id (root or the
+  // backups folder), and a body. Search-by-name plus parent filter
+  // drives the lookup paths.
+  function gdriveFs(): { fn: typeof fetch } {
+    type File = { id: string; name: string; parent: string; body: string };
+    const files: File[] = [];
+    let nextId = 1;
+    const fn: typeof fetch = (async (
+      url: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const u = String(url);
+      if (isSearch(u)) {
+        const params = new URL(u).searchParams;
+        const q = params.get("q") ?? "";
+        const nameMatch = q.match(/name='([^']+)'/);
+        const parentMatch = q.match(/'([^']+)' in parents/);
+        const isFolder = q.includes(
+          "mimeType='application/vnd.google-apps.folder'",
+        );
+        let matches = files;
+        if (nameMatch) matches = matches.filter((f) => f.name === nameMatch[1]);
+        if (parentMatch)
+          matches = matches.filter((f) => f.parent === parentMatch[1]);
+        if (isFolder)
+          matches = matches.filter((f) => f.name.startsWith("budget-backups"));
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({
+            files: matches.map((f) => ({ id: f.id })),
+          }),
+        });
+      }
+      if (u.endsWith("?fields=id") && init?.method === "POST") {
+        const body = JSON.parse((init.body as string) ?? "{}");
+        const id = `gen-${nextId++}`;
+        files.push({
+          id,
+          name: body.name,
+          parent: body.parents?.[0] ?? "root",
+          body: "",
+        });
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id }),
+        });
+      }
+      if (isCreate(u)) {
+        const raw = init?.body as string;
+        const metaMatch = raw.match(
+          /Content-Type: application\/json; charset=UTF-8\r\n\r\n(\{[^}]*\})/,
+        );
+        const meta = metaMatch ? JSON.parse(metaMatch[1]) : { name: "?" };
+        const bodyMatch = raw.match(
+          /Content-Type: application\/octet-stream\r\n\r\n([\s\S]+)\r\n--/,
+        );
+        const id = `gen-${nextId++}`;
+        files.push({
+          id,
+          name: meta.name,
+          parent: meta.parents?.[0] ?? "root",
+          body: bodyMatch ? bodyMatch[1] : "",
+        });
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id }),
+        });
+      }
+      if (isUpdate(u)) {
+        const id = u
+          .replace("https://www.googleapis.com/upload/drive/v3/files/", "")
+          .split("?")[0];
+        const file = files.find((f) => f.id === id);
+        if (!file) return makeResponse({ status: 404, body: "" });
+        file.body = (init?.body as string) ?? "";
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id }),
+          headers: { ETag: `"etag-${file.id}"` },
+        });
+      }
+      if (isDownload(u)) {
+        const id = u
+          .replace("https://www.googleapis.com/drive/v3/files/", "")
+          .split("?")[0];
+        const file = files.find((f) => f.id === id);
+        if (!file) return makeResponse({ status: 404, body: "" });
+        return makeResponse({
+          status: 200,
+          body: file.body,
+          headers: { ETag: `"etag-${file.id}"` },
+        });
+      }
+      throw new Error(`Unexpected URL: ${u}`);
+    }) as typeof fetch;
+    return { fn };
+  }
+
+  it("list() is empty before any backup is created", async () => {
+    const { fn } = gdriveFs();
+    const adapter = createGdriveAdapter("token", fn);
+    expect(await adapter.backups!.list()).toEqual([]);
+  });
+
+  it("create() persists the body in the backups folder and updates the index", async () => {
+    const { fn } = gdriveFs();
+    const adapter = createGdriveAdapter("token", fn);
+    await adapter.backups!.create('{"v":17}', {
+      filename: "snap.json",
+      createdAt: 1700000000000,
+      accountCount: 4,
+      entryCount: 8,
+    });
+    expect(await adapter.backups!.read("snap.json")).toBe('{"v":17}');
+    const list = await adapter.backups!.list();
+    expect(list).toEqual([
+      {
+        filename: "snap.json",
+        createdAt: 1700000000000,
+        accountCount: 4,
+        entryCount: 8,
+      },
+    ]);
+  });
+});
+
 describe("ConflictError integration with gdrive", () => {
   it("the thrown error is detected by instanceof ConflictError", async () => {
     const { fn } = fakeFetch((call) => {

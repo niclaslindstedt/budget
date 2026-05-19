@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldAlert, ShieldCheck } from "lucide-react";
+import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import {
   DATE_FORMATS,
@@ -17,9 +17,11 @@ import type {
   ThousandsSeparator,
   UserData,
 } from "../data/types";
+import type { StorageAdapter } from "../storage/adapter";
 import type { BackendId, EncryptionMode } from "../storage/backend-preference";
 import { withCurrency } from "../utils/format";
 import { BackendPicker } from "./BackendPicker";
+import { CloudBackupModal } from "./CloudBackupModal";
 import { Checkbox, SelectPicker } from "./form";
 import { ImportExportControls } from "./ImportExportControls";
 import { Modal } from "./Modal";
@@ -58,6 +60,10 @@ type Props = {
   // are colocated.
   data: UserData;
   onImport: (data: UserData) => void;
+  // Active storage adapter. The Backups sub-modal reads its
+  // `backups` ops directly so the bytes-on-disk go through the same
+  // encryption envelope the live file uses.
+  adapter: StorageAdapter | null;
   getEncryptionPassword: () => string | null;
   onClose: () => void;
   onSave: (next: Settings) => void;
@@ -130,6 +136,7 @@ export function SettingsModal({
   transferDismissalCount,
   data,
   onImport,
+  adapter,
   getEncryptionPassword,
   onClose,
   onSave,
@@ -149,6 +156,7 @@ export function SettingsModal({
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
   const [draft, setDraft] = useState<Settings>(settings);
+  const [backupsOpen, setBackupsOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -207,6 +215,8 @@ export function SettingsModal({
           transferDismissalCount={transferDismissalCount}
           data={data}
           onImport={onImport}
+          backupsSupported={Boolean(adapter?.backups)}
+          onOpenBackups={() => setBackupsOpen(true)}
           getEncryptionPassword={getEncryptionPassword}
           onUpdate={update}
           onApplyNumberFormat={applyNumberFormat}
@@ -224,6 +234,18 @@ export function SettingsModal({
           onClearRecurringDismissals={onClearRecurringDismissals}
           onClearTransferDismissals={onClearTransferDismissals}
         />
+        {adapter?.backups && (
+          <CloudBackupModal
+            open={backupsOpen}
+            adapter={adapter}
+            data={data}
+            onRestore={(next) => {
+              onImport(next);
+              setBackupsOpen(false);
+            }}
+            onClose={() => setBackupsOpen(false)}
+          />
+        )}
       </Modal.Body>
       <Modal.Footer className="justify-between">
         <button
@@ -269,6 +291,8 @@ function MainView({
   transferDismissalCount,
   data,
   onImport,
+  backupsSupported,
+  onOpenBackups,
   getEncryptionPassword,
   onUpdate,
   onApplyNumberFormat,
@@ -300,6 +324,8 @@ function MainView({
   transferDismissalCount: number;
   data: UserData;
   onImport: (data: UserData) => void;
+  backupsSupported: boolean;
+  onOpenBackups: () => void;
   getEncryptionPassword: () => string | null;
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   onApplyNumberFormat: (id: string) => void;
@@ -619,6 +645,24 @@ function MainView({
             is on). Import replaces it with a file you pick.
           </p>
         </Field>
+        {backupsSupported && (
+          <Field label="Snapshots">
+            <button
+              type="button"
+              onClick={onOpenBackups}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
+            >
+              <Database size={14} aria-hidden focusable={false} />
+              Manage backups…
+            </button>
+            <p className="text-xs text-muted">
+              Saves a timestamped copy into a sibling{" "}
+              <span className="font-mono text-path">backups/</span> folder on
+              the active backend. Restoring auto-snapshots your current file
+              first.
+            </p>
+          </Field>
+        )}
       </Section>
 
       <Section title="Security">

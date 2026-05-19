@@ -4503,6 +4503,7 @@ function BudgetView({
         transferDismissalCount={data.transferCollapseDismissals.length}
         data={data}
         onImport={onImport}
+        adapter={adapter}
         getEncryptionPassword={getEncryptionPassword}
         onClose={() => setSettingsOpen(false)}
         onSave={onSaveSettings}

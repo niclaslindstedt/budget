@@ -1,5 +1,15 @@
 import { debug } from "../utils/debug";
-import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+import {
+  type BackupOps,
+  ConflictError,
+  type Snapshot,
+  type StorageAdapter,
+} from "./adapter";
+import {
+  BACKUP_INDEX_FILENAME,
+  parseBackupIndex,
+  serializeBackupIndex,
+} from "./backup-index";
 
 const log = debug("folder");
 
@@ -17,6 +27,7 @@ const log = debug("folder");
 // other in practice.
 
 const DEFAULT_FILE_NAME = "budget.json";
+export const FOLDER_BACKUPS_DIR_NAME = "backups";
 
 // Chrome reports filesystem errors as `DOMException` with these
 // names. We treat `NotAllowedError` (revoked by browser policy) and
@@ -71,10 +82,83 @@ export function createFolderAdapter(
 
   log.log(`adapter created file=${fileName}`);
 
+  async function getBackupsDir(
+    create: boolean,
+  ): Promise<FileSystemDirectoryHandle | null> {
+    try {
+      return await directoryHandle.getDirectoryHandle(FOLDER_BACKUPS_DIR_NAME, {
+        create,
+      });
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      if (isPermissionError(err)) {
+        onPermissionLost?.();
+      }
+      throw err;
+    }
+  }
+
+  async function readBackupFile(name: string): Promise<string | null> {
+    const dir = await getBackupsDir(false);
+    if (!dir) return null;
+    try {
+      const handle = await dir.getFileHandle(name, { create: false });
+      const file = await handle.getFile();
+      return file.text();
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      if (isPermissionError(err)) onPermissionLost?.();
+      throw err;
+    }
+  }
+
+  async function writeBackupFile(name: string, text: string): Promise<void> {
+    const dir = await getBackupsDir(true);
+    if (!dir) throw new Error("backups folder unavailable");
+    try {
+      const handle = await dir.getFileHandle(name, { create: true });
+      const writable = await handle.createWritable({ keepExistingData: false });
+      await writable.write(text);
+      await writable.close();
+    } catch (err) {
+      if (isPermissionError(err)) onPermissionLost?.();
+      throw err;
+    }
+  }
+
+  const backups: BackupOps = {
+    async list() {
+      log.log("backups: list");
+      const raw = await readBackupFile(BACKUP_INDEX_FILENAME);
+      return parseBackupIndex(raw);
+    },
+    async create(text, metadata) {
+      log.log(`backups: create ${metadata.filename} bytes=${text.length}`);
+      await writeBackupFile(metadata.filename, text);
+      const existing = parseBackupIndex(
+        await readBackupFile(BACKUP_INDEX_FILENAME),
+      );
+      const next = [
+        metadata,
+        ...existing.filter((m) => m.filename !== metadata.filename),
+      ];
+      await writeBackupFile(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
+    },
+    async read(filename) {
+      log.log(`backups: read ${filename}`);
+      const text = await readBackupFile(filename);
+      if (text === null) {
+        throw new Error(`Backup not found: ${filename}`);
+      }
+      return text;
+    },
+  };
+
   return {
     id: "folder",
     label: "Local folder",
     saveDebounceMs: 500,
+    backups,
 
     async load(): Promise<Snapshot | null> {
       log.log("load: start");
