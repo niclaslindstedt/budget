@@ -1795,12 +1795,7 @@ export function App() {
       log.error(
         `oauth: provider returned error=${oauthErr} desc=${params.get("error_description") ?? "<none>"}; aborting and cleaning URL`,
       );
-      const url = new URL(window.location.href);
-      url.searchParams.delete("code");
-      url.searchParams.delete("state");
-      url.searchParams.delete("error");
-      url.searchParams.delete("error_description");
-      window.history.replaceState({}, "", url.toString());
+      cleanCodeFromUrl();
       return;
     }
     const provider = pickOauthProvider({
@@ -1815,10 +1810,7 @@ export function App() {
       log.error(
         `oauth: cannot determine provider — state=${state ?? "<none>"} gdrivePending=${gdrivePending} dropboxPending=${dropboxPending}; aborting and cleaning URL`,
       );
-      const url = new URL(window.location.href);
-      url.searchParams.delete("code");
-      url.searchParams.delete("state");
-      window.history.replaceState({}, "", url.toString());
+      cleanCodeFromUrl();
       return;
     }
     let cancelled = false;
@@ -1911,11 +1903,27 @@ export function App() {
     }
 
     function cleanCodeFromUrl() {
-      // Clean the code out of the URL regardless of outcome so a page
-      // reload doesn't re-trigger the exchange.
+      // Clean the OAuth round-trip params out of the URL regardless
+      // of outcome so a page reload doesn't re-trigger the exchange
+      // and so the URL bar isn't left littered with provider-specific
+      // junk. `code`/`state` are ours; `error`/`error_description` are
+      // standard OAuth 2.0 error fields; `iss` is RFC 9207 issuer
+      // identification (Google sets it); `scope`, `authuser`, `prompt`,
+      // and `hd` are Google-specific extras.
       const url = new URL(window.location.href);
-      url.searchParams.delete("code");
-      url.searchParams.delete("state");
+      for (const key of [
+        "code",
+        "state",
+        "error",
+        "error_description",
+        "iss",
+        "scope",
+        "authuser",
+        "prompt",
+        "hd",
+      ]) {
+        url.searchParams.delete(key);
+      }
       window.history.replaceState({}, "", url.toString());
     }
     return () => {

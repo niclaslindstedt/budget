@@ -1,6 +1,59 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { pickOauthProvider } from "../src/storage/oauth-pkce";
+import { pickOauthProvider, redirectUri } from "../src/storage/oauth-pkce";
+
+// `window.location` is absent in Node — stub a minimal shim so the
+// pathname branch in `redirectUri` is exercised end-to-end. The shim
+// is reset between tests so a leftover pathname can't bleed across.
+function setLocation(origin: string, pathname: string): void {
+  const g = globalThis as {
+    window?: { location?: { origin: string; pathname: string } };
+  };
+  if (!g.window) g.window = {};
+  g.window.location = { origin, pathname };
+}
+
+afterEach(() => {
+  const g = globalThis as { window?: unknown };
+  delete g.window;
+});
+
+describe("redirectUri", () => {
+  // Production root at `/` should match the existing OAuth app
+  // registration — bare origin, no trailing slash.
+  it("returns bare origin when pathname is /", () => {
+    setLocation("https://budget.niclaslindstedt.se", "/");
+    expect(redirectUri()).toBe("https://budget.niclaslindstedt.se");
+  });
+
+  // Preview build at `/preview/` must round-trip back to itself so
+  // the PKCE verifier (stashed under the preview's namespaced
+  // sessionStorage key) is reachable when the redirect lands. The
+  // bug this fix addresses is the verifier landing on `/` with no
+  // way for the production app to read it.
+  it("appends pathname for /preview/ (trailing slash stripped)", () => {
+    setLocation("https://budget.niclaslindstedt.se", "/preview/");
+    expect(redirectUri()).toBe("https://budget.niclaslindstedt.se/preview");
+  });
+
+  it("appends pathname for /preview (no trailing slash)", () => {
+    setLocation("https://budget.niclaslindstedt.se", "/preview");
+    expect(redirectUri()).toBe("https://budget.niclaslindstedt.se/preview");
+  });
+
+  // Google rejects redirect URIs that end in `/`; multiple trailing
+  // slashes get collapsed to a single trim so a stray double-slash
+  // doesn't trip the provider.
+  it("strips multiple trailing slashes", () => {
+    setLocation("https://budget.niclaslindstedt.se", "/preview///");
+    expect(redirectUri()).toBe("https://budget.niclaslindstedt.se/preview");
+  });
+
+  it("handles localhost dev", () => {
+    setLocation("http://localhost:5173", "/");
+    expect(redirectUri()).toBe("http://localhost:5173");
+  });
+});
 
 describe("pickOauthProvider", () => {
   // The PKCE verifier is the source of truth: each provider stashes
