@@ -67,25 +67,16 @@ export function FloatingPanel({
   // The arrow is a rotated square whose centre sits on the panel's top
   // edge: the top-left and top-right edges of the diamond stick up out
   // of the panel (the visible arrow), the bottom-left and bottom-right
-  // edges are hidden behind the panel. Rendered before the panel in
-  // DOM order so the panel's opaque background paints over the hidden
-  // half. `overflow-y-auto` on the panel would otherwise clip the tip,
-  // which is why the arrow lives outside the panel rather than inside.
+  // edges sit just inside the panel's top border. Rendered after the
+  // panel in DOM order at the same z-index so the arrow's opaque
+  // background paints over the segment of the panel's top border that
+  // would otherwise cut across the arrow base, while the arrow's two
+  // bordered edges meet the panel border flush on either side.
+  // `overflow-y-auto` on the panel would otherwise clip the tip, which
+  // is why the arrow lives outside the panel rather than inside.
   const ARROW_SIZE = 12;
   return createPortal(
     <>
-      {arrow === "up" && (
-        <div
-          aria-hidden
-          className={`${positionClass} z-40 rotate-45 border-t border-l border-line bg-surface-2`}
-          style={{
-            top: position.top - ARROW_SIZE / 2,
-            left: position.left + position.arrowLeft - ARROW_SIZE / 2,
-            width: ARROW_SIZE,
-            height: ARROW_SIZE,
-          }}
-        />
-      )}
       <div
         ref={dropdownRef}
         data-active-portal
@@ -99,6 +90,18 @@ export function FloatingPanel({
       >
         {children}
       </div>
+      {arrow === "up" && (
+        <div
+          aria-hidden
+          className={`${positionClass} z-50 rotate-45 border-t border-l border-line bg-surface-2`}
+          style={{
+            top: position.top - ARROW_SIZE / 2,
+            left: position.left + position.arrowLeft - ARROW_SIZE / 2,
+            width: ARROW_SIZE,
+            height: ARROW_SIZE,
+          }}
+        />
+      )}
     </>,
     document.body,
   );
