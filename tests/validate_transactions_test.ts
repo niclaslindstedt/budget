@@ -10,7 +10,7 @@ import { validateUserData } from "../src/data/validate";
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 21,
+    version: 22,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -28,6 +28,7 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
     recurringDismissals: [],
     transferCollapseDismissals: [],
     matchRules: [],
+    seriesMatchRules: [],
     settings: { ...DEFAULT_SETTINGS },
   };
   return { ...base, transactions };
@@ -125,7 +126,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 21,
+      version: 22,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -154,6 +155,7 @@ describe("validateUserData — accounts metadata", () => {
       recurringDismissals: [],
       transferCollapseDismissals: [],
       matchRules: [],
+      seriesMatchRules: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);
@@ -169,7 +171,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 21,
+      version: 22,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -184,6 +186,7 @@ describe("validateUserData — accounts metadata", () => {
       recurringDismissals: [],
       transferCollapseDismissals: [],
       matchRules: [],
+      seriesMatchRules: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);
@@ -196,7 +199,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose categoryId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 21,
+      version: 22,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
@@ -216,6 +219,7 @@ describe("validateUserData — accounts metadata", () => {
       recurringDismissals: ["spotify", "", "spotify"],
       transferCollapseDismissals: ["pair1|pair2"],
       matchRules: [],
+      seriesMatchRules: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);

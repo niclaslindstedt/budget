@@ -130,6 +130,14 @@ type UserData = {
   // Pair keys the user dismissed with "Never" on the transfer-collapse
   // modal; same allowlist shape, same Memory section.
   transferCollapseDismissals: string[];
+  // Auto-reconciliation rules learned from "Apply to whole series" in
+  // the post-import reconciliation modal. Each rule binds a recurring
+  // series to a bank-description glob, an amount-tolerance band, and
+  // a date lag; future imports collapse any matching predicted row +
+  // history entry pair silently. See `src/data/reconciliation.ts`
+  // for the matcher and `src/components/ReconciliationModal.tsx`
+  // for the surface that records them.
+  seriesMatchRules: SeriesMatchRule[];
   settings: Settings;
 };
 
@@ -411,6 +419,14 @@ Current `LATEST_VERSION` is `19`. The chain has eighteen steps:
   10 000 abbreviation threshold for the running-balance column on the
   main sheet view. The validator falls back to the default for v20
   records that don't carry the field.
+- **v21 → v22** — adds top-level `seriesMatchRules: []`, auto-
+  reconciliation rules learned from "Apply to whole series" in the
+  post-import reconciliation modal. Each rule binds a recurring
+  series to a bank-description glob, an amount-tolerance band, and a
+  date-lag in days; future imports collapse any matching predicted
+  row + history entry pair silently without re-prompting. Existing
+  exports default to an empty list — no rules have been confirmed
+  yet, so behaviour matches pre-v22 builds.
 
 ## Complex entries
 

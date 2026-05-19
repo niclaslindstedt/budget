@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 21 as const;
+export const LATEST_VERSION = 22 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -326,6 +326,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // carry the field, so no settings data needs rewriting — the version
   // bump just flags that this build understands the new shape.
   20: (v20) => ({ ...v20, version: 21 }),
+
+  // v21 → v22: introduces `seriesMatchRules`, a list of user-confirmed
+  // auto-reconciliation rules that collapse predicted recurring-series
+  // rows with their bank-history counterparts on future imports.
+  // Defaults to an empty list — no rules exist until the user confirms
+  // "Apply to whole series" in the reconciliation modal, so behaviour
+  // matches pre-v22 builds until then.
+  21: (v21) => ({ ...v21, version: 22, seriesMatchRules: [] }),
 };
 
 export type MigrationResult = {

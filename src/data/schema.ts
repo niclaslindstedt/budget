@@ -69,6 +69,7 @@ export const USER_DATA_SCHEMA = {
     "recurringDismissals",
     "transferCollapseDismissals",
     "matchRules",
+    "seriesMatchRules",
     "settings",
   ],
   properties: {
@@ -247,6 +248,18 @@ export const USER_DATA_SCHEMA = {
         "wins. Order is significant for layering specific rules on top " +
         "of broader catch-alls.",
       items: { $ref: "#/$defs/MatchRule" },
+    },
+    seriesMatchRules: {
+      type: "array",
+      description:
+        "Auto-reconciliation rules learned from 'Apply to whole series' " +
+        "in the bank-history reconciliation modal. Each rule binds a " +
+        "recurring series id to the bank-description glob, amount " +
+        "tolerance, and date-lag observed on the confirmed match. " +
+        "Future imports that fit the rule collapse silently — the " +
+        "predicted row is deleted and the history entry takes its " +
+        "place, no modal required.",
+      items: { $ref: "#/$defs/SeriesMatchRule" },
     },
     settings: {
       $ref: "#/$defs/Settings",
@@ -682,6 +695,63 @@ export const USER_DATA_SCHEMA = {
             "(default) ignores the distinction; `exclude` skips entries " +
             "that were collapsed into a Transaction; `only` matches " +
             "exclusively those.",
+        },
+      },
+    },
+    SeriesMatchRule: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "id",
+        "seriesId",
+        "pattern",
+        "amountTolerancePct",
+        "dateLagDays",
+      ],
+      description:
+        "One entry in `seriesMatchRules`. Binds a recurring series to " +
+        "the bank-description pattern, amount-tolerance band, and date- " +
+        "lag the user accepted when they confirmed 'Apply to whole " +
+        "series' in the reconciliation modal. On future imports, any " +
+        "predicted row from `seriesId` whose date is within `dateLagDays` " +
+        "before a history entry matching `pattern` (within " +
+        "`amountTolerancePct` of the predicted amount) is reconciled " +
+        "silently — the predicted row is deleted, the history entry " +
+        "stands. Tolerances are frozen at confirmation so a one-off " +
+        "coincidence doesn't widen all future matches.",
+      properties: {
+        id: { $ref: "#/$defs/Id" },
+        seriesId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Recurring series the rule applies to. Matches the " +
+            "`seriesId` field shared by every row generated from the " +
+            "same recurrence.",
+        },
+        pattern: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Wildcard pattern (same syntax as `MatchRule.pattern`). " +
+            "Implicitly anchored; wrap with `*…*` for substring " +
+            "matching.",
+        },
+        amountTolerancePct: {
+          type: "number",
+          minimum: 0,
+          maximum: 1,
+          description:
+            "Maximum relative amount delta between the history entry " +
+            "and the predicted row, as a fraction (e.g. 0.01 = 1%).",
+        },
+        dateLagDays: {
+          type: "integer",
+          minimum: 0,
+          maximum: 31,
+          description:
+            "Maximum `history.date - row.date` in calendar days. The " +
+            "history posting can be on or after the predicted date by " +
+            "up to this many days; never before.",
         },
       },
     },

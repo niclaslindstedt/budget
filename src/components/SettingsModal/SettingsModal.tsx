@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Hash,
   HardDrive,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { DEFAULT_SETTINGS, NUMBER_FORMATS } from "../../data/constants";
+import { detectPaydayDayOfMonth } from "../../data/payday";
 import type {
   Category,
   DecimalSeparator,
@@ -179,6 +180,14 @@ export function SettingsModal({
   const [draft, setDraft] = useState<Settings>(settings);
   const [backupsOpen, setBackupsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("general");
+  // Auto-detected payday day-of-month from the user's salary
+  // postings. Null when no confident pick is available (no series,
+  // no positive recurring rows, no history). Only used as a hint —
+  // never auto-applied.
+  const detectedPayday = useMemo<number | null>(() => {
+    const detected = detectPaydayDayOfMonth(data, settings.startOfMonth);
+    return detected === settings.startOfMonth ? null : detected;
+  }, [data, settings.startOfMonth]);
 
   useEffect(() => {
     if (!open) return;
@@ -239,7 +248,11 @@ export function SettingsModal({
           <TabBurger activeTab={activeTab} onSelect={setActiveTab} />
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4">
             {activeTab === "general" && (
-              <GeneralTab draft={draft} onUpdate={update} />
+              <GeneralTab
+                draft={draft}
+                onUpdate={update}
+                detectedPayday={detectedPayday}
+              />
             )}
             {activeTab === "format" && (
               <FormatTab

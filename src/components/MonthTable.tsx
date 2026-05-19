@@ -29,6 +29,11 @@ type Props = {
   amountChars: number;
   balanceChars: number;
   collapsed: boolean;
+  // True when this month is fully covered by imported bank history.
+  // The footer's "+ Add row" button is hidden in covered months — the
+  // bank has authoritative data there, so a user-added row would
+  // double-count.
+  covered: boolean;
   onToggleCollapsed: () => void;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
@@ -72,6 +77,7 @@ export function MonthTable({
   amountChars,
   balanceChars,
   collapsed,
+  covered,
   onToggleCollapsed,
   onUpdateCell,
   onCommitCell,
@@ -252,7 +258,13 @@ export function MonthTable({
                 colSpan={columns.length + (selectMode ? 2 : 1)}
                 className="border-r-0 bg-surface-3 p-0"
               >
-                <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
+                {covered ? (
+                  <div className="px-3 py-1.5 text-xs text-muted">
+                    History covers this month
+                  </div>
+                ) : (
+                  <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
+                )}
               </td>
             </tr>
           </tfoot>

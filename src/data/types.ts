@@ -497,6 +497,30 @@ export type MatchRule = {
   transferFilter?: "any" | "exclude" | "only";
 };
 
+// User-defined rule that auto-reconciles future bank-history entries
+// against rows belonging to a recurring series. Learned at confirm
+// time in the reconciliation modal — when the user merges one
+// occurrence of "Rent" with a "SIMPLEKO" bank entry and picks
+// "Apply to whole series", the modal records the inferred pattern
+// (`*SIMPLEKO*`), the amount-tolerance band, and the date-lag in
+// days. Subsequent imports that match the same series + pattern +
+// band collapse silently, no modal required.
+//
+// `pattern` is the same glob shape as `MatchRule.pattern` (`*`
+// matches any run; case-insensitive; substring matching needs
+// explicit wrapping `*…*`). `amountTolerancePct` is the percentage
+// delta the user accepted at confirmation time, frozen so a one-off
+// coincidence doesn't widen all future matches. `dateLagDays` is
+// the max observed `history.date - row.date` clamped to
+// `RECONCILIATION_DATE_LAG_DAYS`.
+export type SeriesMatchRule = {
+  id: string;
+  seriesId: string;
+  pattern: string;
+  amountTolerancePct: number;
+  dateLagDays: number;
+};
+
 // Top-level persisted blob for one signed-in user. Holds everything
 // that user owns: their sheets, the categories they've defined, and
 // their display preferences. The user account itself (id, username,
@@ -504,7 +528,7 @@ export type MatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 21;
+  version: 22;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -569,6 +593,12 @@ export type UserData = {
   // normalised description, these are explicit globs with sign /
   // transfer filters the user owns.
   matchRules: MatchRule[];
+  // Series-scoped auto-reconciliation rules. Learned when the user
+  // confirms "Apply to whole series" in the reconciliation modal —
+  // see `SeriesMatchRule`. Future bank-history imports consult these
+  // and collapse any predicted row + history entry pair that fits
+  // the rule's pattern + amount band + date lag, no modal needed.
+  seriesMatchRules: SeriesMatchRule[];
   settings: Settings;
 };
 
