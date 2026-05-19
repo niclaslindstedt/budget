@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/data/constants";
 import {
   recordMerchantHints,
-  suggestCategoryForDescription,
+  suggestTypeForDescription,
 } from "../src/data/merchant-hints";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { Category, EntryType, UserData } from "../src/data/types";
@@ -11,7 +11,7 @@ import type { Category, EntryType, UserData } from "../src/data/types";
 function makeState(categories: Category[], types: EntryType[] = []): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 24,
+    version: 25,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -44,187 +44,195 @@ const ent: Category = {
   icon: "music",
 };
 
+const groceriesType: EntryType = {
+  id: "type-groceries",
+  name: "Groceries",
+  color: "#e06c75",
+  glyph: "utensils",
+  categoryId: food.id,
+};
+const subType: EntryType = {
+  id: "type-sub",
+  name: "Subscription",
+  color: "#56b6c2",
+  glyph: "music",
+  categoryId: ent.id,
+};
+
 describe("recordMerchantHints", () => {
   it("creates a hint for a new merchant", () => {
-    const state = makeState([food]);
+    const state = makeState([food], [groceriesType]);
     const next = recordMerchantHints(
       state,
-      [{ description: "Kortköp 2026-05-01 ICA Maxi", categoryId: food.id }],
+      [
+        {
+          description: "Kortköp 2026-05-01 ICA Maxi",
+          typeId: groceriesType.id,
+        },
+      ],
       1000,
     );
     expect(next.merchantHints["ica maxi"]).toEqual({
-      categoryId: food.id,
+      typeId: groceriesType.id,
       hitCount: 1,
       lastUsedAt: 1000,
     });
   });
 
-  it("increments hitCount when the same category is reinforced", () => {
-    let state = makeState([food]);
+  it("increments hitCount when the same type is reinforced", () => {
+    let state = makeState([food], [groceriesType]);
     state = recordMerchantHints(
       state,
-      [{ description: "ICA Maxi", categoryId: food.id }],
+      [{ description: "ICA Maxi", typeId: groceriesType.id }],
       1000,
     );
     state = recordMerchantHints(
       state,
-      [{ description: "ICA Maxi", categoryId: food.id }],
+      [{ description: "ICA Maxi", typeId: groceriesType.id }],
       2000,
     );
     expect(state.merchantHints["ica maxi"]).toEqual({
-      categoryId: food.id,
+      typeId: groceriesType.id,
       hitCount: 2,
       lastUsedAt: 2000,
     });
   });
 
-  it("resets hitCount when the category changes", () => {
-    let state = makeState([food, ent]);
+  it("resets hitCount when the type changes", () => {
+    let state = makeState([food, ent], [groceriesType, subType]);
     state = recordMerchantHints(
       state,
-      [{ description: "Mystery", categoryId: food.id }],
+      [{ description: "Mystery", typeId: groceriesType.id }],
       1000,
     );
     state = recordMerchantHints(
       state,
-      [{ description: "Mystery", categoryId: ent.id }],
+      [{ description: "Mystery", typeId: subType.id }],
       2000,
     );
     expect(state.merchantHints["mystery"]).toEqual({
-      categoryId: ent.id,
+      typeId: subType.id,
       hitCount: 1,
       lastUsedAt: 2000,
     });
   });
 
-  it("ignores recordings whose categoryId no longer exists", () => {
-    const state = makeState([food]);
+  it("ignores recordings whose typeId no longer exists", () => {
+    const state = makeState([food], [groceriesType]);
     const next = recordMerchantHints(
       state,
-      [{ description: "ICA Maxi", categoryId: "ghost" }],
+      [{ description: "ICA Maxi", typeId: "ghost" }],
       1000,
     );
     expect(next).toBe(state);
   });
 
-  it("drops the hint when categoryId is null", () => {
-    let state = makeState([food]);
+  it("drops the hint when typeId is null", () => {
+    let state = makeState([food], [groceriesType]);
     state = recordMerchantHints(
       state,
-      [{ description: "ICA Maxi", categoryId: food.id }],
+      [{ description: "ICA Maxi", typeId: groceriesType.id }],
       1000,
     );
     state = recordMerchantHints(
       state,
-      [{ description: "ICA Maxi", categoryId: null }],
+      [{ description: "ICA Maxi", typeId: null }],
       2000,
     );
     expect(state.merchantHints["ica maxi"]).toBeUndefined();
   });
 
   it("skips descriptions that don't normalise to a meaningful key", () => {
-    const state = makeState([food]);
+    const state = makeState([food], [groceriesType]);
     const next = recordMerchantHints(
       state,
-      [{ description: "   ---  ", categoryId: food.id }],
+      [{ description: "   ---  ", typeId: groceriesType.id }],
       1000,
     );
     expect(next.merchantHints).toEqual({});
   });
 
   it("returns the same reference when nothing changes", () => {
-    const state = makeState([food]);
+    const state = makeState([food], [groceriesType]);
     expect(recordMerchantHints(state, [], 1000)).toBe(state);
   });
 
   it("stamps typeId and description overrides from the history-promote flow", () => {
-    const sub: EntryType = {
-      id: "type-sub",
-      name: "Subscription",
-      color: "#56b6c2",
-      glyph: "music",
-    };
-    const state = makeState([ent], [sub]);
+    const state = makeState([ent], [subType]);
     const next = recordMerchantHints(
       state,
       [
         {
           description: "SPOTIFY AB",
-          categoryId: ent.id,
-          typeId: sub.id,
+          typeId: subType.id,
           description_override: "Spotify",
         },
       ],
       1000,
     );
     expect(next.merchantHints["spotify ab"]).toEqual({
-      categoryId: ent.id,
+      typeId: subType.id,
       hitCount: 1,
       lastUsedAt: 1000,
-      typeId: sub.id,
       description: "Spotify",
     });
   });
 
-  it("drops an unknown typeId but keeps the rest of the hint", () => {
+  it("drops a recording with an unknown typeId entirely", () => {
     const state = makeState([ent]);
     const next = recordMerchantHints(
       state,
       [
         {
           description: "Spotify",
-          categoryId: ent.id,
           typeId: "ghost-type",
         },
       ],
       1000,
     );
-    expect(next.merchantHints["spotify"]).toEqual({
-      categoryId: ent.id,
-      hitCount: 1,
-      lastUsedAt: 1000,
-    });
+    // No known type → no hint is written.
+    expect(next.merchantHints["spotify"]).toBeUndefined();
   });
 
-  it("preserves a prior typeId when a later recording leaves it undefined", () => {
-    const sub: EntryType = {
-      id: "type-sub",
-      name: "Subscription",
-      color: "#56b6c2",
-      glyph: "music",
-    };
-    let state = makeState([ent], [sub]);
+  it("preserves a prior description override when a later recording leaves it undefined", () => {
+    let state = makeState([ent], [subType]);
     state = recordMerchantHints(
       state,
-      [{ description: "Spotify", categoryId: ent.id, typeId: sub.id }],
+      [
+        {
+          description: "Spotify",
+          typeId: subType.id,
+          description_override: "Spotify",
+        },
+      ],
       1000,
     );
     state = recordMerchantHints(
       state,
-      [{ description: "Spotify", categoryId: ent.id }],
+      [{ description: "Spotify", typeId: subType.id }],
       2000,
     );
-    expect(state.merchantHints["spotify"]?.typeId).toBe(sub.id);
+    expect(state.merchantHints["spotify"]?.description).toBe("Spotify");
   });
 });
 
-describe("suggestCategoryForDescription", () => {
-  it("returns the stored category for a matching description", () => {
-    const state = makeState([food]);
+describe("suggestTypeForDescription", () => {
+  it("returns the stored type for a matching description", () => {
+    const state = makeState([food], [groceriesType]);
     const next = recordMerchantHints(
       state,
-      [{ description: "ICA Maxi", categoryId: food.id }],
+      [{ description: "ICA Maxi", typeId: groceriesType.id }],
       1000,
     );
     expect(
-      suggestCategoryForDescription(
+      suggestTypeForDescription(
         next.merchantHints,
         "Kortköp 2026-05-01 ICA Maxi",
       ),
-    ).toBe(food.id);
+    ).toBe(groceriesType.id);
   });
 
   it("returns null when the description doesn't have a hint", () => {
-    expect(suggestCategoryForDescription({}, "Spotify")).toBeNull();
+    expect(suggestTypeForDescription({}, "Spotify")).toBeNull();
   });
 });

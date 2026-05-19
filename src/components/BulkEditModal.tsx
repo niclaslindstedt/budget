@@ -2,20 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Column, Row, Settings } from "../data/types";
+import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import {
   formatAmountForInput,
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
 import { Modal } from "./Modal";
-import { CategoryPicker } from "./CategoryPicker";
 import { Checkbox } from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
+import { TypePicker } from "./TypePicker";
 
 export type BulkPatch = {
   // `undefined` = don't touch; `null` (where applicable) = clear.
-  categoryId?: string | null;
+  typeId?: string | null;
   amount?: number;
   date?: string;
 };
@@ -24,12 +24,14 @@ type Props = {
   open: boolean;
   rows: Row[];
   columns: Column[];
-  categories: Category[];
+  categories: readonly Category[];
+  types: readonly EntryType[];
+  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onApplyPatch: (rowIds: string[], patch: BulkPatch) => void;
   onApplyRecurring: (rowIds: string[], futureDates: string[]) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
 export function BulkEditModal({
@@ -37,19 +39,17 @@ export function BulkEditModal({
   rows,
   columns,
   categories,
+  types,
+  typeUsageById,
   settings,
   onClose,
   onApplyPatch,
   onApplyRecurring,
-  onCreateCategory,
+  onCreateType,
 }: Props) {
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
   const amountCol = useMemo(
     () => findColumnByType(columns, "amount"),
-    [columns],
-  );
-  const categoryCol = useMemo(
-    () => findColumnByType(columns, "category"),
     [columns],
   );
 
@@ -73,8 +73,8 @@ export function BulkEditModal({
     return dates.sort()[0] ?? "";
   }, [rows, dateCol]);
 
-  const [categoryEnabled, setCategoryEnabled] = useState(false);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [typeEnabled, setTypeEnabled] = useState(false);
+  const [typeId, setTypeId] = useState<string | null>(null);
 
   const [dateEnabled, setDateEnabled] = useState(false);
   const [dateValue, setDateValue] = useState("");
@@ -88,8 +88,8 @@ export function BulkEditModal({
 
   useEffect(() => {
     if (!open) return;
-    setCategoryEnabled(false);
-    setCategoryId(null);
+    setTypeEnabled(false);
+    setTypeId(null);
     setDateEnabled(false);
     setDateValue(seedDate);
     setAmountEnabled(false);
@@ -118,7 +118,7 @@ export function BulkEditModal({
   const rowIds = rows.map((r) => r.id);
 
   const patchHasChanges =
-    categoryEnabled ||
+    typeEnabled ||
     dateEnabled ||
     (amountEnabled && sharedAmount !== null && parsedAmount !== null);
   const recurringHasDates = recurringEnabled && recurringDates.length > 0;
@@ -126,7 +126,7 @@ export function BulkEditModal({
 
   function handleSubmit() {
     const patch: BulkPatch = {};
-    if (categoryEnabled && categoryCol) patch.categoryId = categoryId;
+    if (typeEnabled) patch.typeId = typeId;
     if (dateEnabled && dateCol && dateValue) patch.date = dateValue;
     if (
       amountEnabled &&
@@ -156,16 +156,18 @@ export function BulkEditModal({
       />
       <Modal.Body>
         <Toggle
-          label="Change category"
-          enabled={categoryEnabled}
-          onToggle={setCategoryEnabled}
+          label="Change type"
+          enabled={typeEnabled}
+          onToggle={setTypeEnabled}
         >
-          <CategoryPicker
+          <TypePicker
             variant="field"
+            types={types}
             categories={categories}
-            selectedId={categoryId}
-            onSelect={setCategoryId}
-            onCreate={onCreateCategory}
+            selectedId={typeId}
+            onSelect={setTypeId}
+            onCreate={onCreateType}
+            usageById={typeUsageById}
           />
         </Toggle>
 

@@ -9,7 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-import type { Account, Category, Row } from "../data/types";
+import type { Account, Category, EntryType, Row } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import {
   formatAmountForInput,
@@ -18,10 +18,10 @@ import {
   withCurrency,
 } from "../utils/format";
 import { Modal } from "./Modal";
-import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
 import { Checkbox } from "./form";
 import { CategoryIconGlyph } from "./icons";
+import { TypePicker } from "./TypePicker";
 import type { Settings } from "../data/types";
 
 export type TransactionDraft = {
@@ -30,7 +30,7 @@ export type TransactionDraft = {
   amount: number;
   fromAccountId: string;
   toAccountId: string;
-  categoryId: string | null;
+  typeId: string | null;
   completed: boolean;
 };
 
@@ -62,7 +62,7 @@ export type TransactionModalRequest =
       // Sign of the row's amount drives direction; we precompute the
       // boolean here so the modal doesn't have to know about column ids.
       outgoing: boolean;
-      seedCategoryId: string | null;
+      seedTypeId: string | null;
     }
   | {
       kind: "create";
@@ -78,7 +78,7 @@ export type TransactionModalRequest =
       amount: number;
       fromAccountId: string;
       toAccountId: string;
-      categoryId: string | null;
+      typeId: string | null;
       completed: boolean;
     };
 
@@ -86,14 +86,16 @@ type Props = {
   open: boolean;
   request: TransactionModalRequest | null;
   accounts: Account[];
-  categories: Category[];
+  categories: readonly Category[];
+  types: readonly EntryType[];
+  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onPromote: (draft: TransactionDraft) => void;
   onCreate: (draft: TransactionDraft) => void;
   onEdit: (transactionId: string, draft: TransactionDraft) => void;
   onDelete: (transactionId: string) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
 export function TransactionModal({
@@ -101,20 +103,22 @@ export function TransactionModal({
   request,
   accounts,
   categories,
+  types,
+  typeUsageById,
   settings,
   onClose,
   onPromote,
   onCreate,
   onEdit,
   onDelete,
-  onCreateCategory,
+  onCreateType,
 }: Props) {
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [fromAccountId, setFromAccountId] = useState<string>("");
   const [toAccountId, setToAccountId] = useState<string>("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [typeId, setTypeId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
@@ -142,7 +146,7 @@ export function TransactionModal({
         setFromAccountId("");
         setToAccountId(request.selfAccountId);
       }
-      setCategoryId(request.seedCategoryId);
+      setTypeId(request.seedTypeId);
       setCompleted(false);
     } else if (request.kind === "edit") {
       setDate(request.date);
@@ -150,7 +154,7 @@ export function TransactionModal({
       setAmountText(formatAmountForInput(request.amount, settings));
       setFromAccountId(request.fromAccountId);
       setToAccountId(request.toAccountId);
-      setCategoryId(request.categoryId);
+      setTypeId(request.typeId);
       setCompleted(request.completed);
     } else {
       setDate(request.seedDate);
@@ -158,7 +162,7 @@ export function TransactionModal({
       setAmountText("");
       setFromAccountId(request.defaultFromId ?? "");
       setToAccountId(request.defaultToId ?? "");
-      setCategoryId(null);
+      setTypeId(null);
       setCompleted(false);
     }
     setDatePickerOpen(false);
@@ -214,7 +218,7 @@ export function TransactionModal({
       amount: Math.abs(parsedAmount),
       fromAccountId,
       toAccountId,
-      categoryId,
+      typeId,
       completed,
     };
     if (request?.kind === "promote") onPromote(draft);
@@ -377,12 +381,14 @@ export function TransactionModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Category</span>
-            <CategoryPicker
+            <span className="text-xs text-muted">Type</span>
+            <TypePicker
+              types={types}
               categories={categories}
-              selectedId={categoryId}
-              onSelect={setCategoryId}
-              onCreate={onCreateCategory}
+              selectedId={typeId}
+              onSelect={setTypeId}
+              onCreate={onCreateType}
+              usageById={typeUsageById}
               variant="field"
             />
           </div>

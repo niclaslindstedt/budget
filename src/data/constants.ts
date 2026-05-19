@@ -273,8 +273,12 @@ export const DEFAULT_RECURRENCE_MONTHS = 12;
 // to a non-empty seed so users who migrate forward see something in
 // the picker on first promote. Each call returns a fresh array with
 // newly minted ids so the seed is safe to invoke without ids
-// colliding.
-export function createSeedEntryTypes(): EntryType[] {
+// colliding. The v24 → v25 migration assigns every seeded type a
+// `categoryId` after the fact (matching the type's name against the
+// preset-type mapping); the legacy seed shape here intentionally
+// omits the field so this function stays a faithful reproduction of
+// what v12 exports actually contained.
+export function createSeedEntryTypes(): Omit<EntryType, "categoryId">[] {
   const C = CATEGORY_COLORS;
   const seeds: ReadonlyArray<{
     name: string;
@@ -600,147 +604,348 @@ export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
 // continue to resolve.
 export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
   const C = CATEGORY_COLORS;
+  // Every preset type belongs to exactly one preset category. The
+  // `category` field is a preset-category slug (without the `preset-cat-`
+  // prefix) — the `id` minted below is `preset-cat-<slug>` so a type's
+  // resolved `categoryId` matches a real `PRESET_CATEGORIES[].id`.
   const seeds: ReadonlyArray<{
     slug: string;
     name: string;
     color: string;
     glyph: CategoryIcon;
+    category: string;
   }> = [
     // Housing
-    { slug: "rent", name: "Rent", color: C[1], glyph: "home" },
-    { slug: "mortgage", name: "Mortgage", color: C[0], glyph: "home" },
+    {
+      slug: "rent",
+      name: "Rent",
+      color: C[1],
+      glyph: "home",
+      category: "housing",
+    },
+    {
+      slug: "mortgage",
+      name: "Mortgage",
+      color: C[0],
+      glyph: "home",
+      category: "housing",
+    },
     {
       slug: "hoa-fee",
       name: "HOA fee",
       color: C[0],
       glyph: "building-2",
+      category: "housing",
     },
     {
       slug: "home-insurance",
       name: "Home insurance",
       color: C[8],
       glyph: "receipt",
+      category: "housing",
     },
-    { slug: "electricity", name: "Electricity", color: C[2], glyph: "zap" },
-    { slug: "heating", name: "Heating", color: C[1], glyph: "flame" },
-    { slug: "water", name: "Water", color: C[5], glyph: "droplet" },
-    { slug: "internet", name: "Internet", color: C[5], glyph: "wifi" },
-    { slug: "phone", name: "Phone", color: C[4], glyph: "smartphone" },
+    {
+      slug: "electricity",
+      name: "Electricity",
+      color: C[2],
+      glyph: "zap",
+      category: "housing",
+    },
+    {
+      slug: "heating",
+      name: "Heating",
+      color: C[1],
+      glyph: "flame",
+      category: "housing",
+    },
+    {
+      slug: "water",
+      name: "Water",
+      color: C[5],
+      glyph: "droplet",
+      category: "housing",
+    },
+    {
+      slug: "internet",
+      name: "Internet",
+      color: C[5],
+      glyph: "wifi",
+      category: "housing",
+    },
+    {
+      slug: "phone",
+      name: "Phone",
+      color: C[4],
+      glyph: "smartphone",
+      category: "bills",
+    },
     // Food
     {
       slug: "groceries",
       name: "Groceries",
       color: C[3],
       glyph: "shopping-cart",
+      category: "food",
     },
     {
       slug: "restaurant",
       name: "Restaurant",
       color: C[2],
       glyph: "utensils",
+      category: "food",
     },
-    { slug: "lunch", name: "Lunch", color: C[2], glyph: "utensils" },
-    { slug: "cafe", name: "Cafe", color: C[7], glyph: "coffee" },
+    {
+      slug: "lunch",
+      name: "Lunch",
+      color: C[2],
+      glyph: "utensils",
+      category: "food",
+    },
+    {
+      slug: "cafe",
+      name: "Cafe",
+      color: C[7],
+      glyph: "coffee",
+      category: "food",
+    },
     {
       slug: "systembolaget",
       name: "Systembolaget",
       color: C[0],
       glyph: "wine",
+      category: "food",
     },
     // Transport
-    { slug: "fuel", name: "Fuel", color: C[1], glyph: "fuel" },
+    {
+      slug: "fuel",
+      name: "Fuel",
+      color: C[1],
+      glyph: "fuel",
+      category: "transport",
+    },
     {
       slug: "public-transport",
       name: "Public transport",
       color: C[4],
       glyph: "bus",
+      category: "transport",
     },
-    { slug: "parking", name: "Parking", color: C[8], glyph: "car" },
+    {
+      slug: "parking",
+      name: "Parking",
+      color: C[8],
+      glyph: "car",
+      category: "transport",
+    },
     {
       slug: "car-insurance",
       name: "Car insurance",
       color: C[8],
       glyph: "car",
+      category: "transport",
     },
     {
       slug: "vehicle-tax",
       name: "Vehicle tax",
       color: C[8],
       glyph: "car",
+      category: "transport",
     },
     {
       slug: "congestion-tax",
       name: "Congestion tax",
       color: C[7],
       glyph: "car",
+      category: "transport",
     },
     // Health & personal
-    { slug: "pharmacy", name: "Apoteket", color: C[0], glyph: "pill" },
+    {
+      slug: "pharmacy",
+      name: "Apoteket",
+      color: C[0],
+      glyph: "pill",
+      category: "health",
+    },
     {
       slug: "healthcare",
       name: "Healthcare",
       color: C[0],
       glyph: "stethoscope",
+      category: "health",
     },
-    { slug: "dentist", name: "Dentist", color: C[0], glyph: "heart-pulse" },
-    { slug: "gym", name: "Gym", color: C[3], glyph: "dumbbell" },
-    { slug: "haircut", name: "Haircut", color: C[6], glyph: "scissors" },
+    {
+      slug: "dentist",
+      name: "Dentist",
+      color: C[0],
+      glyph: "heart-pulse",
+      category: "health",
+    },
+    {
+      slug: "gym",
+      name: "Gym",
+      color: C[3],
+      glyph: "dumbbell",
+      category: "health",
+    },
+    {
+      slug: "haircut",
+      name: "Haircut",
+      color: C[6],
+      glyph: "scissors",
+      category: "personal",
+    },
     // Family
-    { slug: "childcare", name: "Förskola", color: C[6], glyph: "baby" },
+    {
+      slug: "childcare",
+      name: "Förskola",
+      color: C[6],
+      glyph: "baby",
+      category: "family",
+    },
     {
       slug: "child-allowance",
       name: "Barnbidrag",
       color: C[3],
       glyph: "baby",
+      category: "family",
     },
     {
       slug: "allowance",
       name: "Veckopeng",
       color: C[6],
       glyph: "hand-coins",
+      category: "family",
     },
     // Subscriptions / bills
-    { slug: "spotify", name: "Spotify", color: C[3], glyph: "music" },
-    { slug: "netflix", name: "Netflix", color: C[0], glyph: "film" },
-    { slug: "streaming", name: "Streaming", color: C[6], glyph: "film" },
+    {
+      slug: "spotify",
+      name: "Spotify",
+      color: C[3],
+      glyph: "music",
+      category: "entertainment",
+    },
+    {
+      slug: "netflix",
+      name: "Netflix",
+      color: C[0],
+      glyph: "film",
+      category: "entertainment",
+    },
+    {
+      slug: "streaming",
+      name: "Streaming",
+      color: C[6],
+      glyph: "film",
+      category: "entertainment",
+    },
     {
       slug: "subscription",
       name: "Subscription",
       color: C[8],
       glyph: "credit-card",
+      category: "bills",
     },
     {
       slug: "union-fee",
       name: "Fackavgift",
       color: C[8],
       glyph: "briefcase",
+      category: "bills",
     },
-    { slug: "a-kassa", name: "A-kassa", color: C[8], glyph: "briefcase" },
-    { slug: "csn", name: "CSN", color: C[6], glyph: "graduation-cap" },
+    {
+      slug: "a-kassa",
+      name: "A-kassa",
+      color: C[8],
+      glyph: "briefcase",
+      category: "bills",
+    },
+    {
+      slug: "csn",
+      name: "CSN",
+      color: C[6],
+      glyph: "graduation-cap",
+      category: "bills",
+    },
     // Income
-    { slug: "salary", name: "Salary", color: C[3], glyph: "banknote" },
-    { slug: "bonus", name: "Bonus", color: C[3], glyph: "hand-coins" },
+    {
+      slug: "salary",
+      name: "Salary",
+      color: C[3],
+      glyph: "banknote",
+      category: "income",
+    },
+    {
+      slug: "bonus",
+      name: "Bonus",
+      color: C[3],
+      glyph: "hand-coins",
+      category: "income",
+    },
     {
       slug: "tax-refund",
       name: "Tax refund",
       color: C[3],
       glyph: "landmark",
+      category: "income",
     },
     // Savings
-    { slug: "savings", name: "Savings", color: C[5], glyph: "piggy-bank" },
-    { slug: "isk", name: "ISK", color: C[5], glyph: "trending-up" },
-    { slug: "pension", name: "Pension", color: C[5], glyph: "vault" },
+    {
+      slug: "savings",
+      name: "Savings",
+      color: C[5],
+      glyph: "piggy-bank",
+      category: "savings",
+    },
+    {
+      slug: "isk",
+      name: "ISK",
+      color: C[5],
+      glyph: "trending-up",
+      category: "savings",
+    },
+    {
+      slug: "pension",
+      name: "Pension",
+      color: C[5],
+      glyph: "vault",
+      category: "savings",
+    },
     // Personal / misc
-    { slug: "clothing", name: "Clothing", color: C[6], glyph: "shirt" },
-    { slug: "gift", name: "Gift", color: C[6], glyph: "gift" },
-    { slug: "hobby", name: "Hobby", color: C[2], glyph: "sparkles" },
-    { slug: "travel", name: "Travel", color: C[4], glyph: "plane" },
+    {
+      slug: "clothing",
+      name: "Clothing",
+      color: C[6],
+      glyph: "shirt",
+      category: "personal",
+    },
+    {
+      slug: "gift",
+      name: "Gift",
+      color: C[6],
+      glyph: "gift",
+      category: "personal",
+    },
+    {
+      slug: "hobby",
+      name: "Hobby",
+      color: C[2],
+      glyph: "sparkles",
+      category: "personal",
+    },
+    {
+      slug: "travel",
+      name: "Travel",
+      color: C[4],
+      glyph: "plane",
+      category: "travel",
+    },
   ];
   return seeds.map((s) => ({
     id: `preset-type-${s.slug}`,
     name: s.name,
     color: s.color,
     glyph: s.glyph,
+    categoryId: `preset-cat-${s.category}`,
   }));
 })();
 
@@ -794,3 +999,11 @@ export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
 export const PRESET_CATEGORY_IDS: ReadonlySet<string> = new Set(
   PRESET_CATEGORIES.map((c) => c.id),
 );
+
+// Catch-all preset category used when a type doesn't fit any specific
+// bucket. The v24 → v25 migration falls back to this id for user
+// types whose name doesn't match any known preset, and the picker /
+// settings UI lean on it when a type is being created without an
+// explicit category. Always present — `PRESET_CATEGORIES` includes the
+// "other" slug — so consumers can hardcode the id with confidence.
+export const DEFAULT_CATEGORY_ID = "preset-cat-other";

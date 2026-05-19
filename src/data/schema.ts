@@ -109,16 +109,17 @@ export const USER_DATA_SCHEMA = {
     categories: {
       type: "array",
       description:
-        "User-added categories that rows can be tagged with. A row " +
-        "stores the category's id in the cell whose column has `type: " +
-        '"category"`. Renaming a category updates every tagged row ' +
-        "automatically. On top of this list the app exposes a fixed " +
-        "set of built-in 'preset' categories (broad buckets like " +
-        "Housing, Food, Transport — ids prefixed with `preset-cat-`) " +
-        "that live in app code, not in this document. A `categoryId` " +
-        "may reference either a user-added id from this array or a " +
-        "preset id; the reader resolves both. User ids must not " +
-        "collide with the preset prefix.",
+        "User-added categories (broad analysis buckets — Food, Housing, " +
+        "Transport). A row's category is derived through its type: " +
+        "`row.typeId → EntryType.categoryId`. Renaming a category " +
+        "updates every type pointing at it automatically. On top of " +
+        "this list the app exposes a fixed set of built-in 'preset' " +
+        "categories (ids prefixed with `preset-cat-`) that live in app " +
+        "code, not in this document. A `categoryId` may reference " +
+        "either a user-added id from this array or a preset id; the " +
+        "reader resolves both. User ids must not collide with the " +
+        "preset prefix. Each `EntryType` in `types` points at exactly " +
+        "one category through its `categoryId`.",
       items: { $ref: "#/$defs/Category" },
     },
     types: {
@@ -207,13 +208,14 @@ export const USER_DATA_SCHEMA = {
     merchantHints: {
       type: "object",
       description:
-        "Per-merchant category memory. Keys are normalised descriptions " +
+        "Per-merchant type memory. Keys are normalised descriptions " +
         "(lowercased, with dates / currency / long digit sequences " +
         "stripped, whitespace collapsed) so 'SPOTIFY *123' and 'spotify' " +
         "share a single hint. The recurring-candidate promote flow reads " +
-        "this to suggest a category; the suggestion is always shown to " +
-        "the user, never silently applied. Hints whose `categoryId` no " +
-        "longer references a known category are dropped on load.",
+        "this to suggest a type; the suggestion is always shown to the " +
+        "user, never silently applied. The hint's category is derived " +
+        "through `typeId → EntryType.categoryId`. Hints whose `typeId` " +
+        "no longer references a known type are dropped on load.",
       additionalProperties: { $ref: "#/$defs/MerchantHint" },
     },
     recurringDismissals: {
@@ -305,28 +307,21 @@ export const USER_DATA_SCHEMA = {
     },
     ColumnType: {
       type: "string",
-      enum: [
-        "date",
-        "description",
-        "amount",
-        "balance",
-        "completed",
-        "category",
-      ],
+      enum: ["date", "description", "amount", "balance", "completed"],
       description:
         "Semantic role of a column. The UI picks the cell editor and the " +
         "display formatter from this. `balance` is derived (a running " +
         "total computed from `date` + `amount`) and never has a stored " +
-        "cell value; `category` cells hold the id of an entry in the " +
-        "top-level `categories` array.",
+        "cell value. A row's category is derived through " +
+        "`row.typeId → type.categoryId`, not stored as a cell.",
     },
     CellValue: {
       description:
         "Per-cell value. Concretely: `date` cells hold an ISO YYYY-MM-DD " +
         "string; `description` holds free text; `amount` holds a number " +
-        "(negative for outgoing); `completed` holds a boolean; `category` " +
-        "holds a category id string or null. The validator only checks " +
-        "the primitive type — semantic typing is enforced by the column.",
+        "(negative for outgoing); `completed` holds a boolean. The " +
+        "validator only checks the primitive type — semantic typing is " +
+        "enforced by the column.",
       oneOf: [
         { type: "string" },
         { type: "number" },
@@ -670,13 +665,12 @@ export const USER_DATA_SCHEMA = {
         "raw bank description matches `pattern` (simple glob: `*` matches " +
         "any run of characters, everything else matches literally, case- " +
         "insensitively, and the pattern is implicitly anchored). When a " +
-        "rule matches an entry its `description` / `categoryId` / `typeId` " +
-        "overlay the entry's synthesized row at render time; the stored " +
-        "`HistoryEntry` is never rewritten so removing a rule reverts " +
-        "presentation cleanly. `amountSign` and `transferFilter` narrow " +
-        "the match: a rule for 'BAUHAUS' can fire only on outgoing " +
-        "purchases (negative amounts) and ignore transfers between the " +
-        "user's own accounts.",
+        "rule matches an entry its `description` and `typeId` overlay the " +
+        "entry's synthesized row at render time; the stored `HistoryEntry` " +
+        "is never rewritten so removing a rule reverts presentation " +
+        "cleanly. `amountSign` and `transferFilter` narrow the match: a " +
+        "rule for 'BAUHAUS' can fire only on outgoing purchases (negative " +
+        "amounts) and ignore transfers between the user's own accounts.",
       properties: {
         id: { $ref: "#/$defs/Id" },
         pattern: {
@@ -697,17 +691,13 @@ export const USER_DATA_SCHEMA = {
             "preserved on the underlying `HistoryEntry`; only presentation " +
             "changes.",
         },
-        categoryId: {
-          oneOf: [{ $ref: "#/$defs/Id" }, { type: "null" }],
-          description:
-            "Optional category id assigned to every matching row. Must " +
-            "reference `categories`; dangling refs are dropped on load.",
-        },
         typeId: {
           oneOf: [{ $ref: "#/$defs/Id" }, { type: "null" }],
           description:
-            "Optional `EntryType` id assigned alongside the category. " +
-            "Dangling refs are dropped on load.",
+            "Optional `EntryType` id assigned to every matching row. " +
+            "Must reference `types` (or a preset); dangling refs are " +
+            "dropped on load. The row's category is derived through " +
+            "`type.categoryId`.",
         },
         amountSign: {
           type: "string",
@@ -806,30 +796,32 @@ export const USER_DATA_SCHEMA = {
     MerchantHint: {
       type: "object",
       additionalProperties: false,
-      required: ["categoryId", "hitCount", "lastUsedAt"],
+      required: ["typeId", "hitCount", "lastUsedAt"],
       description:
-        "One entry in `merchantHints`. Records the category the user " +
-        "has most recently assigned to a normalised-description key, " +
-        "plus how often they've reinforced that choice and when they " +
-        "last did so. The history-row promote-to-recurring flow may " +
-        "also stamp a `typeId` and a user-typed `description` here so " +
+        "One entry in `merchantHints`. Records the type the user has " +
+        "most recently assigned to a normalised-description key, plus " +
+        "how often they've reinforced that choice and when they last " +
+        "did so. The hint's category is derived through " +
+        "`typeId → EntryType.categoryId`. The history-row promote-to-" +
+        "recurring flow may also stamp a user-typed `description` so " +
         "synthesized history rows display under the user's label " +
         "instead of the raw bank text.",
       properties: {
-        categoryId: {
+        typeId: {
           $ref: "#/$defs/Id",
           description:
-            "Suggested category for any future row whose description " +
+            "Suggested type for any future row whose description " +
             "normalises to this key. Must reference an entry in " +
-            "`categories`; dangling refs are dropped on load.",
+            "`types` (or a preset); dangling refs cause the whole " +
+            "hint to be dropped on load.",
         },
         hitCount: {
           type: "integer",
           minimum: 1,
           description:
-            "Number of distinct category-assignment actions that have " +
+            "Number of distinct type-assignment actions that have " +
             "reinforced this hint. Resets to 1 when the user assigns a " +
-            "different category to the same merchant.",
+            "different type to the same merchant.",
         },
         lastUsedAt: {
           type: "number",
@@ -837,14 +829,6 @@ export const USER_DATA_SCHEMA = {
             "Unix milliseconds of the most recent assignment. Used by " +
             "the 'Merchant memory' settings section to render a 'last " +
             "used …' label and as a tiebreaker between competing hints.",
-        },
-        typeId: {
-          $ref: "#/$defs/Id",
-          description:
-            "Optional `EntryType` id assigned alongside the category. " +
-            "Synthesized history rows pick it up so the type chip and " +
-            "colour render in place of the raw bank text. Dangling " +
-            "refs are dropped on load.",
         },
         description: {
           type: "string",
@@ -960,11 +944,13 @@ export const USER_DATA_SCHEMA = {
             "entry in `accounts`. May equal `fromAccountId` in pathological " +
             "user input but the UI does not generate such transactions.",
         },
-        categoryId: {
+        typeId: {
           oneOf: [{ $ref: "#/$defs/Id" }, { type: "null" }],
           description:
-            "Optional category tag, referencing `categories`. Null means " +
-            "'uncategorised'.",
+            "Optional `EntryType` reference (from `types` or a preset). " +
+            "Null means 'untyped'. The transaction's category is " +
+            "derived through `type.categoryId`; the transaction itself " +
+            "carries no categoryId.",
         },
         completed: {
           type: "boolean",
@@ -987,17 +973,28 @@ export const USER_DATA_SCHEMA = {
     EntryType: {
       type: "object",
       additionalProperties: false,
-      required: ["id", "name", "color", "glyph"],
+      required: ["id", "name", "color", "glyph", "categoryId"],
       description:
         "Reusable label assigned to a row. A row references this by id " +
         "via `Row.typeId`; the type carries the visual identity (glyph + " +
-        "colour) the description cell renders. Renaming or recolouring a " +
-        "type updates every row that references it.",
+        "colour) the description cell renders. Every type belongs to " +
+        "exactly one category via `categoryId` — that's how rows get a " +
+        "category (they reference a type, the type points at a " +
+        "category). Renaming or recolouring a type updates every row " +
+        "that references it.",
       properties: {
         id: { $ref: "#/$defs/Id" },
         name: { type: "string" },
         color: { $ref: "#/$defs/HexColor" },
         glyph: { $ref: "#/$defs/CategoryIcon" },
+        categoryId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Parent category id. Must reference an entry in `categories` " +
+            "(or a preset). When the parent category is deleted, the " +
+            "type is reassigned to the catch-all 'Other' preset rather " +
+            "than orphaned.",
+        },
       },
     },
     Settings: {

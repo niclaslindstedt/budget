@@ -18,7 +18,7 @@ import { validateUserData } from "../src/data/validate";
 function workspace(patch: Partial<UserData> = {}): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 24,
+    version: 25,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -63,7 +63,15 @@ describe("preset helpers", () => {
 
   it("allTypes returns visible presets followed by user-added types", () => {
     const state = workspace({
-      types: [{ id: "u1", name: "Padel", color: "#61afef", glyph: "ticket" }],
+      types: [
+        {
+          id: "u1",
+          name: "Padel",
+          color: "#61afef",
+          glyph: "ticket",
+          categoryId: "preset-cat-other",
+        },
+      ],
     });
     const merged = allTypes(state);
     expect(merged[0].id.startsWith("preset-type-")).toBe(true);
@@ -72,6 +80,7 @@ describe("preset helpers", () => {
       name: "Padel",
       color: "#61afef",
       glyph: "ticket",
+      categoryId: "preset-cat-other",
     });
     expect(merged).toHaveLength(PRESET_ENTRY_TYPES.length + 1);
   });
@@ -121,6 +130,7 @@ describe("preset helpers", () => {
           name: "Hijack",
           color: "#e06c75",
           glyph: "home" as const,
+          categoryId: "preset-cat-other",
         },
       ],
     };

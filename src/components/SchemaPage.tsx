@@ -68,10 +68,14 @@ export function SchemaPage() {
               balance cell as a bug.
             </li>
             <li>
-              A <code className="text-meta">category</code> cell holds the id
-              (string) of an entry in the top-level{" "}
-              <code className="text-meta">categories</code> array — not the
-              name.
+              A row's category is{" "}
+              <strong className="text-fg-bright">derived</strong>, not stored:
+              look up <code className="text-meta">row.typeId</code> in the
+              top-level <code className="text-meta">types</code> array and read{" "}
+              <code className="text-meta">EntryType.categoryId</code>. There is
+              no <code className="text-meta">"category"</code> column and no
+              category cell — categories exist only for analysis grouping, and
+              every type belongs to exactly one.
             </li>
             <li>
               Rows generated from a recurring entry share a{" "}
@@ -190,9 +194,12 @@ export function SchemaPage() {
               separately.
             </li>
             <li>
-              Resolve <code className="text-meta">category</code> cells by
-              looking the id up in the top-level{" "}
-              <code className="text-meta">categories</code> array.
+              Derive a row's category by resolving{" "}
+              <code className="text-meta">row.typeId</code> in the top-level{" "}
+              <code className="text-meta">types</code> array and reading the
+              type's <code className="text-meta">categoryId</code>; then look
+              that up in <code className="text-meta">categories</code>.
+              Categories never sit on rows directly.
             </li>
             <li>
               Resolve <code className="text-meta">AccountBudget.accountId</code>{" "}
@@ -240,11 +247,13 @@ export function SchemaPage() {
             </li>
             <li>
               <strong className="text-fg-bright">
-                Category cells hold ids.
+                Categories live on types, not rows.
               </strong>{" "}
-              A cell value like <code className="text-meta">"groceries"</code>{" "}
-              is a category id, not a name — look it up in{" "}
-              <code className="text-meta">categories</code>.
+              The row only stores <code className="text-meta">typeId</code>; the
+              category is whatever{" "}
+              <code className="text-meta">EntryType.categoryId</code> points at.
+              A row with no <code className="text-meta">typeId</code> has no
+              category.
             </li>
             <li>
               <strong className="text-fg-bright">
@@ -309,29 +318,36 @@ function Section({
 // than the schema module because the schema must be a valid JSON
 // Schema document.
 const OVERVIEW_TEXT = `UserData
-├─ version: 13                             schema version (this build)
+├─ version: ${LATEST_VERSION}                             schema version (this build)
 ├─ activeSheetId: string                   id of the sheet to open first
 ├─ accounts: Account[]                     real-world accounts (may be empty)
 │  └─ Account { id, name,
 │              description?, glyph?, color?, bank?,
 │              clearing?, accountNumber?, iban?, bic?, currency?,
 │              openingBalance? }
-├─ categories: Category[]                  category records
+├─ categories: Category[]                  analysis buckets (contain types)
 │  └─ Category { id, name, color, icon }
+├─ types: EntryType[]                      concrete labels; each belongs to one category
+│  └─ EntryType { id, name, color, glyph, categoryId }
+├─ hiddenPresetTypeIds: string[]           preset type ids the user hid
+├─ hiddenPresetCategoryIds: string[]       preset category ids the user hid
 ├─ transactions: Transaction[]             transfers between accounts
 │  └─ Transaction { id, date, description, amount (>= 0),
 │                   fromAccountId, toAccountId,
-│                   categoryId?, completed? }
+│                   typeId?, completed? }
 ├─ history: { [accountId]: HistoryEntry[] } imported bank-statement rows
 │  └─ HistoryEntry { id, date, description, amount (signed),
-│                    balance, importedAt, hidden?,
+│                    balance?, importedAt, hidden?,
 │                    collapsedIntoTransactionId? }
 ├─ historyImports: { [accountId]: HistoryImport[] } file-import audit log
-├─ merchantHints: { [normalisedDesc]: MerchantHint } per-merchant category memory
-│  └─ MerchantHint { categoryId, hitCount, lastUsedAt, typeId?, description? }
+├─ merchantHints: { [normalisedDesc]: MerchantHint } per-merchant type memory
+│  └─ MerchantHint { typeId, hitCount, lastUsedAt, description? }
 ├─ recurringDismissals: string[]           normalised keys dismissed as "Not recurring"
 ├─ transferCollapseDismissals: string[]    pair keys dismissed as "Never collapse"
 ├─ matchRules: MatchRule[]                 user wildcard rules that relabel history rows
+│  └─ MatchRule { id, pattern, description?, typeId?,
+│                 amountSign?, transferFilter?,
+│                 amountMin?, amountMax? }
 ├─ seriesMatchRules: SeriesMatchRule[]     auto-reconciliation rules per recurring series
 │  └─ SeriesMatchRule { id, seriesId, pattern, amountTolerancePct, dateLagDays }
 ├─ settings: Settings                      display + entry preferences
@@ -348,11 +364,11 @@ const OVERVIEW_TEXT = `UserData
          │                  columns, rows }
          │  ├─ columns: Column[]           order = display order
          │  │  └─ Column { id, type, label }
-         │  │     type ∈ { date | description | amount | balance
-         │  │            | completed | category }
+         │  │     type ∈ { date | description | amount | balance | completed }
          │  └─ rows: Row[]                 month grouping is derived
-         │     └─ Row { id, cells, seriesId?, glyph?, isCorrection? }
+         │     └─ Row { id, cells, typeId?, seriesId?, isCorrection?, amountFormula? }
          │        cells: { [columnId]: string|number|boolean|null }
+         │        row's category is derived: types[typeId].categoryId
          └─ AccountsView { id, type: "accountsView" }
                                            singleton dashboard, no data of its own`;
 

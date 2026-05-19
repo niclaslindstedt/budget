@@ -17,7 +17,6 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
-import { CategoryPicker } from "./CategoryPicker";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -27,7 +26,6 @@ type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
 export type MatchRuleDraft = {
   pattern: string;
   description: string;
-  categoryId: string | null;
   typeId: string | null;
   amountSign: AmountSign;
   transferFilter: TransferFilter;
@@ -50,14 +48,13 @@ type Props = {
   // form seeds from the rule rather than the seed entry's raw text;
   // saving updates rather than appends.
   existing: MatchRule | null;
-  categories: Category[];
+  categories: readonly Category[];
   types: readonly EntryType[];
   typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onSubmit: (draft: MatchRuleDraft) => void;
   onDelete?: () => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
@@ -102,14 +99,12 @@ export function MatchRuleModal({
   onClose,
   onSubmit,
   onDelete,
-  onCreateCategory,
   onCreateType,
 }: Props) {
   const isEdit = existing !== null;
 
   const [pattern, setPattern] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [typeId, setTypeId] = useState<string | null>(null);
   const [amountSign, setAmountSign] = useState<AmountSign>("any");
   const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
@@ -129,7 +124,6 @@ export function MatchRuleModal({
     if (existing) {
       setPattern(existing.pattern);
       setDescription(existing.description ?? "");
-      setCategoryId(existing.categoryId ?? null);
       setTypeId(existing.typeId ?? null);
       setAmountSign(existing.amountSign ?? "any");
       setTransferFilter(existing.transferFilter ?? "any");
@@ -155,7 +149,6 @@ export function MatchRuleModal({
     }
     setPattern(seedPatternFromDescription(seedEntry?.description ?? ""));
     setDescription("");
-    setCategoryId(null);
     setTypeId(null);
     // Seed sign filter from the row the user invoked from: most
     // descriptions are tied to one direction (a refund vs a purchase
@@ -212,7 +205,6 @@ export function MatchRuleModal({
       id: existing?.id ?? "preview",
       pattern,
       description: description.trim() === "" ? undefined : description.trim(),
-      categoryId,
       typeId,
       amountSign,
       transferFilter,
@@ -223,7 +215,6 @@ export function MatchRuleModal({
       existing,
       pattern,
       description,
-      categoryId,
       typeId,
       amountSign,
       transferFilter,
@@ -256,7 +247,6 @@ export function MatchRuleModal({
     onSubmit({
       pattern: pattern.trim(),
       description: description.trim(),
-      categoryId,
       typeId,
       amountSign,
       transferFilter,
@@ -268,7 +258,6 @@ export function MatchRuleModal({
     onSubmit,
     pattern,
     description,
-    categoryId,
     typeId,
     amountSign,
     transferFilter,
@@ -318,21 +307,12 @@ export function MatchRuleModal({
               placeholder="Leave blank to keep the bank's text"
             />
           </label>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Category</span>
-            <CategoryPicker
-              variant="field"
-              categories={categories}
-              selectedId={categoryId}
-              onSelect={setCategoryId}
-              onCreate={onCreateCategory}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">Type</span>
             <TypePicker
               variant="field"
               types={types}
+              categories={categories}
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}

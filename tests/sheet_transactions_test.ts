@@ -23,7 +23,7 @@ import type {
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 24,
+    version: 25,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -179,20 +179,17 @@ describe("synthesizeHistoryRow", () => {
     const cols = budgetColumns();
     const row = synthesizeHistoryRow(entry, cols, {});
     const descCol = cols.find((c) => c.type === "description")!;
-    const catCol = cols.find((c) => c.type === "category")!;
     expect(row.cells[descCol.id]).toBe("ICA SUPERMARKET 12345");
-    expect(row.cells[catCol.id]).toBeNull();
     expect(row.typeId).toBeUndefined();
     expect(row.historyEntryId).toBe("h1");
   });
 
-  it("overlays the hint description, category, and typeId when one matches", () => {
+  it("overlays the hint description and typeId when one matches", () => {
     const cols = budgetColumns();
     // Key is the normalised form of the bank text — the synthesizer
     // computes the key itself so callers just pass the hint store.
     const hints: Record<string, MerchantHint> = {
       "ica supermarket": {
-        categoryId: "groceries",
         typeId: "type-grocery",
         description: "Groceries",
         hitCount: 1,
@@ -201,9 +198,7 @@ describe("synthesizeHistoryRow", () => {
     };
     const row = synthesizeHistoryRow(entry, cols, hints);
     const descCol = cols.find((c) => c.type === "description")!;
-    const catCol = cols.find((c) => c.type === "category")!;
     expect(row.cells[descCol.id]).toBe("Groceries");
-    expect(row.cells[catCol.id]).toBe("groceries");
     expect(row.typeId).toBe("type-grocery");
   });
 
@@ -211,17 +206,15 @@ describe("synthesizeHistoryRow", () => {
     const cols = budgetColumns();
     const hints: Record<string, MerchantHint> = {
       "ica supermarket": {
-        categoryId: "groceries",
+        typeId: "type-grocery",
         hitCount: 1,
         lastUsedAt: 0,
       },
     };
     const row = synthesizeHistoryRow(entry, cols, hints);
     const descCol = cols.find((c) => c.type === "description")!;
-    const catCol = cols.find((c) => c.type === "category")!;
     expect(row.cells[descCol.id]).toBe("ICA SUPERMARKET 12345");
-    expect(row.cells[catCol.id]).toBe("groceries");
-    expect(row.typeId).toBeUndefined();
+    expect(row.typeId).toBe("type-grocery");
   });
 });
 

@@ -57,6 +57,7 @@ import { SyncDetailsModal } from "./components/SyncDetailsModal";
 import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
 import {
+  DEFAULT_CATEGORY_ID,
   PRESET_CATEGORY_IDS,
   PRESET_ENTRY_TYPE_IDS,
   STORAGE_KEY,
@@ -361,7 +362,7 @@ type Action =
       // payload the reducer needs — description, amount, glyph,
       // categoryId, dates — so the dispatcher stays a pure function of
       // its inputs (the candidate + the user's confirmed adjustments).
-      // The reducer also records the chosen categoryId as a merchant
+      // The reducer also records the chosen typeId as a merchant
       // hint (keyed by `sourceDescription` so future imports of the same
       // bank text resolve to it) and adds `key` to
       // `recurringDismissals` so the candidate disappears from the
@@ -378,7 +379,6 @@ type Action =
       sourceDescription: string;
       description: string;
       amount: number;
-      categoryId: string | null;
       typeId: string | null;
       dates: string[];
       now: number;
@@ -400,7 +400,6 @@ type Action =
       sourceDescription: string;
       description: string;
       amount: number;
-      categoryId: string | null;
       typeId: string | null;
       dates: string[];
       now: number;
@@ -477,33 +476,32 @@ type Action =
     };
 
 // Walk an AccountBudget's before/after rows and collect the
-// description+categoryId pairs that need to be folded into the
-// merchant-hint store. Anything that newly carries a string category
-// (or whose category changed) counts; rows whose category was cleared
-// emit a recording with `categoryId: null` so `recordMerchantHints`
-// can drop the stale hint.
+// description+typeId pairs that need to be folded into the merchant-
+// hint store. Anything that newly carries a string typeId (or whose
+// typeId changed) counts; rows whose typeId was cleared emit a
+// recording with `typeId: null` so `recordMerchantHints` can drop
+// the stale hint.
 function hintRecordingsFromBudget(
   prev: AccountBudget,
   next: AccountBudget,
 ): HintRecording[] {
   const descId = findColumnByType(next.columns, "description")?.id;
-  const categoryId = findColumnByType(next.columns, "category")?.id;
-  if (!descId || !categoryId) return [];
+  if (!descId) return [];
   const prevById = new Map<string, Row>();
   for (const r of prev.rows) prevById.set(r.id, r);
   const out: HintRecording[] = [];
   for (const row of next.rows) {
     const before = prevById.get(row.id);
-    const afterCat = row.cells[categoryId];
-    const beforeCat = before?.cells[categoryId];
-    if (afterCat === beforeCat) continue;
+    const afterType = row.typeId ?? null;
+    const beforeType = before?.typeId ?? null;
+    if (afterType === beforeType) continue;
     const desc = row.cells[descId];
     if (typeof desc !== "string" || desc.trim() === "") continue;
-    if (typeof afterCat === "string" && afterCat !== "") {
-      out.push({ description: desc, categoryId: afterCat });
-    } else if (typeof beforeCat === "string" && beforeCat !== "") {
-      // Cell was cleared back to null — drop the hint.
-      out.push({ description: desc, categoryId: null });
+    if (afterType !== null) {
+      out.push({ description: desc, typeId: afterType });
+    } else if (beforeType !== null) {
+      // Type was cleared — drop the hint.
+      out.push({ description: desc, typeId: null });
     }
   }
   return out;
@@ -515,7 +513,6 @@ function applyPatch(
   cols: {
     descId?: string;
     amountId?: string;
-    categoryId?: string;
   },
 ): Row {
   const next: Row = { ...row, cells: { ...row.cells } };
@@ -530,7 +527,6 @@ function applyPatch(
     // ComplexEntryModal (delete + re-add for v1).
     if (next.amountFormula !== undefined) delete next.amountFormula;
   }
-  if (cols.categoryId) next.cells[cols.categoryId] = patch.categoryId ?? null;
   // `undefined` means "don't touch"; explicit `null` clears the type
   // and the row falls back to its description as the primary label.
   if (patch.typeId !== undefined) {
@@ -575,7 +571,6 @@ function reduceAccountBudget(
           date,
           description: draft.description,
           amount: draft.amount,
-          category: draft.categoryId,
           completed: defaultCompletedForDate(date),
         });
         if (seriesId) row.seriesId = seriesId;
@@ -593,13 +588,12 @@ function reduceAccountBudget(
       const anchor = item.rows.find((r) => r.id === action.rowId);
       if (!anchor) return item;
       // Promote the anchor row into a series of its own. Future rows
-      // inherit description, amount, and category from the anchor; the
-      // typeId comes from the modal so promotion and type selection
-      // happen in the same step.
+      // inherit description and amount from the anchor; the typeId
+      // comes from the modal so promotion and type selection happen
+      // in the same step.
       const seriesId = anchor.seriesId ?? newId();
       const descCol = findColumnByType(item.columns, "description");
       const amountCol = findColumnByType(item.columns, "amount");
-      const categoryCol = findColumnByType(item.columns, "category");
       const newRows: Row[] = action.futureDates.map((date) => {
         const row = createEmptyRow(item.columns, {
           date,
@@ -611,10 +605,6 @@ function reduceAccountBudget(
             amountCol && typeof anchor.cells[amountCol.id] === "number"
               ? (anchor.cells[amountCol.id] as number)
               : 0,
-          category:
-            categoryCol && typeof anchor.cells[categoryCol.id] === "string"
-              ? (anchor.cells[categoryCol.id] as string)
-              : null,
           completed: false,
         });
         row.seriesId = seriesId;
@@ -644,7 +634,6 @@ function reduceAccountBudget(
       const cols = {
         descId: findColumnByType(item.columns, "description")?.id,
         amountId: findColumnByType(item.columns, "amount")?.id,
-        categoryId: findColumnByType(item.columns, "category")?.id,
       };
       let targets: ReadonlySet<string>;
       if (action.scope.kind === "just-this") {
@@ -693,7 +682,6 @@ function reduceAccountBudget(
       const ids = new Set(action.rowIds);
       const dateColId = findColumnByType(item.columns, "date")?.id;
       const amountColId = findColumnByType(item.columns, "amount")?.id;
-      const categoryColId = findColumnByType(item.columns, "category")?.id;
       return {
         ...item,
         rows: item.rows.map((r) => {
@@ -708,8 +696,9 @@ function reduceAccountBudget(
             // replaces any previous formula on the row.
             if (next.amountFormula !== undefined) delete next.amountFormula;
           }
-          if (action.patch.categoryId !== undefined && categoryColId) {
-            next.cells[categoryColId] = action.patch.categoryId;
+          if (action.patch.typeId !== undefined) {
+            if (action.patch.typeId === null) delete next.typeId;
+            else next.typeId = action.patch.typeId;
           }
           return next;
         }),
@@ -812,49 +801,18 @@ function reducer(state: UserData, action: Action): UserData {
     };
   }
   if (action.type === "deleteCategory") {
-    // Deleting a category cascades: every transaction / merchant hint /
-    // match rule that references it gets the reference cleared so the
-    // app doesn't hang onto zombie ids. Row cells of category columns
-    // are cleared too. Presets are immutable, same as updateCategory.
+    // Deleting a category cascades through the types that lived under
+    // it: every user-added type with a matching `categoryId` is
+    // reassigned to the catch-all "Other" category so rows that
+    // referenced those types stay valid. Presets are immutable, same
+    // as updateCategory.
     if (PRESET_CATEGORY_IDS.has(action.categoryId)) return state;
     const id = action.categoryId;
     return {
       ...state,
       categories: state.categories.filter((c) => c.id !== id),
-      sheets: state.sheets.map((sheet) => ({
-        ...sheet,
-        items: sheet.items.map((item) => {
-          if (item.type !== "accountBudget") return item;
-          const categoryColIds = new Set(
-            item.columns.filter((c) => c.type === "category").map((c) => c.id),
-          );
-          if (categoryColIds.size === 0) return item;
-          return {
-            ...item,
-            rows: item.rows.map((r) => {
-              let changed = false;
-              const nextCells = { ...r.cells };
-              for (const colId of categoryColIds) {
-                if (nextCells[colId] === id) {
-                  nextCells[colId] = null;
-                  changed = true;
-                }
-              }
-              return changed ? { ...r, cells: nextCells } : r;
-            }),
-          };
-        }),
-      })),
-      transactions: state.transactions.map((tx) =>
-        tx.categoryId === id ? { ...tx, categoryId: null } : tx,
-      ),
-      merchantHints: Object.fromEntries(
-        Object.entries(state.merchantHints).filter(
-          ([, hint]) => hint.categoryId !== id,
-        ),
-      ),
-      matchRules: state.matchRules.map((rule) =>
-        rule.categoryId === id ? { ...rule, categoryId: null } : rule,
+      types: state.types.map((t) =>
+        t.categoryId === id ? { ...t, categoryId: DEFAULT_CATEGORY_ID } : t,
       ),
     };
   }
@@ -906,13 +864,14 @@ function reducer(state: UserData, action: Action): UserData {
           };
         }),
       })),
+      // Hints whose typeId points at the deleted type lose their only
+      // actionable field — drop the entry entirely. The next time the
+      // user assigns a type to a row matching the same merchant key,
+      // a fresh hint will land here.
       merchantHints: Object.fromEntries(
-        Object.entries(state.merchantHints).map(([key, hint]) => {
-          if (hint.typeId !== id) return [key, hint];
-          const { typeId: _drop, ...rest } = hint;
-          void _drop;
-          return [key, rest];
-        }),
+        Object.entries(state.merchantHints).filter(
+          ([, hint]) => hint.typeId !== id,
+        ),
       ),
       matchRules: state.matchRules.map((rule) =>
         rule.typeId === id ? { ...rule, typeId: null } : rule,
@@ -1125,7 +1084,7 @@ function reducer(state: UserData, action: Action): UserData {
       [
         {
           description: action.transaction.description,
-          categoryId: action.transaction.categoryId ?? null,
+          typeId: action.transaction.typeId ?? null,
         },
       ],
       Date.now(),
@@ -1139,17 +1098,17 @@ function reducer(state: UserData, action: Action): UserData {
         tx.id === action.transactionId ? { ...tx, ...action.patch } : tx,
       ),
     };
-    // Only fire a hint recording when the category was actually
-    // touched by this update; otherwise unrelated edits (date,
-    // amount, …) would re-stamp `lastUsedAt` on an unrelated hint.
-    if (prev && action.patch.categoryId !== undefined) {
+    // Only fire a hint recording when the type was actually touched
+    // by this update; otherwise unrelated edits (date, amount, …)
+    // would re-stamp `lastUsedAt` on an unrelated hint.
+    if (prev && action.patch.typeId !== undefined) {
       const description =
         action.patch.description !== undefined
           ? action.patch.description
           : prev.description;
       return recordMerchantHints(
         next,
-        [{ description, categoryId: action.patch.categoryId ?? null }],
+        [{ description, typeId: action.patch.typeId ?? null }],
         Date.now(),
       );
     }
@@ -1212,7 +1171,7 @@ function reducer(state: UserData, action: Action): UserData {
       [
         {
           description: action.transaction.description,
-          categoryId: action.transaction.categoryId ?? null,
+          typeId: action.transaction.typeId ?? null,
         },
       ],
       Date.now(),
@@ -1239,7 +1198,6 @@ function reducer(state: UserData, action: Action): UserData {
           const dateCol = findColumnByType(item.columns, "date");
           const descCol = findColumnByType(item.columns, "description");
           const amountCol = findColumnByType(item.columns, "amount");
-          const catCol = findColumnByType(item.columns, "category");
           if (!dateCol || !descCol || !amountCol) return item;
           const newRows: Row[] = action.dates.map((date) => {
             const cells: Record<string, CellValue> = {
@@ -1247,7 +1205,6 @@ function reducer(state: UserData, action: Action): UserData {
               [descCol.id]: action.description,
               [amountCol.id]: action.amount,
             };
-            if (catCol) cells[catCol.id] = action.categoryId;
             const row: Row = { id: newId(), cells };
             if (seriesId) row.seriesId = seriesId;
             if (action.typeId) row.typeId = action.typeId;
@@ -1265,7 +1222,7 @@ function reducer(state: UserData, action: Action): UserData {
       sheets: nextSheets,
       recurringDismissals: dismissals,
     };
-    if (action.categoryId === null) return next;
+    if (action.typeId === null) return next;
     // Key the merchant hint by the raw bank text (`sourceDescription`)
     // so future imports of the same merchant pick up the suggestion
     // even when the user edited the displayed description. When the
@@ -1280,7 +1237,6 @@ function reducer(state: UserData, action: Action): UserData {
       [
         {
           description: action.sourceDescription,
-          categoryId: action.categoryId,
           typeId: action.typeId,
           description_override: override,
         },
@@ -1308,7 +1264,6 @@ function reducer(state: UserData, action: Action): UserData {
           const dateCol = findColumnByType(item.columns, "date");
           const descCol = findColumnByType(item.columns, "description");
           const amountCol = findColumnByType(item.columns, "amount");
-          const catCol = findColumnByType(item.columns, "category");
           if (!dateCol || !descCol || !amountCol) return item;
           const newRows: Row[] = action.dates.map((date) => {
             const cells: Record<string, CellValue> = {
@@ -1316,7 +1271,6 @@ function reducer(state: UserData, action: Action): UserData {
               [descCol.id]: action.description,
               [amountCol.id]: action.amount,
             };
-            if (catCol) cells[catCol.id] = action.categoryId;
             const row: Row = { id: newId(), cells };
             if (seriesId) row.seriesId = seriesId;
             if (action.typeId) row.typeId = action.typeId;
@@ -1327,17 +1281,16 @@ function reducer(state: UserData, action: Action): UserData {
       };
     });
     const next = { ...state, sheets: nextSheets };
-    // The hint must carry categoryId (the existing contract of
-    // `recordMerchantHints`), so skip the recording when the user
-    // declined to set one. The new rows still got minted; the user
-    // can backfill labels later by promoting again with a category.
-    if (action.categoryId === null) return next;
+    // The hint must carry typeId (`recordMerchantHints` derives the
+    // category through `type.categoryId`), so skip the recording when
+    // the user declined to set a type. The new rows still got minted;
+    // the user can backfill labels later by promoting again with one.
+    if (action.typeId === null) return next;
     return recordMerchantHints(
       next,
       [
         {
           description: action.sourceDescription,
-          categoryId: action.categoryId,
           typeId: action.typeId,
           description_override: action.description,
         },
@@ -3616,12 +3569,7 @@ function BudgetView({
       // Only propagate fields that make sense across every occurrence —
       // date and completed are inherently per-occurrence, balance is
       // computed.
-      if (
-        !col ||
-        (col.type !== "description" &&
-          col.type !== "amount" &&
-          col.type !== "category")
-      ) {
+      if (!col || (col.type !== "description" && col.type !== "amount")) {
         return;
       }
       const dateCol = findColumnByType(activeItem.columns, "date");
@@ -4251,7 +4199,7 @@ function BudgetView({
           amount: tx.amount,
           fromAccountId: tx.fromAccountId,
           toAccountId: tx.toAccountId,
-          categoryId: tx.categoryId ?? null,
+          typeId: tx.typeId ?? null,
           completed: tx.completed ?? false,
         });
         return;
@@ -4259,11 +4207,9 @@ function BudgetView({
       const dateCol = findColumnByType(activeBudget.columns, "date");
       const descCol = findColumnByType(activeBudget.columns, "description");
       const amountCol = findColumnByType(activeBudget.columns, "amount");
-      const categoryCol = findColumnByType(activeBudget.columns, "category");
       const rawDate = dateCol ? row.cells[dateCol.id] : null;
       const rawDesc = descCol ? row.cells[descCol.id] : null;
       const rawAmount = amountCol ? row.cells[amountCol.id] : null;
-      const rawCategory = categoryCol ? row.cells[categoryCol.id] : null;
       const amount = typeof rawAmount === "number" ? rawAmount : 0;
       setTransactionRequest({
         kind: "promote",
@@ -4273,7 +4219,7 @@ function BudgetView({
         seedDescription: typeof rawDesc === "string" ? rawDesc : "",
         seedAmount: amount,
         outgoing: amount < 0,
-        seedCategoryId: typeof rawCategory === "string" ? rawCategory : null,
+        seedTypeId: row.typeId ?? null,
       });
     },
     [activeBudget, data.transactions],
@@ -4302,7 +4248,7 @@ function BudgetView({
         amount: tx.amount,
         fromAccountId: tx.fromAccountId,
         toAccountId: tx.toAccountId,
-        categoryId: tx.categoryId ?? null,
+        typeId: tx.typeId ?? null,
         completed: tx.completed ?? false,
       });
     },
@@ -4318,7 +4264,7 @@ function BudgetView({
         amount: draft.amount,
         fromAccountId: draft.fromAccountId,
         toAccountId: draft.toAccountId,
-        ...(draft.categoryId !== null && { categoryId: draft.categoryId }),
+        ...(draft.typeId !== null && { typeId: draft.typeId }),
         ...(draft.completed && { completed: draft.completed }),
       };
       dispatch({
@@ -4341,7 +4287,7 @@ function BudgetView({
         amount: draft.amount,
         fromAccountId: draft.fromAccountId,
         toAccountId: draft.toAccountId,
-        ...(draft.categoryId !== null && { categoryId: draft.categoryId }),
+        ...(draft.typeId !== null && { typeId: draft.typeId }),
         ...(draft.completed && { completed: draft.completed }),
       };
       dispatch({ type: "createTransaction", transaction });
@@ -4360,7 +4306,7 @@ function BudgetView({
           amount: draft.amount,
           fromAccountId: draft.fromAccountId,
           toAccountId: draft.toAccountId,
-          categoryId: draft.categoryId,
+          typeId: draft.typeId,
           completed: draft.completed,
         },
       });
@@ -4386,7 +4332,6 @@ function BudgetView({
           sourceDescription: recurringPromoteContext.sourceDescription,
           description: draft.description,
           amount: draft.amount,
-          categoryId: draft.categoryId,
           typeId: draft.typeId,
           dates: draft.dates,
           now: Date.now(),
@@ -4437,7 +4382,6 @@ function BudgetView({
         patch: {
           description: patch.description,
           amount: patch.amount,
-          categoryId: patch.categoryId,
           typeId: patch.typeId,
         },
         scope,
@@ -4569,7 +4513,6 @@ function BudgetView({
         pattern: draft.pattern,
       };
       if (draft.description) rule.description = draft.description;
-      if (draft.categoryId) rule.categoryId = draft.categoryId;
       if (draft.typeId) rule.typeId = draft.typeId;
       if (draft.amountSign !== "any") rule.amountSign = draft.amountSign;
       if (draft.transferFilter !== "any")
@@ -4600,7 +4543,6 @@ function BudgetView({
     if (!hint) return null;
     return {
       description: hint.description ?? null,
-      categoryId: hint.categoryId ?? null,
       typeId: hint.typeId ?? null,
     };
   }, [editPrompt, activeItem.accountId, data.history, data.merchantHints]);
@@ -4727,7 +4669,6 @@ function BudgetView({
       candidate: RecurringCandidate,
       rule: RecurrenceRule,
       _dates: string[],
-      categoryId: string | null,
       typeId: string | null,
     ) => {
       if (!activeBudget) return;
@@ -4740,7 +4681,6 @@ function BudgetView({
       setComplexSeed({
         description: candidate.description,
         amount: candidate.suggestedAmount,
-        categoryId,
         typeId,
         rule: shifted,
       });
@@ -4767,7 +4707,6 @@ function BudgetView({
       promotion: {
         description: string;
         amount: number;
-        categoryId: string | null;
         typeId: string | null;
         dates: string[];
       },
@@ -4781,7 +4720,6 @@ function BudgetView({
         sourceDescription,
         description: promotion.description,
         amount: promotion.amount,
-        categoryId: promotion.categoryId,
         typeId: promotion.typeId,
         dates: promotion.dates,
         now: Date.now(),
@@ -5006,7 +4944,7 @@ function BudgetView({
                 }
                 dismissedKeys={data.recurringDismissals}
                 merchantHints={data.merchantHints}
-                categories={allCategoriesMerged}
+                types={allTypesMerged}
                 settings={data.settings}
                 onPromote={onPromoteRecurringCandidate}
                 onDismiss={onDismissRecurringCandidate}
@@ -5015,7 +4953,6 @@ function BudgetView({
                 sheet={activeSheet}
                 item={activeItem}
                 data={data}
-                categories={allCategoriesMerged}
                 types={allTypesMerged}
                 accounts={data.accounts}
                 transactions={data.transactions}
@@ -5049,7 +4986,6 @@ function BudgetView({
                 onReorderColumns={onReorderColumns}
                 onToggleSelect={onToggleSelect}
                 onToggleSelectMonth={onToggleSelectMonth}
-                onCreateCategory={onCreateCategory}
                 onEditSheet={onOpenEditSheet}
               />
             </>
@@ -5166,13 +5102,15 @@ function BudgetView({
         request={transactionRequest}
         accounts={data.accounts}
         categories={allCategoriesMerged}
+        types={allTypesMerged}
+        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setTransactionRequest(null)}
         onPromote={onPromoteTransaction}
         onCreate={onCreateTransaction}
         onEdit={onEditTransactionSave}
         onDelete={onDeleteTransactionFromModal}
-        onCreateCategory={onCreateCategory}
+        onCreateType={onCreateType}
       />
       <ComplexEntryModal
         open={complexOpen}
@@ -5192,7 +5130,6 @@ function BudgetView({
           setRecurringPromoteContext(null);
         }}
         onCreate={onComplexSubmit}
-        onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />
       <EditEntryModal
@@ -5209,7 +5146,6 @@ function BudgetView({
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
         onPromoteHistory={onPromoteHistory}
-        onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />
       <EditRowModal
@@ -5223,7 +5159,6 @@ function BudgetView({
         lastSeriesDate={editRowLastSeriesDate}
         onClose={() => setEditRowPrompt(null)}
         onSave={onSaveEditRow}
-        onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />
       <MatchRuleModal
@@ -5237,7 +5172,6 @@ function BudgetView({
         settings={data.settings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
-        onCreateCategory={onCreateCategory}
         onCreateType={onCreateType}
       />
       <ApplySeriesEditDialog
@@ -5253,11 +5187,13 @@ function BudgetView({
         rows={selectedRows}
         columns={activeItem.columns}
         categories={allCategoriesMerged}
+        types={allTypesMerged}
+        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}
         onApplyRecurring={onApplyBulkRecurring}
-        onCreateCategory={onCreateCategory}
+        onCreateType={onCreateType}
       />
       <MoveCopyModal
         open={moveCopyPrompt !== null}

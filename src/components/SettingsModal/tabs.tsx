@@ -25,7 +25,7 @@ import { withCurrency } from "../../utils/format";
 import { BackendPicker } from "../BackendPicker";
 import { Checkbox, SelectPicker } from "../form";
 import { ImportExportControls } from "../ImportExportControls";
-import { CategoriesAdmin, TypesAdmin } from "./admin";
+import { CategoriesAndTypesAdmin } from "./admin";
 
 type CloudId = "dropbox" | "gdrive";
 
@@ -590,6 +590,10 @@ export function CategoriesTab({
   onUpdateCategory,
   onDeleteCategory,
   onSetPresetCategoryHidden,
+  onCreateType,
+  onUpdateType,
+  onDeleteType,
+  onSetPresetTypeHidden,
 }: {
   data: UserData;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -599,43 +603,26 @@ export function CategoriesTab({
   ) => void;
   onDeleteCategory: (categoryId: string) => void;
   onSetPresetCategoryHidden: (presetId: string, hidden: boolean) => void;
-}) {
-  return (
-    <Section title="Categories">
-      <CategoriesAdmin
-        userCategories={data.categories}
-        hiddenPresetIds={data.hiddenPresetCategoryIds}
-        onCreate={onCreateCategory}
-        onUpdate={onUpdateCategory}
-        onDelete={onDeleteCategory}
-        onSetPresetHidden={onSetPresetCategoryHidden}
-      />
-    </Section>
-  );
-}
-
-export function TypesTab({
-  data,
-  onCreateType,
-  onUpdateType,
-  onDeleteType,
-  onSetPresetTypeHidden,
-}: {
-  data: UserData;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onUpdateType: (typeId: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDeleteType: (typeId: string) => void;
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
 }) {
   return (
-    <Section title="Types">
-      <TypesAdmin
+    <Section title="Categories & types">
+      <CategoriesAndTypesAdmin
+        userCategories={data.categories}
         userTypes={data.types}
-        hiddenPresetIds={data.hiddenPresetTypeIds}
-        onCreate={onCreateType}
-        onUpdate={onUpdateType}
-        onDelete={onDeleteType}
-        onSetPresetHidden={onSetPresetTypeHidden}
+        hiddenPresetCategoryIds={data.hiddenPresetCategoryIds}
+        hiddenPresetTypeIds={data.hiddenPresetTypeIds}
+        onCreateCategory={onCreateCategory}
+        onUpdateCategory={onUpdateCategory}
+        onDeleteCategory={onDeleteCategory}
+        onSetPresetCategoryHidden={onSetPresetCategoryHidden}
+        onCreateType={onCreateType}
+        onUpdateType={onUpdateType}
+        onDeleteType={onDeleteType}
+        onSetPresetTypeHidden={onSetPresetTypeHidden}
       />
     </Section>
   );

@@ -2,15 +2,26 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_SETTINGS } from "../src/data/constants";
 import { createDefaultSheet } from "../src/data/sheet";
-import type { Transaction, UserData } from "../src/data/types";
+import type { EntryType, Transaction, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
+
+// A known EntryType the workspace can reference. Linked to the catch-all
+// preset category so the validator accepts it without seeding a custom
+// category alongside.
+const knownType: EntryType = {
+  id: "type-1",
+  name: "Dinner",
+  color: "#e06c75",
+  glyph: "utensils",
+  categoryId: "preset-cat-other",
+};
 
 // Build a minimal valid workspace then let each case mutate the
 // `transactions` array. Keeps the irrelevant fields off-screen.
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 24,
+    version: 25,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -18,7 +29,7 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
       { id: "a2", name: "Savings" },
     ],
     categories: [],
-    types: [],
+    types: [knownType],
     hiddenPresetTypeIds: [],
     hiddenPresetCategoryIds: [],
     transactions: [],
@@ -47,7 +58,7 @@ describe("validateUserData — transactions", () => {
   it("accepts a fully populated transaction", () => {
     const result = validateUserData(
       workspaceWithTransactions([
-        { ...validTx, categoryId: null, completed: true },
+        { ...validTx, typeId: null, completed: true },
       ]),
     );
     expect(result.ok).toBe(true);
@@ -106,13 +117,13 @@ describe("validateUserData — transactions", () => {
     }
   });
 
-  it("silently drops a categoryId that no longer exists", () => {
+  it("silently drops a typeId that no longer exists", () => {
     const result = validateUserData(
-      workspaceWithTransactions([{ ...validTx, categoryId: "gone" }]),
+      workspaceWithTransactions([{ ...validTx, typeId: "gone" }]),
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.transactions[0].categoryId).toBeNull();
+      expect(result.value.transactions[0].typeId).toBeNull();
     }
   });
 
@@ -126,7 +137,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 24,
+      version: 25,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -171,7 +182,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 24,
+      version: 25,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -196,25 +207,25 @@ describe("validateUserData — accounts metadata", () => {
     }
   });
 
-  it("drops merchant hints whose categoryId no longer exists, and dedups dismissal arrays", () => {
+  it("drops merchant hints whose typeId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 24,
+      version: 25,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
       categories: [
         { id: "c1", name: "Food", color: "#e06c75", icon: "utensils" },
       ],
-      types: [],
+      types: [knownType],
       hiddenPresetTypeIds: [],
       hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},
       historyImports: {},
       merchantHints: {
-        "ica maxi": { categoryId: "c1", hitCount: 3, lastUsedAt: 1 },
-        "ghost merchant": { categoryId: "deleted", hitCount: 1, lastUsedAt: 2 },
+        "ica maxi": { typeId: knownType.id, hitCount: 3, lastUsedAt: 1 },
+        "ghost merchant": { typeId: "deleted", hitCount: 1, lastUsedAt: 2 },
       },
       recurringDismissals: ["spotify", "", "spotify"],
       transferCollapseDismissals: ["pair1|pair2"],

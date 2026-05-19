@@ -4,14 +4,14 @@ import { Repeat, X } from "lucide-react";
 import type { RecurringCandidate } from "../data/recurring-detection";
 import { detectRecurringCandidates } from "../data/recurring-detection";
 import { expandRecurrence, type RecurrenceRule } from "../data/recurrence";
-import { suggestCategoryForDescription } from "../data/merchant-hints";
+import { suggestTypeForDescription } from "../data/merchant-hints";
 import type {
-  Category,
+  EntryType,
   HistoryEntry,
   MerchantHint,
   Settings,
 } from "../data/types";
-import { CategoryChip } from "./CategoryPicker";
+import { TypeChip } from "./TypePicker";
 import { formatNumber, withCurrency } from "../utils/format";
 
 type Props = {
@@ -24,15 +24,14 @@ type Props = {
   // Passed straight through to the detector.
   dismissedKeys: readonly string[];
   // Snapshot of the merchant-hint store so each candidate can render
-  // a suggested category before the user clicks Promote.
+  // a suggested type before the user clicks Promote.
   merchantHints: Readonly<Record<string, MerchantHint>>;
-  categories: readonly Category[];
+  types: readonly EntryType[];
   settings: Settings;
   onPromote: (
     candidate: RecurringCandidate,
     rule: RecurrenceRule,
     dates: string[],
-    categoryId: string | null,
     typeId: string | null,
   ) => void;
   onDismiss: (key: string) => void;
@@ -46,7 +45,7 @@ export function RecurringCandidatesPanel({
   history,
   dismissedKeys,
   merchantHints,
-  categories,
+  types,
   settings,
   onPromote,
   onDismiss,
@@ -97,20 +96,20 @@ export function RecurringCandidatesPanel({
       </header>
       <ul className="flex flex-col gap-2">
         {visible.map((c) => {
-          const suggested =
-            suggestCategoryForDescription(merchantHints, c.description) ?? null;
-          const suggestedCategory =
-            suggested === null
+          const suggestedTypeId =
+            suggestTypeForDescription(merchantHints, c.description) ?? null;
+          const suggestedType =
+            suggestedTypeId === null
               ? null
-              : (categories.find((cat) => cat.id === suggested) ?? null);
+              : (types.find((t) => t.id === suggestedTypeId) ?? null);
           return (
             <CandidateRow
               key={c.key}
               candidate={c}
-              suggestedCategory={suggestedCategory}
+              suggestedType={suggestedType}
               settings={settings}
               onPromote={(rule, dates) =>
-                onPromote(c, rule, dates, suggestedCategory?.id ?? null, null)
+                onPromote(c, rule, dates, suggestedType?.id ?? null)
               }
               onDismiss={() => onDismiss(c.key)}
             />
@@ -132,13 +131,13 @@ export function RecurringCandidatesPanel({
 
 function CandidateRow({
   candidate,
-  suggestedCategory,
+  suggestedType,
   settings,
   onPromote,
   onDismiss,
 }: {
   candidate: RecurringCandidate;
-  suggestedCategory: Category | null;
+  suggestedType: EntryType | null;
   settings: Settings;
   onPromote: (rule: RecurrenceRule, dates: string[]) => void;
   onDismiss: () => void;
@@ -187,12 +186,12 @@ function CandidateRow({
           </span>
           <span>·</span>
           <span>{Math.round(candidate.confidence * 100)}% confident</span>
-          {suggestedCategory && (
+          {suggestedType && (
             <>
               <span>·</span>
               <span className="inline-flex items-center gap-1">
                 Suggested:
-                <CategoryChip category={suggestedCategory} />
+                <TypeChip type={suggestedType} />
               </span>
             </>
           )}
