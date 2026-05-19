@@ -396,6 +396,35 @@ export const USER_DATA_SCHEMA = {
             "persisted (a stored `false` is indistinguishable from absent " +
             "and is dropped on save).",
         },
+        amountFormula: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Optional dynamic-amount expression. When present, the row's " +
+            "effective amount comes from evaluating this formula against " +
+            "the sheet's state at render time, overriding any literal in " +
+            "`cells[amountColumnId]` (which is still written as a best-" +
+            "effort preview cache, so older builds without formula " +
+            "support see a reasonable static number). " +
+            "Available variables (resolved against the row's fiscal " +
+            "month): `endOfMonthBalance`, `balanceBefore`, " +
+            "`openingBalance`, `income`, `expenses`, `net`, " +
+            "`uncategorized`, `prevMonth.endingBalance`, " +
+            "`prevMonth.income`, `prevMonth.expenses`. " +
+            'Functions: `categoryTotal("<categoryId>")`, ' +
+            '`typeTotal("<typeId>")`, `min`, `max`, `clamp`, `abs`, ' +
+            '`round`, and `sheet("<sheetId>").endOfMonthBalance` ' +
+            "(plus `.openingBalance`, `.income`, `.expenses`, `.net`) " +
+            "for cross-sheet references. " +
+            "Sheet references are stored as the target's stable sheet " +
+            "**id**, not its mutable display name, so renames don't " +
+            "break formulas — the editor renders the current name. " +
+            'Eval order is "literal rows first, then formula rows in ' +
+            "the order they appear in `item.rows`\"; a formula row's " +
+            "own contribution is excluded from its own variables to " +
+            "avoid self-reference. Cross-sheet references only see the " +
+            "referenced sheet's literal rows (cycle avoidance).",
+        },
       },
     },
     AccountBudget: {

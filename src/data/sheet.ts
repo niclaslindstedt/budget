@@ -205,6 +205,7 @@ export function sortRowsByDate(rows: Row[], dateColumnId: string): Row[] {
 export function computeBalances(
   item: AccountBudget,
   openingBalance = 0,
+  effectiveAmounts?: ReadonlyMap<string, number>,
 ): Map<string, number> {
   const result = new Map<string, number>();
   const dateCol = findColumnByType(item.columns, "date");
@@ -213,8 +214,18 @@ export function computeBalances(
   const sorted = sortRowsByDate(item.rows, dateCol.id);
   let running = openingBalance;
   for (const row of sorted) {
-    const raw = row.cells[amountCol.id];
-    const amount = typeof raw === "number" ? raw : Number(raw) || 0;
+    // When an effective-amounts map is supplied, prefer it over the
+    // stored cell — that's how formula rows get their evaluated value
+    // into the running balance. Falls back to the cell so existing
+    // call sites that haven't been threaded through the resolver
+    // behave exactly as before.
+    let amount: number;
+    if (effectiveAmounts && effectiveAmounts.has(row.id)) {
+      amount = effectiveAmounts.get(row.id) ?? 0;
+    } else {
+      const raw = row.cells[amountCol.id];
+      amount = typeof raw === "number" ? raw : Number(raw) || 0;
+    }
     running += amount;
     result.set(row.id, running);
   }
@@ -271,9 +282,13 @@ export function isRowSavable(row: Row, columns: Column[]): boolean {
   const desc = findColumnByType(columns, "description");
   const amount = findColumnByType(columns, "amount");
   if (!desc || !amount) return true;
-  return (
-    hasText(row.cells[desc.id]) && typeof row.cells[amount.id] === "number"
-  );
+  // A formula row satisfies the amount requirement regardless of the
+  // cached numeric cell — the effective amount comes from evaluation
+  // at render time.
+  const hasAmount =
+    typeof row.cells[amount.id] === "number" ||
+    typeof row.amountFormula === "string";
+  return hasText(row.cells[desc.id]) && hasAmount;
 }
 
 // True when the row has one of description/amount but not both — the
@@ -283,7 +298,9 @@ export function isRowHalfDone(row: Row, columns: Column[]): boolean {
   const amount = findColumnByType(columns, "amount");
   if (!desc || !amount) return false;
   const hasDesc = hasText(row.cells[desc.id]);
-  const hasAmount = typeof row.cells[amount.id] === "number";
+  const hasAmount =
+    typeof row.cells[amount.id] === "number" ||
+    typeof row.amountFormula === "string";
   return hasDesc !== hasAmount;
 }
 

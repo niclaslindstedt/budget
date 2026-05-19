@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 22 as const;
+export const LATEST_VERSION = 23 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -334,6 +334,15 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // "Apply to whole series" in the reconciliation modal, so behaviour
   // matches pre-v22 builds until then.
   21: (v21) => ({ ...v21, version: 22, seriesMatchRules: [] }),
+
+  // v22 → v23: introduces `Row.amountFormula`, an optional formula
+  // string that produces the row's effective amount at render time.
+  // No existing data needs rewriting — pre-v23 rows simply have no
+  // formula and continue to use the literal value in their amount
+  // cell. The bump only flags that this build understands the new
+  // shape so older builds refuse to open snapshots that may contain
+  // formulas they can't evaluate.
+  22: (v22) => ({ ...v22, version: 23 }),
 };
 
 export type MigrationResult = {

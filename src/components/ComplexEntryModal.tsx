@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
+import { formulaToStored, parseFormula } from "../data/formula";
 import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, EntryType, Settings } from "../data/types";
+import type { Category, EntryType, Settings, Sheet } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { CategoryPicker } from "./CategoryPicker";
 import { Modal } from "./Modal";
@@ -16,6 +17,11 @@ type Props = {
   types: readonly EntryType[];
   typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
+  // All sheets in the workspace. Used by the formula editor's
+  // autocomplete (sheet name suggestions) and the name ↔ id transform
+  // on submit (`formulaToStored`) so the persisted form always holds
+  // stable sheet ids.
+  sheets: readonly Sheet[];
   // Optional initial values used to pre-fill the form when the modal
   // opens. The recurring-candidate promote flow passes one so the user
   // can adjust the detected description / amount / cadence before
@@ -53,6 +59,14 @@ export type ComplexEntryDraft = {
   // column.
   typeId: string | null;
   dates: string[];
+  // Optional formula string in the canonical stored form (any
+  // `sheet("…")` reference holds the target's stable id, not its
+  // display name). When present, the dispatcher attaches it to each
+  // generated row's `amountFormula`; the renderer recomputes the
+  // effective amount on every render. `amount` still carries a
+  // numeric preview for the cached cell so older builds without
+  // formula support see a sensible static fallback.
+  amountFormula?: string;
 };
 
 export function ComplexEntryModal({
@@ -62,6 +76,7 @@ export function ComplexEntryModal({
   types,
   typeUsageById,
   settings,
+  sheets,
   seed,
   title,
   submitVerb,
@@ -76,6 +91,13 @@ export function ComplexEntryModal({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [typeId, setTypeId] = useState<string | null>(null);
   const [dates, setDates] = useState<string[]>([]);
+  // fx mode swaps the numeric amount input for a formula textarea
+  // (`endOfMonthBalance - 5000`, `sheet("Wife").endOfMonthBalance`, …).
+  // The displayed text shows sheet **names** for readability; on
+  // submit, `formulaToStored` rewrites them to stable sheet ids so
+  // renames don't break the formula.
+  const [formulaMode, setFormulaMode] = useState(false);
+  const [formulaText, setFormulaText] = useState("");
   // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
 
@@ -98,6 +120,8 @@ export function ComplexEntryModal({
       setTypeId(null);
     }
     setDates([]);
+    setFormulaMode(false);
+    setFormulaText("");
     setResetKey((k) => k + 1);
   }, [open, seed, settings]);
 
@@ -119,6 +143,20 @@ export function ComplexEntryModal({
     [parsedAbs, negative],
   );
 
+  // Live parse the formula so the user sees a syntax error as they
+  // type. The semantic preview (against the sheet) is intentionally
+  // skipped here — without a target sheet/month/opening-balance we
+  // can't compute one cheaply, and a bad guess would be more
+  // misleading than no guess. Live parse alone catches the common
+  // mistakes (mismatched parens, unknown operator, bad string).
+  const formulaError = useMemo(() => {
+    if (!formulaMode) return null;
+    const trimmed = formulaText.trim();
+    if (trimmed === "") return null;
+    const r = parseFormula(trimmed);
+    return r.ok ? null : r.error;
+  }, [formulaMode, formulaText]);
+
   const handleAmountChange = (next: string) => {
     // Sign lives on the toggle button — strip any minus the keyboard or
     // a paste produces so the input only ever shows the absolute value.
@@ -127,9 +165,30 @@ export function ComplexEntryModal({
   };
 
   const toggleSign = () => setNegative((s) => !s);
+  const toggleFormulaMode = () => setFormulaMode((m) => !m);
 
   function handleSubmit() {
     if (dates.length === 0) return;
+    if (formulaMode) {
+      const trimmed = formulaText.trim();
+      if (trimmed === "") return;
+      const parsed = parseFormula(trimmed);
+      if (!parsed.ok) return;
+      const stored = formulaToStored(trimmed, sheets);
+      if (!stored.ok) return;
+      onCreate({
+        description: description.trim(),
+        // `amount` carries a 0 placeholder so the row is savable; the
+        // renderer recomputes the real value via the resolver. A
+        // future cache write could put a best-effort preview here.
+        amount: 0,
+        categoryId,
+        typeId,
+        dates,
+        amountFormula: stored.formula,
+      });
+      return;
+    }
     if (parsedAmount === null) return;
     onCreate({
       description: description.trim(),
@@ -140,7 +199,22 @@ export function ComplexEntryModal({
     });
   }
 
-  const canSubmit = dates.length > 0 && parsedAmount !== null;
+  const formulaResolves = useMemo(() => {
+    if (!formulaMode) return null;
+    const trimmed = formulaText.trim();
+    if (trimmed === "") return null;
+    if (formulaError !== null) return null;
+    return formulaToStored(trimmed, sheets);
+  }, [formulaMode, formulaText, formulaError, sheets]);
+
+  const canSubmit =
+    dates.length > 0 &&
+    (formulaMode
+      ? formulaText.trim() !== "" &&
+        formulaError === null &&
+        formulaResolves !== null &&
+        formulaResolves.ok
+      : parsedAmount !== null);
 
   return (
     <Modal
@@ -174,38 +248,90 @@ export function ComplexEntryModal({
             />
           </div>
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Amount</span>
-            <div className="relative flex">
+            <span className="flex items-center justify-between text-xs text-muted">
+              <span>Amount</span>
               <button
                 type="button"
-                onClick={toggleSign}
-                aria-label={negative ? "Make positive" : "Make negative"}
-                tabIndex={-1}
-                className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-                  negative ? "text-negative" : "text-positive"
+                onClick={toggleFormulaMode}
+                aria-pressed={formulaMode}
+                title={
+                  formulaMode
+                    ? "Switch back to a fixed amount"
+                    : "Use a formula instead of a fixed amount"
+                }
+                className={`cursor-pointer rounded border px-1.5 py-0.5 font-mono text-[10px] leading-none hover:text-fg ${
+                  formulaMode
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-line text-muted"
                 }`}
               >
-                {negative ? (
-                  <Minus size={14} aria-hidden focusable={false} />
-                ) : (
-                  <Plus size={14} aria-hidden focusable={false} />
-                )}
+                fx
               </button>
+            </span>
+            {formulaMode ? (
               <input
                 type="text"
-                inputMode="decimal"
-                value={amountText}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
-                  parsedAbs !== null && parsedAbs !== 0
-                    ? negative
-                      ? "text-negative"
-                      : "text-positive"
-                    : "text-fg"
-                }`}
-                placeholder="1200"
+                value={formulaText}
+                onChange={(e) => setFormulaText(e.target.value)}
+                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+                placeholder="endOfMonthBalance - 5000"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
               />
-            </div>
+            ) : (
+              <div className="relative flex">
+                <button
+                  type="button"
+                  onClick={toggleSign}
+                  aria-label={negative ? "Make positive" : "Make negative"}
+                  tabIndex={-1}
+                  className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
+                    negative ? "text-negative" : "text-positive"
+                  }`}
+                >
+                  {negative ? (
+                    <Minus size={14} aria-hidden focusable={false} />
+                  ) : (
+                    <Plus size={14} aria-hidden focusable={false} />
+                  )}
+                </button>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={amountText}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
+                    parsedAbs !== null && parsedAbs !== 0
+                      ? negative
+                        ? "text-negative"
+                        : "text-positive"
+                      : "text-fg"
+                  }`}
+                  placeholder="1200"
+                />
+              </div>
+            )}
+            {formulaMode && formulaError !== null ? (
+              <span className="text-xs text-negative">{formulaError}</span>
+            ) : null}
+            {formulaMode &&
+            formulaError === null &&
+            formulaResolves !== null &&
+            !formulaResolves.ok ? (
+              <span className="text-xs text-negative">
+                {formulaResolves.error}
+              </span>
+            ) : null}
+            {formulaMode &&
+            formulaText.trim() !== "" &&
+            formulaError === null &&
+            formulaResolves !== null &&
+            formulaResolves.ok ? (
+              <span className="text-xs text-muted">
+                Formula evaluated per row at render time.
+              </span>
+            ) : null}
           </label>
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">Category</span>

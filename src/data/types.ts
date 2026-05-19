@@ -54,6 +54,18 @@ export type Row = {
   // renderer reads it to disable inline editing and surface a
   // "promote to recurring" action in place of the usual edit dialog.
   historyEntryId?: string;
+  // Optional dynamic amount: a small formula string whose evaluation
+  // produces this row's effective amount at render time. When set, it
+  // overrides the numeric value in `cells[amountColumnId]` (which is
+  // still written as a best-effort preview cache). Stored in the
+  // canonical id-keyed form — any `sheet("…")` reference holds the
+  // target sheet's id, not its mutable display name, so renames don't
+  // break formulas. The amount column becomes read-only for rows that
+  // carry a formula; editing flows through the ComplexEntryModal.
+  // Evaluation order is "literal rows first, then formula rows in the
+  // order they appear in `item.rows`"; a row's own contribution is
+  // excluded from its own variables to avoid self-reference.
+  amountFormula?: string;
 };
 
 // Master allowlist of glyph names used anywhere in the app. The picker
@@ -528,7 +540,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 22;
+  version: 23;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

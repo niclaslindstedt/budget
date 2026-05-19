@@ -10,7 +10,7 @@ import { validateUserData } from "../src/data/validate";
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 22,
+    version: 23,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -126,7 +126,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 22,
+      version: 23,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -171,7 +171,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 22,
+      version: 23,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -199,7 +199,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose categoryId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 22,
+      version: 23,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],

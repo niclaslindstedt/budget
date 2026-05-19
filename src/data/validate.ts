@@ -130,7 +130,7 @@ function validateRow(
   knownTypeIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, cells, seriesId, typeId, isCorrection } = raw;
+  const { id, cells, seriesId, typeId, isCorrection, amountFormula } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (!isObject(cells)) return fail(`${path}.cells`, "expected an object");
@@ -164,6 +164,11 @@ function validateRow(
     // Only persist `true` — a stored `false` is indistinguishable from
     // "field absent" and just bloats the on-disk snapshot.
     if (isCorrection) row.isCorrection = true;
+  }
+  if (amountFormula !== undefined) {
+    if (typeof amountFormula !== "string")
+      return fail(`${path}.amountFormula`, "expected a string");
+    if (amountFormula !== "") row.amountFormula = amountFormula;
   }
   return { ok: true, value: row };
 }

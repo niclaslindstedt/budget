@@ -330,6 +330,7 @@ export function SheetRow({
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}
           isHistory={isHistory}
+          hasFormula={typeof row.amountFormula === "string"}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
           onCommit={(value) => onCommitCell(row.id, col.id, value)}
           onCreateCategory={onCreateCategory}

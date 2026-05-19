@@ -15,6 +15,7 @@ import {
   transactionsForAccount,
 } from "../data/sheet";
 import { coveredMonths } from "../data/coverage";
+import { resolveEffectiveAmounts } from "../data/formula-resolve";
 import type {
   Account,
   AccountBudget,
@@ -28,6 +29,7 @@ import type {
   Settings,
   Sheet,
   Transaction,
+  UserData,
 } from "../data/types";
 import {
   formatNumber,
@@ -96,6 +98,10 @@ type Props = {
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onEditSheet: (sheetId: string) => void;
+  // Full workspace state — needed by the formula resolver so
+  // `sheet("<id>").endOfMonthBalance` references can look up other
+  // sheets' running balances at this row's month.
+  data: UserData;
 };
 
 function todayIso(): string {
@@ -179,6 +185,7 @@ export function SheetView({
   onToggleSelectMonth,
   onCreateCategory,
   onEditSheet,
+  data,
 }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const dateCol = useMemo(
@@ -239,9 +246,38 @@ export function SheetView({
     [history, item.rows, item.columns],
   );
 
+  // Evaluate every formula row's amount against the merged view (so
+  // synthesized transactions and history rows count toward
+  // `endOfMonthBalance`, `income`, etc.) — then mirror the resolved
+  // value into each formula row's amount cell so the existing
+  // MonthTable / Cell rendering chain shows the evaluated number
+  // without any per-component plumbing. The same map is fed into
+  // `computeBalances` so the running balance column lines up.
+  const { effectiveAmounts, decoratedItem } = useMemo(() => {
+    const resolved = resolveEffectiveAmounts(
+      mergedItem,
+      openingBalance,
+      data,
+      settings.startOfMonth,
+    );
+    const amountCol = findColumnByType(mergedItem.columns, "amount");
+    if (!amountCol) {
+      return { effectiveAmounts: resolved.amounts, decoratedItem: mergedItem };
+    }
+    const decoratedRows = mergedItem.rows.map((row) => {
+      if (!row.amountFormula) return row;
+      const v = resolved.amounts.get(row.id) ?? 0;
+      return { ...row, cells: { ...row.cells, [amountCol.id]: v } };
+    });
+    return {
+      effectiveAmounts: resolved.amounts,
+      decoratedItem: { ...mergedItem, rows: decoratedRows },
+    };
+  }, [mergedItem, openingBalance, data, settings.startOfMonth]);
+
   const balances = useMemo(
-    () => computeBalances(mergedItem, openingBalance),
-    [mergedItem, openingBalance],
+    () => computeBalances(decoratedItem, openingBalance, effectiveAmounts),
+    [decoratedItem, openingBalance, effectiveAmounts],
   );
 
   // Each month renders as its own CSS grid, so amount/balance columns
@@ -249,12 +285,12 @@ export function SheetView({
   // the longest formatted value across the whole block here and pass it
   // down so every month aligns on the same column widths.
   const colWidths = useMemo(() => {
-    const amountCol = findColumnByType(mergedItem.columns, "amount");
-    const balanceCol = findColumnByType(mergedItem.columns, "balance");
+    const amountCol = findColumnByType(decoratedItem.columns, "amount");
+    const balanceCol = findColumnByType(decoratedItem.columns, "balance");
     let amountChars = 0;
     let balanceChars = 0;
     if (amountCol) {
-      for (const row of mergedItem.rows) {
+      for (const row of decoratedItem.rows) {
         const v = row.cells[amountCol.id];
         if (typeof v !== "number") continue;
         const body = formatNumber(Math.abs(v), settings);
@@ -269,12 +305,16 @@ export function SheetView({
       }
     }
     return { amountChars, balanceChars };
-  }, [mergedItem.rows, mergedItem.columns, balances, settings]);
+  }, [decoratedItem.rows, decoratedItem.columns, balances, settings]);
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
-    return groupRowsByMonth(mergedItem.rows, dateCol.id, settings.startOfMonth);
-  }, [mergedItem.rows, dateCol, settings.startOfMonth]);
+    return groupRowsByMonth(
+      decoratedItem.rows,
+      dateCol.id,
+      settings.startOfMonth,
+    );
+  }, [decoratedItem.rows, dateCol, settings.startOfMonth]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -437,7 +477,7 @@ export function SheetView({
                 <MonthTable
                   monthKey={monthKey}
                   rows={monthRows}
-                  columns={mergedItem.columns}
+                  columns={decoratedItem.columns}
                   balances={balances}
                   categories={categories}
                   types={types}
