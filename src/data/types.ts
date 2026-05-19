@@ -497,15 +497,29 @@ export type MatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 19;
+  version: 20;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
+  // User-added categories. On top of these the runtime also shows a
+  // built-in list of broad Swedish-household preset categories
+  // (`PRESET_CATEGORIES` in `data/constants.ts`); preset categories
+  // live in code, not in this array. The user can hide individual
+  // presets via `hiddenPresetCategoryIds`.
   categories: Category[];
-  // Reusable entry types referenced by `Row.typeId`. Seeded with a
-  // handful of common Swedish-budget defaults on first launch and on
-  // migration from v12; users add their own via the type picker.
+  // User-added entry types referenced by `Row.typeId`. On top of these
+  // the runtime also shows a built-in list of typical-Swedish-household
+  // preset types (`PRESET_ENTRY_TYPES` in `data/constants.ts`); preset
+  // types live in code, not in this array. The user can hide
+  // individual presets via `hiddenPresetTypeIds`.
   types: EntryType[];
+  // Preset type ids the user has hidden from pickers and the Types
+  // admin list. Pure allowlist — entries that no longer match a known
+  // preset (e.g. a preset removed in a later app version) are dropped
+  // on load.
+  hiddenPresetTypeIds: string[];
+  // Same shape as `hiddenPresetTypeIds`, scoped to preset categories.
+  hiddenPresetCategoryIds: string[];
   // Transfers between accounts. Each transaction renders as a read-only
   // synthesized row on every budget that tracks one of its endpoints,
   // and as a top-level row on the Accounts sheet's transaction log.

@@ -1,5 +1,6 @@
 import { IS_PREVIEW } from "../utils/build-env";
 import type {
+  Category,
   CategoryIcon,
   DateFormat,
   EntryType,
@@ -264,12 +265,14 @@ export const SHEET_TYPES: readonly {
 // flooding storage; users can re-run the modal to extend further.
 export const DEFAULT_RECURRENCE_MONTHS = 12;
 
-// Default entry types seeded on first launch and on the v12 → v13
-// migration. Aimed at a typical Swedish budget — bolån, hyra, mat,
-// SL-kortet, försäkring — so most users don't have to bootstrap the
-// picker themselves. Each call returns a fresh array with newly minted
-// ids so the seed is safe to invoke from both `freshUserData` and the
-// migration step without ids colliding.
+// Historical seed for entry types — used only by the v12 → v13
+// migration. The v13 → v20 path no longer seeds the per-user `types`
+// array (`PRESET_ENTRY_TYPES` below replaces it as a built-in,
+// hide-only list), but exports that landed at v12 must still upgrade
+// to a non-empty seed so users who migrate forward see something in
+// the picker on first promote. Each call returns a fresh array with
+// newly minted ids so the seed is safe to invoke without ids
+// colliding.
 export function createSeedEntryTypes(): EntryType[] {
   const C = CATEGORY_COLORS;
   const seeds: ReadonlyArray<{
@@ -578,3 +581,215 @@ export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
   "star",
   "tag",
 ] as const;
+
+// Built-in entry types aimed at a typical Swedish household — bolån,
+// hyra, el, SL/kollektivtrafik, A-kassa, Systembolaget, CSN. Presets
+// live in code rather than in `UserData.types` so they survive an
+// export/import cycle and stay consistent across devices. The user
+// can hide individual presets via `UserData.hiddenPresetTypeIds`
+// (managed from Settings → Types), but cannot edit or delete them —
+// custom labels go through "Add type" instead, which writes a normal
+// `EntryType` into `UserData.types`.
+//
+// Preset ids use the `preset-type-<slug>` prefix so they're trivially
+// distinguishable from user-minted ids (`t-…`) in stored data and in
+// the validator. Once shipped, an id must never be reassigned — a
+// rename keeps the id; a removed preset stays in this list (the
+// hidden flag is the user-facing equivalent) so existing references
+// continue to resolve.
+export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
+  const C = CATEGORY_COLORS;
+  const seeds: ReadonlyArray<{
+    slug: string;
+    name: string;
+    color: string;
+    glyph: CategoryIcon;
+  }> = [
+    // Housing
+    { slug: "rent", name: "Rent", color: C[1], glyph: "home" },
+    { slug: "mortgage", name: "Mortgage", color: C[0], glyph: "home" },
+    {
+      slug: "hoa-fee",
+      name: "HOA fee",
+      color: C[0],
+      glyph: "building-2",
+    },
+    {
+      slug: "home-insurance",
+      name: "Home insurance",
+      color: C[8],
+      glyph: "receipt",
+    },
+    { slug: "electricity", name: "Electricity", color: C[2], glyph: "zap" },
+    { slug: "heating", name: "Heating", color: C[1], glyph: "flame" },
+    { slug: "water", name: "Water", color: C[5], glyph: "droplet" },
+    { slug: "internet", name: "Internet", color: C[5], glyph: "wifi" },
+    { slug: "phone", name: "Phone", color: C[4], glyph: "smartphone" },
+    // Food
+    {
+      slug: "groceries",
+      name: "Groceries",
+      color: C[3],
+      glyph: "shopping-cart",
+    },
+    {
+      slug: "restaurant",
+      name: "Restaurant",
+      color: C[2],
+      glyph: "utensils",
+    },
+    { slug: "lunch", name: "Lunch", color: C[2], glyph: "utensils" },
+    { slug: "cafe", name: "Cafe", color: C[7], glyph: "coffee" },
+    {
+      slug: "systembolaget",
+      name: "Systembolaget",
+      color: C[0],
+      glyph: "wine",
+    },
+    // Transport
+    { slug: "fuel", name: "Fuel", color: C[1], glyph: "fuel" },
+    {
+      slug: "public-transport",
+      name: "Public transport",
+      color: C[4],
+      glyph: "bus",
+    },
+    { slug: "parking", name: "Parking", color: C[8], glyph: "car" },
+    {
+      slug: "car-insurance",
+      name: "Car insurance",
+      color: C[8],
+      glyph: "car",
+    },
+    {
+      slug: "vehicle-tax",
+      name: "Vehicle tax",
+      color: C[8],
+      glyph: "car",
+    },
+    {
+      slug: "congestion-tax",
+      name: "Congestion tax",
+      color: C[7],
+      glyph: "car",
+    },
+    // Health & personal
+    { slug: "pharmacy", name: "Apoteket", color: C[0], glyph: "pill" },
+    {
+      slug: "healthcare",
+      name: "Healthcare",
+      color: C[0],
+      glyph: "stethoscope",
+    },
+    { slug: "dentist", name: "Dentist", color: C[0], glyph: "heart-pulse" },
+    { slug: "gym", name: "Gym", color: C[3], glyph: "dumbbell" },
+    { slug: "haircut", name: "Haircut", color: C[6], glyph: "scissors" },
+    // Family
+    { slug: "childcare", name: "Förskola", color: C[6], glyph: "baby" },
+    {
+      slug: "child-allowance",
+      name: "Barnbidrag",
+      color: C[3],
+      glyph: "baby",
+    },
+    {
+      slug: "allowance",
+      name: "Veckopeng",
+      color: C[6],
+      glyph: "hand-coins",
+    },
+    // Subscriptions / bills
+    { slug: "spotify", name: "Spotify", color: C[3], glyph: "music" },
+    { slug: "netflix", name: "Netflix", color: C[0], glyph: "film" },
+    { slug: "streaming", name: "Streaming", color: C[6], glyph: "film" },
+    {
+      slug: "subscription",
+      name: "Subscription",
+      color: C[8],
+      glyph: "credit-card",
+    },
+    {
+      slug: "union-fee",
+      name: "Fackavgift",
+      color: C[8],
+      glyph: "briefcase",
+    },
+    { slug: "a-kassa", name: "A-kassa", color: C[8], glyph: "briefcase" },
+    { slug: "csn", name: "CSN", color: C[6], glyph: "graduation-cap" },
+    // Income
+    { slug: "salary", name: "Salary", color: C[3], glyph: "banknote" },
+    { slug: "bonus", name: "Bonus", color: C[3], glyph: "hand-coins" },
+    {
+      slug: "tax-refund",
+      name: "Tax refund",
+      color: C[3],
+      glyph: "landmark",
+    },
+    // Savings
+    { slug: "savings", name: "Savings", color: C[5], glyph: "piggy-bank" },
+    { slug: "isk", name: "ISK", color: C[5], glyph: "trending-up" },
+    { slug: "pension", name: "Pension", color: C[5], glyph: "vault" },
+    // Personal / misc
+    { slug: "clothing", name: "Clothing", color: C[6], glyph: "shirt" },
+    { slug: "gift", name: "Gift", color: C[6], glyph: "gift" },
+    { slug: "hobby", name: "Hobby", color: C[2], glyph: "sparkles" },
+    { slug: "travel", name: "Travel", color: C[4], glyph: "plane" },
+  ];
+  return seeds.map((s) => ({
+    id: `preset-type-${s.slug}`,
+    name: s.name,
+    color: s.color,
+    glyph: s.glyph,
+  }));
+})();
+
+// Lookup for the validator (cheap membership test against the preset
+// id list). Built once at module load — `PRESET_ENTRY_TYPES` is a
+// frozen literal so the set never needs to be rebuilt.
+export const PRESET_ENTRY_TYPE_IDS: ReadonlySet<string> = new Set(
+  PRESET_ENTRY_TYPES.map((t) => t.id),
+);
+
+// Built-in categories. Categories are broader buckets than types —
+// a household typically has under a dozen, used for cross-row analysis
+// (Housing vs. Food vs. Transport). The picker also shows any
+// user-added categories from `UserData.categories`. The user can hide
+// individual presets via `UserData.hiddenPresetCategoryIds`. Same
+// id-stability contract as `PRESET_ENTRY_TYPES`.
+export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
+  const C = CATEGORY_COLORS;
+  const seeds: ReadonlyArray<{
+    slug: string;
+    name: string;
+    color: string;
+    icon: CategoryIcon;
+  }> = [
+    { slug: "housing", name: "Housing", color: C[1], icon: "home" },
+    { slug: "food", name: "Food", color: C[3], icon: "utensils" },
+    { slug: "transport", name: "Transport", color: C[4], icon: "car" },
+    { slug: "health", name: "Health", color: C[0], icon: "heart-pulse" },
+    { slug: "bills", name: "Bills", color: C[8], icon: "receipt" },
+    {
+      slug: "entertainment",
+      name: "Entertainment",
+      color: C[6],
+      icon: "film",
+    },
+    { slug: "savings", name: "Savings", color: C[5], icon: "piggy-bank" },
+    { slug: "income", name: "Income", color: C[3], icon: "banknote" },
+    { slug: "family", name: "Family", color: C[6], icon: "baby" },
+    { slug: "personal", name: "Personal", color: C[2], icon: "shirt" },
+    { slug: "travel", name: "Travel", color: C[4], icon: "plane" },
+    { slug: "other", name: "Other", color: C[5], icon: "tag" },
+  ];
+  return seeds.map((s) => ({
+    id: `preset-cat-${s.slug}`,
+    name: s.name,
+    color: s.color,
+    icon: s.icon,
+  }));
+})();
+
+export const PRESET_CATEGORY_IDS: ReadonlySet<string> = new Set(
+  PRESET_CATEGORIES.map((c) => c.id),
+);

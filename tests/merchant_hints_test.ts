@@ -11,12 +11,14 @@ import type { Category, EntryType, UserData } from "../src/data/types";
 function makeState(categories: Category[], types: EntryType[] = []): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 19,
+    version: 20,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     categories,
     types,
+    hiddenPresetTypeIds: [],
+    hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},
     historyImports: {},

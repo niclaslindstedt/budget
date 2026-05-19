@@ -10,7 +10,7 @@ import { validateUserData } from "../src/data/validate";
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 19,
+    version: 20,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -19,12 +19,15 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
     ],
     categories: [],
     types: [],
+    hiddenPresetTypeIds: [],
+    hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},
     historyImports: {},
     merchantHints: {},
     recurringDismissals: [],
     transferCollapseDismissals: [],
+    matchRules: [],
     settings: { ...DEFAULT_SETTINGS },
   };
   return { ...base, transactions };
@@ -122,7 +125,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 19,
+      version: 20,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -142,12 +145,15 @@ describe("validateUserData — accounts metadata", () => {
       ],
       categories: [],
       types: [],
+      hiddenPresetTypeIds: [],
+      hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},
       historyImports: {},
       merchantHints: {},
       recurringDismissals: [],
       transferCollapseDismissals: [],
+      matchRules: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);
@@ -163,18 +169,21 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 19,
+      version: 20,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
       categories: [],
       types: [],
+      hiddenPresetTypeIds: [],
+      hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},
       historyImports: {},
       merchantHints: {},
       recurringDismissals: [],
       transferCollapseDismissals: [],
+      matchRules: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);
@@ -187,7 +196,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose categoryId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 19,
+      version: 20,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
@@ -195,6 +204,8 @@ describe("validateUserData — accounts metadata", () => {
         { id: "c1", name: "Food", color: "#e06c75", icon: "utensils" },
       ],
       types: [],
+      hiddenPresetTypeIds: [],
+      hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},
       historyImports: {},
@@ -204,6 +215,7 @@ describe("validateUserData — accounts metadata", () => {
       },
       recurringDismissals: ["spotify", "", "spotify"],
       transferCollapseDismissals: ["pair1|pair2"],
+      matchRules: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const result = validateUserData(data);

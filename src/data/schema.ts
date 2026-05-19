@@ -60,6 +60,8 @@ export const USER_DATA_SCHEMA = {
     "accounts",
     "categories",
     "types",
+    "hiddenPresetTypeIds",
+    "hiddenPresetCategoryIds",
     "transactions",
     "history",
     "historyImports",
@@ -106,24 +108,54 @@ export const USER_DATA_SCHEMA = {
     categories: {
       type: "array",
       description:
-        "Categories that rows can be tagged with. A row stores the " +
-        'category\'s id in the cell whose column has `type: "category"`. ' +
-        "Renaming a category updates every tagged row automatically.",
+        "User-added categories that rows can be tagged with. A row " +
+        "stores the category's id in the cell whose column has `type: " +
+        '"category"`. Renaming a category updates every tagged row ' +
+        "automatically. On top of this list the app exposes a fixed " +
+        "set of built-in 'preset' categories (broad buckets like " +
+        "Housing, Food, Transport — ids prefixed with `preset-cat-`) " +
+        "that live in app code, not in this document. A `categoryId` " +
+        "may reference either a user-added id from this array or a " +
+        "preset id; the reader resolves both. User ids must not " +
+        "collide with the preset prefix.",
       items: { $ref: "#/$defs/Category" },
     },
     types: {
       type: "array",
       description:
-        "Reusable entry types describing what kind of row this is — " +
-        "'Mortgage', 'Groceries', 'Restaurant', 'Salary'. A row references " +
-        "one via `Row.typeId`; the type carries the row's primary visual " +
-        "identity (glyph + colour + display name), so every row sharing a " +
-        "type renders identically. Sits between the row's free-text " +
-        "description (specific) and its category (groups across many rows " +
-        "for stats). Seeded with Swedish-typical defaults on first launch " +
-        "and on the v12 → v13 migration; users add their own through the " +
-        "type picker.",
+        "User-added entry types describing what kind of row this is " +
+        "(specific labels like 'Babysitter', 'Padel', 'Co-working " +
+        "fee'). A row references one via `Row.typeId`; the type " +
+        "carries the row's primary visual identity (glyph + colour + " +
+        "display name), so every row sharing a type renders " +
+        "identically. Sits between the row's free-text description " +
+        "(specific) and its category (groups across many rows for " +
+        "stats). On top of this list the app exposes a fixed set of " +
+        "built-in 'preset' types (Swedish-household staples like " +
+        "Hyra, Bolån, El, Apoteket, A-kassa — ids prefixed with " +
+        "`preset-type-`) that live in app code, not in this " +
+        "document. A `typeId` may reference either a user-added id " +
+        "from this array or a preset id; the reader resolves both. " +
+        "User ids must not collide with the preset prefix.",
       items: { $ref: "#/$defs/EntryType" },
+    },
+    hiddenPresetTypeIds: {
+      type: "array",
+      description:
+        "Preset entry type ids the user has hidden from the type " +
+        "picker and the Types admin list. Only ids matching an " +
+        "active preset count; unknown ids are silently dropped on " +
+        "load. Hiding does NOT affect referential integrity — rows " +
+        "and rules that point at a hidden preset still resolve.",
+      items: { type: "string", minLength: 1 },
+    },
+    hiddenPresetCategoryIds: {
+      type: "array",
+      description:
+        "Preset category ids the user has hidden from the category " +
+        "picker and the Categories admin list. Same contract as " +
+        "`hiddenPresetTypeIds`.",
+      items: { type: "string", minLength: 1 },
     },
     transactions: {
       type: "array",
