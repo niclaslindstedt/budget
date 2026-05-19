@@ -62,13 +62,13 @@ feature, which would surface a non-event in the changelog).
    parents for any in-flight features:
 
    ```sh
-   ls -1 .changes/unreleased/ | grep -v '^\.gitkeep$'
-   for f in .changes/unreleased/*.md; do
-       [ "$f" = ".changes/unreleased/.gitkeep" ] && continue
-       printf '\n=== %s ===\n' "$f"
-       cat "$f"
-   done
+   scripts/release/list-fragments.sh
    ```
+
+   The script prints every `.changes/unreleased/*.md` file with its
+   front-matter and body, separated by `=== <filename> ===` headers.
+   Exits with a "No unreleased fragments." note (on stderr) when the
+   queue is empty.
 
 4. **Pull the current change's diff and intent.** What did this PR
    change, and which previous commit (if any) introduced the
