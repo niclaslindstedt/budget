@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import {
@@ -278,6 +278,24 @@ export function SheetView({
     setExtraHistory(0);
   }, [sheet.id]);
 
+  // Per-month collapsed state. Local to the component so it stays
+  // session-only — collapsing a month is a quick navigation aid, not a
+  // persistent preference. Resets when the active sheet changes.
+  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    setCollapsedMonths(new Set());
+  }, [sheet.id]);
+  const toggleCollapsed = useCallback((monthKey: string) => {
+    setCollapsedMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(monthKey)) next.delete(monthKey);
+      else next.add(monthKey);
+      return next;
+    });
+  }, []);
+
   const oldestVisibleMonth = useMemo(() => {
     let key = currentMonth;
     for (let i = 0; i < DEFAULT_HISTORY_MONTHS + extraHistory; i += 1) {
@@ -416,6 +434,8 @@ export function SheetView({
                   canTransfer={item.accountId !== null}
                   amountChars={colWidths.amountChars}
                   balanceChars={colWidths.balanceChars}
+                  collapsed={collapsedMonths.has(monthKey)}
+                  onToggleCollapsed={() => toggleCollapsed(monthKey)}
                   onUpdateCell={onUpdateCell}
                   onCommitCell={onCommitCell}
                   onAddRow={() => onAddRow(seedDate)}

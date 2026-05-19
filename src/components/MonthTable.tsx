@@ -1,3 +1,5 @@
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 import { findColumnByType } from "../data/sheet";
 import type {
   Category,
@@ -26,6 +28,8 @@ type Props = {
   canTransfer: boolean;
   amountChars: number;
   balanceChars: number;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
@@ -67,6 +71,8 @@ export function MonthTable({
   canTransfer,
   amountChars,
   balanceChars,
+  collapsed,
+  onToggleCollapsed,
   onUpdateCell,
   onCommitCell,
   onAddRow,
@@ -107,17 +113,34 @@ export function MonthTable({
   const headerColor =
     headerMonthNum !== null ? monthColorVar(headerMonthNum) : undefined;
 
+  const monthLabel = formatMonth(monthKey);
   return (
     <section>
       <h3
-        className={`sticky top-[var(--app-header-h)] z-20 bg-page-bg pt-1 pb-2 pl-2 text-xs font-bold tracking-wider uppercase md:pt-1.5 md:pb-3.5 md:pl-3 ${
+        className={`sticky top-[var(--app-header-h)] z-20 bg-page-bg text-xs font-bold tracking-wider uppercase ${
           headerColor ? "" : "text-fg-bright"
         }`}
         style={headerColor ? { color: headerColor } : undefined}
       >
-        {formatMonth(monthKey)}
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={
+            collapsed ? `Expand ${monthLabel}` : `Collapse ${monthLabel}`
+          }
+          className="flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent pt-1 pb-2 pl-2 text-left text-[inherit] font-bold tracking-wider uppercase hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:pt-1.5 md:pb-3.5 md:pl-3"
+        >
+          {collapsed ? (
+            <ChevronRight size={14} aria-hidden focusable={false} />
+          ) : (
+            <ChevronDown size={14} aria-hidden focusable={false} />
+          )}
+          <span>{monthLabel}</span>
+        </button>
       </h3>
       <div
+        hidden={collapsed}
         className={`overflow-clip rounded border border-line bg-surface ${
           selectMode ? "sheet-table-selecting" : ""
         }`}
