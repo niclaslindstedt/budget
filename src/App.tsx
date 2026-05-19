@@ -3353,9 +3353,24 @@ function BudgetView({
   const [sheetModal, setSheetModal] = useState<{ sheet: Sheet | null } | null>(
     null,
   );
+  // null = closed; otherwise the sheet queued for deletion. Rendered as a
+  // ConfirmDialog on top of the SheetModal so the user has a chance to
+  // back out before the dispatch fires.
+  const [deleteSheetPrompt, setDeleteSheetPrompt] = useState<{
+    sheetId: string;
+    name: string;
+  } | null>(null);
   // null = closed; { account: null } = create-account modal; otherwise edit.
   const [accountModal, setAccountModal] = useState<{
     account: Account | null;
+  } | null>(null);
+  // null = closed; otherwise the account queued for deletion. Rendered
+  // as a ConfirmDialog on top of the AccountModal so an accidental tap
+  // on the trash button doesn't wipe the account, its transactions, and
+  // its history entries in one shot.
+  const [deleteAccountPrompt, setDeleteAccountPrompt] = useState<{
+    accountId: string;
+    name: string;
   } | null>(null);
   // null = closed; otherwise the id of the account whose balance the
   // user is updating from the Accounts page. The modal looks the account
@@ -3897,9 +3912,26 @@ function BudgetView({
   );
   const onDeleteSheet = useCallback(() => {
     if (!sheetModal?.sheet) return;
-    dispatch({ type: "deleteSheet", sheetId: sheetModal.sheet.id });
-    setSheetModal(null);
-  }, [dispatch, sheetModal]);
+    setDeleteSheetPrompt({
+      sheetId: sheetModal.sheet.id,
+      name: sheetModal.sheet.name,
+    });
+  }, [sheetModal]);
+  const deleteSheetActions: ConfirmAction[] = useMemo(() => {
+    if (!deleteSheetPrompt) return [];
+    const target = deleteSheetPrompt;
+    return [
+      {
+        label: "Delete sheet",
+        tone: "danger",
+        onSelect: () => {
+          dispatch({ type: "deleteSheet", sheetId: target.sheetId });
+          setDeleteSheetPrompt(null);
+          setSheetModal(null);
+        },
+      },
+    ];
+  }, [deleteSheetPrompt, dispatch]);
 
   // Account / transaction modal handlers. Kept on the BudgetView so
   // they share the same dispatch and Account state as the rest of the
@@ -3959,12 +3991,26 @@ function BudgetView({
   );
   const onDeleteFinancialAccount = useCallback(() => {
     if (!accountModal?.account) return;
-    dispatch({
-      type: "deleteAccount",
+    setDeleteAccountPrompt({
       accountId: accountModal.account.id,
+      name: accountModal.account.name,
     });
-    setAccountModal(null);
-  }, [dispatch, accountModal]);
+  }, [accountModal]);
+  const deleteAccountActions: ConfirmAction[] = useMemo(() => {
+    if (!deleteAccountPrompt) return [];
+    const target = deleteAccountPrompt;
+    return [
+      {
+        label: "Delete account",
+        tone: "danger",
+        onSelect: () => {
+          dispatch({ type: "deleteAccount", accountId: target.accountId });
+          setDeleteAccountPrompt(null);
+          setAccountModal(null);
+        },
+      },
+    ];
+  }, [deleteAccountPrompt, dispatch]);
 
   // Bank-history import / viewer flows. The Accounts page surfaces a
   // per-row Upload button (always enabled) and a History viewer
@@ -5234,6 +5280,41 @@ function BudgetView({
         } will be permanently removed.`}
         actions={bulkDeleteActions}
         onCancel={() => setBulkDeletePrompt(null)}
+      />
+      <ConfirmDialog
+        open={deleteSheetPrompt !== null}
+        title="Delete sheet"
+        description={
+          deleteSheetPrompt ? (
+            <>
+              <strong className="text-fg-bright">
+                {deleteSheetPrompt.name}
+              </strong>{" "}
+              and all of its rows will be permanently removed. This can&apos;t
+              be undone.
+            </>
+          ) : null
+        }
+        actions={deleteSheetActions}
+        onCancel={() => setDeleteSheetPrompt(null)}
+      />
+      <ConfirmDialog
+        open={deleteAccountPrompt !== null}
+        title="Delete account"
+        description={
+          deleteAccountPrompt ? (
+            <>
+              <strong className="text-fg-bright">
+                {deleteAccountPrompt.name}
+              </strong>{" "}
+              will be permanently removed, along with its transfers and bank
+              history. Sheets attached to it will be detached. This can&apos;t
+              be undone.
+            </>
+          ) : null
+        }
+        actions={deleteAccountActions}
+        onCancel={() => setDeleteAccountPrompt(null)}
       />
       <ConfirmDialog
         open={correctionDeletePrompt !== null}
