@@ -315,6 +315,26 @@ impact. The script's skip-list lives in
 `scripts/release/check-changeset.mjs` — extend it when adding new
 "obviously not user-visible" path patterns.
 
+**Don't add a fragment for fixes or polish to features introduced
+since the last release.** If a feature shipped in the most recent
+`vX.Y.Z` tag, a bug fix on top of it is a genuine post-release
+regression — write a `type: Fixed` fragment. But if the feature was
+introduced after that tag (its `Added` fragment is still sitting in
+`.changes/unreleased/`), the codepath you're fixing has never been in
+production. The original fragment will describe the feature in its
+final, post-fix shape when the release lands, so a separate `Fixed`
+fragment would only narrate a regression no user ever saw. Fold the
+substance into the original fragment if it changes the user-visible
+description; otherwise label the PR `no-changelog` and move on. The
+same rule covers small extensions that polish an unreleased feature
+(re-arranging the new modal, hiding a toggle that doesn't apply
+yet) — update the parent fragment, don't add a sibling.
+
+Use the `write-changeset` skill to apply this rule consistently. The
+skill resolves the latest `v*` tag, inspects the commits and existing
+fragments since, and decides whether the current change needs a new
+fragment, an edit to an existing one, or the `no-changelog` label.
+
 ### End-to-end release flow
 
 1. Maintainer dispatches the `Release` workflow with a
@@ -455,21 +475,23 @@ Agent-driven maintenance playbooks live under
 discovery paths (`.claude/skills/`) are symlinks to `.agent/skills/`
 so every tool sees the same canonical set.
 
-| Skill           | Run when                                                                                                                                                                                                                                                                      | Run order |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `update-docs`   | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                | 1         |
-| `update-readme` | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                            | 2         |
-| `sync-oss-spec` | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                           | last      |
-| `maintenance`   | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                      | umbrella  |
-| `release`       | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe. | manual    |
+| Skill             | Run when                                                                                                                                                                                                                                                                                                                               | Run order |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `update-docs`     | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                                                                         | 1         |
+| `update-readme`   | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                                                                                     | 2         |
+| `sync-oss-spec`   | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                                                                                    | last      |
+| `maintenance`     | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                                                                               | umbrella  |
+| `release`         | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe.                                                          | manual    |
+| `write-changeset` | Decide whether the current change needs a `.changes/unreleased/<unix-ts>-<slug>.md` fragment. Resolves the latest `v*` tag, lists commits and existing fragments since, classifies the change, and either writes a new fragment, edits a parent fragment in place, or labels the PR `no-changelog`. Run per-PR, before opening the PR. | manual    |
 
 `update-manpages` and `update-website` are listed in `OSS_SPEC.md`
 §21.5 but are intentionally omitted here — see the "OSS_SPEC.md
-exceptions" section above. The `release` skill is a manual playbook
-(maintainer dispatches a workflow), so it is **not** part of the
-`maintenance` umbrella — that umbrella only runs automatic sync
-skills. New automatic-sync skills go in this table in the order
-they should run — upstream fixes first, downstream mirrors last;
-`sync-oss-spec` always runs last to catch residual violations, and
-the `maintenance` umbrella reflects the same order in its own
-registry.
+exceptions" section above. The `release` and `write-changeset`
+skills are manual playbooks (a maintainer dispatches the release
+workflow; the contributor decides per-PR whether a fragment is
+warranted), so neither is part of the `maintenance` umbrella —
+that umbrella only runs automatic sync skills. New automatic-sync
+skills go in this table in the order they should run — upstream
+fixes first, downstream mirrors last; `sync-oss-spec` always runs
+last to catch residual violations, and the `maintenance` umbrella
+reflects the same order in its own registry.
