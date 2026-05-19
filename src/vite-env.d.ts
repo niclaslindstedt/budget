@@ -24,5 +24,9 @@ interface ImportMeta {
 // `VITE_BASE_PATH` (i.e. the `/preview/` build); used at runtime to
 // namespace storage keys so production data is never touched by
 // preview migrations.
+// `__BUILD_LABEL__` is a short identifier appended to the browser-tab
+// title — `vX.Y.Z` for production, `preview` (optionally with a CI
+// run number + short sha) for the `/preview/` slot.
 declare const __APP_VERSION__: string;
 declare const __IS_PREVIEW__: boolean;
+declare const __BUILD_LABEL__: string;

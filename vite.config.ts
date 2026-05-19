@@ -30,6 +30,29 @@ import { emitChangelogData } from "./vite/changelog-plugin";
 const BASE_PATH = process.env.VITE_BASE_PATH || "/";
 const IS_PREVIEW = BASE_PATH !== "/";
 
+// Short build identifier shown next to the title in the browser tab.
+// Production builds (checked-out tag) label themselves with the
+// released `vX.Y.Z`. Preview builds (current `main`) label themselves
+// `preview` and — when running under GitHub Actions, where
+// `GITHUB_RUN_NUMBER` / `GITHUB_SHA` are populated automatically —
+// suffix the workflow run number plus a short commit sha so the
+// deployed `/preview/` slot tells you which build it was. Local
+// preview builds (no CI env) just say `preview`.
+const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
+const GITHUB_SHA = process.env.GITHUB_SHA;
+const SHORT_SHA = GITHUB_SHA ? GITHUB_SHA.slice(0, 7) : "";
+const PREVIEW_SUFFIX = [
+  GITHUB_RUN_NUMBER ? `#${GITHUB_RUN_NUMBER}` : "",
+  SHORT_SHA,
+]
+  .filter(Boolean)
+  .join(" ");
+const BUILD_LABEL = IS_PREVIEW
+  ? PREVIEW_SUFFIX
+    ? `preview ${PREVIEW_SUFFIX}`
+    : "preview"
+  : `v${pkg.version}`;
+
 function escapeHtmlAttr(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -202,5 +225,6 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __IS_PREVIEW__: JSON.stringify(IS_PREVIEW),
+    __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
   },
 });

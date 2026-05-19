@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/niclaslindstedt/budget/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/ci.yml)
 [![Pages](https://github.com/niclaslindstedt/budget/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/pages.yml)
+[![Release](https://github.com/niclaslindstedt/budget/actions/workflows/release.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A local-first budget app. Your data lives in your browser's local
