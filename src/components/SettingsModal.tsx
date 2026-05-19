@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Database, Heart, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import {
   DATE_FORMATS,
@@ -821,6 +821,31 @@ function MainView({
           Changelog
         </a>
       </p>
+
+      <DonateLink />
+    </div>
+  );
+}
+
+// URL is injected at build time from the `VITE_PAYPAL_URL` GitHub
+// Actions secret (see `.github/workflows/pages.yml`). When the secret
+// isn't set — e.g. on a fork that hasn't configured its own donate
+// page — the button hides entirely so the modal doesn't trail a
+// dead link.
+function DonateLink() {
+  const url = import.meta.env.VITE_PAYPAL_URL?.trim();
+  if (!url) return null;
+  return (
+    <div className="mt-3 flex justify-center">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
+      >
+        <Heart size={14} aria-hidden focusable={false} />
+        Donate
+      </a>
     </div>
   );
 }
