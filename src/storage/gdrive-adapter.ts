@@ -595,9 +595,7 @@ export async function startGdriveAuth(): Promise<string> {
       error_callback: (err) => {
         log.error(`token client: error_callback type=${err.type}`);
         reject(
-          new Error(
-            err.message ?? `Google sign-in ${err.type ?? "failed"}`,
-          ),
+          new Error(err.message ?? `Google sign-in ${err.type ?? "failed"}`),
         );
       },
     });

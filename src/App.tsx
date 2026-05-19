@@ -151,10 +151,7 @@ import {
   type ParsedBankFile,
 } from "./storage/bank-parsers";
 import { serializeUserData } from "./storage/file";
-import {
-  createGdriveAdapter,
-  startGdriveAuth,
-} from "./storage/gdrive-adapter";
+import { createGdriveAdapter, startGdriveAuth } from "./storage/gdrive-adapter";
 import { withEncryption } from "./storage/encrypting-adapter";
 import { createFolderAdapter } from "./storage/folder-adapter";
 import {
