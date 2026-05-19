@@ -22,6 +22,13 @@ import { TypePicker } from "./TypePicker";
 
 type AmountSign = NonNullable<MatchRule["amountSign"]>;
 type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
+// UI-only mode that extends the persisted `amountSign` with a fourth
+// "range" option. Range mode is mutually exclusive with the sign
+// filters: picking it hides the sign filter and surfaces the bounded
+// amount inputs below; picking Any/Negative/Positive clears the
+// bounds. The persisted `amountSign` stays "any" while in range mode
+// — the bounds carry their own sign — so the data model is unchanged.
+type SignMode = AmountSign | "range";
 
 export type MatchRuleDraft = {
   pattern: string;
@@ -106,7 +113,7 @@ export function MatchRuleModal({
   const [pattern, setPattern] = useState("");
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
-  const [amountSign, setAmountSign] = useState<AmountSign>("any");
+  const [signMode, setSignMode] = useState<SignMode>("any");
   const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
   // The "between" range. Each bound has a magnitude (text) and a
   // sign, mirroring the +/- toggle pattern used by the other amount
@@ -125,7 +132,12 @@ export function MatchRuleModal({
       setPattern(existing.pattern);
       setDescription(existing.description ?? "");
       setTypeId(existing.typeId ?? null);
-      setAmountSign(existing.amountSign ?? "any");
+      // A rule with bounds was created in range mode — show it that
+      // way so the user lands back on the inputs they filled in. A
+      // rule without bounds shows the saved sign filter.
+      const hasBounds =
+        existing.amountMin !== undefined || existing.amountMax !== undefined;
+      setSignMode(hasBounds ? "range" : (existing.amountSign ?? "any"));
       setTransferFilter(existing.transferFilter ?? "any");
       if (existing.amountMin !== undefined) {
         setAmountMinText(
@@ -157,9 +169,9 @@ export function MatchRuleModal({
     // direction by accident. The user can flip to "Any" if they
     // really want both.
     if (seedEntry) {
-      setAmountSign(seedEntry.amount < 0 ? "negative" : "positive");
+      setSignMode(seedEntry.amount < 0 ? "negative" : "positive");
     } else {
-      setAmountSign("any");
+      setSignMode("any");
     }
     setTransferFilter("exclude");
     setAmountMinText("");
@@ -184,21 +196,32 @@ export function MatchRuleModal({
   }, [pattern]);
 
   // Resolve each bound to a signed JS number (or undefined when the
-  // user left the field blank). Done once so the preview, the draft,
-  // and the submit handler all agree on what "this band means".
+  // user left the field blank or range mode is off). Done once so the
+  // preview, the draft, and the submit handler all agree on what
+  // "this band means".
+  const isRangeMode = signMode === "range";
   const amountMin = useMemo(
-    () => parseSignedAmount(amountMinText, amountMinNegative),
-    [amountMinText, amountMinNegative],
+    () =>
+      isRangeMode
+        ? parseSignedAmount(amountMinText, amountMinNegative)
+        : undefined,
+    [isRangeMode, amountMinText, amountMinNegative],
   );
   const amountMax = useMemo(
-    () => parseSignedAmount(amountMaxText, amountMaxNegative),
-    [amountMaxText, amountMaxNegative],
+    () =>
+      isRangeMode
+        ? parseSignedAmount(amountMaxText, amountMaxNegative)
+        : undefined,
+    [isRangeMode, amountMaxText, amountMaxNegative],
   );
   // Reject a band where the user has typed both ends but inverted
   // them (min > max). The preview falls through to zero matches so
   // the user sees the mistake immediately.
   const rangeInverted =
     amountMin !== undefined && amountMax !== undefined && amountMin > amountMax;
+  // Persisted sign filter — "any" while in range mode, since the
+  // bounds carry their own sign.
+  const amountSign: AmountSign = isRangeMode ? "any" : signMode;
 
   const draft = useMemo<MatchRule>(
     () => ({
@@ -329,12 +352,13 @@ export function MatchRuleModal({
               <span className="text-xs text-muted">Amount</span>
               <SegmentedRadio
                 name="amount-sign"
-                value={amountSign}
-                onChange={(v) => setAmountSign(v as AmountSign)}
+                value={signMode}
+                onChange={(v) => setSignMode(v as SignMode)}
                 options={[
                   { value: "any", label: "Any" },
                   { value: "negative", label: "Negative" },
                   { value: "positive", label: "Positive" },
+                  { value: "range", label: "Range" },
                 ]}
               />
             </div>
@@ -352,35 +376,37 @@ export function MatchRuleModal({
               />
             </div>
           </div>
-          <div className="mt-3 flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Between</span>
-            <div className="flex flex-wrap items-center gap-2">
-              <SignedAmountInput
-                value={amountMinText}
-                negative={amountMinNegative}
-                placeholder="From"
-                settings={settings}
-                onChangeText={setAmountMinText}
-                onToggleSign={() => setAmountMinNegative((s) => !s)}
-                ariaLabel="Amount from"
-              />
-              <span className="text-xs text-muted">to</span>
-              <SignedAmountInput
-                value={amountMaxText}
-                negative={amountMaxNegative}
-                placeholder="To"
-                settings={settings}
-                onChangeText={setAmountMaxText}
-                onToggleSign={() => setAmountMaxNegative((s) => !s)}
-                ariaLabel="Amount to"
-              />
+          {isRangeMode && (
+            <div className="mt-3 flex flex-col gap-1.5">
+              <span className="text-xs text-muted">Range</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <SignedAmountInput
+                  value={amountMinText}
+                  negative={amountMinNegative}
+                  placeholder="From"
+                  settings={settings}
+                  onChangeText={setAmountMinText}
+                  onToggleSign={() => setAmountMinNegative((s) => !s)}
+                  ariaLabel="Amount from"
+                />
+                <span className="text-xs text-muted">to</span>
+                <SignedAmountInput
+                  value={amountMaxText}
+                  negative={amountMaxNegative}
+                  placeholder="To"
+                  settings={settings}
+                  onChangeText={setAmountMaxText}
+                  onToggleSign={() => setAmountMaxNegative((s) => !s)}
+                  ariaLabel="Amount to"
+                />
+              </div>
+              {rangeInverted && (
+                <p className="text-xs text-danger">
+                  "From" must be less than or equal to "To".
+                </p>
+              )}
             </div>
-            {rangeInverted && (
-              <p className="text-xs text-danger">
-                "From" must be less than or equal to "To".
-              </p>
-            )}
-          </div>
+          )}
         </fieldset>
 
         <div className="mt-4">
