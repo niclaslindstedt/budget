@@ -328,6 +328,94 @@ describe("dropbox silent token refresh", () => {
   });
 });
 
+describe("dropbox backups", () => {
+  // Simulates a Dropbox app folder by routing /files/upload writes
+  // into a path → text map and /files/download reads back out of it.
+  // The 409 path/not_found response matches the real API surface for
+  // missing files (same shape the load() path keys off).
+  function dropboxFs(): {
+    fn: typeof fetch;
+    files: Map<string, string>;
+  } {
+    const files = new Map<string, string>();
+    const fn: typeof fetch = (async (
+      url: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const u = String(url);
+      const arg = JSON.parse(
+        (init?.headers as Record<string, string> | undefined)?.[
+          "Dropbox-API-Arg"
+        ] ?? "{}",
+      );
+      if (u.includes("/files/upload")) {
+        files.set(arg.path, (init?.body as string) ?? "");
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ rev: `rev-${files.size}` }),
+        });
+      }
+      if (u.includes("/files/download")) {
+        const text = files.get(arg.path);
+        if (text === undefined) {
+          return makeResponse({
+            status: 409,
+            body: JSON.stringify({ error_summary: "path/not_found/" }),
+          });
+        }
+        return makeResponse({
+          status: 200,
+          body: text,
+          headers: { "Dropbox-API-Result": JSON.stringify({ rev: "r" }) },
+        });
+      }
+      throw new Error(`Unexpected URL: ${u}`);
+    }) as typeof fetch;
+    return { fn, files };
+  }
+
+  it("list() is empty before any backup is created", async () => {
+    const { fn } = dropboxFs();
+    const adapter = createDropboxAdapter("token", fn);
+    expect(await adapter.backups!.list()).toEqual([]);
+  });
+
+  it("create() writes the body to /backups/ and updates /backups/index.json", async () => {
+    const { fn, files } = dropboxFs();
+    const adapter = createDropboxAdapter("token", fn);
+    await adapter.backups!.create('{"v":17}', {
+      filename: "snap.json",
+      createdAt: 1700000000000,
+      accountCount: 3,
+      entryCount: 12,
+    });
+    expect(files.get("/backups/snap.json")).toBe('{"v":17}');
+    const indexRaw = files.get("/backups/index.json");
+    expect(indexRaw).toBeDefined();
+    const list = await adapter.backups!.list();
+    expect(list).toEqual([
+      {
+        filename: "snap.json",
+        createdAt: 1700000000000,
+        accountCount: 3,
+        entryCount: 12,
+      },
+    ]);
+  });
+
+  it("read() returns the bytes a previous create() wrote", async () => {
+    const { fn } = dropboxFs();
+    const adapter = createDropboxAdapter("token", fn);
+    await adapter.backups!.create("payload-A", {
+      filename: "a.json",
+      createdAt: 1,
+      accountCount: 1,
+      entryCount: 1,
+    });
+    expect(await adapter.backups!.read("a.json")).toBe("payload-A");
+  });
+});
+
 describe("ConflictError integration with dropbox", () => {
   it("the thrown error is detected by instanceof ConflictError", async () => {
     const { fn } = fakeFetch((call) => {

@@ -1,5 +1,11 @@
 import { debug } from "../utils/debug";
-import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+import {
+  type BackupOps,
+  ConflictError,
+  type Snapshot,
+  type StorageAdapter,
+} from "./adapter";
+import { parseBackupIndex, serializeBackupIndex } from "./backup-index";
 import {
   type OAuthConfig,
   type TokenResult,
@@ -42,6 +48,8 @@ export const DROPBOX_APP_KEY = "fjk4dj166rrzuiw";
 export const DROPBOX_APP_FOLDER = "budget.niclaslindstedt.se";
 
 export const DROPBOX_FILE_PATH = "/budget.json";
+export const DROPBOX_BACKUPS_FOLDER = "/backups";
+export const DROPBOX_BACKUPS_INDEX_PATH = `${DROPBOX_BACKUPS_FOLDER}/index.json`;
 
 // Web URL that opens the budget file's parent folder in Dropbox's web
 // UI with the file pre-selected for preview. Used by the cloud-sync
@@ -232,10 +240,85 @@ export function createDropboxAdapter(
     return { text, revision: meta?.rev };
   }
 
+  async function readBackupFile(path: string): Promise<string | null> {
+    const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Dropbox-API-Arg": JSON.stringify({ path }),
+      },
+    }));
+    if (res.status === 409) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(`Dropbox backup download failed: ${res.status} ${body}`);
+    }
+    return res.text();
+  }
+
+  async function uploadBackupFile(path: string, text: string): Promise<void> {
+    const args = {
+      path,
+      mute: true,
+      mode: "overwrite",
+      autorename: false,
+    };
+    const res = await authedFetch(UPLOAD_ENDPOINT, (token) => ({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Dropbox-API-Arg": JSON.stringify(args),
+        "Content-Type": "application/octet-stream",
+      },
+      body: text,
+    }));
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(`Dropbox backup upload failed: ${res.status} ${body}`);
+    }
+  }
+
+  const backups: BackupOps = {
+    async list() {
+      log.log("backups: list");
+      const raw = await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH);
+      return parseBackupIndex(raw);
+    },
+    async create(text, metadata) {
+      log.log(`backups: create ${metadata.filename} bytes=${text.length}`);
+      await uploadBackupFile(
+        `${DROPBOX_BACKUPS_FOLDER}/${metadata.filename}`,
+        text,
+      );
+      const existing = parseBackupIndex(
+        await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH),
+      );
+      const next = [
+        metadata,
+        ...existing.filter((m) => m.filename !== metadata.filename),
+      ];
+      await uploadBackupFile(
+        DROPBOX_BACKUPS_INDEX_PATH,
+        serializeBackupIndex(next),
+      );
+    },
+    async read(filename) {
+      log.log(`backups: read ${filename}`);
+      const text = await readBackupFile(
+        `${DROPBOX_BACKUPS_FOLDER}/${filename}`,
+      );
+      if (text === null) {
+        throw new Error(`Backup not found: ${filename}`);
+      }
+      return text;
+    },
+  };
+
   return {
     id: "dropbox",
     label: "Dropbox",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
+    backups,
 
     load: () => loadFromDropbox(),
 

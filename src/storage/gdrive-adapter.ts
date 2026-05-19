@@ -1,5 +1,15 @@
 import { debug } from "../utils/debug";
-import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+import {
+  type BackupOps,
+  ConflictError,
+  type Snapshot,
+  type StorageAdapter,
+} from "./adapter";
+import {
+  BACKUP_INDEX_FILENAME,
+  parseBackupIndex,
+  serializeBackupIndex,
+} from "./backup-index";
 import { type OAuthConfig, completeAuth, startAuth } from "./oauth-pkce";
 
 const log = debug("gdrive");
@@ -52,6 +62,12 @@ export const GDRIVE_FILE_NAME = "budget.json";
 // Dropbox "App folder" visibility model. Switching to
 // `drive.appdata` would hide the file but is not what the user picked.
 export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+// Name of the folder Drive backups live inside. Sibling to the main
+// `budget.json` file at the root of My Drive — the user can browse
+// it directly to spot-check backups or hand them to another tool.
+export const GDRIVE_BACKUPS_FOLDER_NAME = "budget-backups";
+const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
 const AUTH_BASE = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -259,13 +275,186 @@ export function createGdriveAdapter(
     return { text, revision };
   }
 
+  // Drive folders are first-class file objects keyed by ID. Looking
+  // up the backups folder is one extra round trip — cached in the
+  // adapter closure so subsequent backup ops skip the query.
+  let cachedBackupsFolderId: string | null = null;
+
+  async function ensureBackupsFolder(): Promise<string> {
+    if (cachedBackupsFolderId) return cachedBackupsFolderId;
+    const q =
+      `name='${GDRIVE_BACKUPS_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
+      ` and trashed=false`;
+    const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
+      q,
+    )}&spaces=drive&fields=files(id)`;
+    log.log(`backups: ensureFolder query`);
+    const res = await fetchImpl(url, { headers: authHeader() });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(
+        `Google Drive folder lookup failed: ${res.status} ${body}`,
+      );
+    }
+    const json = (await res.json()) as DriveListResponse;
+    const existing = json.files?.[0]?.id;
+    if (existing) {
+      cachedBackupsFolderId = existing;
+      log.log(`backups: folder found ${existing}`);
+      return existing;
+    }
+    log.log("backups: folder missing — creating");
+    const createRes = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
+      method: "POST",
+      headers: { ...authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: GDRIVE_BACKUPS_FOLDER_NAME,
+        mimeType: FOLDER_MIME_TYPE,
+      }),
+    });
+    if (!createRes.ok) {
+      const body = await createRes.text().catch(() => "<unreadable>");
+      throw new Error(
+        `Google Drive folder create failed: ${createRes.status} ${body}`,
+      );
+    }
+    const meta = (await createRes.json()) as DriveFile;
+    cachedBackupsFolderId = meta.id;
+    return meta.id;
+  }
+
+  // Look up a file by name inside the backups folder. Returns null
+  // when no such file exists — both the index and individual backup
+  // bodies can be missing on first run.
+  async function findInBackupsFolder(name: string): Promise<string | null> {
+    const folderId = await ensureBackupsFolder();
+    const q =
+      `name='${escapeDriveQuery(name)}' and '${folderId}' in parents` +
+      ` and trashed=false`;
+    const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
+      q,
+    )}&spaces=drive&fields=files(id)`;
+    const res = await fetchImpl(url, { headers: authHeader() });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(
+        `Google Drive backup lookup failed: ${res.status} ${body}`,
+      );
+    }
+    const json = (await res.json()) as DriveListResponse;
+    return json.files?.[0]?.id ?? null;
+  }
+
+  async function downloadBackup(name: string): Promise<string | null> {
+    const id = await findInBackupsFolder(name);
+    if (!id) return null;
+    const res = await fetchImpl(`${DRIVE_FILES_API}/${id}?alt=media`, {
+      headers: authHeader(),
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(
+        `Google Drive backup download failed: ${res.status} ${body}`,
+      );
+    }
+    return res.text();
+  }
+
+  async function uploadBackup(name: string, text: string): Promise<void> {
+    const folderId = await ensureBackupsFolder();
+    const existing = await findInBackupsFolder(name);
+    if (existing) {
+      const res = await fetchImpl(
+        `${DRIVE_UPLOAD_API}/${existing}?uploadType=media`,
+        {
+          method: "PATCH",
+          headers: {
+            ...authHeader(),
+            "Content-Type": "application/octet-stream",
+          },
+          body: text,
+        },
+      );
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw new Error(
+          `Google Drive backup update failed: ${res.status} ${body}`,
+        );
+      }
+      return;
+    }
+    const meta = JSON.stringify({ name, parents: [folderId] });
+    const boundary = `budget-${randomBoundary()}`;
+    const body =
+      `--${boundary}\r\n` +
+      `Content-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Type: application/octet-stream\r\n\r\n${text}\r\n` +
+      `--${boundary}--`;
+    const res = await fetchImpl(
+      `${DRIVE_UPLOAD_API}?uploadType=multipart&fields=id`,
+      {
+        method: "POST",
+        headers: {
+          ...authHeader(),
+          "Content-Type": `multipart/related; boundary=${boundary}`,
+        },
+        body,
+      },
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(
+        `Google Drive backup create failed: ${res.status} ${body}`,
+      );
+    }
+  }
+
+  const backups: BackupOps = {
+    async list() {
+      log.log("backups: list");
+      const raw = await downloadBackup(BACKUP_INDEX_FILENAME);
+      return parseBackupIndex(raw);
+    },
+    async create(text, metadata) {
+      log.log(`backups: create ${metadata.filename} bytes=${text.length}`);
+      await uploadBackup(metadata.filename, text);
+      const existing = parseBackupIndex(
+        await downloadBackup(BACKUP_INDEX_FILENAME),
+      );
+      const next = [
+        metadata,
+        ...existing.filter((m) => m.filename !== metadata.filename),
+      ];
+      await uploadBackup(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
+    },
+    async read(filename) {
+      log.log(`backups: read ${filename}`);
+      const text = await downloadBackup(filename);
+      if (text === null) {
+        throw new Error(`Backup not found: ${filename}`);
+      }
+      return text;
+    },
+  };
+
   return {
     id: "gdrive",
     label: "Google Drive",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
+    backups,
     load,
     save,
   };
+}
+
+// Drive's `q` parameter takes single-quoted string literals. The only
+// characters that need escaping inside one are `'` and `\` — Google's
+// docs spell out exactly these two. The backup filenames we mint
+// don't include either today, but the escape is cheap insurance.
+function escapeDriveQuery(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
 function randomBoundary(): string {

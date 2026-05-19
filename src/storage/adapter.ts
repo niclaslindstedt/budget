@@ -56,6 +56,57 @@ export type StorageAdapter = {
   // keystrokes inside a single edit gesture into one network request
   // while still feeling like "save on every change".
   readonly saveDebounceMs?: number;
+
+  // Optional support for explicit timestamped backups, stored in a
+  // sibling `backups/` folder next to the live budget file. Cloud
+  // backends and the local-folder backend implement this; the
+  // browser-localStorage adapter doesn't (there's no notion of a
+  // sibling folder there). Always present when the user can see a
+  // "Backup" button in Settings.
+  readonly backups?: BackupOps;
+};
+
+// One backup file's metadata, mirrored in the on-disk index so the
+// restore list can be rendered without decrypting (or even
+// downloading) the backup body. `accountCount` and `entryCount` are
+// extracted from the budget at backup time so the user can pick the
+// right snapshot at a glance.
+export type BackupMetadata = {
+  // Filename within the `backups/` folder. Stable identifier the
+  // adapter uses to fetch this specific backup. Includes the
+  // encryption suffix (e.g. `.enc.json`) when the bytes are wrapped.
+  filename: string;
+  // Unix ms timestamp when the backup was created.
+  createdAt: number;
+  // Number of accounts in the backup.
+  accountCount: number;
+  // Number of budget rows in the backup (sum of `rows.length` across
+  // every `AccountBudget` item on every sheet). Doesn't count
+  // imported bank-history entries — those are auxiliary and would
+  // dominate the figure on accounts with long statements.
+  entryCount: number;
+  // True when the bytes on disk are wrapped in the AES-GCM envelope.
+  // Set by the encrypting wrapper; raw adapters always emit false.
+  encrypted?: boolean;
+  // Marker for the auto-backup that the restore flow takes of the
+  // current file before replacing it. Surfaced in the restore list
+  // so the user can tell at a glance which entries are theirs vs.
+  // safety nets the app dropped on their behalf.
+  autoCreated?: boolean;
+};
+
+export type BackupOps = {
+  // Read the manifest of all backups, in descending creation order.
+  // Returns an empty array when no backups have been created yet.
+  list(): Promise<BackupMetadata[]>;
+  // Persist `text` as a new backup file at the path implied by
+  // `metadata.filename` and append the entry to the manifest.
+  create(text: string, metadata: BackupMetadata): Promise<void>;
+  // Fetch the raw bytes of a previously-created backup. The text is
+  // whatever the create call passed in — encrypted or plain. The
+  // encrypting wrapper decrypts on the way back out so callers see
+  // serialized `UserData` JSON regardless.
+  read(filename: string): Promise<string>;
 };
 
 export class ConflictError extends Error {

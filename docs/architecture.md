@@ -20,6 +20,7 @@ src/
 │   ├── SyncStatus.tsx             # syncing / saved indicator for cloud backends
 │   ├── SaveStateButton.tsx        # manual "save now" affordance
 │   ├── ImportExportControls.tsx   # file download + file picker
+│   ├── CloudBackupModal.tsx       # list, create, and restore timestamped backups
 │   ├── SheetView.tsx              # one sheet — month grouping + balances
 │   ├── MonthTable.tsx             # one month's table
 │   ├── ColumnHeader.tsx           # draggable column header
@@ -59,6 +60,8 @@ src/
 │   ├── session.ts                 # sessionStorage cache for the active password
 │   ├── users.ts                   # device-wide user registry + password hashing
 │   ├── useUserDataStorage.ts      # React hook tying adapter ↔ reducer
+│   ├── backup-index.ts            # backup manifest serializer + tolerant parser
+│   ├── backup-metadata.ts         # derive BackupMetadata from UserData + filename helper
 │   └── file.ts                    # JSON file codec: serialize + parse
 ├── utils/
 │   ├── format.ts                  # currency / amount / date formatting helpers

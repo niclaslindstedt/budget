@@ -157,3 +157,137 @@ describe("folderAdapter", () => {
     expect(adapter.label).toBe("Local folder");
   });
 });
+
+// Slightly richer mock that supports nested directories — required to
+// exercise the `backups/` subfolder the backup adapter creates.
+function createRecursiveDirectory() {
+  type Node = {
+    files: Map<string, string>;
+    dirs: Map<string, Node>;
+  };
+  const root: Node = { files: new Map(), dirs: new Map() };
+
+  function makeFileHandle(node: Node, name: string) {
+    return {
+      name,
+      async getFile() {
+        const text = node.files.get(name);
+        if (text === undefined) {
+          throw new DOMException("File not found", "NotFoundError");
+        }
+        return {
+          lastModified: 1,
+          text: async () => text,
+        };
+      },
+      async createWritable() {
+        let buffer = "";
+        return {
+          async write(text: string) {
+            buffer = text;
+          },
+          async close() {
+            node.files.set(name, buffer);
+          },
+        };
+      },
+    };
+  }
+
+  function makeDirHandle(node: Node) {
+    return {
+      name: "Mock",
+      async getFileHandle(name: string, options?: { create?: boolean }) {
+        if (!options?.create && !node.files.has(name)) {
+          throw new DOMException("File not found", "NotFoundError");
+        }
+        if (options?.create && !node.files.has(name)) {
+          node.files.set(name, "");
+        }
+        return makeFileHandle(node, name);
+      },
+      async getDirectoryHandle(name: string, options?: { create?: boolean }) {
+        let child = node.dirs.get(name);
+        if (!child) {
+          if (!options?.create) {
+            throw new DOMException("Directory not found", "NotFoundError");
+          }
+          child = { files: new Map(), dirs: new Map() };
+          node.dirs.set(name, child);
+        }
+        return makeDirHandle(child) as unknown as FileSystemDirectoryHandle;
+      },
+    };
+  }
+
+  return {
+    handle: makeDirHandle(root) as unknown as FileSystemDirectoryHandle,
+    root,
+  };
+}
+
+describe("folderAdapter backups", () => {
+  it("list() is empty before any backup is created", async () => {
+    const { handle } = createRecursiveDirectory();
+    const adapter = createFolderAdapter({ directoryHandle: handle });
+    const list = await adapter.backups!.list();
+    expect(list).toEqual([]);
+  });
+
+  it("create() persists the body and appends to the manifest", async () => {
+    const { handle, root } = createRecursiveDirectory();
+    const adapter = createFolderAdapter({ directoryHandle: handle });
+    await adapter.backups!.create('{"hello":"world"}', {
+      filename: "budget-snap.json",
+      createdAt: 1700000000000,
+      accountCount: 2,
+      entryCount: 7,
+    });
+    const dir = root.dirs.get("backups");
+    expect(dir).toBeDefined();
+    expect(dir!.files.get("budget-snap.json")).toBe('{"hello":"world"}');
+
+    const list = await adapter.backups!.list();
+    expect(list).toEqual([
+      {
+        filename: "budget-snap.json",
+        createdAt: 1700000000000,
+        accountCount: 2,
+        entryCount: 7,
+      },
+    ]);
+  });
+
+  it("read() returns the bytes a previous create() wrote", async () => {
+    const { handle } = createRecursiveDirectory();
+    const adapter = createFolderAdapter({ directoryHandle: handle });
+    await adapter.backups!.create("payload-A", {
+      filename: "a.json",
+      createdAt: 1,
+      accountCount: 1,
+      entryCount: 1,
+    });
+    expect(await adapter.backups!.read("a.json")).toBe("payload-A");
+  });
+
+  it("create() de-duplicates manifest entries by filename", async () => {
+    const { handle } = createRecursiveDirectory();
+    const adapter = createFolderAdapter({ directoryHandle: handle });
+    await adapter.backups!.create("v1", {
+      filename: "same.json",
+      createdAt: 1,
+      accountCount: 1,
+      entryCount: 1,
+    });
+    await adapter.backups!.create("v2", {
+      filename: "same.json",
+      createdAt: 2,
+      accountCount: 2,
+      entryCount: 2,
+    });
+    const list = await adapter.backups!.list();
+    expect(list).toHaveLength(1);
+    expect(list[0].accountCount).toBe(2);
+    expect(await adapter.backups!.read("same.json")).toBe("v2");
+  });
+});
