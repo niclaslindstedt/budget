@@ -4279,24 +4279,26 @@ function BudgetView({
               height={24}
               className="h-6 w-6 rounded-sm"
             />
-            <span className="hidden text-base font-bold tracking-wide text-fg-bright md:inline">
+            <span className="text-base font-bold tracking-wide text-fg-bright">
               budget
             </span>
           </button>
           <div className="ml-auto inline-flex items-center gap-2">
-            <SaveStateButton
-              dirty={dirty}
-              saving={status.kind === "saving"}
-              onSave={saveNow}
-            />
-            {(backend === "dropbox" || backend === "gdrive") && (
+            {backend === "dropbox" || backend === "gdrive" ? (
               <SyncStatus
                 providerName={
                   backend === "dropbox" ? "Dropbox" : "Google Drive"
                 }
                 status={status}
                 dirty={dirty}
-                onClick={() => setSyncDetailsOpen(true)}
+                onSave={saveNow}
+                onOpenDetails={() => setSyncDetailsOpen(true)}
+              />
+            ) : (
+              <SaveStateButton
+                dirty={dirty}
+                saving={status.kind === "saving"}
+                onSave={saveNow}
               />
             )}
             <button
