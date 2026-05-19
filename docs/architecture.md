@@ -311,7 +311,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `12`. The chain has eleven steps:
+Current `LATEST_VERSION` is `19`. The chain has eighteen steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -361,6 +361,17 @@ Current `LATEST_VERSION` is `12`. The chain has eleven steps:
   also gains an optional `collapsedIntoTransactionId` backref so the
   transfer-collapse flow is reversible (deleting the resulting
   transaction restores both source entries).
+- **v12 → v13** — version bump only. Introduces the
+  `Settings.abbreviateNumbers` display toggle; the validator falls back
+  to the default (off) for v12 records that don't carry the field.
+- **v13 → v14** — introduces reusable `EntryType` records and a
+  `Row.typeId` reference. Types replace the per-row `glyph` field —
+  a type carries a name + colour + glyph that every row using it
+  shares, so grouping for stats works while the visual identity
+  moves with it. The migration seeds a handful of Swedish-typical
+  defaults so the picker isn't empty on first promote, and strips any
+  existing `row.glyph` (the user chose "drop, don't salvage" on the
+  migration prompt). No rows gain a `typeId` automatically.
 - **v14 → v15** — `MerchantHint` gains optional `typeId` and
   `description` fields. The "promote history entry to recurring" flow
   writes them so synthesized history rows that normalise to the same
@@ -368,6 +379,26 @@ Current `LATEST_VERSION` is `12`. The chain has eleven steps:
   instead of the raw bank text. Existing hints don't carry either
   field; both are optional and readers fall through to the bank text
   unchanged.
+- **v15 → v16** — adds top-level `matchRules: []`, user-authored
+  wildcard rules that relabel synthesized history rows by pattern.
+  Distinct from `merchantHints` (which key off the lossy normalised
+  description); these are explicit globs with sign / transfer filters
+  the user owns. Existing exports default to an empty list — no rules
+  have been authored yet, so behaviour matches pre-v16 builds.
+- **v16 → v17** — version bump only. `HistoryEntry.balance` becomes
+  optional so credit-card exports without a per-row running balance
+  (e.g. Bank Norwegian) can be imported. Existing entries carry a
+  balance and continue to validate.
+- **v17 → v18** — version bump only. Introduces the
+  `Settings.fontScale` UI text-size multiplier; the validator falls
+  back to the default (1) for v17 records that don't carry the field.
+- **v18 → v19** — version bump only. Introduces
+  `Settings.lastSeenChangelogVersion: string | null`, the version
+  string the user last acknowledged on the "What's new" popup. The
+  validator defaults missing values to null so v18 records pass the
+  v19 validator unchanged; the app's mount-time check stamps the
+  current `APP_VERSION` silently on a fresh install so existing users
+  never see the popup the moment they upgrade.
 
 ## Complex entries
 

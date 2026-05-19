@@ -789,8 +789,11 @@ function MainView({
           when the user navigates away to read these. The schema page
           exposes the JSON Schema for the exported data so an LLM (or
           any other tool) handed a `budget-*.json` file can be pointed
-          at a stable URL describing its shape. */}
-      <p className="mt-4 flex items-center justify-center gap-3 text-center text-xs text-muted">
+          at a stable URL describing its shape. The changelog page is
+          a chronological list of release notes — newest first — that
+          mirrors the "What's new" popup that auto-opens after an
+          upgrade. */}
+      <p className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-muted">
         <a
           href="/privacy"
           target="_blank"
@@ -807,6 +810,15 @@ function MainView({
           className="text-link hover:underline"
         >
           Data schema
+        </a>
+        <span aria-hidden>·</span>
+        <a
+          href="/changelog"
+          target="_blank"
+          rel="noreferrer"
+          className="text-link hover:underline"
+        >
+          Changelog
         </a>
       </p>
     </div>

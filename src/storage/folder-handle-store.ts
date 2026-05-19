@@ -9,7 +9,11 @@
 // the empty / null result and the caller falls back to the browser
 // backend.
 
-const DB_NAME = "budget-folder-handles";
+import { nsIdbName } from "../data/constants";
+
+// Preview build uses `budget-folder-handles-preview` so picking a
+// folder in preview doesn't replace the production folder handle.
+const DB_NAME = nsIdbName("budget-folder-handles");
 const DB_VERSION = 1;
 const STORE = "handles";
 

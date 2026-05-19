@@ -868,6 +868,7 @@ export const USER_DATA_SCHEMA = {
         "abbreviateNumbers",
         "fontScale",
         "sessionTimeoutMinutes",
+        "lastSeenChangelogVersion",
       ],
       description:
         "Display and entry preferences. The validator is lenient: bad " +
@@ -979,6 +980,17 @@ export const USER_DATA_SCHEMA = {
             "Idle minutes before the active password is dropped from " +
             "sessionStorage and the user is signed out. Clock resets on " +
             "input.",
+        },
+        lastSeenChangelogVersion: {
+          type: ["string", "null"],
+          default: DEFAULT_SETTINGS.lastSeenChangelogVersion,
+          description:
+            "Version of the changelog the user last acknowledged on the " +
+            '"What\'s new" popup. Null on a fresh install; the app stamps ' +
+            "the current version silently on first run. When the running " +
+            "app's version compares greater than this string, the popup " +
+            "opens showing only the entries strictly newer than this " +
+            "version, and writes the running version back on dismissal.",
         },
       },
     },
