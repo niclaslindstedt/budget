@@ -64,8 +64,31 @@ export const DEFAULT_SETTINGS: Settings = {
   showCurrency: true,
   showDecimals: false,
   abbreviateNumbers: false,
+  fontScale: 1,
   sessionTimeoutMinutes: 15,
 };
+
+// Bounds for the UI text-size multiplier. The floor matches the
+// smallest preset the picker offers and the ceiling matches the
+// largest, with a hair of slack on either side so a hand-edited file
+// just inside the limit passes validation. Going below 0.8 makes the
+// UI illegible on mobile; going above 1.5 starts breaking layout —
+// sticky headers stop tracking and amount cells wrap awkwardly.
+export const MIN_FONT_SCALE = 0.8;
+export const MAX_FONT_SCALE = 1.5;
+
+// Discrete presets exposed in the settings UI. Stored independently of
+// the bounds so a future slider can keep working alongside the
+// dropdown without re-deriving the steps.
+export const FONT_SCALE_PRESETS: readonly {
+  scale: number;
+  label: string;
+}[] = [
+  { scale: 0.9, label: "Small (90%)" },
+  { scale: 1, label: "Default (100%)" },
+  { scale: 1.1, label: "Large (110%)" },
+  { scale: 1.25, label: "Extra large (125%)" },
+];
 
 // Bounds for the session timeout setting. One minute is the floor so a
 // fat-finger 0 doesn't lock the user out instantly; 1440 minutes is a

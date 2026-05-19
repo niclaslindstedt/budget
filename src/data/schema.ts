@@ -21,7 +21,9 @@ import {
   CATEGORY_ICON_NAMES,
   DATE_FORMATS,
   DEFAULT_SETTINGS,
+  MAX_FONT_SCALE,
   MAX_SESSION_TIMEOUT_MINUTES,
+  MIN_FONT_SCALE,
   MIN_SESSION_TIMEOUT_MINUTES,
   SHEET_TYPES,
   SHORT_DATE_FORMATS,
@@ -864,6 +866,7 @@ export const USER_DATA_SCHEMA = {
         "showCurrency",
         "showDecimals",
         "abbreviateNumbers",
+        "fontScale",
         "sessionTimeoutMinutes",
       ],
       description:
@@ -953,6 +956,19 @@ export const USER_DATA_SCHEMA = {
             '("12K", "1.2M") so cramped rows fit on narrow viewports. ' +
             "Affects display only — editable inputs always show the " +
             "full value.",
+        },
+        fontScale: {
+          type: "number",
+          minimum: MIN_FONT_SCALE,
+          maximum: MAX_FONT_SCALE,
+          default: DEFAULT_SETTINGS.fontScale,
+          description:
+            "Multiplier applied to the base UI font size. 1 keeps the " +
+            "default, values below 1 fit more on screen, values above 1 " +
+            "make the UI easier to read. The runtime exposes it as the " +
+            "`--app-font-scale` CSS custom property on the document root " +
+            "and the body's `font-size` reads through it so the whole UI " +
+            "(sheet cells, modals, headers) scales together.",
         },
         sessionTimeoutMinutes: {
           type: "integer",

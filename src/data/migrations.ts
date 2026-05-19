@@ -17,7 +17,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 17 as const;
+export const LATEST_VERSION = 18 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -291,6 +291,13 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // build understands the looser shape so older builds don't silently
   // drop unrelated fields when they encounter a v17 file.
   16: (v16) => ({ ...v16, version: 17 }),
+
+  // v17 → v18: introduces the `fontScale` display setting (UI text-size
+  // multiplier). The validator falls back to the default (1) for v17
+  // records that don't carry the field, so no settings data needs
+  // rewriting — the version bump just flags that this build understands
+  // the new shape.
+  17: (v17) => ({ ...v17, version: 18 }),
 };
 
 export type MigrationResult = {

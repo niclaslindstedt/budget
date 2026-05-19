@@ -39,6 +39,14 @@
 }
 
 :root {
+  /* User-facing UI font-size multiplier. Set by the Settings panel
+     ("Text size") and applied to the body `font-size` via `calc()`
+     below so every `rem`/`em`-based dimension downstream scales with
+     it. Defaults to 1 here so a fresh page (before React has read the
+     user's settings) renders at the canonical size and a brief
+     post-login re-scale is the only transition. */
+  --app-font-scale: 1;
+
   /* Height of the sticky page header — pt-3 + h-9 button + pb-3 + 1px
      border. Month-name headers stick just below this. The md override
      accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
@@ -166,14 +174,17 @@ body {
   font-family:
     "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
-  /* Mobile default — bumped up for legibility and to avoid iOS focus-zoom. */
-  font-size: 15.5px;
+  /* Mobile default — bumped up for legibility and to avoid iOS focus-zoom.
+     `--app-font-scale` is the user's "Text size" preference; the rest of
+     the UI sizes itself in `rem`/`em` so this single multiplier scales
+     every modal, label, and sheet cell together. */
+  font-size: calc(15.5px * var(--app-font-scale));
   line-height: 1.55;
 }
 
 @media (min-width: 640px) {
   body {
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--app-font-scale));
   }
 }
 
