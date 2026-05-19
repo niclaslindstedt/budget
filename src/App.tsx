@@ -526,8 +526,16 @@ function applyPatch(
 ): Row {
   const next: Row = { ...row, cells: { ...row.cells } };
   if (cols.descId) next.cells[cols.descId] = patch.description;
-  if (cols.amountId && patch.amount !== null)
+  if (cols.amountId && patch.amount !== null) {
     next.cells[cols.amountId] = patch.amount;
+    // The edit modals don't speak formula yet (v1 limitation); when
+    // the user retypes a literal amount on a row that previously
+    // carried `amountFormula`, treat that as "replace the formula
+    // with this literal" so the visible value matches what the user
+    // just typed. Re-editing the formula itself goes through the
+    // ComplexEntryModal (delete + re-add for v1).
+    if (next.amountFormula !== undefined) delete next.amountFormula;
+  }
   if (cols.categoryId) next.cells[cols.categoryId] = patch.categoryId ?? null;
   // `undefined` means "don't touch"; explicit `null` clears the type
   // and the row falls back to its description as the primary label.
@@ -578,6 +586,10 @@ function reduceAccountBudget(
         });
         if (seriesId) row.seriesId = seriesId;
         if (draft.typeId) row.typeId = draft.typeId;
+        // Formula rows carry the canonical id-keyed form so renames of
+        // a referenced sheet don't break the formula; the renderer
+        // recomputes the amount each pass via the resolver.
+        if (draft.amountFormula) row.amountFormula = draft.amountFormula;
         return row;
       });
       return { ...item, rows: [...item.rows, ...newRows] };
@@ -692,17 +704,20 @@ function reduceAccountBudget(
         ...item,
         rows: item.rows.map((r) => {
           if (!ids.has(r.id)) return r;
-          const cells = { ...r.cells };
+          const next: Row = { ...r, cells: { ...r.cells } };
           if (action.patch.date !== undefined && dateColId) {
-            cells[dateColId] = action.patch.date;
+            next.cells[dateColId] = action.patch.date;
           }
           if (action.patch.amount !== undefined && amountColId) {
-            cells[amountColId] = action.patch.amount;
+            next.cells[amountColId] = action.patch.amount;
+            // Same policy as applyPatch above: a bulk-typed literal
+            // replaces any previous formula on the row.
+            if (next.amountFormula !== undefined) delete next.amountFormula;
           }
           if (action.patch.categoryId !== undefined && categoryColId) {
-            cells[categoryColId] = action.patch.categoryId;
+            next.cells[categoryColId] = action.patch.categoryId;
           }
-          return { ...r, cells };
+          return next;
         }),
       };
     }
@@ -5009,6 +5024,7 @@ function BudgetView({
               <SheetView
                 sheet={activeSheet}
                 item={activeItem}
+                data={data}
                 categories={allCategoriesMerged}
                 types={allTypesMerged}
                 accounts={data.accounts}
@@ -5175,6 +5191,7 @@ function BudgetView({
         types={allTypesMerged}
         typeUsageById={typeUsageById}
         settings={data.settings}
+        sheets={data.sheets}
         seed={complexSeed}
         title={recurringPromoteContext ? "Promote candidate" : undefined}
         submitVerb={recurringPromoteContext ? "Promote" : undefined}

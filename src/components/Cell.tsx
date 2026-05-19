@@ -63,6 +63,12 @@ type Props = {
   // no peer name. The action column hides edit/delete buttons too,
   // gated upstream in SheetRow.
   isHistory?: boolean;
+  // True when the row carries an `amountFormula`. The amount cell
+  // becomes read-only (the value comes from the formula resolver) and
+  // surfaces a small `fx` glyph so the user can tell at a glance that
+  // the number isn't a literal entry. Editing the formula goes
+  // through the ComplexEntryModal, not inline.
+  hasFormula?: boolean;
   onChange: (value: CellValue) => void;
   // Fires when the user finishes editing a cell (blur for the typed
   // inputs, the selection event for picker-style cells). Distinct from
@@ -85,6 +91,7 @@ export function Cell({
   peerName,
   outgoing,
   isHistory,
+  hasFormula,
   onChange,
   onCommit,
   onCreateCategory,
@@ -214,6 +221,19 @@ export function Cell({
       );
 
     case "amount": {
+      // Formula rows: the amount is computed at render time, so the
+      // editable inline input would be misleading. Use the read-only
+      // display variant with an `fx` chip to signal the source.
+      // Editing the formula goes through the ComplexEntryModal.
+      if (hasFormula) {
+        return (
+          <AmountCellDisplay
+            value={typeof value === "number" ? value : null}
+            settings={settings}
+            formula
+          />
+        );
+      }
       return (
         <AmountCell
           rowId={rowId}
