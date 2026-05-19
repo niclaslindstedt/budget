@@ -272,7 +272,12 @@ function TypeCreator({
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>Glyph</span>
-        <GlyphGrid icons={TYPE_GLYPH_NAMES} value={glyph} onChange={setGlyph} />
+        <GlyphGrid
+          icons={TYPE_GLYPH_NAMES}
+          value={glyph}
+          onChange={setGlyph}
+          tintColor={color}
+        />
       </div>
       <div className="mt-1 flex justify-end gap-2">
         <button

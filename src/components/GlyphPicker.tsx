@@ -23,6 +23,9 @@ type Props = {
   // every glyph. Context-specific call sites pass a narrower list
   // (e.g. AccountModal passes ACCOUNT_GLYPH_NAMES).
   icons?: readonly CategoryIcon[];
+  // Tints the trigger glyph and the selected cell in the dropdown.
+  // When unset, both fall back to the "flag" accent.
+  tintColor?: string;
 };
 
 export function GlyphPicker({
@@ -33,6 +36,7 @@ export function GlyphPicker({
     ? `Default (${defaultIcon})`
     : "Default (recurring)",
   icons = CATEGORY_ICON_NAMES,
+  tintColor,
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -62,18 +66,25 @@ export function GlyphPicker({
               <CategoryIconGlyph
                 name={defaultIcon}
                 size={14}
-                className="text-flag"
+                className={tintColor ? undefined : "text-flag"}
+                style={tintColor ? { color: tintColor } : undefined}
               />
             ) : (
               <Repeat
                 size={14}
-                className="text-flag"
+                className={tintColor ? undefined : "text-flag"}
+                style={tintColor ? { color: tintColor } : undefined}
                 aria-hidden
                 focusable={false}
               />
             )
           ) : (
-            <CategoryIconGlyph name={value} size={14} className="text-flag" />
+            <CategoryIconGlyph
+              name={value}
+              size={14}
+              className={tintColor ? undefined : "text-flag"}
+              style={tintColor ? { color: tintColor } : undefined}
+            />
           )}
           <span className="text-xs text-muted">
             {value === null ? defaultLabel : value}
@@ -96,6 +107,7 @@ export function GlyphPicker({
             icons={icons}
             value={value}
             onChange={pick}
+            tintColor={tintColor}
             defaultSlot={{
               icon: defaultIcon ?? null,
               label: defaultIcon
