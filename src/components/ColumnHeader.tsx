@@ -39,12 +39,14 @@ export function ColumnHeader({ column, onReorder }: Props) {
         if (fromId && fromId !== column.id) onReorder(fromId, column.id);
       }}
     >
-      <span className="flex items-center justify-center gap-1.5 px-2.5 py-2 md:justify-start md:gap-2">
+      <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:justify-start md:gap-2">
         <ColumnIcon
           type={column.type}
           className="shrink-0 text-accent md:text-accent"
         />
-        <span className="hidden md:inline">{column.label}</span>
+        <span className="column-header-label hidden md:inline">
+          {column.label}
+        </span>
       </span>
     </th>
   );
