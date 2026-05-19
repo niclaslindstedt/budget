@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 25,
+    version: 26,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -402,11 +402,14 @@ describe("migrate", () => {
     const types = item.columns.map((c) => c.type);
     // The v1 → v2 step inserted a "category" column historically; the
     // v24 → v25 step strips it back out since category is now derived
-    // from `row.typeId → EntryType.categoryId`.
+    // from `row.typeId → EntryType.categoryId`. The v25 → v26 step
+    // then re-introduces a `"type"` column just after "description"
+    // so the row's typeId is visible as a dedicated cell again.
     expect(types).not.toContain("category");
     expect(types).toEqual([
       "date",
       "description",
+      "type",
       "amount",
       "balance",
       "completed",
@@ -441,9 +444,15 @@ describe("migrate", () => {
       }>
     )[0].items[0];
     // Both "cx" (the user-renamed category column) and any column the
-    // intermediate migrations inserted should be gone by v25.
-    expect(item.columns.map((c) => c.id)).toEqual(["c1", "c2"]);
+    // intermediate migrations inserted should be gone by v25; the
+    // v25 → v26 step then inserts a fresh "type" column right after
+    // "description" so the final shape carries it.
     expect(item.columns.some((c) => c.type === "category")).toBe(false);
+    expect(item.columns.map((c) => c.type)).toEqual([
+      "date",
+      "description",
+      "type",
+    ]);
   });
 
   it("v3 → v4 → v5: adds settings with defaults, preserves data", () => {
@@ -557,7 +566,10 @@ describe("migrate", () => {
     expect(sheets[0].items[0].type).toBe("accountBudget");
     expect(sheets[0].items[0].accountId).toBe(accounts[0].id);
     expect(sheets[0].items[0].rows[0].id).toBe("r1");
-    expect(sheets[0].items[0].columns).toHaveLength(3);
+    // The seeded columns (date, description, amount) carry through;
+    // the v25 → v26 step appends a fresh `type` column after
+    // description so the migrated sheet has four columns.
+    expect(sheets[0].items[0].columns).toHaveLength(4);
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });

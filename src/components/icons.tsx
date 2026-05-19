@@ -85,6 +85,7 @@ import type { CategoryIcon, ColumnType } from "../data/types";
 const COLUMN_ICONS: Record<ColumnType, typeof Calendar> = {
   date: Calendar,
   description: AlignLeft,
+  type: Tag,
   amount: DollarSign,
   balance: Wallet,
   completed: Check,

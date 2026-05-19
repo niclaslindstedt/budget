@@ -8,7 +8,13 @@ import {
   Repeat,
 } from "lucide-react";
 
-import type { CellValue, Column, EntryType, Settings } from "../data/types";
+import type {
+  Category,
+  CellValue,
+  Column,
+  EntryType,
+  Settings,
+} from "../data/types";
 import {
   formatAmountForInput,
   formatNumber,
@@ -21,6 +27,7 @@ import type { FloatingPlacement } from "../hooks";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { DatePickerModal } from "./DatePickerModal";
 import { FloatingPanel } from "./FloatingPanel";
+import { TypePicker } from "./TypePicker";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
 import { CELL_BASE, INPUT_BASE } from "./cells/constants";
 import { DateCellDisplay } from "./cells/DateCellDisplay";
@@ -38,8 +45,16 @@ type Props = {
   // affordance and demotes the description text to a popover revealed
   // by tapping the chip. `null` falls back to the legacy plain-text
   // description rendering with the default recurring icon for series
-  // rows.
+  // rows. The dedicated `type` column reads from the same source so
+  // every visual cue stays consistent across cells.
   entryType?: EntryType | null;
+  // Selectable entry types + categories, threaded through for the `type`
+  // column's picker. Optional because synthesized / readonly variants
+  // never reach the editable branch where they'd be consulted.
+  types?: readonly EntryType[];
+  categories?: readonly Category[];
+  typeUsageById?: ReadonlyMap<string, number>;
+  onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
   // True when this row is a synthesized side of a Transaction. Disables
   // every editor (the row is sourced from `data.transactions`, not the
   // budget's `item.rows`) and swaps the description leading glyph to a
@@ -77,6 +92,10 @@ export function Cell({
   settings,
   isRecurring,
   entryType,
+  types,
+  categories,
+  typeUsageById,
+  onCreateType,
   isTransaction,
   peerName,
   outgoing,
@@ -147,6 +166,8 @@ export function Cell({
           </td>
         );
       }
+      case "type":
+        return <ReadonlyTypeCell entryType={entryType ?? null} />;
     }
   }
   switch (column.type) {
@@ -234,7 +255,75 @@ export function Cell({
         </td>
       );
     }
+
+    case "type": {
+      // The cell reads the row's `typeId` directly (via `entryType`)
+      // rather than its own `cells[col.id]` slot — typeId is the source
+      // of truth on `Row`, and the `updateCell` reducer routes a value
+      // for this column straight into `row.typeId` so the picker and
+      // every other consumer (description chip, modals, hints) stay
+      // aligned without duplicating the id into a parallel cell.
+      return (
+        <td className={`${CELL_BASE} p-0`}>
+          <TypePicker
+            rowId={rowId}
+            types={types ?? []}
+            categories={categories ?? []}
+            selectedId={entryType?.id ?? null}
+            usageById={typeUsageById}
+            onSelect={(id) => {
+              onChange(id);
+              onCommit?.(id);
+            }}
+            onCreate={
+              onCreateType ??
+              ((draft) => ({
+                id: `tmp-${Math.random().toString(36).slice(2)}`,
+                ...draft,
+              }))
+            }
+            variant="chip"
+          />
+        </td>
+      );
+    }
   }
+}
+
+// Readonly variant of the type cell — used for synthesized transaction
+// and history rows where the row is sourced from outside the budget's
+// `rows[]` and inline editing is suppressed.
+function ReadonlyTypeCell({ entryType }: { entryType: EntryType | null }) {
+  return (
+    <td className={`${CELL_BASE} p-0`} aria-readonly="true">
+      <span className="flex h-full min-h-9 w-full items-center justify-center px-2 py-1 font-mono text-xs md:justify-start">
+        {entryType ? (
+          <>
+            <span
+              className="inline-flex items-center justify-center md:hidden"
+              style={{ color: entryType.color }}
+              aria-hidden
+            >
+              <CategoryIconGlyph name={entryType.glyph} size={18} />
+            </span>
+            <span
+              className="hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
+                borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
+                color: entryType.color,
+              }}
+            >
+              <CategoryIconGlyph name={entryType.glyph} size={12} />
+              <span className="truncate">{entryType.name}</span>
+            </span>
+          </>
+        ) : (
+          <span className="text-muted">—</span>
+        )}
+      </span>
+    </td>
+  );
 }
 
 function AmountCell({

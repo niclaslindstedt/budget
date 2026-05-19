@@ -3,6 +3,7 @@ import { ArrowLeftRight, Pencil, Repeat, Tags, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
 import type {
+  Category,
   CellValue,
   Column,
   EntryType,
@@ -17,6 +18,9 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   types: readonly EntryType[];
+  categories: readonly Category[];
+  typeUsageById: ReadonlyMap<string, number>;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   settings: Settings;
   selectMode: boolean;
   selected: boolean;
@@ -55,6 +59,9 @@ export function SheetRow({
   columns,
   balances,
   types,
+  categories,
+  typeUsageById,
+  onCreateType,
   settings,
   selectMode,
   selected,
@@ -320,6 +327,10 @@ export function SheetRow({
           settings={settings}
           isRecurring={isSeries}
           entryType={entryType}
+          types={types}
+          categories={categories}
+          typeUsageById={typeUsageById}
+          onCreateType={onCreateType}
           isTransaction={isTransaction}
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}

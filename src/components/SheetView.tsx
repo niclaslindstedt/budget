@@ -19,6 +19,7 @@ import { resolveEffectiveAmounts } from "../data/formula-resolve";
 import type {
   Account,
   AccountBudget,
+  Category,
   CellValue,
   EntryType,
   HistoryEntry,
@@ -46,6 +47,13 @@ type Props = {
   // `sheet.items` and rendering one component per variant.
   item: AccountBudget;
   types: readonly EntryType[];
+  // Categories (user + preset, merged) plus per-type usage counts —
+  // threaded through to the `type` column's picker for the inline
+  // creator and the most-used-first sort. Categories are needed
+  // because every new EntryType belongs to a category.
+  categories: readonly Category[];
+  typeUsageById: ReadonlyMap<string, number>;
+  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   // All accounts in the workspace. Needed so the view can look up the
   // peer account name when synthesizing a transaction row, and so the
   // running balance can mirror what the Accounts dashboard shows.
@@ -156,6 +164,9 @@ export function SheetView({
   sheet,
   item,
   types,
+  categories,
+  typeUsageById,
+  onCreateType,
   accounts,
   transactions,
   history,
@@ -477,6 +488,9 @@ export function SheetView({
                   columns={decoratedItem.columns}
                   balances={balances}
                   types={types}
+                  categories={categories}
+                  typeUsageById={typeUsageById}
+                  onCreateType={onCreateType}
                   settings={settings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}

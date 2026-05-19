@@ -307,13 +307,16 @@ export const USER_DATA_SCHEMA = {
     },
     ColumnType: {
       type: "string",
-      enum: ["date", "description", "amount", "balance", "completed"],
+      enum: ["date", "description", "type", "amount", "balance", "completed"],
       description:
         "Semantic role of a column. The UI picks the cell editor and the " +
         "display formatter from this. `balance` is derived (a running " +
         "total computed from `date` + `amount`) and never has a stored " +
-        "cell value. A row's category is derived through " +
-        "`row.typeId → type.categoryId`, not stored as a cell.",
+        "cell value. The `type` column renders the row's EntryType chip — " +
+        "it reads from / writes to `row.typeId`, not the row's `cells` " +
+        "map, so a row's stored cell value for the column id is always " +
+        "absent. A row's category is derived through " +
+        "`row.typeId → type.categoryId`, not stored as a cell either.",
     },
     CellValue: {
       description:
