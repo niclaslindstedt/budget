@@ -67,9 +67,15 @@ type Update = <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 export function GeneralTab({
   draft,
   onUpdate,
+  detectedPayday,
 }: {
   draft: Settings;
   onUpdate: Update;
+  // Auto-detected payday day-of-month from the user's salary
+  // series, or null if no confident pick is available. Shown as a
+  // one-click "Use detected" suggestion under the picker — never
+  // applied automatically so the user keeps control.
+  detectedPayday: number | null;
 }) {
   return (
     <>
@@ -92,6 +98,19 @@ export function GeneralTab({
             Day each month is considered to begin. Default 25 matches a Swedish
             payday.
           </p>
+          {detectedPayday !== null && detectedPayday !== draft.startOfMonth && (
+            <p className="text-xs text-muted">
+              Detected from your salary postings:{" "}
+              <button
+                type="button"
+                onClick={() => onUpdate("startOfMonth", detectedPayday)}
+                className="text-accent underline-offset-2 hover:underline"
+              >
+                use {detectedPayday}
+              </button>
+              .
+            </p>
+          )}
         </Field>
       </Section>
 

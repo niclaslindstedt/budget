@@ -42,6 +42,10 @@ import {
 import { HistoryModal } from "./components/HistoryModal";
 import { ImportHistoryModal } from "./components/ImportHistoryModal";
 import {
+  ReconciliationModal,
+  type ReconciliationApply,
+} from "./components/ReconciliationModal";
+import {
   MatchRuleModal,
   type MatchRuleDraft,
 } from "./components/MatchRuleModal";
@@ -74,15 +78,30 @@ import {
   shiftIsoToMonth,
   userDataWithSavableRows,
 } from "./data/sheet";
+import {
+  coverageDelta,
+  coveredMonths,
+  nextUncoveredDate,
+} from "./data/coverage";
+import { detectPaydayDayOfMonth } from "./data/payday";
+import {
+  findCandidates,
+  findOrphans,
+  findRuleDrivenCandidates,
+  type MatchCandidate,
+  type OrphanRow,
+} from "./data/reconciliation";
 import type {
   Account,
   AccountBudget,
   Category,
   CellValue,
+  Column,
   EntryType,
   HistoryEntry,
   MatchRule,
   Row,
+  SeriesMatchRule,
   Settings,
   Sheet,
   StoredUser,
@@ -444,7 +463,24 @@ type Action =
       type: "updateMatchRule";
       rule: MatchRule;
     }
-  | { type: "deleteMatchRule"; ruleId: string };
+  | { type: "deleteMatchRule"; ruleId: string }
+  | {
+      // Apply user choices from the post-import reconciliation modal.
+      // `mergedRowIds` are user rows the user confirmed map to a
+      // history entry — they're deleted in a single transition.
+      // `seriesRules` are auto-reconciliation rules learned from
+      // "Apply to whole series" — appended verbatim.
+      // `orphans` carry per-row triage decisions for predictions
+      // that didn't post: either "delete" the row outright, or
+      // "move" it to a new date (typically the next payday).
+      type: "applyReconciliation";
+      mergedRowIds: string[];
+      seriesRules: SeriesMatchRule[];
+      orphans: Array<
+        | { rowId: string; action: "delete" }
+        | { rowId: string; action: "move"; toDate: string }
+      >;
+    };
 
 // Walk an AccountBudget's before/after rows and collect the
 // description+categoryId pairs that need to be folded into the
@@ -934,11 +970,32 @@ function reducer(state: UserData, action: Action): UserData {
   }
   if (action.type === "importBankHistory") {
     const existing = state.history[action.accountId] ?? [];
-    const { merged, addedCount, duplicateCount } = mergeHistory(
+    const { merged, addedCount, duplicateCount, addedIds } = mergeHistory(
       existing,
       action.entries,
       action.now,
     );
+    // Silently apply stored series rules: any newly-imported entry
+    // that fits one of the user's prior "Apply to whole series"
+    // confirmations cancels the predicted row without going through
+    // the modal. The modal only opens for residual unresolved pairs.
+    const newlyAdded = merged.filter((e) => addedIds.has(e.id));
+    const autoDeletedRowIds = new Set<string>();
+    if (state.seriesMatchRules.length > 0 && newlyAdded.length > 0) {
+      for (const sheet of state.sheets) {
+        for (const item of sheet.items) {
+          if (item.type !== "accountBudget") continue;
+          if (item.accountId !== action.accountId) continue;
+          const matches = findRuleDrivenCandidates(
+            state.seriesMatchRules,
+            newlyAdded,
+            item.rows,
+            item.columns,
+          );
+          for (const m of matches) autoDeletedRowIds.add(m.rowId);
+        }
+      }
+    }
     // Re-anchor the opening balance from the earliest entry in the
     // merged set so the running balance lines up with what the bank
     // says, even if the user later imports an older statement that
@@ -966,7 +1023,7 @@ function reducer(state: UserData, action: Action): UserData {
     // sitting in the same window would just double-count.
     const { rangeStart, rangeEnd } = importRecord;
     const sheets =
-      rangeStart === "" || rangeEnd === ""
+      rangeStart === "" && rangeEnd === "" && autoDeletedRowIds.size === 0
         ? state.sheets
         : state.sheets.map((sheet) => {
             let touched = false;
@@ -974,9 +1031,11 @@ function reducer(state: UserData, action: Action): UserData {
               if (item.type !== "accountBudget") return item;
               if (item.accountId !== action.accountId) return item;
               const dateCol = findColumnByType(item.columns, "date");
-              if (!dateCol) return item;
               const filtered = item.rows.filter((r) => {
+                if (autoDeletedRowIds.has(r.id)) return false;
                 if (!r.isCorrection) return true;
+                if (rangeStart === "" || rangeEnd === "") return true;
+                if (!dateCol) return true;
                 const d = r.cells[dateCol.id];
                 if (typeof d !== "string") return true;
                 return d < rangeStart || d > rangeEnd;
@@ -1370,6 +1429,61 @@ function reducer(state: UserData, action: Action): UserData {
     if (next.length === state.matchRules.length) return state;
     return { ...state, matchRules: next };
   }
+  if (action.type === "applyReconciliation") {
+    const mergedSet = new Set(action.mergedRowIds);
+    const orphanByRow = new Map(action.orphans.map((o) => [o.rowId, o]));
+    // Index rows touched by both lists so we can prune sheets in
+    // a single pass — modifying / deleting per-row is cheaper than
+    // recomputing every sheet's rows from scratch.
+    if (mergedSet.size === 0 && orphanByRow.size === 0) {
+      if (action.seriesRules.length === 0) return state;
+      return {
+        ...state,
+        seriesMatchRules: [...state.seriesMatchRules, ...action.seriesRules],
+      };
+    }
+    const sheets = state.sheets.map((sheet) => {
+      let touched = false;
+      const items = sheet.items.map((item) => {
+        if (item.type !== "accountBudget") return item;
+        const dateCol = findColumnByType(item.columns, "date");
+        let rowsTouched = false;
+        const nextRows: Row[] = [];
+        for (const row of item.rows) {
+          if (mergedSet.has(row.id)) {
+            rowsTouched = true;
+            continue; // delete
+          }
+          const orphan = orphanByRow.get(row.id);
+          if (orphan?.action === "delete") {
+            rowsTouched = true;
+            continue;
+          }
+          if (orphan?.action === "move" && dateCol) {
+            rowsTouched = true;
+            nextRows.push({
+              ...row,
+              cells: { ...row.cells, [dateCol.id]: orphan.toDate },
+            });
+            continue;
+          }
+          nextRows.push(row);
+        }
+        if (!rowsTouched) return item;
+        touched = true;
+        return { ...item, rows: nextRows };
+      });
+      return touched ? { ...sheet, items } : sheet;
+    });
+    return {
+      ...state,
+      sheets,
+      seriesMatchRules:
+        action.seriesRules.length > 0
+          ? [...state.seriesMatchRules, ...action.seriesRules]
+          : state.seriesMatchRules,
+    };
+  }
   if (action.type === "renameSheet") {
     return {
       ...state,
@@ -1429,6 +1543,40 @@ function reducer(state: UserData, action: Action): UserData {
       ),
     };
   }
+  // Snap date edits forward when the proposed value lands in a
+  // calendar month covered by imported history. The bank is
+  // authoritative there, so dropping a row into that window would
+  // create a false record; nudge the value to the first day of the
+  // next uncovered month instead. Applied here (before the
+  // sub-reducer runs) so every date-mutating surface — inline cell,
+  // edit modal, future drag-to-date — inherits the policy without
+  // each having to know about coverage.
+  let effectiveAction: Action = action;
+  if (action.type === "updateCell") {
+    const targetSheet = state.sheets.find((s) => s.id === action.sheetId);
+    const targetItem = targetSheet?.items.find(
+      (i) => i.id === action.itemId && i.type === "accountBudget",
+    ) as AccountBudget | undefined;
+    if (targetItem && targetItem.accountId) {
+      const col = targetItem.columns.find((c) => c.id === action.columnId);
+      if (
+        col?.type === "date" &&
+        typeof action.value === "string" &&
+        action.value.length >= 7
+      ) {
+        const accountHistory = state.history[targetItem.accountId] ?? [];
+        const snapped = nextUncoveredDate(
+          action.value,
+          accountHistory,
+          targetItem.rows,
+          targetItem.columns,
+        );
+        if (snapped !== action.value) {
+          effectiveAction = { ...action, value: snapped };
+        }
+      }
+    }
+  }
   // Item-level dispatch tail. Reduces the targeted sheet, then walks
   // the before/after of the targeted AccountBudget to extract any
   // newly-assigned categories so the merchant-hint store stays in
@@ -1442,7 +1590,7 @@ function reducer(state: UserData, action: Action): UserData {
       if (item.id !== action.itemId || item.type !== "accountBudget") {
         return item;
       }
-      const next = reduceAccountBudget(item, action);
+      const next = reduceAccountBudget(item, effectiveAction);
       if (next === item) return item;
       recordings.push(...hintRecordingsFromBudget(item, next));
       return next;
@@ -1467,6 +1615,27 @@ type PendingSeriesEdit = {
   anchorDate: string;
   lastSeriesDate: string | null;
   value: CellValue;
+};
+
+// Reconciliation modal state, populated immediately after an import
+// dispatch. Snapshotted from the pre-import data + parsed entries so
+// the modal doesn't have to chase the reducer to reproduce the
+// matcher's view of the world. The reducer applies stored series
+// rules silently in advance; `candidates` therefore only contains
+// pairs that don't already fit a learned rule.
+type ReconciliationState = {
+  accountId: string;
+  // For rendering: pre-import data so the modal can look up row /
+  // entry shapes from a stable reference even if the user keeps
+  // working in the background.
+  preImportData: UserData;
+  // History entries newly added by this import (excluding ones the
+  // silent series-rule pass already paired up).
+  newEntries: HistoryEntry[];
+  candidates: MatchCandidate[];
+  orphans: OrphanRow[];
+  // Day-of-month the orphan move-to picker defaults to.
+  paydayDay: number;
 };
 
 // In-flight recurring-candidate promotion. Captured when the user
@@ -3202,6 +3371,11 @@ function BudgetView({
     null,
   );
   const [viewHistoryForId, setViewHistoryForId] = useState<string | null>(null);
+  // Post-import reconciliation modal state. Null = closed. Populated
+  // when an import produces candidate merges or orphans the user
+  // should triage; cleared on apply / cancel.
+  const [reconciliation, setReconciliation] =
+    useState<ReconciliationState | null>(null);
   // null = closed; otherwise the id of the correction row queued for
   // deletion (set when the user clicks the divider line in the budget
   // view). The ConfirmDialog renders against this state to ask for
@@ -3820,19 +3994,141 @@ function BudgetView({
   const onConfirmImportHistory = useCallback(
     (parsed: ParsedBankFile, filename: string) => {
       if (!importHistoryAccount) return;
+      const accountId = importHistoryAccount.id;
+      const now = Date.now();
+      // Snapshot pre-import state so we can compute the matcher view
+      // against the same world the user just confirmed against.
+      const preImportData = data;
+      const existingHistory = preImportData.history[accountId] ?? [];
+      const { merged, addedIds } = mergeHistory(
+        existingHistory,
+        parsed.entries,
+        now,
+      );
+      const newEntries = merged.filter((e) => addedIds.has(e.id));
+
+      // Walk every account-budget that tracks this account; the
+      // matcher works per (rows, columns) tuple so each item runs
+      // independently but contributes to the same candidate pool.
+      const rowsForAccount: Array<{
+        sheetId: string;
+        itemId: string;
+        rows: Row[];
+        columns: Column[];
+      }> = [];
+      for (const sheet of preImportData.sheets) {
+        for (const item of sheet.items) {
+          if (item.type !== "accountBudget") continue;
+          if (item.accountId !== accountId) continue;
+          rowsForAccount.push({
+            sheetId: sheet.id,
+            itemId: item.id,
+            rows: item.rows,
+            columns: item.columns,
+          });
+        }
+      }
+
+      // Auto-rule-driven matches (mirrors the reducer's silent pass)
+      // so we exclude those rows from the user-facing candidate set.
+      const autoMatchedRowIds = new Set<string>();
+      for (const { rows, columns } of rowsForAccount) {
+        const auto = findRuleDrivenCandidates(
+          preImportData.seriesMatchRules,
+          newEntries,
+          rows,
+          columns,
+        );
+        for (const m of auto) autoMatchedRowIds.add(m.rowId);
+      }
+
+      // Coverage snapshot: months covered by history before vs.
+      // after this import. Orphan detection scopes to the diff.
+      const beforeCovered =
+        rowsForAccount.length > 0
+          ? coveredMonths(
+              existingHistory,
+              rowsForAccount.flatMap((r) => r.rows),
+              rowsForAccount[0].columns,
+            )
+          : new Set<string>();
+      // Apply silent auto-deletions before computing post-coverage
+      // so the rule's actions don't accidentally suppress coverage.
+      const afterRowsForAccount = rowsForAccount.map((r) => ({
+        ...r,
+        rows: r.rows.filter((row) => !autoMatchedRowIds.has(row.id)),
+      }));
+      const afterCovered =
+        afterRowsForAccount.length > 0
+          ? coveredMonths(
+              merged,
+              afterRowsForAccount.flatMap((r) => r.rows),
+              afterRowsForAccount[0].columns,
+            )
+          : new Set<string>();
+      const newlyCovered = coverageDelta(beforeCovered, afterCovered);
+
+      const allCandidates: MatchCandidate[] = [];
+      const allOrphans: OrphanRow[] = [];
+      for (const { rows, columns } of afterRowsForAccount) {
+        const candidates = findCandidates(newEntries, rows, columns).filter(
+          (c) => !autoMatchedRowIds.has(c.rowId),
+        );
+        for (const c of candidates) allCandidates.push(c);
+        const claimedIds = new Set(candidates.map((c) => c.rowId));
+        const orphans = findOrphans(rows, columns, newlyCovered, claimedIds);
+        for (const o of orphans) allOrphans.push(o);
+      }
+
       dispatch({
         type: "importBankHistory",
-        accountId: importHistoryAccount.id,
+        accountId,
         bankParserId: parsed.bankParserId,
         bankClearing: parsed.bankClearing,
         bankAccountNumber: parsed.bankAccountNumber,
         filename,
         entries: parsed.entries,
-        now: Date.now(),
+        now,
       });
       setImportHistoryForId(null);
+
+      if (allCandidates.length > 0 || allOrphans.length > 0) {
+        const paydayDay = detectPaydayDayOfMonth(
+          preImportData,
+          preImportData.settings.startOfMonth,
+        );
+        setReconciliation({
+          accountId,
+          preImportData,
+          newEntries,
+          candidates: allCandidates,
+          orphans: allOrphans,
+          paydayDay,
+        });
+      }
     },
-    [dispatch, importHistoryAccount],
+    [data, dispatch, importHistoryAccount],
+  );
+
+  const onApplyReconciliation = useCallback(
+    (decisions: ReconciliationApply) => {
+      if (
+        decisions.mergedRowIds.length === 0 &&
+        decisions.seriesRules.length === 0 &&
+        decisions.orphans.length === 0
+      ) {
+        setReconciliation(null);
+        return;
+      }
+      dispatch({
+        type: "applyReconciliation",
+        mergedRowIds: decisions.mergedRowIds,
+        seriesRules: decisions.seriesRules,
+        orphans: decisions.orphans,
+      });
+      setReconciliation(null);
+    },
+    [dispatch],
   );
 
   // Balance-correction flow. The Accounts page surfaces a clickable
@@ -4776,6 +5072,18 @@ function BudgetView({
         settings={data.settings}
         onCancel={() => setImportHistoryForId(null)}
         onConfirm={onConfirmImportHistory}
+      />
+      <ReconciliationModal
+        open={reconciliation !== null}
+        onClose={() => setReconciliation(null)}
+        onApply={onApplyReconciliation}
+        accountId={reconciliation?.accountId ?? ""}
+        preImportData={reconciliation?.preImportData ?? data}
+        newEntries={reconciliation?.newEntries ?? []}
+        candidates={reconciliation?.candidates ?? []}
+        orphans={reconciliation?.orphans ?? []}
+        paydayDay={reconciliation?.paydayDay ?? data.settings.startOfMonth}
+        settings={data.settings}
       />
       <HistoryModal
         open={viewHistoryAccount !== null}

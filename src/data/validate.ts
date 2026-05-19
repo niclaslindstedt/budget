@@ -29,6 +29,7 @@ import type {
   MatchRule,
   MerchantHint,
   Row,
+  SeriesMatchRule,
   Settings,
   Sheet,
   SheetGlyph,
@@ -500,6 +501,35 @@ function validateMatchRule(
   return rule;
 }
 
+// Series-match-rule validator. Advisory like `validateMatchRule`:
+// returns null for shapes that can't be salvaged so a bogus entry is
+// silently dropped rather than rejecting the whole file. Tolerance
+// values outside the sane band (negative, NaN, > 1) are clamped so a
+// hand-edited file can't widen matching beyond what the import flow
+// would normally accept.
+function validateSeriesMatchRule(raw: unknown): SeriesMatchRule | null {
+  if (!isObject(raw)) return null;
+  const { id, seriesId, pattern, amountTolerancePct, dateLagDays } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof seriesId !== "string" || seriesId === "") return null;
+  if (typeof pattern !== "string" || pattern === "") return null;
+  const pct =
+    typeof amountTolerancePct === "number" &&
+    Number.isFinite(amountTolerancePct) &&
+    amountTolerancePct >= 0 &&
+    amountTolerancePct <= 1
+      ? amountTolerancePct
+      : 0;
+  const lag =
+    typeof dateLagDays === "number" &&
+    Number.isFinite(dateLagDays) &&
+    dateLagDays >= 0 &&
+    dateLagDays <= 31
+      ? Math.floor(dateLagDays)
+      : 0;
+  return { id, seriesId, pattern, amountTolerancePct: pct, dateLagDays: lag };
+}
+
 function validateHistoryImport(
   raw: unknown,
   path: string,
@@ -940,6 +970,23 @@ export function validateUserData(raw: unknown): Result<UserData> {
     matchRules.push(rule);
   }
 
+  // Auto-reconciliation rules learned from "Apply to whole series".
+  // Advisory and independent — duplicates collapse to the first
+  // occurrence so a hand-edited file can't trap the loader in an
+  // ambiguous state.
+  const rawSeriesRules = Array.isArray(raw.seriesMatchRules)
+    ? raw.seriesMatchRules
+    : [];
+  const seriesMatchRules: SeriesMatchRule[] = [];
+  const seenSeriesRuleIds = new Set<string>();
+  for (const rawRule of rawSeriesRules) {
+    const rule = validateSeriesMatchRule(rawRule);
+    if (!rule) continue;
+    if (seenSeriesRuleIds.has(rule.id)) continue;
+    seenSeriesRuleIds.add(rule.id);
+    seriesMatchRules.push(rule);
+  }
+
   // Hide-list allowlists for preset entries. Both arrays are
   // sanitised (duplicates / empty strings stripped) and intersected
   // with the active preset id sets so an entry that no longer matches
@@ -972,6 +1019,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       recurringDismissals,
       transferCollapseDismissals,
       matchRules,
+      seriesMatchRules,
       settings,
     },
   };

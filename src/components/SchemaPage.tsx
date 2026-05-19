@@ -331,6 +331,9 @@ const OVERVIEW_TEXT = `UserData
 │  └─ MerchantHint { categoryId, hitCount, lastUsedAt, typeId?, description? }
 ├─ recurringDismissals: string[]           normalised keys dismissed as "Not recurring"
 ├─ transferCollapseDismissals: string[]    pair keys dismissed as "Never collapse"
+├─ matchRules: MatchRule[]                 user wildcard rules that relabel history rows
+├─ seriesMatchRules: SeriesMatchRule[]     auto-reconciliation rules per recurring series
+│  └─ SeriesMatchRule { id, seriesId, pattern, amountTolerancePct, dateLagDays }
 ├─ settings: Settings                      display + entry preferences
 │  ├─ startOfMonth: 1..28                  fiscal-month rollover day
 │  ├─ dateFormat / shortDateFormat

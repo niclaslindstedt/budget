@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 21,
+    version: 22,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -45,6 +45,7 @@ function sampleData(): UserData {
     recurringDismissals: [],
     transferCollapseDismissals: [],
     matchRules: [],
+    seriesMatchRules: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -105,6 +106,7 @@ describe("serializeUserData", () => {
       recurringDismissals: b.recurringDismissals,
       transferCollapseDismissals: b.transferCollapseDismissals,
       matchRules: b.matchRules,
+      seriesMatchRules: b.seriesMatchRules,
       settings: b.settings,
       version: b.version,
     } as UserData;
@@ -118,7 +120,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 16)).toEqual([
+    expect(topKeys.slice(0, 17)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -129,6 +131,7 @@ describe("serializeUserData", () => {
       "matchRules",
       "merchantHints",
       "recurringDismissals",
+      "seriesMatchRules",
       "settings",
       "sheets",
       "transactions",
@@ -969,6 +972,7 @@ describe("migrate", () => {
       recurringDismissals: [],
       transferCollapseDismissals: [],
       matchRules: [],
+      seriesMatchRules: [],
       sheets: [
         {
           id: "s1",
@@ -1013,6 +1017,7 @@ describe("migrate", () => {
       recurringDismissals: [],
       transferCollapseDismissals: [],
       matchRules: [],
+      seriesMatchRules: [],
       sheets: [
         {
           id: "s1",
@@ -1057,6 +1062,7 @@ describe("migrate", () => {
       recurringDismissals: [],
       transferCollapseDismissals: [],
       matchRules: [],
+      seriesMatchRules: [],
       sheets: [
         {
           id: "s1",
@@ -1096,6 +1102,7 @@ describe("migrate", () => {
       recurringDismissals: [],
       transferCollapseDismissals: [],
       matchRules: [],
+      seriesMatchRules: [],
       sheets: [
         {
           id: "s1",

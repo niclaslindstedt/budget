@@ -81,7 +81,7 @@ export function createDefaultSheet(
 }
 
 export function findColumnByType(
-  columns: Column[],
+  columns: readonly Column[],
   type: ColumnType,
 ): Column | undefined {
   return columns.find((c) => c.type === type);

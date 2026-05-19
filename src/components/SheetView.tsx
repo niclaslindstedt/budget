@@ -14,6 +14,7 @@ import {
   synthesizeTransactionRow,
   transactionsForAccount,
 } from "../data/sheet";
+import { coveredMonths } from "../data/coverage";
 import type {
   Account,
   AccountBudget,
@@ -230,6 +231,14 @@ export function SheetView({
     [item, transactionRows, historyRows],
   );
 
+  // Calendar months fully covered by imported history. Computed once
+  // per render; passed down so each `MonthTable` can hide its
+  // `+ Add row` footer.
+  const coveredSet = useMemo(
+    () => coveredMonths(history, item.rows, item.columns),
+    [history, item.rows, item.columns],
+  );
+
   const balances = useMemo(
     () => computeBalances(mergedItem, openingBalance),
     [mergedItem, openingBalance],
@@ -439,6 +448,16 @@ export function SheetView({
                   amountChars={colWidths.amountChars}
                   balanceChars={colWidths.balanceChars}
                   collapsed={collapsedMonths.has(monthKey)}
+                  covered={
+                    // Gate by the seed date's calendar month. The
+                    // `+` button defaults a new row to `seedDate`,
+                    // so if that date sits in a covered window
+                    // (history is authoritative there) the button
+                    // is pointless. Fiscal-month keys may straddle
+                    // two calendar months when `startOfMonth ≠ 1`,
+                    // so we check the seed rather than the key.
+                    seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
+                  }
                   onToggleCollapsed={() => toggleCollapsed(monthKey)}
                   onUpdateCell={onUpdateCell}
                   onCommitCell={onCommitCell}

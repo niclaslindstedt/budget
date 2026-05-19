@@ -166,6 +166,11 @@ export type MergeResult = {
   merged: HistoryEntry[];
   addedCount: number;
   duplicateCount: number;
+  // Ids of the entries that were added in this merge (i.e. parsed
+  // entries that weren't already present in `existing`). The
+  // reconciliation flow scopes its matcher to these so a re-import
+  // doesn't re-prompt for entries the user has already triaged.
+  addedIds: Set<string>;
 };
 
 // Combine existing history with newly-parsed entries. Entries are
@@ -182,6 +187,7 @@ export function mergeHistory(
   for (const e of existing) byId.set(e.id, e);
   let addedCount = 0;
   let duplicateCount = 0;
+  const addedIds = new Set<string>();
   for (const p of parsed) {
     const id = historyEntryId(p);
     if (byId.has(id)) {
@@ -197,6 +203,7 @@ export function mergeHistory(
     };
     if (p.balance !== undefined) entry.balance = p.balance;
     byId.set(id, entry);
+    addedIds.add(id);
     addedCount++;
   }
   const merged = Array.from(byId.values()).sort((a, b) =>
@@ -205,7 +212,7 @@ export function mergeHistory(
   log.log(
     `mergeHistory: existing=${existing.length} parsed=${parsed.length} added=${addedCount} duplicates=${duplicateCount}`,
   );
-  return { merged, addedCount, duplicateCount };
+  return { merged, addedCount, duplicateCount, addedIds };
 }
 
 // The earliest balance in `entries` minus that entry's amount —
