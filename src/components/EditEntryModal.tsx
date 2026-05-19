@@ -12,7 +12,6 @@ import {
   parseAmount,
 } from "../utils/format";
 import { Modal } from "./Modal";
-import { CategoryPicker } from "./CategoryPicker";
 import { Checkbox, Radio, RadioGroup } from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
@@ -53,7 +52,6 @@ type Props = {
     rawDescription: string,
     promotion: HistoryPromotion,
   ) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
@@ -64,7 +62,6 @@ function todayIso(): string {
 
 export type HistoryPromotePrefill = {
   description: string | null;
-  categoryId: string | null;
   typeId: string | null;
 };
 
@@ -74,7 +71,6 @@ export type HistoryPromotion = {
   // merchant key.
   description: string;
   amount: number;
-  categoryId: string | null;
   typeId: string | null;
   dates: string[];
 };
@@ -82,7 +78,6 @@ export type HistoryPromotion = {
 export type EditPatch = {
   description: string;
   amount: number | null;
-  categoryId: string | null;
   // `undefined` = don't touch the row's type; `null` = clear it (the
   // row falls back to its description as the primary label); a string
   // sets the typeId.
@@ -107,7 +102,6 @@ export function EditEntryModal({
   onConvertToRecurring,
   onEditSeries,
   onPromoteHistory,
-  onCreateCategory,
   onCreateType,
 }: Props) {
   const descCol = useMemo(
@@ -116,10 +110,6 @@ export function EditEntryModal({
   );
   const amountCol = useMemo(
     () => findColumnByType(columns, "amount"),
-    [columns],
-  );
-  const categoryCol = useMemo(
-    () => findColumnByType(columns, "category"),
     [columns],
   );
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -155,11 +145,6 @@ export function EditEntryModal({
     amountCol && row && typeof row.cells[amountCol.id] === "number"
       ? (row.cells[amountCol.id] as number) <= 0
       : true;
-  const initialCategoryId = isHistory
-    ? (historyHintPrefill?.categoryId ?? null)
-    : categoryCol && row && typeof row.cells[categoryCol.id] === "string"
-      ? (row.cells[categoryCol.id] as string)
-      : null;
   const initialDate =
     dateCol && row && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
@@ -182,9 +167,6 @@ export function EditEntryModal({
   const [description, setDescription] = useState(initialDescription);
   const [amount, setAmount] = useState(initialAmountText);
   const [negative, setNegative] = useState(initialNegative);
-  const [categoryId, setCategoryId] = useState<string | null>(
-    initialCategoryId,
-  );
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
 
   // "Just this" vs "this and all future"; the latter optionally clamped
@@ -208,7 +190,6 @@ export function EditEntryModal({
     setDescription(initialDescription);
     setAmount(initialAmountText);
     setNegative(initialNegative);
-    setCategoryId(initialCategoryId);
     setTypeId(initialTypeId);
     setScopeKind("just-this");
     setUntilEnabled(false);
@@ -257,7 +238,6 @@ export function EditEntryModal({
       {
         description: description.trim(),
         amount: amountTouched ? parsedAmount : null,
-        categoryId,
         typeId: typeTouched ? typeId : undefined,
       },
       scopeKind === "just-this"
@@ -282,7 +262,6 @@ export function EditEntryModal({
     onPromoteHistory(row.historyEntryId, rawCellDescription, {
       description: description.trim(),
       amount: parsedAmount,
-      categoryId,
       typeId,
       dates: recurringDates,
     });
@@ -326,6 +305,7 @@ export function EditEntryModal({
                 <TypePicker
                   variant="field"
                   types={types}
+                  categories={categories}
                   selectedId={typeId}
                   onSelect={setTypeId}
                   onCreate={onCreateType}
@@ -365,16 +345,6 @@ export function EditEntryModal({
                   />
                 </div>
               </label>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">Category</span>
-                <CategoryPicker
-                  variant="field"
-                  categories={categories}
-                  selectedId={categoryId}
-                  onSelect={setCategoryId}
-                  onCreate={onCreateCategory}
-                />
-              </div>
             </div>
 
             <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
@@ -461,21 +431,12 @@ export function EditEntryModal({
                   />
                 </div>
               </label>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">Category</span>
-                <CategoryPicker
-                  variant="field"
-                  categories={categories}
-                  selectedId={categoryId}
-                  onSelect={setCategoryId}
-                  onCreate={onCreateCategory}
-                />
-              </div>
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <span className="text-xs text-muted">Type</span>
                 <TypePicker
                   variant="field"
                   types={types}
+                  categories={categories}
                   selectedId={typeId}
                   onSelect={setTypeId}
                   onCreate={onCreateType}
@@ -493,8 +454,8 @@ export function EditEntryModal({
             </div>
             <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
               Past history entries that match this merchant will adopt the
-              description, type, and category above. The bank's original text is
-              kept as-is — only the on-screen label changes.
+              description and type above. The bank's original text is kept as-is
+              — only the on-screen label changes.
             </p>
           </>
         ) : (
@@ -508,6 +469,7 @@ export function EditEntryModal({
               <TypePicker
                 variant="field"
                 types={types}
+                categories={categories}
                 selectedId={typeId}
                 onSelect={setTypeId}
                 onCreate={onCreateType}

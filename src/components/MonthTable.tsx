@@ -2,7 +2,6 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type {
-  Category,
   CellValue,
   Column,
   EntryType,
@@ -20,7 +19,6 @@ type Props = {
   rows: Row[];
   columns: Column[];
   balances: Map<string, number>;
-  categories: Category[];
   types: readonly EntryType[];
   settings: Settings;
   selectMode: boolean;
@@ -48,7 +46,6 @@ type Props = {
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 const monthFormat = new Intl.DateTimeFormat(undefined, {
@@ -68,7 +65,6 @@ export function MonthTable({
   rows,
   columns,
   balances,
-  categories,
   types,
   settings,
   selectMode,
@@ -92,7 +88,6 @@ export function MonthTable({
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
-  onCreateCategory,
 }: Props) {
   // Synthesized transaction rows live in `rows` (the parent merges them
   // in) but they are not selectable for bulk operations — they aren't
@@ -233,7 +228,6 @@ export function MonthTable({
                   row={row}
                   columns={columns}
                   balances={balances}
-                  categories={categories}
                   types={types}
                   settings={settings}
                   selectMode={selectMode}
@@ -247,7 +241,6 @@ export function MonthTable({
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onToggleSelect={onToggleSelect}
-                  onCreateCategory={onCreateCategory}
                 />
               );
             })}

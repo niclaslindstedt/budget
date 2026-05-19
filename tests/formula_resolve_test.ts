@@ -4,6 +4,7 @@ import { resolveEffectiveAmounts } from "../src/data/formula-resolve";
 import type {
   AccountBudget,
   Column,
+  EntryType,
   Row,
   Sheet,
   UserData,
@@ -12,15 +13,13 @@ import type {
 const dateCol: Column = { id: "d", type: "date", label: "Date" };
 const descCol: Column = { id: "x", type: "description", label: "Desc" };
 const amtCol: Column = { id: "a", type: "amount", label: "Amount" };
-const catCol: Column = { id: "c", type: "category", label: "Category" };
-const columns: Column[] = [dateCol, descCol, amtCol, catCol];
+const columns: Column[] = [dateCol, descCol, amtCol];
 
 function row(opts: {
   id: string;
   date: string;
   amount?: number;
   formula?: string;
-  category?: string | null;
   typeId?: string;
 }): Row {
   const r: Row = {
@@ -29,7 +28,6 @@ function row(opts: {
       [dateCol.id]: opts.date,
       [descCol.id]: "x",
       [amtCol.id]: opts.amount ?? 0,
-      [catCol.id]: opts.category ?? null,
     },
   };
   if (opts.formula) r.amountFormula = opts.formula;
@@ -47,7 +45,11 @@ function budget(rows: Row[]): AccountBudget {
   };
 }
 
-function workspace(item: AccountBudget, extra: Sheet[] = []): UserData {
+function workspace(
+  item: AccountBudget,
+  extra: Sheet[] = [],
+  types: EntryType[] = [],
+): UserData {
   const main: Sheet = {
     id: "sht_main",
     name: "Main",
@@ -58,17 +60,22 @@ function workspace(item: AccountBudget, extra: Sheet[] = []): UserData {
     items: [item],
   };
   return {
-    version: 24,
+    version: 25,
     sheets: [main, ...extra],
     activeSheetId: "sht_main",
     accounts: [],
     categories: [],
-    types: [],
+    types,
+    hiddenPresetTypeIds: [],
+    hiddenPresetCategoryIds: [],
     matchRules: [],
     seriesMatchRules: [],
     transactions: [],
     history: {},
+    historyImports: {},
     merchantHints: {},
+    recurringDismissals: [],
+    transferCollapseDismissals: [],
     settings: {} as never,
   } as unknown as UserData;
 }
@@ -105,18 +112,28 @@ describe("resolveEffectiveAmounts", () => {
   });
 
   it("aggregates per-category and per-type sums for the row's month", () => {
+    // A row's category is derived through `row.typeId → EntryType.categoryId`.
+    // We seed a type whose category is "groc" so categoryTotal("groc")
+    // returns the sum of rows pointing at it.
+    const grocType: EntryType = {
+      id: "type-groc",
+      name: "Groceries",
+      color: "#e06c75",
+      glyph: "utensils",
+      categoryId: "groc",
+    };
     const rows = [
       row({
         id: "r1",
         date: "2026-05-05",
         amount: -200,
-        category: "groc",
+        typeId: grocType.id,
       }),
       row({
         id: "r2",
         date: "2026-05-06",
         amount: -300,
-        category: "groc",
+        typeId: grocType.id,
       }),
       row({
         id: "r3",
@@ -125,7 +142,7 @@ describe("resolveEffectiveAmounts", () => {
       }),
     ];
     const item = budget(rows);
-    const r = resolveEffectiveAmounts(item, 0, workspace(item));
+    const r = resolveEffectiveAmounts(item, 0, workspace(item, [], [grocType]));
     // categoryTotal("groc") = -500; formula = -500 + 1000 = 500.
     expect(r.amounts.get("r3")).toBe(500);
   });

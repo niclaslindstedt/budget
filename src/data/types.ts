@@ -3,8 +3,7 @@ export type ColumnType =
   | "description"
   | "amount"
   | "balance"
-  | "completed"
-  | "category";
+  | "completed";
 
 export type CellValue = string | number | boolean | null;
 
@@ -160,6 +159,12 @@ export type CategoryIcon =
   | "arrow-down-circle"
   | "arrow-up-circle";
 
+// Broad bucket used for cross-row analysis: Food, Housing, Transport,
+// Entertainment. A category owns a set of `EntryType`s (its concrete
+// children) — every type belongs to exactly one category, and a row's
+// category is derived through `row.typeId → type.categoryId`. The
+// category itself is never selected directly on a row; rows pick a
+// type and the category follows.
 export type Category = {
   id: string;
   name: string;
@@ -170,16 +175,19 @@ export type Category = {
 // Reusable label assigned to a row to describe what kind of entry it
 // is — "Mortgage", "Groceries", "Restaurant", "Salary". Sits between
 // the free-text description (which is specific to the row) and the
-// category (which groups across rows for statistical analysis). The
-// type's glyph and color replace the per-row `glyph` field that used
-// to live on `Row`: now every row that shares a type also shares a
-// visual identity, so the picker is the single source of truth for
+// category (which groups across rows for statistical analysis). Every
+// type belongs to exactly one `Category` via `categoryId`; the
+// category is derived through that link rather than stored on the row.
+// The type's glyph and color replace the per-row `glyph` field that
+// used to live on `Row`: now every row that shares a type also shares
+// a visual identity, so the picker is the single source of truth for
 // what a row looks like.
 export type EntryType = {
   id: string;
   name: string;
   color: string;
   glyph: CategoryIcon;
+  categoryId: string;
 };
 
 // A real-world account (a bank account, credit card, cash envelope, …)
@@ -287,7 +295,7 @@ export type Transaction = {
   amount: number;
   fromAccountId: string;
   toAccountId: string;
-  categoryId?: string | null;
+  typeId?: string | null;
   completed?: boolean;
 };
 
@@ -444,20 +452,21 @@ export type Settings = {
   lastSeenChangelogVersion: string | null;
 };
 
-// Persistent memory of which category the user assigned to which
+// Persistent memory of which type the user assigned to which
 // merchant. Keyed by the normalised description so cosmetic
 // differences ("Spotify *123", "SPOTIFY") map to a single hint. The
-// recurring-candidate promote flow reads this to pre-suggest a
-// category; the history-row promote-to-recurring flow extends the
-// same hint with a typeId and a user-typed description so past and
-// future history entries display under the user's label rather than
-// the raw bank text. Always advisory — the UI surfaces the
-// suggestion to the user, never auto-applies silently.
+// recurring-candidate promote flow reads this to pre-suggest a type;
+// the history-row promote-to-recurring flow extends the same hint
+// with a user-typed description so past and future history entries
+// display under the user's label rather than the raw bank text. The
+// hint's category is derived through `typeId → type.categoryId` —
+// it isn't stored on the hint itself. Always advisory — the UI
+// surfaces the suggestion to the user, never auto-applies silently.
 export type MerchantHint = {
-  categoryId: string;
-  // How many times the user has assigned this category to this
-  // merchant. Higher counts could later inform suggestion ordering;
-  // today the panel just shows the count for transparency.
+  typeId: string;
+  // How many times the user has assigned this type to this merchant.
+  // Higher counts could later inform suggestion ordering; today the
+  // panel just shows the count for transparency.
   hitCount: number;
   // Unix ms timestamp of the most recent assignment. Used by the
   // "Merchant memory" settings section to show "last used …" and as
@@ -465,10 +474,6 @@ export type MerchantHint = {
   // validator already enforces a single hint per key, but the field
   // costs nothing and keeps the door open).
   lastUsedAt: number;
-  // Optional `EntryType` id assigned alongside the category by the
-  // history-row promote flow. Synthesized history rows pick it up so
-  // the type chip + colour render in place of the raw bank text.
-  typeId?: string;
   // Optional user-typed label that overrides the bank's description
   // wherever this merchant shows up. Set by the history-row promote
   // flow so a row of "ICA SUPERMARKET 12345" can display as
@@ -503,7 +508,6 @@ export type MatchRule = {
   id: string;
   pattern: string;
   description?: string;
-  categoryId?: string | null;
   typeId?: string | null;
   amountSign?: "any" | "positive" | "negative";
   transferFilter?: "any" | "exclude" | "only";
@@ -548,7 +552,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 24;
+  version: 25;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

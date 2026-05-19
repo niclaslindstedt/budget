@@ -19,7 +19,8 @@ import {
   previousMonthKey,
   sortRowsByDate,
 } from "./sheet";
-import type { AccountBudget, Row, Sheet, UserData } from "./types";
+import { allTypes } from "./presets";
+import type { AccountBudget, EntryType, Row, Sheet, UserData } from "./types";
 
 export type ResolveResult = {
   // Effective amount per row id. Literal rows map to their cell value
@@ -39,6 +40,8 @@ export function resolveEffectiveAmounts(
   data: UserData,
   startOfMonth: number = 1,
 ): ResolveResult {
+  const typesById = new Map<string, EntryType>();
+  for (const t of allTypes(data)) typesById.set(t.id, t);
   const result: ResolveResult = {
     amounts: new Map(),
     errors: new Map(),
@@ -65,7 +68,14 @@ export function resolveEffectiveAmounts(
     prop: string,
     monthKey: string,
   ): number | null => {
-    return crossSheetLookup(data, targetSheetId, prop, monthKey, startOfMonth);
+    return crossSheetLookup(
+      data,
+      targetSheetId,
+      prop,
+      monthKey,
+      startOfMonth,
+      typesById,
+    );
   };
 
   for (const row of item.rows) {
@@ -85,6 +95,7 @@ export function resolveEffectiveAmounts(
       openingBalance,
       row.id,
       startOfMonth,
+      typesById,
     );
     const prevMonth = aggregateMonth(
       item,
@@ -93,6 +104,7 @@ export function resolveEffectiveAmounts(
       openingBalance,
       null,
       startOfMonth,
+      typesById,
     );
     const balanceBefore = runningBalanceBefore(
       item,
@@ -131,9 +143,9 @@ function aggregateMonth(
   openingBalance: number,
   excludeRowId: string | null,
   startOfMonth: number,
+  typesById: ReadonlyMap<string, EntryType>,
 ): MonthAggregates {
   const dateCol = findColumnByType(item.columns, "date");
-  const categoryCol = findColumnByType(item.columns, "category");
   if (!dateCol) return emptyAggregates(openingBalance);
 
   // Sum literals (and resolved formulas) in every month strictly
@@ -156,14 +168,19 @@ function aggregateMonth(
     if (rowMonth !== monthKey) continue;
     if (amount > 0) income += amount;
     else if (amount < 0) expenses += amount;
-    const cat = categoryCol ? row.cells[categoryCol.id] : null;
-    if (typeof cat === "string" && cat !== "") {
-      byCategory.set(cat, (byCategory.get(cat) ?? 0) + amount);
+    // Category is derived through the row's type. Rows with no type
+    // (or a type that has been deleted) fall into the "uncategorized"
+    // bucket so a stale formula referencing them still resolves
+    // sensibly.
+    const type = row.typeId ? typesById.get(row.typeId) : undefined;
+    if (type) {
+      byCategory.set(
+        type.categoryId,
+        (byCategory.get(type.categoryId) ?? 0) + amount,
+      );
+      byType.set(type.id, (byType.get(type.id) ?? 0) + amount);
     } else {
       uncategorized += amount;
-    }
-    if (row.typeId) {
-      byType.set(row.typeId, (byType.get(row.typeId) ?? 0) + amount);
     }
   }
 
@@ -217,6 +234,7 @@ function crossSheetLookup(
   prop: string,
   monthKey: string,
   startOfMonth: number,
+  typesById: ReadonlyMap<string, EntryType>,
 ): number | null {
   // v1 forward-only: the referenced sheet's formula rows are treated
   // as literal-zero so a cycle through `sheet("…")` can never form.
@@ -250,6 +268,7 @@ function crossSheetLookup(
     opening,
     null,
     startOfMonth,
+    typesById,
   );
   switch (prop) {
     case "endOfMonthBalance":

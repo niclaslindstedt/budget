@@ -3,7 +3,6 @@ import {
   Hash,
   HardDrive,
   Heart,
-  Layers,
   type LucideIcon,
   Menu,
   Settings as SettingsIcon,
@@ -35,7 +34,6 @@ import {
   GeneralTab,
   MemoryTab,
   StorageTab,
-  TypesTab,
 } from "./tabs";
 
 type Props = {
@@ -109,13 +107,7 @@ type Props = {
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
 };
 
-type TabId =
-  | "general"
-  | "format"
-  | "storage"
-  | "categories"
-  | "types"
-  | "memory";
+type TabId = "general" | "format" | "storage" | "categories" | "memory";
 
 type TabDef = {
   id: TabId;
@@ -131,7 +123,6 @@ const TAB_DEFS: TabDef[] = [
   { id: "format", label: "Format", icon: Hash },
   { id: "storage", label: "Storage", icon: HardDrive },
   { id: "categories", label: "Categories", icon: Tag },
-  { id: "types", label: "Types", icon: Layers },
   { id: "memory", label: "Memory", icon: SettingsIcon },
 ];
 
@@ -308,11 +299,6 @@ export function SettingsModal({
                 onUpdateCategory={onUpdateCategory}
                 onDeleteCategory={onDeleteCategory}
                 onSetPresetCategoryHidden={onSetPresetCategoryHidden}
-              />
-            )}
-            {activeTab === "types" && (
-              <TypesTab
-                data={data}
                 onCreateType={onCreateType}
                 onUpdateType={onUpdateType}
                 onDeleteType={onDeleteType}

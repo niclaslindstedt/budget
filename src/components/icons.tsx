@@ -88,7 +88,6 @@ const COLUMN_ICONS: Record<ColumnType, typeof Calendar> = {
   amount: DollarSign,
   balance: Wallet,
   completed: Check,
-  category: Tag,
 };
 
 export function ColumnIcon({

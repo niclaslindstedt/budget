@@ -19,7 +19,6 @@ import { resolveEffectiveAmounts } from "../data/formula-resolve";
 import type {
   Account,
   AccountBudget,
-  Category,
   CellValue,
   EntryType,
   HistoryEntry,
@@ -46,7 +45,6 @@ type Props = {
   // prop so a future multi-block view drops in by mapping over
   // `sheet.items` and rendering one component per variant.
   item: AccountBudget;
-  categories: Category[];
   types: readonly EntryType[];
   // All accounts in the workspace. Needed so the view can look up the
   // peer account name when synthesizing a transaction row, and so the
@@ -96,7 +94,6 @@ type Props = {
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onEditSheet: (sheetId: string) => void;
   // Full workspace state — needed by the formula resolver so
   // `sheet("<id>", <variable>)` references can look up other sheets'
@@ -158,7 +155,6 @@ const HISTORY_PAGE_SIZE = 3;
 export function SheetView({
   sheet,
   item,
-  categories,
   types,
   accounts,
   transactions,
@@ -183,7 +179,6 @@ export function SheetView({
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
-  onCreateCategory,
   onEditSheet,
   data,
 }: Props) {
@@ -481,7 +476,6 @@ export function SheetView({
                   rows={monthRows}
                   columns={decoratedItem.columns}
                   balances={balances}
-                  categories={categories}
                   types={types}
                   settings={settings}
                   selectMode={selectMode}
@@ -514,7 +508,6 @@ export function SheetView({
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}
                   onToggleSelectMonth={onToggleSelectMonth}
-                  onCreateCategory={onCreateCategory}
                 />
               </div>
             );

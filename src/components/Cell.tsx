@@ -8,13 +8,7 @@ import {
   Repeat,
 } from "lucide-react";
 
-import type {
-  Category,
-  CellValue,
-  Column,
-  EntryType,
-  Settings,
-} from "../data/types";
+import type { CellValue, Column, EntryType, Settings } from "../data/types";
 import {
   formatAmountForInput,
   formatNumber,
@@ -25,7 +19,6 @@ import {
 } from "../utils/format";
 import type { FloatingPlacement } from "../hooks";
 import { useBlocksSheet } from "./useBlocksSheet";
-import { CategoryPicker } from "./CategoryPicker";
 import { DatePickerModal } from "./DatePickerModal";
 import { FloatingPanel } from "./FloatingPanel";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
@@ -38,7 +31,6 @@ type Props = {
   column: Column;
   value: CellValue;
   computedBalance?: number;
-  categories?: Category[];
   settings: Settings;
   isRecurring?: boolean;
   // Resolved EntryType for `row.typeId`. When set, the description cell
@@ -75,7 +67,6 @@ type Props = {
   // `onChange`, which can fire on every keystroke. Lets the parent know
   // the edit has settled so it can prompt for series propagation.
   onCommit?: (value: CellValue) => void;
-  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 };
 
 export function Cell({
@@ -83,7 +74,6 @@ export function Cell({
   column,
   value,
   computedBalance,
-  categories,
   settings,
   isRecurring,
   entryType,
@@ -94,7 +84,6 @@ export function Cell({
   hasFormula,
   onChange,
   onCommit,
-  onCreateCategory,
 }: Props) {
   // Synthesized transaction rows are not editable inline — the
   // underlying data lives in `data.transactions`, not on the budget's
@@ -154,42 +143,6 @@ export function Cell({
           >
             <span className="flex h-full min-h-9 w-full items-center justify-center p-1.5">
               {checked && <Check size={18} aria-hidden focusable={false} />}
-            </span>
-          </td>
-        );
-      }
-      case "category": {
-        const selectedId = typeof value === "string" ? value : null;
-        const category = categories?.find((c) => c.id === selectedId) ?? null;
-        return (
-          <td className={`${CELL_BASE} p-0`} aria-readonly="true">
-            <span className="flex h-full min-h-9 w-full items-center justify-center px-2 py-1 font-mono text-xs md:justify-start">
-              {category ? (
-                <>
-                  {/* Mobile: glyph only, in the category's colour. */}
-                  <span
-                    className="inline-flex items-center justify-center md:hidden"
-                    style={{ color: category.color }}
-                    aria-hidden
-                  >
-                    <CategoryIconGlyph name={category.icon} size={18} />
-                  </span>
-                  {/* Desktop: chip with glyph + name. */}
-                  <span
-                    className="hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex"
-                    style={{
-                      backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
-                      borderColor: `color-mix(in srgb, ${category.color} 55%, transparent)`,
-                      color: category.color,
-                    }}
-                  >
-                    <CategoryIconGlyph name={category.icon} size={12} />
-                    <span className="truncate">{category.name}</span>
-                  </span>
-                </>
-              ) : (
-                <span className="text-muted">—</span>
-              )}
             </span>
           </td>
         );
@@ -278,31 +231,6 @@ export function Cell({
           >
             {checked && <Check size={18} aria-hidden focusable={false} />}
           </button>
-        </td>
-      );
-    }
-
-    case "category": {
-      const selectedId = typeof value === "string" ? value : null;
-      return (
-        <td className={`${CELL_BASE} p-0`}>
-          <CategoryPicker
-            rowId={rowId}
-            categories={categories ?? []}
-            selectedId={selectedId}
-            onSelect={(id) => {
-              onChange(id);
-              onCommit?.(id);
-            }}
-            onCreate={
-              onCreateCategory ??
-              ((draft) => ({
-                id: `tmp-${Math.random().toString(36).slice(2)}`,
-                ...draft,
-              }))
-            }
-            variant="chip"
-          />
         </td>
       );
     }

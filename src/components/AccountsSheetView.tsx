@@ -10,12 +10,13 @@ import {
   Wallet,
 } from "lucide-react";
 
-import { allCategories } from "../data/presets";
+import { allCategories, allTypes } from "../data/presets";
 import { accountBalance } from "../data/sheet";
 import { detectTransferCandidates } from "../data/transfer-collapse";
 import type {
   Account,
   Category,
+  EntryType,
   Settings,
   Sheet,
   UserData,
@@ -89,9 +90,17 @@ export function AccountsSheetView({
   const categoriesById = useMemo(() => {
     const m = new Map<string, Category>();
     // Resolve both user-added and built-in preset categories so the
-    // transaction log renders a chip even when its categoryId points
-    // at a preset.
+    // transaction log renders a chip even when its typeId resolves
+    // to a preset category.
     for (const c of allCategories(data)) m.set(c.id, c);
+    return m;
+  }, [data]);
+  // Types indexed by id so the transaction log can resolve a
+  // `tx.typeId` to its parent category for the chip rendering. The
+  // map covers presets + user-added types via `allTypes`.
+  const typesById = useMemo(() => {
+    const m = new Map<string, EntryType>();
+    for (const t of allTypes(data)) m.set(t.id, t);
     return m;
   }, [data]);
   // Transactions sorted with the newest first so the log reads as a
@@ -354,8 +363,11 @@ export function AccountsSheetView({
               {sortedTransactions.map((tx) => {
                 const from = accountsById.get(tx.fromAccountId);
                 const to = accountsById.get(tx.toAccountId);
-                const category = tx.categoryId
-                  ? (categoriesById.get(tx.categoryId) ?? null)
+                const type = tx.typeId
+                  ? (typesById.get(tx.typeId) ?? null)
+                  : null;
+                const category = type
+                  ? (categoriesById.get(type.categoryId) ?? null)
                   : null;
                 return (
                   <tr

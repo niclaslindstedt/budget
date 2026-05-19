@@ -32,7 +32,6 @@ export function createDefaultAccountBudget(
   const columns: Column[] = [
     { id: newId(), type: "date", label: "Date" },
     { id: newId(), type: "description", label: "Description" },
-    { id: newId(), type: "category", label: "Category" },
     { id: newId(), type: "amount", label: "Amount" },
     { id: newId(), type: "balance", label: "Balance" },
     { id: newId(), type: "completed", label: "Done" },
@@ -389,9 +388,6 @@ export function synthesizeTransactionRow(
       case "amount":
         cells[col.id] = signedAmount;
         break;
-      case "category":
-        cells[col.id] = tx.categoryId ?? null;
-        break;
       case "completed":
         cells[col.id] = tx.completed ?? false;
         break;
@@ -402,13 +398,15 @@ export function synthesizeTransactionRow(
   // Reuse the transaction id as the row id so React's keyed reconciler
   // stays stable across re-syntheses and so deletion paths (which key
   // by row id today) can be wired to a transaction lookup cleanly.
-  return {
+  const row: Row = {
     id: `tx:${tx.id}`,
     cells,
     transactionId: tx.id,
     peerAccountId,
     peerAccountName: accountsById.get(peerAccountId) ?? "Unknown account",
   };
+  if (tx.typeId) row.typeId = tx.typeId;
+  return row;
 }
 
 // Synthesize a Row from an imported bank-statement entry so the
@@ -441,12 +439,6 @@ export function synthesizeHistoryRow(
       : null) ??
     hint?.description ??
     entry.description;
-  const categoryId =
-    (rule && rule.categoryId !== undefined && rule.categoryId !== null
-      ? rule.categoryId
-      : null) ??
-    hint?.categoryId ??
-    null;
   const typeId =
     (rule && rule.typeId !== undefined && rule.typeId !== null
       ? rule.typeId
@@ -464,9 +456,6 @@ export function synthesizeHistoryRow(
         break;
       case "amount":
         cells[col.id] = entry.amount;
-        break;
-      case "category":
-        cells[col.id] = categoryId;
         break;
       case "completed":
         // Imported bank entries already happened, so they're

@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
-import { CATEGORY_COLORS, TYPE_GLYPH_NAMES } from "../data/constants";
-import type { CategoryIcon, EntryType } from "../data/types";
+import {
+  CATEGORY_COLORS,
+  DEFAULT_CATEGORY_ID,
+  TYPE_GLYPH_NAMES,
+} from "../data/constants";
+import type { Category, CategoryIcon, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
+import { CategoryChip } from "./CategoryPicker";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
@@ -25,6 +30,10 @@ type Props = {
   // without firing whatever was clicked. Modals leave it undefined.
   rowId?: string;
   types: readonly EntryType[];
+  // Full set of selectable categories — used to group the dropdown
+  // listing and to populate the category picker inside the inline
+  // type creator. Required because every type belongs to a category.
+  categories: readonly Category[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onCreate: (draft: Omit<EntryType, "id">) => EntryType;
@@ -41,6 +50,7 @@ type Props = {
 export function TypePicker({
   rowId,
   types,
+  categories,
   selectedId,
   onSelect,
   onCreate,
@@ -136,6 +146,7 @@ export function TypePicker({
       >
         {creating ? (
           <TypeCreator
+            categories={categories}
             onCancel={() => setCreating(false)}
             onSubmit={handleCreated}
           />
@@ -221,15 +232,24 @@ export function TypeChip({
 }
 
 function TypeCreator({
+  categories,
   onCancel,
   onSubmit,
 }: {
+  categories: readonly Category[];
   onCancel: () => void;
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(CATEGORY_COLORS[0]);
   const [glyph, setGlyph] = useState<CategoryIcon>("tag");
+  // Default to the catch-all "Other" preset so the create form always
+  // has a valid selection — the user can change it before submitting.
+  const [categoryId, setCategoryId] = useState<string>(
+    categories.some((c) => c.id === DEFAULT_CATEGORY_ID)
+      ? DEFAULT_CATEGORY_ID
+      : (categories[0]?.id ?? DEFAULT_CATEGORY_ID),
+  );
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -239,7 +259,7 @@ function TypeCreator({
   function handleSubmit() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSubmit({ name: trimmed, color, glyph });
+    onSubmit({ name: trimmed, color, glyph, categoryId });
   }
 
   return (
@@ -261,6 +281,14 @@ function TypeCreator({
           placeholder="Mortgage"
         />
       </label>
+      <div className="flex flex-col gap-1 text-xs text-muted">
+        <span>Category</span>
+        <CategorySelector
+          categories={categories}
+          value={categoryId}
+          onChange={setCategoryId}
+        />
+      </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>Color</span>
         <ColorPalette
@@ -296,6 +324,77 @@ function TypeCreator({
           Create
         </button>
       </div>
+    </div>
+  );
+}
+
+// Compact category dropdown used inside the type-creator. Categories
+// own colour + glyph so the button surfaces a chip preview; the
+// listbox is a plain button + ul to stay consistent with the rest of
+// the project's custom dropdowns (no native `<select>`).
+function CategorySelector({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: readonly Category[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = categories.find((c) => c.id === value) ?? null;
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
+      >
+        {selected ? (
+          <CategoryChip category={selected} compact />
+        ) : (
+          <span className="text-muted">Pick a category…</span>
+        )}
+        <ChevronDown
+          size={12}
+          className="ml-auto shrink-0 text-muted"
+          aria-hidden
+          focusable={false}
+        />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
+        >
+          {categories.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={c.id === value}
+                onClick={() => {
+                  onChange(c.id);
+                  setOpen(false);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-2 py-1 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <CategoryChip category={c} compact />
+                {c.id === value && (
+                  <Check
+                    size={14}
+                    className="ml-auto text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { formulaToStored, parseFormula } from "../data/formula";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../data/types";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
-import { CategoryPicker } from "./CategoryPicker";
 import { FormulaHelpButton } from "./FormulaHelpButton";
 import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
 import { FormulaVariableHelper } from "./FormulaVariableHelper";
@@ -45,7 +44,6 @@ type Props = {
   submitVerb?: string;
   onClose: () => void;
   onCreate: (entries: ComplexEntryDraft) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
@@ -53,7 +51,6 @@ export type ComplexEntrySeed = {
   description: string;
   // Signed: negative seeds the sign toggle as "−"; positive as "+".
   amount: number;
-  categoryId: string | null;
   typeId: string | null;
   rule: import("../data/recurrence").RecurrenceRule | null;
 };
@@ -61,7 +58,6 @@ export type ComplexEntrySeed = {
 export type ComplexEntryDraft = {
   description: string;
   amount: number;
-  categoryId: string | null;
   // `null` = no type assigned (row falls back to its description as
   // the primary label); a string stamps every generated row with that
   // typeId so the cell renders the type's chip in the description
@@ -92,13 +88,11 @@ export function ComplexEntryModal({
   submitVerb,
   onClose,
   onCreate,
-  onCreateCategory,
   onCreateType,
 }: Props) {
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [typeId, setTypeId] = useState<string | null>(null);
   const [dates, setDates] = useState<string[]>([]);
   // fx mode swaps the numeric amount input for a formula textarea
@@ -125,13 +119,11 @@ export function ComplexEntryModal({
         abs === 0 ? "" : normalizeAmountInput(String(abs), settings),
       );
       setNegative(seed.amount < 0);
-      setCategoryId(seed.categoryId);
       setTypeId(seed.typeId);
     } else {
       setDescription("");
       setAmountText("");
       setNegative(true);
-      setCategoryId(null);
       setTypeId(null);
     }
     setDates([]);
@@ -204,7 +196,6 @@ export function ComplexEntryModal({
         // renderer recomputes the real value via the resolver. A
         // future cache write could put a best-effort preview here.
         amount: 0,
-        categoryId,
         typeId,
         dates,
         amountFormula: stored.formula,
@@ -215,7 +206,6 @@ export function ComplexEntryModal({
     onCreate({
       description: description.trim(),
       amount: parsedAmount,
-      categoryId,
       typeId,
       dates,
     });
@@ -359,20 +349,11 @@ export function ComplexEntryModal({
             <TypePicker
               variant="field"
               types={types}
+              categories={categories}
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
               usageById={typeUsageById}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Category</span>
-            <CategoryPicker
-              variant="field"
-              categories={categories}
-              selectedId={categoryId}
-              onSelect={setCategoryId}
-              onCreate={onCreateCategory}
             />
           </div>
         </div>

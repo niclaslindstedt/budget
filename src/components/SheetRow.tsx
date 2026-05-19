@@ -3,7 +3,6 @@ import { ArrowLeftRight, Pencil, Repeat, Tags, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
 import type {
-  Category,
   CellValue,
   Column,
   EntryType,
@@ -17,7 +16,6 @@ type Props = {
   row: Row;
   columns: Column[];
   balances: Map<string, number>;
-  categories: Category[];
   types: readonly EntryType[];
   settings: Settings;
   selectMode: boolean;
@@ -46,7 +44,6 @@ type Props = {
   // button only renders there.
   onMatchRuleRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 const SWIPE_THRESHOLD = 40;
@@ -57,7 +54,6 @@ export function SheetRow({
   row,
   columns,
   balances,
-  categories,
   types,
   settings,
   selectMode,
@@ -71,7 +67,6 @@ export function SheetRow({
   onTransactionRequest,
   onMatchRuleRequest,
   onToggleSelect,
-  onCreateCategory,
 }: Props) {
   const entryType = useMemo<EntryType | null>(
     () =>
@@ -322,7 +317,6 @@ export function SheetRow({
           computedBalance={
             col.type === "balance" ? balances.get(row.id) : undefined
           }
-          categories={categories}
           settings={settings}
           isRecurring={isSeries}
           entryType={entryType}
@@ -333,7 +327,6 @@ export function SheetRow({
           hasFormula={typeof row.amountFormula === "string"}
           onChange={(value) => onUpdateCell(row.id, col.id, value)}
           onCommit={(value) => onCommitCell(row.id, col.id, value)}
-          onCreateCategory={onCreateCategory}
         />
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">

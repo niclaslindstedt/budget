@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 24,
+    version: 25,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -370,7 +370,7 @@ describe("migrate", () => {
     expect(() => migrate({ version: LATEST_VERSION + 1 })).toThrow();
   });
 
-  it("v1 → latest: adds categories array and a category column to every sheet", () => {
+  it("v1 → latest: adds categories array and strips the category column the legacy migration introduced", () => {
     const v1 = {
       version: 1,
       activeSheetId: "s1",
@@ -400,11 +400,13 @@ describe("migrate", () => {
       }>
     )[0].items[0];
     const types = item.columns.map((c) => c.type);
-    // category sits right after description
+    // The v1 → v2 step inserted a "category" column historically; the
+    // v24 → v25 step strips it back out since category is now derived
+    // from `row.typeId → EntryType.categoryId`.
+    expect(types).not.toContain("category");
     expect(types).toEqual([
       "date",
       "description",
-      "category",
       "amount",
       "balance",
       "completed",
@@ -414,7 +416,7 @@ describe("migrate", () => {
     expect(validated.ok).toBe(true);
   });
 
-  it("v1 → latest: leaves an already-present category column alone", () => {
+  it("v1 → latest: drops a pre-existing category column with the rest of them", () => {
     const v1 = {
       version: 1,
       activeSheetId: "s1",
@@ -435,10 +437,13 @@ describe("migrate", () => {
     const { data } = migrate(v1);
     const item = (
       data.sheets as Array<{
-        items: Array<{ columns: Array<{ id: string }> }>;
+        items: Array<{ columns: Array<{ id: string; type: string }> }>;
       }>
     )[0].items[0];
-    expect(item.columns.map((c) => c.id)).toEqual(["c1", "cx", "c2"]);
+    // Both "cx" (the user-renamed category column) and any column the
+    // intermediate migrations inserted should be gone by v25.
+    expect(item.columns.map((c) => c.id)).toEqual(["c1", "c2"]);
+    expect(item.columns.some((c) => c.type === "category")).toBe(false);
   });
 
   it("v3 → v4 → v5: adds settings with defaults, preserves data", () => {
@@ -1201,8 +1206,20 @@ describe("typeId field on rows", () => {
   it("round-trips through serialize/parse", () => {
     const b = sampleData();
     b.types = [
-      { id: "type-1", name: "Mortgage", color: "#e06c75", glyph: "home" },
-      { id: "type-2", name: "Coffee", color: "#d19a66", glyph: "coffee" },
+      {
+        id: "type-1",
+        name: "Mortgage",
+        color: "#e06c75",
+        glyph: "home",
+        categoryId: "preset-cat-housing",
+      },
+      {
+        id: "type-2",
+        name: "Coffee",
+        color: "#d19a66",
+        glyph: "coffee",
+        categoryId: "preset-cat-food",
+      },
     ];
     firstItem(b).rows[0].typeId = "type-1";
     firstItem(b).rows[1].typeId = "type-2";
@@ -1225,10 +1242,16 @@ describe("typeId field on rows", () => {
 
   it("drops a dangling typeId silently rather than rejecting the load", () => {
     // Validator is forgiving here — same contract as Transaction's
-    // categoryId — so a deleted EntryType can't trap a row in zombie state.
+    // typeId — so a deleted EntryType can't trap a row in zombie state.
     const b = sampleData();
     b.types = [
-      { id: "type-1", name: "Mortgage", color: "#e06c75", glyph: "home" },
+      {
+        id: "type-1",
+        name: "Mortgage",
+        color: "#e06c75",
+        glyph: "home",
+        categoryId: "preset-cat-housing",
+      },
     ];
     const raw = JSON.parse(serializeUserData(b));
     raw.sheets[0].items[0].rows[0].typeId = "ghost";

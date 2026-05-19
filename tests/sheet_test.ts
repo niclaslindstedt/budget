@@ -148,10 +148,9 @@ describe("moveColumn", () => {
     // date moves from index 0 to index 3
     expect(order).toEqual([
       "description",
-      "category",
       "amount",
-      "date",
       "balance",
+      "date",
       "completed",
     ]);
   });
@@ -482,7 +481,6 @@ describe("synthesizeHistoryRow", () => {
   const dateId = findColumnByType(item.columns, "date")!.id;
   const descId = findColumnByType(item.columns, "description")!.id;
   const amountId = findColumnByType(item.columns, "amount")!.id;
-  const categoryId = findColumnByType(item.columns, "category")!.id;
   const completedId = findColumnByType(item.columns, "completed")!.id;
 
   const baseEntry: HistoryEntry = {
@@ -497,7 +495,6 @@ describe("synthesizeHistoryRow", () => {
   it("falls back to the raw bank text when no hint or rule matches", () => {
     const row = synthesizeHistoryRow(baseEntry, item.columns, {}, []);
     expect(row.cells[descId]).toBe("APP STORE APL*Z123");
-    expect(row.cells[categoryId]).toBeNull();
     expect(row.cells[completedId]).toBe(true);
     expect(row.typeId).toBeUndefined();
     expect(row.historyEntryId).toBe("h1");
@@ -510,18 +507,15 @@ describe("synthesizeHistoryRow", () => {
       id: "r1",
       pattern: "*App Store*",
       description: "App Store",
-      categoryId: "cat-1",
       typeId: "type-1",
     };
     const row = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
     expect(row.cells[descId]).toBe("App Store");
-    expect(row.cells[categoryId]).toBe("cat-1");
     expect(row.typeId).toBe("type-1");
   });
 
   it("rule labels override hint labels when both match", () => {
     const hint: MerchantHint = {
-      categoryId: "hint-cat",
       hitCount: 1,
       lastUsedAt: 1,
       typeId: "hint-type",
@@ -531,7 +525,6 @@ describe("synthesizeHistoryRow", () => {
       id: "r1",
       pattern: "*App Store*",
       description: "Rule label",
-      categoryId: "rule-cat",
       typeId: "rule-type",
     };
     // Hint key normalises the bank text: "APP STORE APL*Z123" →
@@ -543,15 +536,14 @@ describe("synthesizeHistoryRow", () => {
       [rule],
     );
     expect(row.cells[descId]).toBe("Rule label");
-    expect(row.cells[categoryId]).toBe("rule-cat");
     expect(row.typeId).toBe("rule-type");
   });
 
   it("a rule with only a pattern (no labels) falls through to the hint", () => {
     const hint: MerchantHint = {
-      categoryId: "hint-cat",
       hitCount: 1,
       lastUsedAt: 1,
+      typeId: "hint-type",
       description: "Hint label",
     };
     const rule: MatchRule = { id: "r1", pattern: "*App Store*" };
@@ -562,7 +554,7 @@ describe("synthesizeHistoryRow", () => {
       [rule],
     );
     expect(row.cells[descId]).toBe("Hint label");
-    expect(row.cells[categoryId]).toBe("hint-cat");
+    expect(row.typeId).toBe("hint-type");
   });
 
   it("skips a rule whose amountSign excludes the entry's direction", () => {

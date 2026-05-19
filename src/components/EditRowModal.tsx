@@ -9,27 +9,26 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
-import { CategoryPicker } from "./CategoryPicker";
 import { Checkbox, Radio, RadioGroup } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
 // Generic editor for a single budget row. Opened by long-pressing a row
 // or pressing the pen action button. Edits date, description, amount,
-// category, type, and completed in one place — separate from
-// `EditEntryModal`, which owns the recurring-series promote flow.
+// type, and completed in one place — separate from `EditEntryModal`,
+// which owns the recurring-series promote flow.
 //
 // For rows that are part of a recurring series, a scope picker mirrors
 // `EditEntryModal`'s "just this" / "this and all future" toggle. The
 // scope only applies to the series-wide fields (description, amount,
-// category, type) — date and completed are inherently per-occurrence
-// and always land on the anchor row regardless of scope.
+// type) — date and completed are inherently per-occurrence and always
+// land on the anchor row regardless of scope.
 
 type Props = {
   open: boolean;
   row: Row | null;
   columns: Column[];
-  categories: Category[];
+  categories: readonly Category[];
   types: readonly EntryType[];
   typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
@@ -38,7 +37,6 @@ type Props = {
   lastSeriesDate: string | null;
   onClose: () => void;
   onSave: (rowId: string, patch: EditRowPatch, scope: EditRowScope) => void;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
@@ -48,7 +46,6 @@ export type EditRowPatch = {
   // row that already had a number); otherwise the new signed value.
   amount: number | null;
   date: string;
-  categoryId: string | null;
   typeId: string | null;
   completed: boolean;
 };
@@ -68,7 +65,6 @@ export function EditRowModal({
   lastSeriesDate,
   onClose,
   onSave,
-  onCreateCategory,
   onCreateType,
 }: Props) {
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -78,10 +74,6 @@ export function EditRowModal({
   );
   const amountCol = useMemo(
     () => findColumnByType(columns, "amount"),
-    [columns],
-  );
-  const categoryCol = useMemo(
-    () => findColumnByType(columns, "category"),
     [columns],
   );
   const completedCol = useMemo(
@@ -111,10 +103,6 @@ export function EditRowModal({
     dateCol && row && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
       : "";
-  const initialCategoryId =
-    categoryCol && row && typeof row.cells[categoryCol.id] === "string"
-      ? (row.cells[categoryCol.id] as string)
-      : null;
   const initialTypeId = row?.typeId ?? null;
   const initialCompleted =
     completedCol && row && typeof row.cells[completedCol.id] === "boolean"
@@ -127,9 +115,6 @@ export function EditRowModal({
   const [amount, setAmount] = useState(initialAmountText);
   const [negative, setNegative] = useState(initialNegative);
   const [date, setDate] = useState(initialDate);
-  const [categoryId, setCategoryId] = useState<string | null>(
-    initialCategoryId,
-  );
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [completed, setCompleted] = useState(initialCompleted);
 
@@ -150,7 +135,6 @@ export function EditRowModal({
     setAmount(initialAmountText);
     setNegative(initialNegative);
     setDate(initialDate);
-    setCategoryId(initialCategoryId);
     setTypeId(initialTypeId);
     setCompleted(initialCompleted);
     setScopeKind("just-this");
@@ -188,7 +172,6 @@ export function EditRowModal({
         description: description.trim(),
         amount: parsedAmount,
         date,
-        categoryId,
         typeId,
         completed,
       },
@@ -272,24 +255,13 @@ export function EditRowModal({
             <TypePicker
               variant="field"
               types={types}
+              categories={categories}
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
               usageById={typeUsageById}
             />
           </div>
-          {categoryCol && (
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs text-muted">Category</span>
-              <CategoryPicker
-                variant="field"
-                categories={categories}
-                selectedId={categoryId}
-                onSelect={setCategoryId}
-                onCreate={onCreateCategory}
-              />
-            </div>
-          )}
           {completedCol && (
             <div className="sm:col-span-2">
               <Checkbox

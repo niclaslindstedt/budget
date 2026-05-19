@@ -107,21 +107,25 @@ carries its own `version` field). Top-level shape:
 
 ```ts
 type UserData = {
-  version: 21;
+  version: 25;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
-  categories: Category[];
+  categories: Category[]; // analysis buckets; each type belongs to one of these
+  types: EntryType[]; // concrete labels, parented by `EntryType.categoryId`
+  hiddenPresetTypeIds: string[];
+  hiddenPresetCategoryIds: string[];
   transactions: Transaction[]; // cross-account transfers; see below
   history: Record<string /* accountId */, HistoryEntry[]>; // imported bank rows
   historyImports: Record<string /* accountId */, HistoryImport[]>; // audit log
-  // Per-merchant category memory, keyed by the normalised description
+  // Per-merchant type memory, keyed by the normalised description
   // (lowercase, dates / long digit sequences / Swedish bank-noise
   // prefixes stripped). The recurring-candidate panel reads this to
-  // suggest a category before the user confirms a promotion; the
-  // suggestion is always visible, never silently applied. Hints whose
-  // categoryId no longer references a known category are dropped on
-  // load.
+  // suggest a type before the user confirms a promotion; the
+  // suggestion is always visible, never silently applied. The hint's
+  // category is derived through `typeId → EntryType.categoryId`.
+  // Hints whose typeId no longer references a known type are dropped
+  // on load.
   merchantHints: Record<string /* normalised description */, MerchantHint>;
   // Normalised-description keys the user dismissed with "Not
   // recurring" on the candidates panel; the detector skips these on
@@ -142,15 +146,22 @@ type UserData = {
 };
 
 type MerchantHint = {
-  categoryId: string;
-  hitCount: number; // re-resets to 1 when the assigned category changes
+  typeId: string; // category is derived via `types[typeId].categoryId`
+  hitCount: number; // re-resets to 1 when the assigned type changes
   lastUsedAt: number; // unix ms of the most recent assignment
-  // Optional fields set by the history-row promote-to-recurring flow.
-  // Both backfill synthesized history rows that share this merchant
-  // key: the row picks up the type chip and shows under the user's
+  // Optional user-typed label set by the history-row promote-to-
+  // recurring flow. Synthesized history rows that share this
+  // merchant key pick it up so the row shows under the user's
   // label instead of the raw bank text.
-  typeId?: string;
   description?: string;
+};
+
+type EntryType = {
+  id: string;
+  name: string;
+  color: string;
+  glyph: CategoryIcon;
+  categoryId: string; // parent category — every type belongs to exactly one
 };
 
 type Account = {
@@ -213,13 +224,7 @@ type AccountsView = {
 
 type Column = {
   id: string;
-  type:
-    | "date"
-    | "description"
-    | "amount"
-    | "balance"
-    | "completed"
-    | "category";
+  type: "date" | "description" | "amount" | "balance" | "completed";
   label: string;
 };
 
@@ -227,10 +232,13 @@ type Row = {
   id: string;
   cells: Record<string /* column id */, string | number | boolean | null>;
   seriesId?: string; // shared by all rows in the same recurrence
-  glyph?: CategoryIcon; // optional custom glyph for the description cell;
-  // absent rows render the default recurring icon when `seriesId` is set,
-  // and on mobile this replaces the "…" popover trigger.
+  // Reference to an `EntryType` in `UserData.types` (or a preset). When
+  // set, the description cell renders the type's chip and the row's
+  // category is derived through `EntryType.categoryId`. There is no
+  // category cell or column — categories live one level up, on types.
+  typeId?: string;
   isCorrection?: boolean; // see Account.openingBalance / "update balance" flow
+  amountFormula?: string; // optional formula; renderer resolves each pass
 };
 
 type HistoryEntry = {
@@ -253,7 +261,7 @@ type Transaction = {
   amount: number; // ALWAYS positive — direction = from → to
   fromAccountId: string; // money flows OUT of this account
   toAccountId: string; // money flows INTO this account
-  categoryId?: string | null;
+  typeId?: string | null; // category is derived via types[typeId].categoryId
   completed?: boolean;
 };
 
@@ -287,9 +295,14 @@ the UI surfaces. The shape supports stacking more items (e.g. an
 `AccountBudget` plus a Graph keyed to the same account) without
 another migration when that UX lands.
 
-A row's category is stored in the `category`-typed column's cell as
-the category id (string). The category record itself lives on the
-UserData so renaming or recolouring updates every row at once.
+A row's category is **derived** through its type: the row stores
+`typeId`, the type stores `categoryId`, the category record lives on
+the UserData. There is no category cell and no category column on the
+sheet — categories exist purely to group rows for analysis, and
+adding or relabelling a type updates every row that references it
+automatically. The v24 → v25 migration stripped the old category
+column and reassigned every existing row through this chain (see the
+migration source for the heuristics).
 
 Cells are keyed by column id (not column type) so the model supports
 adding multiple columns of the same type without ambiguity. The
@@ -319,7 +332,7 @@ functions keyed by source version. Loading any persisted budget — from
    (unknown column type, duplicate ids, wrong field types) are
    surfaced as an error string.
 
-Current `LATEST_VERSION` is `19`. The chain has eighteen steps:
+Current `LATEST_VERSION` is `25`. The chain has twenty-four steps:
 
 - **v1 → v2** — introduces top-level `categories: []` and inserts a
   `category` column into every sheet (just after the description
@@ -439,6 +452,18 @@ Current `LATEST_VERSION` is `19`. The chain has eighteen steps:
   either field; both are optional and absent bounds are treated as
   open-ended. The validator drops an inverted `amountMin > amountMax`
   pair silently since such a rule could never fire.
+- **v24 → v25** — restructures categories and types so categories
+  _contain_ types: `EntryType` gains a required `categoryId` field,
+  the `"category"` `ColumnType` is removed, every sheet's category
+  column is stripped, and `Transaction.categoryId` /
+  `MerchantHint.categoryId` / `MatchRule.categoryId` are folded into
+  `typeId` (category derived via `EntryType.categoryId`). The
+  migration assigns user types to a category by majority-vote of the
+  rows that used them (falling back to a name match against the
+  preset map, then the catch-all "Other") and synthesizes
+  "{Category} (generic)" types for rows / hints / rules that only
+  knew a category. Preset types ship with their built-in category
+  mapping.
 
 ## Complex entries
 
@@ -450,10 +475,11 @@ are presets over the `everyNMonths` rule (`intervalMonths` of 1, 3,
 or 12). `expandRecurrence(rule)` returns a sorted, de-duplicated
 list of ISO `YYYY-MM-DD` strings clamped to `[start, end]`.
 
-The `ComplexEntryModal` collects a description, amount, category,
-and a recurrence rule; on submit it expands the rule, dispatches one
-row per emitted date, and tags every generated row with a shared
-`seriesId` so they can be edited or deleted as a group later.
+The `ComplexEntryModal` collects a description, amount, type, and a
+recurrence rule; on submit it expands the rule, dispatches one row
+per emitted date, and tags every generated row with a shared
+`seriesId` so they can be edited or deleted as a group later. The
+row's category is derived from the chosen type at render time.
 
 ### Series operations
 
@@ -464,8 +490,8 @@ desktop):
 - **Repeat icon** opens `EditEntryModal`. On a non-series row the modal
   is a "promote to recurring" form — it reuses `RecurrenceForm` to
   capture a cadence + end date and dispatches `convertToRecurring`,
-  which generates future rows that inherit the anchor's description,
-  amount, and category, all sharing a new `seriesId`. On a row that
+  which generates future rows that inherit the anchor's description
+  and amount and share its type, all under a new `seriesId`. On a row that
   already belongs to a series, the modal shows the editable fields
   plus a **scope chooser**: "Only this entry", or "This entry and
   all future" with an optional "until …" date so temporary changes
@@ -487,7 +513,7 @@ icon is the dedicated path for changes meant to propagate.
 Three pure modules under `src/data/` correlate imported
 `HistoryEntry`s into actionable suggestions, all keyed off a single
 shared `normaliseDescription` so a Spotify charge that's detected as
-recurring also memorises its category under the same key the next
+recurring also memorises its type under the same key the next
 import looks up:
 
 - `description-normaliser.ts` collapses cosmetic differences — case,
@@ -501,8 +527,9 @@ import looks up:
   `RecurringCandidatesPanel` surfaces on the budget view. Promotion
   dispatches `promoteRecurringCandidate`, which mints a series of
   budget rows (using the existing `expandRecurrence` machinery) and
-  records the chosen category as a merchant hint. Dismissals persist
-  in `recurringDismissals` so the noise doesn't keep coming back.
+  records the chosen type as a merchant hint (its category is derived
+  through `type.categoryId`). Dismissals persist in
+  `recurringDismissals` so the noise doesn't keep coming back.
 - `transfer-collapse.ts` finds mirror pairs across accounts —
   opposite signs, equal magnitude, dates within three days, bonus
   confidence for Swish / Överföring keywords — and emits
@@ -514,15 +541,15 @@ import looks up:
   reversible (deleting the transaction restores both entries) and
   idempotent (the detector skips entries that already carry a
   backref). Dismissals persist in `transferCollapseDismissals`.
-- `merchant-hints.ts` records the per-merchant category memory.
-  `recordMerchantHints` runs at the tail of every category-assigning
+- `merchant-hints.ts` records the per-merchant type memory.
+  `recordMerchantHints` runs at the tail of every type-assigning
   reducer action (budget row edits, recurring promotion, transaction
   create / update), keyed by the same normalised description. The
-  recurring-candidates panel reads `suggestCategoryForDescription`
-  to render a "Suggested: <chip>" hint on each candidate — always
-  visible to the user, never silently applied. Hints whose
-  `categoryId` no longer references a known category are dropped on
-  load.
+  recurring-candidates panel reads `suggestTypeForDescription` to
+  render a "Suggested: <chip>" hint on each candidate — always
+  visible to the user, never silently applied. The hint's category
+  is derived through `typeId → EntryType.categoryId`. Hints whose
+  `typeId` no longer references a known type are dropped on load.
 
 The Settings → "Memory" section surfaces the size of each store and
 a Clear-all so a misclick on either dismissal list (or a wholesale

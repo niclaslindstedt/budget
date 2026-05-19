@@ -58,7 +58,6 @@ const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
   "amount",
   "balance",
   "completed",
-  "category",
 ]);
 
 const SHEET_TYPES: ReadonlySet<SheetType> = new Set<SheetType>([
@@ -418,49 +417,40 @@ function validateHistoryEntry(
   return { ok: true, value: entry };
 }
 
-// Merchant-hint validator. Drops hints whose categoryId no longer
-// references a known category (same way Transaction does for dangling
-// category refs) so deleting a category can't trap a hint in zombie
-// state. Bogus shapes return null so the caller can skip the entry
-// rather than rejecting the whole load — hints are advisory.
+// Merchant-hint validator. Drops hints whose typeId no longer
+// references a known type so a deleted EntryType can't trap a hint in
+// zombie state. Bogus shapes return null so the caller can skip the
+// entry rather than rejecting the whole load — hints are advisory.
 function validateMerchantHint(
   raw: unknown,
-  knownCategoryIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
 ): MerchantHint | null {
   if (!isObject(raw)) return null;
-  const { categoryId, hitCount, lastUsedAt, typeId, description } = raw;
-  if (typeof categoryId !== "string" || categoryId === "") return null;
-  if (!knownCategoryIds.has(categoryId)) return null;
+  const { hitCount, lastUsedAt, typeId, description } = raw;
+  if (typeof typeId !== "string" || typeId === "") return null;
+  if (!knownTypeIds.has(typeId)) return null;
   if (typeof hitCount !== "number" || !Number.isFinite(hitCount)) return null;
   if (typeof lastUsedAt !== "number" || !Number.isFinite(lastUsedAt)) {
     return null;
   }
   const hint: MerchantHint = {
-    categoryId,
+    typeId,
     hitCount: Math.max(0, Math.floor(hitCount)),
     lastUsedAt,
   };
-  // Drop a dangling typeId the same way a dangling categoryId is
-  // dropped — a deleted EntryType must not trap the hint in zombie
-  // state. The hint stays usable for its category and description.
-  if (typeof typeId === "string" && typeId !== "" && knownTypeIds.has(typeId)) {
-    hint.typeId = typeId;
-  }
   if (typeof description === "string" && description.trim() !== "") {
     hint.description = description;
   }
   return hint;
 }
 
-// Match-rule validator. Drops rules whose categoryId / typeId no
-// longer resolve so a deleted category or type can't trap a rule in
-// zombie state. Returns null for unsalvageable shapes (no pattern, no
-// id) so the loader can skip the row rather than rejecting the whole
-// file — rules are advisory like merchant hints.
+// Match-rule validator. Drops rules whose typeId no longer resolves
+// so a deleted type can't trap a rule in zombie state. Returns null
+// for unsalvageable shapes (no pattern, no id) so the loader can skip
+// the row rather than rejecting the whole file — rules are advisory
+// like merchant hints.
 function validateMatchRule(
   raw: unknown,
-  knownCategoryIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
 ): MatchRule | null {
   if (!isObject(raw)) return null;
@@ -470,15 +460,6 @@ function validateMatchRule(
   const rule: MatchRule = { id, pattern };
   if (typeof raw.description === "string" && raw.description.trim() !== "") {
     rule.description = raw.description;
-  }
-  if (raw.categoryId === null) {
-    rule.categoryId = null;
-  } else if (
-    typeof raw.categoryId === "string" &&
-    raw.categoryId !== "" &&
-    knownCategoryIds.has(raw.categoryId)
-  ) {
-    rule.categoryId = raw.categoryId;
   }
   if (raw.typeId === null) {
     rule.typeId = null;
@@ -601,7 +582,7 @@ function validateTransaction(
   raw: unknown,
   path: string,
   knownAccountIds: ReadonlySet<string>,
-  knownCategoryIds: ReadonlySet<string>,
+  knownTypeIds: ReadonlySet<string>,
 ): Result<Transaction> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, description, amount, fromAccountId, toAccountId } = raw;
@@ -635,18 +616,16 @@ function validateTransaction(
     fromAccountId,
     toAccountId,
   };
-  if (raw.categoryId !== undefined) {
-    if (raw.categoryId === null) {
-      tx.categoryId = null;
-    } else if (typeof raw.categoryId === "string" && raw.categoryId !== "") {
-      // Drop dangling category references silently so a deleted
-      // category can't trap the transaction; the cell renderer treats
-      // an unknown id as "no category".
-      tx.categoryId = knownCategoryIds.has(raw.categoryId)
-        ? raw.categoryId
-        : null;
+  if (raw.typeId !== undefined) {
+    if (raw.typeId === null) {
+      tx.typeId = null;
+    } else if (typeof raw.typeId === "string" && raw.typeId !== "") {
+      // Drop dangling type references silently so a deleted type
+      // can't trap the transaction; the renderer treats an unknown id
+      // as "no type".
+      tx.typeId = knownTypeIds.has(raw.typeId) ? raw.typeId : null;
     } else {
-      return fail(`${path}.categoryId`, "expected a string or null");
+      return fail(`${path}.typeId`, "expected a string or null");
     }
   }
   if (raw.completed !== undefined) {
@@ -674,9 +653,13 @@ function validateCategory(raw: unknown, path: string): Result<Category> {
   };
 }
 
-function validateEntryType(raw: unknown, path: string): Result<EntryType> {
+function validateEntryType(
+  raw: unknown,
+  path: string,
+  knownCategoryIds: ReadonlySet<string>,
+): Result<EntryType> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, name, color, glyph } = raw;
+  const { id, name, color, glyph, categoryId } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (typeof name !== "string")
@@ -685,9 +668,16 @@ function validateEntryType(raw: unknown, path: string): Result<EntryType> {
     return fail(`${path}.color`, "expected a non-empty string");
   if (typeof glyph !== "string" || !CATEGORY_ICONS.has(glyph as CategoryIcon))
     return fail(`${path}.glyph`, `unknown glyph "${String(glyph)}"`);
+  if (typeof categoryId !== "string" || categoryId === "")
+    return fail(`${path}.categoryId`, "expected a non-empty string");
+  if (!knownCategoryIds.has(categoryId))
+    return fail(
+      `${path}.categoryId`,
+      `references unknown category "${categoryId}"`,
+    );
   return {
     ok: true,
-    value: { id, name, color, glyph: glyph as CategoryIcon },
+    value: { id, name, color, glyph: glyph as CategoryIcon, categoryId },
   };
 }
 
@@ -842,11 +832,22 @@ export function validateUserData(raw: unknown): Result<UserData> {
     categories.push(r.value);
   }
 
+  // Resolvable category-id set built before types validate so a
+  // type's `categoryId` can be checked against it. Preset ids resolve
+  // to the built-in definitions in `data/constants.ts`; user-added
+  // ids resolve to entries in the array above. Hidden presets stay
+  // resolvable — hiding only affects picker / admin visibility, not
+  // referential integrity.
+  const knownCategoryIds = new Set<string>([
+    ...PRESET_CATEGORY_IDS,
+    ...seenCategoryIds,
+  ]);
+
   const rawTypes = Array.isArray(raw.types) ? raw.types : [];
   const types: EntryType[] = [];
   const seenTypeIds = new Set<string>();
   for (let i = 0; i < rawTypes.length; i++) {
-    const r = validateEntryType(rawTypes[i], `types[${i}]`);
+    const r = validateEntryType(rawTypes[i], `types[${i}]`, knownCategoryIds);
     if (!r.ok) return r;
     if (seenTypeIds.has(r.value.id))
       return fail(`types[${i}].id`, `duplicate id "${r.value.id}"`);
@@ -856,15 +857,6 @@ export function validateUserData(raw: unknown): Result<UserData> {
     types.push(r.value);
   }
 
-  // Resolvable id sets used everywhere a reference is checked. Preset
-  // ids resolve to the built-in definitions in `data/constants.ts`;
-  // user-added ids resolve to entries in the arrays above. Hidden
-  // presets stay resolvable — hiding only affects picker / admin
-  // visibility, not referential integrity.
-  const knownCategoryIds = new Set<string>([
-    ...PRESET_CATEGORY_IDS,
-    ...seenCategoryIds,
-  ]);
   const knownTypeIds = new Set<string>([
     ...PRESET_ENTRY_TYPE_IDS,
     ...seenTypeIds,
@@ -880,7 +872,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       rawTransactions[i],
       `transactions[${i}]`,
       seenAccountIds,
-      knownCategoryIds,
+      knownTypeIds,
     );
     if (!r.ok) return r;
     if (seenTransactionIds.has(r.value.id))
@@ -956,14 +948,14 @@ export function validateUserData(raw: unknown): Result<UserData> {
 
   // Merchant-hint memory. Each entry is independent and advisory, so
   // a single bad hint should never reject the whole load — bogus
-  // entries are silently dropped. Hints whose categoryId no longer
-  // resolves are also dropped so a deleted category doesn't leave
-  // zombies behind.
+  // entries are silently dropped. Hints whose typeId no longer
+  // resolves are also dropped so a deleted type doesn't leave zombies
+  // behind.
   const rawHints = isObject(raw.merchantHints) ? raw.merchantHints : {};
   const merchantHints: Record<string, MerchantHint> = {};
   for (const [key, value] of Object.entries(rawHints)) {
     if (typeof key !== "string" || key === "") continue;
-    const hint = validateMerchantHint(value, knownCategoryIds, knownTypeIds);
+    const hint = validateMerchantHint(value, knownTypeIds);
     if (hint) merchantHints[key] = hint;
   }
 
@@ -984,7 +976,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const matchRules: MatchRule[] = [];
   const seenRuleIds = new Set<string>();
   for (const rawRule of rawRules) {
-    const rule = validateMatchRule(rawRule, knownCategoryIds, knownTypeIds);
+    const rule = validateMatchRule(rawRule, knownTypeIds);
     if (!rule) continue;
     if (seenRuleIds.has(rule.id)) continue;
     seenRuleIds.add(rule.id);

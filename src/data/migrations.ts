@@ -8,16 +8,18 @@
 
 import {
   createSeedEntryTypes,
+  DEFAULT_CATEGORY_ID,
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
+  PRESET_ENTRY_TYPES,
 } from "./constants";
 import { newId } from "./sheet";
 
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 24 as const;
+export const LATEST_VERSION = 25 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -351,7 +353,330 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // needs rewriting — the version bump just flags that this build
   // understands the new shape.
   23: (v23) => ({ ...v23, version: 24 }),
+
+  // v24 → v25: restructures the type/category relationship so
+  // categories *contain* types. Concretely:
+  //
+  // - `EntryType` gains a required `categoryId` field — every type
+  //   belongs to exactly one category. Preset types adopt their
+  //   built-in mapping (see `PRESET_ENTRY_TYPES`). User types try to
+  //   reuse the category most of their rows already pointed at; ties
+  //   and orphans fall back to `DEFAULT_CATEGORY_ID` ("Other").
+  // - The `"category"` column type is removed. Every category column
+  //   on every sheet is stripped; for rows that carried a category
+  //   cell but no `typeId`, a synthesized "{Category name} (generic)"
+  //   type is minted under that category and attached to the row so
+  //   the meaning isn't lost. The original cell value is dropped
+  //   along with the column.
+  // - `Transaction.categoryId`, `MerchantHint.categoryId`, and
+  //   `MatchRule.categoryId` are removed. Entities that only knew
+  //   their category get a generic type minted the same way the row
+  //   migration above does, so a future picker can still surface
+  //   them as "Food (generic)" / "Bills (generic)" / etc.
+  24: (v24) => migrateV24ToV25(v24),
 };
+
+// Build-time lookup of preset-type-name → preset-category-id, used by
+// the v24 → v25 migration to assign legacy seed types (whose ids were
+// minted with `seedEntryTypeId()` but whose names match a preset) to
+// the same category their preset counterpart now sits under. The
+// lookup is case-insensitive on the name so a user-tweaked spelling
+// like "groceries" still resolves to "Groceries".
+const PRESET_NAME_TO_CATEGORY_ID: ReadonlyMap<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const t of PRESET_ENTRY_TYPES) m.set(t.name.toLowerCase(), t.categoryId);
+  return m;
+})();
+
+function migrateV24ToV25(v24: Versioned): Versioned {
+  const sheets = Array.isArray(v24.sheets) ? v24.sheets : [];
+  const existingTypes = Array.isArray(v24.types)
+    ? (v24.types as Array<Record<string, unknown>>)
+    : [];
+  const existingCategories = Array.isArray(v24.categories)
+    ? (v24.categories as Array<Record<string, unknown>>)
+    : [];
+
+  // Walk every row that has both a typeId and a category cell, and
+  // count how often each (typeId, categoryId) pair appears. The most
+  // popular categoryId per type is what the migration assigns it to.
+  const typeUsage = new Map<string, Map<string, number>>();
+  // Track the category cell values of rows that have NO typeId — we
+  // mint a per-(item, category) "generic" type for each one so the
+  // meaning is preserved when the cell is dropped.
+  const rowCategoryWithoutType: Array<{
+    sheetIdx: number;
+    itemIdx: number;
+    rowIdx: number;
+    categoryId: string;
+  }> = [];
+
+  sheets.forEach((rawSheet, sheetIdx) => {
+    if (!isObj(rawSheet)) return;
+    const items = Array.isArray(rawSheet.items) ? rawSheet.items : [];
+    items.forEach((rawItem, itemIdx) => {
+      if (!isObj(rawItem)) return;
+      if (rawItem.type !== "accountBudget") return;
+      const columns = Array.isArray(rawItem.columns) ? rawItem.columns : [];
+      const categoryColIds = new Set<string>();
+      for (const rawCol of columns) {
+        if (!isObj(rawCol)) continue;
+        if (rawCol.type === "category" && typeof rawCol.id === "string") {
+          categoryColIds.add(rawCol.id);
+        }
+      }
+      if (categoryColIds.size === 0) return;
+      const rows = Array.isArray(rawItem.rows) ? rawItem.rows : [];
+      rows.forEach((rawRow, rowIdx) => {
+        if (!isObj(rawRow)) return;
+        const cells = isObj(rawRow.cells) ? rawRow.cells : {};
+        let cellCatId: string | null = null;
+        for (const colId of categoryColIds) {
+          const v = cells[colId];
+          if (typeof v === "string" && v !== "") {
+            cellCatId = v;
+            break;
+          }
+        }
+        if (cellCatId === null) return;
+        const typeId =
+          typeof rawRow.typeId === "string" && rawRow.typeId !== ""
+            ? rawRow.typeId
+            : null;
+        if (typeId) {
+          const bucket = typeUsage.get(typeId) ?? new Map<string, number>();
+          bucket.set(cellCatId, (bucket.get(cellCatId) ?? 0) + 1);
+          typeUsage.set(typeId, bucket);
+        } else {
+          rowCategoryWithoutType.push({
+            sheetIdx,
+            itemIdx,
+            rowIdx,
+            categoryId: cellCatId,
+          });
+        }
+      });
+    });
+  });
+
+  // Pick the most-used categoryId for each typeId; fall back to the
+  // preset-name lookup, then to the catch-all category.
+  function pickCategoryForType(rawType: Record<string, unknown>): string {
+    const id = typeof rawType.id === "string" ? rawType.id : "";
+    const usage = typeUsage.get(id);
+    if (usage && usage.size > 0) {
+      let bestId = "";
+      let bestCount = -1;
+      for (const [catId, count] of usage) {
+        if (count > bestCount) {
+          bestId = catId;
+          bestCount = count;
+        }
+      }
+      if (bestId) return bestId;
+    }
+    if (typeof rawType.name === "string") {
+      const fromPreset = PRESET_NAME_TO_CATEGORY_ID.get(
+        rawType.name.toLowerCase(),
+      );
+      if (fromPreset) return fromPreset;
+    }
+    return DEFAULT_CATEGORY_ID;
+  }
+
+  // Build the migrated user-types list. Drop any non-object entries
+  // (the v25 validator would reject them anyway) and stamp each with
+  // its computed categoryId. Names + colors + glyphs come through
+  // unchanged.
+  const types: Array<Record<string, unknown>> = existingTypes
+    .filter(isObj)
+    .map((t) => ({
+      ...t,
+      categoryId: pickCategoryForType(t),
+    }));
+
+  // Synthesize a "generic" type per category that orphan rows need.
+  // Keyed by categoryId so the same category only mints one helper
+  // type even if dozens of rows reference it. The name reads like
+  // "{Category name} (generic)" so the picker surfaces it as an
+  // obvious holdover.
+  const knownCategoryNames = new Map<string, string>();
+  for (const c of existingCategories) {
+    if (isObj(c) && typeof c.id === "string" && typeof c.name === "string") {
+      knownCategoryNames.set(c.id, c.name);
+    }
+  }
+  // Preset categories aren't in `existingCategories` — they live in
+  // code. The migration only needs their display names for the
+  // generic-type labels; importing them from constants would be
+  // ideal, but to keep this migration self-contained we name the
+  // generic type after the slug ("preset-cat-food (generic)" → "Food
+  // (generic)") via a small lookup.
+  const PRESET_CAT_NAMES: ReadonlyMap<string, string> = new Map([
+    ["preset-cat-housing", "Housing"],
+    ["preset-cat-food", "Food"],
+    ["preset-cat-transport", "Transport"],
+    ["preset-cat-health", "Health"],
+    ["preset-cat-bills", "Bills"],
+    ["preset-cat-entertainment", "Entertainment"],
+    ["preset-cat-savings", "Savings"],
+    ["preset-cat-income", "Income"],
+    ["preset-cat-family", "Family"],
+    ["preset-cat-personal", "Personal"],
+    ["preset-cat-travel", "Travel"],
+    ["preset-cat-other", "Other"],
+  ]);
+  const genericTypeByCategoryId = new Map<string, string>();
+  function ensureGenericTypeFor(categoryId: string): string {
+    const existing = genericTypeByCategoryId.get(categoryId);
+    if (existing) return existing;
+    const baseName =
+      knownCategoryNames.get(categoryId) ??
+      PRESET_CAT_NAMES.get(categoryId) ??
+      "Uncategorized";
+    const id = newId();
+    types.push({
+      id,
+      name: `${baseName} (generic)`,
+      color: "#5c6370",
+      glyph: "tag",
+      categoryId,
+    });
+    genericTypeByCategoryId.set(categoryId, id);
+    return id;
+  }
+
+  // Rewrite sheets: drop "category" columns, drop the matching cells,
+  // and attach a generic typeId to rows that lost a category cell but
+  // had no typeId of their own.
+  const orphanLookup = new Map<string, string>();
+  for (const orphan of rowCategoryWithoutType) {
+    const key = `${orphan.sheetIdx}:${orphan.itemIdx}:${orphan.rowIdx}`;
+    orphanLookup.set(key, ensureGenericTypeFor(orphan.categoryId));
+  }
+
+  const migratedSheets = sheets.map((rawSheet, sheetIdx) => {
+    if (!isObj(rawSheet)) return rawSheet;
+    const items = Array.isArray(rawSheet.items) ? rawSheet.items : [];
+    return {
+      ...rawSheet,
+      items: items.map((rawItem, itemIdx) => {
+        if (!isObj(rawItem)) return rawItem;
+        if (rawItem.type !== "accountBudget") return rawItem;
+        const columns = Array.isArray(rawItem.columns) ? rawItem.columns : [];
+        const categoryColIds = new Set<string>();
+        const keptColumns = columns.filter((rawCol) => {
+          if (!isObj(rawCol)) return true;
+          if (rawCol.type === "category" && typeof rawCol.id === "string") {
+            categoryColIds.add(rawCol.id);
+            return false;
+          }
+          return true;
+        });
+        const rows = Array.isArray(rawItem.rows) ? rawItem.rows : [];
+        const migratedRows = rows.map((rawRow, rowIdx) => {
+          if (!isObj(rawRow)) return rawRow;
+          const cells = isObj(rawRow.cells) ? rawRow.cells : {};
+          let cellsChanged = false;
+          const nextCells: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(cells)) {
+            if (categoryColIds.has(k)) {
+              cellsChanged = true;
+              continue;
+            }
+            nextCells[k] = v;
+          }
+          const orphanType = orphanLookup.get(
+            `${sheetIdx}:${itemIdx}:${rowIdx}`,
+          );
+          if (!cellsChanged && !orphanType) return rawRow;
+          const nextRow: Record<string, unknown> = {
+            ...rawRow,
+            cells: nextCells,
+          };
+          if (orphanType && typeof rawRow.typeId !== "string") {
+            nextRow.typeId = orphanType;
+          }
+          return nextRow;
+        });
+        return { ...rawItem, columns: keptColumns, rows: migratedRows };
+      }),
+    };
+  });
+
+  // Strip `categoryId` from transactions; if a transaction had only a
+  // categoryId (no other type info), synthesize a generic type under
+  // that category and attach it.
+  const transactions = Array.isArray(v24.transactions) ? v24.transactions : [];
+  const migratedTransactions = transactions.map((rawTx) => {
+    if (!isObj(rawTx)) return rawTx;
+    const { categoryId, ...rest } = rawTx;
+    if (typeof categoryId === "string" && categoryId !== "") {
+      const next: Record<string, unknown> = { ...rest };
+      if (typeof rawTx.typeId !== "string") {
+        next.typeId = ensureGenericTypeFor(categoryId);
+      }
+      return next;
+    }
+    return rest;
+  });
+
+  // Merchant hints: drop categoryId; if the hint had no typeId, mint
+  // one under the categoryId so the hint stays useful.
+  const merchantHints = isObj(v24.merchantHints) ? v24.merchantHints : {};
+  const migratedHints: Record<string, unknown> = {};
+  for (const [key, rawHint] of Object.entries(merchantHints)) {
+    if (!isObj(rawHint)) continue;
+    const { categoryId, ...rest } = rawHint;
+    if (typeof rawHint.typeId === "string" && rawHint.typeId !== "") {
+      migratedHints[key] = rest;
+      continue;
+    }
+    if (typeof categoryId === "string" && categoryId !== "") {
+      migratedHints[key] = {
+        ...rest,
+        typeId: ensureGenericTypeFor(categoryId),
+      };
+      continue;
+    }
+    // No category and no type — the hint carries nothing actionable
+    // anymore, so drop it. The validator would drop it on load anyway.
+  }
+
+  // Match rules: drop categoryId; if the rule had no typeId, mint one
+  // under the categoryId so the rule still labels.
+  const matchRules = Array.isArray(v24.matchRules) ? v24.matchRules : [];
+  const migratedRules = matchRules.map((rawRule) => {
+    if (!isObj(rawRule)) return rawRule;
+    const { categoryId, ...rest } = rawRule;
+    if (typeof rawRule.typeId === "string" && rawRule.typeId !== "") {
+      return rest;
+    }
+    if (
+      (typeof categoryId === "string" && categoryId !== "") ||
+      categoryId === null
+    ) {
+      if (typeof categoryId === "string" && categoryId !== "") {
+        return { ...rest, typeId: ensureGenericTypeFor(categoryId) };
+      }
+    }
+    return rest;
+  });
+
+  return {
+    ...v24,
+    version: 25,
+    types,
+    sheets: migratedSheets,
+    transactions: migratedTransactions,
+    merchantHints: migratedHints,
+    matchRules: migratedRules,
+  };
+}
+
+function isObj(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
 
 export type MigrationResult = {
   data: Versioned;
