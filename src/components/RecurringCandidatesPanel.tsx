@@ -11,6 +11,7 @@ import type {
   MerchantHint,
   Settings,
 } from "../data/types";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { TypeChip } from "./TypePicker";
 import { formatNumber, withCurrency } from "../utils/format";
 
@@ -35,6 +36,7 @@ type Props = {
     typeId: string | null,
   ) => void;
   onDismiss: (key: string) => void;
+  onDismissAll: (keys: readonly string[]) => void;
 };
 
 // One row on the budget view that nudges the user toward promoting
@@ -49,6 +51,7 @@ export function RecurringCandidatesPanel({
   settings,
   onPromote,
   onDismiss,
+  onDismissAll,
 }: Props) {
   const dismissedSet = useMemo(() => new Set(dismissedKeys), [dismissedKeys]);
   const candidates = useMemo(
@@ -60,6 +63,7 @@ export function RecurringCandidatesPanel({
     [history, dismissedSet],
   );
   const [expanded, setExpanded] = useState(false);
+  const [confirmDismissAllOpen, setConfirmDismissAllOpen] = useState(false);
 
   if (candidates.length === 0) return null;
 
@@ -89,10 +93,21 @@ export function RecurringCandidatesPanel({
             {candidates.length}
           </span>
         </div>
-        <p className="hidden text-[11px] text-muted sm:block">
-          Detected in imported history. Click Promote to turn one into a
-          recurring series.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="hidden text-[11px] text-muted sm:block">
+            Detected in imported history. Click Promote to turn one into a
+            recurring series.
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfirmDismissAllOpen(true)}
+            aria-label="Dismiss all"
+            title="Dismiss all"
+            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"
+          >
+            <X size={12} aria-hidden focusable={false} />
+          </button>
+        </div>
       </header>
       <ul className="flex flex-col gap-2">
         {visible.map((c) => {
@@ -125,6 +140,29 @@ export function RecurringCandidatesPanel({
           Show {candidates.length - visible.length} more
         </button>
       )}
+      <ConfirmDialog
+        open={confirmDismissAllOpen}
+        title="Dismiss all candidates?"
+        description={
+          <>
+            {candidates.length} recurring{" "}
+            {candidates.length === 1 ? "candidate" : "candidates"} will be
+            marked as not recurring and hidden from this panel. You can restore
+            them later from Settings.
+          </>
+        }
+        actions={[
+          {
+            label: `Dismiss all (${candidates.length})`,
+            tone: "danger",
+            onSelect: () => {
+              onDismissAll(candidates.map((c) => c.key));
+              setConfirmDismissAllOpen(false);
+            },
+          },
+        ]}
+        onCancel={() => setConfirmDismissAllOpen(false)}
+      />
     </section>
   );
 }

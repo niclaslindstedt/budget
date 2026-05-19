@@ -413,6 +413,13 @@ type Action =
       type: "dismissRecurringCandidate";
       key: string;
     }
+  | {
+      // Bulk variant of `dismissRecurringCandidate` for the panel's
+      // "Dismiss all" button — adds every key in one reducer pass so
+      // the panel doesn't re-render between dismissals.
+      type: "dismissRecurringCandidates";
+      keys: readonly string[];
+    }
   | { type: "clearRecurringDismissals" }
   | {
       // Collapse one detected cross-account pair into a single
@@ -1325,6 +1332,15 @@ function reducer(state: UserData, action: Action): UserData {
     return {
       ...state,
       recurringDismissals: [...state.recurringDismissals, action.key],
+    };
+  }
+  if (action.type === "dismissRecurringCandidates") {
+    const existing = new Set(state.recurringDismissals);
+    const additions = action.keys.filter((k) => !existing.has(k));
+    if (additions.length === 0) return state;
+    return {
+      ...state,
+      recurringDismissals: [...state.recurringDismissals, ...additions],
     };
   }
   if (action.type === "clearRecurringDismissals") {
@@ -4716,6 +4732,12 @@ function BudgetView({
     },
     [dispatch],
   );
+  const onDismissAllRecurringCandidates = useCallback(
+    (keys: readonly string[]) => {
+      dispatch({ type: "dismissRecurringCandidates", keys });
+    },
+    [dispatch],
+  );
 
   // Promote a single history entry the user clicked on into a real
   // recurring series. Routes through the same future-row minting as
@@ -4970,6 +4992,7 @@ function BudgetView({
                 settings={data.settings}
                 onPromote={onPromoteRecurringCandidate}
                 onDismiss={onDismissRecurringCandidate}
+                onDismissAll={onDismissAllRecurringCandidates}
               />
               <SheetView
                 sheet={activeSheet}
