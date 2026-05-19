@@ -403,6 +403,14 @@ export type Settings = {
   showCurrency: boolean;
   showDecimals: boolean;
   abbreviateNumbers: boolean;
+  // Multiplier applied to the base UI font size. 1 is the default;
+  // smaller values fit more on screen, larger values help readability.
+  // Stored as a plain number (not a preset id) so a future slider can
+  // pick any value in range without another schema bump. The runtime
+  // applies it by setting `--app-font-scale` on the document root; the
+  // body's `font-size` reads through that variable so the whole UI
+  // scales together. Bounded by `MIN_FONT_SCALE` / `MAX_FONT_SCALE`.
+  fontScale: number;
   // Minutes the decrypted password may sit in the tab's sessionStorage
   // before the user is auto-signed-out. The clock resets on every user
   // input, so this is an idle timeout, not a hard ceiling. Bounded
@@ -482,7 +490,7 @@ export type MatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 17;
+  version: 18;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

@@ -30,7 +30,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 17,
+    version: 18,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -302,6 +302,37 @@ describe("validateUserData — soft recovery", () => {
       expect(r.value.settings.sessionTimeoutMinutes).toBe(
         DEFAULT_SETTINGS.sessionTimeoutMinutes,
       );
+  });
+
+  it("accepts an in-range fontScale", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.settings.fontScale = 1.25;
+    const r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.settings.fontScale).toBe(1.25);
+  });
+
+  it("snaps an out-of-range fontScale back to the default", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.settings.fontScale = 0;
+    let r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value.settings.fontScale).toBe(DEFAULT_SETTINGS.fontScale);
+
+    raw.settings.fontScale = 9;
+    r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value.settings.fontScale).toBe(DEFAULT_SETTINGS.fontScale);
+
+    raw.settings.fontScale = "large";
+    r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value.settings.fontScale).toBe(DEFAULT_SETTINGS.fontScale);
   });
 
   it("clears thousands separator when it collides with the decimal", () => {
@@ -910,6 +941,50 @@ describe("migrate", () => {
     expect(rows[1].seriesId).toBe("s-1");
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
+  });
+
+  it("v17 → v18: bumps version, lets the validator default fontScale", () => {
+    const v17 = {
+      version: 17,
+      activeSheetId: "s1",
+      categories: [],
+      types: [],
+      transactions: [],
+      // Settings as they'd look pre-v18: no fontScale field.
+      settings: (() => {
+        const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+        delete s.fontScale;
+        return s;
+      })(),
+      accounts: [],
+      history: {},
+      historyImports: {},
+      merchantHints: {},
+      recurringDismissals: [],
+      transferCollapseDismissals: [],
+      matchRules: [],
+      sheets: [
+        {
+          id: "s1",
+          name: "Migrated",
+          type: "budget",
+          glyph: "wallet",
+          color: "#61afef",
+          description: "",
+          items: [],
+        },
+      ],
+    };
+    const { data, migrated } = migrate(v17);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const validated = validateUserData(data);
+    expect(validated.ok).toBe(true);
+    if (validated.ok) {
+      expect(validated.value.settings.fontScale).toBe(
+        DEFAULT_SETTINGS.fontScale,
+      );
+    }
   });
 
   it("v15 → v16: seeds an empty matchRules array", () => {

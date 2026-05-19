@@ -3074,6 +3074,22 @@ function BudgetView({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
+  // Project the user's "Text size" preference onto the document root so
+  // the body's `font-size: calc(... * var(--app-font-scale))` rule (and
+  // every `rem`/`em` dimension downstream) picks up the multiplier.
+  // Restored to the canonical 1 on sign-out so the auth screen always
+  // renders at the default size.
+  const fontScale = data.settings.fontScale;
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--app-font-scale",
+      String(fontScale),
+    );
+    return () => {
+      document.documentElement.style.removeProperty("--app-font-scale");
+    };
+  }, [fontScale]);
+
   // Idle-tracked sign-out. Every user input bumps `lastActivityRef`;
   // a 1 s tick decides whether to surface the "about to sign out"
   // warning, sign the user out, or just re-stamp sessionStorage so a

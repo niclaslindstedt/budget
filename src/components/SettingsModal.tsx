@@ -4,6 +4,7 @@ import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
 import {
   DATE_FORMATS,
   DEFAULT_SETTINGS,
+  FONT_SCALE_PRESETS,
   NUMBER_FORMATS,
   SHORT_DATE_FORMATS,
   type NumberFormatPreset,
@@ -496,6 +497,23 @@ function MainView({
       </Section>
 
       <Section title="Display">
+        <Field label="Text size">
+          <SelectPicker
+            value={draft.fontScale}
+            options={FONT_SCALE_PRESETS.map((p) => ({
+              value: p.scale,
+              label: p.label,
+            }))}
+            onChange={(v) => onUpdate("fontScale", v)}
+            ariaLabel="Text size"
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+            panelClassName="font-mono tabular-nums"
+          />
+          <p className="text-xs text-muted">
+            Scales the whole UI — sheet cells, modals, headers. Use larger sizes
+            for readability on high-DPI displays, smaller to fit more on screen.
+          </p>
+        </Field>
         <ToggleRow
           label="Format numbers"
           hint="Group thousands when displaying amounts and balances."

@@ -3,7 +3,9 @@ import {
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
+  MAX_FONT_SCALE,
   MAX_SESSION_TIMEOUT_MINUTES,
+  MIN_FONT_SCALE,
   MIN_SESSION_TIMEOUT_MINUTES,
   SHORT_DATE_FORMATS,
 } from "./constants";
@@ -701,6 +703,13 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.abbreviateNumbers === "boolean"
       ? raw.abbreviateNumbers
       : DEFAULT_SETTINGS.abbreviateNumbers;
+  const fontScale =
+    typeof raw.fontScale === "number" &&
+    Number.isFinite(raw.fontScale) &&
+    raw.fontScale >= MIN_FONT_SCALE &&
+    raw.fontScale <= MAX_FONT_SCALE
+      ? raw.fontScale
+      : DEFAULT_SETTINGS.fontScale;
   const sessionTimeoutMinutes =
     typeof raw.sessionTimeoutMinutes === "number" &&
     Number.isFinite(raw.sessionTimeoutMinutes) &&
@@ -721,6 +730,7 @@ function validateSettings(raw: unknown): Settings {
     showCurrency,
     showDecimals,
     abbreviateNumbers,
+    fontScale,
     sessionTimeoutMinutes,
   };
 }
