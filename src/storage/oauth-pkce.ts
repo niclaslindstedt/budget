@@ -29,13 +29,28 @@ export async function challengeFor(verifier: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(digest));
 }
 
-// The OAuth app registration must list this exact URI; we use the
-// current page origin so prod and local dev work without forking.
-// No trailing slash — Google's OAuth client config rejects redirect
-// URIs that end in `/`, and Dropbox accepts either form, so the
-// slash-less origin is the only spelling that satisfies both.
+// The OAuth app registration must list this exact URI. We derive it
+// from the current page's origin + pathname so production at `/` and
+// preview at `/preview/` round-trip back to themselves — without the
+// pathname, the redirect from Google or Dropbox lands the preview
+// build on production, where the PKCE verifier (stashed under the
+// preview's `nsKey`-namespaced sessionStorage key) is invisible and
+// auth completion bails with "Missing PKCE verifier" or "cannot
+// determine provider".
+//
+// The trailing slash is trimmed: Google's OAuth client config rejects
+// redirect URIs that end in `/`, and Dropbox accepts either form, so
+// the slash-less spelling is the only one that satisfies both.
+// `/` maps to the bare origin, `/preview/` maps to `<origin>/preview`.
+//
+// **Manual one-time setup for the preview build:** the
+// `https://budget.niclaslindstedt.se/preview` URI must be registered
+// as an authorized redirect URI on both the Dropbox app console and
+// the Google Cloud OAuth client. Production at the bare origin was
+// already registered and keeps working unchanged.
 export function redirectUri(): string {
-  return window.location.origin;
+  const pathname = window.location.pathname.replace(/\/+$/, "");
+  return `${window.location.origin}${pathname}`;
 }
 
 // Pick which cloud provider issued an inbound OAuth `?code=`. The
