@@ -52,6 +52,23 @@ describe("compilePattern", () => {
     expect(compilePattern("*").test("")).toBe(true);
     expect(compilePattern("*").test("anything")).toBe(true);
   });
+
+  it("treats ? as exactly one character", () => {
+    const re = compilePattern("?LA*");
+    expect(re.test("BLA")).toBe(true);
+    expect(re.test("BLAH")).toBe(true);
+    expect(re.test("LAB")).toBe(false);
+    // ? must consume exactly one — empty prefix doesn't match.
+    expect(re.test("LA")).toBe(false);
+  });
+
+  it("composes ? and * in the same pattern", () => {
+    const re = compilePattern("*ICA?MAXI*");
+    expect(re.test("KORTKÖP ICA MAXI 11-04")).toBe(true);
+    expect(re.test("KORTKÖP ICA-MAXI 11-04")).toBe(true);
+    // ? requires one char between ICA and MAXI; "ICAMAXI" has none.
+    expect(re.test("KORTKÖP ICAMAXI 11-04")).toBe(false);
+  });
 });
 
 describe("ruleMatchesEntry — amountSign", () => {

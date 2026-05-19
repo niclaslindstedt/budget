@@ -5,20 +5,21 @@
 // overlay the entry's synthesized row at render time.
 //
 // Patterns are intentionally simple — `*` matches any run of
-// characters (including empty), everything else matches literally and
-// case-insensitively, the pattern is implicitly anchored. The user
-// gets a live preview in the modal so they can iterate without
-// learning regex.
+// characters (including empty), `?` matches exactly one character,
+// everything else matches literally and case-insensitively, the
+// pattern is implicitly anchored. The user gets a live preview in the
+// modal so they can iterate without learning regex.
 
 import type { HistoryEntry, MatchRule } from "./types";
 
-// Escape every regex metacharacter except `*`, then replace `*` with
-// `.*`. The result is anchored with `^…$` so the whole description
-// must match — substring matching is opt-in via leading/trailing
-// stars in the user's pattern.
+// Escape every regex metacharacter, then translate the wildcards
+// back: `*` → `.*` (any run, including empty) and `?` → `.` (exactly
+// one char). The result is anchored with `^…$` so the whole
+// description must match — substring matching is opt-in via leading
+// and trailing stars in the user's pattern.
 export function compilePattern(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  const body = escaped.replace(/\*/g, ".*");
+  const body = escaped.replace(/\*/g, ".*").replace(/\\\?/g, ".");
   return new RegExp(`^${body}$`, "i");
 }
 

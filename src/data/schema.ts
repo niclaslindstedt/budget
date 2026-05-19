@@ -684,9 +684,9 @@ export const USER_DATA_SCHEMA = {
           minLength: 1,
           description:
             "Wildcard pattern. `*` matches any run of characters including " +
-            "empty; every other character matches itself literally and " +
-            "case-insensitively. Anchored implicitly — wrap with `*…*` " +
-            "for substring matching.",
+            "empty; `?` matches exactly one character; every other " +
+            "character matches itself literally and case-insensitively. " +
+            "Anchored implicitly — wrap with `*…*` for substring matching.",
         },
         description: {
           type: "string",
