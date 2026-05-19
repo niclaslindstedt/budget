@@ -98,21 +98,26 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// When no row falls on today, the next-best target is the first row
-// dated on or after today — that keeps today's position at the top of
-// the viewport with upcoming entries below it. Returns null when every
-// dated row is already in the past.
-function findNextRowOnOrAfter(
+// When no row falls on today, prefer the first row dated on or after
+// today — that keeps today's position at the top of the viewport with
+// upcoming entries below it. When every dated row is in the past (today
+// sits beyond the latest entry), fall back to the most recent past row
+// so the user lands at the end of their data instead of at the start of
+// the current fiscal month, which can be weeks behind today.
+function findRowNearestToday(
   section: HTMLElement | null,
   today: string,
 ): HTMLElement | null {
   if (!section) return null;
   const candidates = section.querySelectorAll<HTMLElement>("[data-row-date]");
+  let lastPast: HTMLElement | null = null;
   for (const el of candidates) {
     const d = el.getAttribute("data-row-date");
-    if (d && d >= today) return el;
+    if (!d) continue;
+    if (d >= today) return el;
+    lastPast = el;
   }
-  return null;
+  return lastPast;
 }
 
 // Scroll a row to the top of the viewport, accounting for the three
@@ -325,9 +330,7 @@ export function SheetView({
   const scrollToToday = (behavior: ScrollBehavior) => {
     requestAnimationFrame(() => {
       const section = sectionRef.current;
-      const row =
-        section?.querySelector<HTMLElement>(`[data-row-date="${today}"]`) ??
-        findNextRowOnOrAfter(section, today);
+      const row = findRowNearestToday(section, today);
       if (row) {
         scrollRowToTop(row, behavior);
         return;
