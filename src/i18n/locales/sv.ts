@@ -1121,6 +1121,12 @@ export const sv: Catalog = {
   glyph: {
     pick: "Välj en ikon",
     none: "Ingen ikon",
+    chooseGlyph: "Välj ikon",
+    glyphDialog: "Ikon",
+    defaultRecurring: "Standard (återkommande)",
+    defaultPrefix: "Standard ({name})",
+    defaultRecurringGlyphLabel: "Standardikon för återkommande",
+    defaultGlyphLabel: "Standardikon {name}",
   },
 
   color: {
@@ -1143,12 +1149,38 @@ export const sv: Catalog = {
 
   formula: {
     helpTitle: "Formelhjälp",
+    helpAria: "Formelhjälp",
+    helpButtonTitle: "Vad kan jag skriva här?",
     inputPlaceholder: "= summa av …",
     variables: "Variabler",
+    variablesDropdown: "Variabler",
+    variablesIntro: "Varje variabel läser från radens egen månad. Välj från",
+    variablesIntroEnd:
+      "-menyn för att infoga en — den renderas som en orange pill som backsteg tar bort i ett steg.",
+    otherSheets: "Andra blad",
+    otherSheetsIntro: "Läs en variabel från ett annat blad:",
+    otherSheetsAfter:
+      "Bladnamnet renderas som en cyan pill, variabeln som en orange pill — båda tas bort i ett tangenttryck.",
+    functions: "Funktioner",
     operators: "Operatorer",
     examples: "Exempel",
     invalid: "Ogiltig formel",
     pickVariable: "Välj en variabel",
+    insertVariable: "Infoga variabel",
+    summary:
+      "En formel beräknar radens belopp vid rendering. Tal, aritmetik, parenteser, variabler och funktionerna nedan fungerar.",
+    fullReference: "Fullständig referens: se",
+    dataSchemaLink: "dataschemat",
+    endOfMonthBalanceHint: "— utgående saldo",
+    balanceBeforeHint: "— löpande saldo precis före denna rad",
+    currentSheetSection: "Aktuellt blad",
+    crossSheetSection: "Tvärs över blad",
+    insertVariableAria: "Infoga formelvariabel eller funktion",
+    insertVariableTitle: "Infoga en formelvariabel eller funktion",
+    variablesButtonLabel: "Variabler",
+    thisSheet: "Detta blad",
+    functionsSection: "Funktioner",
+    sheetSectionPrefix: "Blad ·",
   },
 
   updateBalance: {
@@ -1282,6 +1314,10 @@ export const sv: Catalog = {
 
   changelog: {
     title: "Nyheter",
+    pageTitleHeading: "Ändringslogg",
+    pageIntro: "Versionsanteckningar för Budget-appen. Nyaste först.",
+    backToBudget: "Tillbaka till budgeten",
+    noReleasesYet: "Inga utgåvor än.",
     nothingYet: "Inga ändringar registrerade än.",
     versionHeading: "Version {version}",
     dismiss: "Avfärda",

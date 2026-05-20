@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { FORMULA_FUNCTIONS, FORMULA_VARIABLES } from "../data/formula";
 import type { FloatingPlacement } from "../hooks";
 import type { Sheet } from "../data/types";
+import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
 
 // Right-anchored so the panel hugs the trigger button, which sits at
@@ -74,6 +75,7 @@ export function FormulaVariableHelper({
   sheets,
   currentSheetId,
 }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -96,11 +98,11 @@ export function FormulaVariableHelper({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Insert formula variable or function"
-        title="Insert a formula variable or function"
+        aria-label={t("formula.insertVariableAria")}
+        title={t("formula.insertVariableTitle")}
         className="field-input flex h-full cursor-pointer items-center gap-1 rounded border border-line bg-surface-2 px-2 py-1.5 text-xs whitespace-nowrap text-muted hover:border-accent hover:text-fg"
       >
-        <span>Variables</span>
+        <span>{t("formula.variablesButtonLabel")}</span>
         <ChevronDown size={12} aria-hidden focusable={false} />
       </button>
       <FloatingPanel
@@ -114,7 +116,7 @@ export function FormulaVariableHelper({
             aria-hidden
             className="px-3 pt-2 pb-1 text-[10px] tracking-wider text-muted uppercase"
           >
-            This sheet
+            {t("formula.thisSheet")}
           </li>
           {FORMULA_VARIABLES.map((v) => (
             <li key={v.insert}>
@@ -137,7 +139,7 @@ export function FormulaVariableHelper({
             aria-hidden
             className="mt-1 border-t border-line px-3 pt-2 pb-1 text-[10px] tracking-wider text-muted uppercase"
           >
-            Functions
+            {t("formula.functionsSection")}
           </li>
           {FORMULA_FUNCTIONS.map((f) => (
             <li key={f.insert}>
@@ -166,13 +168,14 @@ function SheetSection({
   sheet: Sheet;
   onPick: (text: string) => void;
 }) {
+  const t = useT();
   return (
     <>
       <li
         aria-hidden
         className="mt-1 border-t border-line px-3 pt-2 pb-1 text-[10px] tracking-wider text-muted uppercase"
       >
-        Sheet · {sheet.name}
+        {t("formula.sheetSectionPrefix")} {sheet.name}
       </li>
       {SHEET_PROPS.map((p) => {
         // Display-form formula (sheet name, not id). ComplexEntryModal
