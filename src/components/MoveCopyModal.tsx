@@ -114,6 +114,7 @@ export function MoveCopyModal({
       onClose={onClose}
       labelledBy="move-copy-title"
       size="max-w-md"
+      centered
     >
       <Modal.Header title={t(titleKey, { n: rows.length })} onClose={onClose} />
       <Modal.Body>

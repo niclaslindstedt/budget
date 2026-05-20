@@ -147,6 +147,7 @@ export function CloudBackupModal({
         open={open}
         onClose={busy ? () => {} : onClose}
         labelledBy="cloud-backup-title"
+        centered
       >
         <Modal.Header
           title={

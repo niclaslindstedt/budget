@@ -99,6 +99,7 @@ export function ImportHistoryModal({
       onClose={onCancel}
       labelledBy="import-history-title"
       scrollableBody={false}
+      centered
     >
       <Modal.Header
         title={t("importHistory.titleInto", { name: account?.name ?? "" })}

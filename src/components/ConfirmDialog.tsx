@@ -80,6 +80,7 @@ export function ConfirmDialog({
       role="alertdialog"
       size="max-w-md"
       scrollableBody={false}
+      centered
     >
       <Modal.Header title={title} onClose={handleClose} />
       <div className="flex flex-1 flex-col justify-center">

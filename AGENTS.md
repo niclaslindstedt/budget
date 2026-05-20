@@ -204,6 +204,23 @@ that way.
   for the full workflow. Date / month rendering goes through the
   `lang`-aware helpers in `src/utils/format.ts` so calendar text
   follows the picker too.
+- **Modal layout — fullscreen vs centered.** `Modal` defaults to
+  edge-to-edge `100svh` on mobile (centered card on desktop) so its
+  iOS visual-viewport math can keep the footer above the soft
+  keyboard. Pass `centered` (see `src/components/Modal.tsx`) to render
+  a centered card on every viewport size instead. **The rule:** if the
+  modal contains no inputs that open the soft keyboard — no
+  `<input type="text">` / `inputMode="decimal"` / `<textarea>` /
+  `contentEditable`, etc. — it should be `centered`. A short
+  fullscreen modal looks weird with all the dead space below; a
+  centered card avoids that. Inputs that don't trigger a keyboard
+  (`<input type="date">`, `type="checkbox"`, `type="radio"`,
+  `type="file"`, custom button-listbox pickers) don't disqualify a
+  modal from `centered`. The keyboard guard isn't only cosmetic — a
+  centered modal whose footer slides under the iOS keyboard becomes
+  unsubmittable, so don't switch a text-input modal to `centered`
+  without also reworking the soft-keyboard handling. When adding a
+  modal, decide which mode applies and use it from day one.
 - **PR conventions**: PR titles must follow Conventional Commits
   because the title becomes the squash-merge commit on `main`.
   Squash-merge is the only permitted merge strategy. **Rebase on
