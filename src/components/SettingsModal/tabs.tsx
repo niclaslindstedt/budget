@@ -249,7 +249,7 @@ export function FormatTab({
             options={[
               ...CURRENCY_PRESETS.map((p) => ({
                 value: p.id,
-                label: p.id,
+                label: p.codes.join("/"),
                 hint: t(p.nameKey as Parameters<typeof t>[0]),
               })),
               {
