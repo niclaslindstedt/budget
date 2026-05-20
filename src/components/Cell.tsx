@@ -448,9 +448,9 @@ function BalanceCell({
           >
             <ArrowLeftRight size={12} aria-hidden focusable={false} />
             {transferExpanded ? (
-              <ChevronUp size={10} aria-hidden focusable={false} />
-            ) : (
               <ChevronDown size={10} aria-hidden focusable={false} />
+            ) : (
+              <ChevronUp size={10} aria-hidden focusable={false} />
             )}
           </button>
         )}
