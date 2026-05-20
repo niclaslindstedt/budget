@@ -1,6 +1,7 @@
 import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import {
+  CURRENCY_PRESETS,
   DATE_FORMATS,
   FONT_SCALE_PRESETS,
   NUMBER_FORMATS,
@@ -57,6 +58,16 @@ function presetIdFor(settings: Settings): string {
     (f) =>
       f.thousands === settings.thousandsSeparator &&
       f.decimal === settings.decimalSeparator,
+  );
+  return match ? match.id : "custom";
+}
+
+function presetIdForCurrency(settings: Settings): string {
+  const match = CURRENCY_PRESETS.find(
+    (p) =>
+      p.symbol === settings.currency &&
+      p.position === settings.currencyPosition &&
+      p.space === settings.currencySpace,
   );
   return match ? match.id : "custom";
 }
@@ -178,16 +189,20 @@ export function FormatTab({
   draft,
   onUpdate,
   onApplyNumberFormat,
+  onApplyCurrencyPreset,
   onApplyDecimal,
 }: {
   draft: Settings;
   onUpdate: Update;
   onApplyNumberFormat: (id: string) => void;
+  onApplyCurrencyPreset: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
 }) {
   const t = useT();
   const numberPreviewSample = 1234567.89;
   const datePreviewIso = "2026-05-16";
+  const currencyPresetId = presetIdForCurrency(draft);
+  const showCustomCurrency = currencyPresetId === "custom";
 
   return (
     <>
@@ -233,44 +248,68 @@ export function FormatTab({
       </Section>
 
       <Section title={t("settings.format.currencyTitle")}>
-        <Field label={t("settings.format.currencyToken")}>
-          <input
-            type="text"
-            value={draft.currency}
-            onChange={(e) => onUpdate("currency", e.target.value)}
-            maxLength={6}
-            className="field-input w-24 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+        <Field label={t("settings.format.currencyPreset")}>
+          <SelectPicker
+            value={currencyPresetId}
+            options={[
+              ...CURRENCY_PRESETS.map((p) => ({
+                value: p.id,
+                label: p.id,
+                hint: t(p.nameKey as Parameters<typeof t>[0]),
+              })),
+              {
+                value: "custom",
+                label: t("settings.format.currencyCustom"),
+              },
+            ]}
+            onChange={onApplyCurrencyPreset}
+            ariaLabel={t("settings.format.currencyPreset")}
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
           />
-        </Field>
-
-        <Field label={t("settings.format.currencyPosition")}>
-          <div className="inline-flex overflow-hidden rounded border border-line">
-            {(["before", "after"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onUpdate("currencyPosition", p)}
-                aria-pressed={draft.currencyPosition === p}
-                className={`cursor-pointer border-0 px-3 py-1.5 font-mono text-sm ${
-                  draft.currencyPosition === p
-                    ? "bg-accent/15 text-accent"
-                    : "bg-surface-2 text-fg hover:bg-surface-3"
-                }`}
-              >
-                {p === "before"
-                  ? t("settings.format.currencyBefore")
-                  : t("settings.format.currencyAfter")}
-              </button>
-            ))}
-          </div>
           <Preview>{withCurrency("1 234", draft)}</Preview>
         </Field>
 
-        <ToggleRow
-          label={t("settings.format.currencySpace")}
-          checked={draft.currencySpace}
-          onChange={(v) => onUpdate("currencySpace", v)}
-        />
+        {showCustomCurrency && (
+          <>
+            <Field label={t("settings.format.currencyToken")}>
+              <input
+                type="text"
+                value={draft.currency}
+                onChange={(e) => onUpdate("currency", e.target.value)}
+                maxLength={6}
+                className="field-input w-24 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              />
+            </Field>
+
+            <Field label={t("settings.format.currencyPosition")}>
+              <div className="inline-flex overflow-hidden rounded border border-line">
+                {(["before", "after"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => onUpdate("currencyPosition", p)}
+                    aria-pressed={draft.currencyPosition === p}
+                    className={`cursor-pointer border-0 px-3 py-1.5 font-mono text-sm ${
+                      draft.currencyPosition === p
+                        ? "bg-accent/15 text-accent"
+                        : "bg-surface-2 text-fg hover:bg-surface-3"
+                    }`}
+                  >
+                    {p === "before"
+                      ? t("settings.format.currencyBefore")
+                      : t("settings.format.currencyAfter")}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <ToggleRow
+              label={t("settings.format.currencySpace")}
+              checked={draft.currencySpace}
+              onChange={(v) => onUpdate("currencySpace", v)}
+            />
+          </>
+        )}
       </Section>
 
       <Section title={t("settings.format.numberTitle")}>

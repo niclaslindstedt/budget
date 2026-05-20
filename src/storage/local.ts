@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
-import { detectInitialLanguage } from "../i18n/locale";
+import { detectInitialCurrency, detectInitialLanguage } from "../i18n/locale";
 import { debug } from "../utils/debug";
 import { parseUserData } from "./file";
 
@@ -33,11 +33,16 @@ export function freshUserData(): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    // Auto-detect language from the browser only for genuinely new
-    // installs. Existing buckets keep whatever the v26 → v27 migration
-    // assigned ("en") so a returning user's UI doesn't flip when they
-    // upgrade.
-    settings: { ...DEFAULT_SETTINGS, language: detectInitialLanguage() },
+    // Auto-detect language and currency from the browser only for
+    // genuinely new installs. Existing buckets keep whatever they had
+    // (the v26 → v27 migration pinned language to "en"; currency is
+    // never touched by a migration) so a returning user's UI doesn't
+    // flip when they upgrade.
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...detectInitialCurrency(),
+      language: detectInitialLanguage(),
+    },
   };
 }
 
