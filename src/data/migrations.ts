@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 27 as const;
+export const LATEST_VERSION = 28 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -443,6 +443,14 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
       },
     };
   },
+
+  // v27 → v28: introduces optional `userDescription` and `userTypeId`
+  // on `HistoryEntry` so individual bank rows can carry per-entry
+  // overrides (set by the pen button on a history row). Old exports
+  // simply lack the fields and `synthesizeHistoryRow` falls through to
+  // its existing rule / hint / raw-text priority; the migration is a
+  // bare version bump.
+  27: (v27) => ({ ...v27, version: 28 }),
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by

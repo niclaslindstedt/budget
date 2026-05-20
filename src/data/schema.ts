@@ -657,6 +657,30 @@ export const USER_DATA_SCHEMA = {
             "the detector skips entries that carry this backref so the " +
             "operation is idempotent.",
         },
+        userDescription: {
+          type: "string",
+          minLength: 1,
+          description:
+            "Per-entry user override for the synthesized row's " +
+            "description. Higher priority than any matching `MatchRule` " +
+            "or `MerchantHint` — the row is relabelled without dragging " +
+            "every other entry that normalises to the same merchant key. " +
+            "Absent means 'fall through to rules / hints / raw bank " +
+            "text'. Empty / whitespace-only is normalised to absent on " +
+            "load so a cleared field doesn't leave the row labelless. " +
+            "The raw `description` is preserved untouched so the " +
+            "original statement text remains visible alongside the " +
+            "override in the edit modal.",
+        },
+        userTypeId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Per-entry user override for the synthesized row's type. " +
+            "Higher priority than any matching `MatchRule` or " +
+            "`MerchantHint`. Absent means 'fall through to rules / " +
+            "hints / no type'. Dangling references to deleted types " +
+            "are dropped on load.",
+        },
       },
     },
     MatchRule: {

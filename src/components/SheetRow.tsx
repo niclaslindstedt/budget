@@ -48,6 +48,12 @@ type Props = {
   // bank text; ignored when called on non-history rows since the
   // button only renders there.
   onMatchRuleRequest: (row: Row) => void;
+  // Fires when the user clicks the pen button on a synthesized history
+  // row. Opens the per-entry edit modal — description + type, plus
+  // the original bank text for reference. The button only renders on
+  // history rows; called on a non-history row, the parent guards the
+  // dispatch.
+  onEditHistoryRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
 };
 
@@ -74,6 +80,7 @@ export function SheetRow({
   onEditRowRequest,
   onTransactionRequest,
   onMatchRuleRequest,
+  onEditHistoryRequest,
   onToggleSelect,
 }: Props) {
   const tr = useT();
@@ -369,6 +376,20 @@ export function SheetRow({
               }}
             >
               <Tags size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {isHistory && (
+            <button
+              type="button"
+              className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={tr("cell.editHistoryEntry")}
+              title={tr("cell.editHistoryEntry")}
+              onClick={() => {
+                setSwiped(false);
+                onEditHistoryRequest(row);
+              }}
+            >
+              <Pencil size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isHistory && (

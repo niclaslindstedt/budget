@@ -430,17 +430,26 @@ export function synthesizeHistoryRow(
 ): Row {
   const rule = findMatchingRule(rules, entry);
   const hint = hints[normaliseDescription(entry.description)];
-  // Field-by-field merge: prefer rule when it sets a label, fall back
-  // to hint, fall back to the raw entry. `null` on a rule field is
-  // distinct from "absent" in the validator but the renderer reads
-  // null the same way as undefined here — both mean "no override".
+  // Field-by-field merge with a four-step priority:
+  //   1. per-entry override on the HistoryEntry itself (set by the
+  //      pen-button modal and inline editors on a history row)
+  //   2. matching MatchRule
+  //   3. matching MerchantHint
+  //   4. raw bank text / no type
+  // `null` on a rule field is distinct from "absent" in the validator
+  // but the renderer reads null the same way as undefined here — both
+  // mean "no override".
   const description =
+    (entry.userDescription && entry.userDescription.trim() !== ""
+      ? entry.userDescription
+      : null) ??
     (rule?.description && rule.description.trim() !== ""
       ? rule.description
       : null) ??
     hint?.description ??
     entry.description;
   const typeId =
+    entry.userTypeId ??
     (rule && rule.typeId !== undefined && rule.typeId !== null
       ? rule.typeId
       : null) ??

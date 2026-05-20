@@ -40,6 +40,7 @@ import {
   type EditRowScope,
 } from "./components/EditRowModal";
 import { DownloadModal, type DownloadConfig } from "./components/DownloadModal";
+import { HistoryEntryEditModal } from "./components/HistoryEntryEditModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { ImportHistoryModal } from "./components/ImportHistoryModal";
 import {
@@ -488,6 +489,22 @@ type Action =
       rule: MatchRule;
     }
   | { type: "deleteMatchRule"; ruleId: string }
+  | {
+      // Per-entry override on a single `HistoryEntry`. Patches the
+      // entry's `userDescription` and / or `userTypeId` in place so
+      // the synthesized row picks the override up at the top of the
+      // merge priority in `synthesizeHistoryRow`. Each patch field is
+      // a tri-state: `undefined` = don't touch, `null` (typeId only)
+      // or `""` (description) = clear the override, a non-empty
+      // string = set the override.
+      type: "updateHistoryEntry";
+      accountId: string;
+      entryId: string;
+      patch: {
+        userDescription?: string;
+        userTypeId?: string | null;
+      };
+    }
   | {
       // Apply user choices from the post-import reconciliation modal.
       // `mergedRowIds` are user rows the user confirmed map to a
@@ -1459,6 +1476,36 @@ function reducer(state: UserData, action: Action): UserData {
     const next = state.matchRules.filter((r) => r.id !== action.ruleId);
     if (next.length === state.matchRules.length) return state;
     return { ...state, matchRules: next };
+  }
+  if (action.type === "updateHistoryEntry") {
+    const entries = state.history[action.accountId];
+    if (!entries) return state;
+    const idx = entries.findIndex((e) => e.id === action.entryId);
+    if (idx < 0) return state;
+    const prev = entries[idx];
+    const next: HistoryEntry = { ...prev };
+    if (action.patch.userDescription !== undefined) {
+      const trimmed = action.patch.userDescription.trim();
+      if (trimmed === "") delete next.userDescription;
+      else next.userDescription = trimmed;
+    }
+    if (action.patch.userTypeId !== undefined) {
+      if (action.patch.userTypeId === null) delete next.userTypeId;
+      else next.userTypeId = action.patch.userTypeId;
+    }
+    // Bail if the patch is a no-op so React skips a wasted render.
+    if (
+      next.userDescription === prev.userDescription &&
+      next.userTypeId === prev.userTypeId
+    ) {
+      return state;
+    }
+    const nextEntries = entries.slice();
+    nextEntries[idx] = next;
+    return {
+      ...state,
+      history: { ...state.history, [action.accountId]: nextEntries },
+    };
   }
   if (action.type === "applyReconciliation") {
     const mergedSet = new Set(action.mergedRowIds);
@@ -3433,6 +3480,13 @@ function BudgetView({
   const [matchRulePrompt, setMatchRulePrompt] = useState<{
     entryId: string;
   } | null>(null);
+  // null = closed; otherwise the history entry the user invoked the
+  // per-entry edit modal from (the pen button on a history row).
+  // Resolved fresh each render so a concurrent re-import / delete
+  // can't strand a stale snapshot in state.
+  const [historyEditPrompt, setHistoryEditPrompt] = useState<{
+    entryId: string;
+  } | null>(null);
   // null = closed; otherwise the sheet the user is downloading. The
   // shape carries the resolved prefs so the modal can seed itself
   // from per-device defaults without re-reading localStorage.
@@ -3764,6 +3818,24 @@ function BudgetView({
     if (!row.historyEntryId) return;
     setMatchRulePrompt({ entryId: row.historyEntryId });
   }, []);
+  const onEditHistoryRequest = useCallback((row: Row) => {
+    if (!row.historyEntryId) return;
+    setHistoryEditPrompt({ entryId: row.historyEntryId });
+  }, []);
+  const onUpdateHistoryEntry = useCallback(
+    (
+      accountId: string,
+      entryId: string,
+      patch: { userDescription?: string; userTypeId?: string | null },
+    ) =>
+      dispatch({
+        type: "updateHistoryEntry",
+        accountId,
+        entryId,
+        patch,
+      }),
+    [dispatch],
+  );
   const onCorrectionDeleteRequest = useCallback(
     (row: Row) => {
       // Pre-format the signed delta so the prompt reads naturally even
@@ -4720,6 +4792,32 @@ function BudgetView({
     return data.history[accountId] ?? [];
   }, [activeItem.accountId, data.history]);
 
+  // Resolve the entry for the per-entry edit modal from
+  // `historyEditPrompt.entryId`. Looked up fresh each render so a
+  // concurrent delete / re-import doesn't strand a stale snapshot.
+  const historyEditEntry = useMemo<HistoryEntry | null>(() => {
+    if (!historyEditPrompt) return null;
+    const accountId = activeItem.accountId;
+    if (!accountId) return null;
+    const entries = data.history[accountId] ?? [];
+    return entries.find((e) => e.id === historyEditPrompt.entryId) ?? null;
+  }, [historyEditPrompt, activeItem.accountId, data.history]);
+
+  const onSubmitHistoryEdit = useCallback(
+    (patch: { userDescription: string; userTypeId: string | null }) => {
+      const accountId = activeItem.accountId;
+      if (!accountId || !historyEditPrompt) return;
+      dispatch({
+        type: "updateHistoryEntry",
+        accountId,
+        entryId: historyEditPrompt.entryId,
+        patch,
+      });
+      setHistoryEditPrompt(null);
+    },
+    [dispatch, activeItem.accountId, historyEditPrompt],
+  );
+
   const onSubmitMatchRule = useCallback(
     (draft: MatchRuleDraft) => {
       const rule: MatchRule = {
@@ -5212,6 +5310,8 @@ function BudgetView({
                 onEditRowRequest={onEditRowRequest}
                 onTransactionRequest={onTransactionRequest}
                 onMatchRuleRequest={onMatchRuleRequest}
+                onEditHistoryRequest={onEditHistoryRequest}
+                onUpdateHistoryEntry={onUpdateHistoryEntry}
                 onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                 onReorderColumns={onReorderColumns}
                 onToggleSelect={onToggleSelect}
@@ -5444,6 +5544,17 @@ function BudgetView({
         settings={data.settings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
+        onCreateType={onCreateType}
+      />
+      <HistoryEntryEditModal
+        open={historyEditPrompt !== null && historyEditEntry !== null}
+        entry={historyEditEntry}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
+        typeUsageById={typeUsageById}
+        settings={data.settings}
+        onClose={() => setHistoryEditPrompt(null)}
+        onSubmit={onSubmitHistoryEdit}
         onCreateType={onCreateType}
       />
       <ApplySeriesEditDialog

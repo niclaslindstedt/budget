@@ -252,6 +252,13 @@ type HistoryEntry = {
   importedAt: number; // unix ms of first import
   hidden?: boolean; // user-shelved noise OR collapsed-into-transfer
   collapsedIntoTransactionId?: string; // backref into UserData.transactions
+  // Per-entry overrides applied on top of MerchantHint / MatchRule in
+  // `synthesizeHistoryRow`. Set by the pen button on a history row
+  // (and by the inline description / type cells). Highest-priority
+  // overlay so a single bank entry can be relabelled without dragging
+  // every other entry with the same merchant key along.
+  userDescription?: string;
+  userTypeId?: string;
 };
 
 type Transaction = {

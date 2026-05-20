@@ -99,7 +99,18 @@ type Props = {
   onEditRowRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
+  onEditHistoryRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
+  // Inline per-cell write for a synthesized history row. Routed by
+  // `SheetView` when the user edits the description or type cell on a
+  // history row — `onUpdateCell` would no-op on the underlying
+  // `UserData.history` map, so the cell handler dispatches this
+  // instead, with the active `accountId` already attached.
+  onUpdateHistoryEntry: (
+    accountId: string,
+    entryId: string,
+    patch: { userDescription?: string; userTypeId?: string | null },
+  ) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -188,7 +199,9 @@ export function SheetView({
   onEditRowRequest,
   onTransactionRequest,
   onMatchRuleRequest,
+  onEditHistoryRequest,
   onCorrectionDeleteRequest,
+  onUpdateHistoryEntry,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
@@ -288,6 +301,38 @@ export function SheetView({
   const balances = useMemo(
     () => computeBalances(decoratedItem, openingBalance, effectiveAmounts),
     [decoratedItem, openingBalance, effectiveAmounts],
+  );
+
+  // History rows are synthesized — their cells don't exist in
+  // `item.rows[]`, so the generic `onUpdateCell` reducer would no-op.
+  // Intercept writes to history rows here and route description /
+  // type edits to `onUpdateHistoryEntry` instead so the override
+  // lands on the underlying `HistoryEntry`. Other columns are
+  // bank-authoritative and ignored. `onCommitCell` already
+  // short-circuits for synthesized rows (no `seriesId`), so it
+  // doesn't need a parallel intercept.
+  const accountId = item.accountId;
+  const handleUpdateCell = useCallback(
+    (rowId: string, columnId: string, value: CellValue) => {
+      if (!rowId.startsWith("hist:") || !accountId) {
+        onUpdateCell(rowId, columnId, value);
+        return;
+      }
+      const entryId = rowId.slice("hist:".length);
+      const col = decoratedItem.columns.find((c) => c.id === columnId);
+      if (col?.type === "description") {
+        onUpdateHistoryEntry(accountId, entryId, {
+          userDescription: typeof value === "string" ? value : "",
+        });
+        return;
+      }
+      if (col?.type === "type") {
+        onUpdateHistoryEntry(accountId, entryId, {
+          userTypeId: typeof value === "string" && value !== "" ? value : null,
+        });
+      }
+    },
+    [accountId, decoratedItem.columns, onUpdateCell, onUpdateHistoryEntry],
   );
 
   // Each month renders as its own CSS grid, so amount/balance columns
@@ -522,7 +567,7 @@ export function SheetView({
                     seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
                   }
                   onToggleCollapsed={() => toggleCollapsed(monthKey)}
-                  onUpdateCell={onUpdateCell}
+                  onUpdateCell={handleUpdateCell}
                   onCommitCell={onCommitCell}
                   onAddRow={() => onAddRow(seedDate)}
                   onAddComplex={() => onAddComplex(seedDate)}
@@ -531,6 +576,7 @@ export function SheetView({
                   onEditRowRequest={onEditRowRequest}
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
+                  onEditHistoryRequest={onEditHistoryRequest}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}

@@ -607,6 +607,7 @@ export const en = {
     labelByPattern: "Label by pattern",
     labelByPatternTitle:
       "Label every history entry matching a wildcard pattern",
+    editHistoryEntry: "Edit this history entry",
     editTransaction: "Edit transaction",
     makeTransaction: "Make transaction",
     needAccountForTransfer:
@@ -760,6 +761,18 @@ export const en = {
     scopeThisAndFuture: "This row and all future",
     scopeAlwaysJustThis: "Date and completed always apply to this row only.",
     completed: "Completed",
+  },
+
+  editHistory: {
+    title: "Edit history entry",
+    description: "Description",
+    descriptionPlaceholder: "Override the bank's description",
+    type: "Type",
+    originalDescription: "Original from bank",
+    hint:
+      "Renames just this one entry. The bank's record stays untouched " +
+      "for reference. To relabel every entry with the same description, " +
+      "use the pattern button instead.",
   },
 
   history: {

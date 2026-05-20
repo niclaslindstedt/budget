@@ -265,6 +265,19 @@ export type HistoryEntry = {
   importedAt: number;
   hidden?: boolean;
   collapsedIntoTransactionId?: string;
+  // Per-entry user overrides for the synthesized row's description /
+  // type. Higher priority than `MatchRule` and `MerchantHint` — set by
+  // the per-entry edit modal (pen button on a history row) and the
+  // inline editors so a single bank entry can be relabelled without
+  // dragging every other entry that shares its merchant key with it.
+  // `description` left unset (or empty after trimming, normalised to
+  // unset by the reducer) means "fall through to rules / hints / raw
+  // bank text". `userTypeId` set to a string id wins over rule / hint;
+  // unset means "fall through" too. The raw bank `description` is
+  // preserved untouched so the original statement text remains visible
+  // alongside the override in the edit modal.
+  userDescription?: string;
+  userTypeId?: string;
 };
 
 // Per-account metadata recorded each time the user imports a file.
@@ -560,7 +573,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 27;
+  version: 28;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
