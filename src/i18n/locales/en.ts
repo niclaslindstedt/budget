@@ -1516,6 +1516,32 @@ export const en = {
     hobby: "Hobby",
     travel: "Travel",
   },
+
+  download: {
+    budgetTitle: "Download {name}",
+    accountsTitle: "Download accounts",
+    downloadSheet: "Download sheet",
+    downloadSheetTitle: "Download this sheet",
+    formatLabel: "Format",
+    contentsLabel: "Include",
+    includeHistory: "Past entries (history)",
+    includeFuture: "Upcoming entries",
+    noHistoryHint: "This sheet has no imported history",
+    includeTransactionsAll: "Include transactions",
+    noAccountsToExport: "No accounts to include yet.",
+    submit: "Download",
+    column: {
+      account: "Account",
+      accountInfo: "Account info",
+      transactions: "Transactions",
+    },
+    accountInfoFor: "Include account info for {name}",
+    accountTransactionsFor: "Include transactions for {name}",
+    format: {
+      csv: "CSV (.csv)",
+      xlsx: "Excel (.xlsx)",
+    },
+  },
 } as const;
 
 // Recursively widen every leaf from its literal type ("Save") to the
