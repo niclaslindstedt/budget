@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Pencil, Repeat, Tags, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
@@ -61,7 +61,7 @@ const SWIPE_THRESHOLD = 40;
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
 
-export function SheetRow({
+function SheetRowImpl({
   row,
   columns,
   balances,
@@ -345,8 +345,8 @@ export function SheetRow({
           outgoing={isOutgoing}
           isHistory={isHistory}
           hasFormula={typeof row.amountFormula === "string"}
-          onChange={(value) => onUpdateCell(row.id, col.id, value)}
-          onCommit={(value) => onCommitCell(row.id, col.id, value)}
+          onUpdateCell={onUpdateCell}
+          onCommitCell={onCommitCell}
         />
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
@@ -450,3 +450,8 @@ export function SheetRow({
     </tr>
   );
 }
+
+// Memoized so a state change on one row (cell focus, popover open,
+// selection toggle) doesn't re-render every other row in the sheet —
+// see the matching `memo` on `Cell` for the broader rationale.
+export const SheetRow = memo(SheetRowImpl);

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -76,15 +76,20 @@ type Props = {
   // the number isn't a literal entry. Editing the formula goes
   // through the ComplexEntryModal, not inline.
   hasFormula?: boolean;
-  onChange: (value: CellValue) => void;
+  // Parent-level update / commit handlers. Carry rowId + columnId so
+  // SheetRow can pass the same reference-stable function to every cell
+  // in the row — React.memo's shallow compare then skips re-rendering a
+  // cell whose value didn't change. Cell wraps these into the
+  // (value)-only closures its sub-components expect.
+  onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Fires when the user finishes editing a cell (blur for the typed
   // inputs, the selection event for picker-style cells). Distinct from
-  // `onChange`, which can fire on every keystroke. Lets the parent know
-  // the edit has settled so it can prompt for series propagation.
-  onCommit?: (value: CellValue) => void;
+  // `onUpdateCell`, which can fire on every keystroke. Lets the parent
+  // know the edit has settled so it can prompt for series propagation.
+  onCommitCell?: (rowId: string, columnId: string, value: CellValue) => void;
 };
 
-export function Cell({
+function CellImpl({
   rowId,
   column,
   value,
@@ -101,9 +106,17 @@ export function Cell({
   outgoing,
   isHistory,
   hasFormula,
-  onChange,
-  onCommit,
+  onUpdateCell,
+  onCommitCell,
 }: Props) {
+  // Wrappers that adapt the parent's (rowId, colId, value) handlers into
+  // the (value)-only signature the inline editors expect. Allocated per
+  // Cell render — but Cell is memoized, so they're only rebuilt when the
+  // cell's actual data changes, not on every parent re-render.
+  const onChange = (next: CellValue) => onUpdateCell(rowId, column.id, next);
+  const onCommit = onCommitCell
+    ? (next: CellValue) => onCommitCell(rowId, column.id, next)
+    : undefined;
   // Synthesized transaction rows are not editable inline — the
   // underlying data lives in `data.transactions`, not on the budget's
   // rows[]. Render each cell as a display-only span / icon and offer
@@ -370,6 +383,13 @@ export function Cell({
     }
   }
 }
+
+// Memoized so that a focus / popover-open in one cell — which fires a
+// state change at the row's parent — doesn't ripple through every cell
+// in every row. Shallow compare is enough: SheetRow passes the parent
+// `onUpdateCell` / `onCommitCell` straight through (stable refs), and
+// the other props are scalars or stable references derived from the row.
+export const Cell = memo(CellImpl);
 
 // Readonly variant of the type cell — used for synthesized transaction
 // and history rows where the row is sourced from outside the budget's

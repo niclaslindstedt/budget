@@ -1,24 +1,35 @@
 import { createContext, useContext } from "react";
 
 // Coordinator handle exposed to consumers inside a SheetView's
-// ActiveRowProvider. `useActiveRow` returns null outside a provider
-// so the same components (CategoryPicker, …) keep working when reused
-// inside modals where the coordinator is not relevant.
+// ActiveRowProvider. `useActiveRowCoordinator` returns null outside a
+// provider so the same components (CategoryPicker, …) keep working
+// when reused inside modals where the coordinator is not relevant.
+//
+// The coordinator is split from the `hasActive` state so the thousands
+// of components below a SheetView that only need to *register* a row
+// (cell inputs, popovers, pickers, swipe handles) subscribe to a
+// reference-stable context — when a cell flips active, only the one
+// consumer that watches `hasActive` (the `+ Add row` footer button)
+// re-renders, instead of the entire row tree below the provider.
 
-export type ActiveRowContextValue = {
+export type ActiveRowCoordinator = {
   activate: (rowId: string, dismiss: () => void) => number;
   deactivate: (token: number) => void;
-  // True while any row in this sheet is in its active state (swiped to
-  // reveal action buttons, mid-edit, etc.). Consumers like the
-  // "add row" button use this to disable themselves so a misplaced tap
-  // next to the action buttons does not also add a new row.
-  hasActive: boolean;
 };
 
-export const ActiveRowContext = createContext<ActiveRowContextValue | null>(
-  null,
-);
+export const ActiveRowCoordinatorContext =
+  createContext<ActiveRowCoordinator | null>(null);
 
-export function useActiveRow(): ActiveRowContextValue | null {
-  return useContext(ActiveRowContext);
+// Separate context for the single boolean — splitting it from the
+// coordinator means components that only call `activate`/`deactivate`
+// don't re-render every time `hasActive` flips. AddRowButton is the
+// only consumer.
+export const ActiveRowHasActiveContext = createContext<boolean>(false);
+
+export function useActiveRowCoordinator(): ActiveRowCoordinator | null {
+  return useContext(ActiveRowCoordinatorContext);
+}
+
+export function useActiveRowHasActive(): boolean {
+  return useContext(ActiveRowHasActiveContext);
 }

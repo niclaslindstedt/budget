@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-import { useActiveRow } from "./useActiveRow";
+import { useActiveRowCoordinator } from "./useActiveRow";
 
 // Register the calling component as the sheet's active row whenever
 // `active` is true, and tear down again when it flips false. The
@@ -37,11 +37,11 @@ export function useBlocksSheet(
   active: boolean,
   dismiss: () => void,
 ): void {
-  const activeRow = useActiveRow();
+  const coordinator = useActiveRowCoordinator();
   const dismissRef = useRef(dismiss);
-  const activeRowRef = useRef(activeRow);
+  const activeRowRef = useRef(coordinator);
   dismissRef.current = dismiss;
-  activeRowRef.current = activeRow;
+  activeRowRef.current = coordinator;
 
   useLayoutEffect(() => {
     if (!active || !rowId) return;

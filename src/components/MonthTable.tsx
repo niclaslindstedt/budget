@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
@@ -76,7 +77,7 @@ function formatMonth(key: string, lang: Lang, t: TFunction): string {
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
-export function MonthTable({
+function MonthTableImpl({
   monthKey,
   rows,
   columns,
@@ -230,48 +231,55 @@ export function MonthTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              if (row.isCorrection) {
-                const amount =
-                  amountCol && typeof row.cells[amountCol.id] === "number"
-                    ? (row.cells[amountCol.id] as number)
-                    : 0;
+            {/* Skip building the row tree entirely when the month is
+               collapsed. The container above is `hidden`, so rendering
+               into it would only feed React's reconciler — building
+               1000s of cells worth of vnodes for a month the user can't
+               see is pure overhead and dominates the work when many
+               years of history are revealed via "Show more". */}
+            {!collapsed &&
+              rows.map((row) => {
+                if (row.isCorrection) {
+                  const amount =
+                    amountCol && typeof row.cells[amountCol.id] === "number"
+                      ? (row.cells[amountCol.id] as number)
+                      : 0;
+                  return (
+                    <CorrectionLine
+                      key={row.id}
+                      colSpan={correctionColSpan}
+                      amount={amount}
+                      settings={settings}
+                      onClick={() => onCorrectionDeleteRequest(row)}
+                    />
+                  );
+                }
                 return (
-                  <CorrectionLine
+                  <SheetRow
                     key={row.id}
-                    colSpan={correctionColSpan}
-                    amount={amount}
+                    row={row}
+                    columns={columns}
+                    balances={balances}
+                    types={types}
+                    categories={categories}
+                    typeUsageById={typeUsageById}
+                    onCreateType={onCreateType}
                     settings={settings}
-                    onClick={() => onCorrectionDeleteRequest(row)}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(row.id)}
+                    canTransfer={canTransfer}
+                    onUpdateCell={onUpdateCell}
+                    onCommitCell={onCommitCell}
+                    onDeleteRequest={onDeleteRequest}
+                    onEditRequest={onEditRequest}
+                    onEditRowRequest={onEditRowRequest}
+                    onTransactionRequest={onTransactionRequest}
+                    onMatchRuleRequest={onMatchRuleRequest}
+                    onEditHistoryRequest={onEditHistoryRequest}
+                    onToggleSelect={onToggleSelect}
                   />
                 );
-              }
-              return (
-                <SheetRow
-                  key={row.id}
-                  row={row}
-                  columns={columns}
-                  balances={balances}
-                  types={types}
-                  categories={categories}
-                  typeUsageById={typeUsageById}
-                  onCreateType={onCreateType}
-                  settings={settings}
-                  selectMode={selectMode}
-                  selected={selectedIds.has(row.id)}
-                  canTransfer={canTransfer}
-                  onUpdateCell={onUpdateCell}
-                  onCommitCell={onCommitCell}
-                  onDeleteRequest={onDeleteRequest}
-                  onEditRequest={onEditRequest}
-                  onEditRowRequest={onEditRowRequest}
-                  onTransactionRequest={onTransactionRequest}
-                  onMatchRuleRequest={onMatchRuleRequest}
-                  onEditHistoryRequest={onEditHistoryRequest}
-                  onToggleSelect={onToggleSelect}
-                />
-              );
-            })}
+              })}
           </tbody>
           <tfoot>
             <tr>
@@ -294,6 +302,13 @@ export function MonthTable({
     </section>
   );
 }
+
+// Memoized so SheetView re-renders (driven by other months, by typing
+// in a single cell, or by a state flip elsewhere in the app) don't
+// rebuild every month's row tree. Shallow compare suffices — SheetView
+// memoizes the per-month `rows` array (via `sortedMonthGroups`) and the
+// other props are stable references coming from the workspace data.
+export const MonthTable = memo(MonthTableImpl);
 
 // One-row stand-in for a balance-correction Row. Renders as a single
 // full-width <td> showing "——— balance correction ±X kr ———" — no
