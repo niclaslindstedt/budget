@@ -574,6 +574,15 @@ export const sv: Catalog = {
     apply: "Använd på {n}",
     applyOne: "Använd",
     hint: "Tomma fält lämnas som de är.",
+    changeType: "Ändra typ",
+    changeDate: "Ändra datum",
+    changeAmount: "Ändra belopp",
+    sharedAmountHint: "Alla {n} rader delar {amount}",
+    differentAmountsHint:
+      "Markerade rader har olika belopp — redigera varje rad separat för att ändra dem.",
+    makeEachRecurring: "Gör var och en återkommande",
+    makeEachRecurringHint:
+      "Replikera varje markerad rad på datumen nedan; var och en blir en egen serie.",
   },
 
   moveCopy: {
@@ -584,6 +593,19 @@ export const sv: Catalog = {
     copy: "Kopiera",
     selectedMonths: "{n} månader markerade",
     targetMonth: "Målmånad",
+    moveTitle: "Flytta {n} post",
+    moveTitlePlural: "Flytta {n} poster",
+    copyTitle: "Kopiera {n} post",
+    copyTitlePlural: "Kopiera {n} poster",
+    moveHint:
+      "Välj en målmånad. Dagen i månaden bevaras (klipps till månadens längd).",
+    copyHint:
+      "Välj en eller flera målmånader. Varje markerad post dupliceras till varje mål, dag-i-månaden bevaras.",
+    prevYear: "Föregående år",
+    nextYear: "Nästa år",
+    targets: "Mål",
+    copyTo: "Kopiera till {n} månad",
+    copyToPlural: "Kopiera till {n} månader",
   },
 
   editEntry: {
@@ -610,13 +632,16 @@ export const sv: Catalog = {
 
   history: {
     title: "Historik",
+    titleAccount: "Historik · {name}",
     titleForAccount: "Historik — {name}",
     importedAt: "Importerad {date}",
     rangePrefix: "Intervall:",
     addedCount: "{n} tillagda",
     duplicateCount: "{n} dubbletter",
+    addedSkippedBoth: "{added} nya, {duplicate} överhoppade",
+    addedOnly: "{added} nya",
     noEntries:
-      "Ingen historik än. Importera ett bankutdrag för att komma igång.",
+      "Ingen historik än. Importera ett bankutdrag för att fylla denna vy.",
     noEntriesForMonth: "Ingen historik för {month}.",
     showHidden: "Visa dolda",
     hideHidden: "Dölj dolda",
@@ -630,6 +655,10 @@ export const sv: Catalog = {
     label: "Etikett",
     importLabel: "Import",
     importsLabel: "Importer",
+    date: "Datum",
+    description: "Beskrivning",
+    amount: "Belopp",
+    balance: "Saldo",
   },
 
   importHistory: {

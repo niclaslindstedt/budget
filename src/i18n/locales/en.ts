@@ -582,6 +582,15 @@ export const en = {
     apply: "Apply to {n}",
     applyOne: "Apply",
     hint: "Empty fields are left as-is.",
+    changeType: "Change type",
+    changeDate: "Change date",
+    changeAmount: "Change amount",
+    sharedAmountHint: "All {n} rows share {amount}",
+    differentAmountsHint:
+      "Selected rows have different amounts — edit each row individually to change them.",
+    makeEachRecurring: "Make each recurring",
+    makeEachRecurringHint:
+      "Replicate every selected row at the dates below; each becomes its own series.",
   },
 
   moveCopy: {
@@ -592,6 +601,19 @@ export const en = {
     copy: "Copy",
     selectedMonths: "{n} months selected",
     targetMonth: "Target month",
+    moveTitle: "Move {n} entry",
+    moveTitlePlural: "Move {n} entries",
+    copyTitle: "Copy {n} entry",
+    copyTitlePlural: "Copy {n} entries",
+    moveHint:
+      "Pick a target month. Day-of-month is preserved (clamped to month length).",
+    copyHint:
+      "Pick one or more target months. Each selected entry is duplicated into every target, preserving day-of-month.",
+    prevYear: "Previous year",
+    nextYear: "Next year",
+    targets: "Targets",
+    copyTo: "Copy to {n} month",
+    copyToPlural: "Copy to {n} months",
   },
 
   editEntry: {
@@ -618,12 +640,15 @@ export const en = {
 
   history: {
     title: "History",
+    titleAccount: "History · {name}",
     titleForAccount: "History — {name}",
     importedAt: "Imported {date}",
     rangePrefix: "Range:",
     addedCount: "{n} added",
     duplicateCount: "{n} duplicate",
-    noEntries: "No history yet. Import a bank statement to get started.",
+    addedSkippedBoth: "{added} new, {duplicate} skipped",
+    addedOnly: "{added} new",
+    noEntries: "No history yet. Import a bank statement to populate this view.",
     noEntriesForMonth: "No history for {month}.",
     showHidden: "Show hidden",
     hideHidden: "Hide hidden",
@@ -637,6 +662,10 @@ export const en = {
     label: "Label",
     importLabel: "Import",
     importsLabel: "Imports",
+    date: "Date",
+    description: "Description",
+    amount: "Amount",
+    balance: "Balance",
   },
 
   importHistory: {
