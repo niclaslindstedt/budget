@@ -750,6 +750,10 @@ export const en = {
       "Past history entries that match this merchant will adopt the description and type above. The bank's original text is kept as-is — only the on-screen label changes.",
     promoteIntro:
       "Generate future entries from this row using a recurrence rule. The current row stays as-is and joins the new series.",
+    promoteBackfillOne:
+      "{n} past entry in this account's bank history matches this description and will adopt the type and label above. The bank's original text is kept as-is.",
+    promoteBackfillOther:
+      "{n} past entries in this account's bank history match this description and will adopt the type and label above. The bank's original text is kept as-is.",
     addFutureEntries: "Add {n} future entry",
     addFutureEntriesPlural: "Add {n} future entries",
   },
@@ -1001,6 +1005,9 @@ export const en = {
     previewLabel: "Preview",
     previewEntryOne: "{n} entry",
     previewEntryOther: "{n} entries",
+    previewHistoricOne: "{n} past match",
+    previewHistoricOther: "{n} past matches",
+    previewHistoricTitle: "Already in your imported bank history.",
     noDatesYet: "No dates yet.",
     morePrefix: "+{n} more",
   },

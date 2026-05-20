@@ -32,6 +32,7 @@ import {
   EditEntryModal,
   type EditPatch,
   type EditScope,
+  type HistoryMatchPreview,
   type HistoryPromotePrefill,
 } from "./components/EditEntryModal";
 import {
@@ -1673,6 +1674,34 @@ function reducer(state: UserData, action: Action): UserData {
       const next = reduceAccountBudget(item, effectiveAction);
       if (next === item) return item;
       recordings.push(...hintRecordingsFromBudget(item, next));
+      // "Make recurring" should also backfill the user-typed
+      // description onto past bank-history entries whose normalised
+      // text matches the row — the `hintRecordingsFromBudget` diff
+      // above carries the typeId, but the merchant-hint's
+      // `description_override` only stamps when the recording
+      // explicitly sets it. Emit one targeted recording from the
+      // anchor row so synthesized history rows render the clean
+      // label ("Spotify") rather than the raw bank text
+      // ("*SPOTIFY P12AB34"). Skipped when the user declined a type
+      // — the override would otherwise stick without a category to
+      // route the past entries under.
+      if (
+        effectiveAction.type === "convertToRecurring" &&
+        effectiveAction.typeId
+      ) {
+        const descCol = findColumnByType(item.columns, "description");
+        const anchor = item.rows.find((r) => r.id === effectiveAction.rowId);
+        if (descCol && anchor) {
+          const desc = anchor.cells[descCol.id];
+          if (typeof desc === "string" && desc.trim() !== "") {
+            recordings.push({
+              description: desc,
+              typeId: effectiveAction.typeId,
+              description_override: desc,
+            });
+          }
+        }
+      }
       return next;
     });
     return { ...sheet, items };
@@ -4916,6 +4945,41 @@ function BudgetView({
     };
   }, [editPrompt, activeItem.accountId, data.history, data.merchantHints]);
 
+  // Bank-history entries on the active account that share the
+  // promote-target row's normalised description. Surfaced in the
+  // EditEntryModal so the user sees which past entries will adopt
+  // the typed label / type via the merchant-hint overlay. Skipped
+  // for history rows (their promote flow has its own backfill via
+  // the merchant-hint key the modal already writes) and for series
+  // rows (the modal is in edit-series mode, not promote).
+  const editHistoryMatches = useMemo<HistoryMatchPreview[] | null>(() => {
+    const row = editPrompt?.row;
+    if (!row || row.historyEntryId || row.seriesId) return null;
+    const accountId = activeItem.accountId;
+    if (!accountId) return null;
+    const descId = findColumnByType(activeItem.columns, "description")?.id;
+    if (!descId) return null;
+    const rawDesc = row.cells[descId];
+    if (typeof rawDesc !== "string" || rawDesc.trim() === "") return null;
+    const targetKey = normaliseDescription(rawDesc);
+    if (targetKey.length < 3) return null;
+    const entries = data.history[accountId] ?? [];
+    const matches: HistoryMatchPreview[] = [];
+    for (const e of entries) {
+      if (e.hidden) continue;
+      if (e.collapsedIntoTransactionId) continue;
+      if (normaliseDescription(e.description) !== targetKey) continue;
+      matches.push({
+        id: e.id,
+        date: e.date,
+        description: e.description,
+        amount: e.amount,
+      });
+    }
+    matches.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    return matches;
+  }, [editPrompt, activeItem.accountId, activeItem.columns, data.history]);
+
   const deleteActions: ConfirmAction[] = useMemo(() => {
     if (!deletePrompt) return [];
     const row = deletePrompt.row;
@@ -5571,6 +5635,7 @@ function BudgetView({
         settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
         historyHintPrefill={editHistoryHintPrefill}
+        historyMatches={editHistoryMatches ?? undefined}
         onClose={() => setEditPrompt(null)}
         onConvertToRecurring={onConvertToRecurring}
         onEditSeries={onEditSeries}
