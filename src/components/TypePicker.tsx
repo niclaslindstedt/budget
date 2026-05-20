@@ -9,6 +9,7 @@ import {
 import type { Category, CategoryIcon, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { displayTypeName } from "../i18n/preset-names";
 import { CategoryChip } from "./CategoryPicker";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
@@ -72,18 +73,20 @@ export function TypePicker({
   const selected = types.find((t) => t.id === selectedId) ?? null;
 
   // Pre-sort the list: most-used first (descending count), then
-  // alphabetical by name as a stable tiebreaker. When `usageById` is
-  // absent we fall back to insertion order so callers without usage
-  // data still render predictably.
+  // alphabetical by display name as a stable tiebreaker. Sorting by
+  // the translated name keeps the order natural for the active
+  // language (preset "Bolån" sorts under B, not M from "Mortgage").
+  // When `usageById` is absent we fall back to insertion order so
+  // callers without usage data still render predictably.
   const sortedTypes = useMemo(() => {
     if (!usageById) return [...types];
     return [...types].sort((a, b) => {
       const ua = usageById.get(a.id) ?? 0;
       const ub = usageById.get(b.id) ?? 0;
       if (ua !== ub) return ub - ua;
-      return a.name.localeCompare(b.name);
+      return displayTypeName(a, t).localeCompare(displayTypeName(b, t));
     });
-  }, [types, usageById]);
+  }, [types, usageById, t]);
 
   function handlePick(id: string | null) {
     onSelect(id);
@@ -236,6 +239,7 @@ export function TypeChip({
   type: EntryType;
   compact?: boolean;
 }) {
+  const t = useT();
   return (
     <span
       className={
@@ -250,7 +254,7 @@ export function TypeChip({
       }}
     >
       <CategoryIconGlyph name={type.glyph} size={compact ? 12 : 13} />
-      <span className="truncate">{type.name}</span>
+      <span className="truncate">{displayTypeName(type, t)}</span>
     </span>
   );
 }
