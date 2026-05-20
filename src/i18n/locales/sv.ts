@@ -82,6 +82,45 @@ export const sv: Catalog = {
     swedishKronor: "Svenska kronor",
   },
 
+  cloudLink: {
+    sourceBrowser: "den här webbläsarens budget",
+    sourceFolder: "din tidigare mappbudget",
+    sourceLocalFolder: "din lokala mappbudget",
+    sourceDropbox: "din Dropbox-budget",
+    sourceGdrive: "din Google Drive-budget",
+    untouchedBrowser: "den här webbläsarens nuvarande budget",
+    untouchedFolder: "din tidigare mappbudget",
+    untouchedLocalFolder: "din lokala mappbudget",
+    untouchedDropbox: "din Dropbox-budget",
+    untouchedGdrive: "din Google Drive-budget",
+    folderAlreadyHas: "Mappen innehåller redan en budget",
+    folderBothBody:
+      "Mappen du valde innehåller redan en budgetfil. Välj vilken version som ska behållas — den andra ersätts.",
+    eitherWayKept:
+      "Oavsett vad, {untouched} stannar där den är — att byta lagring tar inte bort den, så du kan komma tillbaka till den senare.",
+    useTheFolderVersion: "Använd mappversionen",
+    replaceFolderWith: "Ersätt mappen med {source}",
+    cloudAlreadyHas: "{name} har redan en budget",
+    cloudBothBody:
+      "{name} innehåller redan en budgetfil. Välj vilken version som ska behållas — den andra ersätts.",
+    useTheCloudVersion: "Använd {name}-versionen",
+    replaceCloudWith: "Ersätt {name} med {source}",
+    linkingCloud: "Länkar {name}",
+    emptyCloudBody:
+      "{name} är ansluten och tom. Ta över {source}, eller börja om på {name}?",
+    untouchedKeptShort:
+      "{untouched} stannar där den är oavsett — att byta lagring tar inte bort den.",
+    bringSourceOver: "Ta över {source} till {name}",
+    startFreshOn: "Börja om på {name}",
+    useExistingCloud: "Använd befintlig {name}-budget?",
+    useExistingCloudBody:
+      "{name} innehåller redan en budgetfil. Att byta använder den som din aktiva budget på denna enhet.",
+    switchTo: "Byt till {name}",
+    cloudLinked: "{name} länkad",
+    cloudLinkedBody:
+      "{name} är ansluten. Nya poster sparas där från och med nu.",
+  },
+
   app: {
     title: "Budget",
     tagline: "En lokalt lagrad budgetapp.",
@@ -98,6 +137,12 @@ export const sv: Catalog = {
     folderHasBudget: "Mappen innehåller redan en budget",
     deleteSelected: "Ta bort markerade",
     deleteSheet: "Ta bort blad",
+    deleteThisRow: "Ta bort denna rad",
+    justThisOne: "Bara denna",
+    thisAndAllFuture: "Denna och alla framtida ({n})",
+    deleteRows: "Ta bort {n} rader",
+    deleteRowOne: "Ta bort {n} rad",
+    removeCorrection: "Ta bort korrigering",
     deleteAccount: "Ta bort konto",
     removeBalanceCorrection: "Ta bort saldokorrigering",
     aboutToSignOut: "Du loggas snart ut",
@@ -948,6 +993,8 @@ export const sv: Catalog = {
     addRow: "Lägg till 1 rad",
     addRowsPlural: "Lägg till {n} rader",
     addRowsNone: "rader",
+    promoteCandidate: "Befordra kandidat",
+    promoteVerb: "Befordra",
     recurrence: "Upprepning",
     fxSwitchToFixed: "Byt tillbaka till fast belopp",
     fxUseFormula: "Använd en formel istället för fast belopp",

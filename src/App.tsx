@@ -3027,49 +3027,46 @@ function FolderLinkDialog({
   onResolve: (action: "use-cloud" | "use-source") => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   if (!pending) return null;
   const sourcePossessive =
     pending.fromBackend === "browser"
-      ? "this browser's budget"
+      ? t("cloudLink.sourceBrowser")
       : pending.fromBackend === "folder"
-        ? "your previous folder budget"
+        ? t("cloudLink.sourceFolder")
         : pending.fromBackend === "dropbox"
-          ? "your Dropbox budget"
-          : "your Google Drive budget";
+          ? t("cloudLink.sourceDropbox")
+          : t("cloudLink.sourceGdrive");
   const untouched =
     pending.fromBackend === "browser"
-      ? "this browser's current budget"
+      ? t("cloudLink.untouchedBrowser")
       : pending.fromBackend === "folder"
-        ? "your previous folder budget"
+        ? t("cloudLink.untouchedFolder")
         : pending.fromBackend === "dropbox"
-          ? "your Dropbox budget"
-          : "your Google Drive budget";
+          ? t("cloudLink.untouchedDropbox")
+          : t("cloudLink.untouchedGdrive");
   // The only variant that surfaces here is "both sides have data" —
   // the connect handler short-circuits the other three cases
   // (commits straight away when one side is empty).
   return (
     <ConfirmDialog
       open
-      title="Folder already contains a budget"
+      title={t("cloudLink.folderAlreadyHas")}
       description={
         <>
-          <p>
-            The folder you picked already contains a budget file. Pick which
-            version to keep — the other will be replaced.
-          </p>
+          <p>{t("cloudLink.folderBothBody")}</p>
           <p className="mt-2 text-xs text-muted">
-            Either way, {untouched} stays where it is — switching backends
-            doesn&apos;t delete it, so you can still get back to it later.
+            {t("cloudLink.eitherWayKept", { untouched })}
           </p>
         </>
       }
       actions={[
         {
-          label: "Use the folder version",
+          label: t("cloudLink.useTheFolderVersion"),
           onSelect: () => onResolve("use-cloud"),
         },
         {
-          label: `Replace folder with ${sourcePossessive}`,
+          label: t("cloudLink.replaceFolderWith", { source: sourcePossessive }),
           tone: "danger",
           onSelect: () => onResolve("use-source"),
         },
@@ -3097,25 +3094,26 @@ function CloudLinkDialog({
   onResolve: (action: "use-cloud" | "use-source") => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   if (!pending) return null;
   const targetName =
     pending.provider === "dropbox" ? "Dropbox" : "Google Drive";
   const sourcePossessive =
     pending.fromBackend === "browser"
-      ? "this browser's budget"
+      ? t("cloudLink.sourceBrowser")
       : pending.fromBackend === "folder"
-        ? "your local folder budget"
+        ? t("cloudLink.sourceLocalFolder")
         : pending.fromBackend === "dropbox"
-          ? "your Dropbox budget"
-          : "your Google Drive budget";
+          ? t("cloudLink.sourceDropbox")
+          : t("cloudLink.sourceGdrive");
   const untouched =
     pending.fromBackend === "browser"
-      ? "this browser's current budget"
+      ? t("cloudLink.untouchedBrowser")
       : pending.fromBackend === "folder"
-        ? "your local folder budget"
+        ? t("cloudLink.untouchedLocalFolder")
         : pending.fromBackend === "dropbox"
-          ? "your Dropbox budget"
-          : "your Google Drive budget";
+          ? t("cloudLink.untouchedDropbox")
+          : t("cloudLink.untouchedGdrive");
   const hasSource = pending.sourceText !== null;
   const hasRemote = pending.remoteSnapshot !== null;
 
@@ -3126,26 +3124,25 @@ function CloudLinkDialog({
     return (
       <ConfirmDialog
         open
-        title={`${targetName} already has a budget`}
+        title={t("cloudLink.cloudAlreadyHas", { name: targetName })}
         description={
           <>
-            <p>
-              {targetName} already contains a budget file. Pick which version to
-              keep — the other will be replaced.
-            </p>
+            <p>{t("cloudLink.cloudBothBody", { name: targetName })}</p>
             <p className="mt-2 text-xs text-muted">
-              Either way, {untouched} stays where it is — switching backends
-              doesn&apos;t delete it, so you can still get back to it later.
+              {t("cloudLink.eitherWayKept", { untouched })}
             </p>
           </>
         }
         actions={[
           {
-            label: `Use the ${targetName} version`,
+            label: t("cloudLink.useTheCloudVersion", { name: targetName }),
             onSelect: () => onResolve("use-cloud"),
           },
           {
-            label: `Replace ${targetName} with ${sourcePossessive}`,
+            label: t("cloudLink.replaceCloudWith", {
+              name: targetName,
+              source: sourcePossessive,
+            }),
             tone: "danger",
             onSelect: () => onResolve("use-source"),
           },
@@ -3158,26 +3155,30 @@ function CloudLinkDialog({
     return (
       <ConfirmDialog
         open
-        title={`Linking ${targetName}`}
+        title={t("cloudLink.linkingCloud", { name: targetName })}
         description={
           <>
             <p>
-              {targetName} is connected and empty. Bring {sourcePossessive}{" "}
-              over, or start fresh on {targetName}?
+              {t("cloudLink.emptyCloudBody", {
+                name: targetName,
+                source: sourcePossessive,
+              })}
             </p>
             <p className="mt-2 text-xs text-muted">
-              {untouched} stays where it is either way — switching backends
-              doesn&apos;t delete it.
+              {t("cloudLink.untouchedKeptShort", { untouched })}
             </p>
           </>
         }
         actions={[
           {
-            label: `Bring ${sourcePossessive} over to ${targetName}`,
+            label: t("cloudLink.bringSourceOver", {
+              source: sourcePossessive,
+              name: targetName,
+            }),
             onSelect: () => onResolve("use-source"),
           },
           {
-            label: `Start fresh on ${targetName}`,
+            label: t("cloudLink.startFreshOn", { name: targetName }),
             onSelect: () => onResolve("use-cloud"),
           },
         ]}
@@ -3189,16 +3190,13 @@ function CloudLinkDialog({
     return (
       <ConfirmDialog
         open
-        title={`Use existing ${targetName} budget?`}
+        title={t("cloudLink.useExistingCloud", { name: targetName })}
         description={
-          <p>
-            {targetName} already contains a budget file. Switching will use that
-            as your active budget on this device.
-          </p>
+          <p>{t("cloudLink.useExistingCloudBody", { name: targetName })}</p>
         }
         actions={[
           {
-            label: `Switch to ${targetName}`,
+            label: t("cloudLink.switchTo", { name: targetName }),
             onSelect: () => onResolve("use-cloud"),
           },
         ]}
@@ -3209,16 +3207,13 @@ function CloudLinkDialog({
   return (
     <ConfirmDialog
       open
-      title={`${targetName} linked`}
+      title={t("cloudLink.cloudLinked", { name: targetName })}
       description={
-        <p>
-          {targetName} is connected. New entries will be saved there from now
-          on.
-        </p>
+        <p>{t("cloudLink.cloudLinkedBody", { name: targetName })}</p>
       }
       actions={[
         {
-          label: `Switch to ${targetName}`,
+          label: t("cloudLink.switchTo", { name: targetName }),
           onSelect: () => onResolve("use-cloud"),
         },
       ]}
@@ -3937,7 +3932,7 @@ function BudgetView({
     const target = deleteSheetPrompt;
     return [
       {
-        label: "Delete sheet",
+        label: t("app.deleteSheet"),
         tone: "danger",
         onSelect: () => {
           dispatch({ type: "deleteSheet", sheetId: target.sheetId });
@@ -3946,7 +3941,7 @@ function BudgetView({
         },
       },
     ];
-  }, [deleteSheetPrompt, dispatch]);
+  }, [deleteSheetPrompt, dispatch, t]);
 
   // Account / transaction modal handlers. Kept on the BudgetView so
   // they share the same dispatch and Account state as the rest of the
@@ -4016,7 +4011,7 @@ function BudgetView({
     const target = deleteAccountPrompt;
     return [
       {
-        label: "Delete account",
+        label: t("app.deleteAccount"),
         tone: "danger",
         onSelect: () => {
           dispatch({ type: "deleteAccount", accountId: target.accountId });
@@ -4025,7 +4020,7 @@ function BudgetView({
         },
       },
     ];
-  }, [deleteAccountPrompt, dispatch]);
+  }, [deleteAccountPrompt, dispatch, t]);
 
   // Bank-history import / viewer flows. The Accounts page surfaces a
   // per-row Upload button (always enabled) and a History viewer
@@ -4617,7 +4612,7 @@ function BudgetView({
     if (!row.seriesId || !dateCol) {
       return [
         {
-          label: "Delete this row",
+          label: t("app.deleteThisRow"),
           tone: "danger",
           onSelect: () => {
             dispatch({
@@ -4636,7 +4631,7 @@ function BudgetView({
     );
     return [
       {
-        label: "Just this one",
+        label: t("app.justThisOne"),
         tone: "danger",
         onSelect: () => {
           dispatch({ type: "deleteRows", sheetId, itemId, rowIds: [row.id] });
@@ -4644,7 +4639,7 @@ function BudgetView({
         },
       },
       {
-        label: `This and all future (${futureIds.length})`,
+        label: t("app.thisAndAllFuture", { n: futureIds.length }),
         tone: "danger",
         onSelect: () => {
           dispatch({ type: "deleteRows", sheetId, itemId, rowIds: futureIds });
@@ -4652,14 +4647,17 @@ function BudgetView({
         },
       },
     ];
-  }, [deletePrompt, activeItem.rows, dateCol, dispatch, sheetId, itemId]);
+  }, [deletePrompt, activeItem.rows, dateCol, dispatch, sheetId, itemId, t]);
 
   const bulkDeleteActions: ConfirmAction[] = useMemo(() => {
     if (!bulkDeletePrompt) return [];
     const ids = bulkDeletePrompt.rowIds;
     return [
       {
-        label: `Delete ${ids.length} ${ids.length === 1 ? "row" : "rows"}`,
+        label:
+          ids.length === 1
+            ? t("app.deleteRowOne", { n: ids.length })
+            : t("app.deleteRows", { n: ids.length }),
         tone: "danger",
         onSelect: () => {
           dispatch({ type: "deleteRows", sheetId, itemId, rowIds: ids });
@@ -4668,14 +4666,14 @@ function BudgetView({
         },
       },
     ];
-  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect]);
+  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect, t]);
 
   const correctionDeleteActions: ConfirmAction[] = useMemo(() => {
     if (!correctionDeletePrompt) return [];
     const target = correctionDeletePrompt;
     return [
       {
-        label: "Remove correction",
+        label: t("app.removeCorrection"),
         tone: "danger",
         onSelect: () => {
           dispatch({
@@ -4688,7 +4686,7 @@ function BudgetView({
         },
       },
     ];
-  }, [correctionDeletePrompt, dispatch]);
+  }, [correctionDeletePrompt, dispatch, t]);
 
   const onBulkEdit = useCallback(() => setBulkEditOpen(true), []);
   const onBulkDelete = useCallback(() => {
@@ -5198,8 +5196,12 @@ function BudgetView({
         sheets={data.sheets}
         currentSheetId={activeSheet.id}
         seed={complexSeed}
-        title={recurringPromoteContext ? "Promote candidate" : undefined}
-        submitVerb={recurringPromoteContext ? "Promote" : undefined}
+        title={
+          recurringPromoteContext ? t("complex.promoteCandidate") : undefined
+        }
+        submitVerb={
+          recurringPromoteContext ? t("complex.promoteVerb") : undefined
+        }
         onClose={() => {
           setComplexOpen(false);
           setComplexSeed(null);

@@ -92,6 +92,45 @@ export const en = {
     swedishKronor: "Swedish kronor",
   },
 
+  cloudLink: {
+    sourceBrowser: "this browser's budget",
+    sourceFolder: "your previous folder budget",
+    sourceLocalFolder: "your local folder budget",
+    sourceDropbox: "your Dropbox budget",
+    sourceGdrive: "your Google Drive budget",
+    untouchedBrowser: "this browser's current budget",
+    untouchedFolder: "your previous folder budget",
+    untouchedLocalFolder: "your local folder budget",
+    untouchedDropbox: "your Dropbox budget",
+    untouchedGdrive: "your Google Drive budget",
+    folderAlreadyHas: "Folder already contains a budget",
+    folderBothBody:
+      "The folder you picked already contains a budget file. Pick which version to keep — the other will be replaced.",
+    eitherWayKept:
+      "Either way, {untouched} stays where it is — switching backends doesn't delete it, so you can still get back to it later.",
+    useTheFolderVersion: "Use the folder version",
+    replaceFolderWith: "Replace folder with {source}",
+    cloudAlreadyHas: "{name} already has a budget",
+    cloudBothBody:
+      "{name} already contains a budget file. Pick which version to keep — the other will be replaced.",
+    useTheCloudVersion: "Use the {name} version",
+    replaceCloudWith: "Replace {name} with {source}",
+    linkingCloud: "Linking {name}",
+    emptyCloudBody:
+      "{name} is connected and empty. Bring {source} over, or start fresh on {name}?",
+    untouchedKeptShort:
+      "{untouched} stays where it is either way — switching backends doesn't delete it.",
+    bringSourceOver: "Bring {source} over to {name}",
+    startFreshOn: "Start fresh on {name}",
+    useExistingCloud: "Use existing {name} budget?",
+    useExistingCloudBody:
+      "{name} already contains a budget file. Switching will use that as your active budget on this device.",
+    switchTo: "Switch to {name}",
+    cloudLinked: "{name} linked",
+    cloudLinkedBody:
+      "{name} is connected. New entries will be saved there from now on.",
+  },
+
   app: {
     title: "Budget",
     tagline: "A local-first budget app.",
@@ -108,6 +147,12 @@ export const en = {
     folderHasBudget: "Folder already contains a budget",
     deleteSelected: "Delete selected",
     deleteSheet: "Delete sheet",
+    deleteThisRow: "Delete this row",
+    justThisOne: "Just this one",
+    thisAndAllFuture: "This and all future ({n})",
+    deleteRows: "Delete {n} rows",
+    deleteRowOne: "Delete {n} row",
+    removeCorrection: "Remove correction",
     deleteAccount: "Delete account",
     removeBalanceCorrection: "Remove balance correction",
     aboutToSignOut: "About to sign out",
@@ -951,6 +996,8 @@ export const en = {
     addRow: "Add 1 row",
     addRowsPlural: "Add {n} rows",
     addRowsNone: "rows",
+    promoteCandidate: "Promote candidate",
+    promoteVerb: "Promote",
     recurrence: "Recurrence",
     fxSwitchToFixed: "Switch back to a fixed amount",
     fxUseFormula: "Use a formula instead of a fixed amount",
