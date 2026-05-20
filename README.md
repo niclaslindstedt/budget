@@ -3,7 +3,7 @@
 [![CI](https://github.com/niclaslindstedt/budget/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/ci.yml)
 [![Pages](https://github.com/niclaslindstedt/budget/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/pages.yml)
 [![Release](https://github.com/niclaslindstedt/budget/actions/workflows/release.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/release.yml)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](LICENSE)
 
 A local-first budget app. Your data lives in your browser's local
 storage; you can export it to a file at any time and re-import it on
@@ -130,4 +130,8 @@ and the absence of in-app analytics.
 
 ## License
 
-Licensed under [MIT](LICENSE).
+Source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). You may read, run,
+fork, and modify the code for any noncommercial purpose (personal use,
+research, evaluation, hobby projects). Commercial use requires a
+separate license from the copyright holder.
