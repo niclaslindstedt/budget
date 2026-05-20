@@ -4994,6 +4994,27 @@ function BudgetView({
       data.history,
     ],
   );
+  // Drop a history entry's persisted split decomposition. The
+  // reducer's `splitHistoryEntry` action treats an empty splits
+  // array as "clear the field", so the synthesizer falls back to
+  // rendering a single row for the bank entry on the next pass.
+  // Only history rows can be reverted — regular row splits create
+  // independent rows that no longer share an id linking them back
+  // to the original.
+  const onSplitRevert = useCallback(() => {
+    const row = splitPrompt?.row;
+    if (!row?.historyEntryId || !activeItem.accountId) {
+      setSplitPrompt(null);
+      return;
+    }
+    dispatch({
+      type: "splitHistoryEntry",
+      accountId: activeItem.accountId,
+      entryId: row.historyEntryId,
+      splits: [],
+    });
+    setSplitPrompt(null);
+  }, [dispatch, splitPrompt, activeItem.accountId]);
   const onSaveEditRow = useCallback(
     (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
       // Description / amount / category / type are series-wide fields —
@@ -5953,6 +5974,7 @@ function BudgetView({
         authoritativeDescription={splitAuthoritativeDescription}
         onClose={() => setSplitPrompt(null)}
         onSplit={onSplitSubmit}
+        onRevert={onSplitRevert}
         onCreateType={onCreateType}
       />
       <MatchRuleModal

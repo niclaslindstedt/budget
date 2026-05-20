@@ -804,6 +804,9 @@ export const sv: Catalog = {
     button: "Dela upp",
     buttonDisabled: "Lägg till minst en uppdelning",
     needDescAndAmount: "Fyll i beskrivning och belopp för varje uppdelning.",
+    revert: "Ångra uppdelning",
+    revertTitle:
+      "Ta bort uppdelningen och visa posten som banken ursprungligen rapporterade den.",
     cell: "Dela upp post",
     cellTitle: "Dela upp denna post i flera delar",
     cantSplit: "Den här raden kan inte delas upp",

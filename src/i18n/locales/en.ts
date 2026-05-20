@@ -808,6 +808,9 @@ export const en = {
     button: "Split",
     buttonDisabled: "Add at least one split",
     needDescAndAmount: "Fill in description and amount on each split.",
+    revert: "Revert split",
+    revertTitle:
+      "Drop the split and show the entry as the bank originally reported it.",
     cell: "Split entry",
     cellTitle: "Split this entry into separate parts",
     cantSplit: "This row can't be split",

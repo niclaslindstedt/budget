@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, RotateCcw, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
@@ -71,6 +71,13 @@ type Props = {
     splits: SplitSubmission[],
     remainderAmount: number,
   ) => void;
+  // Optional revert action. When provided AND `initialSplits` is
+  // non-empty, the footer shows a "Revert split" button that clears
+  // the persisted decomposition. The parent decides what reverting
+  // means for its row kind (history entries drop the `splits` field
+  // off the bank record; the synthesizer then falls back to a single
+  // row).
+  onRevert?: (rowId: string) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
 
@@ -103,6 +110,7 @@ export function SplitEntryModal({
   authoritativeDescription,
   onClose,
   onSplit,
+  onRevert,
   onCreateType,
 }: Props) {
   const t = useT();
@@ -251,6 +259,12 @@ export function SplitEntryModal({
     }));
     onSplit(row.id, payload, remainderAmount);
   }
+
+  // Only meaningful when the modal was opened against an already-split
+  // entry (i.e. `initialSplits` was provided). Surfaces a revert action
+  // so the user can drop the persisted decomposition without having to
+  // delete each split row by hand.
+  const canRevert = !!onRevert && !!initialSplits && initialSplits.length > 0;
 
   const originalSign = originalAmount > 0 ? "+" : originalAmount < 0 ? "−" : "";
   const originalBody = withCurrency(
@@ -446,6 +460,19 @@ export function SplitEntryModal({
         </div>
       </Modal.Body>
       <Modal.Footer>
+        {canRevert && (
+          <button
+            type="button"
+            onClick={() => {
+              if (row && onRevert) onRevert(row.id);
+            }}
+            title={t("splitRow.revertTitle")}
+            className="mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-muted hover:border-danger hover:text-danger"
+          >
+            <RotateCcw size={14} aria-hidden focusable={false} />
+            {t("splitRow.revert")}
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
