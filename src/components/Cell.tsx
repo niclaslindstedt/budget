@@ -551,17 +551,18 @@ function DescriptionCell({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
-  // Recurring rows with a typed series collapse the description down
-  // to a chip in the type's colour; the description text — when there
-  // is one — is one tap away in a popover. The type name identifies
-  // the row more legibly than the recurring-arrow glyph and reclaims
-  // a lot of width on narrow screens. Fall back to the plain editor
-  // for one-off rows and recurring rows whose typeId is still unset.
-  if (isRecurring && entryType) {
+  // Typed rows reclaim the narrow mobile description column for the
+  // type's name (plain text in the type's colour) — a clearer
+  // identifier than the bank's memo at a glance. Desktop keeps the
+  // description inline since the dedicated type column already
+  // carries the chip + name there. Fall back to the plain editor for
+  // rows whose typeId is still unset.
+  if (entryType) {
     return (
-      <TypedRecurringDescriptionCell
+      <TypedDescriptionCell
         rowId={rowId}
         value={value}
+        isRecurring={isRecurring}
         entryType={entryType}
         onChange={onChange}
         onCommit={onCommit}
@@ -657,11 +658,86 @@ function PlainDescriptionCell({
   );
 }
 
-// Description cell for recurring rows whose series has a type assigned.
-// Renders a coloured chip (glyph + name) in place of the recurring-arrow
-// glyph and inline description, and tucks the editable description text
-// into a popover behind the chip.
-function TypedRecurringDescriptionCell({
+// Description cell for rows with an entry type. Desktop keeps the
+// inline textarea editor (the type chip lives in the dedicated type
+// column), while mobile collapses the cell down to just the type's
+// name rendered in the type's colour — no pill, no glyph — with the
+// editable description tucked into a popover behind the trigger.
+function TypedDescriptionCell({
+  rowId,
+  value,
+  isRecurring,
+  entryType,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  isRecurring: boolean;
+  entryType: EntryType;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
+  const t = useT();
+  const [focused, setFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Snapshot the value at focus so blur only emits a commit when the
+  // text actually changed — avoids prompting after a no-op click in.
+  const focusValueRef = useRef<string>(value);
+  useBlocksSheet(rowId, focused, () => textareaRef.current?.blur());
+
+  function handleFocus() {
+    setFocused(true);
+    focusValueRef.current = value;
+  }
+
+  function handleBlur() {
+    setFocused(false);
+    if (!onCommit) return;
+    if (value !== focusValueRef.current) onCommit(value);
+  }
+
+  return (
+    <td
+      className={`${CELL_BASE} align-middle md:w-full ${
+        isRecurring ? "text-flag" : "text-fg"
+      }`}
+    >
+      <div className="hidden md:flex md:items-start">
+        {isRecurring && (
+          <span
+            aria-label={t("cell.recurring")}
+            title={t("cell.recurring")}
+            className="flex shrink-0 items-center pt-2 pl-2 text-flag"
+          >
+            <Repeat size={12} aria-hidden focusable={false} />
+          </span>
+        )}
+        <textarea
+          ref={textareaRef}
+          className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
+            isRecurring ? "pl-1.5" : ""
+          }`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          rows={1}
+          placeholder={t("cell.placeholderEllipsis")}
+        />
+      </div>
+      <TypedDescriptionPopover
+        rowId={rowId}
+        value={value}
+        entryType={entryType}
+        onChange={onChange}
+        onCommit={onCommit}
+      />
+    </td>
+  );
+}
+
+function TypedDescriptionPopover({
   rowId,
   value,
   entryType,
@@ -676,13 +752,10 @@ function TypedRecurringDescriptionCell({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Snapshot the value at popover-open time so we only emit a commit
-  // when the user actually changed the description before closing —
-  // matches the focus/blur snapshot on the inline plain editor.
   const openValueRef = useRef<string>(value);
   const wasOpenRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -701,28 +774,19 @@ function TypedRecurringDescriptionCell({
   const typeLabel = displayTypeName(entryType, t);
 
   return (
-    <td className={`${CELL_BASE} align-middle md:w-full`}>
+    <>
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2 py-1.5 outline-none focus-visible:bg-surface-2 md:justify-start"
+        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2.5 py-2 font-mono text-xs font-medium outline-none focus-visible:bg-surface-2 md:hidden"
+        style={{ color: entryType.color }}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={value ? `${typeLabel}: ${value}` : typeLabel}
         title={value || typeLabel}
       >
-        <span
-          className="inline-flex min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono text-xs font-medium"
-          style={{
-            backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
-            borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
-            color: entryType.color,
-          }}
-        >
-          <CategoryIconGlyph name={entryType.glyph} size={12} />
-          <span className="truncate">{typeLabel}</span>
-        </span>
+        <span className="truncate">{typeLabel}</span>
       </button>
       <FloatingPanel
         open={open}
@@ -736,12 +800,12 @@ function TypedRecurringDescriptionCell({
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Description"
+          placeholder={t("cell.descriptionPlaceholder")}
           rows={1}
           className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
         />
       </FloatingPanel>
-    </td>
+    </>
   );
 }
 
