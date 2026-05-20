@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { useT } from "../i18n";
 import { Checkbox } from "./form";
 import { Modal } from "./Modal";
 
@@ -31,6 +32,7 @@ export function ApplySeriesEditDialog({
   onCancel,
   onApplyToFuture,
 }: Props) {
+  const t = useT();
   const [untilEnabled, setUntilEnabled] = useState(false);
   const [untilDate, setUntilDate] = useState(lastSeriesDate ?? anchorDate);
 
@@ -49,18 +51,23 @@ export function ApplySeriesEditDialog({
       size="max-w-md"
       scrollableBody={false}
     >
-      <Modal.Header title="Apply to recurring entries?" onClose={onCancel} />
+      <Modal.Header
+        title={t("applySeries.titleApplyRecurring")}
+        onClose={onCancel}
+      />
       <div className="border-b border-line px-4 py-3 text-sm text-fg">
         <p className="mb-2">
-          {fieldLabel} updated on this entry ({anchorDate || "no date"}). Apply
-          the same change to all following entries in this series?
+          {t("applySeries.promptBody", {
+            field: fieldLabel,
+            date: anchorDate || t("applySeries.noDate"),
+          })}
         </p>
         <Checkbox
           checked={untilEnabled}
           onChange={setUntilEnabled}
           label={
             <span className="text-xs text-muted">
-              Stop after a date (temporary change)
+              {t("applySeries.stopAfterDate")}
             </span>
           }
           className="mt-2 items-center"
@@ -81,14 +88,14 @@ export function ApplySeriesEditDialog({
           onClick={() => onApplyToFuture(untilEnabled ? untilDate : null)}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-2 text-left text-sm font-medium text-accent hover:bg-accent/20"
         >
-          Apply to all following entries
+          {t("applySeries.applyAllFollowing")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="cursor-pointer rounded border border-line px-3 py-2 text-left text-sm text-fg hover:border-accent hover:text-fg-bright"
         >
-          Just this entry
+          {t("applySeries.justThis")}
         </button>
       </div>
     </Modal>

@@ -24,6 +24,7 @@ import {
   withCurrency,
 } from "../utils/format";
 import type { FloatingPlacement } from "../hooks";
+import { useT } from "../i18n";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { DatePickerModal } from "./DatePickerModal";
 import { FloatingPanel } from "./FloatingPanel";
@@ -545,6 +546,7 @@ function DescriptionCell({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
+  const t = useT();
   const [focused, setFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Snapshot the value at focus so blur only emits a commit when the
@@ -574,8 +576,8 @@ function DescriptionCell({
       <div className="hidden md:flex md:items-start">
         {isRecurring && (
           <span
-            aria-label="Recurring entry"
-            title="Recurring entry"
+            aria-label={t("cell.recurring")}
+            title={t("cell.recurring")}
             className="flex shrink-0 items-center pt-2 pl-2 text-flag"
           >
             <Repeat size={12} aria-hidden focusable={false} />
@@ -591,7 +593,7 @@ function DescriptionCell({
           onFocus={handleFocus}
           onBlur={handleBlur}
           rows={1}
-          placeholder="…"
+          placeholder={t("cell.placeholderEllipsis")}
         />
       </div>
       {/* Mobile: the column is narrow, so a long description wraps to many
@@ -633,6 +635,7 @@ function PlainDescriptionPopover({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   // Snapshot the value at popover-open time so we only emit a commit
   // when the user actually changed the description before closing.
@@ -668,7 +671,11 @@ function PlainDescriptionPopover({
         }`}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={hasValue ? `Description: ${value}` : "Add description"}
+        aria-label={
+          hasValue
+            ? t("cell.descriptionWith", { value })
+            : t("cell.addDescription")
+        }
       >
         {isRecurring ? (
           <Repeat
@@ -693,7 +700,7 @@ function PlainDescriptionPopover({
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Description"
+          placeholder={t("cell.descriptionPlaceholder")}
           rows={1}
           className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
         />

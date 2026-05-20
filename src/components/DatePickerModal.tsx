@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { isIsoDate } from "../data/recurrence";
+import { useT } from "../i18n";
+import { type MessageKey } from "../i18n";
 import { SelectPicker } from "./form";
 import { Modal } from "./Modal";
 
@@ -13,25 +15,30 @@ type Props = {
   onSelect: (iso: string | null) => void;
 };
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+const MONTH_KEYS: readonly MessageKey[] = [
+  "months.long.jan",
+  "months.long.feb",
+  "months.long.mar",
+  "months.long.apr",
+  "months.long.may",
+  "months.long.jun",
+  "months.long.jul",
+  "months.long.aug",
+  "months.long.sep",
+  "months.long.oct",
+  "months.long.nov",
+  "months.long.dec",
 ];
 
-// Monday-first week. The vision in AGENTS.md lists "week-starts-on" as a
-// future per-sheet option, but until that lands the app targets a Swedish
-// user, so Monday is the default.
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_KEYS: readonly MessageKey[] = [
+  "weekday.short.mon",
+  "weekday.short.tue",
+  "weekday.short.wed",
+  "weekday.short.thu",
+  "weekday.short.fri",
+  "weekday.short.sat",
+  "weekday.short.sun",
+];
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -56,6 +63,7 @@ function mondayIndex(date: Date): number {
 }
 
 export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
+  const t = useT();
   const initialIso = isIsoDate(value) ? value : todayIso();
   const [iy, im] = initialIso.split("-").map(Number);
 
@@ -139,13 +147,13 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
       size="max-w-sm"
       scrollableBody={false}
     >
-      <Modal.Header title="Pick a date" onClose={onClose} />
+      <Modal.Header title={t("datePicker.title")} onClose={onClose} />
       <div className="px-4 py-3">
         <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
             onClick={() => shiftMonth(-1)}
-            aria-label="Previous month"
+            aria-label={t("datePicker.prevMonth")}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
           >
             <ChevronLeft size={16} aria-hidden focusable={false} />
@@ -154,12 +162,12 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
           <div className="flex-1">
             <SelectPicker
               value={viewMonth}
-              options={MONTH_NAMES.map((name, i) => ({
+              options={MONTH_KEYS.map((key, i) => ({
                 value: i + 1,
-                label: name,
+                label: t(key),
               }))}
               onChange={setViewMonth}
-              ariaLabel="Month"
+              ariaLabel={t("datePicker.month")}
             />
           </div>
 
@@ -167,7 +175,7 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
             value={viewYear}
             options={yearOptions.map((y) => ({ value: y, label: y }))}
             onChange={setViewYear}
-            ariaLabel="Year"
+            ariaLabel={t("datePicker.year")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
             panelClassName="font-mono tabular-nums"
           />
@@ -175,7 +183,7 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
           <button
             type="button"
             onClick={() => shiftMonth(1)}
-            aria-label="Next month"
+            aria-label={t("datePicker.nextMonth")}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
           >
             <ChevronRight size={16} aria-hidden focusable={false} />
@@ -183,9 +191,9 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
         </div>
 
         <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] tracking-wide text-muted uppercase">
-          {WEEKDAY_LABELS.map((w) => (
-            <div key={w} className="py-1">
-              {w}
+          {WEEKDAY_KEYS.map((key) => (
+            <div key={key} className="py-1">
+              {t(key)}
             </div>
           ))}
         </div>
@@ -228,7 +236,7 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
           disabled={!selected}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Clear
+          {t("datePicker.clear")}
         </button>
         <div className="flex items-center gap-2">
           <button
@@ -236,14 +244,14 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
             onClick={() => commit(today)}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
           >
-            Today
+            {t("datePicker.today")}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </Modal.Footer>

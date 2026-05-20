@@ -501,9 +501,22 @@ export const sv: Catalog = {
     pickDate: "Välj datum",
     clearValue: "Rensa värde",
     editRow: "Redigera rad",
+    deleteRow: "Ta bort rad",
     rowActions: "Radåtgärder",
+    recurring: "Återkommande post",
+    labelByPattern: "Etikett via mönster",
+    labelByPatternTitle:
+      "Etikettera alla historikposter som matchar ett wildcard-mönster",
+    editTransaction: "Redigera transaktion",
+    makeTransaction: "Skapa transaktion",
+    needAccountForTransfer:
+      "Koppla denna budget till ett konto för att möjliggöra överföringar",
+    needDescAndAmount: "Ange beskrivning och belopp först",
     formulaResult: "= {value}",
     invalidFormula: "Ogiltig formel",
+    placeholderEllipsis: "…",
+    descriptionWith: "Beskrivning: {value}",
+    addDescription: "Lägg till beskrivning",
   },
 
   addRow: {
@@ -933,11 +946,14 @@ export const sv: Catalog = {
   datePicker: {
     title: "Välj ett datum",
     today: "Idag",
-    clear: "Rensa datum",
+    clear: "Rensa",
+    clearDate: "Rensa datum",
     prevMonth: "Föregående månad",
     nextMonth: "Nästa månad",
     prevYear: "Föregående år",
     nextYear: "Nästa år",
+    month: "Månad",
+    year: "År",
   },
 
   formula: {
@@ -1038,7 +1054,13 @@ export const sv: Catalog = {
 
   applySeries: {
     title: "Använd på serien?",
+    titleApplyRecurring: "Använd på återkommande poster?",
     justThis: "Bara denna post",
     thisAndFuture: "Denna och framtida poster i serien",
+    applyAllFollowing: "Använd på alla efterföljande poster",
+    promptBody:
+      "{field} uppdaterades på denna post ({date}). Tillämpa samma ändring på alla efterföljande poster i serien?",
+    noDate: "inget datum",
+    stopAfterDate: "Stoppa efter ett datum (tillfällig ändring)",
   },
 };

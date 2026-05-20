@@ -509,9 +509,22 @@ export const en = {
     pickDate: "Pick date",
     clearValue: "Clear value",
     editRow: "Edit row",
+    deleteRow: "Delete row",
     rowActions: "Row actions",
+    recurring: "Recurring entry",
+    labelByPattern: "Label by pattern",
+    labelByPatternTitle:
+      "Label every history entry matching a wildcard pattern",
+    editTransaction: "Edit transaction",
+    makeTransaction: "Make transaction",
+    needAccountForTransfer:
+      "Attach this budget to an account to enable transfers",
+    needDescAndAmount: "Set a description and amount first",
     formulaResult: "= {value}",
     invalidFormula: "Invalid formula",
+    placeholderEllipsis: "…",
+    descriptionWith: "Description: {value}",
+    addDescription: "Add description",
   },
 
   addRow: {
@@ -939,11 +952,14 @@ export const en = {
   datePicker: {
     title: "Pick a date",
     today: "Today",
-    clear: "Clear date",
+    clear: "Clear",
+    clearDate: "Clear date",
     prevMonth: "Previous month",
     nextMonth: "Next month",
     prevYear: "Previous year",
     nextYear: "Next year",
+    month: "Month",
+    year: "Year",
   },
 
   formula: {
@@ -1044,8 +1060,14 @@ export const en = {
 
   applySeries: {
     title: "Apply to series?",
+    titleApplyRecurring: "Apply to recurring entries?",
     justThis: "Just this entry",
     thisAndFuture: "This and future entries in the series",
+    applyAllFollowing: "Apply to all following entries",
+    promptBody:
+      "{field} updated on this entry ({date}). Apply the same change to all following entries in this series?",
+    noDate: "no date",
+    stopAfterDate: "Stop after a date (temporary change)",
   },
 } as const;
 
