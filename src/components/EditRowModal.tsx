@@ -195,8 +195,8 @@ export function EditRowModal({
         onClose={onClose}
       />
       <Modal.Body>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 sm:col-span-2">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="col-span-2 flex flex-col gap-1">
             <span className="text-xs text-muted">
               {t("editEntry.description")}
             </span>
@@ -260,7 +260,7 @@ export function EditRowModal({
               </div>
             </label>
           )}
-          <div className="flex flex-col gap-1 sm:col-span-2">
+          <div className="col-span-2 flex flex-col gap-1">
             <span className="text-xs text-muted">{t("editEntry.type")}</span>
             <TypePicker
               variant="field"
@@ -273,7 +273,7 @@ export function EditRowModal({
             />
           </div>
           {completedCol && (
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <Checkbox
                 checked={completed}
                 onChange={setCompleted}
