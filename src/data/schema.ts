@@ -704,6 +704,53 @@ export const USER_DATA_SCHEMA = {
             "matched pair into a single Transaction; this flag stands in " +
             "when no peer side is available yet.",
         },
+        splits: {
+          type: "array",
+          items: { $ref: "#/$defs/HistoryEntrySplit" },
+          description:
+            "User-defined split of this bank entry into multiple " +
+            "categorised parts. When present and non-empty, the " +
+            "synthesized budget view emits one row per split in place " +
+            "of this entry's single row. The splits' signed amounts " +
+            "MUST sum to `amount` so the account's running balance " +
+            "stays anchored to the bank's authoritative total; loaders " +
+            "drop the field when the sum doesn't match. Absent means " +
+            "the entry renders as a single row with the usual override " +
+            "/ rule / hint chain.",
+        },
+      },
+    },
+    HistoryEntrySplit: {
+      type: "object",
+      additionalProperties: false,
+      required: ["description", "amount"],
+      description:
+        "One slice of a split `HistoryEntry`. Renders as its own row " +
+        "in the synthesized budget view; the parent entry's `splits` " +
+        "array must sum to the entry's `amount`.",
+      properties: {
+        description: {
+          type: "string",
+          description:
+            "User-typed label for this slice (e.g. 'Groceries', " +
+            "'Interest'). Overrides the bank's description for this " +
+            "row only.",
+        },
+        amount: {
+          type: "number",
+          description:
+            "Signed amount of this slice. Same sign convention as " +
+            "`HistoryEntry.amount` — negative for money out, positive " +
+            "for money in. Mixed-sign splits are allowed (a refund " +
+            "embedded in a payment) as long as the total still sums " +
+            "to the parent entry's amount.",
+        },
+        typeId: {
+          $ref: "#/$defs/Id",
+          description:
+            "Optional category type for this slice. Dropped on load " +
+            "when it points at a deleted type.",
+        },
       },
     },
     MatchRule: {

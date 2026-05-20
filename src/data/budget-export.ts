@@ -109,7 +109,7 @@ export function buildBudgetExportRows(
   const historyRows: Row[] = item.accountId
     ? history
         .filter((e) => !e.hidden)
-        .map((e) =>
+        .flatMap((e) =>
           synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
         )
     : [];
@@ -122,12 +122,17 @@ export function buildBudgetExportRows(
   // Mirror SheetView's silent balance-correction pinning so the
   // exported running balance lines up with what's on screen — each
   // imported history entry's stored balance overrides the cumulative
-  // amount sum at that row.
+  // amount sum at that row. Split entries pin at the LAST split row
+  // so the post-split running total matches the bank's figure.
   const balanceOverrides = new Map<string, number>();
   for (const e of history) {
     if (e.hidden) continue;
-    if (e.balance !== undefined)
-      balanceOverrides.set(`hist:${e.id}`, e.balance);
+    if (e.balance === undefined) continue;
+    const anchorId =
+      e.splits && e.splits.length > 0
+        ? `hist:${e.id}:${e.splits.length - 1}`
+        : `hist:${e.id}`;
+    balanceOverrides.set(anchorId, e.balance);
   }
 
   const balances = computeBalances(

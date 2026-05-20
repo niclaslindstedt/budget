@@ -23,7 +23,7 @@ import type {
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 29,
+    version: 30,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -177,7 +177,7 @@ describe("synthesizeHistoryRow", () => {
 
   it("renders raw bank text when no hint matches", () => {
     const cols = budgetColumns();
-    const row = synthesizeHistoryRow(entry, cols, {});
+    const [row] = synthesizeHistoryRow(entry, cols, {});
     const descCol = cols.find((c) => c.type === "description")!;
     expect(row.cells[descCol.id]).toBe("ICA SUPERMARKET 12345");
     expect(row.typeId).toBeUndefined();
@@ -196,7 +196,7 @@ describe("synthesizeHistoryRow", () => {
         lastUsedAt: 0,
       },
     };
-    const row = synthesizeHistoryRow(entry, cols, hints);
+    const [row] = synthesizeHistoryRow(entry, cols, hints);
     const descCol = cols.find((c) => c.type === "description")!;
     expect(row.cells[descCol.id]).toBe("Groceries");
     expect(row.typeId).toBe("type-grocery");
@@ -211,10 +211,50 @@ describe("synthesizeHistoryRow", () => {
         lastUsedAt: 0,
       },
     };
-    const row = synthesizeHistoryRow(entry, cols, hints);
+    const [row] = synthesizeHistoryRow(entry, cols, hints);
     const descCol = cols.find((c) => c.type === "description")!;
     expect(row.cells[descCol.id]).toBe("ICA SUPERMARKET 12345");
     expect(row.typeId).toBe("type-grocery");
+  });
+
+  it("emits one row per split when entry carries splits", () => {
+    const cols = budgetColumns();
+    const splitEntry: HistoryEntry = {
+      ...entry,
+      amount: -5000,
+      splits: [
+        { description: "Groceries", amount: -2000, typeId: "type-food" },
+        { description: "Insurance", amount: -1500 },
+        { description: "Bankgiro", amount: -1500 },
+      ],
+    };
+    const rows = synthesizeHistoryRow(splitEntry, cols, {});
+    expect(rows).toHaveLength(3);
+    const descCol = cols.find((c) => c.type === "description")!;
+    const amountCol = cols.find((c) => c.type === "amount")!;
+    expect(rows.map((r) => r.cells[descCol.id])).toEqual([
+      "Groceries",
+      "Insurance",
+      "Bankgiro",
+    ]);
+    expect(rows.map((r) => r.cells[amountCol.id])).toEqual([
+      -2000, -1500, -1500,
+    ]);
+    expect(rows[0].typeId).toBe("type-food");
+    expect(rows[1].typeId).toBeUndefined();
+    expect(rows.every((r) => r.historyEntryId === "h1")).toBe(true);
+    expect(rows.map((r) => r.id)).toEqual([
+      "hist:h1:0",
+      "hist:h1:1",
+      "hist:h1:2",
+    ]);
+  });
+
+  it("falls back to single-row path when splits is empty", () => {
+    const cols = budgetColumns();
+    const rows = synthesizeHistoryRow({ ...entry, splits: [] }, cols, {});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe("hist:h1");
   });
 });
 

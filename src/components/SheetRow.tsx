@@ -5,6 +5,7 @@ import {
   EyeOff,
   Pencil,
   Repeat,
+  Scissors,
   Tags,
   Trash2,
 } from "lucide-react";
@@ -70,6 +71,12 @@ type Props = {
   // Suppressed for synthesized rows (transactions / history) since
   // those have their own edit flows.
   onEditRowRequest: (row: Row) => void;
+  // Opens the split modal for the row. Works on both authored budget
+  // rows and synthesized history rows — splitting a bank entry writes
+  // a `HistoryEntry.splits` array that the synthesizer fans out into
+  // one row per split. Suppressed only for transaction rows (those
+  // have a dedicated edit modal) and correction lines.
+  onSplitRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   // Fires when the user clicks the pattern button on a synthesized
   // history row. Opens the wildcard rule modal seeded from the row's
@@ -111,6 +118,7 @@ function SheetRowImpl({
   onDeleteRequest,
   onEditRequest,
   onEditRowRequest,
+  onSplitRequest,
   onTransactionRequest,
   onMatchRuleRequest,
   onEditHistoryRequest,
@@ -499,6 +507,20 @@ function SheetRowImpl({
               }}
             >
               <Pencil size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {!isTransaction && (
+            <button
+              type="button"
+              className="action-btn action-btn-split inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={tr("splitRow.cell")}
+              title={tr("splitRow.cellTitle")}
+              onClick={() => {
+                setSwiped(false);
+                onSplitRequest(row);
+              }}
+            >
+              <Scissors size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isTransaction && !isHistory && (

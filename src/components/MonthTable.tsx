@@ -63,6 +63,7 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onEditRowRequest: (row: Row) => void;
+  onSplitRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
@@ -122,6 +123,7 @@ function MonthTableImpl({
   onDeleteRequest,
   onEditRequest,
   onEditRowRequest,
+  onSplitRequest,
   onTransactionRequest,
   onMatchRuleRequest,
   onEditHistoryRequest,
@@ -350,6 +352,7 @@ function MonthTableImpl({
                       onDeleteRequest={onDeleteRequest}
                       onEditRequest={onEditRequest}
                       onEditRowRequest={onEditRowRequest}
+                      onSplitRequest={onSplitRequest}
                       onTransactionRequest={onTransactionRequest}
                       onToggleRowTransfer={onToggleRowTransfer}
                       onMatchRuleRequest={onMatchRuleRequest}
@@ -378,6 +381,7 @@ function MonthTableImpl({
                           onDeleteRequest={onDeleteRequest}
                           onEditRequest={onEditRequest}
                           onEditRowRequest={onEditRowRequest}
+                          onSplitRequest={onSplitRequest}
                           onTransactionRequest={onTransactionRequest}
                           onToggleRowTransfer={onToggleRowTransfer}
                           onMatchRuleRequest={onMatchRuleRequest}

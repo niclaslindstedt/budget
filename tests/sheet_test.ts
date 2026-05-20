@@ -534,7 +534,7 @@ describe("synthesizeHistoryRow", () => {
   };
 
   it("falls back to the raw bank text when no hint or rule matches", () => {
-    const row = synthesizeHistoryRow(baseEntry, item.columns, {}, []);
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, []);
     expect(row.cells[descId]).toBe("APP STORE APL*Z123");
     expect(row.cells[completedId]).toBe(true);
     expect(row.typeId).toBeUndefined();
@@ -550,7 +550,7 @@ describe("synthesizeHistoryRow", () => {
       description: "App Store",
       typeId: "type-1",
     };
-    const row = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
     expect(row.cells[descId]).toBe("App Store");
     expect(row.typeId).toBe("type-1");
   });
@@ -570,7 +570,7 @@ describe("synthesizeHistoryRow", () => {
     };
     // Hint key normalises the bank text: "APP STORE APL*Z123" →
     // lowercase, `*` stripped → "app store apl z123".
-    const row = synthesizeHistoryRow(
+    const [row] = synthesizeHistoryRow(
       baseEntry,
       item.columns,
       { "app store apl z123": hint },
@@ -588,7 +588,7 @@ describe("synthesizeHistoryRow", () => {
       description: "Hint label",
     };
     const rule: MatchRule = { id: "r1", pattern: "*App Store*" };
-    const row = synthesizeHistoryRow(
+    const [row] = synthesizeHistoryRow(
       baseEntry,
       item.columns,
       { "app store apl z123": hint },
@@ -605,7 +605,7 @@ describe("synthesizeHistoryRow", () => {
       description: "App Store",
       amountSign: "positive",
     };
-    const row = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
     // Entry is -49, rule wants positive → no overlay.
     expect(row.cells[descId]).toBe("APP STORE APL*Z123");
   });

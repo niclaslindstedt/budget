@@ -25,6 +25,7 @@ import type {
   DecimalSeparator,
   EntryType,
   HistoryEntry,
+  HistoryEntrySplit,
   HistoryImport,
   MatchRule,
   MerchantHint,
@@ -452,6 +453,49 @@ function validateHistoryEntry(
     if (typeof raw.isTransfer !== "boolean")
       return fail(`${path}.isTransfer`, "expected a boolean");
     if (raw.isTransfer) entry.isTransfer = true;
+  }
+  if (raw.splits !== undefined) {
+    if (!Array.isArray(raw.splits))
+      return fail(`${path}.splits`, "expected an array");
+    const splits: HistoryEntry["splits"] = [];
+    let sum = 0;
+    for (let i = 0; i < raw.splits.length; i += 1) {
+      const s = raw.splits[i];
+      if (!isObject(s))
+        return fail(`${path}.splits[${i}]`, "expected an object");
+      if (typeof s.description !== "string")
+        return fail(`${path}.splits[${i}].description`, "expected a string");
+      if (typeof s.amount !== "number" || !Number.isFinite(s.amount))
+        return fail(`${path}.splits[${i}].amount`, "expected a finite number");
+      const split: HistoryEntrySplit = {
+        description: s.description,
+        amount: s.amount,
+      };
+      if (s.typeId !== undefined && s.typeId !== null) {
+        if (typeof s.typeId !== "string" || s.typeId === "")
+          return fail(
+            `${path}.splits[${i}].typeId`,
+            "expected a non-empty string",
+          );
+        // Drop dangling type references — same contract as `userTypeId`.
+        if (knownTypeIds.has(s.typeId)) split.typeId = s.typeId;
+      }
+      splits.push(split);
+      sum += s.amount;
+    }
+    // Only keep `splits` when they're a faithful decomposition of the
+    // bank's amount; otherwise the running balance would drift away
+    // from the bank's authoritative total. The split modal enforces
+    // this on save, but a hand-edited export could violate it — fall
+    // back to the single-row path rather than rejecting the whole
+    // load. `Number.EPSILON`-scale tolerance handles float drift
+    // when summing many sub-öre amounts.
+    if (
+      splits.length > 0 &&
+      Math.abs(sum - amount) < Math.max(1e-6, Math.abs(amount) * 1e-9)
+    ) {
+      entry.splits = splits;
+    }
   }
   return { ok: true, value: entry };
 }

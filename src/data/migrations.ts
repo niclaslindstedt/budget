@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 29 as const;
+export const LATEST_VERSION = 30 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -461,6 +461,15 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // validators leave the flag absent, which matches the legacy "always
   // show every row" behaviour. The migration is a bare version bump.
   28: (v28) => ({ ...v28, version: 29 }),
+
+  // v29 → v30: introduces optional `splits` on `HistoryEntry` so a
+  // single bank transaction (a bankgiro that paid for several
+  // categorised items in one go, a mortgage payment that's part
+  // interest and part amortization, …) can render as multiple rows
+  // in the synthesized budget view. Old exports simply lack the
+  // field; the synthesizer falls back to its existing single-row
+  // path. Bare version bump.
+  29: (v29) => ({ ...v29, version: 30 }),
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by
