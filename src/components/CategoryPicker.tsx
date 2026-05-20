@@ -7,6 +7,7 @@ import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayCategoryName } from "../i18n/preset-names";
 import { ColorPalette } from "./ColorPalette";
+import { ClearableTextInput } from "./form";
 import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
@@ -257,12 +258,11 @@ function CategoryCreator({
     <div className="flex flex-col gap-2 p-3">
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("category.name")}</span>
-        <input
+        <ClearableTextInput
           ref={nameRef}
-          type="text"
-          className="field-input rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
+          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onValueChange={setName}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

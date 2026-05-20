@@ -10,7 +10,7 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
-import { Checkbox, Radio, RadioGroup } from "./form";
+import { Checkbox, ClearableTextInput, Radio, RadioGroup } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -200,12 +200,11 @@ export function EditRowModal({
             <span className="text-xs text-muted">
               {t("editEntry.description")}
             </span>
-            <input
+            <ClearableTextInput
               ref={descriptionRef}
-              type="text"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              onValueChange={setDescription}
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
           {dateCol && (

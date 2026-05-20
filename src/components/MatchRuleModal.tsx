@@ -18,6 +18,7 @@ import {
   normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
+import { ClearableTextInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -315,13 +316,12 @@ export function MatchRuleModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">{t("matchRule.pattern")}</span>
-            <input
+            <ClearableTextInput
               ref={patternRef}
-              type="text"
               value={pattern}
-              onChange={(e) => setPattern(e.target.value)}
+              onValueChange={setPattern}
               spellCheck={false}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               placeholder={t("matchRule.patternPlaceholder")}
             />
           </label>
@@ -329,11 +329,10 @@ export function MatchRuleModal({
             <span className="text-xs text-muted">
               {t("matchRule.descriptionOptional")}
             </span>
-            <input
-              type="text"
+            <ClearableTextInput
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              onValueChange={setDescription}
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               placeholder={t("matchRule.descriptionPlaceholder")}
             />
           </label>
