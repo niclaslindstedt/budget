@@ -123,10 +123,15 @@ export function CloudBackupModal({
       onRestore(parsed.data);
       setStatus({
         kind: "ok",
-        message: t("cloudBackup.restored", {
-          filename: entry.filename,
-          auto: autoName,
-        }),
+        message: parsed.migrated
+          ? t("cloudBackup.restoredMigrated", {
+              filename: entry.filename,
+              auto: autoName,
+            })
+          : t("cloudBackup.restored", {
+              filename: entry.filename,
+              auto: autoName,
+            }),
       });
       await refresh();
     } catch (err) {
