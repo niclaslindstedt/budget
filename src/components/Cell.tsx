@@ -40,13 +40,11 @@ type Props = {
   computedBalance?: number;
   settings: Settings;
   isRecurring?: boolean;
-  // Resolved EntryType for `row.typeId`. When set, the description cell
-  // renders a chip (glyph + name in the type's colour) as the primary
-  // affordance and demotes the description text to a popover revealed
-  // by tapping the chip. `null` falls back to the legacy plain-text
-  // description rendering with the default recurring icon for series
-  // rows. The dedicated `type` column reads from the same source so
-  // every visual cue stays consistent across cells.
+  // Resolved EntryType for `row.typeId`, threaded into the dedicated
+  // `type` column's picker / readonly chip. The description column
+  // ignores it — the row's description text is the description's job,
+  // and the type column is the type's job; mixing the two cluttered
+  // the description on narrow screens.
   entryType?: EntryType | null;
   // Selectable entry types + categories, threaded through for the `type`
   // column's picker. Optional because synthesized / readonly variants
@@ -188,7 +186,6 @@ export function Cell({
           rowId={rowId}
           value={typeof value === "string" ? value : ""}
           isRecurring={!!isRecurring}
-          entryType={entryType ?? null}
           onChange={onChange}
           onCommit={onCommit}
         />
@@ -539,46 +536,6 @@ function DescriptionCell({
   rowId,
   value,
   isRecurring,
-  entryType,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  isRecurring: boolean;
-  entryType: EntryType | null;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
-  // When a type is assigned the chip is the row's primary identity —
-  // the description is demoted to a popover revealed by tapping the
-  // chip. Keeps the row scannable at a glance even on dense screens.
-  if (entryType) {
-    return (
-      <TypedDescriptionCell
-        rowId={rowId}
-        value={value}
-        entryType={entryType}
-        onChange={onChange}
-        onCommit={onCommit}
-      />
-    );
-  }
-  return (
-    <PlainDescriptionCell
-      rowId={rowId}
-      value={value}
-      isRecurring={isRecurring}
-      onChange={onChange}
-      onCommit={onCommit}
-    />
-  );
-}
-
-function PlainDescriptionCell({
-  rowId,
-  value,
-  isRecurring,
   onChange,
   onCommit,
 }: {
@@ -645,38 +602,6 @@ function PlainDescriptionCell({
         rowId={rowId}
         value={value}
         isRecurring={isRecurring}
-        onChange={onChange}
-        onCommit={onCommit}
-      />
-    </td>
-  );
-}
-
-// Description cell variant for rows that carry a `typeId`. The chip
-// (glyph + name in the type's colour) becomes the row's primary
-// identity and the description text is demoted: clicking the chip
-// opens a popover with the description editor. The popover is shared
-// across desktop and mobile so the interaction reads the same on
-// every form factor.
-function TypedDescriptionCell({
-  rowId,
-  value,
-  entryType,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  entryType: EntryType;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
-  return (
-    <td className={`${CELL_BASE} align-middle md:w-full`}>
-      <TypedDescriptionPopover
-        rowId={rowId}
-        value={value}
-        entryType={entryType}
         onChange={onChange}
         onCommit={onCommit}
       />
@@ -754,110 +679,6 @@ function PlainDescriptionPopover({
           />
         ) : (
           <span>…</span>
-        )}
-      </button>
-      <FloatingPanel
-        open={open}
-        onClose={() => setOpen(false)}
-        triggerRef={triggerRef}
-        placement={DESCRIPTION_POPOVER_PLACEMENT}
-        rowId={rowId}
-        arrow="up"
-      >
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Description"
-          rows={1}
-          className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
-        />
-      </FloatingPanel>
-    </>
-  );
-}
-
-// Variant of the description popover for rows that carry a typeId.
-// The trigger is the type's chip (glyph + name in the type's colour)
-// and the popover holds the description — so the chip carries the
-// row's primary identity and the description text only shows up when
-// the user explicitly taps in. Rendered on every form factor (no
-// desktop/mobile split) so the interaction reads the same anywhere.
-function TypedDescriptionPopover({
-  rowId,
-  value,
-  entryType,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  entryType: EntryType;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const openValueRef = useRef<string>(value);
-  const wasOpenRef = useRef(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      openValueRef.current = value;
-    } else if (!open && wasOpenRef.current) {
-      if (onCommit && value !== openValueRef.current) onCommit(value);
-    }
-    wasOpenRef.current = open;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  useLayoutEffect(() => {
-    if (open) textareaRef.current?.focus();
-  }, [open]);
-
-  const hasValue = value.length > 0;
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1.5 font-mono outline-none focus-visible:bg-surface-2 md:justify-start md:text-left"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={
-          hasValue
-            ? `${entryType.name} — ${value}`
-            : `${entryType.name} (add description)`
-        }
-        title={hasValue ? value : undefined}
-      >
-        {/* Mobile: type glyph only, in the type's colour, prominent. */}
-        <span
-          className="inline-flex items-center justify-center md:hidden"
-          style={{ color: entryType.color }}
-          aria-hidden
-        >
-          <CategoryIconGlyph name={entryType.glyph} size={18} />
-        </span>
-        {/* Desktop: full chip with glyph + name in the type's colour. */}
-        <span
-          className="hidden min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium md:inline-flex"
-          style={{
-            backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
-            borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
-            color: entryType.color,
-          }}
-        >
-          <CategoryIconGlyph name={entryType.glyph} size={12} />
-          <span className="truncate">{entryType.name}</span>
-        </span>
-        {hasValue && (
-          <span className="hidden truncate text-xs text-muted md:inline">
-            {value}
-          </span>
         )}
       </button>
       <FloatingPanel

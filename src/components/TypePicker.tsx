@@ -113,7 +113,26 @@ export function TypePicker({
         aria-label={!selected && isChip ? "Add type" : undefined}
       >
         {selected ? (
-          <TypeChip type={selected} compact={isChip} />
+          isChip ? (
+            // Inside a sheet row, the column is narrow on mobile — show
+            // the glyph alone in the type's colour so it's legible at
+            // glance, and only promote to the full pill on desktop where
+            // there's room for the name. Mirrors ReadonlyTypeCell.
+            <>
+              <span
+                className="inline-flex items-center justify-center md:hidden"
+                style={{ color: selected.color }}
+                aria-hidden
+              >
+                <CategoryIconGlyph name={selected.glyph} size={18} />
+              </span>
+              <span className="hidden md:inline-flex">
+                <TypeChip type={selected} compact />
+              </span>
+            </>
+          ) : (
+            <TypeChip type={selected} compact={false} />
+          )
         ) : isChip ? (
           <Plus
             size={16}
