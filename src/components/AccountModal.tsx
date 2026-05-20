@@ -6,6 +6,7 @@ import type { Account, CategoryIcon } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
+import { ClearableTextInput } from "./form";
 import { GlyphPicker } from "./GlyphPicker";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
@@ -130,16 +131,16 @@ export function AccountModal({
             </div>
             <label className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span className="text-xs text-muted">{t("account.name")}</span>
-              <input
-                type="text"
+              <ClearableTextInput
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onValueChange={setName}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && canSave) {
                     e.preventDefault();
                     handleSave();
                   }
                 }}
+                wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 placeholder={t("account.namePlaceholder")}
                 ref={nameRef}
@@ -182,11 +183,11 @@ export function AccountModal({
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted">{t("account.bank")}</span>
-            <input
-              type="text"
+            <ClearableTextInput
               value={bank}
-              onChange={(e) => setBank(e.target.value)}
+              onValueChange={setBank}
               placeholder={t("account.bankPlaceholder")}
+              wrapperClassName="w-full min-w-0"
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </div>
@@ -196,11 +197,11 @@ export function AccountModal({
               <span className="text-xs text-muted">
                 {t("account.clearing")}
               </span>
-              <input
-                type="text"
+              <ClearableTextInput
                 value={clearing}
-                onChange={(e) => setClearing(e.target.value)}
+                onValueChange={setClearing}
                 placeholder={t("account.clearingPlaceholder")}
+                wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
@@ -208,11 +209,11 @@ export function AccountModal({
               <span className="text-xs text-muted">
                 {t("account.accountNumber")}
               </span>
-              <input
-                type="text"
+              <ClearableTextInput
                 value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
+                onValueChange={setAccountNumber}
                 placeholder={t("account.accountNumberPlaceholder")}
+                wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
@@ -221,21 +222,21 @@ export function AccountModal({
           <div className="grid grid-cols-[2fr_1fr] gap-2">
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-xs text-muted">{t("account.iban")}</span>
-              <input
-                type="text"
+              <ClearableTextInput
                 value={iban}
-                onChange={(e) => setIban(e.target.value)}
+                onValueChange={setIban}
                 placeholder={t("account.ibanPlaceholder")}
+                wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-xs text-muted">{t("account.bic")}</span>
-              <input
-                type="text"
+              <ClearableTextInput
                 value={bic}
-                onChange={(e) => setBic(e.target.value)}
+                onValueChange={setBic}
                 placeholder={t("account.bicPlaceholder")}
+                wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
@@ -245,11 +246,11 @@ export function AccountModal({
             <span className="text-xs text-muted">
               {t("account.currencyOverride")}
             </span>
-            <input
-              type="text"
+            <ClearableTextInput
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
+              onValueChange={setCurrency}
               placeholder={t("account.currencyOverridePlaceholder")}
+              wrapperClassName="w-full min-w-0"
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
             />
             <span className="text-xs text-muted">

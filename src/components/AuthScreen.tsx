@@ -4,7 +4,7 @@ import { CircleUser, Eye, EyeOff, Lock, UserPlus } from "lucide-react";
 import type { StoredUser } from "../data/types";
 import { useT } from "../i18n";
 import { findUserByUsername } from "../storage/users";
-import { Checkbox } from "./form";
+import { Checkbox, ClearableTextInput } from "./form";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -146,14 +146,14 @@ function SignInForm({
 
       <label className="flex flex-col gap-1">
         <span className="text-xs text-muted">{t("auth.username")}</span>
-        <input
+        <ClearableTextInput
           id="budget-username"
           name="username"
-          type="text"
           autoComplete="username"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onValueChange={setUsername}
           autoFocus={initialUsername === null}
+          wrapperClassName="w-full"
           className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
         />
       </label>
@@ -289,14 +289,14 @@ function SignUpForm({
 
       <label className="flex flex-col gap-1">
         <span className="text-xs text-muted">{t("auth.username")}</span>
-        <input
+        <ClearableTextInput
           id="budget-new-username"
           name="username"
-          type="text"
           autoComplete="username"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onValueChange={setUsername}
           autoFocus
+          wrapperClassName="w-full"
           className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
         />
       </label>

@@ -1,21 +1,28 @@
-// Global focusin handler that selects all text when a text-like input
-// or a textarea gains focus, so tapping a field — especially on mobile,
-// where selecting existing text is awkward — replaces rather than
+// Global focusin handler that selects all text when a numeric input or
+// a textarea gains focus, so tapping a field replaces rather than
 // inserts when the user starts typing.
+//
+// Plain text inputs (descriptions, names, search boxes, …) are
+// intentionally excluded: on mobile, tapping a long pre-filled
+// description to clear it would pop the keyboard and obscure the
+// surrounding modal. Those inputs use `ClearableTextInput` which
+// renders an inline X clear button instead.
 //
 // Deferred via setTimeout so iOS Safari's post-focus caret placement
 // (which runs on the touchend that produced the focus) doesn't undo
 // our selection.
 
-const SELECTABLE_INPUT_TYPES: ReadonlySet<string> = new Set([
-  "text",
-  "number",
-  "email",
-  "tel",
-  "url",
-  "password",
-  "search",
+const NUMERIC_INPUT_TYPES: ReadonlySet<string> = new Set(["number"]);
+const NUMERIC_INPUT_MODES: ReadonlySet<string> = new Set([
+  "decimal",
+  "numeric",
 ]);
+
+function isNumericInput(el: HTMLInputElement): boolean {
+  if (NUMERIC_INPUT_TYPES.has(el.type)) return true;
+  if (NUMERIC_INPUT_MODES.has(el.inputMode)) return true;
+  return false;
+}
 
 function selectAll(el: HTMLInputElement | HTMLTextAreaElement): void {
   setTimeout(() => {
@@ -36,10 +43,7 @@ export function installSelectOnFocus(): void {
       selectAll(target);
       return;
     }
-    if (
-      target instanceof HTMLInputElement &&
-      SELECTABLE_INPUT_TYPES.has(target.type)
-    ) {
+    if (target instanceof HTMLInputElement && isNumericInput(target)) {
       selectAll(target);
     }
   });

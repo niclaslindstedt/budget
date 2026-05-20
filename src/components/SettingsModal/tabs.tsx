@@ -26,7 +26,7 @@ import type {
 } from "../../storage/backend-preference";
 import { withCurrency } from "../../utils/format";
 import { BackendPicker } from "../BackendPicker";
-import { Checkbox, SelectPicker } from "../form";
+import { Checkbox, ClearableTextInput, SelectPicker } from "../form";
 import { ImportExportControls } from "../ImportExportControls";
 import { LanguagePicker } from "../LanguagePicker";
 import { CategoriesAndTypesAdmin } from "./admin";
@@ -269,11 +269,11 @@ export function FormatTab({
         {showCustomCurrency && (
           <>
             <Field label={t("settings.format.currencyToken")}>
-              <input
-                type="text"
+              <ClearableTextInput
                 value={draft.currency}
-                onChange={(e) => onUpdate("currency", e.target.value)}
+                onValueChange={(v) => onUpdate("currency", v)}
                 maxLength={6}
+                wrapperClassName="w-24"
                 className="field-input w-24 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               />
             </Field>

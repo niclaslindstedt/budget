@@ -9,6 +9,7 @@ import type {
   Settings,
 } from "../data/types";
 import { formatBalance, formatShortDate } from "../utils/format";
+import { ClearableTextInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -115,13 +116,12 @@ export function HistoryEntryEditModal({
             <span className="text-xs text-muted">
               {t("editHistory.description")}
             </span>
-            <input
+            <ClearableTextInput
               ref={descriptionRef}
-              type="text"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onValueChange={setDescription}
               placeholder={t("editHistory.descriptionPlaceholder")}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
           <div className="flex flex-col gap-1">

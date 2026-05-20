@@ -6,6 +6,7 @@ import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../data/types";
 import { useT } from "../i18n";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
+import { ClearableTextInput } from "./form";
 import { FormulaHelpButton } from "./FormulaHelpButton";
 import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
 import { FormulaVariableHelper } from "./FormulaVariableHelper";
@@ -244,11 +245,10 @@ export function ComplexEntryModal({
             <span className="text-xs text-muted">
               {t("complex.description")}
             </span>
-            <input
-              type="text"
+            <ClearableTextInput
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              onValueChange={setDescription}
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               placeholder={t("complex.descriptionPlaceholder")}
             />
           </label>

@@ -20,7 +20,7 @@ import {
 } from "../utils/format";
 import { Modal } from "./Modal";
 import { DatePickerModal } from "./DatePickerModal";
-import { Checkbox } from "./form";
+import { Checkbox, ClearableTextInput } from "./form";
 import { CategoryIconGlyph } from "./icons";
 import { TypePicker } from "./TypePicker";
 import type { Settings } from "../data/types";
@@ -306,11 +306,10 @@ export function TransactionModal({
             <span className="text-xs text-muted">
               {t("transaction.description")}
             </span>
-            <input
-              type="text"
+            <ClearableTextInput
               ref={descriptionRef}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onValueChange={setDescription}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && canSave) {
                   e.preventDefault();
@@ -318,7 +317,7 @@ export function TransactionModal({
                 }
               }}
               placeholder={t("transaction.descriptionPlaceholder")}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
 

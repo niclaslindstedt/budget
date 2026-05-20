@@ -13,7 +13,7 @@ import {
   parseAmount,
 } from "../utils/format";
 import { Modal } from "./Modal";
-import { Checkbox, Radio, RadioGroup } from "./form";
+import { Checkbox, ClearableTextInput, Radio, RadioGroup } from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
 
@@ -297,11 +297,10 @@ export function EditEntryModal({
                 <span className="text-xs text-muted">
                   {t("editEntry.description")}
                 </span>
-                <input
-                  type="text"
+                <ClearableTextInput
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                  onValueChange={setDescription}
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 />
               </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
@@ -409,13 +408,12 @@ export function EditEntryModal({
                 <span className="text-xs text-muted">
                   {t("editEntry.description")}
                 </span>
-                <input
+                <ClearableTextInput
                   key={row.id}
                   ref={descriptionRef}
-                  type="text"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                  onValueChange={setDescription}
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 />
               </label>
               <label className="flex min-w-0 flex-col gap-1">

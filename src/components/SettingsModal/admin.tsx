@@ -27,6 +27,7 @@ import { displayCategoryName } from "../../i18n/preset-names";
 import { CategoryChip } from "../CategoryPicker";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { ClearableTextInput } from "../form";
 import { GlyphGrid } from "../GlyphGrid";
 import { TypeChip } from "../TypePicker";
 
@@ -511,12 +512,11 @@ function CategoryEditor({
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.name")}</span>
-        <input
-          type="text"
+        <ClearableTextInput
           autoFocus
-          className="field-input rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
+          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onValueChange={setName}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -589,12 +589,11 @@ function TypeEditor({
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.name")}</span>
-        <input
-          type="text"
+        <ClearableTextInput
           autoFocus
-          className="field-input rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
+          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onValueChange={setName}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

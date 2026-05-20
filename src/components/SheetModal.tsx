@@ -12,6 +12,7 @@ import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
 import { useDesktopAutoFocus, usePointerOutside } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
+import { ClearableTextInput } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
@@ -165,18 +166,17 @@ export function SheetModal({
             </div>
             <label className="flex flex-1 flex-col gap-1.5">
               <span className="text-xs text-muted">{t("sheetModal.name")}</span>
-              <input
-                type="text"
+              <ClearableTextInput
                 ref={nameRef}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onValueChange={setName}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && canSave) {
                     e.preventDefault();
                     handleSave();
                   }
                 }}
-                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 placeholder={t("sheetModal.namePlaceholder")}
               />
             </label>
@@ -215,11 +215,10 @@ export function SheetModal({
                     <span className="text-xs text-muted">
                       {t("sheetModal.newAccountName")}
                     </span>
-                    <input
+                    <ClearableTextInput
                       ref={newAccountInputRef}
-                      type="text"
                       value={newAccountName}
-                      onChange={(e) => setNewAccountName(e.target.value)}
+                      onValueChange={setNewAccountName}
                       onKeyDown={(e) => {
                         if (e.key === "Escape") {
                           e.preventDefault();
@@ -227,7 +226,7 @@ export function SheetModal({
                         }
                       }}
                       placeholder={t("sheetModal.newAccountPlaceholder")}
-                      className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+                      className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
                     />
                   </label>
                   <div className="flex items-center justify-end">
