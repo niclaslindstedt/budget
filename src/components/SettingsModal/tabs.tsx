@@ -266,7 +266,9 @@ export function FormatTab({
             ariaLabel={t("settings.format.currencyPreset")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
           />
-          <Preview>{withCurrency("1 234", draft)}</Preview>
+          <Preview>
+            {withCurrency("1 234", { ...draft, showCurrency: true })}
+          </Preview>
         </Field>
 
         {showCustomCurrency && (
