@@ -62,7 +62,7 @@ feature, which would surface a non-event in the changelog).
    parents for any in-flight features:
 
    ```sh
-   scripts/release/list-fragments.sh
+   .agent/skills/write-changeset/list-fragments.sh
    ```
 
    The script prints every `.changes/unreleased/*.md` file with its
