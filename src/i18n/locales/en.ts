@@ -973,9 +973,19 @@ export const en = {
 
   type: {
     pickType: "Pick a type",
+    pickTypeEllipsis: "Pick a type…",
     noType: "No type",
     addType: "Add type",
-    namePlaceholder: "Type name",
+    namePlaceholder: "Mortgage",
+    name: "Name",
+    color: "Color",
+    glyph: "Icon",
+    category: "Category",
+    pickCategoryEllipsis: "Pick a category…",
+    clearType: "Clear type",
+    newType: "New type",
+    noTypesYet: "No types yet.",
+    create: "Create",
   },
 
   glyph: {
@@ -1028,6 +1038,27 @@ export const en = {
     importFailed: "Could not read this file.",
     importedOk: "Imported.",
     exportFilename: "budget-{date}.json",
+    exportLabel: "Export",
+    exportEncryptedLabel: "Export (encrypted)",
+    exportEncryptedAria: "Export budget as encrypted JSON",
+    exportAria: "Export budget as JSON",
+    importAria: "Import budget from JSON",
+    importLabel: "Import",
+    exported: "Exported.",
+    exportedEncrypted: "Exported (encrypted).",
+    importedSheets: "Imported {n} sheet.",
+    importedSheetsPlural: "Imported {n} sheets.",
+    migratedSuffix: " (migrated to current version)",
+    importFailedWith: "Import failed — {error}",
+    noPasswordInMemory:
+      "No account password held in memory — sign in again.",
+    encryptionFailed: "Encryption failed: {error}",
+    couldNotReadFile: "Could not read file: {error}",
+    encryptedBudget: "Encrypted budget",
+    encryptedBudgetHint:
+      "This file is encrypted. Enter the password it was exported with.",
+    decrypting: "Decrypting…",
+    decryptAndImport: "Decrypt & import",
   },
 
   cloudBackup: {
