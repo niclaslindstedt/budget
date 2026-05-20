@@ -318,11 +318,11 @@ export function EditEntryModal({
                   usageById={typeUsageById}
                 />
               </div>
-              <label className="flex flex-col gap-1">
+              <label className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs text-muted">
                   {t("editEntry.amount")}
                 </span>
-                <div className="relative flex">
+                <div className="relative flex min-w-0">
                   <button
                     type="button"
                     onClick={toggleSign}
@@ -347,7 +347,7 @@ export function EditEntryModal({
                     inputMode="decimal"
                     value={amount}
                     onChange={(e) => handleAmountChange(e.target.value)}
-                    className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
+                    className={`field-input min-w-0 flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
                       parsedAbs !== null && parsedAbs !== 0
                         ? negative
                           ? "text-negative"
@@ -418,11 +418,11 @@ export function EditEntryModal({
                   className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 />
               </label>
-              <label className="flex flex-col gap-1">
+              <label className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs text-muted">
                   {t("editEntry.amount")}
                 </span>
-                <div className="relative flex">
+                <div className="relative flex min-w-0">
                   <button
                     type="button"
                     onClick={toggleSign}
@@ -447,7 +447,7 @@ export function EditEntryModal({
                     inputMode="decimal"
                     value={amount}
                     onChange={(e) => handleAmountChange(e.target.value)}
-                    className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
+                    className={`field-input min-w-0 flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
                       parsedAbs !== null && parsedAbs !== 0
                         ? negative
                           ? "text-negative"

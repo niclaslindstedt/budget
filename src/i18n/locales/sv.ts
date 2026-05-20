@@ -605,6 +605,7 @@ export const sv: Catalog = {
     labelByPattern: "Etikett via mönster",
     labelByPatternTitle:
       "Etikettera alla historikposter som matchar ett wildcard-mönster",
+    editHistoryEntry: "Redigera denna historikpost",
     editTransaction: "Redigera transaktion",
     makeTransaction: "Skapa transaktion",
     needAccountForTransfer:
@@ -760,6 +761,18 @@ export const sv: Catalog = {
     scopeAlwaysJustThis:
       "Datum och klarmarkering gäller alltid endast för denna rad.",
     completed: "Klar",
+  },
+
+  editHistory: {
+    title: "Redigera historikpost",
+    description: "Beskrivning",
+    descriptionPlaceholder: "Skriv över bankens beskrivning",
+    type: "Typ",
+    originalDescription: "Original från banken",
+    hint:
+      "Byter namn på bara denna post. Bankens text lämnas orörd så du " +
+      "kan se vad som stod i kontoutdraget. För att etikettera alla " +
+      "poster med samma beskrivning, använd mönsterknappen i stället.",
   },
 
   history: {

@@ -111,7 +111,14 @@ export function Cell({
   // modal). The dedicated transaction layouts only differ from the
   // regular layouts in two ways: no input element, and the description
   // cell shows a transfer arrow + peer-account name.
-  if (isTransaction || isHistory) {
+  //
+  // History rows are partially editable: description and type can be
+  // edited inline (the writes land on `HistoryEntry.userDescription` /
+  // `userTypeId` via the parent's interception of `onUpdateCell`),
+  // while date / amount / balance / completed stay read-only — those
+  // are bank-authoritative and the user shouldn't be able to rewrite
+  // them without re-importing.
+  if (isTransaction) {
     switch (column.type) {
       case "date":
         return (
@@ -121,16 +128,11 @@ export function Cell({
           />
         );
       case "description":
-        return isTransaction ? (
+        return (
           <TransactionDescriptionCell
             value={typeof value === "string" ? value : ""}
             peerName={peerName ?? ""}
             outgoing={!!outgoing}
-          />
-        ) : (
-          <ReadonlyDescriptionCell
-            rowId={rowId}
-            value={typeof value === "string" ? value : ""}
           />
         );
       case "amount":
@@ -168,6 +170,85 @@ export function Cell({
       }
       case "type":
         return <ReadonlyTypeCell entryType={entryType ?? null} />;
+    }
+  }
+  if (isHistory) {
+    switch (column.type) {
+      case "date":
+        return (
+          <ReadonlyDateCell
+            value={typeof value === "string" ? value : ""}
+            settings={settings}
+          />
+        );
+      case "description":
+        return (
+          <DescriptionCell
+            rowId={rowId}
+            value={typeof value === "string" ? value : ""}
+            isRecurring={false}
+            entryType={entryType ?? null}
+            onChange={onChange}
+            onCommit={onCommit}
+          />
+        );
+      case "amount":
+        return (
+          <AmountCellDisplay
+            value={typeof value === "number" ? value : null}
+            settings={settings}
+          />
+        );
+      case "balance": {
+        const n = computedBalance ?? 0;
+        return (
+          <td
+            className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
+              n < 0 ? "text-negative" : "text-positive"
+            }`}
+            aria-readonly="true"
+          >
+            <span className="block">{formatRunningBalance(n, settings)}</span>
+          </td>
+        );
+      }
+      case "completed": {
+        const checked = value === true;
+        return (
+          <td
+            className={`${CELL_BASE} p-0 text-center text-muted`}
+            aria-readonly="true"
+          >
+            <span className="flex h-full min-h-9 w-full items-center justify-center p-1.5">
+              {checked && <Check size={18} aria-hidden focusable={false} />}
+            </span>
+          </td>
+        );
+      }
+      case "type":
+        return (
+          <td className={`${CELL_BASE} p-0`}>
+            <TypePicker
+              rowId={rowId}
+              types={types ?? []}
+              categories={categories ?? []}
+              selectedId={entryType?.id ?? null}
+              usageById={typeUsageById}
+              onSelect={(id) => {
+                onChange(id);
+                onCommit?.(id);
+              }}
+              onCreate={
+                onCreateType ??
+                ((draft) => ({
+                  id: `tmp-${Math.random().toString(36).slice(2)}`,
+                  ...draft,
+                }))
+              }
+              variant="chip"
+            />
+          </td>
+        );
     }
   }
   switch (column.type) {
@@ -924,53 +1005,6 @@ function ReadonlyDateCell({
 // arrow leading into the peer account name, then the transaction
 // description as plain text. Mirrors the editable description cell's
 // desktop / mobile split so the row collapses cleanly on small screens.
-// Read-only description cell for synthesized history rows. No
-// transfer arrow, no peer name — just the bank's description text in
-// the same muted style the transaction variant uses, so the row
-// reads as "imported, not edited" at a glance. Bank memos are often
-// long enough to truncate (the column is narrow on phones), so tapping
-// the cell opens a popover with the full text.
-function ReadonlyDescriptionCell({
-  rowId,
-  value,
-}: {
-  rowId: string;
-  value: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const hasValue = value.length > 0;
-
-  return (
-    <td className={`${CELL_BASE} align-middle md:w-full`}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => hasValue && setOpen((v) => !v)}
-        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2.5 py-2 text-left font-mono text-fg outline-none focus-visible:bg-surface-2 md:justify-start"
-        aria-haspopup={hasValue ? "dialog" : undefined}
-        aria-expanded={hasValue ? open : undefined}
-        aria-label={hasValue ? `Description: ${value}` : undefined}
-        title={value || undefined}
-      >
-        <span className="block w-full truncate">{value || "—"}</span>
-      </button>
-      <FloatingPanel
-        open={open && hasValue}
-        onClose={() => setOpen(false)}
-        triggerRef={triggerRef}
-        placement={DESCRIPTION_POPOVER_PLACEMENT}
-        rowId={rowId}
-        arrow="up"
-      >
-        <p className="block px-2 py-1.5 font-mono text-sm leading-snug break-words whitespace-pre-wrap text-fg">
-          {value}
-        </p>
-      </FloatingPanel>
-    </td>
-  );
-}
-
 function TransactionDescriptionCell({
   value,
   peerName,

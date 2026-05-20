@@ -372,6 +372,7 @@ function validateAccount(raw: unknown, path: string): Result<Account> {
 function validateHistoryEntry(
   raw: unknown,
   path: string,
+  knownTypeIds: ReadonlySet<string>,
 ): Result<HistoryEntry> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, description, amount, balance, importedAt } = raw;
@@ -414,6 +415,23 @@ function validateHistoryEntry(
       );
     }
     entry.collapsedIntoTransactionId = raw.collapsedIntoTransactionId;
+  }
+  if (raw.userDescription !== undefined) {
+    if (typeof raw.userDescription !== "string")
+      return fail(`${path}.userDescription`, "expected a string");
+    // Empty / whitespace-only is normalised to "no override" so a
+    // returning user can clear the field through the modal without the
+    // synthesized row falling back to an empty label.
+    const trimmed = raw.userDescription.trim();
+    if (trimmed !== "") entry.userDescription = trimmed;
+  }
+  if (raw.userTypeId !== undefined && raw.userTypeId !== null) {
+    if (typeof raw.userTypeId !== "string" || raw.userTypeId === "")
+      return fail(`${path}.userTypeId`, "expected a non-empty string");
+    // Drop dangling references to deleted types so the synthesized row
+    // doesn't render a chip pointing at nothing. Same contract as
+    // `MerchantHint` and `MatchRule`.
+    if (knownTypeIds.has(raw.userTypeId)) entry.userTypeId = raw.userTypeId;
   }
   return { ok: true, value: entry };
 }
@@ -924,6 +942,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       const r = validateHistoryEntry(
         rawEntries[i],
         `history.${accountId}[${i}]`,
+        knownTypeIds,
       );
       if (!r.ok) return r;
       if (seenIds.has(r.value.id)) continue;

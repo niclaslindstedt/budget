@@ -48,6 +48,7 @@ type Props = {
   onEditRowRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
+  onEditHistoryRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
@@ -102,6 +103,7 @@ export function MonthTable({
   onEditRowRequest,
   onTransactionRequest,
   onMatchRuleRequest,
+  onEditHistoryRequest,
   onCorrectionDeleteRequest,
   onReorderColumns,
   onToggleSelect,
@@ -265,6 +267,7 @@ export function MonthTable({
                   onEditRowRequest={onEditRowRequest}
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
+                  onEditHistoryRequest={onEditHistoryRequest}
                   onToggleSelect={onToggleSelect}
                 />
               );
