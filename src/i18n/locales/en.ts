@@ -355,6 +355,9 @@ export const en = {
       title: "Display",
       textSize: "Text size",
       textSizeHint: "Scales the whole UI together.",
+      hideTransfers: "Hide transfers between accounts",
+      hideTransfersHint:
+        "Suppress transfer rows from the budget table. The running balance still accounts for them — a small ↔ icon on the balance shows where they sit, and clicking it reveals them inline.",
     },
     languageSection: {
       title: "Language",
@@ -593,6 +596,10 @@ export const en = {
     undated: "Undated",
     correctionLine: "balance correction",
     correctionRemoveAria: "Remove balance correction of {amount}",
+    hiddenTransferOne: "{n} hidden transfer",
+    hiddenTransferOther: "{n} hidden transfers",
+    expandHiddenTransfers: "Show hidden transfers behind this balance",
+    collapseHiddenTransfers: "Hide transfers again",
   },
 
   cell: {
@@ -616,6 +623,10 @@ export const en = {
     needAccountForTransfer:
       "Attach this budget to an account to enable transfers",
     needDescAndAmount: "Set a description and amount first",
+    markAsTransfer: "Mark as transfer",
+    unmarkAsTransfer: "Unmark as transfer",
+    markAsTransferTitle:
+      "Flag this row as an inter-account transfer so the hide-transfers setting can suppress it",
     formulaResult: "= {value}",
     invalidFormula: "Invalid formula",
     placeholderEllipsis: "…",
@@ -780,6 +791,9 @@ export const en = {
       "Renames just this one entry. The bank's record stays untouched " +
       "for reference. To relabel every entry with the same description, " +
       "use the pattern button instead.",
+    isTransfer: "This is a transfer between accounts",
+    isTransferHint:
+      "When the hide-transfers setting is on, this row is suppressed from the budget table. The amount still feeds the running balance.",
   },
 
   history: {

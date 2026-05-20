@@ -98,6 +98,11 @@ type Props = {
   onEditRequest: (row: Row) => void;
   onEditRowRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
+  // Flip the per-row `isTransfer` flag on a budget row. Used by the
+  // eye-toggle action button to mark or unmark a one-off entry as an
+  // inter-account transfer so the `hideTransfers` setting can suppress
+  // it without converting it into a full Transaction.
+  onToggleRowTransfer: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
@@ -203,6 +208,7 @@ export function SheetView({
   onEditRequest,
   onEditRowRequest,
   onTransactionRequest,
+  onToggleRowTransfer,
   onMatchRuleRequest,
   onEditHistoryRequest,
   onCorrectionDeleteRequest,
@@ -448,6 +454,31 @@ export function SheetView({
     });
   }, []);
 
+  // Per-row expansion state for the "show hidden transfers" affordance
+  // on balance cells. Keyed by the *anchor* row id (the visible row
+  // whose balance icon was clicked) so each balance step controls its
+  // own reveal. Session-only — closing and re-opening the sheet
+  // collapses every expansion. Resets when the active sheet changes.
+  const [expandedTransferAnchors, setExpandedTransferAnchors] = useState<
+    Set<string>
+  >(() => new Set());
+  useEffect(() => {
+    setExpandedTransferAnchors(new Set());
+  }, [sheet.id]);
+  const toggleTransferAnchor = useCallback((rowId: string) => {
+    setExpandedTransferAnchors((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  }, []);
+  // When the hide-transfers setting flips off, the expansion state has
+  // nothing to act on; clear it so re-enabling later starts clean.
+  useEffect(() => {
+    if (!settings.hideTransfers) setExpandedTransferAnchors(new Set());
+  }, [settings.hideTransfers]);
+
   const oldestVisibleMonth = useMemo(() => {
     let key = currentMonth;
     for (let i = 0; i < DEFAULT_HISTORY_MONTHS + extraHistory; i += 1) {
@@ -656,6 +687,10 @@ export function SheetView({
                     seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
                   }
                   onToggleCollapsed={slotToggle}
+                  hideTransfers={settings.hideTransfers}
+                  expandedTransferAnchors={expandedTransferAnchors}
+                  onToggleTransferAnchor={toggleTransferAnchor}
+                  onToggleRowTransfer={onToggleRowTransfer}
                   onUpdateCell={handleUpdateCell}
                   onCommitCell={onCommitCell}
                   onAddRow={slotAdd}

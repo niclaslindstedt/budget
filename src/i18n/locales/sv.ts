@@ -347,6 +347,9 @@ export const sv: Catalog = {
       title: "Visning",
       textSize: "Textstorlek",
       textSizeHint: "Skalar hela gränssnittet tillsammans.",
+      hideTransfers: "Dölj överföringar mellan konton",
+      hideTransfersHint:
+        "Dölj överföringsrader från budgettabellen. Saldot räknar fortfarande med dem — en liten ↔-ikon på saldot visar var de ligger, och ett klick visar dem inbäddat.",
     },
     languageSection: {
       title: "Språk",
@@ -587,6 +590,10 @@ export const sv: Catalog = {
     undated: "Odaterad",
     correctionLine: "saldokorrigering",
     correctionRemoveAria: "Ta bort saldokorrigering om {amount}",
+    hiddenTransferOne: "{n} dold överföring",
+    hiddenTransferOther: "{n} dolda överföringar",
+    expandHiddenTransfers: "Visa dolda överföringar bakom detta saldo",
+    collapseHiddenTransfers: "Dölj överföringarna igen",
   },
 
   cell: {
@@ -610,6 +617,10 @@ export const sv: Catalog = {
     needAccountForTransfer:
       "Koppla denna budget till ett konto för att möjliggöra överföringar",
     needDescAndAmount: "Ange beskrivning och belopp först",
+    markAsTransfer: "Markera som överföring",
+    unmarkAsTransfer: "Avmarkera överföring",
+    markAsTransferTitle:
+      "Markera raden som en överföring mellan konton så att inställningen “Dölj överföringar” kan dölja den",
     formulaResult: "= {value}",
     invalidFormula: "Ogiltig formel",
     placeholderEllipsis: "…",
@@ -776,6 +787,9 @@ export const sv: Catalog = {
       "Byter namn på bara denna post. Bankens text lämnas orörd så du " +
       "kan se vad som stod i kontoutdraget. För att etikettera alla " +
       "poster med samma beskrivning, använd mönsterknappen i stället.",
+    isTransfer: "Detta är en överföring mellan konton",
+    isTransferHint:
+      "När inställningen “Dölj överföringar” är på, döljs den här raden från budgettabellen. Beloppet räknas fortfarande med i saldot.",
   },
 
   history: {
