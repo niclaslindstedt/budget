@@ -40,11 +40,11 @@ type Props = {
   computedBalance?: number;
   settings: Settings;
   isRecurring?: boolean;
-  // Resolved EntryType for `row.typeId`, threaded into the dedicated
-  // `type` column's picker / readonly chip. The description column
-  // ignores it — the row's description text is the description's job,
-  // and the type column is the type's job; mixing the two cluttered
-  // the description on narrow screens.
+  // Resolved EntryType for `row.typeId`. Drives the dedicated `type`
+  // column's picker / readonly chip, and — on recurring rows — the
+  // description cell, which collapses down to a chip in the type's
+  // color (a clearer at-a-glance identifier than the recurring-arrow
+  // glyph) with the description tucked into a popover behind it.
   entryType?: EntryType | null;
   // Selectable entry types + categories, threaded through for the `type`
   // column's picker. Optional because synthesized / readonly variants
@@ -186,6 +186,7 @@ export function Cell({
           rowId={rowId}
           value={typeof value === "string" ? value : ""}
           isRecurring={!!isRecurring}
+          entryType={entryType ?? null}
           onChange={onChange}
           onCommit={onCommit}
         />
@@ -536,6 +537,49 @@ function DescriptionCell({
   rowId,
   value,
   isRecurring,
+  entryType,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  isRecurring: boolean;
+  entryType: EntryType | null;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
+  // Recurring rows with a typed series collapse the description down
+  // to a chip in the type's colour; the description text — when there
+  // is one — is one tap away in a popover. The type name identifies
+  // the row more legibly than the recurring-arrow glyph and reclaims
+  // a lot of width on narrow screens. Fall back to the plain editor
+  // for one-off rows and recurring rows whose typeId is still unset.
+  if (isRecurring && entryType) {
+    return (
+      <TypedRecurringDescriptionCell
+        rowId={rowId}
+        value={value}
+        entryType={entryType}
+        onChange={onChange}
+        onCommit={onCommit}
+      />
+    );
+  }
+  return (
+    <PlainDescriptionCell
+      rowId={rowId}
+      value={value}
+      isRecurring={isRecurring}
+      onChange={onChange}
+      onCommit={onCommit}
+    />
+  );
+}
+
+function PlainDescriptionCell({
+  rowId,
+  value,
+  isRecurring,
   onChange,
   onCommit,
 }: {
@@ -605,6 +649,91 @@ function DescriptionCell({
         onChange={onChange}
         onCommit={onCommit}
       />
+    </td>
+  );
+}
+
+// Description cell for recurring rows whose series has a type assigned.
+// Renders a coloured chip (glyph + name) in place of the recurring-arrow
+// glyph and inline description, and tucks the editable description text
+// into a popover behind the chip.
+function TypedRecurringDescriptionCell({
+  rowId,
+  value,
+  entryType,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  entryType: EntryType;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Snapshot the value at popover-open time so we only emit a commit
+  // when the user actually changed the description before closing —
+  // matches the focus/blur snapshot on the inline plain editor.
+  const openValueRef = useRef<string>(value);
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      openValueRef.current = value;
+    } else if (!open && wasOpenRef.current) {
+      if (onCommit && value !== openValueRef.current) onCommit(value);
+    }
+    wasOpenRef.current = open;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (open) textareaRef.current?.focus();
+  }, [open]);
+
+  return (
+    <td className={`${CELL_BASE} align-middle md:w-full`}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2 py-1.5 outline-none focus-visible:bg-surface-2 md:justify-start"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={value ? `${entryType.name}: ${value}` : entryType.name}
+        title={value || entryType.name}
+      >
+        <span
+          className="inline-flex min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono text-xs font-medium"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
+            borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
+            color: entryType.color,
+          }}
+        >
+          <CategoryIconGlyph name={entryType.glyph} size={12} />
+          <span className="truncate">{entryType.name}</span>
+        </span>
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={DESCRIPTION_POPOVER_PLACEMENT}
+        rowId={rowId}
+        arrow="up"
+      >
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Description"
+          rows={1}
+          className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
+        />
+      </FloatingPanel>
     </td>
   );
 }
