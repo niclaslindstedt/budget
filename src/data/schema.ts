@@ -1161,11 +1161,11 @@ export const USER_DATA_SCHEMA = {
           enum: ["en", "sv"],
           default: DEFAULT_SETTINGS.language,
           description:
-            "UI language. \"en\" leaves the app in English; \"sv\" " +
+            'UI language. "en" leaves the app in English; "sv" ' +
             "translates every user-facing string to Swedish. Date and " +
             "number formatting are controlled by the other Settings " +
             "fields and are independent of this choice. Existing buckets " +
-            "default to \"en\" through the v26 → v27 migration so the UI " +
+            'default to "en" through the v26 → v27 migration so the UI ' +
             "doesn't suddenly flip language on upgrade; fresh installs " +
             "auto-detect from the browser's preferred language.",
         },

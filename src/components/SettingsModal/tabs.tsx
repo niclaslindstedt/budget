@@ -202,7 +202,11 @@ export function FormatTab({
             panelClassName="font-mono tabular-nums"
           />
           <Preview>
-            {formatDatePreview(datePreviewIso, draft.dateFormat, draft.language)}
+            {formatDatePreview(
+              datePreviewIso,
+              draft.dateFormat,
+              draft.language,
+            )}
           </Preview>
         </Field>
 
@@ -560,7 +564,9 @@ export function StorageTab({
             ariaLabel={t("settings.session.timeout")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
           />
-          <p className="text-xs text-muted">{t("settings.session.timeoutHint")}</p>
+          <p className="text-xs text-muted">
+            {t("settings.session.timeoutHint")}
+          </p>
         </Field>
       </Section>
     </>

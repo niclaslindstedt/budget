@@ -124,7 +124,9 @@ export function UpdateBalanceModal({
           <span className="font-bold text-fg-bright">{account?.name}</span>
         </div>
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-muted">{t("updateBalance.currentBalance")}</span>
+          <span className="text-muted">
+            {t("updateBalance.currentBalance")}
+          </span>
           <span
             className={`tabular-nums ${
               currentBalance < 0 ? "text-negative" : "text-positive"
@@ -158,7 +160,9 @@ export function UpdateBalanceModal({
             />
           </label>
         ) : (
-          <p className="text-xs text-muted">{t("updateBalance.noBudgetHint")}</p>
+          <p className="text-xs text-muted">
+            {t("updateBalance.noBudgetHint")}
+          </p>
         )}
 
         {canRecord && hasDelta && (

@@ -277,7 +277,9 @@ export function SheetModal({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("sheetModal.description")}</span>
+            <span className="text-xs text-muted">
+              {t("sheetModal.description")}
+            </span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

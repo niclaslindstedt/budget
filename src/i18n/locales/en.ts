@@ -343,7 +343,8 @@ export const en = {
       folderTitle: "Folder",
       folderUnsupported:
         "Your browser does not support the File System Access API. Use Chrome on a desktop OS for folder storage.",
-      folderConnected: "Synced to {name} on every change, or when you press Save.",
+      folderConnected:
+        "Synced to {name} on every change, or when you press Save.",
       folderNotConnected: "Pick a folder to keep your budget there.",
       pickFolder: "Pick folder",
       disconnectFolder: "Disconnect folder",
@@ -368,7 +369,8 @@ export const en = {
       backendGoogleDrive: "Google Drive",
       backendGdriveConnected:
         "Synced to your Google Drive on every change, or when you press Save.",
-      backendGdriveUnconnected: "Authorize to keep your budget in your Google Drive.",
+      backendGdriveUnconnected:
+        "Authorize to keep your budget in your Google Drive.",
       saveAlsoHere: "Save also here",
       importExport: "Import / export",
       importJson: "Import JSON",
@@ -450,8 +452,7 @@ export const en = {
     delete: "Delete {name}",
     rename: "Rename sheet",
     addRow: "Add row",
-    addRowLong:
-      "Add row (long-press for recurring or categorised entry)",
+    addRowLong: "Add row (long-press for recurring or categorised entry)",
     addRowAria: "Add row",
     addRecurring: "Add recurring entry",
     addCategorised: "Add categorised entry",
@@ -482,8 +483,7 @@ export const en = {
     removeColumn: "Remove column",
     reorderHint: "Drag to reorder",
     monthEmpty: "Nothing scheduled for {month}.",
-    hiddenEmptyMonths:
-      "Empty months are hidden. Add a row to bring one back.",
+    hiddenEmptyMonths: "Empty months are hidden. Add a row to bring one back.",
     showEmptyMonths: "Show empty months",
     hideEmptyMonths: "Hide empty months",
     editSheet: "Edit sheet",
@@ -529,8 +529,7 @@ export const en = {
 
   addRow: {
     button: "Add row",
-    ariaLabel:
-      "Add row (long-press for recurring or categorised entry)",
+    ariaLabel: "Add row (long-press for recurring or categorised entry)",
     longPressHint: "Long-press for more",
   },
 
@@ -837,12 +836,20 @@ export const en = {
     title: "Transaction",
     titleEdit: "Edit transaction",
     titleNew: "New transaction",
+    titlePromote: "Make transaction",
     date: "Date",
     description: "Description",
+    descriptionPlaceholder: "What is this transfer for?",
     amount: "Amount",
+    transfer: "Transfer",
     from: "From",
     to: "To",
     type: "Type",
+    swap: "Swap from and to accounts",
+    moneyLeaves: "Money leaves this account.",
+    moneyArrives: "Money arrives in this account.",
+    needTwoAccounts: "A transfer needs two different accounts.",
+    markAsDone: "Mark as done",
     pickAccount: "Pick an account",
     deleteTitle: "Delete transaction?",
     deleteHint: "The two bank entries it collapsed will come back.",
@@ -1060,8 +1067,7 @@ export const en = {
     importedSheetsPlural: "Imported {n} sheets.",
     migratedSuffix: " (migrated to current version)",
     importFailedWith: "Import failed — {error}",
-    noPasswordInMemory:
-      "No account password held in memory — sign in again.",
+    noPasswordInMemory: "No account password held in memory — sign in again.",
     encryptionFailed: "Encryption failed: {error}",
     couldNotReadFile: "Could not read file: {error}",
     encryptedBudget: "Encrypted budget",
@@ -1100,8 +1106,7 @@ export const en = {
     details: "Sync details",
     lastSyncedAt: "Last synced {time}",
     conflict: "Conflict",
-    conflictHint:
-      "The file changed somewhere else. Pick which copy to keep.",
+    conflictHint: "The file changed somewhere else. Pick which copy to keep.",
     keepLocal: "Keep mine",
     keepRemote: "Keep the other",
   },

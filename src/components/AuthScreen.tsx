@@ -279,9 +279,7 @@ function SignUpForm({
       <div className="flex items-center gap-2 text-accent">
         <UserPlus size={18} aria-hidden focusable={false} />
         <h1 className="text-sm font-bold tracking-wide text-fg-bright">
-          {firstAccount
-            ? t("auth.welcomeTitle")
-            : t("auth.createAccountTitle")}
+          {firstAccount ? t("auth.welcomeTitle") : t("auth.createAccountTitle")}
         </h1>
       </div>
       <p className="text-xs text-muted">

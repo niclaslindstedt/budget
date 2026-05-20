@@ -206,8 +206,7 @@ export const sv: Catalog = {
     createAccountTitle: "Skapa konto",
     newAccountHint:
       "Välj ett användarnamn och ett starkt lösenord — minst {min} tecken. Din budget krypteras med detta lösenord; om du glömmer det kan datan på denna enhet inte återställas.",
-    guestImportHint:
-      "Din gästsessions budget flyttas in i detta konto.",
+    guestImportHint: "Din gästsessions budget flyttas in i detta konto.",
     importLegacyLabel: "Importera befintlig budget på denna enhet",
     importLegacyHint:
       "En budget från innan konton infördes hittades. Ta med den till det nya kontot.",
@@ -245,7 +244,8 @@ export const sv: Catalog = {
     guestMode: "Använder gästläge",
     guestNoAccount: "Inget konto",
     guestModeButton: "Använder gästläge — inget konto",
-    guestModeHint: "Skapa ett konto för att låsa din budget bakom ett lösenord.",
+    guestModeHint:
+      "Skapa ett konto för att låsa din budget bakom ett lösenord.",
     accountMenuLabel: "Kontomeny ({status})",
     settings: "Inställningar",
     signOut: "Logga ut",
@@ -443,7 +443,8 @@ export const sv: Catalog = {
     delete: "Ta bort {name}",
     rename: "Byt namn på blad",
     addRow: "Lägg till rad",
-    addRowLong: "Lägg till rad (håll inne för återkommande eller kategoriserad post)",
+    addRowLong:
+      "Lägg till rad (håll inne för återkommande eller kategoriserad post)",
     addRowAria: "Lägg till rad",
     addRecurring: "Lägg till återkommande post",
     addCategorised: "Lägg till kategoriserad post",
@@ -765,8 +766,7 @@ export const sv: Catalog = {
 
   recurring: {
     panelTitle: "Återkommande förslag",
-    panelHint:
-      "Bekräfta eller avvisa handlare som appen tror är återkommande.",
+    panelHint: "Bekräfta eller avvisa handlare som appen tror är återkommande.",
     promote: "Gör återkommande",
     dismiss: "Ej återkommande",
     dismissAll: "Avvisa alla",
@@ -832,12 +832,20 @@ export const sv: Catalog = {
     title: "Transaktion",
     titleEdit: "Redigera transaktion",
     titleNew: "Ny transaktion",
+    titlePromote: "Skapa transaktion",
     date: "Datum",
     description: "Beskrivning",
+    descriptionPlaceholder: "Vad är denna överföring för?",
     amount: "Belopp",
+    transfer: "Överföring",
     from: "Från",
     to: "Till",
     type: "Typ",
+    swap: "Byt från- och till-konton",
+    moneyLeaves: "Pengar lämnar detta konto.",
+    moneyArrives: "Pengar kommer in på detta konto.",
+    needTwoAccounts: "En överföring kräver två olika konton.",
+    markAsDone: "Markera som klar",
     pickAccount: "Välj ett konto",
     deleteTitle: "Ta bort transaktion?",
     deleteHint: "De två bankposterna som slogs ihop kommer tillbaka.",
@@ -863,7 +871,8 @@ export const sv: Catalog = {
     bic: "BIC / SWIFT",
     bicPlaceholder: "SWEDSESS",
     currencyOverride: "Valutaöverstyrning",
-    currencyOverridePlaceholder: "Lämna tomt för att använda standardinställningen",
+    currencyOverridePlaceholder:
+      "Lämna tomt för att använda standardinställningen",
     currencyOverrideHint:
       "Fritt format. Tomt innebär att standardinställningen används.",
     noDetailsHint:
@@ -919,7 +928,8 @@ export const sv: Catalog = {
     editAccountAria: "Redigera {name}",
     editAccountTitle: "Redigera konto",
     newTransaction: "Ny transaktion",
-    needTwoAccounts: "Lägg till minst två konton för att registrera en överföring",
+    needTwoAccounts:
+      "Lägg till minst två konton för att registrera en överföring",
     unknown: "Okänd",
   },
 
@@ -1055,8 +1065,7 @@ export const sv: Catalog = {
     importedSheetsPlural: "Importerade {n} blad.",
     migratedSuffix: " (migrerad till aktuell version)",
     importFailedWith: "Import misslyckades — {error}",
-    noPasswordInMemory:
-      "Inget kontolösenord i minnet — logga in igen.",
+    noPasswordInMemory: "Inget kontolösenord i minnet — logga in igen.",
     encryptionFailed: "Kryptering misslyckades: {error}",
     couldNotReadFile: "Kunde inte läsa filen: {error}",
     encryptedBudget: "Krypterad budget",

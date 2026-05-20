@@ -193,7 +193,11 @@ export function HistoryModal({
                             {formatDayOnly(e.date)}
                           </span>
                           <span className="hidden md:inline">
-                            {formatShortDate(e.date, settings.shortDateFormat, lang)}
+                            {formatShortDate(
+                              e.date,
+                              settings.shortDateFormat,
+                              lang,
+                            )}
                           </span>
                         </td>
                         <td className="align-top text-fg">
@@ -244,7 +248,11 @@ export function HistoryModal({
           <div className="flex flex-col gap-3 px-4 py-3">
             <div className="flex items-center justify-between gap-3 text-xs text-muted">
               <span className="font-mono whitespace-nowrap">
-                {formatShortDate(selectedEntry.date, settings.shortDateFormat, lang)}
+                {formatShortDate(
+                  selectedEntry.date,
+                  settings.shortDateFormat,
+                  lang,
+                )}
               </span>
               <span
                 className={`font-mono tabular-nums whitespace-nowrap ${

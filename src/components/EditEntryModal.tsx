@@ -294,7 +294,9 @@ export function EditEntryModal({
           <>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">{t("editEntry.description")}</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.description")}
+                </span>
                 <input
                   type="text"
                   value={description}
@@ -303,7 +305,9 @@ export function EditEntryModal({
                 />
               </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">{t("editEntry.type")}</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.type")}
+                </span>
                 <TypePicker
                   variant="field"
                   types={types}
@@ -315,7 +319,9 @@ export function EditEntryModal({
                 />
               </div>
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted">{t("editEntry.amount")}</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.amount")}
+                </span>
                 <div className="relative flex">
                   <button
                     type="button"
@@ -354,7 +360,9 @@ export function EditEntryModal({
             </div>
 
             <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
-              <legend className="px-1 text-xs text-muted">{t("editEntry.scope")}</legend>
+              <legend className="px-1 text-xs text-muted">
+                {t("editEntry.scope")}
+              </legend>
               <RadioGroup
                 name="edit-scope"
                 value={scopeKind}
@@ -398,7 +406,9 @@ export function EditEntryModal({
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">{t("editEntry.description")}</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.description")}
+                </span>
                 <input
                   key={row.id}
                   ref={descriptionRef}
@@ -409,7 +419,9 @@ export function EditEntryModal({
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted">{t("editEntry.amount")}</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.amount")}
+                </span>
                 <div className="relative flex">
                   <button
                     type="button"
@@ -446,7 +458,9 @@ export function EditEntryModal({
                 </div>
               </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">{t("editEntry.type")}</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.type")}
+                </span>
                 <TypePicker
                   variant="field"
                   types={types}

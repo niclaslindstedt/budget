@@ -74,7 +74,11 @@ export function LanguagePicker({
 }) {
   const t = useT();
   return (
-    <div role="radiogroup" aria-label={t("language.pick")} className="flex gap-2">
+    <div
+      role="radiogroup"
+      aria-label={t("language.pick")}
+      className="flex gap-2"
+    >
       <FlagButton
         active={value === "en"}
         onClick={() => onChange("en")}

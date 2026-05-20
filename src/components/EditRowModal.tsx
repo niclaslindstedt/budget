@@ -197,7 +197,9 @@ export function EditRowModal({
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">{t("editEntry.description")}</span>
+            <span className="text-xs text-muted">
+              {t("editEntry.description")}
+            </span>
             <input
               ref={descriptionRef}
               type="text"
@@ -219,7 +221,9 @@ export function EditRowModal({
           )}
           {amountCol && (
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">{t("editEntry.amount")}</span>
+              <span className="text-xs text-muted">
+                {t("editEntry.amount")}
+              </span>
               <div className="relative flex">
                 <button
                   type="button"
@@ -296,10 +300,7 @@ export function EditRowModal({
                   date: initialDate || t("editEntry.noDate"),
                 })}
               />
-              <Radio
-                value="future"
-                label={t("editRow.scopeThisAndFuture")}
-              />
+              <Radio value="future" label={t("editRow.scopeThisAndFuture")} />
               {scopeKind === "future" && (
                 <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
                   <Checkbox

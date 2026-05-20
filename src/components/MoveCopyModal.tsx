@@ -115,10 +115,7 @@ export function MoveCopyModal({
       labelledBy="move-copy-title"
       size="max-w-md"
     >
-      <Modal.Header
-        title={t(titleKey, { n: rows.length })}
-        onClose={onClose}
-      />
+      <Modal.Header title={t(titleKey, { n: rows.length })} onClose={onClose} />
       <Modal.Body>
         <p className="mb-3 text-xs text-muted">
           {isMove ? t("moveCopy.moveHint") : t("moveCopy.copyHint")}

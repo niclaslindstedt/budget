@@ -110,4 +110,9 @@ export function plural(
   return t(n === 1 ? oneKey : otherKey, { n, ...(params ?? {}) });
 }
 
-export { type Lang, SUPPORTED_LANGS, bcp47, detectInitialLanguage } from "./locale";
+export {
+  type Lang,
+  SUPPORTED_LANGS,
+  bcp47,
+  detectInitialLanguage,
+} from "./locale";

@@ -148,7 +148,9 @@ export function AccountModal({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("account.description")}</span>
+            <span className="text-xs text-muted">
+              {t("account.description")}
+            </span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -191,7 +193,9 @@ export function AccountModal({
 
           <div className="grid grid-cols-[1fr_2fr] gap-2">
             <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("account.clearing")}</span>
+              <span className="text-xs text-muted">
+                {t("account.clearing")}
+              </span>
               <input
                 type="text"
                 value={clearing}

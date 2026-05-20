@@ -150,7 +150,9 @@ function MainView({
           {isGuest ? t("userMenu.guestNoAccount") : user.username}
         </p>
         {isGuest && (
-          <p className="mt-1 text-xs text-muted">{t("userMenu.guestModeHint")}</p>
+          <p className="mt-1 text-xs text-muted">
+            {t("userMenu.guestModeHint")}
+          </p>
         )}
       </div>
       {!isGuest && (
@@ -170,9 +172,7 @@ function MainView({
       <MenuItem
         icon={<UserPlus size={16} aria-hidden focusable={false} />}
         label={
-          isGuest
-            ? t("userMenu.createAccount")
-            : t("userMenu.createAnother")
+          isGuest ? t("userMenu.createAccount") : t("userMenu.createAnother")
         }
         onClick={onCreateAccount}
       />
@@ -180,9 +180,7 @@ function MainView({
         <MenuItem
           icon={<Trash2 size={16} aria-hidden focusable={false} />}
           label={
-            isGuest
-              ? t("userMenu.clearData")
-              : t("userMenu.deleteThisAccount")
+            isGuest ? t("userMenu.clearData") : t("userMenu.deleteThisAccount")
           }
           danger
           onClick={onAskDelete}

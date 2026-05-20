@@ -1093,9 +1093,10 @@ function reducer(state: UserData, action: Action): UserData {
             // correction row gets a description in whichever language the
             // user's chosen at the moment they correct the balance.
             // The state already carries it; pick from settings.
-            [descCol.id]: state.settings.language === "sv"
-              ? "Saldokorrigering"
-              : "Balance correction",
+            [descCol.id]:
+              state.settings.language === "sv"
+                ? "Saldokorrigering"
+                : "Balance correction",
             [amountCol.id]: action.amount,
           };
           const newRow: Row = {
