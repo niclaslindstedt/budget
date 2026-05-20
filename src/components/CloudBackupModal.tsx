@@ -160,7 +160,7 @@ export function CloudBackupModal({
         />
         <Modal.Body>
           <div className="flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <p className="text-xs text-muted">
                 {t("cloudBackup.introHint", {
                   name: labelFor(adapter.id, t),
@@ -170,7 +170,7 @@ export function CloudBackupModal({
                 type="button"
                 onClick={() => void handleBackup()}
                 disabled={busy}
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload size={14} aria-hidden focusable={false} />
                 {t("cloudBackup.backUpNow")}
