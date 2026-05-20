@@ -1,6 +1,7 @@
 import { nsCloudPath, nsKey } from "../data/constants";
 import { debug } from "../utils/debug";
 import {
+  AuthError,
   type BackupOps,
   ConflictError,
   type Snapshot,
@@ -210,6 +211,14 @@ export function createDropboxAdapter(
       } else {
         log.warn("no refresh available — surfacing original 401");
       }
+    }
+    // Refresh failed (no refresh token, or refresh request itself
+    // returned 401), or the retry came back 401 again. Surface as
+    // AuthError so the storage hook can offer Reconnect instead of a
+    // generic Try-again that would fail the same way.
+    if (res.status === 401) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new AuthError(`Dropbox auth failed: 401 ${body}`);
     }
     return res;
   }

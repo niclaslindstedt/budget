@@ -437,6 +437,9 @@ export const en = {
         "Synced to your Google Drive on every change, or when you press Save.",
       backendGdriveUnconnected:
         "Authorize to keep your budget in your Google Drive.",
+      reauthAutoOpenTitle: "Auto-open re-auth popup",
+      reauthAutoOpenHint:
+        "When your cloud session expires, open the cloud sync panel so you can reconnect. Turn off to keep the panel closed and reconnect from the sync status pill yourself.",
       saveAlsoHere: "Save also here",
       importExport: "Import / export",
       importJson: "Import JSON",
@@ -1377,6 +1380,10 @@ export const en = {
     saveNow: "Save now",
     tryAgain: "Try again",
     retry: "Retry",
+    reauthRequired: "Reconnect required",
+    reauthRequiredDetail:
+      "Your {name} session expired. Reconnect to keep syncing — no data is lost.",
+    reconnect: "Reconnect {name}",
     pending: "Saving…",
     details: "Sync details",
     lastSyncedAt: "Last synced {time}",

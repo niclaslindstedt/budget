@@ -4,6 +4,7 @@ import {
   CloudUpload,
   ExternalLink,
   Loader,
+  LogIn,
   RefreshCw,
 } from "lucide-react";
 
@@ -28,6 +29,9 @@ type Props = {
   status: SaveStatus;
   dirty: boolean;
   onSaveNow: () => void;
+  // Re-issue OAuth for the active cloud backend. Null when the
+  // current backend has no concept of reconnection (local / folder).
+  onReconnect: (() => void) | null;
   onClose: () => void;
 };
 
@@ -93,6 +97,13 @@ function statusView(
         tone: "err",
         detail: status.message,
       };
+    case "auth-error":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.reauthRequired"),
+        tone: "warn",
+        detail: t("sync.reauthRequiredDetail", { name: providerName }),
+      };
     case "conflict":
       return {
         Icon: CloudAlert,
@@ -137,6 +148,7 @@ export function SyncDetailsModal({
   status,
   dirty,
   onSaveNow,
+  onReconnect,
   onClose,
 }: Props) {
   const t = useT();
@@ -145,8 +157,11 @@ export function SyncDetailsModal({
 
   const state = statusView(status, dirty, view.name, t);
   const busy = status.kind === "saving" || status.kind === "loading";
+  const showReconnect = status.kind === "auth-error" && onReconnect !== null;
   const showSaveNow =
-    !busy && (status.kind === "error" || (dirty && status.kind !== "conflict"));
+    !busy &&
+    !showReconnect &&
+    (status.kind === "error" || (dirty && status.kind !== "conflict"));
   const saveLabel =
     status.kind === "error" ? t("sync.tryAgain") : t("sync.saveNow");
 
@@ -185,6 +200,16 @@ export function SyncDetailsModal({
               )}
             </div>
           </div>
+          {showReconnect && onReconnect && (
+            <button
+              type="button"
+              onClick={onReconnect}
+              className="inline-flex cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
+            >
+              <LogIn size={14} aria-hidden focusable={false} />
+              {t("sync.reconnect", { name: view.name })}
+            </button>
+          )}
           {showSaveNow && (
             <button
               type="button"

@@ -379,6 +379,8 @@ export function StorageTab({
   onDisconnectFolder,
   onSelectBrowser,
   onSetEncryption,
+  cloudReauthAutoOpen,
+  onSetCloudReauthAutoOpen,
 }: {
   draft: Settings;
   backend: BackendId;
@@ -404,6 +406,8 @@ export function StorageTab({
   onDisconnectFolder: () => void;
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
+  cloudReauthAutoOpen: boolean;
+  onSetCloudReauthAutoOpen: (on: boolean) => void;
 }) {
   const t = useT();
   return (
@@ -518,6 +522,14 @@ export function StorageTab({
               </div>
             );
           })()}
+        {(backend === "dropbox" || backend === "gdrive") && (
+          <ToggleRow
+            label={t("settings.storage.reauthAutoOpenTitle")}
+            hint={t("settings.storage.reauthAutoOpenHint")}
+            checked={cloudReauthAutoOpen}
+            onChange={onSetCloudReauthAutoOpen}
+          />
+        )}
         <Field label={t("settings.storage.importExport")}>
           <ImportExportControls
             data={data}

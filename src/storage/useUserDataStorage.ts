@@ -10,7 +10,12 @@ import {
 
 import type { UserData } from "../data/types";
 import { debug } from "../utils/debug";
-import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+import {
+  AuthError,
+  ConflictError,
+  type Snapshot,
+  type StorageAdapter,
+} from "./adapter";
 import { serializeUserData } from "./file";
 import { freshUserData, readUserDataFromText } from "./local";
 
@@ -28,7 +33,11 @@ export type SaveStatus =
   | { kind: "saving" }
   | { kind: "saved"; at: number }
   | { kind: "conflict"; remote: UserData }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  // The cloud backend rejected the request with a 401 after any silent
+  // refresh has already been tried. The UI shows a Reconnect button
+  // instead of a Try-again that would fail the same way.
+  | { kind: "auth-error"; message: string };
 
 export type UserDataStorageOptions = {
   // Pre-serialize transform applied to the in-memory state before the
@@ -173,6 +182,11 @@ export function useUserDataStorage<Action>(
           setStatus({ kind: "conflict", remote });
           return;
         }
+        if (err instanceof AuthError) {
+          log.warn(`save auth failed (${ms}ms) [${adapter.id}]`, err);
+          setStatus({ kind: "auth-error", message: err.message });
+          return;
+        }
         log.error(`save failed (${ms}ms) [${adapter.id}]`, err);
         setStatus({
           kind: "error",
@@ -242,6 +256,11 @@ export function useUserDataStorage<Action>(
         const ms = (performance.now() - start).toFixed(0);
         if (cancelled) {
           log.log(`load failed (${ms}ms) [${adapter.id}] but cancelled`, err);
+          return;
+        }
+        if (err instanceof AuthError) {
+          log.warn(`load auth failed (${ms}ms) [${adapter.id}]`, err);
+          setStatus({ kind: "auth-error", message: err.message });
           return;
         }
         log.error(`load failed (${ms}ms) [${adapter.id}]`, err);

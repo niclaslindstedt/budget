@@ -59,6 +59,13 @@ function viewFor(
         tone: "err",
         action: "open",
       };
+    case "auth-error":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.reauthRequired"),
+        tone: "warn",
+        action: "open",
+      };
     case "conflict":
       return {
         Icon: CloudAlert,
