@@ -1352,6 +1352,8 @@ export const sv: Catalog = {
     encryptedBadge: "krypterad",
     couldNotParse: "Kunde inte tolka säkerhetskopia: {error}",
     restored: "Återställde {filename}. Tidigare fil sparades som {auto}.",
+    restoredMigrated:
+      "Återställde {filename} (migrerad till aktuell version). Tidigare fil sparades som {auto}.",
     restoreFailed: "Återställning misslyckades: {error}",
     accountOne: "{n} konto",
     accountOther: "{n} konton",

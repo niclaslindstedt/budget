@@ -1354,6 +1354,8 @@ export const en = {
     encryptedBadge: "encrypted",
     couldNotParse: "Could not parse backup: {error}",
     restored: "Restored {filename}. Previous file saved as {auto}.",
+    restoredMigrated:
+      "Restored {filename} (migrated to current version). Previous file saved as {auto}.",
     restoreFailed: "Restore failed: {error}",
     accountOne: "{n} account",
     accountOther: "{n} accounts",
