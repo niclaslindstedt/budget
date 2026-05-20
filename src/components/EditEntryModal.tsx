@@ -37,6 +37,14 @@ type Props = {
   // retype labels they've already taught the app. Null when no hint
   // exists or the row isn't a history row.
   historyHintPrefill?: HistoryPromotePrefill | null;
+  // For regular row promotions: bank-history entries on the same
+  // account whose normalised description matches this row's. Shown
+  // alongside the future-recurrence preview so the user can see what
+  // past entries will adopt the typed label, and rendered greyed-out
+  // because they're already settled — they get backfilled with the
+  // tag and description via the merchant-hint store, not by minting
+  // new rows.
+  historyMatches?: ReadonlyArray<HistoryMatchPreview>;
   onClose: () => void;
   onConvertToRecurring: (
     rowId: string,
@@ -64,6 +72,13 @@ function todayIso(): string {
 export type HistoryPromotePrefill = {
   description: string | null;
   typeId: string | null;
+};
+
+export type HistoryMatchPreview = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
 };
 
 export type HistoryPromotion = {
@@ -99,6 +114,7 @@ export function EditEntryModal({
   settings,
   lastSeriesDate,
   historyHintPrefill,
+  historyMatches,
   onClose,
   onConvertToRecurring,
   onEditSeries,
@@ -503,8 +519,20 @@ export function EditEntryModal({
               seedDate={initialDate}
               resetKey={recurrenceResetKey}
               includeOnce={false}
+              historicDates={historyMatches?.map((m) => m.date)}
               onChange={handleRuleChange}
             />
+            {historyMatches && historyMatches.length > 0 && (
+              <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
+                {historyMatches.length === 1
+                  ? t("editEntry.promoteBackfillOne", {
+                      n: historyMatches.length,
+                    })
+                  : t("editEntry.promoteBackfillOther", {
+                      n: historyMatches.length,
+                    })}
+              </p>
+            )}
           </>
         )}
       </Modal.Body>

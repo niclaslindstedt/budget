@@ -22,6 +22,11 @@ type Props = {
   // recurring-candidate promote flow open the form already tuned to the
   // detected cadence instead of the defaults derived from `seedDate`.
   seedRule?: RecurrenceRule | null;
+  // Optional already-happened dates (e.g. bank-history matches for the
+  // row being promoted) shown alongside the future preview in a muted
+  // colour. Display-only: they don't feed into the rule and aren't
+  // included in the `dates` returned via `onChange`.
+  historicDates?: readonly string[];
   onChange: (rule: RecurrenceRule | null, dates: string[]) => void;
 };
 
@@ -146,6 +151,7 @@ export function RecurrenceForm({
   resetKey,
   includeOnce = true,
   seedRule,
+  historicDates,
   onChange,
 }: Props) {
   const t = useT();
@@ -486,15 +492,47 @@ export function RecurrenceForm({
               ? t("recurrenceForm.previewEntryOne", { n: dates.length })
               : t("recurrenceForm.previewEntryOther", { n: dates.length })}
           </span>
+          {historicDates && historicDates.length > 0 && (
+            <>
+              {" + "}
+              <span className="text-muted">
+                {historicDates.length === 1
+                  ? t("recurrenceForm.previewHistoricOne", {
+                      n: historicDates.length,
+                    })
+                  : t("recurrenceForm.previewHistoricOther", {
+                      n: historicDates.length,
+                    })}
+              </span>
+            </>
+          )}
         </div>
-        {dates.length === 0 ? (
+        {dates.length === 0 &&
+        (!historicDates || historicDates.length === 0) ? (
           <div className="text-muted">{t("recurrenceForm.noDatesYet")}</div>
         ) : (
-          <div className="flex flex-wrap gap-1.5 font-mono text-path">
+          <div className="flex flex-wrap gap-1.5 font-mono">
+            {historicDates &&
+              historicDates.slice(0, 24).map((d, i) => (
+                <span
+                  key={`hist-${i}-${d}`}
+                  className="rounded border border-line bg-surface-2 px-1.5 py-0.5 text-muted opacity-70"
+                  title={t("recurrenceForm.previewHistoricTitle")}
+                >
+                  {d}
+                </span>
+              ))}
+            {historicDates && historicDates.length > 24 && (
+              <span className="text-muted opacity-70">
+                {t("recurrenceForm.morePrefix", {
+                  n: historicDates.length - 24,
+                })}
+              </span>
+            )}
             {dates.slice(0, 24).map((d) => (
               <span
                 key={d}
-                className="rounded border border-line bg-surface px-1.5 py-0.5"
+                className="rounded border border-line bg-surface px-1.5 py-0.5 text-path"
               >
                 {d}
               </span>

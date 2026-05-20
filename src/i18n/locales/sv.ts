@@ -745,6 +745,10 @@ export const sv: Catalog = {
       "Tidigare historikposter som matchar denna handlare tar över beskrivningen och typen ovan. Bankens originaltext behålls — endast etiketten på skärmen ändras.",
     promoteIntro:
       "Generera framtida poster från denna rad enligt en upprepningsregel. Den nuvarande raden behålls som den är och ingår i den nya serien.",
+    promoteBackfillOne:
+      "{n} tidigare post i kontots bankhistorik matchar denna beskrivning och kommer att överta typen och etiketten ovan. Bankens originaltext behålls.",
+    promoteBackfillOther:
+      "{n} tidigare poster i kontots bankhistorik matchar denna beskrivning och kommer att överta typen och etiketten ovan. Bankens originaltext behålls.",
     addFutureEntries: "Lägg till {n} framtida post",
     addFutureEntriesPlural: "Lägg till {n} framtida poster",
   },
@@ -998,6 +1002,9 @@ export const sv: Catalog = {
     previewLabel: "Förhandsvisning",
     previewEntryOne: "{n} post",
     previewEntryOther: "{n} poster",
+    previewHistoricOne: "{n} tidigare träff",
+    previewHistoricOther: "{n} tidigare träffar",
+    previewHistoricTitle: "Redan i din importerade bankhistorik.",
     noDatesYet: "Inga datum än.",
     morePrefix: "+{n} till",
   },
