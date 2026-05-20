@@ -125,9 +125,13 @@ export function ImportHistoryModal({
           <Upload size={18} aria-hidden focusable={false} />
           <span>
             {t("importHistory.dropFileOr")}{" "}
-            <span className="text-accent">{t("importHistory.clickToPick")}</span>
+            <span className="text-accent">
+              {t("importHistory.clickToPick")}
+            </span>
           </span>
-          <span className="text-xs text-muted">{t("importHistory.fileTypes")}</span>
+          <span className="text-xs text-muted">
+            {t("importHistory.fileTypes")}
+          </span>
         </button>
         <input
           ref={inputRef}
@@ -171,7 +175,12 @@ export function ImportHistoryModal({
             <div className="flex justify-between text-muted">
               <span>{t("importHistory.range")}</span>
               <span className="font-mono text-fg">
-                {formatRange(preview.rangeStart, preview.rangeEnd, settings, lang)}
+                {formatRange(
+                  preview.rangeStart,
+                  preview.rangeEnd,
+                  settings,
+                  lang,
+                )}
               </span>
             </div>
             <div className="flex justify-between text-muted">

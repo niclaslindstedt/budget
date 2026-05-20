@@ -267,6 +267,19 @@ export const sv: Catalog = {
     closeMenu: "Stäng användarmenyn",
   },
 
+  backend: {
+    thisBrowser: "Denna webbläsare",
+    localFolder: "Lokal mapp",
+    dropbox: "Dropbox",
+    googleDrive: "Google Drive",
+    folderUnsupported:
+      "Kräver Chrome, Edge eller annan Chromium-baserad webbläsare.",
+    dropboxNotConfigured:
+      "Inte konfigurerad för denna build (ange VITE_DROPBOX_APP_KEY).",
+    gdriveNotConfigured:
+      "Inte konfigurerad för denna build (ange VITE_GOOGLE_CLIENT_ID).",
+  },
+
   settings: {
     title: "Inställningar",
     chooseSection: "Välj inställningssektion",
@@ -750,29 +763,57 @@ export const sv: Catalog = {
   matchRule: {
     title: "Mönsterregel",
     titleEdit: "Redigera mönsterregel",
+    titleLabelByPattern: "Etikett via mönster",
+    intro:
+      "Etikettera alla historikposter vars beskrivning matchar detta mönster. Gäller tidigare poster och framtida importer.",
+    introWild:
+      "för valfri serie tecken och",
+    introOne:
+      "för ett enstaka tecken; matchningen är skiftlägesokänslig.",
     pattern: "Mönster",
     patternHint:
       "Använd * för att matcha valfri serie tecken. Omslut med *…* för delsträngsmatchning.",
+    patternPlaceholder: "*App Store*",
+    descriptionOptional: "Beskrivning (valfritt)",
+    descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
     label: "Etikett",
     labelPlaceholder: "t.ex. Mat",
+    type: "Typ",
     typeOptional: "Typ (valfritt)",
+    filters: "Filter",
     amountSign: "Beloppstecken",
+    amountLabel: "Belopp",
     amountAny: "Alla",
-    amountPositive: "Endast inkomst",
-    amountNegative: "Endast utgift",
-    amountRange: "Beloppsintervall",
+    amountPositive: "Positivt",
+    amountNegative: "Negativt",
+    amountRange: "Intervall",
+    amountFrom: "Från",
+    amountTo: "Till",
+    amountFromAria: "Belopp från",
+    amountToAria: "Belopp till",
+    rangeInvertedHint: "”Från” måste vara mindre än eller lika med ”Till”.",
+    amountToLabel: "till",
     amountMin: "Min",
     amountMax: "Max",
     transferFilter: "Överföringar",
     transferAny: "Alla",
-    transferExclude: "Hoppa över överföringar",
-    transferOnly: "Endast överföringar",
+    transferExclude: "Exkludera",
+    transferOnly: "Endast",
+    transferExcludeFull: "Hoppa över överföringar",
+    transferOnlyFull: "Endast överföringar",
+    preview: "Förhandsvisning",
+    matchesOne: "{n} träff",
+    matchesOther: "{n} träffar",
+    showingFirst: " (visar första {n})",
+    typePatternToPreview: "Skriv ett mönster för att förhandsgranska träffar.",
+    noHistoryMatches: "Inga historikposter matchar.",
     create: "Skapa regel",
     update: "Uppdatera regel",
     delete: "Ta bort regel",
     deleteConfirmTitle: "Ta bort mönsterregel?",
     deleteConfirmHint:
       "Befintliga historikrader som regeln omdöpte återgår till bankens beskrivning.",
+    labelMatchesCount: "Etikettera {n}",
   },
 
   recurring: {

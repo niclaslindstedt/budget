@@ -114,6 +114,7 @@ export function TransactionModal({
   onDelete,
   onCreateType,
 }: Props) {
+  const t = useT();
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
@@ -236,7 +237,6 @@ export function TransactionModal({
 
   const fromAccount = accounts.find((a) => a.id === fromAccountId) ?? null;
   const toAccount = accounts.find((a) => a.id === toAccountId) ?? null;
-  const t = useT();
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="tx-modal-title">
@@ -262,7 +262,9 @@ export function TransactionModal({
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-[1fr_2fr] gap-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transaction.date")}</span>
+              <span className="text-xs text-muted">
+                {t("transaction.date")}
+              </span>
               <button
                 type="button"
                 onClick={() => setDatePickerOpen(true)}
@@ -278,7 +280,9 @@ export function TransactionModal({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transaction.amount")}</span>
+              <span className="text-xs text-muted">
+                {t("transaction.amount")}
+              </span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -299,7 +303,9 @@ export function TransactionModal({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("transaction.description")}</span>
+            <span className="text-xs text-muted">
+              {t("transaction.description")}
+            </span>
             <input
               type="text"
               ref={descriptionRef}
@@ -317,9 +323,13 @@ export function TransactionModal({
           </label>
 
           <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
-            <span className="text-xs text-muted">{t("transaction.transfer")}</span>
+            <span className="text-xs text-muted">
+              {t("transaction.transfer")}
+            </span>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transaction.from")}</span>
+              <span className="text-xs text-muted">
+                {t("transaction.from")}
+              </span>
               {lockedFromId !== null ? (
                 <LockedAccountChip account={fromAccount} direction="from" />
               ) : (

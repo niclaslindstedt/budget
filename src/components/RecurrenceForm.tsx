@@ -316,7 +316,9 @@ export function RecurrenceForm({
 
         {mode === "dates" && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs text-muted">{t("recurrenceForm.dates")}</span>
+            <span className="text-xs text-muted">
+              {t("recurrenceForm.dates")}
+            </span>
             {datesList.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input

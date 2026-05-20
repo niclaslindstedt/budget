@@ -241,7 +241,9 @@ export function ComplexEntryModal({
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">{t("complex.description")}</span>
+            <span className="text-xs text-muted">
+              {t("complex.description")}
+            </span>
             <input
               type="text"
               value={description}
@@ -365,7 +367,9 @@ export function ComplexEntryModal({
         </div>
 
         <div className="mt-5">
-          <div className="mb-2 text-xs text-muted">{t("complex.recurrence")}</div>
+          <div className="mb-2 text-xs text-muted">
+            {t("complex.recurrence")}
+          </div>
           <RecurrenceForm
             seedDate={initialDate}
             resetKey={resetKey}

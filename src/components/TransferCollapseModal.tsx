@@ -82,10 +82,7 @@ export function TransferCollapseModal({
       labelledBy="transfer-collapse-title"
       size="max-w-2xl"
     >
-      <Modal.Header
-        title={t("transferCollapse.title")}
-        onClose={onClose}
-      />
+      <Modal.Header title={t("transferCollapse.title")} onClose={onClose} />
       <Modal.Body>
         {!hasAny ? (
           <p className="text-sm text-muted">
@@ -95,7 +92,9 @@ export function TransferCollapseModal({
           </p>
         ) : (
           <>
-            <p className="mb-3 text-xs text-muted">{t("transferCollapse.hint")}</p>
+            <p className="mb-3 text-xs text-muted">
+              {t("transferCollapse.hint")}
+            </p>
             <ul className="flex flex-col gap-2">
               {remaining.map((c) => (
                 <PairRow
@@ -130,7 +129,9 @@ export function TransferCollapseModal({
           {hasAny
             ? remaining.length === 1
               ? t("transferCollapse.pairsPending", { n: remaining.length })
-              : t("transferCollapse.pairsPendingPlural", { n: remaining.length })
+              : t("transferCollapse.pairsPendingPlural", {
+                  n: remaining.length,
+                })
             : ""}
         </span>
         <div className="flex items-center gap-2">
