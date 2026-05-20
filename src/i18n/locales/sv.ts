@@ -740,7 +740,7 @@ export const sv: Catalog = {
     title: "Redigera rad",
     titleRecurring: "Redigera återkommande rad",
     scope: "Omfattning",
-    scopeApplyTo: "Tillämpa beskrivning, belopp, kategori och typ på",
+    scopeApplyTo: "Tillämpa på",
     scopeJustThis: "Bara denna rad",
     scopeJustThisDate: "Endast denna rad ({date})",
     scopeThisAndFuture: "Denna rad och alla framtida",

@@ -745,7 +745,7 @@ export const en = {
     title: "Edit row",
     titleRecurring: "Edit recurring row",
     scope: "Scope",
-    scopeApplyTo: "Apply description, amount, category, and type to",
+    scopeApplyTo: "Apply to",
     scopeJustThis: "Just this row",
     scopeJustThisDate: "Only this row ({date})",
     scopeThisAndFuture: "This row and all future",
