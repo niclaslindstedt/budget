@@ -63,16 +63,6 @@ function presetIdFor(settings: Settings): string {
   return match ? match.id : "custom";
 }
 
-function presetIdForCurrency(settings: Settings): string {
-  const match = CURRENCY_PRESETS.find(
-    (p) =>
-      p.symbol === settings.currency &&
-      p.position === settings.currencyPosition &&
-      p.space === settings.currencySpace,
-  );
-  return match ? match.id : "custom";
-}
-
 type Update = <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 
 export function GeneralTab({
@@ -188,12 +178,17 @@ export function GeneralTab({
 
 export function FormatTab({
   draft,
+  currencyPresetId,
   onUpdate,
   onApplyNumberFormat,
   onApplyCurrencyPreset,
   onApplyDecimal,
 }: {
   draft: Settings;
+  // Authoritative selection for the currency preset picker. Owned by
+  // SettingsModal so a click on NOK/DKK/ISK/CAD doesn't snap back to
+  // SEK/USD (they share the same display triplet).
+  currencyPresetId: string;
   onUpdate: Update;
   onApplyNumberFormat: (id: string) => void;
   onApplyCurrencyPreset: (id: string) => void;
@@ -202,7 +197,6 @@ export function FormatTab({
   const t = useT();
   const numberPreviewSample = 1234567.89;
   const datePreviewIso = "2026-05-16";
-  const currencyPresetId = presetIdForCurrency(draft);
   const showCustomCurrency = currencyPresetId === "custom";
 
   return (
