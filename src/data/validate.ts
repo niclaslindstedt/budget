@@ -769,6 +769,10 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.lastSeenChangelogVersion === "string"
       ? raw.lastSeenChangelogVersion
       : null;
+  const language: "en" | "sv" =
+    raw.language === "sv" || raw.language === "en"
+      ? raw.language
+      : DEFAULT_SETTINGS.language;
   return {
     startOfMonth,
     dateFormat,
@@ -786,6 +790,7 @@ function validateSettings(raw: unknown): Settings {
     fontScale,
     sessionTimeoutMinutes,
     lastSeenChangelogVersion,
+    language,
   };
 }
 

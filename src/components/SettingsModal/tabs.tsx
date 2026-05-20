@@ -17,6 +17,7 @@ import type {
   ThousandsSeparator,
   UserData,
 } from "../../data/types";
+import { type Lang, useT, type TFunction } from "../../i18n";
 import type {
   BackendId,
   EncryptionMode,
@@ -25,6 +26,7 @@ import { withCurrency } from "../../utils/format";
 import { BackendPicker } from "../BackendPicker";
 import { Checkbox, SelectPicker } from "../form";
 import { ImportExportControls } from "../ImportExportControls";
+import { LanguagePicker } from "../LanguagePicker";
 import { CategoriesAndTypesAdmin } from "./admin";
 
 type CloudId = "dropbox" | "gdrive";
@@ -35,21 +37,18 @@ type CloudCopy = {
   unconnectedHint: string;
 };
 
-function cloudCopy(id: CloudId): CloudCopy {
+function cloudCopy(id: CloudId, t: TFunction): CloudCopy {
   if (id === "dropbox") {
     return {
-      name: "Dropbox",
-      connectedHint:
-        "Synced to your Dropbox app folder on every change, or when you press Save.",
-      unconnectedHint:
-        "Authorize to keep your budget in your Dropbox app folder.",
+      name: t("settings.storage.backendDropbox"),
+      connectedHint: t("settings.storage.backendDropboxConnected"),
+      unconnectedHint: t("settings.storage.backendDropboxUnconnected"),
     };
   }
   return {
-    name: "Google Drive",
-    connectedHint:
-      "Synced to your Google Drive on every change, or when you press Save.",
-    unconnectedHint: "Authorize to keep your budget in your Google Drive.",
+    name: t("settings.storage.backendGoogleDrive"),
+    connectedHint: t("settings.storage.backendGdriveConnected"),
+    unconnectedHint: t("settings.storage.backendGdriveUnconnected"),
   };
 }
 
@@ -77,10 +76,23 @@ export function GeneralTab({
   // applied automatically so the user keeps control.
   detectedPayday: number | null;
 }) {
+  const t = useT();
   return (
     <>
-      <Section title="Month">
-        <Field label="Start of month">
+      <Section title={t("settings.languageSection.title")}>
+        <Field label={t("language.pick")}>
+          <LanguagePicker
+            value={draft.language}
+            onChange={(v) => onUpdate("language", v as Lang)}
+          />
+          <p className="text-xs text-muted">
+            {t("settings.languageSection.hint")}
+          </p>
+        </Field>
+      </Section>
+
+      <Section title={t("settings.month.title")}>
+        <Field label={t("settings.month.startOfMonth")}>
           <div className="w-24">
             <SelectPicker
               value={draft.startOfMonth}
@@ -89,24 +101,23 @@ export function GeneralTab({
                 label: i + 1,
               }))}
               onChange={(v) => onUpdate("startOfMonth", v)}
-              ariaLabel="Start of month"
+              ariaLabel={t("settings.month.startOfMonth")}
               triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
               panelClassName="font-mono tabular-nums"
             />
           </div>
           <p className="text-xs text-muted">
-            Day each month is considered to begin. Default 25 matches a Swedish
-            payday.
+            {t("settings.month.startOfMonthHint")}
           </p>
           {detectedPayday !== null && detectedPayday !== draft.startOfMonth && (
             <p className="text-xs text-muted">
-              Detected from your salary postings:{" "}
+              {t("settings.month.detectedFromSalary")}{" "}
               <button
                 type="button"
                 onClick={() => onUpdate("startOfMonth", detectedPayday)}
                 className="text-accent underline-offset-2 hover:underline"
               >
-                use {detectedPayday}
+                {t("settings.month.useDetected", { day: detectedPayday })}
               </button>
               .
             </p>
@@ -114,8 +125,8 @@ export function GeneralTab({
         </Field>
       </Section>
 
-      <Section title="Display">
-        <Field label="Text size">
+      <Section title={t("settings.display.title")}>
+        <Field label={t("settings.display.textSize")}>
           <SelectPicker
             value={draft.fontScale}
             options={FONT_SCALE_PRESETS.map((p) => ({
@@ -123,45 +134,37 @@ export function GeneralTab({
               label: p.label,
             }))}
             onChange={(v) => onUpdate("fontScale", v)}
-            ariaLabel="Text size"
+            ariaLabel={t("settings.display.textSize")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
             panelClassName="font-mono tabular-nums"
           />
           <p className="text-xs text-muted">
-            Scales the whole UI — sheet cells, modals, headers. Use larger sizes
-            for readability on high-DPI displays, smaller to fit more on screen.
+            {t("settings.display.textSizeHint")}
           </p>
         </Field>
         <ToggleRow
-          label="Format numbers"
-          hint="Group thousands when displaying amounts and balances."
+          label={t("settings.format.formatNumbers")}
           checked={draft.formatNumbers}
           onChange={(v) => onUpdate("formatNumbers", v)}
         />
         <ToggleRow
-          label="Show currency"
-          hint="Append the currency symbol next to amounts and balances."
+          label={t("settings.format.showCurrency")}
           checked={draft.showCurrency}
           onChange={(v) => onUpdate("showCurrency", v)}
         />
         <ToggleRow
-          label="Show decimals"
-          hint="Render the fractional part of amounts and balances. Off rounds to whole units."
+          label={t("settings.format.showDecimals")}
           checked={draft.showDecimals}
           onChange={(v) => onUpdate("showDecimals", v)}
         />
         <ToggleRow
-          label="Abbreviate large numbers"
-          hint={
-            'Collapse displayed amounts ≥ 10 000 to "12K" / "1.2M" so cramped mobile rows fit. Editable inputs always show the full value.'
-          }
+          label={t("settings.format.abbreviate")}
           checked={draft.abbreviateNumbers}
           onChange={(v) => onUpdate("abbreviateNumbers", v)}
         />
         {draft.abbreviateNumbers && (
           <ToggleRow
-            label="Always abbreviate balance column"
-            hint="Also abbreviate small balances so every row in the running-balance column reads as a uniform stack of compact figures. Amounts stay precise below 10 000 because the amount is the primary value while the balance is a derived snapshot."
+            label={t("settings.format.alwaysAbbreviateBalance")}
             checked={draft.alwaysAbbreviateBalance}
             onChange={(v) => onUpdate("alwaysAbbreviateBalance", v)}
           />
@@ -182,47 +185,51 @@ export function FormatTab({
   onApplyNumberFormat: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
 }) {
+  const t = useT();
   const numberPreviewSample = 1234567.89;
   const datePreviewIso = "2026-05-16";
 
   return (
     <>
-      <Section title="Date">
-        <Field label="Date format">
+      <Section title={t("settings.format.dateTitle")}>
+        <Field label={t("settings.format.dateFormat")}>
           <SelectPicker
             value={draft.dateFormat}
             options={DATE_FORMATS.map((f) => ({ value: f, label: f }))}
             onChange={(v) => onUpdate("dateFormat", v as DateFormat)}
-            ariaLabel="Date format"
+            ariaLabel={t("settings.format.dateFormat")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
             panelClassName="font-mono tabular-nums"
           />
           <Preview>
-            {formatDatePreview(datePreviewIso, draft.dateFormat)}
+            {formatDatePreview(datePreviewIso, draft.dateFormat, draft.language)}
           </Preview>
         </Field>
 
-        <Field label="Short date format">
+        <Field label={t("settings.format.shortDateFormat")}>
           <SelectPicker
             value={draft.shortDateFormat}
             options={SHORT_DATE_FORMATS.map((f) => ({ value: f, label: f }))}
             onChange={(v) => onUpdate("shortDateFormat", v as ShortDateFormat)}
-            ariaLabel="Short date format"
+            ariaLabel={t("settings.format.shortDateFormat")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
             panelClassName="font-mono tabular-nums"
           />
           <Preview>
-            {formatShortDatePreview(datePreviewIso, draft.shortDateFormat)}
+            {formatShortDatePreview(
+              datePreviewIso,
+              draft.shortDateFormat,
+              draft.language,
+            )}
           </Preview>
           <p className="text-xs text-muted">
-            Shown in the date column of each month table. Leading zeros are
-            stripped, so 1 May renders as &quot;1/5&quot;.
+            {t("settings.format.shortDateFormatHint")}
           </p>
         </Field>
       </Section>
 
-      <Section title="Currency">
-        <Field label="Symbol">
+      <Section title={t("settings.format.currencyTitle")}>
+        <Field label={t("settings.format.currencyToken")}>
           <input
             type="text"
             value={draft.currency}
@@ -230,13 +237,9 @@ export function FormatTab({
             maxLength={6}
             className="field-input w-24 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
           />
-          <p className="text-xs text-muted">
-            Free-form. &quot;kr&quot; for SEK, &quot;$&quot;, &quot;€&quot;,
-            &quot;£&quot;, or any short label.
-          </p>
         </Field>
 
-        <Field label="Position">
+        <Field label={t("settings.format.currencyPosition")}>
           <div className="inline-flex overflow-hidden rounded border border-line">
             {(["before", "after"] as const).map((p) => (
               <button
@@ -250,7 +253,9 @@ export function FormatTab({
                     : "bg-surface-2 text-fg hover:bg-surface-3"
                 }`}
               >
-                {p === "before" ? "Before" : "After"}
+                {p === "before"
+                  ? t("settings.format.currencyBefore")
+                  : t("settings.format.currencyAfter")}
               </button>
             ))}
           </div>
@@ -258,15 +263,14 @@ export function FormatTab({
         </Field>
 
         <ToggleRow
-          label="Space between symbol and amount"
-          hint='Off renders "$10" / "10kr"; on renders "$ 10" / "10 kr".'
+          label={t("settings.format.currencySpace")}
           checked={draft.currencySpace}
           onChange={(v) => onUpdate("currencySpace", v)}
         />
       </Section>
 
-      <Section title="Numbers">
-        <Field label="Number format">
+      <Section title={t("settings.format.numberTitle")}>
+        <Field label={t("settings.format.numberFormat")}>
           <SelectPicker
             value={presetIdFor(draft)}
             options={NUMBER_FORMATS.map((f) => ({
@@ -274,7 +278,7 @@ export function FormatTab({
               label: f.label,
             }))}
             onChange={onApplyNumberFormat}
-            ariaLabel="Number format"
+            ariaLabel={t("settings.format.numberFormat")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
           />
           <Preview>
@@ -286,7 +290,7 @@ export function FormatTab({
           </Preview>
         </Field>
 
-        <Field label="Decimal character">
+        <Field label={t("settings.format.decimalSeparator")}>
           <div className="inline-flex overflow-hidden rounded border border-line">
             {([".", ","] as DecimalSeparator[]).map((d) => (
               <button
@@ -300,15 +304,10 @@ export function FormatTab({
                     : "bg-surface-2 text-fg hover:bg-surface-3"
                 }`}
               >
-                {d === "." ? "Dot (.)" : "Comma (,)"}
+                {d === "." ? "." : ","}
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted">
-            Whichever character you type, it&apos;s snapped to this one — so
-            &quot;100,99&quot; becomes &quot;100.99&quot; when dot is the
-            decimal.
-          </p>
         </Field>
       </Section>
     </>
@@ -366,10 +365,11 @@ export function StorageTab({
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
 }) {
+  const t = useT();
   return (
     <>
-      <Section title="Storage">
-        <Field label="Backend">
+      <Section title={t("settings.tabs.storage")}>
+        <Field label={t("settings.tabs.storage")}>
           <BackendPicker
             value={backend}
             onSelect={(next) => {
@@ -381,17 +381,19 @@ export function StorageTab({
           />
           <p className="text-xs text-muted">
             {backend === "browser"
-              ? "Stored locally in this browser. Export to JSON to move it elsewhere."
+              ? t("settings.storage.browserHint")
               : backend === "folder"
                 ? folderConnected
-                  ? "Saved as budget.json inside the folder you picked. Bytes never leave this device."
+                  ? t("settings.storage.folderConnected", {
+                      name: t("settings.storage.folderTitle"),
+                    })
                   : folderReconnectNeeded
-                    ? "Folder access was revoked. Reconnect to restore writes — your budget stays in this browser until then."
+                    ? t("settings.storage.folderNotConnected")
                     : folderAvailable
-                      ? "Pick a folder on this device — the app writes budget.json into it. Single-device only; no automatic cross-device sync."
-                      : "The Local-folder backend needs Chrome, Edge, or another Chromium browser."
+                      ? t("settings.storage.folderNotConnected")
+                      : t("settings.storage.folderUnsupported")
                 : (() => {
-                    const copy = cloudCopy(backend);
+                    const copy = cloudCopy(backend, t);
                     const connected =
                       backend === "dropbox"
                         ? dropboxConnected
@@ -400,11 +402,6 @@ export function StorageTab({
                       ? copy.connectedHint
                       : copy.unconnectedHint;
                   })()}
-          </p>
-          <p className="text-xs text-muted">
-            Switching backends doesn&apos;t delete the budget at the other
-            location — it stays in place, so you can switch back to it from here
-            later.
           </p>
         </Field>
         {backend === "folder" && (
@@ -415,7 +412,7 @@ export function StorageTab({
                 onClick={onDisconnectFolder}
                 className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
               >
-                Disconnect folder
+                {t("settings.storage.disconnectFolder")}
               </button>
             ) : folderReconnectNeeded ? (
               <button
@@ -423,7 +420,7 @@ export function StorageTab({
                 onClick={onReconnectFolder}
                 className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
               >
-                Reconnect folder
+                {t("settings.storage.cloudReconnect")}
               </button>
             ) : (
               <button
@@ -432,18 +429,20 @@ export function StorageTab({
                 disabled={!folderAvailable}
                 className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Pick folder
+                {t("settings.storage.pickFolder")}
               </button>
             )}
             {folderConnected && (
-              <span className="text-xs text-success">Connected</span>
+              <span className="text-xs text-success">
+                {t("common.connected")}
+              </span>
             )}
           </div>
         )}
         {(backend === "dropbox" || backend === "gdrive") &&
           (() => {
             const cloudBackend: CloudId = backend;
-            const copy = cloudCopy(cloudBackend);
+            const copy = cloudCopy(cloudBackend, t);
             const connected =
               cloudBackend === "dropbox" ? dropboxConnected : gdriveConnected;
             const onConnect =
@@ -460,7 +459,7 @@ export function StorageTab({
                     onClick={onDisconnect}
                     className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
                   >
-                    Disconnect {copy.name}
+                    {t("settings.storage.cloudDisconnect")} {copy.name}
                   </button>
                 ) : (
                   <button
@@ -468,48 +467,43 @@ export function StorageTab({
                     onClick={onConnect}
                     className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
                   >
-                    Connect {copy.name}
+                    {t("settings.storage.cloudConnect")} {copy.name}
                   </button>
                 )}
                 {connected && (
-                  <span className="text-xs text-success">Connected</span>
+                  <span className="text-xs text-success">
+                    {t("common.connected")}
+                  </span>
                 )}
               </div>
             );
           })()}
-        <Field label="Backup">
+        <Field label={t("settings.storage.importExport")}>
           <ImportExportControls
             data={data}
             onImport={onImport}
             encryption={encryption}
             getEncryptionPassword={getEncryptionPassword}
           />
-          <p className="text-xs text-muted">
-            Export downloads the current budget as JSON (encrypted when Security
-            is on). Import replaces it with a file you pick.
-          </p>
         </Field>
         {backupsSupported && (
-          <Field label="Snapshots">
+          <Field label={t("settings.storage.backupsTitle")}>
             <button
               type="button"
               onClick={onOpenBackups}
               className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
             >
               <Database size={14} aria-hidden focusable={false} />
-              Manage backups…
+              {t("settings.storage.browseBackups")}
             </button>
             <p className="text-xs text-muted">
-              Saves a timestamped copy into a sibling{" "}
-              <span className="font-mono text-path">backups/</span> folder on
-              the active backend. Restoring auto-snapshots your current file
-              first.
+              {t("settings.storage.backupsHint")}
             </p>
           </Field>
         )}
       </Section>
 
-      <Section title="Security">
+      <Section title={t("settings.storage.encryptionTitle")}>
         <div className="flex items-start gap-3">
           <div
             className={`mt-0.5 ${
@@ -525,17 +519,15 @@ export function StorageTab({
           <div className="flex-1">
             <h3 className="text-sm font-bold text-fg-bright">
               {encryption === "encrypted"
-                ? "Encrypted storage"
-                : "Unencrypted storage"}
+                ? t("auth.encryptionOn")
+                : t("auth.encryptionOff")}
             </h3>
             <p className="mt-1 text-xs text-muted">
-              {encryption === "encrypted"
-                ? "Your budget is wrapped in AES-GCM with a PBKDF2-derived key from your account password before being written — whether the bytes land in this browser or in your connected cloud folder."
-                : "Your budget is written as plain JSON — to this browser, or to your connected cloud folder. Anyone with access to those bytes can read it without your password."}
+              {t("settings.storage.encryptionHint")}
             </p>
           </div>
         </div>
-        <Field label="Encrypt stored bytes">
+        <Field label={t("settings.storage.encryptionTitle")}>
           <div className="inline-flex overflow-hidden rounded border border-line">
             {(["encrypted", "plaintext"] as EncryptionMode[]).map((m) => (
               <button
@@ -552,17 +544,12 @@ export function StorageTab({
                     : "bg-surface-2 text-fg hover:bg-surface-3"
                 }`}
               >
-                {m === "encrypted" ? "On" : "Off"}
+                {m === "encrypted" ? t("common.on") : t("common.off")}
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted">
-            {isGuest
-              ? "Guest mode has no password to derive a key from. Create an account from the account menu to encrypt your budget."
-              : "Applies to the active backend and any cloud sync. Switching re-wraps the bytes already in storage. Exports follow this setting too."}
-          </p>
         </Field>
-        <Field label="Session timeout">
+        <Field label={t("settings.session.timeout")}>
           <SelectPicker
             value={draft.sessionTimeoutMinutes}
             options={SESSION_TIMEOUT_PRESETS.map((p) => ({
@@ -570,14 +557,10 @@ export function StorageTab({
               label: p.label,
             }))}
             onChange={(v) => onUpdate("sessionTimeoutMinutes", v)}
-            ariaLabel="Session timeout"
+            ariaLabel={t("settings.session.timeout")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
           />
-          <p className="text-xs text-muted">
-            Sign you out after this long without input. The clock resets on
-            every click or keystroke, and you&apos;ll see a warning a minute
-            before the deadline.
-          </p>
+          <p className="text-xs text-muted">{t("settings.session.timeoutHint")}</p>
         </Field>
       </Section>
     </>
@@ -608,8 +591,9 @@ export function CategoriesTab({
   onDeleteType: (typeId: string) => void;
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
 }) {
+  const t = useT();
   return (
-    <Section title="Categories & types">
+    <Section title={t("settings.categoriesTab.title")}>
       <CategoriesAndTypesAdmin
         userCategories={data.categories}
         userTypes={data.types}
@@ -643,33 +627,40 @@ export function MemoryTab({
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
 }) {
+  const t = useT();
   return (
-    <Section title="Memory">
+    <Section title={t("settings.tabs.memory")}>
       <ClearRow
-        label="Merchant memory"
+        label={t("settings.memory.merchantTitle")}
         count={merchantHintCount}
-        singleHint="One merchant remembered. Cleared on demand below."
-        pluralHint={`${merchantHintCount} merchants remembered. The recurring-candidate panel uses these to suggest categories on future imports.`}
-        emptyHint="No merchants remembered yet. Assigning a category to a row teaches one entry."
-        buttonLabel="Clear merchant memory"
+        hint={
+          merchantHintCount === 0
+            ? t("settings.memory.none")
+            : t("settings.memory.merchantHint")
+        }
+        buttonLabel={t("settings.memory.clearMerchants")}
         onClear={onClearMerchantHints}
       />
       <ClearRow
-        label="Recurring dismissals"
+        label={t("settings.memory.dismissedRecurringTitle")}
         count={recurringDismissalCount}
-        singleHint="One recurring suggestion dismissed."
-        pluralHint={`${recurringDismissalCount} recurring suggestions dismissed. Clear to let them resurface on the budget view.`}
-        emptyHint="No dismissals. Pressing × on a recurring candidate adds one here."
-        buttonLabel="Clear dismissals"
+        hint={
+          recurringDismissalCount === 0
+            ? t("settings.memory.none")
+            : t("settings.memory.dismissedRecurringHint")
+        }
+        buttonLabel={t("settings.memory.clearDismissed")}
         onClear={onClearRecurringDismissals}
       />
       <ClearRow
-        label="Transfer dismissals"
+        label={t("settings.memory.dismissedTransferTitle")}
         count={transferDismissalCount}
-        singleHint="One transfer pair dismissed."
-        pluralHint={`${transferDismissalCount} transfer pairs dismissed. Clear to let them resurface on the Accounts page.`}
-        emptyHint='No dismissals. Pressing "Never" on a transfer pair adds one here.'
-        buttonLabel="Clear dismissals"
+        hint={
+          transferDismissalCount === 0
+            ? t("settings.memory.none")
+            : t("settings.memory.dismissedTransferHint")
+        }
+        buttonLabel={t("settings.memory.clearDismissed")}
         onClear={onClearTransferDismissals}
       />
     </Section>
@@ -719,21 +710,16 @@ function Preview({ children }: { children: React.ReactNode }) {
 function ClearRow({
   label,
   count,
-  singleHint,
-  pluralHint,
-  emptyHint,
+  hint,
   buttonLabel,
   onClear,
 }: {
   label: string;
   count: number;
-  singleHint: string;
-  pluralHint: string;
-  emptyHint: string;
+  hint: string;
   buttonLabel: string;
   onClear: () => void;
 }) {
-  const hint = count === 0 ? emptyHint : count === 1 ? singleHint : pluralHint;
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -793,11 +779,8 @@ function previewNumber(
   return `${sign}${grouped}${decimal}${fracPart}`;
 }
 
-function formatDatePreview(iso: string, format: DateFormat): string {
-  const y = iso.slice(0, 4);
-  const m = iso.slice(5, 7);
-  const d = iso.slice(8, 10);
-  const months = [
+const MONTH_PREVIEW: Record<Lang, readonly string[]> = {
+  en: [
     "Jan",
     "Feb",
     "Mar",
@@ -810,7 +793,32 @@ function formatDatePreview(iso: string, format: DateFormat): string {
     "Oct",
     "Nov",
     "Dec",
-  ];
+  ],
+  sv: [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "maj",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "okt",
+    "nov",
+    "dec",
+  ],
+};
+
+function formatDatePreview(
+  iso: string,
+  format: DateFormat,
+  lang: Lang,
+): string {
+  const y = iso.slice(0, 4);
+  const m = iso.slice(5, 7);
+  const d = iso.slice(8, 10);
+  const months = MONTH_PREVIEW[lang];
   switch (format) {
     case "YYYY-MM-DD":
       return `${y}-${m}-${d}`;
@@ -825,23 +833,14 @@ function formatDatePreview(iso: string, format: DateFormat): string {
   }
 }
 
-function formatShortDatePreview(iso: string, format: ShortDateFormat): string {
+function formatShortDatePreview(
+  iso: string,
+  format: ShortDateFormat,
+  lang: Lang,
+): string {
   const monthNum = Number(iso.slice(5, 7));
   const dayNum = Number(iso.slice(8, 10));
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
+  const months = MONTH_PREVIEW[lang];
   switch (format) {
     case "DD/MM":
       return `${dayNum}/${monthNum}`;

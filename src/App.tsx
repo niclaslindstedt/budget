@@ -170,6 +170,8 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
+import { bcp47, type Lang } from "./i18n";
+import { writeLanguagePreference } from "./i18n/language-preference";
 import { APP_VERSION } from "./utils/build-env";
 import { debug } from "./utils/debug";
 import { formatNumber, withCurrency } from "./utils/format";
@@ -3495,6 +3497,22 @@ function BudgetView({
       document.documentElement.style.removeProperty("--app-font-scale");
     };
   }, [fontScale]);
+
+  // Mirror the bucket's language preference into the plaintext
+  // localStorage store and notify the top-level <LanguageProvider> in
+  // main.tsx so the entire tree re-renders in the picked language.
+  // The plaintext mirror lets the auth screen, the standalone routes,
+  // and the loading shell start up in the right language before the
+  // bucket loads (the bucket may be encrypted, so the canonical
+  // setting isn't readable until after sign-in).
+  const language = data.settings.language;
+  useEffect(() => {
+    writeLanguagePreference(language);
+    document.documentElement.lang = bcp47(language);
+    window.dispatchEvent(
+      new CustomEvent<Lang>("budget:language", { detail: language }),
+    );
+  }, [language]);
 
   // Idle-tracked sign-out. Every user input bumps `lastActivityRef`;
   // a 1 s tick decides whether to surface the "about to sign out"

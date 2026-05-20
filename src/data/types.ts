@@ -451,6 +451,13 @@ export type Settings = {
   // the "What's new" modal opens and writes the current version here
   // on dismissal.
   lastSeenChangelogVersion: string | null;
+  // UI language. "en" leaves the app in English (the default for
+  // existing installs after the migration); "sv" translates every
+  // user-facing string to Swedish. Date and number formatting are
+  // controlled by their own settings and are not coupled to this
+  // field — a Swedish-speaking user may still want, say, currency
+  // before the amount.
+  language: "en" | "sv";
 };
 
 // Persistent memory of which type the user assigned to which
@@ -553,7 +560,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 26;
+  version: 27;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

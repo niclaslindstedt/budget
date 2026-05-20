@@ -127,7 +127,17 @@ export const DEFAULT_SETTINGS: Settings = {
   fontScale: 1,
   sessionTimeoutMinutes: 15,
   lastSeenChangelogVersion: null,
+  // Fresh installs override this with `detectInitialLanguage()` so a
+  // Swedish browser gets Swedish on first run. Existing buckets keep
+  // whatever the v26 → v27 migration assigned (always "en") so a
+  // returning user's UI doesn't suddenly flip language.
+  language: "en",
 };
+
+// Allowed UI languages, in the order the picker shows them. Used by
+// the validator, the schema, and the LanguagePicker so all three
+// agree on which codes are valid.
+export const SUPPORTED_LANGUAGES = ["en", "sv"] as const;
 
 // Bounds for the UI text-size multiplier. The floor matches the
 // smallest preset the picker offers and the ceiling matches the
