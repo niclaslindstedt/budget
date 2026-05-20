@@ -6,6 +6,7 @@ import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
 import {
+  formatAmountForInput,
   formatNumber,
   normalizeAmountInput,
   parseAmount,
@@ -41,6 +42,24 @@ type Props = {
   types: readonly EntryType[];
   typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
+  // Optional pre-fill for the splits list. Used when the row already
+  // carries a saved split decomposition (e.g. a history entry whose
+  // `splits` array was set on a previous pass) so the user can edit
+  // the existing splits instead of starting from scratch. The parent
+  // is responsible for translating from its persisted shape to this
+  // submission shape. Empty array or undefined → start with one
+  // blank split.
+  initialSplits?: SplitSubmission[];
+  // When set, the modal forces the splits + remainder to sum to this
+  // exact value instead of `row.cells.amount`. Used for history rows
+  // where the bank's amount is authoritative — the user can't change
+  // the total, only how it's allocated. Defaults to reading from the
+  // row's amount cell.
+  authoritativeAmount?: number;
+  // When set, the "Original" header card shows this label instead of
+  // the row's description cell. Used for history split rows where the
+  // clicked row carries the split's description, not the bank entry's.
+  authoritativeDescription?: string;
   onClose: () => void;
   // Fires on confirm. `splits` is the (already-validated) list of new
   // rows; the reducer replaces the original at its position with these
@@ -79,6 +98,9 @@ export function SplitEntryModal({
   types,
   typeUsageById,
   settings,
+  initialSplits,
+  authoritativeAmount,
+  authoritativeDescription,
   onClose,
   onSplit,
   onCreateType,
@@ -94,21 +116,46 @@ export function SplitEntryModal({
     [columns],
   );
 
-  const originalDescription =
+  const cellDescription =
     descCol && row && typeof row.cells[descCol.id] === "string"
       ? (row.cells[descCol.id] as string)
       : "";
-  const originalAmount =
+  const originalDescription = authoritativeDescription ?? cellDescription;
+  const cellAmount =
     amountCol && row && typeof row.cells[amountCol.id] === "number"
       ? (row.cells[amountCol.id] as number)
       : 0;
+  // History rows pass an authoritative amount that overrides the
+  // visible cell (which on an already-split row shows the first
+  // split's amount, not the entry's bank total).
+  const originalAmount = authoritativeAmount ?? cellAmount;
   // Splits inherit the original's sign by default so a typical expense
   // split stays an expense without the user having to toggle every row.
   const originalNegative = originalAmount <= 0;
 
-  const [splits, setSplits] = useState<SplitDraft[]>(() => [
-    makeEmptySplit(originalNegative),
-  ]);
+  // Convert a pre-filled split into the modal's draft shape. The
+  // input amount uses the absolute value with the sign on a toggle.
+  function draftFromSubmission(s: SplitSubmission): SplitDraft {
+    return {
+      uiId: makeUiId(),
+      description: s.description,
+      amount:
+        s.amount === 0
+          ? ""
+          : formatAmountForInput(Math.abs(s.amount), settings),
+      negative: s.amount < 0 || (s.amount === 0 && originalNegative),
+      typeId: s.typeId,
+    };
+  }
+
+  function seedSplits(): SplitDraft[] {
+    if (initialSplits && initialSplits.length > 0) {
+      return initialSplits.map(draftFromSubmission);
+    }
+    return [makeEmptySplit(originalNegative)];
+  }
+
+  const [splits, setSplits] = useState<SplitDraft[]>(seedSplits);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(firstFieldRef, open && !!row, row?.id);
 
@@ -118,7 +165,7 @@ export function SplitEntryModal({
   // row id dependency.
   useEffect(() => {
     if (!open) return;
-    setSplits([makeEmptySplit(originalNegative)]);
+    setSplits(seedSplits());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
 

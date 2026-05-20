@@ -118,6 +118,7 @@ import type {
   Column,
   EntryType,
   HistoryEntry,
+  HistoryEntrySplit,
   MatchRule,
   Row,
   SeriesMatchRule,
@@ -537,6 +538,17 @@ type Action =
         userTypeId?: string | null;
         isTransfer?: boolean;
       };
+    }
+  | {
+      // Split a bank-statement entry into multiple categorised parts.
+      // `splits` is the full decomposition — the validator (and the
+      // modal) ensure the signed amounts sum to the entry's bank
+      // amount so the running balance stays anchored. An empty array
+      // clears the existing split (back to single-row rendering).
+      type: "splitHistoryEntry";
+      accountId: string;
+      entryId: string;
+      splits: HistoryEntrySplit[];
     }
   | {
       // Apply user choices from the post-import reconciliation modal.
@@ -1626,6 +1638,29 @@ function reducer(state: UserData, action: Action): UserData {
       next.isTransfer === prev.isTransfer
     ) {
       return state;
+    }
+    const nextEntries = entries.slice();
+    nextEntries[idx] = next;
+    return {
+      ...state,
+      history: { ...state.history, [action.accountId]: nextEntries },
+    };
+  }
+  if (action.type === "splitHistoryEntry") {
+    const entries = state.history[action.accountId];
+    if (!entries) return state;
+    const idx = entries.findIndex((e) => e.id === action.entryId);
+    if (idx < 0) return state;
+    const prev = entries[idx];
+    // An empty splits array means "clear the split" — drop the field
+    // so the synthesizer falls back to the single-row path.
+    const next: HistoryEntry = { ...prev };
+    if (action.splits.length === 0) {
+      delete next.splits;
+    } else {
+      // Defensive copy so the reducer never holds a reference to the
+      // dispatcher's payload.
+      next.splits = action.splits.map((s) => ({ ...s }));
     }
     const nextEntries = entries.slice();
     nextEntries[idx] = next;
@@ -3993,12 +4028,24 @@ function BudgetView({
     const exists = activeItem.rows.some((r) => r.id === editRowPrompt.row.id);
     if (!exists) setEditRowPrompt(null);
   }, [editRowPrompt, activeItem.rows]);
-  // Same guard for the split modal.
+  // Same guard for the split modal. History rows aren't in
+  // `activeItem.rows` (they're synthesized from `UserData.history`), so
+  // their existence is verified against the active account's history
+  // entries instead.
   useEffect(() => {
     if (!splitPrompt) return;
+    if (splitPrompt.row.historyEntryId) {
+      const entries =
+        (activeItem.accountId && data.history[activeItem.accountId]) || [];
+      const exists = entries.some(
+        (e) => e.id === splitPrompt.row.historyEntryId,
+      );
+      if (!exists) setSplitPrompt(null);
+      return;
+    }
     const exists = activeItem.rows.some((r) => r.id === splitPrompt.row.id);
     if (!exists) setSplitPrompt(null);
-  }, [splitPrompt, activeItem.rows]);
+  }, [splitPrompt, activeItem.rows, activeItem.accountId, data.history]);
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
@@ -4039,10 +4086,12 @@ function BudgetView({
     setEditRowPrompt({ kind: "edit-row", row });
   }, []);
   const onSplitRequest = useCallback((row: Row) => {
-    // Same suppression rules as the edit-row modal — synthesized and
-    // correction rows aren't real budget rows so splitting them is
-    // either meaningless or has no underlying persisted target.
-    if (row.transactionId || row.historyEntryId || row.isCorrection) return;
+    // Transactions have their own edit modal, correction rows are
+    // display-only — splitting either of those is meaningless. History
+    // rows are allowed: splitting a bank entry writes a `splits` array
+    // on the underlying `HistoryEntry`, which the synthesizer fans out
+    // into multiple rows on the next render.
+    if (row.transactionId || row.isCorrection) return;
     setSplitPrompt({ kind: "split", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
@@ -4887,6 +4936,45 @@ function BudgetView({
   );
   const onSplitSubmit = useCallback(
     (rowId: string, splits: SplitSubmission[], remainderAmount: number) => {
+      const row = splitPrompt?.row;
+      if (!row) {
+        setSplitPrompt(null);
+        return;
+      }
+      if (row.historyEntryId && activeItem.accountId) {
+        // History rows can't be replaced inline — the entry is the
+        // bank's authoritative record and its amount must be preserved.
+        // Fold any remainder into a final split that keeps the entry's
+        // raw bank description so the on-screen presentation still
+        // mirrors what the bank reported. The splits' signed amounts
+        // sum exactly to `entry.amount` after this fold.
+        const entries = data.history[activeItem.accountId] ?? [];
+        const entry = entries.find((e) => e.id === row.historyEntryId);
+        if (!entry) {
+          setSplitPrompt(null);
+          return;
+        }
+        const fullSplits: HistoryEntrySplit[] = splits.map((s) => ({
+          description: s.description,
+          amount: s.amount,
+          typeId: s.typeId,
+        }));
+        if (remainderAmount !== 0) {
+          fullSplits.push({
+            description: entry.description,
+            amount: remainderAmount,
+            typeId: null,
+          });
+        }
+        dispatch({
+          type: "splitHistoryEntry",
+          accountId: activeItem.accountId,
+          entryId: row.historyEntryId,
+          splits: fullSplits,
+        });
+        setSplitPrompt(null);
+        return;
+      }
       dispatch({
         type: "splitRow",
         sheetId,
@@ -4897,7 +4985,14 @@ function BudgetView({
       });
       setSplitPrompt(null);
     },
-    [dispatch, sheetId, itemId],
+    [
+      dispatch,
+      sheetId,
+      itemId,
+      splitPrompt,
+      activeItem.accountId,
+      data.history,
+    ],
   );
   const onSaveEditRow = useCallback(
     (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
@@ -5018,6 +5113,29 @@ function BudgetView({
       .filter((d): d is string => typeof d === "string");
     return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
   }, [editRowPrompt, activeItem.rows, dateCol]);
+
+  // Look up the bank entry behind a history-row split prompt so the
+  // modal can pre-fill any existing splits and use the entry's
+  // authoritative amount instead of whatever individual split-row
+  // amount is currently in the cells map.
+  const splitHistoryEntry = useMemo<HistoryEntry | null>(() => {
+    const row = splitPrompt?.row;
+    if (!row?.historyEntryId || !activeItem.accountId) return null;
+    const entries = data.history[activeItem.accountId] ?? [];
+    return entries.find((e) => e.id === row.historyEntryId) ?? null;
+  }, [splitPrompt, activeItem.accountId, data.history]);
+  const splitInitialSplits = useMemo<SplitSubmission[] | undefined>(() => {
+    if (!splitHistoryEntry?.splits || splitHistoryEntry.splits.length === 0) {
+      return undefined;
+    }
+    return splitHistoryEntry.splits.map((s) => ({
+      description: s.description,
+      amount: s.amount,
+      typeId: s.typeId ?? null,
+    }));
+  }, [splitHistoryEntry]);
+  const splitAuthoritativeAmount = splitHistoryEntry?.amount;
+  const splitAuthoritativeDescription = splitHistoryEntry?.description;
 
   // Resolve the seed entry for the pattern-rule modal from
   // `matchRulePrompt.entryId`. Looked up fresh each render so a
@@ -5830,6 +5948,9 @@ function BudgetView({
         types={allTypesMerged}
         typeUsageById={typeUsageById}
         settings={data.settings}
+        initialSplits={splitInitialSplits}
+        authoritativeAmount={splitAuthoritativeAmount}
+        authoritativeDescription={splitAuthoritativeDescription}
         onClose={() => setSplitPrompt(null)}
         onSplit={onSplitSubmit}
         onCreateType={onCreateType}

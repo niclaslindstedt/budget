@@ -261,7 +261,7 @@ export function SheetView({
     if (!item.accountId) return [] as Row[];
     return history
       .filter((e) => !e.hidden)
-      .map((e) =>
+      .flatMap((e) =>
         synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
       );
   }, [item.accountId, item.columns, history, merchantHints, matchRules]);
@@ -279,11 +279,19 @@ export function SheetView({
   // or a hand-edited authored row can't drag the column away from
   // what the bank says. Credit-card exports (no per-row balance) and
   // hidden entries fall through to the amount-based computation.
+  // Split entries pin the balance at the LAST split row (after all
+  // pieces have applied) so the on-screen total matches what the
+  // bank reported for the original entry.
   const balanceOverrides = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of history) {
       if (e.hidden) continue;
-      if (e.balance !== undefined) m.set(`hist:${e.id}`, e.balance);
+      if (e.balance === undefined) continue;
+      const anchorId =
+        e.splits && e.splits.length > 0
+          ? `hist:${e.id}:${e.splits.length - 1}`
+          : `hist:${e.id}`;
+      m.set(anchorId, e.balance);
     }
     return m;
   }, [history]);

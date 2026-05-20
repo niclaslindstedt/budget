@@ -265,6 +265,20 @@ export type Account = {
 // transaction's id so the operation is reversible (delete the
 // transaction → clear the backref → un-hide) and idempotent
 // (subsequent imports skip entries that already carry a backref).
+// One slice of a split bank entry. Each split renders as its own row
+// in the synthesized budget view and contributes its own amount to
+// the running balance; the splits' signed amounts MUST sum to
+// `HistoryEntry.amount` so the account total stays anchored to the
+// bank's authoritative figure. Set by the split modal opened from
+// the scissors button on a history row — useful when one bank
+// transaction (a bankgiro, a card swipe at a multi-merchant register)
+// paid for several categorised items in one go.
+export type HistoryEntrySplit = {
+  description: string;
+  amount: number;
+  typeId?: string | null;
+};
+
 export type HistoryEntry = {
   id: string;
   date: string;
@@ -296,6 +310,16 @@ export type HistoryEntry = {
   // alongside the override in the edit modal.
   userDescription?: string;
   userTypeId?: string;
+  // User-defined split of this bank entry into multiple categorised
+  // parts. When present and non-empty, the synthesizer emits one row
+  // per split in place of the entry's single row; the splits' signed
+  // amounts must sum to `amount` so the running balance stays anchored
+  // to the bank's total. Absent (or empty after validation) means the
+  // entry renders as a single row with the usual override / rule /
+  // hint chain. Splits live alongside `userDescription` / `userTypeId`
+  // — those overrides target the single-row presentation and are
+  // ignored when `splits` is active.
+  splits?: HistoryEntrySplit[];
 };
 
 // Per-account metadata recorded each time the user imports a file.
@@ -602,7 +626,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 29;
+  version: 30;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

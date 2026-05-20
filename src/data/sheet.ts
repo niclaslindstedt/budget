@@ -425,11 +425,12 @@ export function synthesizeTransactionRow(
   return row;
 }
 
-// Synthesize a Row from an imported bank-statement entry so the
-// budget view can interleave it alongside user-authored rows without
-// special-casing. Marker field `historyEntryId` flags the synthesized
-// origin — `Cell` / `SheetRow` read it to disable inline editing.
-// Like `synthesizeTransactionRow`, the row never reaches storage.
+// Synthesize one or more Rows from an imported bank-statement entry
+// so the budget view can interleave them alongside user-authored
+// rows without special-casing. Marker field `historyEntryId` flags
+// the synthesized origin — `Cell` / `SheetRow` read it to disable
+// inline editing. Like `synthesizeTransactionRow`, the synthesized
+// rows never reach storage.
 //
 // Labels stack with rules winning over hints: an explicit pattern
 // rule (user-authored glob) overrides any merchant hint (auto-
@@ -437,12 +438,53 @@ export function synthesizeTransactionRow(
 // entry. Either source contributes a category, typeId, and user-
 // typed description; the entry's bank text is preserved on storage,
 // only presentation changes.
+//
+// When the entry carries a non-empty `splits` array, the row chain is
+// bypassed: each split renders as its own row with the split's
+// description + signed amount + typeId. The splits' signed amounts
+// are guaranteed by the validator to sum to `entry.amount`, so the
+// account's running balance stays anchored to the bank's total.
 export function synthesizeHistoryRow(
   entry: HistoryEntry,
   columns: Column[],
   hints: Readonly<Record<string, MerchantHint>> = {},
   rules: readonly MatchRule[] = [],
-): Row {
+): Row[] {
+  const dateCol = findColumnByType(columns, "date");
+  const descCol = findColumnByType(columns, "description");
+  const amountCol = findColumnByType(columns, "amount");
+  const completedCol = findColumnByType(columns, "completed");
+
+  function buildCells(
+    description: string,
+    amount: number,
+  ): Record<string, CellValue> {
+    const cells: Record<string, CellValue> = {};
+    if (dateCol) cells[dateCol.id] = entry.date;
+    if (descCol) cells[descCol.id] = description;
+    if (amountCol) cells[amountCol.id] = amount;
+    // Imported bank entries already happened, so they're implicitly
+    // completed.
+    if (completedCol) cells[completedCol.id] = true;
+    return cells;
+  }
+
+  if (entry.splits && entry.splits.length > 0) {
+    return entry.splits.map((split, i) => {
+      const row: Row = {
+        id: `hist:${entry.id}:${i}`,
+        cells: buildCells(split.description, split.amount),
+        historyEntryId: entry.id,
+      };
+      if (split.typeId) row.typeId = split.typeId;
+      // Carry the entry's transfer flag onto every split row so
+      // `Settings.hideTransfers` hides them uniformly — the split is
+      // just a presentation re-slice, not a re-classification.
+      if (entry.isTransfer) row.isTransfer = true;
+      return row;
+    });
+  }
+
   const rule = findMatchingRule(rules, entry);
   const hint = hints[normaliseDescription(entry.description)];
   // Field-by-field merge with a four-step priority:
@@ -470,33 +512,14 @@ export function synthesizeHistoryRow(
       : null) ??
     hint?.typeId ??
     null;
-  const cells: Record<string, CellValue> = {};
-  for (const col of columns) {
-    switch (col.type) {
-      case "date":
-        cells[col.id] = entry.date;
-        break;
-      case "description":
-        cells[col.id] = description;
-        break;
-      case "amount":
-        cells[col.id] = entry.amount;
-        break;
-      case "completed":
-        // Imported bank entries already happened, so they're
-        // implicitly completed.
-        cells[col.id] = true;
-        break;
-    }
-  }
   const row: Row = {
     id: `hist:${entry.id}`,
-    cells,
+    cells: buildCells(description, entry.amount),
     historyEntryId: entry.id,
   };
   if (typeId) row.typeId = typeId;
   if (entry.isTransfer) row.isTransfer = true;
-  return row;
+  return [row];
 }
 
 // True when this row should be treated as an inter-account transfer
