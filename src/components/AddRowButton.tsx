@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Plus, Sparkles } from "lucide-react";
 
 import { useT } from "../i18n";
-import { useActiveRow } from "./useActiveRow";
+import { useActiveRowHasActive } from "./useActiveRow";
 
 type Props = {
   onAdd: () => void;
@@ -26,7 +26,7 @@ export function AddRowButton({ onAdd, onComplex }: Props) {
   // active. The first tap outside that row dismisses it via the
   // ActiveRowProvider — we don't want the same tap to also add a new
   // blank row when it landed on this button by mistake.
-  const disabled = useActiveRow()?.hasActive ?? false;
+  const disabled = useActiveRowHasActive();
 
   function clearTimer() {
     if (timer.current !== null) {

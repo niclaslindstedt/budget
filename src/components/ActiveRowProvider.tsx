@@ -7,7 +7,10 @@ import {
   type ReactNode,
 } from "react";
 
-import { ActiveRowContext } from "./useActiveRow";
+import {
+  ActiveRowCoordinatorContext,
+  ActiveRowHasActiveContext,
+} from "./useActiveRow";
 
 // Coordinator that makes the currently-active sheet row behave like a
 // lightweight modal: while any cell is being edited, a picker is open,
@@ -212,14 +215,20 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
     };
   }, [dismissAll]);
 
-  const value = useMemo(
-    () => ({ activate, deactivate, hasActive }),
-    [activate, deactivate, hasActive],
+  // The coordinator handle is reference-stable across renders: `activate`
+  // and `deactivate` are useCallback-memoized, so subscribers that only
+  // need to register a row don't re-render when `hasActive` flips. Only
+  // the AddRowButton subscribes to `hasActive` and pays for its updates.
+  const coordinator = useMemo(
+    () => ({ activate, deactivate }),
+    [activate, deactivate],
   );
 
   return (
-    <ActiveRowContext.Provider value={value}>
-      {children}
-    </ActiveRowContext.Provider>
+    <ActiveRowCoordinatorContext.Provider value={coordinator}>
+      <ActiveRowHasActiveContext.Provider value={hasActive}>
+        {children}
+      </ActiveRowHasActiveContext.Provider>
+    </ActiveRowCoordinatorContext.Provider>
   );
 }

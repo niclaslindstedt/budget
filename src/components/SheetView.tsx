@@ -173,6 +173,11 @@ function scrollRowToTop(row: HTMLElement, behavior: ScrollBehavior) {
 const DEFAULT_HISTORY_MONTHS = 1;
 const HISTORY_PAGE_SIZE = 3;
 
+// Module-level stable empty array. Used as the fallback rows reference
+// for months with no entries so MonthTable's React.memo sees the same
+// reference across renders instead of a fresh `[]` each time.
+const EMPTY_ROWS: Row[] = [];
+
 export function SheetView({
   sheet,
   item,
@@ -371,12 +376,31 @@ export function SheetView({
     );
   }, [decoratedItem.rows, dateCol, settings.startOfMonth]);
 
+  // Pre-sort each month's rows once per data change. Sorting inline in
+  // the render path (one .sort() call per visible month) cost ~O(N log
+  // N) on every parent re-render and produced a fresh array reference
+  // each time — defeating React.memo on MonthTable. The memoized map
+  // lets each MonthTable receive a stable rows array, so memo's shallow
+  // compare can skip the months that didn't change.
+  const sortedMonthGroups = useMemo(() => {
+    if (!dateCol) return monthGroups;
+    const out = new Map<string, Row[]>();
+    for (const [key, rows] of monthGroups) {
+      out.set(key, sortRowsByDate(rows, dateCol.id));
+    }
+    return out;
+  }, [monthGroups, dateCol]);
+
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
     [settings.startOfMonth],
   );
 
-  const today = todayIso();
+  // `todayIso()` returns a fresh string each call, but the value only
+  // changes at midnight. Memoize so closures derived from it (the
+  // current-month seed date threaded into MonthTable) keep stable
+  // references across renders.
+  const today = useMemo(() => todayIso(), []);
 
   // Number of extra historical months past the default 1-month window
   // the user has opted into via "Show more". Resets when the active
@@ -483,6 +507,51 @@ export function SheetView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollToTodayTick]);
 
+  // Stable per-month closure bundles, keyed by monthKey. Without this
+  // each visible MonthTable receives fresh `onAddRow` / `onAddComplex` /
+  // `onToggleCollapsed` arrow functions every parent render, defeating
+  // `React.memo` on MonthTable — and with a few years of history
+  // visible that means rebuilding every row tree on every keystroke.
+  // Memo'd against the inputs the closures close over, so a typed
+  // amount or a clicked cell elsewhere never invalidates them.
+  const monthSlots = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        seedDate: string;
+        onAddRow: () => void;
+        onAddComplex: () => void;
+        onToggleCollapsed: () => void;
+      }
+    >();
+    for (const monthKey of visibleMonths) {
+      const isCurrent = monthKey === currentMonth;
+      const seedDate =
+        monthKey === "undated"
+          ? ""
+          : isCurrent
+            ? today
+            : fiscalMonthSeedIso(monthKey, settings.startOfMonth);
+      map.set(monthKey, {
+        seedDate,
+        onAddRow: () => onAddRow(seedDate),
+        onAddComplex: () => onAddComplex(seedDate),
+        onToggleCollapsed: () => toggleCollapsed(monthKey),
+      });
+    }
+    return map;
+  }, [
+    visibleMonths,
+    currentMonth,
+    today,
+    settings.startOfMonth,
+    onAddRow,
+    onAddComplex,
+    toggleCollapsed,
+  ]);
+
+  const canTransfer = item.accountId !== null;
+
   return (
     <ActiveRowProvider>
       <section ref={sectionRef} data-sheet-content>
@@ -524,16 +593,16 @@ export function SheetView({
             </button>
           )}
           {visibleMonths.map((monthKey) => {
-            const monthRows = dateCol
-              ? sortRowsByDate(monthGroups.get(monthKey) ?? [], dateCol.id)
-              : [];
+            const slot = monthSlots.get(monthKey);
+            if (!slot) return null;
+            const {
+              seedDate,
+              onAddRow: slotAdd,
+              onAddComplex: slotAddComplex,
+              onToggleCollapsed: slotToggle,
+            } = slot;
             const isCurrent = monthKey === currentMonth;
-            const seedDate =
-              monthKey === "undated"
-                ? ""
-                : isCurrent
-                  ? today
-                  : fiscalMonthSeedIso(monthKey, settings.startOfMonth);
+            const monthRows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
             return (
               <div
                 key={monthKey}
@@ -552,7 +621,7 @@ export function SheetView({
                   settings={settings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}
-                  canTransfer={item.accountId !== null}
+                  canTransfer={canTransfer}
                   amountChars={colWidths.amountChars}
                   balanceChars={colWidths.balanceChars}
                   collapsed={collapsedMonths.has(monthKey)}
@@ -566,11 +635,11 @@ export function SheetView({
                     // so we check the seed rather than the key.
                     seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
                   }
-                  onToggleCollapsed={() => toggleCollapsed(monthKey)}
+                  onToggleCollapsed={slotToggle}
                   onUpdateCell={handleUpdateCell}
                   onCommitCell={onCommitCell}
-                  onAddRow={() => onAddRow(seedDate)}
-                  onAddComplex={() => onAddComplex(seedDate)}
+                  onAddRow={slotAdd}
+                  onAddComplex={slotAddComplex}
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
                   onEditRowRequest={onEditRowRequest}
