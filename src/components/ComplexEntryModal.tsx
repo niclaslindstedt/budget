@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import { formulaToStored, parseFormula } from "../data/formula";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../data/types";
+import { useT } from "../i18n";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
 import { FormulaHelpButton } from "./FormulaHelpButton";
 import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
@@ -90,6 +91,7 @@ export function ComplexEntryModal({
   onCreate,
   onCreateType,
 }: Props) {
+  const t = useT();
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
@@ -235,17 +237,17 @@ export function ComplexEntryModal({
       labelledBy="complex-entry-title"
       size="max-w-2xl"
     >
-      <Modal.Header title={title ?? "New entry"} onClose={onClose} />
+      <Modal.Header title={title ?? t("complex.titleNew")} onClose={onClose} />
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Description</span>
+            <span className="text-xs text-muted">{t("complex.description")}</span>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-              placeholder="Rent, Spotify, Salary…"
+              placeholder={t("complex.descriptionPlaceholder")}
             />
           </label>
           {/* Not a <label>: the fx toggle button is labelable, so wrapping
@@ -253,15 +255,15 @@ export function ComplexEntryModal({
               field activate the fx button instead and toggle the mode off. */}
           <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="flex items-center justify-between text-xs text-muted">
-              <span>Amount</span>
+              <span>{t("complex.amount")}</span>
               <button
                 type="button"
                 onClick={toggleFormulaMode}
                 aria-pressed={formulaMode}
                 title={
                   formulaMode
-                    ? "Switch back to a fixed amount"
-                    : "Use a formula instead of a fixed amount"
+                    ? t("complex.fxSwitchToFixed")
+                    : t("complex.fxUseFormula")
                 }
                 className={`cursor-pointer rounded border px-1.5 py-0.5 font-mono text-[10px] leading-none hover:text-fg ${
                   formulaMode
@@ -278,8 +280,8 @@ export function ComplexEntryModal({
                   ref={formulaInputRef}
                   value={formulaText}
                   onChange={setFormulaText}
-                  placeholder="endOfMonthBalance - 5000"
-                  ariaLabel="Amount formula"
+                  placeholder={t("complex.formulaPlaceholder")}
+                  ariaLabel={t("complex.amountFormula")}
                   className="formula-input field-input flex-1 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
                 <FormulaVariableHelper
@@ -294,7 +296,11 @@ export function ComplexEntryModal({
                 <button
                   type="button"
                   onClick={toggleSign}
-                  aria-label={negative ? "Make positive" : "Make negative"}
+                  aria-label={
+                    negative
+                      ? t("editEntry.makePositive")
+                      : t("editEntry.makeNegative")
+                  }
                   tabIndex={-1}
                   className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
                     negative ? "text-negative" : "text-positive"
@@ -311,7 +317,7 @@ export function ComplexEntryModal({
                   inputMode="decimal"
                   value={amountText}
                   onChange={(e) => handleAmountChange(e.target.value)}
-                  aria-label="Amount"
+                  aria-label={t("complex.amount")}
                   className={`field-input flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
                     parsedAbs !== null && parsedAbs !== 0
                       ? negative
@@ -319,7 +325,7 @@ export function ComplexEntryModal({
                         : "text-positive"
                       : "text-fg"
                   }`}
-                  placeholder="1200"
+                  placeholder={t("complex.amountPlaceholder")}
                 />
               </div>
             )}
@@ -340,12 +346,12 @@ export function ComplexEntryModal({
             formulaResolves !== null &&
             formulaResolves.ok ? (
               <span className="text-xs text-muted">
-                Formula evaluated per row at render time.
+                {t("complex.formulaEvaluatedHint")}
               </span>
             ) : null}
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">Type</span>
+            <span className="text-xs text-muted">{t("complex.type")}</span>
             <TypePicker
               variant="field"
               types={types}
@@ -359,7 +365,7 @@ export function ComplexEntryModal({
         </div>
 
         <div className="mt-5">
-          <div className="mb-2 text-xs text-muted">Recurrence</div>
+          <div className="mb-2 text-xs text-muted">{t("complex.recurrence")}</div>
           <RecurrenceForm
             seedDate={initialDate}
             resetKey={resetKey}
@@ -374,7 +380,7 @@ export function ComplexEntryModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -382,10 +388,12 @@ export function ComplexEntryModal({
           disabled={!canSubmit}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitVerb ?? "Add"}{" "}
+          {submitVerb ?? t("complex.addVerb")}{" "}
           {dates.length > 0
-            ? `${dates.length} ${dates.length === 1 ? "row" : "rows"}`
-            : "rows"}
+            ? dates.length === 1
+              ? t("complex.rowOne", { n: dates.length })
+              : t("complex.rowOther", { n: dates.length })
+            : t("complex.rowsPlaceholder")}
         </button>
       </Modal.Footer>
     </Modal>
