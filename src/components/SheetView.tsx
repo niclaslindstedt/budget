@@ -97,6 +97,7 @@ type Props = {
   onDeleteRequest: (row: Row) => void;
   onEditRequest: (row: Row) => void;
   onEditRowRequest: (row: Row) => void;
+  onSplitRequest: (row: Row) => void;
   onTransactionRequest: (row: Row) => void;
   // Flip the per-row `isTransfer` flag on a budget row. Used by the
   // eye-toggle action button to mark or unmark a one-off entry as an
@@ -207,6 +208,7 @@ export function SheetView({
   onDeleteRequest,
   onEditRequest,
   onEditRowRequest,
+  onSplitRequest,
   onTransactionRequest,
   onToggleRowTransfer,
   onMatchRuleRequest,
@@ -698,6 +700,7 @@ export function SheetView({
                   onDeleteRequest={onDeleteRequest}
                   onEditRequest={onEditRequest}
                   onEditRowRequest={onEditRowRequest}
+                  onSplitRequest={onSplitRequest}
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onEditHistoryRequest={onEditHistoryRequest}

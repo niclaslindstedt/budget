@@ -40,6 +40,10 @@ import {
   type EditRowPatch,
   type EditRowScope,
 } from "./components/EditRowModal";
+import {
+  SplitEntryModal,
+  type SplitSubmission,
+} from "./components/SplitEntryModal";
 import { DownloadModal, type DownloadConfig } from "./components/DownloadModal";
 import { HistoryEntryEditModal } from "./components/HistoryEntryEditModal";
 import { HistoryModal } from "./components/HistoryModal";
@@ -311,6 +315,20 @@ type ItemAction =
       itemId: string;
       fromId: string;
       toId: string;
+    }
+  | {
+      // Replace `rowId` with `splits` (one new row per split) at the
+      // original's position in `item.rows`. When `remainderAmount` is
+      // non-zero, the original row is pushed to the END of `item.rows`
+      // with its amount swapped for `remainderAmount` (preserving
+      // description / typeId / seriesId / completed / date); when it's
+      // zero, the original is removed entirely.
+      type: "splitRow";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+      splits: SplitSubmission[];
+      remainderAmount: number;
     };
 
 type Action =
@@ -752,6 +770,79 @@ function reduceAccountBudget(
         rows: item.rows.map((r) =>
           targets.has(r.id) ? applyPatch(r, action.patch, cols) : r,
         ),
+      };
+    }
+
+    case "splitRow": {
+      const idx = item.rows.findIndex((r) => r.id === action.rowId);
+      if (idx < 0) return item;
+      const anchor = item.rows[idx];
+      const dateCol = findColumnByType(item.columns, "date");
+      const completedCol = findColumnByType(item.columns, "completed");
+      const amountCol = findColumnByType(item.columns, "amount");
+      // Splits inherit the anchor's date and completed state so they
+      // land on the same row visually and don't reset a tick-mark the
+      // user already set. Description / amount / type come from the
+      // submission. Formulas on the anchor are intentionally NOT
+      // carried — a split represents the user's concrete allocation,
+      // and a formula would re-derive an unrelated amount on the new
+      // row.
+      const anchorDate =
+        dateCol && typeof anchor.cells[dateCol.id] === "string"
+          ? (anchor.cells[dateCol.id] as string)
+          : null;
+      const anchorCompleted =
+        completedCol && typeof anchor.cells[completedCol.id] === "boolean"
+          ? (anchor.cells[completedCol.id] as boolean)
+          : false;
+      const splitRows: Row[] = action.splits.map((s) => {
+        const r = createEmptyRow(item.columns, {
+          date: anchorDate,
+          description: s.description,
+          amount: s.amount,
+          completed: anchorCompleted,
+        });
+        if (s.typeId) r.typeId = s.typeId;
+        return r;
+      });
+      // No remainder → the anchor is fully absorbed into the splits
+      // and gets removed. Any seriesId, formula, or correction flag on
+      // the anchor goes with it; future occurrences of the series stay
+      // intact because they're separate rows.
+      if (action.remainderAmount === 0) {
+        return {
+          ...item,
+          rows: [
+            ...item.rows.slice(0, idx),
+            ...splitRows,
+            ...item.rows.slice(idx + 1),
+          ],
+        };
+      }
+      // Remainder → keep the anchor (so its seriesId / typeId /
+      // description survive) but swap its amount for the leftover and
+      // push it to the END of the rows array so it appears below the
+      // newly-inserted splits on the same date. The anchor may have
+      // carried a formula whose cached cell value matched the original
+      // amount; we drop the formula here because the rewritten cell is
+      // a concrete leftover, not a derived value — keeping the formula
+      // would re-derive the original amount on the next render and
+      // erase the split.
+      const remainderRow: Row = {
+        ...anchor,
+        cells: amountCol
+          ? { ...anchor.cells, [amountCol.id]: action.remainderAmount }
+          : { ...anchor.cells },
+      };
+      delete remainderRow.amountFormula;
+      return {
+        ...item,
+        rows: [
+          ...item.rows.slice(0, idx),
+          ...splitRows,
+          ...item.rows.slice(idx + 1),
+          remainderRow,
+        ],
       };
     }
 
@@ -1746,6 +1837,7 @@ function reducer(state: UserData, action: Action): UserData {
 type DeletePrompt = { kind: "delete"; row: Row };
 type EditPrompt = { kind: "edit"; row: Row };
 type EditRowPrompt = { kind: "edit-row"; row: Row };
+type SplitPrompt = { kind: "split"; row: Row };
 type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 type PendingSeriesEdit = {
@@ -3491,6 +3583,10 @@ function BudgetView({
   const [editRowPrompt, setEditRowPrompt] = useState<EditRowPrompt | null>(
     null,
   );
+  // Split-entry modal state. Opens when the scissors action button is
+  // clicked. Cleared on save / cancel and self-clears when the row it
+  // targets disappears (e.g. via an undo or a concurrent edit).
+  const [splitPrompt, setSplitPrompt] = useState<SplitPrompt | null>(null);
   // Captures the most recent inline edit on a recurring row so the user
   // can choose to fan the change out to every following entry in the
   // series. `null` while no prompt is pending.
@@ -3897,6 +3993,12 @@ function BudgetView({
     const exists = activeItem.rows.some((r) => r.id === editRowPrompt.row.id);
     if (!exists) setEditRowPrompt(null);
   }, [editRowPrompt, activeItem.rows]);
+  // Same guard for the split modal.
+  useEffect(() => {
+    if (!splitPrompt) return;
+    const exists = activeItem.rows.some((r) => r.id === splitPrompt.row.id);
+    if (!exists) setSplitPrompt(null);
+  }, [splitPrompt, activeItem.rows]);
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
@@ -3935,6 +4037,13 @@ function BudgetView({
     // can't meaningfully edit.
     if (row.transactionId || row.historyEntryId || row.isCorrection) return;
     setEditRowPrompt({ kind: "edit-row", row });
+  }, []);
+  const onSplitRequest = useCallback((row: Row) => {
+    // Same suppression rules as the edit-row modal — synthesized and
+    // correction rows aren't real budget rows so splitting them is
+    // either meaningless or has no underlying persisted target.
+    if (row.transactionId || row.historyEntryId || row.isCorrection) return;
+    setSplitPrompt({ kind: "split", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
     // Only history rows render the button, but the prop type is the
@@ -4776,6 +4885,20 @@ function BudgetView({
     },
     [dispatch, sheetId, itemId],
   );
+  const onSplitSubmit = useCallback(
+    (rowId: string, splits: SplitSubmission[], remainderAmount: number) => {
+      dispatch({
+        type: "splitRow",
+        sheetId,
+        itemId,
+        rowId,
+        splits,
+        remainderAmount,
+      });
+      setSplitPrompt(null);
+    },
+    [dispatch, sheetId, itemId],
+  );
   const onSaveEditRow = useCallback(
     (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
       // Description / amount / category / type are series-wide fields —
@@ -5471,6 +5594,7 @@ function BudgetView({
                 onDeleteRequest={onDeleteRequest}
                 onEditRequest={onEditRequest}
                 onEditRowRequest={onEditRowRequest}
+                onSplitRequest={onSplitRequest}
                 onTransactionRequest={onTransactionRequest}
                 onToggleRowTransfer={onToggleRowTransfer}
                 onMatchRuleRequest={onMatchRuleRequest}
@@ -5696,6 +5820,18 @@ function BudgetView({
         lastSeriesDate={editRowLastSeriesDate}
         onClose={() => setEditRowPrompt(null)}
         onSave={onSaveEditRow}
+        onCreateType={onCreateType}
+      />
+      <SplitEntryModal
+        open={splitPrompt !== null}
+        row={splitPrompt?.row ?? null}
+        columns={activeItem.columns}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
+        typeUsageById={typeUsageById}
+        settings={data.settings}
+        onClose={() => setSplitPrompt(null)}
+        onSplit={onSplitSubmit}
         onCreateType={onCreateType}
       />
       <MatchRuleModal

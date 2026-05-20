@@ -409,14 +409,18 @@ body {
     /* Split the revealed area into equal-width action buttons so the
        gesture telegraphs each option at a glance. Repeat is accent
        green ("make recurring"), the pen is meta yellow ("edit row"),
-       and trash is danger red — the Transaction button (when shown)
-       inherits the row's transparent default and reads as the muted
-       middle option. */
+       split is meta yellow too ("carve into parts"), and trash is
+       danger red — the Transaction button (when shown) inherits the
+       row's transparent default and reads as the muted middle option. */
     .sheet-table > tbody > tr > .action-cell .action-btn-edit {
       background: var(--accent);
       color: var(--surface);
     }
     .sheet-table > tbody > tr > .action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .sheet-table > tbody > tr > .action-cell .action-btn-split {
       background: var(--meta);
       color: var(--surface);
     }
