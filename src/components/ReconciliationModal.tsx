@@ -280,7 +280,9 @@ export function ReconciliationModal({
           />
           <span className="flex-1 grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-0.5">
             <span className="font-mono text-xs text-muted">{rowDate}</span>
-            <span className="truncate text-fg">{rowDesc || t("reconciliation.noLabel")}</span>
+            <span className="truncate text-fg">
+              {rowDesc || t("reconciliation.noLabel")}
+            </span>
             <span className="font-mono text-fg">
               {formatAmount(rowAmount, settings)}
             </span>
@@ -329,7 +331,9 @@ export function ReconciliationModal({
       >
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2">
           <span className="font-mono text-xs text-muted">{rowDate}</span>
-          <span className="truncate text-fg">{rowDesc || t("reconciliation.noLabel")}</span>
+          <span className="truncate text-fg">
+            {rowDesc || t("reconciliation.noLabel")}
+          </span>
           <span className="font-mono text-fg">
             {formatAmount(rowAmount, settings)}
           </span>

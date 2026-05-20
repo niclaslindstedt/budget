@@ -303,9 +303,7 @@ export function MatchRuleModal({
     >
       <Modal.Header
         title={
-          isEdit
-            ? t("matchRule.titleEdit")
-            : t("matchRule.titleLabelByPattern")
+          isEdit ? t("matchRule.titleEdit") : t("matchRule.titleLabelByPattern")
         }
         onClose={onClose}
       />
@@ -358,7 +356,9 @@ export function MatchRuleModal({
             {t("matchRule.filters")}
           </legend>
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("matchRule.amountLabel")}</span>
+            <span className="text-xs text-muted">
+              {t("matchRule.amountLabel")}
+            </span>
             <SegmentedRadio
               name="amount-sign"
               value={signMode}
