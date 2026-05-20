@@ -1,12 +1,11 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
 import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { SchemaPage } from "./components/SchemaPage";
-import { LanguageProvider, type Lang } from "./i18n";
-import { readLanguagePreference } from "./i18n/language-preference";
+import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
 import { BUILD_LABEL } from "./utils/build-env";
 import { announceDebugHint } from "./utils/debug";
@@ -38,25 +37,6 @@ const path = window.location.pathname.replace(/\/$/, "");
 const isPrivacy = path.endsWith("/privacy") || path === "/privacy";
 const isSchema = path.endsWith("/schema") || path === "/schema";
 const isChangelog = path.endsWith("/changelog") || path === "/changelog";
-
-// Read-only language root. Listens for the custom `budget:language`
-// event so the SettingsModal can push live-preview updates without
-// rebuilding the App tree from above. The plaintext language-
-// preference store backs this so the auth screen and standalone
-// pages render in the right language without first decrypting the
-// budget bucket.
-function LanguageRoot({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => readLanguagePreference());
-  useEffect(() => {
-    const onChange = (e: Event) => {
-      const detail = (e as CustomEvent<Lang>).detail;
-      if (detail === "en" || detail === "sv") setLang(detail);
-    };
-    window.addEventListener("budget:language", onChange);
-    return () => window.removeEventListener("budget:language", onChange);
-  }, []);
-  return <LanguageProvider value={lang}>{children}</LanguageProvider>;
-}
 
 createRoot(rootElement).render(
   <StrictMode>
