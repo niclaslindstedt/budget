@@ -1020,6 +1020,7 @@ export const USER_DATA_SCHEMA = {
         "fontScale",
         "sessionTimeoutMinutes",
         "lastSeenChangelogVersion",
+        "language",
       ],
       description:
         "Display and entry preferences. The validator is lenient: bad " +
@@ -1154,6 +1155,19 @@ export const USER_DATA_SCHEMA = {
             "app's version compares greater than this string, the popup " +
             "opens showing only the entries strictly newer than this " +
             "version, and writes the running version back on dismissal.",
+        },
+        language: {
+          type: "string",
+          enum: ["en", "sv"],
+          default: DEFAULT_SETTINGS.language,
+          description:
+            'UI language. "en" leaves the app in English; "sv" ' +
+            "translates every user-facing string to Swedish. Date and " +
+            "number formatting are controlled by the other Settings " +
+            "fields and are independent of this choice. Existing buckets " +
+            'default to "en" through the v26 → v27 migration so the UI ' +
+            "doesn't suddenly flip language on upgrade; fresh installs " +
+            "auto-detect from the browser's preferred language.",
         },
       },
     },

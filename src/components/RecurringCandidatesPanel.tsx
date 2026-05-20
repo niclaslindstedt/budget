@@ -11,6 +11,7 @@ import type {
   MerchantHint,
   Settings,
 } from "../data/types";
+import { type TFunction, useT } from "../i18n";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { TypeChip } from "./TypePicker";
 import { formatNumber, withCurrency } from "../utils/format";
@@ -53,6 +54,7 @@ export function RecurringCandidatesPanel({
   onDismiss,
   onDismissAll,
 }: Props) {
+  const t = useT();
   const dismissedSet = useMemo(() => new Set(dismissedKeys), [dismissedKeys]);
   const candidates = useMemo(
     () =>
@@ -87,7 +89,7 @@ export function RecurringCandidatesPanel({
             id="recurring-candidates-title"
             className="text-xs font-bold tracking-wide text-fg-bright uppercase"
           >
-            Recurring candidates
+            {t("recurring.panelTitle")}
           </h3>
           <span className="rounded border border-line bg-surface px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
             {candidates.length}
@@ -95,14 +97,13 @@ export function RecurringCandidatesPanel({
         </div>
         <div className="flex items-center gap-2">
           <p className="hidden text-[11px] text-muted sm:block">
-            Detected in imported history. Click Promote to turn one into a
-            recurring series.
+            {t("recurring.panelHint")}
           </p>
           <button
             type="button"
             onClick={() => setConfirmDismissAllOpen(true)}
-            aria-label="Dismiss all"
-            title="Dismiss all"
+            aria-label={t("recurring.dismissAll")}
+            title={t("recurring.dismissAll")}
             className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"
           >
             <X size={12} aria-hidden focusable={false} />
@@ -116,7 +117,7 @@ export function RecurringCandidatesPanel({
           const suggestedType =
             suggestedTypeId === null
               ? null
-              : (types.find((t) => t.id === suggestedTypeId) ?? null);
+              : (types.find((ty) => ty.id === suggestedTypeId) ?? null);
           return (
             <CandidateRow
               key={c.key}
@@ -137,23 +138,22 @@ export function RecurringCandidatesPanel({
           onClick={() => setExpanded(true)}
           className="mt-2 cursor-pointer text-xs text-link hover:underline"
         >
-          Show {candidates.length - visible.length} more
+          {t("recurring.showMore", { n: candidates.length - visible.length })}
         </button>
       )}
       <ConfirmDialog
         open={confirmDismissAllOpen}
-        title="Dismiss all candidates?"
+        title={t("recurring.dismissAllConfirm")}
         description={
-          <>
-            {candidates.length} recurring{" "}
-            {candidates.length === 1 ? "candidate" : "candidates"} will be
-            marked as not recurring and hidden from this panel. You can restore
-            them later from Settings.
-          </>
+          candidates.length === 1
+            ? t("recurring.dismissAllConfirmHint", { n: candidates.length })
+            : t("recurring.dismissAllConfirmHintPlural", {
+                n: candidates.length,
+              })
         }
         actions={[
           {
-            label: `Dismiss all (${candidates.length})`,
+            label: t("recurring.dismissAllAction", { n: candidates.length }),
             tone: "danger",
             onSelect: () => {
               onDismissAll(candidates.map((c) => c.key));
@@ -180,6 +180,7 @@ function CandidateRow({
   onPromote: (rule: RecurrenceRule, dates: string[]) => void;
   onDismiss: () => void;
 }) {
+  const t = useT();
   const rule = useMemo<RecurrenceRule | null>(
     () => ruleFromCandidate(candidate),
     [candidate],
@@ -215,20 +216,24 @@ function CandidateRow({
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
           <span className="rounded border border-line bg-surface-2 px-1.5 py-0.5 text-fg">
-            {cadenceLabel(candidate)}
+            {cadenceLabel(candidate, t)}
           </span>
           <span>·</span>
           <span>
-            {candidate.occurrenceCount} occurrences since{" "}
+            {t("recurring.occurrencesSince", { n: candidate.occurrenceCount })}{" "}
             <span className="font-mono text-path">{candidate.firstDate}</span>
           </span>
           <span>·</span>
-          <span>{Math.round(candidate.confidence * 100)}% confident</span>
+          <span>
+            {t("recurring.confident", {
+              n: Math.round(candidate.confidence * 100),
+            })}
+          </span>
           {suggestedType && (
             <>
               <span>·</span>
               <span className="inline-flex items-center gap-1">
-                Suggested:
+                {t("recurring.suggested")}
                 <TypeChip type={suggestedType} />
               </span>
             </>
@@ -245,13 +250,14 @@ function CandidateRow({
           disabled={!rule || futureDates.length === 0}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Promote{futureDates.length > 0 ? ` (${futureDates.length})` : ""}
+          {t("recurring.promote")}
+          {futureDates.length > 0 ? ` (${futureDates.length})` : ""}
         </button>
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Not recurring"
-          title="Not recurring"
+          aria-label={t("recurring.dismiss")}
+          title={t("recurring.dismiss")}
           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"
         >
           <X size={12} aria-hidden focusable={false} />
@@ -315,18 +321,18 @@ function ruleFromCandidate(c: RecurringCandidate): RecurrenceRule | null {
   }
 }
 
-function cadenceLabel(c: RecurringCandidate): string {
+function cadenceLabel(c: RecurringCandidate, t: TFunction): string {
   switch (c.cadence.kind) {
     case "weekly":
-      return "Weekly";
+      return t("recurring.cadenceWeekly");
     case "biweekly":
-      return "Biweekly";
+      return t("recurring.cadenceBiweekly");
     case "monthly":
-      return "Monthly";
+      return t("recurring.cadenceMonthly");
     case "quarterly":
-      return "Quarterly";
+      return t("recurring.cadenceQuarterly");
     case "yearly":
-      return "Yearly";
+      return t("recurring.cadenceYearly");
   }
 }
 

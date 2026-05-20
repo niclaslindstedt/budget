@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Database, Download, History, RotateCcw, Upload } from "lucide-react";
 
 import type { UserData } from "../data/types";
+import { type TFunction, useT } from "../i18n";
 import { parseUserData, serializeUserData } from "../storage/file";
 import type { BackupMetadata, StorageAdapter } from "../storage/adapter";
 import {
@@ -41,6 +42,7 @@ export function CloudBackupModal({
   onRestore,
   onClose,
 }: Props) {
+  const t = useT();
   const [entries, setEntries] = useState<BackupMetadata[]>([]);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [restorePrompt, setRestorePrompt] = useState<BackupMetadata | null>(
@@ -59,10 +61,12 @@ export function CloudBackupModal({
     } catch (err) {
       setStatus({
         kind: "error",
-        message: `Could not load backups: ${(err as Error).message}`,
+        message: t("cloudBackup.couldNotLoad", {
+          error: (err as Error).message,
+        }),
       });
     }
-  }, [ops]);
+  }, [ops, t]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,15 +77,20 @@ export function CloudBackupModal({
     if (!ops) return;
     const filename = suggestBackupFilename();
     const metadata = describeBackup(data, { filename });
-    setStatus({ kind: "working", message: "Creating backup…" });
+    setStatus({ kind: "working", message: t("cloudBackup.creatingBackup") });
     try {
       await ops.create(serializeUserData(data), metadata);
-      setStatus({ kind: "ok", message: `Backup saved as ${filename}.` });
+      setStatus({
+        kind: "ok",
+        message: t("cloudBackup.backupSavedAs", { filename }),
+      });
       await refresh();
     } catch (err) {
       setStatus({
         kind: "error",
-        message: `Backup failed: ${(err as Error).message}`,
+        message: t("cloudBackup.backupFailed", {
+          error: (err as Error).message,
+        }),
       });
     }
   }
@@ -89,7 +98,7 @@ export function CloudBackupModal({
   async function handleRestore(entry: BackupMetadata) {
     if (!ops) return;
     setRestorePrompt(null);
-    setStatus({ kind: "working", message: "Backing up current file…" });
+    setStatus({ kind: "working", message: t("cloudBackup.backingUpCurrent") });
     try {
       // Safety net: snapshot whatever the user has right now before
       // we overwrite it. The auto-flag distinguishes these from
@@ -101,26 +110,31 @@ export function CloudBackupModal({
         serializeUserData(data),
         describeBackup(data, { filename: autoName, autoCreated: true }),
       );
-      setStatus({ kind: "working", message: "Restoring…" });
+      setStatus({ kind: "working", message: t("cloudBackup.restoring") });
       const text = await ops.read(entry.filename);
       const parsed = parseUserData(text);
       if (!parsed.ok) {
         setStatus({
           kind: "error",
-          message: `Could not parse backup: ${parsed.error}`,
+          message: t("cloudBackup.couldNotParse", { error: parsed.error }),
         });
         return;
       }
       onRestore(parsed.data);
       setStatus({
         kind: "ok",
-        message: `Restored ${entry.filename}. Previous file saved as ${autoName}.`,
+        message: t("cloudBackup.restored", {
+          filename: entry.filename,
+          auto: autoName,
+        }),
       });
       await refresh();
     } catch (err) {
       setStatus({
         kind: "error",
-        message: `Restore failed: ${(err as Error).message}`,
+        message: t("cloudBackup.restoreFailed", {
+          error: (err as Error).message,
+        }),
       });
     }
   }
@@ -138,7 +152,7 @@ export function CloudBackupModal({
           title={
             <span className="inline-flex items-center gap-2">
               <Database size={16} aria-hidden focusable={false} />
-              Backups
+              {t("cloudBackup.title")}
             </span>
           }
           onClose={busy ? () => {} : onClose}
@@ -147,9 +161,9 @@ export function CloudBackupModal({
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <p className="text-xs text-muted">
-                Timestamped snapshots written into the {labelFor(adapter.id)}{" "}
-                backups folder. Restoring a backup saves your current file as a
-                safety net first.
+                {t("cloudBackup.introHint", {
+                  name: labelFor(adapter.id, t),
+                })}
               </p>
               <button
                 type="button"
@@ -158,7 +172,7 @@ export function CloudBackupModal({
                 className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload size={14} aria-hidden focusable={false} />
-                Back up now
+                {t("cloudBackup.backUpNow")}
               </button>
             </div>
 
@@ -172,7 +186,7 @@ export function CloudBackupModal({
                 }
               >
                 {status.kind === "loading"
-                  ? "Loading backups…"
+                  ? t("cloudBackup.loadingBackups")
                   : status.kind === "working"
                     ? status.message
                     : status.kind === "ok"
@@ -183,7 +197,7 @@ export function CloudBackupModal({
 
             {entries.length === 0 && status.kind !== "loading" ? (
               <p className="rounded border border-line bg-surface-2 px-3 py-6 text-center text-xs text-muted">
-                No backups yet. Press &quot;Back up now&quot; to create one.
+                {t("cloudBackup.none")}
               </p>
             ) : (
               <ul className="flex flex-col gap-1.5">
@@ -207,27 +221,26 @@ export function CloudBackupModal({
             disabled={busy}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Close
+            {t("common.close")}
           </button>
         </Modal.Footer>
       </Modal>
       <ConfirmDialog
         open={restorePrompt !== null}
-        title="Restore from backup?"
+        title={t("cloudBackup.restoreTitle")}
         description={
           restorePrompt ? (
             <p>
-              The current budget will be replaced with{" "}
+              {t("cloudBackup.restoreHint")}{" "}
               <span className="font-mono text-path">
                 {restorePrompt.filename}
               </span>
-              . Your current file will be saved as an auto-backup first.
             </p>
           ) : null
         }
         actions={[
           {
-            label: "Restore",
+            label: t("cloudBackup.restore"),
             tone: "danger",
             onSelect: () => restorePrompt && void handleRestore(restorePrompt),
           },
@@ -249,6 +262,7 @@ function BackupRow({
   onRestore: () => void;
   onDownload: () => void;
 }) {
+  const t = useT();
   return (
     <li className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-0.5">
@@ -256,23 +270,28 @@ function BackupRow({
           <span className="font-mono text-xs text-path">{entry.filename}</span>
           {entry.autoCreated && (
             <span
-              title="Created automatically before a restore"
+              title={t("cloudBackup.autoCreated")}
               className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10px] text-muted"
             >
               <History size={10} aria-hidden focusable={false} />
-              auto
+              {t("cloudBackup.autoBadge")}
             </span>
           )}
           {entry.encrypted && (
             <span className="rounded border border-line px-1.5 py-0.5 text-[10px] text-muted">
-              encrypted
+              {t("cloudBackup.encryptedBadge")}
             </span>
           )}
         </div>
         <span className="text-xs text-muted">
           {formatTimestamp(entry.createdAt)} ·{" "}
-          {countLabel(entry.accountCount, "account")} ·{" "}
-          {countLabel(entry.entryCount, "entry", "entries")}
+          {entry.accountCount === 1
+            ? t("cloudBackup.accountOne", { n: entry.accountCount })
+            : t("cloudBackup.accountOther", { n: entry.accountCount })}{" "}
+          ·{" "}
+          {entry.entryCount === 1
+            ? t("cloudBackup.entryOne", { n: entry.entryCount })
+            : t("cloudBackup.entryOther", { n: entry.entryCount })}
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -280,8 +299,10 @@ function BackupRow({
           type="button"
           onClick={onDownload}
           disabled={disabled}
-          aria-label={`Download ${entry.filename}`}
-          title="Download"
+          aria-label={t("cloudBackup.downloadAria", {
+            filename: entry.filename,
+          })}
+          title={t("cloudBackup.download")}
           className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-line bg-transparent text-muted hover:border-link hover:text-link disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download size={14} aria-hidden focusable={false} />
@@ -293,7 +314,7 @@ function BackupRow({
           className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1 text-xs text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RotateCcw size={12} aria-hidden focusable={false} />
-          Restore
+          {t("cloudBackup.restore")}
         </button>
       </div>
     </li>
@@ -317,11 +338,6 @@ async function handleDownload(
   URL.revokeObjectURL(url);
 }
 
-function countLabel(n: number, singular: string, plural?: string): string {
-  const word = n === 1 ? singular : (plural ?? `${singular}s`);
-  return `${n} ${word}`;
-}
-
 function formatTimestamp(ms: number): string {
   const d = new Date(ms);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -331,9 +347,9 @@ function formatTimestamp(ms: number): string {
   );
 }
 
-function labelFor(id: StorageAdapter["id"]): string {
-  if (id === "dropbox") return "Dropbox";
-  if (id === "gdrive") return "Google Drive";
-  if (id === "folder") return "folder";
+function labelFor(id: StorageAdapter["id"], t: TFunction): string {
+  if (id === "dropbox") return t("backend.dropbox");
+  if (id === "gdrive") return t("backend.googleDrive");
+  if (id === "folder") return t("cloudBackup.providerFolder");
   return "";
 }

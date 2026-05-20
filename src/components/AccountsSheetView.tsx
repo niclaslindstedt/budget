@@ -21,6 +21,7 @@ import type {
   Sheet,
   UserData,
 } from "../data/types";
+import { useLang, useT } from "../i18n";
 import { formatBalance, formatShortDate } from "../utils/format";
 import { CategoryIconGlyph } from "./icons";
 
@@ -59,6 +60,8 @@ export function AccountsSheetView({
   onFindTransfers,
   onEditSheet,
 }: Props) {
+  const t = useT();
+  const lang = useLang();
   // Pre-compute every account's balance once per render. The helper
   // walks every budget item in the workspace plus every transaction,
   // so doing it inside a map() would be O(accounts²) on every keystroke
@@ -130,8 +133,8 @@ export function AccountsSheetView({
         <button
           type="button"
           onClick={() => onEditSheet(sheet.id)}
-          aria-label={`Edit ${sheet.name}`}
-          title="Edit sheet"
+          aria-label={t("accountsSheet.edit", { name: sheet.name })}
+          title={t("accountsSheet.editSheet")}
           className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
         >
           <Pencil size={14} aria-hidden focusable={false} />
@@ -140,18 +143,22 @@ export function AccountsSheetView({
 
       <section className="mb-6">
         <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
-          Accounts
+          {t("accountsSheet.title")}
         </h3>
         <div className="overflow-clip rounded border border-line bg-surface">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
                 <th className="w-10 px-2 py-1.5"></th>
-                <th className="px-2 py-1.5 text-left">Name</th>
-                <th className="hidden px-2 py-1.5 text-left md:table-cell">
-                  Bank
+                <th className="px-2 py-1.5 text-left">
+                  {t("accountsSheet.name")}
                 </th>
-                <th className="px-2 py-1.5 text-right">Balance</th>
+                <th className="hidden px-2 py-1.5 text-left md:table-cell">
+                  {t("accountsSheet.bank")}
+                </th>
+                <th className="px-2 py-1.5 text-right">
+                  {t("accountsSheet.balance")}
+                </th>
                 <th className="w-24 px-2 py-1.5"></th>
               </tr>
             </thead>
@@ -162,7 +169,7 @@ export function AccountsSheetView({
                     colSpan={5}
                     className="px-3 py-6 text-center text-xs text-muted"
                   >
-                    No accounts yet. Add one with the button below.
+                    {t("accountsSheet.noAccounts")}
                   </td>
                 </tr>
               )}
@@ -236,8 +243,10 @@ export function AccountsSheetView({
                         <button
                           type="button"
                           onClick={() => onUpdateBalance(account.id)}
-                          aria-label={`Update balance for ${account.name}`}
-                          title="Update balance"
+                          aria-label={t("accountsSheet.updateBalanceAria", {
+                            name: account.name,
+                          })}
+                          title={t("accountsSheet.updateBalanceTitle")}
                           className="cursor-pointer border-0 bg-transparent p-0 font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                         >
                           {formatBalance(balance, accountSettings)}
@@ -245,7 +254,7 @@ export function AccountsSheetView({
                       ) : (
                         <span
                           className="font-mono"
-                          title="Add a budget sheet for this account to update its balance"
+                          title={t("account.addBudgetSheetHint")}
                         >
                           {formatBalance(balance, accountSettings)}
                         </span>
@@ -256,8 +265,10 @@ export function AccountsSheetView({
                         <button
                           type="button"
                           onClick={() => onImportHistory(account.id)}
-                          aria-label={`Import history into ${account.name}`}
-                          title="Import bank history"
+                          aria-label={t("accountsSheet.importHistoryAria", {
+                            name: account.name,
+                          })}
+                          title={t("accountsSheet.importHistoryTitle")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent"
                         >
                           <Upload size={14} aria-hidden focusable={false} />
@@ -266,11 +277,15 @@ export function AccountsSheetView({
                           type="button"
                           disabled={historyCount === 0}
                           onClick={() => onViewHistory(account.id)}
-                          aria-label={`View history for ${account.name}`}
+                          aria-label={t("accountsSheet.viewHistoryAria", {
+                            name: account.name,
+                          })}
                           title={
                             historyCount === 0
-                              ? "No history imported yet"
-                              : `View ${historyCount} history entries`
+                              ? t("accountsSheet.noHistoryImported")
+                              : t("accountsSheet.viewHistoryEntries", {
+                                  n: historyCount,
+                                })
                           }
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
                         >
@@ -279,8 +294,10 @@ export function AccountsSheetView({
                         <button
                           type="button"
                           onClick={() => onEditAccount(account.id)}
-                          aria-label={`Edit ${account.name}`}
-                          title="Edit account"
+                          aria-label={t("accountsSheet.editAccountAria", {
+                            name: account.name,
+                          })}
+                          title={t("accountsSheet.editAccountTitle")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent"
                         >
                           <Pencil size={14} aria-hidden focusable={false} />
@@ -300,7 +317,7 @@ export function AccountsSheetView({
                     className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                   >
                     <Plus size={14} aria-hidden focusable={false} />
-                    Add account
+                    {t("accountsSheet.addAccount")}
                   </button>
                 </td>
               </tr>
@@ -312,7 +329,7 @@ export function AccountsSheetView({
       <section>
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className="text-xs font-bold tracking-wider uppercase text-fg-bright">
-            Transactions
+            {t("accountsSheet.transactions")}
           </h3>
           <button
             type="button"
@@ -320,15 +337,19 @@ export function AccountsSheetView({
             disabled={transferCandidateCount === 0}
             title={
               transferCandidateCount === 0
-                ? "No matching pairs in imported history"
-                : `Review ${transferCandidateCount} detected transfer pair${
-                    transferCandidateCount === 1 ? "" : "s"
-                  }`
+                ? t("accountsSheet.noTransferPairs")
+                : transferCandidateCount === 1
+                  ? t("accountsSheet.reviewTransferPairs", {
+                      n: transferCandidateCount,
+                    })
+                  : t("accountsSheet.reviewTransferPairsPlural", {
+                      n: transferCandidateCount,
+                    })
             }
             className="inline-flex cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Repeat size={11} aria-hidden focusable={false} />
-            Find transfers
+            {t("accountsSheet.findTransfers")}
             {transferCandidateCount > 0 && (
               <span className="rounded bg-accent/15 px-1 text-accent">
                 {transferCandidateCount}
@@ -340,12 +361,18 @@ export function AccountsSheetView({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
-                <th className="w-20 px-2 py-1.5 text-left">Date</th>
-                <th className="px-2 py-1.5 text-left">Description</th>
-                <th className="hidden px-2 py-1.5 text-left md:table-cell">
-                  Transfer
+                <th className="w-20 px-2 py-1.5 text-left">
+                  {t("accountsSheet.date")}
                 </th>
-                <th className="px-2 py-1.5 text-right">Amount</th>
+                <th className="px-2 py-1.5 text-left">
+                  {t("accountsSheet.description")}
+                </th>
+                <th className="hidden px-2 py-1.5 text-left md:table-cell">
+                  {t("accountsSheet.transfer")}
+                </th>
+                <th className="px-2 py-1.5 text-right">
+                  {t("accountsSheet.amount")}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -355,8 +382,7 @@ export function AccountsSheetView({
                     colSpan={4}
                     className="px-3 py-6 text-center text-xs text-muted"
                   >
-                    No transactions yet. Promote a budget row to a transaction,
-                    or use the button below.
+                    {t("accountsSheet.noTransactions")}
                   </td>
                 </tr>
               )}
@@ -376,7 +402,7 @@ export function AccountsSheetView({
                     onClick={() => onEditTransaction(tx.id)}
                   >
                     <td className="w-20 px-2 py-2 align-middle font-mono text-xs text-muted whitespace-nowrap">
-                      {formatShortDate(tx.date, settings.shortDateFormat)}
+                      {formatShortDate(tx.date, settings.shortDateFormat, lang)}
                     </td>
                     <td className="px-2 py-2 align-middle">
                       <span className="block text-fg-bright">
@@ -436,13 +462,13 @@ export function AccountsSheetView({
                     disabled={data.accounts.length < 2}
                     title={
                       data.accounts.length < 2
-                        ? "Add at least two accounts to record a transfer"
+                        ? t("accountsSheet.needTwoAccounts")
                         : undefined
                     }
                     className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ArrowLeftRight size={14} aria-hidden focusable={false} />
-                    New transaction
+                    {t("accountsSheet.newTransaction")}
                   </button>
                 </td>
               </tr>
@@ -455,6 +481,7 @@ export function AccountsSheetView({
 }
 
 function AccountChip({ account }: { account: Account | null }) {
+  const t = useT();
   return (
     <span className="inline-flex items-center gap-1 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-xs text-fg-bright">
       <span
@@ -473,7 +500,9 @@ function AccountChip({ account }: { account: Account | null }) {
           <Wallet size={10} aria-hidden focusable={false} />
         )}
       </span>
-      <span className="truncate">{account?.name ?? "Unknown"}</span>
+      <span className="truncate">
+        {account?.name ?? t("accountsSheet.unknown")}
+      </span>
     </span>
   );
 }

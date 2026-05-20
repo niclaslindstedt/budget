@@ -21,6 +21,7 @@ import type {
   UserData,
 } from "../../data/types";
 import { useEscapeKey, usePointerOutside } from "../../hooks";
+import { useT, type TFunction } from "../../i18n";
 import type { StorageAdapter } from "../../storage/adapter";
 import type {
   BackendId,
@@ -118,13 +119,29 @@ type TabDef = {
   icon: LucideIcon;
 };
 
-const TAB_DEFS: TabDef[] = [
-  { id: "general", label: "General", icon: Sliders },
-  { id: "format", label: "Format", icon: Hash },
-  { id: "storage", label: "Storage", icon: HardDrive },
-  { id: "categories", label: "Categories", icon: Tag },
-  { id: "memory", label: "Memory", icon: SettingsIcon },
+const TAB_ICONS: Record<TabId, LucideIcon> = {
+  general: Sliders,
+  format: Hash,
+  storage: HardDrive,
+  categories: Tag,
+  memory: SettingsIcon,
+};
+
+const TAB_IDS: readonly TabId[] = [
+  "general",
+  "format",
+  "storage",
+  "categories",
+  "memory",
 ];
+
+function useTabDefs(t: TFunction): TabDef[] {
+  return TAB_IDS.map((id) => ({
+    id,
+    label: t(`settings.tabs.${id}` as const),
+    icon: TAB_ICONS[id],
+  }));
+}
 
 export function SettingsModal({
   open,
@@ -349,12 +366,14 @@ function TabSidebar({
   activeTab: TabId;
   onSelect: (id: TabId) => void;
 }) {
+  const t = useT();
+  const tabs = useTabDefs(t);
   return (
     <nav
-      aria-label="Settings sections"
+      aria-label={t("settings.chooseSection")}
       className="hidden w-40 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-surface-3 p-2 sm:flex"
     >
-      {TAB_DEFS.map((tab) => {
+      {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = tab.id === activeTab;
         return (
@@ -391,6 +410,8 @@ function SettingsHeader({
   onSelectTab: (id: TabId) => void;
   onClose: () => void;
 }) {
+  const t = useT();
+  const tabs = useTabDefs(t);
   const [menuOpen, setMenuOpen] = useState(false);
   const burgerRef = useRef<HTMLDivElement | null>(null);
   const close = useCallback(() => setMenuOpen(false), []);
@@ -412,7 +433,7 @@ function SettingsHeader({
             onClick={() => setMenuOpen((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            aria-label="Choose settings section"
+            aria-label={t("settings.chooseSection")}
             className="-ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
           >
             <Menu size={18} aria-hidden focusable={false} />
@@ -422,7 +443,7 @@ function SettingsHeader({
               role="menu"
               className="absolute left-0 top-full z-30 mt-1 flex w-48 flex-col gap-0.5 rounded border border-line bg-surface-3 p-2 shadow-lg"
             >
-              {TAB_DEFS.map((tab) => {
+              {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = tab.id === activeTab;
                 return (
@@ -453,13 +474,13 @@ function SettingsHeader({
           id="settings-title"
           className="text-sm font-bold tracking-wide text-fg-bright"
         >
-          Settings
+          {t("settings.title")}
         </h2>
       </div>
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label={t("common.close")}
         className="-mr-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
       >
         <X size={20} aria-hidden focusable={false} />
@@ -480,6 +501,7 @@ function SettingsFooter({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const t = useT();
   return (
     <footer
       className="flex shrink-0 flex-col gap-3 border-t border-line bg-surface-3 px-4 pt-3"
@@ -493,7 +515,7 @@ function SettingsFooter({
           onClick={onReset}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Reset to defaults
+          {t("common.resetToDefaults")}
         </button>
         <div className="flex items-center gap-2">
           <button
@@ -501,25 +523,17 @@ function SettingsFooter({
             onClick={onCancel}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
             onClick={onSave}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
           >
-            Save
+            {t("common.save")}
           </button>
         </div>
       </div>
-      {/* Opens in a new tab so an in-flight settings edit isn't lost
-          when the user navigates away to read these. The schema page
-          exposes the JSON Schema for the exported data so an LLM (or
-          any other tool) handed a `budget-*.json` file can be pointed
-          at a stable URL describing its shape. The changelog page is
-          a chronological list of release notes — newest first — that
-          mirrors the "What's new" popup that auto-opens after an
-          upgrade. */}
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs text-muted">
         <a
           href="/privacy"
@@ -527,7 +541,7 @@ function SettingsFooter({
           rel="noreferrer"
           className="text-link hover:underline"
         >
-          Privacy policy
+          {t("settings.footer.privacy")}
         </a>
         <span aria-hidden>·</span>
         <a
@@ -536,7 +550,7 @@ function SettingsFooter({
           rel="noreferrer"
           className="text-link hover:underline"
         >
-          Data schema
+          {t("settings.footer.schema")}
         </a>
         <span aria-hidden>·</span>
         <a
@@ -545,7 +559,7 @@ function SettingsFooter({
           rel="noreferrer"
           className="text-link hover:underline"
         >
-          Changelog
+          {t("settings.footer.changelog")}
         </a>
         <DonateLink />
       </div>
@@ -561,6 +575,7 @@ function SettingsFooter({
 // so the button reads as warm regardless of which donate target the
 // maintainer points it at.
 function DonateLink() {
+  const t = useT();
   const url = import.meta.env.VITE_DONATE_URL?.trim();
   if (!url) return null;
   return (
@@ -578,7 +593,7 @@ function DonateLink() {
           fill="currentColor"
           aria-hidden
         />
-        Donate
+        {t("settings.storage.donate")}
       </a>
     </>
   );

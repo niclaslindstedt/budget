@@ -3,6 +3,7 @@ import { Minus, Plus } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
 import { useDesktopAutoFocus } from "../hooks";
+import { useLang, useT } from "../i18n";
 import type {
   Category,
   EntryType,
@@ -109,6 +110,8 @@ export function MatchRuleModal({
   onDelete,
   onCreateType,
 }: Props) {
+  const t = useT();
+  const lang = useLang();
   const isEdit = existing !== null;
 
   const [pattern, setPattern] = useState("");
@@ -299,19 +302,19 @@ export function MatchRuleModal({
       size="max-w-2xl"
     >
       <Modal.Header
-        title={isEdit ? "Edit pattern rule" : "Label by pattern"}
+        title={
+          isEdit ? t("matchRule.titleEdit") : t("matchRule.titleLabelByPattern")
+        }
         onClose={onClose}
       />
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">
-          Label every history entry whose description matches this pattern. Use{" "}
-          <code className="text-flag">*</code> for any run of characters and{" "}
-          <code className="text-flag">?</code> for a single character; matching
-          is case-insensitive. Applies to past entries and future imports.
+          {t("matchRule.intro")} {t("matchRule.introWild")}{" "}
+          <code className="text-flag">*</code> {t("matchRule.introOne")}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Pattern</span>
+            <span className="text-xs text-muted">{t("matchRule.pattern")}</span>
             <input
               ref={patternRef}
               type="text"
@@ -319,21 +322,23 @@ export function MatchRuleModal({
               onChange={(e) => setPattern(e.target.value)}
               spellCheck={false}
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
-              placeholder="*App Store*"
+              placeholder={t("matchRule.patternPlaceholder")}
             />
           </label>
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Description (optional)</span>
+            <span className="text-xs text-muted">
+              {t("matchRule.descriptionOptional")}
+            </span>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-              placeholder="Leave blank to keep the bank's text"
+              placeholder={t("matchRule.descriptionPlaceholder")}
             />
           </label>
           <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Type</span>
+            <span className="text-xs text-muted">{t("matchRule.type")}</span>
             <TypePicker
               variant="field"
               types={types}
@@ -347,18 +352,22 @@ export function MatchRuleModal({
         </div>
 
         <fieldset className="mt-4 flex flex-col gap-3 rounded border border-line bg-surface-3 p-3">
-          <legend className="px-1 text-xs text-muted">Filters</legend>
+          <legend className="px-1 text-xs text-muted">
+            {t("matchRule.filters")}
+          </legend>
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Amount</span>
+            <span className="text-xs text-muted">
+              {t("matchRule.amountLabel")}
+            </span>
             <SegmentedRadio
               name="amount-sign"
               value={signMode}
               onChange={(v) => setSignMode(v as SignMode)}
               options={[
-                { value: "any", label: "Any" },
-                { value: "negative", label: "Negative" },
-                { value: "positive", label: "Positive" },
-                { value: "range", label: "Range" },
+                { value: "any", label: t("matchRule.amountAny") },
+                { value: "negative", label: t("matchRule.amountNegative") },
+                { value: "positive", label: t("matchRule.amountPositive") },
+                { value: "range", label: t("matchRule.amountRange") },
               ]}
             />
             {isRangeMode && (
@@ -367,41 +376,45 @@ export function MatchRuleModal({
                   <SignedAmountInput
                     value={amountMinText}
                     negative={amountMinNegative}
-                    placeholder="From"
+                    placeholder={t("matchRule.amountFrom")}
                     settings={settings}
                     onChangeText={setAmountMinText}
                     onToggleSign={() => setAmountMinNegative((s) => !s)}
-                    ariaLabel="Amount from"
+                    ariaLabel={t("matchRule.amountFromAria")}
                   />
-                  <span className="text-xs text-muted">to</span>
+                  <span className="text-xs text-muted">
+                    {t("matchRule.amountToLabel")}
+                  </span>
                   <SignedAmountInput
                     value={amountMaxText}
                     negative={amountMaxNegative}
-                    placeholder="To"
+                    placeholder={t("matchRule.amountTo")}
                     settings={settings}
                     onChangeText={setAmountMaxText}
                     onToggleSign={() => setAmountMaxNegative((s) => !s)}
-                    ariaLabel="Amount to"
+                    ariaLabel={t("matchRule.amountToAria")}
                   />
                 </div>
                 {rangeInverted && (
                   <p className="text-xs text-danger">
-                    "From" must be less than or equal to "To".
+                    {t("matchRule.rangeInvertedHint")}
                   </p>
                 )}
               </div>
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Transfers</span>
+            <span className="text-xs text-muted">
+              {t("matchRule.transferFilter")}
+            </span>
             <SegmentedRadio
               name="transfer-filter"
               value={transferFilter}
               onChange={(v) => setTransferFilter(v as TransferFilter)}
               options={[
-                { value: "any", label: "Any" },
-                { value: "exclude", label: "Exclude" },
-                { value: "only", label: "Only" },
+                { value: "any", label: t("matchRule.transferAny") },
+                { value: "exclude", label: t("matchRule.transferExclude") },
+                { value: "only", label: t("matchRule.transferOnly") },
               ]}
             />
           </div>
@@ -410,23 +423,25 @@ export function MatchRuleModal({
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between">
             <h3 className="text-xs font-bold tracking-wider uppercase text-muted">
-              Preview
+              {t("matchRule.preview")}
             </h3>
             <span className="text-xs text-muted">
-              {matches.length} {matches.length === 1 ? "match" : "matches"}
+              {matches.length === 1
+                ? t("matchRule.matchesOne", { n: matches.length })
+                : t("matchRule.matchesOther", { n: matches.length })}
               {matches.length > shownMatches.length
-                ? ` (showing first ${shownMatches.length})`
+                ? t("matchRule.showingFirst", { n: shownMatches.length })
                 : ""}
             </span>
           </div>
           <div className="overflow-hidden rounded border border-line bg-surface-2">
             {!compiled ? (
               <p className="px-3 py-3 text-center text-xs text-muted">
-                Type a pattern to preview matches.
+                {t("matchRule.typePatternToPreview")}
               </p>
             ) : shownMatches.length === 0 ? (
               <p className="px-3 py-3 text-center text-xs text-muted">
-                No history entries match.
+                {t("matchRule.noHistoryMatches")}
               </p>
             ) : (
               <ul className="divide-y divide-line text-xs">
@@ -438,7 +453,7 @@ export function MatchRuleModal({
                     }`}
                   >
                     <span className="w-12 font-mono text-muted">
-                      {formatShortDate(e.date, settings.shortDateFormat)}
+                      {formatShortDate(e.date, settings.shortDateFormat, lang)}
                     </span>
                     <span className="flex-1 truncate text-fg">
                       {e.description}
@@ -464,7 +479,7 @@ export function MatchRuleModal({
             onClick={onDelete}
             className="mr-auto cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:border-danger hover:text-danger"
           >
-            Delete rule
+            {t("matchRule.delete")}
           </button>
         )}
         <button
@@ -472,7 +487,7 @@ export function MatchRuleModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -480,7 +495,9 @@ export function MatchRuleModal({
           disabled={!canSave}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isEdit ? "Save" : `Label ${matches.length}`}
+          {isEdit
+            ? t("common.save")
+            : t("matchRule.labelMatchesCount", { n: matches.length })}
         </button>
       </Modal.Footer>
     </Modal>

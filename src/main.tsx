@@ -5,6 +5,7 @@ import { App } from "./App.tsx";
 import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { SchemaPage } from "./components/SchemaPage";
+import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
 import { BUILD_LABEL } from "./utils/build-env";
 import { announceDebugHint } from "./utils/debug";
@@ -39,14 +40,16 @@ const isChangelog = path.endsWith("/changelog") || path === "/changelog";
 
 createRoot(rootElement).render(
   <StrictMode>
-    {isSchema ? (
-      <SchemaPage />
-    ) : isPrivacy ? (
-      <PrivacyPage />
-    ) : isChangelog ? (
-      <ChangelogPage />
-    ) : (
-      <App />
-    )}
+    <LanguageRoot>
+      {isSchema ? (
+        <SchemaPage />
+      ) : isPrivacy ? (
+        <PrivacyPage />
+      ) : isChangelog ? (
+        <ChangelogPage />
+      ) : (
+        <App />
+      )}
+    </LanguageRoot>
   </StrictMode>,
 );

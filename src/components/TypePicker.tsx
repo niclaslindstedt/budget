@@ -8,6 +8,7 @@ import {
 } from "../data/constants";
 import type { Category, CategoryIcon, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
+import { useT } from "../i18n";
 import { CategoryChip } from "./CategoryPicker";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
@@ -56,8 +57,10 @@ export function TypePicker({
   onCreate,
   usageById,
   variant = "field",
-  placeholder = "Pick a type…",
+  placeholder,
 }: Props) {
+  const t = useT();
+  const placeholderText = placeholder ?? t("type.pickTypeEllipsis");
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -110,7 +113,7 @@ export function TypePicker({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={!selected && isChip ? "Add type" : undefined}
+        aria-label={!selected && isChip ? t("type.addType") : undefined}
       >
         {selected ? (
           isChip ? (
@@ -143,7 +146,7 @@ export function TypePicker({
         ) : (
           <span className="inline-flex items-center gap-2 text-muted">
             <Tag size={14} aria-hidden focusable={false} />
-            <span>{placeholder}</span>
+            <span>{placeholderText}</span>
           </span>
         )}
         {showChevron && (
@@ -172,7 +175,9 @@ export function TypePicker({
         ) : (
           <ul role="listbox" className="max-h-72 overflow-auto py-1">
             {sortedTypes.length === 0 && (
-              <li className="px-3 py-2 text-xs text-muted">No types yet.</li>
+              <li className="px-3 py-2 text-xs text-muted">
+                {t("type.noTypesYet")}
+              </li>
             )}
             {sortedTypes.map((t) => (
               <li key={t.id}>
@@ -203,7 +208,7 @@ export function TypePicker({
                   className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                 >
                   <X size={12} aria-hidden focusable={false} />
-                  Clear type
+                  {t("type.clearType")}
                 </button>
               </li>
             )}
@@ -214,7 +219,7 @@ export function TypePicker({
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <Plus size={14} aria-hidden focusable={false} />
-                New type
+                {t("type.newType")}
               </button>
             </li>
           </ul>
@@ -259,6 +264,7 @@ function TypeCreator({
   onCancel: () => void;
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(CATEGORY_COLORS[0]);
   const [glyph, setGlyph] = useState<CategoryIcon>("tag");
@@ -284,7 +290,7 @@ function TypeCreator({
   return (
     <div className="flex flex-col gap-2 p-3">
       <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>Name</span>
+        <span>{t("type.name")}</span>
         <input
           ref={nameRef}
           type="text"
@@ -297,11 +303,11 @@ function TypeCreator({
               handleSubmit();
             }
           }}
-          placeholder="Mortgage"
+          placeholder={t("type.namePlaceholder")}
         />
       </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Category</span>
+        <span>{t("type.category")}</span>
         <CategorySelector
           categories={categories}
           value={categoryId}
@@ -309,7 +315,7 @@ function TypeCreator({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Color</span>
+        <span>{t("type.color")}</span>
         <ColorPalette
           colors={CATEGORY_COLORS}
           value={color}
@@ -318,7 +324,7 @@ function TypeCreator({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Glyph</span>
+        <span>{t("type.glyph")}</span>
         <GlyphGrid
           icons={TYPE_GLYPH_NAMES}
           value={glyph}
@@ -332,7 +338,7 @@ function TypeCreator({
           onClick={onCancel}
           className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -340,7 +346,7 @@ function TypeCreator({
           disabled={!name.trim()}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Create
+          {t("type.create")}
         </button>
       </div>
     </div>
@@ -360,6 +366,7 @@ function CategorySelector({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
@@ -374,7 +381,7 @@ function CategorySelector({
         {selected ? (
           <CategoryChip category={selected} compact />
         ) : (
-          <span className="text-muted">Pick a category…</span>
+          <span className="text-muted">{t("type.pickCategoryEllipsis")}</span>
         )}
         <ChevronDown
           size={12}

@@ -1,5 +1,7 @@
 import { Copy, MoveRight, Pencil, Trash2, X } from "lucide-react";
 
+import { useT } from "../i18n";
+
 type Props = {
   count: number;
   onEdit: () => void;
@@ -23,6 +25,7 @@ export function BulkActionBar({
   onCopy,
   onCancel,
 }: Props) {
+  const t = useT();
   const disabled = count === 0;
   return (
     <div
@@ -32,7 +35,7 @@ export function BulkActionBar({
       <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-line bg-surface-2 px-3 py-1.5 shadow-2xl backdrop-blur">
         <span className="px-2 text-xs font-bold tracking-wider text-fg-bright tabular-nums uppercase">
           {count}
-          <span className="ml-1 text-muted">selected</span>
+          <span className="ml-1 text-muted">{t("bulkBar.selectedSuffix")}</span>
         </span>
         <span aria-hidden className="mx-1 h-5 w-px bg-line" />
         <button
@@ -40,8 +43,8 @@ export function BulkActionBar({
           className={`${iconButton} text-accent`}
           onClick={onEdit}
           disabled={disabled}
-          aria-label="Edit selected"
-          title="Edit"
+          aria-label={t("bulkBar.editSelected")}
+          title={t("bulkBar.edit")}
         >
           <Pencil size={18} aria-hidden focusable={false} />
         </button>
@@ -50,8 +53,8 @@ export function BulkActionBar({
           className={`${iconButton} text-meta`}
           onClick={onMove}
           disabled={disabled}
-          aria-label="Move selected to another month"
-          title="Move"
+          aria-label={t("bulkBar.moveSelected")}
+          title={t("bulkBar.move")}
         >
           <MoveRight size={18} aria-hidden focusable={false} />
         </button>
@@ -60,8 +63,8 @@ export function BulkActionBar({
           className={`${iconButton} text-link`}
           onClick={onCopy}
           disabled={disabled}
-          aria-label="Copy selected to other months"
-          title="Copy"
+          aria-label={t("bulkBar.copySelected")}
+          title={t("bulkBar.copy")}
         >
           <Copy size={18} aria-hidden focusable={false} />
         </button>
@@ -70,8 +73,8 @@ export function BulkActionBar({
           className={`${iconButton} text-danger`}
           onClick={onDelete}
           disabled={disabled}
-          aria-label="Delete selected"
-          title="Delete"
+          aria-label={t("bulkBar.deleteSelected")}
+          title={t("bulkBar.delete")}
         >
           <Trash2 size={18} aria-hidden focusable={false} />
         </button>
@@ -80,8 +83,8 @@ export function BulkActionBar({
           type="button"
           className={`${iconButton} text-muted`}
           onClick={onCancel}
-          aria-label="Cancel selection"
-          title="Cancel"
+          aria-label={t("bulkBar.cancelSelection")}
+          title={t("bulkBar.cancel")}
         >
           <X size={18} aria-hidden focusable={false} />
         </button>

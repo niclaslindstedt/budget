@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 
 import type { FloatingPlacement } from "../hooks";
+import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
 
 // Right-anchored so the popover hugs the trigger button, which sits
@@ -19,6 +20,7 @@ const PLACEMENT: FloatingPlacement = {
 // the same primitives but at different fidelity, so we don't try to
 // keep them in sync programmatically.
 export function FormulaHelpButton() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -30,8 +32,8 @@ export function FormulaHelpButton() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label="Formula help"
-        title="What can I write here?"
+        aria-label={t("formula.helpAria")}
+        title={t("formula.helpButtonTitle")}
         className="field-input flex h-full cursor-pointer items-center justify-center rounded border border-line bg-surface-2 px-2 py-1.5 text-muted hover:border-accent hover:text-fg"
       >
         <HelpCircle size={14} aria-hidden focusable={false} />
@@ -43,28 +45,28 @@ export function FormulaHelpButton() {
         placement={PLACEMENT}
       >
         <div className="max-h-96 overflow-auto px-3 py-2 text-xs text-fg">
-          <p className="mb-2 text-muted">
-            A formula computes the row's amount at render time. Numbers,
-            arithmetic (<code className="font-mono">+ - * /</code>),
-            parentheses, variables, and the functions below all work.
-          </p>
-          <Section title="Variables">
+          <p className="mb-2 text-muted">{t("formula.summary")}</p>
+          <Section title={t("formula.variables")}>
             <p className="text-muted">
-              Each variable reads from the row's own month. Pick from the{" "}
-              <strong className="text-fg">Variables</strong> dropdown to insert
-              one — it renders as an orange pill that backspace removes in one
-              step.
+              {t("formula.variablesIntro")}{" "}
+              <strong className="text-fg">
+                {t("formula.variablesDropdown")}
+              </strong>{" "}
+              {t("formula.variablesIntroEnd")}
             </p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4 font-mono text-[11px]">
               <li>
                 <span className="text-flag">endOfMonthBalance</span>
-                <span className="text-muted"> — closing balance</span>
+                <span className="text-muted">
+                  {" "}
+                  {t("formula.endOfMonthBalanceHint")}
+                </span>
               </li>
               <li>
                 <span className="text-flag">balanceBefore</span>
                 <span className="text-muted">
                   {" "}
-                  — running balance just before this row
+                  {t("formula.balanceBeforeHint")}
                 </span>
               </li>
               <li>
@@ -82,21 +84,16 @@ export function FormulaHelpButton() {
               </li>
             </ul>
           </Section>
-          <Section title="Other sheets">
-            <p className="text-muted">
-              Read a variable from a different sheet:
-            </p>
+          <Section title={t("formula.otherSheets")}>
+            <p className="text-muted">{t("formula.otherSheetsIntro")}</p>
             <pre className="mt-1 overflow-x-auto rounded border border-line bg-surface-3 px-2 py-1 font-mono text-[11px]">
               <span className="text-pipe">sheet</span>(
               <span className="text-path">&quot;Wife&quot;</span>,{" "}
               <span className="text-flag">endOfMonthBalance</span>)
             </pre>
-            <p className="mt-1 text-muted">
-              The sheet name renders as a cyan pill, the variable as an orange
-              pill — both are single-character deletions.
-            </p>
+            <p className="mt-1 text-muted">{t("formula.otherSheetsAfter")}</p>
           </Section>
-          <Section title="Functions">
+          <Section title={t("formula.functions")}>
             <ul className="list-disc space-y-0.5 pl-4 font-mono text-[11px]">
               <li>
                 <span className="text-pipe">min</span>(a, b, …),{" "}
@@ -117,7 +114,7 @@ export function FormulaHelpButton() {
               </li>
             </ul>
           </Section>
-          <Section title="Examples">
+          <Section title={t("formula.examples")}>
             <ul className="list-disc space-y-1 pl-4 font-mono text-[11px]">
               <li>
                 <span className="text-flag">endOfMonthBalance</span> - 5000
@@ -134,14 +131,14 @@ export function FormulaHelpButton() {
             </ul>
           </Section>
           <p className="mt-2 text-muted">
-            Full reference: see the{" "}
+            {t("formula.fullReference")}{" "}
             <a
               href="/schema"
               target="_blank"
               rel="noopener noreferrer"
               className="text-link underline"
             >
-              data schema
+              {t("formula.dataSchemaLink")}
             </a>
             .
           </p>

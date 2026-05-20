@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, FolderOpen, HardDrive } from "lucide-react";
 
 import type { FloatingPlacement } from "../hooks";
+import { useT } from "../i18n";
 import type { BackendId } from "../storage/backend-preference";
 import { isDropboxConfigured } from "../storage/dropbox-adapter";
 import { isFolderBackendAvailable } from "../storage/folder-handle-store";
@@ -33,6 +34,7 @@ function isLocalBackend(id: BackendId): boolean {
 }
 
 export function BackendPicker({ value, onSelect }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -44,39 +46,39 @@ export function BackendPicker({ value, onSelect }: Props) {
     return [
       {
         id: "browser",
-        label: "This browser",
+        label: t("backend.thisBrowser"),
         Glyph: ({ size = 16 }) => (
           <HardDrive size={size} aria-hidden focusable={false} />
         ),
       },
       {
         id: "folder",
-        label: "Local folder",
+        label: t("backend.localFolder"),
         Glyph: ({ size = 16 }) => (
           <FolderOpen size={size} aria-hidden focusable={false} />
         ),
         disabledReason: folderAvailable
           ? undefined
-          : "Requires Chrome, Edge, or another Chromium browser.",
+          : t("backend.folderUnsupported"),
       },
       {
         id: "dropbox",
-        label: "Dropbox",
+        label: t("backend.dropbox"),
         Glyph: ({ size = 16 }) => <DropboxGlyph size={size} />,
         disabledReason: dropboxConfigured
           ? undefined
-          : "Not configured for this build (set VITE_DROPBOX_APP_KEY).",
+          : t("backend.dropboxNotConfigured"),
       },
       {
         id: "gdrive",
-        label: "Google Drive",
+        label: t("backend.googleDrive"),
         Glyph: ({ size = 16 }) => <GoogleDriveGlyph size={size} />,
         disabledReason: gdriveConfigured
           ? undefined
-          : "Not configured for this build (set VITE_GOOGLE_CLIENT_ID).",
+          : t("backend.gdriveNotConfigured"),
       },
     ];
-  }, []);
+  }, [t]);
 
   const selected = options.find((o) => o.id === value) ?? options[0];
 

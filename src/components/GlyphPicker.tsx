@@ -4,6 +4,7 @@ import { ChevronDown, Repeat } from "lucide-react";
 import { CATEGORY_ICON_NAMES } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
 import { useEscapeKey, usePointerOutside } from "../hooks";
+import { useT } from "../i18n";
 import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
@@ -32,12 +33,16 @@ export function GlyphPicker({
   value,
   onChange,
   defaultIcon,
-  defaultLabel = defaultIcon
-    ? `Default (${defaultIcon})`
-    : "Default (recurring)",
+  defaultLabel,
   icons = CATEGORY_ICON_NAMES,
   tintColor,
 }: Props) {
+  const t = useT();
+  const resolvedDefaultLabel =
+    defaultLabel ??
+    (defaultIcon
+      ? t("glyph.defaultPrefix", { name: defaultIcon })
+      : t("glyph.defaultRecurring"));
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -58,7 +63,7 @@ export function GlyphPicker({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label="Choose glyph"
+        aria-label={t("glyph.chooseGlyph")}
       >
         <span className="inline-flex items-center gap-2 text-fg">
           {value === null ? (
@@ -87,7 +92,7 @@ export function GlyphPicker({
             />
           )}
           <span className="text-xs text-muted">
-            {value === null ? defaultLabel : value}
+            {value === null ? resolvedDefaultLabel : value}
           </span>
         </span>
         <ChevronDown
@@ -100,7 +105,7 @@ export function GlyphPicker({
       {open && (
         <div
           role="dialog"
-          aria-label="Glyph"
+          aria-label={t("glyph.glyphDialog")}
           className="absolute z-30 mt-1 w-full rounded border border-line bg-surface-2 p-2 shadow-lg"
         >
           <GlyphGrid
@@ -111,8 +116,8 @@ export function GlyphPicker({
             defaultSlot={{
               icon: defaultIcon ?? null,
               label: defaultIcon
-                ? `Default ${defaultIcon} glyph`
-                : "Default recurring glyph",
+                ? t("glyph.defaultGlyphLabel", { name: defaultIcon })
+                : t("glyph.defaultRecurringGlyphLabel"),
               selected: value === null,
               onSelect: () => pick(null),
               render: () =>

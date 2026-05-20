@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
+import { detectInitialLanguage } from "../i18n/locale";
 import { debug } from "../utils/debug";
 import { parseUserData } from "./file";
 
@@ -16,7 +17,7 @@ export function freshUserData(): UserData {
   // data living in their export.
   const sheet = createDefaultSheet("Sheet 1");
   return {
-    version: 26,
+    version: 27,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -32,7 +33,11 @@ export function freshUserData(): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    // Auto-detect language from the browser only for genuinely new
+    // installs. Existing buckets keep whatever the v26 → v27 migration
+    // assigned ("en") so a returning user's UI doesn't flip when they
+    // upgrade.
+    settings: { ...DEFAULT_SETTINGS, language: detectInitialLanguage() },
   };
 }
 

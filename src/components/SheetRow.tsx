@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Pencil, Repeat, Tags, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
+import { useT } from "../i18n";
 import type {
   Category,
   CellValue,
@@ -75,6 +76,7 @@ export function SheetRow({
   onMatchRuleRequest,
   onToggleSelect,
 }: Props) {
+  const tr = useT();
   const entryType = useMemo<EntryType | null>(
     () =>
       row.typeId ? (types.find((t) => t.id === row.typeId) ?? null) : null,
@@ -359,8 +361,8 @@ export function SheetRow({
             <button
               type="button"
               className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label="Label by pattern"
-              title="Label every history entry matching a wildcard pattern"
+              aria-label={tr("cell.labelByPattern")}
+              title={tr("cell.labelByPatternTitle")}
               onClick={() => {
                 setSwiped(false);
                 onMatchRuleRequest(row);
@@ -376,18 +378,18 @@ export function SheetRow({
               className="action-btn action-btn-transfer inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white disabled:cursor-not-allowed disabled:opacity-40 md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
               aria-label={
                 isTransaction
-                  ? "Edit transaction"
+                  ? tr("cell.editTransaction")
                   : canTransfer
-                    ? "Make transaction"
-                    : "Attach this budget to an account to enable transfers"
+                    ? tr("cell.makeTransaction")
+                    : tr("cell.needAccountForTransfer")
               }
               title={
                 !canTransfer
-                  ? "Attach this budget to an account to enable transfers"
+                  ? tr("cell.needAccountForTransfer")
                   : isTransaction
-                    ? "Edit transaction"
+                    ? tr("cell.editTransaction")
                     : !transferEnabled
-                      ? "Set a description and amount first"
+                      ? tr("cell.needDescAndAmount")
                       : undefined
               }
               onClick={() => {
@@ -403,7 +405,7 @@ export function SheetRow({
             <button
               type="button"
               className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label="Edit row"
+              aria-label={tr("cell.editRow")}
               onClick={() => {
                 setSwiped(false);
                 onEditRowRequest(row);
@@ -416,7 +418,7 @@ export function SheetRow({
             <button
               type="button"
               className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
-              aria-label="Delete row"
+              aria-label={tr("cell.deleteRow")}
               onClick={() => onDeleteRequest(row)}
             >
               <Trash2 size={16} aria-hidden focusable={false} />

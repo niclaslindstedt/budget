@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import type { TransferCandidate } from "../data/transfer-collapse";
 import { detectTransferCandidates } from "../data/transfer-collapse";
 import type { Account, HistoryEntry, Settings } from "../data/types";
+import { useLang, useT } from "../i18n";
 import { formatNumber, withCurrency } from "../utils/format";
 import { formatShortDate } from "../utils/format";
 import { Modal } from "./Modal";
@@ -44,6 +45,7 @@ export function TransferCollapseModal({
   onCollapse,
   onDismiss,
 }: Props) {
+  const t = useT();
   const dismissed = useMemo(
     () => new Set(dismissedPairKeys),
     [dismissedPairKeys],
@@ -80,21 +82,18 @@ export function TransferCollapseModal({
       labelledBy="transfer-collapse-title"
       size="max-w-2xl"
     >
-      <Modal.Header title="Cross-account transfers" onClose={onClose} />
+      <Modal.Header title={t("transferCollapse.title")} onClose={onClose} />
       <Modal.Body>
         {!hasAny ? (
           <p className="text-sm text-muted">
             {candidates.length === 0
-              ? "No matching pairs found in your imported history. A pair must have the same magnitude, opposite signs, and dates within three days."
-              : "Every detected pair has been skipped in this session. Close the dialog to dismiss it."}
+              ? t("transferCollapse.noMatches")
+              : t("transferCollapse.allSkipped")}
           </p>
         ) : (
           <>
             <p className="mb-3 text-xs text-muted">
-              Mirror pairs found in your imported history. Collapse merges them
-              into a single transfer transaction and hides both source entries;
-              Skip leaves the pair untouched for this session; Never hides the
-              pair from future scans.
+              {t("transferCollapse.hint")}
             </p>
             <ul className="flex flex-col gap-2">
               {remaining.map((c) => (
@@ -102,10 +101,12 @@ export function TransferCollapseModal({
                   key={c.pairKey}
                   candidate={c}
                   fromName={
-                    accountNameById.get(c.fromAccountId) ?? "Unknown account"
+                    accountNameById.get(c.fromAccountId) ??
+                    t("transferCollapse.unknownAccount")
                   }
                   toName={
-                    accountNameById.get(c.toAccountId) ?? "Unknown account"
+                    accountNameById.get(c.toAccountId) ??
+                    t("transferCollapse.unknownAccount")
                   }
                   settings={settings}
                   onCollapse={() => onCollapse(c)}
@@ -126,7 +127,11 @@ export function TransferCollapseModal({
       <Modal.Footer className="justify-between">
         <span className="text-xs text-muted">
           {hasAny
-            ? `${remaining.length} pair${remaining.length === 1 ? "" : "s"} pending`
+            ? remaining.length === 1
+              ? t("transferCollapse.pairsPending", { n: remaining.length })
+              : t("transferCollapse.pairsPendingPlural", {
+                  n: remaining.length,
+                })
             : ""}
         </span>
         <div className="flex items-center gap-2">
@@ -135,7 +140,7 @@ export function TransferCollapseModal({
             onClick={onClose}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Close
+            {t("common.close")}
           </button>
           {hasAny && (
             <button
@@ -145,7 +150,7 @@ export function TransferCollapseModal({
               }}
               className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
             >
-              Collapse all
+              {t("transferCollapse.collapseAll")}
             </button>
           )}
         </div>
@@ -171,6 +176,8 @@ function PairRow({
   onSkip: () => void;
   onNever: () => void;
 }) {
+  const t = useT();
+  const lang = useLang();
   const formattedAmount = withCurrency(
     formatNumber(candidate.amount, settings),
     settings,
@@ -179,7 +186,7 @@ function PairRow({
     <li className="flex flex-col gap-2 rounded border border-line bg-surface px-3 py-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <span className="font-mono text-path">
-          {formatShortDate(candidate.date, settings.shortDateFormat)}
+          {formatShortDate(candidate.date, settings.shortDateFormat, lang)}
         </span>
         <span className="text-fg-bright">{fromName}</span>
         <ArrowRight
@@ -205,7 +212,9 @@ function PairRow({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-muted">
-          {Math.round(candidate.confidence * 100)}% confident
+          {t("transferCollapse.confident", {
+            n: Math.round(candidate.confidence * 100),
+          })}
         </span>
         <div className="flex items-center gap-1.5">
           <button
@@ -213,21 +222,21 @@ function PairRow({
             onClick={onNever}
             className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:border-danger hover:text-danger"
           >
-            Never
+            {t("transferCollapse.never")}
           </button>
           <button
             type="button"
             onClick={onSkip}
             className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
           >
-            Skip
+            {t("transferCollapse.skip")}
           </button>
           <button
             type="button"
             onClick={onCollapse}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent hover:bg-accent/20"
           >
-            Collapse
+            {t("transferCollapse.collapse")}
           </button>
         </div>
       </div>

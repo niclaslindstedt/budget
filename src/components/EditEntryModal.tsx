@@ -6,6 +6,7 @@ import { nextOccurrenceWithSameDom } from "../data/recurrence";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
+import { useT } from "../i18n";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -104,6 +105,7 @@ export function EditEntryModal({
   onPromoteHistory,
   onCreateType,
 }: Props) {
+  const t = useT();
   const descCol = useMemo(
     () => findColumnByType(columns, "description"),
     [columns],
@@ -280,10 +282,10 @@ export function EditEntryModal({
       <Modal.Header
         title={
           isSeries
-            ? "Edit recurring entry"
+            ? t("editEntry.titleEditSeries")
             : isHistory
-              ? "Promote history entry to recurring"
-              : "Promote to recurring"
+              ? t("editEntry.titlePromoteHistory")
+              : t("editEntry.titlePromote")
         }
         onClose={onClose}
       />
@@ -292,7 +294,9 @@ export function EditEntryModal({
           <>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">Description</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.description")}
+                </span>
                 <input
                   type="text"
                   value={description}
@@ -301,7 +305,9 @@ export function EditEntryModal({
                 />
               </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">Type</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.type")}
+                </span>
                 <TypePicker
                   variant="field"
                   types={types}
@@ -313,12 +319,18 @@ export function EditEntryModal({
                 />
               </div>
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted">Amount</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.amount")}
+                </span>
                 <div className="relative flex">
                   <button
                     type="button"
                     onClick={toggleSign}
-                    aria-label={negative ? "Make positive" : "Make negative"}
+                    aria-label={
+                      negative
+                        ? t("editEntry.makePositive")
+                        : t("editEntry.makeNegative")
+                    }
                     tabIndex={-1}
                     className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
                       negative ? "text-negative" : "text-positive"
@@ -348,7 +360,9 @@ export function EditEntryModal({
             </div>
 
             <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
-              <legend className="px-1 text-xs text-muted">Scope</legend>
+              <legend className="px-1 text-xs text-muted">
+                {t("editEntry.scope")}
+              </legend>
               <RadioGroup
                 name="edit-scope"
                 value={scopeKind}
@@ -356,15 +370,20 @@ export function EditEntryModal({
               >
                 <Radio
                   value="just-this"
-                  label={`Only this entry (${initialDate || "no date"})`}
+                  label={t("editEntry.scopeJustThisDate", {
+                    date: initialDate || t("editEntry.noDate"),
+                  })}
                 />
-                <Radio value="future" label="This entry and all future" />
+                <Radio
+                  value="future"
+                  label={t("editEntry.scopeThisAndFuture")}
+                />
                 {scopeKind === "future" && (
                   <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
                     <Checkbox
                       checked={untilEnabled}
                       onChange={setUntilEnabled}
-                      label="Stop after a date (temporary change)"
+                      label={t("editEntry.stopAfterDate")}
                       className="items-center"
                     />
                     {untilEnabled && (
@@ -383,12 +402,13 @@ export function EditEntryModal({
         ) : isHistory ? (
           <>
             <p className="mb-3 text-sm text-muted">
-              Generate future entries for this merchant and label past entries
-              from your imported history.
+              {t("editEntry.promoteHistoryHint")}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">Description</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.description")}
+                </span>
                 <input
                   key={row.id}
                   ref={descriptionRef}
@@ -399,12 +419,18 @@ export function EditEntryModal({
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted">Amount</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.amount")}
+                </span>
                 <div className="relative flex">
                   <button
                     type="button"
                     onClick={toggleSign}
-                    aria-label={negative ? "Make positive" : "Make negative"}
+                    aria-label={
+                      negative
+                        ? t("editEntry.makePositive")
+                        : t("editEntry.makeNegative")
+                    }
                     tabIndex={-1}
                     className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
                       negative ? "text-negative" : "text-positive"
@@ -432,7 +458,9 @@ export function EditEntryModal({
                 </div>
               </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">Type</span>
+                <span className="text-xs text-muted">
+                  {t("editEntry.type")}
+                </span>
                 <TypePicker
                   variant="field"
                   types={types}
@@ -453,16 +481,13 @@ export function EditEntryModal({
               />
             </div>
             <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
-              Past history entries that match this merchant will adopt the
-              description and type above. The bank's original text is kept as-is
-              — only the on-screen label changes.
+              {t("editEntry.promoteHistoryFooter")}
             </p>
           </>
         ) : (
           <>
             <p className="mb-3 text-sm text-muted">
-              Generate future entries from this row using a recurrence rule. The
-              current row stays as-is and joins the new series.
+              {t("editEntry.promoteIntro")}
             </p>
             <div className="mb-4 flex flex-col gap-1">
               <span className="text-xs text-muted">Type</span>
@@ -491,7 +516,7 @@ export function EditEntryModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         {isSeries ? (
           <button
@@ -499,7 +524,7 @@ export function EditEntryModal({
             onClick={handleSaveEdit}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
           >
-            Save
+            {t("common.save")}
           </button>
         ) : isHistory ? (
           <button
@@ -510,7 +535,9 @@ export function EditEntryModal({
           >
             {(() => {
               const n = recurringDates.length;
-              return `Add ${n} ${n === 1 ? "future entry" : "future entries"}`;
+              return n === 1
+                ? t("editEntry.addFutureEntries", { n })
+                : t("editEntry.addFutureEntriesPlural", { n });
             })()}
           </button>
         ) : (
@@ -524,7 +551,9 @@ export function EditEntryModal({
           >
             {(() => {
               const n = recurringDates.filter((d) => d !== initialDate).length;
-              return `Add ${n} ${n === 1 ? "future entry" : "future entries"}`;
+              return n === 1
+                ? t("editEntry.addFutureEntries", { n })
+                : t("editEntry.addFutureEntriesPlural", { n });
             })()}
           </button>
         )}

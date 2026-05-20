@@ -1,4 +1,5 @@
 import type { DateFormat, Settings, ShortDateFormat } from "../data/types";
+import type { Lang } from "../i18n/locale";
 
 // Shared formatting + parsing helpers driven by the user's settings.
 // `formatAmount` / `formatBalance` handle display (thousands grouping,
@@ -7,20 +8,45 @@ import type { DateFormat, Settings, ShortDateFormat } from "../data/types";
 // characters and snapping the visible text to the configured one so
 // "100,99" and "100.99" agree once the user picks a separator.
 
-const MONTH_SHORT = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+// Per-language short month names. The "D MMM" / "D MMM YYYY" formats
+// pull from here so the rendered month follows the language picker
+// rather than the browser's default locale. Lowercase Swedish forms
+// match the Språkrådet convention.
+const MONTH_SHORT_BY_LANG: Record<Lang, readonly string[]> = {
+  en: [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ],
+  sv: [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "maj",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "okt",
+    "nov",
+    "dec",
+  ],
+};
+
+function monthShort(lang: Lang | undefined, monthNum: number): string {
+  const arr = MONTH_SHORT_BY_LANG[lang ?? "en"];
+  return arr[monthNum - 1] ?? "";
+}
 
 // Round to two decimals before formatting so floating-point drift
 // doesn't print a 12-digit tail in the running balance.
@@ -214,8 +240,14 @@ export function formatAmountForInput(n: number, settings: Settings): string {
 }
 
 // Date formatting from ISO `YYYY-MM-DD`. Empty / malformed input
-// returns "" so callers can substitute a placeholder.
-export function formatDate(iso: string, format: DateFormat): string {
+// returns "" so callers can substitute a placeholder. `lang` only
+// matters for the `"D MMM YYYY"` format that contains a month name;
+// the numeric formats render identically in every language.
+export function formatDate(
+  iso: string,
+  format: DateFormat,
+  lang?: Lang,
+): string {
   if (typeof iso !== "string" || iso.length < 10) return "";
   const y = iso.slice(0, 4);
   const m = iso.slice(5, 7);
@@ -233,7 +265,7 @@ export function formatDate(iso: string, format: DateFormat): string {
     case "DD.MM.YYYY":
       return `${d}.${m}.${y}`;
     case "D MMM YYYY":
-      return `${dayNum} ${MONTH_SHORT[monthNum - 1]} ${y}`;
+      return `${dayNum} ${monthShort(lang, monthNum)} ${y}`;
   }
 }
 
@@ -250,8 +282,13 @@ export function formatDayOnly(iso: string): string {
 // Short date for in-row cells: day and month only, no year, with
 // leading zeros stripped. Configured independently of `dateFormat`
 // so users can read sheet cells as "16/5" while keeping a long-form
-// like "YYYY-MM-DD" elsewhere.
-export function formatShortDate(iso: string, format: ShortDateFormat): string {
+// like "YYYY-MM-DD" elsewhere. `lang` only matters for the `"D MMM"`
+// format that contains a month name.
+export function formatShortDate(
+  iso: string,
+  format: ShortDateFormat,
+  lang?: Lang,
+): string {
   if (typeof iso !== "string" || iso.length < 10) return "";
   const monthNum = Number(iso.slice(5, 7));
   const dayNum = Number(iso.slice(8, 10));
@@ -266,6 +303,6 @@ export function formatShortDate(iso: string, format: ShortDateFormat): string {
     case "MM-DD":
       return `${monthNum}-${dayNum}`;
     case "D MMM":
-      return `${dayNum} ${MONTH_SHORT[monthNum - 1]}`;
+      return `${dayNum} ${monthShort(lang, monthNum)}`;
   }
 }

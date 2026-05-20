@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
+import { useT } from "../i18n";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -47,6 +48,7 @@ export function BulkEditModal({
   onApplyRecurring,
   onCreateType,
 }: Props) {
+  const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
   const amountCol = useMemo(
     () => findColumnByType(columns, "amount"),
@@ -151,12 +153,16 @@ export function BulkEditModal({
       size="max-w-2xl"
     >
       <Modal.Header
-        title={`Edit ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`}
+        title={
+          rows.length === 1
+            ? t("bulkEdit.titleOne")
+            : t("bulkEdit.title", { n: rows.length })
+        }
         onClose={onClose}
       />
       <Modal.Body>
         <Toggle
-          label="Change type"
+          label={t("bulkEdit.changeType")}
           enabled={typeEnabled}
           onToggle={setTypeEnabled}
         >
@@ -172,7 +178,7 @@ export function BulkEditModal({
         </Toggle>
 
         <Toggle
-          label="Change date"
+          label={t("bulkEdit.changeDate")}
           enabled={dateEnabled}
           onToggle={setDateEnabled}
         >
@@ -186,10 +192,13 @@ export function BulkEditModal({
 
         {sharedAmount !== null ? (
           <Toggle
-            label="Change amount"
+            label={t("bulkEdit.changeAmount")}
             enabled={amountEnabled}
             onToggle={setAmountEnabled}
-            hint={`All ${rows.length} rows share ${sharedAmount}`}
+            hint={t("bulkEdit.sharedAmountHint", {
+              n: rows.length,
+              amount: sharedAmount,
+            })}
           >
             <input
               type="text"
@@ -209,16 +218,15 @@ export function BulkEditModal({
           </Toggle>
         ) : (
           <p className="mt-3 rounded border border-line bg-surface-3 px-3 py-2 text-xs text-muted">
-            Selected rows have different amounts — edit each row individually to
-            change them.
+            {t("bulkEdit.differentAmountsHint")}
           </p>
         )}
 
         <Toggle
-          label="Make each recurring"
+          label={t("bulkEdit.makeEachRecurring")}
           enabled={recurringEnabled}
           onToggle={setRecurringEnabled}
-          hint="Replicate every selected row at the dates below; each becomes its own series."
+          hint={t("bulkEdit.makeEachRecurringHint")}
         >
           <RecurrenceForm
             seedDate={seedDate}
@@ -234,7 +242,7 @@ export function BulkEditModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -242,7 +250,7 @@ export function BulkEditModal({
           disabled={!canSubmit}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Apply
+          {t("common.apply")}
         </button>
       </Modal.Footer>
     </Modal>

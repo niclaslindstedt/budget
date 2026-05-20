@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { Row } from "../data/types";
+import { useLang, useT } from "../i18n";
+import { bcp47, type Lang } from "../i18n/locale";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -15,11 +17,29 @@ type Props = {
   onSubmit: (targetMonths: string[]) => void;
 };
 
-const monthFormat = new Intl.DateTimeFormat(undefined, { month: "short" });
-const yearMonthFormat = new Intl.DateTimeFormat(undefined, {
-  month: "long",
-  year: "numeric",
-});
+const monthCache = new Map<Lang, Intl.DateTimeFormat>();
+const yearMonthCache = new Map<Lang, Intl.DateTimeFormat>();
+
+function monthFmt(lang: Lang): Intl.DateTimeFormat {
+  let f = monthCache.get(lang);
+  if (!f) {
+    f = new Intl.DateTimeFormat(bcp47(lang), { month: "short" });
+    monthCache.set(lang, f);
+  }
+  return f;
+}
+
+function yearMonthFmt(lang: Lang): Intl.DateTimeFormat {
+  let f = yearMonthCache.get(lang);
+  if (!f) {
+    f = new Intl.DateTimeFormat(bcp47(lang), {
+      month: "long",
+      year: "numeric",
+    });
+    yearMonthCache.set(lang, f);
+  }
+  return f;
+}
 
 function monthKey(y: number, m: number): string {
   return `${y}-${String(m).padStart(2, "0")}`;
@@ -33,6 +53,8 @@ export function MoveCopyModal({
   onClose,
   onSubmit,
 }: Props) {
+  const t = useT();
+  const lang = useLang();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -51,11 +73,11 @@ export function MoveCopyModal({
         const key = monthKey(year, m);
         return {
           key,
-          label: monthFormat.format(new Date(year, i, 1)),
+          label: monthFmt(lang).format(new Date(year, i, 1)),
           isSource: sourceMonths.has(key),
         };
       }),
-    [year, sourceMonths],
+    [year, sourceMonths, lang],
   );
 
   const isMove = mode === "move";
@@ -78,7 +100,13 @@ export function MoveCopyModal({
     onSubmit([...selected].sort());
   }
 
-  const noun = rows.length === 1 ? "entry" : "entries";
+  const titleKey = isMove
+    ? rows.length === 1
+      ? "moveCopy.moveTitle"
+      : "moveCopy.moveTitlePlural"
+    : rows.length === 1
+      ? "moveCopy.copyTitle"
+      : "moveCopy.copyTitlePlural";
 
   return (
     <Modal
@@ -87,22 +115,17 @@ export function MoveCopyModal({
       labelledBy="move-copy-title"
       size="max-w-md"
     >
-      <Modal.Header
-        title={`${isMove ? "Move" : "Copy"} ${rows.length} ${noun}`}
-        onClose={onClose}
-      />
+      <Modal.Header title={t(titleKey, { n: rows.length })} onClose={onClose} />
       <Modal.Body>
         <p className="mb-3 text-xs text-muted">
-          {isMove
-            ? "Pick a target month. Day-of-month is preserved (clamped to month length)."
-            : "Pick one or more target months. Each selected entry is duplicated into every target, preserving day-of-month."}
+          {isMove ? t("moveCopy.moveHint") : t("moveCopy.copyHint")}
         </p>
 
         <div className="mb-3 flex items-center justify-between">
           <button
             type="button"
             onClick={() => setYear((y) => y - 1)}
-            aria-label="Previous year"
+            aria-label={t("moveCopy.prevYear")}
             className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
           >
             <ChevronLeft size={16} aria-hidden focusable={false} />
@@ -113,7 +136,7 @@ export function MoveCopyModal({
           <button
             type="button"
             onClick={() => setYear((y) => y + 1)}
-            aria-label="Next year"
+            aria-label={t("moveCopy.nextYear")}
             className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
           >
             <ChevronRight size={16} aria-hidden focusable={false} />
@@ -144,7 +167,7 @@ export function MoveCopyModal({
 
         {selected.size > 0 && (
           <div className="mt-4 rounded border border-line bg-surface-3 p-3 text-xs">
-            <div className="mb-1 text-muted">Targets</div>
+            <div className="mb-1 text-muted">{t("moveCopy.targets")}</div>
             <div className="flex flex-wrap gap-1.5">
               {[...selected].sort().map((k) => {
                 const [y, m] = k.split("-").map(Number);
@@ -153,7 +176,7 @@ export function MoveCopyModal({
                     key={k}
                     className="rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-path"
                   >
-                    {yearMonthFormat.format(new Date(y, m - 1, 1))}
+                    {yearMonthFmt(lang).format(new Date(y, m - 1, 1))}
                   </span>
                 );
               })}
@@ -167,7 +190,7 @@ export function MoveCopyModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -176,8 +199,10 @@ export function MoveCopyModal({
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isMove
-            ? "Move"
-            : `Copy to ${selected.size} ${selected.size === 1 ? "month" : "months"}`}
+            ? t("moveCopy.move")
+            : selected.size === 1
+              ? t("moveCopy.copyTo", { n: selected.size })
+              : t("moveCopy.copyToPlural", { n: selected.size })}
         </button>
       </Modal.Footer>
     </Modal>

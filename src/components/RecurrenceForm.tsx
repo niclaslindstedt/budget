@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 
 import { DEFAULT_RECURRENCE_MONTHS } from "../data/constants";
+import { useT } from "../i18n";
 import {
   expandRecurrence,
   isIsoDate,
@@ -147,6 +148,7 @@ export function RecurrenceForm({
   seedRule,
   onChange,
 }: Props) {
+  const t = useT();
   const seedDate = isIsoDate(rawSeed) ? rawSeed : todayIso();
   const horizonEnd = addMonthsIso(seedDate, DEFAULT_RECURRENCE_MONTHS);
 
@@ -273,10 +275,10 @@ export function RecurrenceForm({
   }, [rule, dates, onChange]);
 
   const modeOptions = [
-    includeOnce ? (["once", "Once"] as const) : null,
-    ["dates", "Specific dates"] as const,
-    ["everyNDays", "Every N days"] as const,
-    ["monthly", "Monthly / Quarterly / Yearly"] as const,
+    includeOnce ? (["once", t("recurrenceForm.modeOnce")] as const) : null,
+    ["dates", t("recurrenceForm.modeDates")] as const,
+    ["everyNDays", t("recurrenceForm.modeEveryNDays")] as const,
+    ["monthly", t("recurrenceForm.modeMonthly")] as const,
   ].filter(Boolean) as Array<readonly [Mode, string]>;
 
   return (
@@ -302,7 +304,7 @@ export function RecurrenceForm({
       <div className="mt-3 rounded border border-line bg-surface-3 p-3">
         {mode === "once" && (
           <label className="flex flex-col gap-1 text-xs text-muted">
-            <span>Date</span>
+            <span>{t("recurrenceForm.date")}</span>
             <input
               type="date"
               value={onceDate}
@@ -314,7 +316,9 @@ export function RecurrenceForm({
 
         {mode === "dates" && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs text-muted">Dates</span>
+            <span className="text-xs text-muted">
+              {t("recurrenceForm.dates")}
+            </span>
             {datesList.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
@@ -333,7 +337,7 @@ export function RecurrenceForm({
                     setDatesList(datesList.filter((_, j) => j !== i))
                   }
                   disabled={datesList.length === 1}
-                  aria-label="Remove date"
+                  aria-label={t("recurrenceForm.removeDate")}
                   className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-danger disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <X size={14} aria-hidden focusable={false} />
@@ -351,7 +355,7 @@ export function RecurrenceForm({
               className="inline-flex w-fit cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-xs text-muted hover:border-accent hover:text-accent"
             >
               <Plus size={12} aria-hidden focusable={false} />
-              Add date
+              {t("recurrenceForm.addDate")}
             </button>
           </div>
         )}
@@ -359,7 +363,7 @@ export function RecurrenceForm({
         {mode === "everyNDays" && (
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>Start</span>
+              <span>{t("recurrenceForm.start")}</span>
               <input
                 type="date"
                 value={everyNStart}
@@ -368,7 +372,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>Every N days</span>
+              <span>{t("recurrenceForm.everyNDaysLabel")}</span>
               <input
                 type="number"
                 min={1}
@@ -378,7 +382,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>End</span>
+              <span>{t("recurrenceForm.end")}</span>
               <input
                 type="date"
                 value={everyNEnd}
@@ -392,13 +396,13 @@ export function RecurrenceForm({
         {mode === "monthly" && (
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs text-muted sm:col-span-2">
-              <span>Cadence</span>
+              <span>{t("recurrenceForm.cadence")}</span>
               <div className="flex flex-wrap gap-1.5">
                 {(
                   [
-                    ["1", "Monthly"],
-                    ["3", "Quarterly"],
-                    ["12", "Yearly"],
+                    ["1", t("recurrenceForm.cadenceMonthly")],
+                    ["3", t("recurrenceForm.cadenceQuarterly")],
+                    ["12", t("recurrenceForm.cadenceYearly")],
                   ] as const
                 ).map(([val, label]) => (
                   <button
@@ -416,7 +420,7 @@ export function RecurrenceForm({
                   </button>
                 ))}
                 <label className="inline-flex items-center gap-1 text-xs text-muted">
-                  <span>Every N months</span>
+                  <span>{t("recurrenceForm.cadenceEveryN")}</span>
                   <input
                     type="number"
                     min={1}
@@ -428,7 +432,7 @@ export function RecurrenceForm({
               </div>
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>Day of month</span>
+              <span>{t("recurrenceForm.dayOfMonth")}</span>
               <input
                 type="number"
                 min={1}
@@ -439,7 +443,7 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              <span>Offset days</span>
+              <span>{t("recurrenceForm.offsetDays")}</span>
               <input
                 type="number"
                 value={monthlyOffset}
@@ -449,13 +453,13 @@ export function RecurrenceForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted sm:col-span-2">
-              <span>Range</span>
+              <span>{t("recurrenceForm.range")}</span>
               <div className="flex items-center gap-2">
                 <input
                   type="month"
                   value={monthlyStartMonth}
                   onChange={(e) => setMonthlyStartMonth(e.target.value)}
-                  aria-label="Start month"
+                  aria-label={t("recurrenceForm.startMonth")}
                   className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
                 />
                 <span aria-hidden className="text-muted">
@@ -465,7 +469,7 @@ export function RecurrenceForm({
                   type="month"
                   value={monthlyEndMonth}
                   onChange={(e) => setMonthlyEndMonth(e.target.value)}
-                  aria-label="End month"
+                  aria-label={t("recurrenceForm.endMonth")}
                   className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
                 />
               </div>
@@ -476,13 +480,15 @@ export function RecurrenceForm({
 
       <div className="mt-4 rounded border border-line bg-surface-3 p-3 text-xs">
         <div className="mb-1 text-muted">
-          Preview{" "}
+          {t("recurrenceForm.previewLabel")}{" "}
           <span className="text-fg-bright">
-            {dates.length} {dates.length === 1 ? "entry" : "entries"}
+            {dates.length === 1
+              ? t("recurrenceForm.previewEntryOne", { n: dates.length })
+              : t("recurrenceForm.previewEntryOther", { n: dates.length })}
           </span>
         </div>
         {dates.length === 0 ? (
-          <div className="text-muted">No dates yet.</div>
+          <div className="text-muted">{t("recurrenceForm.noDatesYet")}</div>
         ) : (
           <div className="flex flex-wrap gap-1.5 font-mono text-path">
             {dates.slice(0, 24).map((d) => (
@@ -494,7 +500,9 @@ export function RecurrenceForm({
               </span>
             ))}
             {dates.length > 24 && (
-              <span className="text-muted">+{dates.length - 24} more</span>
+              <span className="text-muted">
+                {t("recurrenceForm.morePrefix", { n: dates.length - 24 })}
+              </span>
             )}
           </div>
         )}

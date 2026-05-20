@@ -4,6 +4,7 @@ import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 import { CATEGORY_COLORS, CATEGORY_GLYPH_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
+import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
@@ -40,8 +41,10 @@ export function CategoryPicker({
   onSelect,
   onCreate,
   variant = "chip",
-  placeholder = "Add category…",
+  placeholder,
 }: Props) {
+  const t = useT();
+  const placeholderText = placeholder ?? t("category.addCategoryEllipsis");
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -83,7 +86,7 @@ export function CategoryPicker({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={!selected && isChip ? "Add category" : undefined}
+        aria-label={!selected && isChip ? t("category.addCategory") : undefined}
       >
         {selected ? (
           isChip ? (
@@ -117,7 +120,7 @@ export function CategoryPicker({
         ) : (
           <span className="inline-flex items-center gap-2 text-muted">
             <Tag size={14} aria-hidden focusable={false} />
-            <span>{placeholder}</span>
+            <span>{placeholderText}</span>
           </span>
         )}
         {showChevron && (
@@ -146,7 +149,7 @@ export function CategoryPicker({
           <ul role="listbox" className="max-h-72 overflow-auto py-1">
             {categories.length === 0 && (
               <li className="px-3 py-2 text-xs text-muted">
-                No categories yet.
+                {t("category.noCategoriesYet")}
               </li>
             )}
             {categories.map((cat) => (
@@ -178,7 +181,7 @@ export function CategoryPicker({
                   className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                 >
                   <X size={12} aria-hidden focusable={false} />
-                  Clear category
+                  {t("category.clearCategory")}
                 </button>
               </li>
             )}
@@ -189,7 +192,7 @@ export function CategoryPicker({
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <Plus size={14} aria-hidden focusable={false} />
-                New category
+                {t("category.newCategory")}
               </button>
             </li>
           </ul>
@@ -232,6 +235,7 @@ function CategoryCreator({
   onCancel: () => void;
   onSubmit: (draft: Omit<Category, "id">) => void;
 }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(CATEGORY_COLORS[0]);
   const [icon, setIcon] = useState<CategoryIcon>("tag");
@@ -250,7 +254,7 @@ function CategoryCreator({
   return (
     <div className="flex flex-col gap-2 p-3">
       <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>Name</span>
+        <span>{t("category.name")}</span>
         <input
           ref={nameRef}
           type="text"
@@ -263,11 +267,11 @@ function CategoryCreator({
               handleSubmit();
             }
           }}
-          placeholder="Rent"
+          placeholder={t("category.namePlaceholder")}
         />
       </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Color</span>
+        <span>{t("category.color")}</span>
         <ColorPalette
           colors={CATEGORY_COLORS}
           value={color}
@@ -276,7 +280,7 @@ function CategoryCreator({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Icon</span>
+        <span>{t("category.icon")}</span>
         <GlyphGrid
           icons={CATEGORY_GLYPH_NAMES}
           value={icon}
@@ -290,7 +294,7 @@ function CategoryCreator({
           onClick={onCancel}
           className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -298,7 +302,7 @@ function CategoryCreator({
           disabled={!name.trim()}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Create
+          {t("category.create")}
         </button>
       </div>
     </div>

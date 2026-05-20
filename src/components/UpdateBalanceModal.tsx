@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Account, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
+import { useT } from "../i18n";
 import {
   formatAmountForInput,
   formatBalance,
@@ -41,6 +42,7 @@ export function UpdateBalanceModal({
   onConfirm,
   onCancel,
 }: Props) {
+  const t = useT();
   // Account-scoped settings so the modal renders amounts in the same
   // currency the Accounts page just showed the user (per-account
   // currency overrides the global one).
@@ -115,14 +117,16 @@ export function UpdateBalanceModal({
       size="max-w-md"
       scrollableBody={false}
     >
-      <Modal.Header title="Update balance" onClose={onCancel} />
+      <Modal.Header title={t("updateBalance.title")} onClose={onCancel} />
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 text-sm text-fg">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-muted">Account</span>
+          <span className="text-muted">{t("updateBalance.account")}</span>
           <span className="font-bold text-fg-bright">{account?.name}</span>
         </div>
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-muted">Current balance</span>
+          <span className="text-muted">
+            {t("updateBalance.currentBalance")}
+          </span>
           <span
             className={`tabular-nums ${
               currentBalance < 0 ? "text-negative" : "text-positive"
@@ -134,7 +138,7 @@ export function UpdateBalanceModal({
 
         {canRecord && account ? (
           <label className="flex flex-col gap-1">
-            <span className="text-muted">New balance</span>
+            <span className="text-muted">{t("updateBalance.newBalance")}</span>
             <input
               key={account.id}
               ref={inputRef}
@@ -157,14 +161,13 @@ export function UpdateBalanceModal({
           </label>
         ) : (
           <p className="text-xs text-muted">
-            No budget sheet tracks this account yet. Add one (Sheet → Edit →
-            pick this account) before recording a correction.
+            {t("updateBalance.noBudgetHint")}
           </p>
         )}
 
         {canRecord && hasDelta && (
           <p className="text-xs text-muted">
-            Adds a balance correction of{" "}
+            {t("updateBalance.correctionHintPrefix")}{" "}
             <span
               className={`font-mono tabular-nums ${
                 delta >= 0 ? "text-positive" : "text-negative"
@@ -172,8 +175,9 @@ export function UpdateBalanceModal({
             >
               {deltaText}
             </span>{" "}
-            on <span className="font-mono text-flag">{date}</span> so the
-            running balance lands on{" "}
+            {t("updateBalance.correctionHintMiddle")}{" "}
+            <span className="font-mono text-flag">{date}</span>{" "}
+            {t("updateBalance.correctionHintEnd")}{" "}
             <span className="font-mono tabular-nums text-fg-bright">
               {newBalanceText}
             </span>
@@ -182,7 +186,7 @@ export function UpdateBalanceModal({
         )}
         {canRecord && parsed !== null && !hasDelta && (
           <p className="text-xs text-muted">
-            Already at this balance — nothing to record.
+            {t("updateBalance.alreadyAtBalance")}
           </p>
         )}
       </div>
@@ -195,7 +199,7 @@ export function UpdateBalanceModal({
             disabled={!hasDelta}
             className="cursor-pointer rounded border border-accent/60 bg-accent/10 px-3 py-2 text-left text-sm font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted disabled:hover:bg-transparent"
           >
-            Confirm balance update
+            {t("updateBalance.confirmUpdate")}
           </button>
         )}
         <button
@@ -203,7 +207,7 @@ export function UpdateBalanceModal({
           onClick={onCancel}
           className="cursor-pointer rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
         >
-          {canRecord ? "Cancel" : "Close"}
+          {canRecord ? t("common.cancel") : t("common.close")}
         </button>
       </div>
     </Modal>

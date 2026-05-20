@@ -10,6 +10,7 @@ import {
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
 import { useDesktopAutoFocus, usePointerOutside } from "../hooks";
+import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
@@ -70,6 +71,7 @@ export function SheetModal({
   onSave,
   onDelete,
 }: Props) {
+  const t = useT();
   const isEdit = sheet !== null;
   const [name, setName] = useState("");
   const [type, setType] = useState<SheetType>("budget");
@@ -144,7 +146,7 @@ export function SheetModal({
   return (
     <Modal open={open} onClose={onClose} labelledBy="sheet-modal-title">
       <Modal.Header
-        title={isEdit ? "Edit sheet" : "New sheet"}
+        title={isEdit ? t("sheetModal.titleEdit") : t("sheetModal.titleNew")}
         onClose={onClose}
       />
       <Modal.Body>
@@ -162,7 +164,7 @@ export function SheetModal({
               <CategoryIconGlyph name={glyph} size={22} />
             </div>
             <label className="flex flex-1 flex-col gap-1.5">
-              <span className="text-xs text-muted">Name</span>
+              <span className="text-xs text-muted">{t("sheetModal.name")}</span>
               <input
                 type="text"
                 ref={nameRef}
@@ -175,13 +177,13 @@ export function SheetModal({
                   }
                 }}
                 className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                placeholder="Checking, Travel fund, Child account…"
+                placeholder={t("sheetModal.namePlaceholder")}
               />
             </label>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Type</span>
+            <span className="text-xs text-muted">{t("sheetModal.type")}</span>
             <TypePicker
               value={type}
               open={typeOpen}
@@ -198,18 +200,21 @@ export function SheetModal({
 
           {type === "accounts" && (
             <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-              The Accounts sheet is a workspace-wide dashboard. Manage accounts
-              and transfers from there — no per-sheet account binding needed.
+              {t("sheetModal.accountsHint")}
             </p>
           )}
 
           {type === "budget" && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Account</span>
+              <span className="text-xs text-muted">
+                {t("sheetModal.account")}
+              </span>
               {creatingAccount ? (
                 <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
                   <label className="flex flex-col gap-1">
-                    <span className="text-xs text-muted">New account name</span>
+                    <span className="text-xs text-muted">
+                      {t("sheetModal.newAccountName")}
+                    </span>
                     <input
                       ref={newAccountInputRef}
                       type="text"
@@ -221,7 +226,7 @@ export function SheetModal({
                           handleCancelCreateAccount();
                         }
                       }}
-                      placeholder="Checking, Cash, Travel fund…"
+                      placeholder={t("sheetModal.newAccountPlaceholder")}
                       className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
                     />
                   </label>
@@ -231,7 +236,7 @@ export function SheetModal({
                       onClick={handleCancelCreateAccount}
                       className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 </div>
@@ -246,15 +251,13 @@ export function SheetModal({
                 />
               )}
               <p className="text-xs text-muted">
-                Attach this budget to an account so its running balance can
-                reflect the account&apos;s real balance. Leave it unassigned for
-                a free-standing forward-looking ledger.
+                {t("sheetModal.accountHint")}
               </p>
             </div>
           )}
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Color</span>
+            <span className="text-xs text-muted">{t("sheetModal.color")}</span>
             <ColorPalette
               colors={SHEET_COLORS}
               value={color}
@@ -263,7 +266,7 @@ export function SheetModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Glyph</span>
+            <span className="text-xs text-muted">{t("sheetModal.glyph")}</span>
             <GlyphGrid
               icons={SHEET_GLYPH_NAMES}
               value={glyph}
@@ -274,12 +277,14 @@ export function SheetModal({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Description</span>
+            <span className="text-xs text-muted">
+              {t("sheetModal.description")}
+            </span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              placeholder="Optional. e.g. expenses for child account."
+              placeholder={t("sheetModal.descriptionPlaceholder")}
               className="field-input resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
@@ -293,12 +298,14 @@ export function SheetModal({
               onClick={onDelete}
               disabled={!canDelete}
               title={
-                canDelete ? "Delete this sheet" : "Can't delete the only sheet"
+                canDelete
+                  ? t("sheetModal.deleteThisSheet")
+                  : t("sheetModal.cantDeleteLast")
               }
               className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 size={14} aria-hidden focusable={false} />
-              Delete
+              {t("common.delete")}
             </button>
           )}
         </div>
@@ -308,7 +315,7 @@ export function SheetModal({
             onClick={onClose}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -316,7 +323,7 @@ export function SheetModal({
             disabled={!canSave}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isEdit ? "Save" : "Create"}
+            {isEdit ? t("common.save") : t("sheetModal.create")}
           </button>
         </div>
       </Modal.Footer>

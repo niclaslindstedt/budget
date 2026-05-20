@@ -12,6 +12,7 @@ import type {
   UserData,
 } from "../data/types";
 import type { MatchCandidate, OrphanRow } from "../data/reconciliation";
+import { useT } from "../i18n";
 import { formatAmount } from "../utils/format";
 import { Modal } from "./Modal";
 
@@ -70,6 +71,7 @@ export function ReconciliationModal({
   paydayDay,
   settings,
 }: Props) {
+  const t = useT();
   // Lookup tables for rendering. Built from the pre-import snapshot
   // so the modal doesn't have to chase reducer state to find rows.
   const rowsById = useMemo(() => {
@@ -278,7 +280,9 @@ export function ReconciliationModal({
           />
           <span className="flex-1 grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-0.5">
             <span className="font-mono text-xs text-muted">{rowDate}</span>
-            <span className="truncate text-fg">{rowDesc || "(no label)"}</span>
+            <span className="truncate text-fg">
+              {rowDesc || t("reconciliation.noLabel")}
+            </span>
             <span className="font-mono text-fg">
               {formatAmount(rowAmount, settings)}
             </span>
@@ -295,12 +299,12 @@ export function ReconciliationModal({
             className="ml-6 self-start text-xs text-accent hover:underline"
             onClick={() => applyToSeries(c)}
           >
-            Apply to whole series
+            {t("reconciliation.applyToSeries")}
           </button>
         )}
         {seriesId && seriesRuleAttached && (
           <span className="ml-6 self-start text-xs text-muted">
-            Series rule queued
+            {t("reconciliation.seriesRuleQueued")}
           </span>
         )}
       </li>
@@ -327,7 +331,9 @@ export function ReconciliationModal({
       >
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2">
           <span className="font-mono text-xs text-muted">{rowDate}</span>
-          <span className="truncate text-fg">{rowDesc || "(no label)"}</span>
+          <span className="truncate text-fg">
+            {rowDesc || t("reconciliation.noLabel")}
+          </span>
           <span className="font-mono text-fg">
             {formatAmount(rowAmount, settings)}
           </span>
@@ -342,7 +348,7 @@ export function ReconciliationModal({
             }`}
             onClick={() => setOrphan(o.rowId, { action: "keep" })}
           >
-            Keep
+            {t("reconciliation.keep")}
           </button>
           <button
             type="button"
@@ -353,7 +359,7 @@ export function ReconciliationModal({
             }`}
             onClick={() => setOrphan(o.rowId, { action: "delete" })}
           >
-            Delete
+            {t("reconciliation.deleteRow")}
           </button>
           <label
             className={`flex cursor-pointer items-center gap-1 rounded border px-2 py-1 ${
@@ -371,7 +377,7 @@ export function ReconciliationModal({
               }
               className="cursor-pointer"
             />
-            <span>Move to</span>
+            <span>{t("reconciliation.moveTo")}</span>
             <input
               type="date"
               value={moveDate}
@@ -396,18 +402,17 @@ export function ReconciliationModal({
       labelledBy="reconciliation-modal-title"
       size="max-w-2xl"
     >
-      <Modal.Header title="Match imported entries" onClose={onClose} />
+      <Modal.Header title={t("reconciliation.title")} onClose={onClose} />
       <Modal.Body>
         {candidateRows.length === 0 && orphanRowItems.length === 0 && (
           <p className="px-4 py-3 text-sm text-muted">
-            Nothing left to triage — every imported entry either has a stable id
-            or already matches a learned series rule.
+            {t("reconciliation.nothingToTriage")}
           </p>
         )}
         {candidateRows.length > 0 && (
           <section>
             <h3 className="border-b border-line bg-surface-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              Probable matches
+              {t("reconciliation.probableMatches")}
             </h3>
             <ul>{candidateRows}</ul>
           </section>
@@ -415,7 +420,7 @@ export function ReconciliationModal({
         {orphanRowItems.length > 0 && (
           <section>
             <h3 className="border-b border-line bg-surface-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              Predictions that didn't post
+              {t("reconciliation.predictionsThatDidntPost")}
             </h3>
             <ul>{orphanRowItems}</ul>
           </section>
@@ -427,14 +432,14 @@ export function ReconciliationModal({
           onClick={handleSkipAll}
           className="rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
         >
-          Skip all
+          {t("reconciliation.skipAll")}
         </button>
         <button
           type="button"
           onClick={handleApply}
           className="rounded border border-accent bg-accent/10 px-3 py-2 text-sm font-semibold text-accent hover:bg-accent/20"
         >
-          Apply
+          {t("reconciliation.apply")}
         </button>
       </Modal.Footer>
     </Modal>

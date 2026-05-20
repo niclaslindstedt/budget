@@ -3,6 +3,7 @@ import {
   type ChangelogEntryType,
   type ChangelogRelease,
 } from "../generated/changelog";
+import { useT } from "../i18n";
 import { APP_VERSION } from "../utils/build-env";
 import { cmpSemver } from "../utils/semver";
 import { Modal } from "./Modal";
@@ -39,6 +40,7 @@ function visibleReleases(since: string | null): ChangelogRelease[] {
 }
 
 export function ChangelogModal({ open, onClose, since }: Props) {
+  const t = useT();
   const releases = visibleReleases(since);
   // App.tsx avoids opening the modal in the empty case, but the safety
   // net keeps an empty popup from rendering if the user somehow lands
@@ -46,7 +48,7 @@ export function ChangelogModal({ open, onClose, since }: Props) {
   if (releases.length === 0) return null;
   return (
     <Modal open={open} onClose={onClose} labelledBy="changelog-modal-title">
-      <Modal.Header title="What's new" onClose={onClose} />
+      <Modal.Header title={t("changelog.title")} onClose={onClose} />
       <Modal.Body className="flex flex-col gap-4 text-sm">
         {releases.map((release) => (
           <section key={release.version} className="flex flex-col gap-2">
@@ -77,7 +79,7 @@ export function ChangelogModal({ open, onClose, since }: Props) {
           </section>
         ))}
         <p className="mt-2 text-xs text-muted">
-          See the full history at{" "}
+          {t("changelog.fullHistoryAt")}{" "}
           <a
             href="/changelog"
             target="_blank"
@@ -95,7 +97,7 @@ export function ChangelogModal({ open, onClose, since }: Props) {
           onClick={onClose}
           className="cursor-pointer rounded bg-accent px-3 py-1.5 text-sm font-medium text-page-bg hover:opacity-90"
         >
-          Got it
+          {t("changelog.gotIt")}
         </button>
       </Modal.Footer>
     </Modal>

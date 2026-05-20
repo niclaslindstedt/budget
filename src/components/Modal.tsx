@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import { useEscapeKey, useIsMobile, useVirtualKeyboardInset } from "../hooks";
+import { useT } from "../i18n";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
 // Shared shell for every modal dialog in the app. Owns:
@@ -156,6 +157,7 @@ type HeaderProps = {
 
 function Header({ title, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
+  const t = useT();
   return (
     <header
       className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 py-3"
@@ -172,7 +174,7 @@ function Header({ title, onClose }: HeaderProps) {
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label={t("common.close")}
         className="-mr-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
       >
         <X size={20} aria-hidden focusable={false} />

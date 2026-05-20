@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 26 as const;
+export const LATEST_VERSION = 27 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -419,6 +419,28 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
           }),
         };
       }),
+    };
+  },
+
+  // v26 → v27: adds a `language` field to settings. Existing buckets
+  // get "en" so a returning user's UI doesn't suddenly flip language
+  // — the auto-detect path only runs on a brand-new install (see
+  // `detectInitialLanguage` in `src/i18n/locale.ts`).
+  26: (v26) => {
+    const settings =
+      typeof v26.settings === "object" && v26.settings !== null
+        ? (v26.settings as Record<string, unknown>)
+        : {};
+    return {
+      ...v26,
+      version: 27,
+      settings: {
+        ...settings,
+        language:
+          settings.language === "sv" || settings.language === "en"
+            ? settings.language
+            : "en",
+      },
     };
   },
 };

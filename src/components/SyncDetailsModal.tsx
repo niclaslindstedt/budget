@@ -19,6 +19,7 @@ import {
   gdriveWebUrl,
 } from "../storage/gdrive-adapter";
 import type { SaveStatus } from "../storage/useUserDataStorage";
+import { type TFunction, useT } from "../i18n";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -68,49 +69,49 @@ function statusView(
   status: SaveStatus,
   dirty: boolean,
   providerName: string,
+  t: TFunction,
 ): StatusView {
   switch (status.kind) {
     case "loading":
       return {
         Icon: Loader,
-        label: "Loading…",
+        label: t("sync.loading"),
         tone: "busy",
         spin: true,
       };
     case "saving":
       return {
         Icon: Loader,
-        label: "Syncing now…",
+        label: t("sync.syncingNow"),
         tone: "busy",
         spin: true,
       };
     case "error":
       return {
         Icon: CloudAlert,
-        label: "Sync failed",
+        label: t("sync.failed"),
         tone: "err",
         detail: status.message,
       };
     case "conflict":
       return {
         Icon: CloudAlert,
-        label: "Sync conflict",
+        label: t("sync.syncConflict"),
         tone: "warn",
-        detail: `${providerName} changed underneath this device. Reload to pick up the remote copy.`,
+        detail: t("sync.syncConflictDetail", { name: providerName }),
       };
     case "saved":
     case "idle":
       return dirty
         ? {
             Icon: RefreshCw,
-            label: "Pending sync",
+            label: t("sync.pendingSync"),
             tone: "busy",
-            detail:
-              "Edits aren't on the cloud yet. Tap Save now to push immediately, or wait for the next auto-save.",
+            detail: t("sync.pendingSyncDetail"),
           }
         : {
             Icon: CloudCheck,
-            label: `Synced to ${providerName}`,
+            label: t("sync.syncedTo", { name: providerName }),
             tone: "ok",
           };
   }
@@ -138,14 +139,16 @@ export function SyncDetailsModal({
   onSaveNow,
   onClose,
 }: Props) {
+  const t = useT();
   const view = providerView(backend);
   if (!view) return null;
 
-  const state = statusView(status, dirty, view.name);
+  const state = statusView(status, dirty, view.name, t);
   const busy = status.kind === "saving" || status.kind === "loading";
   const showSaveNow =
     !busy && (status.kind === "error" || (dirty && status.kind !== "conflict"));
-  const saveLabel = status.kind === "error" ? "Try again" : "Save now";
+  const saveLabel =
+    status.kind === "error" ? t("sync.tryAgain") : t("sync.saveNow");
 
   return (
     <Modal
@@ -155,10 +158,10 @@ export function SyncDetailsModal({
       size="max-w-md"
       scrollableBody={false}
     >
-      <Modal.Header title="Cloud sync" onClose={onClose} />
+      <Modal.Header title={t("sync.cloudSync")} onClose={onClose} />
       <div className="flex flex-col gap-3 px-4 py-4">
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-muted">Status</span>
+          <span className="text-xs text-muted">{t("sync.status")}</span>
           <div
             className={`flex items-start gap-2 rounded border px-2 py-1.5 ${TONE_BORDER[state.tone]}`}
           >
@@ -193,11 +196,11 @@ export function SyncDetailsModal({
           )}
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-muted">Provider</span>
+          <span className="text-xs text-muted">{t("sync.provider")}</span>
           <span className="text-sm text-fg-bright">{view.name}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-muted">File location</span>
+          <span className="text-xs text-muted">{t("sync.fileLocation")}</span>
           <span className="rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-xs break-all text-path">
             {view.path}
           </span>
@@ -209,7 +212,7 @@ export function SyncDetailsModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Close
+          {t("common.close")}
         </button>
         <a
           href={view.url}
@@ -218,7 +221,7 @@ export function SyncDetailsModal({
           className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
         >
           <ExternalLink size={14} aria-hidden focusable={false} />
-          Open in {view.name}
+          {t("sync.openIn", { name: view.name })}
         </a>
       </Modal.Footer>
     </Modal>

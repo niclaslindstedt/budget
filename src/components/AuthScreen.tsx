@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { CircleUser, Eye, EyeOff, Lock, UserPlus } from "lucide-react";
 
 import type { StoredUser } from "../data/types";
+import { useT } from "../i18n";
 import { findUserByUsername } from "../storage/users";
 import { Checkbox } from "./form";
 
@@ -100,6 +101,7 @@ function SignInForm({
   onSignIn: (user: StoredUser, password: string) => Promise<void>;
   onSwitchToSignUp: () => void;
 }) {
+  const t = useT();
   const [username, setUsername] = useState(initialUsername ?? "");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -114,7 +116,7 @@ function SignInForm({
       setError(null);
       const user = findUserByUsername(users, username);
       if (!user) {
-        setError("No account with that name on this device.");
+        setError(t("auth.noAccount"));
         setBusy(false);
         return;
       }
@@ -125,7 +127,7 @@ function SignInForm({
         setBusy(false);
       }
     },
-    [busy, username, password, users, onSignIn],
+    [busy, username, password, users, onSignIn, t],
   );
 
   return (
@@ -137,15 +139,13 @@ function SignInForm({
       <div className="flex items-center gap-2 text-pipe">
         <Lock size={18} aria-hidden focusable={false} />
         <h1 className="text-sm font-bold tracking-wide text-fg-bright">
-          Sign in
+          {t("auth.signIn")}
         </h1>
       </div>
-      <p className="text-xs text-muted">
-        Your budget is private to your account and encrypted on this device.
-      </p>
+      <p className="text-xs text-muted">{t("auth.privacyHint")}</p>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">Username</span>
+        <span className="text-xs text-muted">{t("auth.username")}</span>
         <input
           id="budget-username"
           name="username"
@@ -159,7 +159,7 @@ function SignInForm({
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">Password</span>
+        <span className="text-xs text-muted">{t("auth.password")}</span>
         <PasswordInput
           name="current-password"
           autoComplete="current-password"
@@ -178,7 +178,7 @@ function SignInForm({
         disabled={busy || password.length === 0 || username.length === 0}
         className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-2 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {busy ? "Signing in…" : "Sign in"}
+        {busy ? t("auth.signingIn") : t("auth.signIn")}
       </button>
 
       <button
@@ -186,7 +186,7 @@ function SignInForm({
         onClick={onSwitchToSignUp}
         className="-mt-1 cursor-pointer text-center text-xs text-link hover:underline"
       >
-        Create a new account
+        {t("auth.createNewAccount")}
       </button>
     </form>
   );
@@ -219,6 +219,7 @@ function SignUpForm({
   onContinueWithoutAccount: () => Promise<void>;
   onSwitchToSignIn: (() => void) | null;
 }) {
+  const t = useT();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -278,23 +279,16 @@ function SignUpForm({
       <div className="flex items-center gap-2 text-accent">
         <UserPlus size={18} aria-hidden focusable={false} />
         <h1 className="text-sm font-bold tracking-wide text-fg-bright">
-          {firstAccount ? "Welcome — create your account" : "Create account"}
+          {firstAccount ? t("auth.welcomeTitle") : t("auth.createAccountTitle")}
         </h1>
       </div>
       <p className="text-xs text-muted">
-        Pick a username and a strong password — at least {MIN_PASSWORD_LENGTH}{" "}
-        characters. Your budget is encrypted with this password; if you forget
-        it the data on this device cannot be recovered.
-        {guestAvailable && (
-          <>
-            {" "}
-            Your guest session&apos;s budget will be moved into this account.
-          </>
-        )}
+        {t("auth.newAccountHint", { min: MIN_PASSWORD_LENGTH })}
+        {guestAvailable && <> {t("auth.guestImportHint")}</>}
       </p>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">Username</span>
+        <span className="text-xs text-muted">{t("auth.username")}</span>
         <input
           id="budget-new-username"
           name="username"
@@ -308,7 +302,7 @@ function SignUpForm({
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">Password</span>
+        <span className="text-xs text-muted">{t("auth.password")}</span>
         <PasswordInput
           name="new-password"
           autoComplete="new-password"
@@ -319,7 +313,7 @@ function SignUpForm({
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">Confirm password</span>
+        <span className="text-xs text-muted">{t("auth.confirmPassword")}</span>
         <PasswordInput
           name="confirm-password"
           autoComplete="new-password"
@@ -334,21 +328,19 @@ function SignUpForm({
         <Checkbox
           checked={importLegacy}
           onChange={setImportLegacy}
-          label="Import existing budget on this device"
-          description="A budget from before accounts were introduced was found. Bring it into this new account."
+          label={t("auth.importLegacyLabel")}
+          description={t("auth.importLegacyHint")}
         />
       )}
 
-      {taken && (
-        <p className="text-xs text-danger">That username is already in use.</p>
-      )}
+      {taken && <p className="text-xs text-danger">{t("auth.accountTaken")}</p>}
       {tooShort && (
         <p className="text-xs text-danger">
-          Use at least {MIN_PASSWORD_LENGTH} characters.
+          {t("auth.useAtLeast", { min: MIN_PASSWORD_LENGTH })}
         </p>
       )}
       {mismatch && (
-        <p className="text-xs text-danger">Passwords do not match.</p>
+        <p className="text-xs text-danger">{t("auth.passwordsMismatch")}</p>
       )}
       {error && <p className="text-xs text-danger">{error}</p>}
 
@@ -357,7 +349,7 @@ function SignUpForm({
         disabled={!canSubmit}
         className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-2 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {busy ? "Creating…" : "Create account"}
+        {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </button>
 
       {showGuestOption && (
@@ -371,10 +363,10 @@ function SignUpForm({
             className="-mt-1 cursor-pointer text-center text-xs text-link hover:underline disabled:cursor-not-allowed disabled:opacity-50"
           >
             {guestBusy
-              ? "Loading…"
+              ? t("auth.loading")
               : guestAvailable
-                ? "Continue as guest"
-                : "Continue without account"}
+                ? t("auth.continueAsGuest")
+                : t("auth.continueWithoutAccount")}
           </button>
           {guestError && (
             <p className="-mt-2 text-center text-xs text-danger">
@@ -390,7 +382,7 @@ function SignUpForm({
           onClick={onSwitchToSignIn}
           className="-mt-1 cursor-pointer text-center text-xs text-link hover:underline"
         >
-          I already have an account
+          {t("auth.alreadyHaveAccount")}
         </button>
       )}
     </form>
@@ -414,6 +406,7 @@ function PasswordInput({
   onToggleShow: () => void;
   autoFocus?: boolean;
 }) {
+  const t = useT();
   const inputId = useMemo(
     () => `pwd-${name}-${Math.random().toString(36).slice(2, 8)}`,
     [name],
@@ -433,7 +426,7 @@ function PasswordInput({
       <button
         type="button"
         onClick={onToggleShow}
-        aria-label={show ? "Hide password" : "Show password"}
+        aria-label={show ? t("auth.hidePassword") : t("auth.showPassword")}
         className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
       >
         {show ? (

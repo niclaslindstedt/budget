@@ -9,6 +9,8 @@ import type {
   Row,
   Settings,
 } from "../data/types";
+import { type TFunction, useLang, useT } from "../i18n";
+import { bcp47, type Lang } from "../i18n/locale";
 import { formatNumber, withCurrency } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
@@ -52,16 +54,25 @@ type Props = {
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
 };
 
-const monthFormat = new Intl.DateTimeFormat(undefined, {
-  month: "long",
-  year: "numeric",
-});
+const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
-function formatMonth(key: string): string {
-  if (key === "undated") return "Undated";
+function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
+  let fmt = monthFormatCache.get(lang);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(bcp47(lang), {
+      month: "long",
+      year: "numeric",
+    });
+    monthFormatCache.set(lang, fmt);
+  }
+  return fmt;
+}
+
+function formatMonth(key: string, lang: Lang, t: TFunction): string {
+  if (key === "undated") return t("sheet.undated");
   const [y, m] = key.split("-").map(Number);
   if (!y || !m) return key;
-  return monthFormat.format(new Date(y, m - 1, 1));
+  return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
 export function MonthTable({
@@ -96,6 +107,8 @@ export function MonthTable({
   onToggleSelect,
   onToggleSelectMonth,
 }: Props) {
+  const t = useT();
+  const lang = useLang();
   // Synthesized transaction rows live in `rows` (the parent merges them
   // in) but they are not selectable for bulk operations — they aren't
   // real budget rows, so a delete or move that targets them would do
@@ -121,7 +134,7 @@ export function MonthTable({
   const headerColor =
     headerMonthNum !== null ? monthColorVar(headerMonthNum) : undefined;
 
-  const monthLabel = formatMonth(monthKey);
+  const monthLabel = formatMonth(monthKey, lang, t);
   return (
     <section>
       <h3
@@ -135,7 +148,9 @@ export function MonthTable({
           onClick={onToggleCollapsed}
           aria-expanded={!collapsed}
           aria-label={
-            collapsed ? `Expand ${monthLabel}` : `Collapse ${monthLabel}`
+            collapsed
+              ? t("sheet.expandMonth", { month: monthLabel })
+              : t("sheet.collapseMonth", { month: monthLabel })
           }
           className="flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent pt-1 pb-2 pl-2 text-left text-[inherit] font-bold tracking-wider uppercase hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:pt-1.5 md:pb-3.5 md:pl-3"
         >
@@ -169,7 +184,7 @@ export function MonthTable({
               {selectMode && (
                 <th
                   className="select-cell bg-surface-3 text-center"
-                  aria-label="Select all in month"
+                  aria-label={t("sheet.selectAllInMonth")}
                 >
                   <button
                     type="button"
@@ -180,8 +195,8 @@ export function MonthTable({
                     className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-muted disabled:opacity-30"
                     aria-label={
                       allSelected
-                        ? "Deselect all rows in month"
-                        : "Select all rows in month"
+                        ? t("sheet.deselectAllInMonth")
+                        : t("sheet.selectAllRowsInMonth")
                     }
                     aria-pressed={allSelected}
                   >
@@ -208,7 +223,7 @@ export function MonthTable({
               ))}
               <th
                 className="action-cell w-8 bg-surface-3"
-                aria-label="row actions"
+                aria-label={t("sheet.rowActions")}
               />
             </tr>
           </thead>
@@ -263,7 +278,7 @@ export function MonthTable({
               >
                 {covered ? (
                   <div className="px-3 py-1.5 text-xs text-muted">
-                    History covers this month
+                    {t("sheet.historyCoversMonth")}
                   </div>
                 ) : (
                   <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
@@ -293,6 +308,7 @@ function CorrectionLine({
   settings: Settings;
   onClick: () => void;
 }) {
+  const t = useT();
   const sign = amount >= 0 ? "+" : "−";
   const magnitude = withCurrency(
     formatNumber(Math.abs(amount), settings),
@@ -305,13 +321,15 @@ function CorrectionLine({
         <button
           type="button"
           onClick={onClick}
-          aria-label={`Remove balance correction of ${sign}${magnitude}`}
-          title="Remove balance correction"
+          aria-label={t("sheet.correctionRemoveAria", {
+            amount: `${sign}${magnitude}`,
+          })}
+          title={t("app.removeBalanceCorrection")}
           className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-xs text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
         >
           <span aria-hidden className="h-px flex-1 bg-line" />
           <span className="whitespace-nowrap">
-            balance correction{" "}
+            {t("sheet.correctionLine")}{" "}
             <span className={`font-mono tabular-nums ${amountClass}`}>
               {sign}
               {magnitude}

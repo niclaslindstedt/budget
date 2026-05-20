@@ -3,6 +3,7 @@ import { Download, Eye, EyeOff, Lock, Upload } from "lucide-react";
 
 import type { UserData } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
+import { useT } from "../i18n";
 import type { EncryptionMode } from "../storage/backend-preference";
 import { Modal } from "./Modal";
 import {
@@ -44,6 +45,7 @@ export function ImportExportControls({
   encryption,
   getEncryptionPassword,
 }: Props) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [pendingEnvelope, setPendingEnvelope] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function ImportExportControls({
       if (!password) {
         setStatus({
           kind: "error",
-          message: "No account password held in memory — sign in again.",
+          message: t("importExport.noPasswordInMemory"),
         });
         return;
       }
@@ -66,7 +68,9 @@ export function ImportExportControls({
       } catch (err) {
         setStatus({
           kind: "error",
-          message: `Encryption failed: ${(err as Error).message}`,
+          message: t("importExport.encryptionFailed", {
+            error: (err as Error).message,
+          }),
         });
         return;
       }
@@ -87,22 +91,31 @@ export function ImportExportControls({
     setStatus({
       kind: "ok",
       message:
-        encryption === "encrypted" ? "Exported (encrypted)." : "Exported.",
+        encryption === "encrypted"
+          ? t("importExport.exportedEncrypted")
+          : t("importExport.exported"),
     });
   }
 
   function finishImport(text: string) {
     const result = parseUserData(text);
     if (!result.ok) {
-      setStatus({ kind: "error", message: `Import failed — ${result.error}` });
+      setStatus({
+        kind: "error",
+        message: t("importExport.importFailedWith", { error: result.error }),
+      });
       return;
     }
     onImport(result.data);
     const sheetCount = result.data.sheets.length;
-    const suffix = result.migrated ? " (migrated to current version)" : "";
+    const suffix = result.migrated ? t("importExport.migratedSuffix") : "";
+    const baseMessage =
+      sheetCount === 1
+        ? t("importExport.importedSheets", { n: sheetCount })
+        : t("importExport.importedSheetsPlural", { n: sheetCount });
     setStatus({
       kind: "ok",
-      message: `Imported ${sheetCount} sheet${sheetCount === 1 ? "" : "s"}${suffix}.`,
+      message: baseMessage.replace(/\.$/, "") + suffix + ".",
     });
   }
 
@@ -113,7 +126,9 @@ export function ImportExportControls({
     } catch (err) {
       setStatus({
         kind: "error",
-        message: `Could not read file: ${(err as Error).message}`,
+        message: t("importExport.couldNotReadFile", {
+          error: (err as Error).message,
+        }),
       });
       return;
     }
@@ -162,10 +177,14 @@ export function ImportExportControls({
         }}
         aria-label={
           encryption === "encrypted"
-            ? "Export budget as encrypted JSON"
-            : "Export budget as JSON"
+            ? t("importExport.exportEncryptedAria")
+            : t("importExport.exportAria")
         }
-        title={encryption === "encrypted" ? "Export (encrypted)" : "Export"}
+        title={
+          encryption === "encrypted"
+            ? t("importExport.exportEncryptedLabel")
+            : t("importExport.exportLabel")
+        }
       >
         <Download size={18} aria-hidden focusable={false} />
       </button>
@@ -173,8 +192,8 @@ export function ImportExportControls({
         type="button"
         className={`${iconButton} text-link hover:border-link hover:text-link`}
         onClick={() => inputRef.current?.click()}
-        aria-label="Import budget from JSON"
-        title="Import"
+        aria-label={t("importExport.importAria")}
+        title={t("importExport.importLabel")}
       >
         <Upload size={18} aria-hidden focusable={false} />
       </button>
@@ -207,6 +226,7 @@ function ImportPasswordPrompt({
   onCancel: () => void;
   onSubmit: (password: string) => Promise<void>;
 }) {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -253,7 +273,7 @@ function ImportPasswordPrompt({
               focusable={false}
               className="text-pipe"
             />
-            Encrypted budget
+            {t("importExport.encryptedBudget")}
           </>
         }
         onClose={onCancel}
@@ -264,7 +284,7 @@ function ImportPasswordPrompt({
         className="flex flex-col gap-3 px-4 pt-2 pb-4"
       >
         <p className="text-xs text-muted">
-          This file is encrypted. Enter the password it was exported with.
+          {t("importExport.encryptedBudgetHint")}
         </p>
 
         <input
@@ -278,7 +298,7 @@ function ImportPasswordPrompt({
         />
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted">Password</span>
+          <span className="text-xs text-muted">{t("auth.password")}</span>
           <div className="relative flex items-center">
             <input
               id="budget-import-password"
@@ -293,7 +313,9 @@ function ImportPasswordPrompt({
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
-              aria-label={show ? "Hide password" : "Show password"}
+              aria-label={
+                show ? t("auth.hidePassword") : t("auth.showPassword")
+              }
               className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
             >
               {show ? (
@@ -314,14 +336,16 @@ function ImportPasswordPrompt({
             disabled={busy}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
             disabled={busy || password.length === 0}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "Decrypting…" : "Decrypt & import"}
+            {busy
+              ? t("importExport.decrypting")
+              : t("importExport.decryptAndImport")}
           </button>
         </div>
       </form>
