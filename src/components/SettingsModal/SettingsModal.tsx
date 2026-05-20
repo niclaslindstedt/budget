@@ -42,13 +42,12 @@ import {
 } from "./tabs";
 
 // Derives the picker's initial selection from the persisted format
-// settings. Several presets share the same (symbol, position, space)
-// triplet (SEK/NOK/DKK/ISK all render as "kr after with space"; USD
-// and CAD both as "$ before no space"), so this only returns *a*
-// matching id — the first one in declaration order. After that the
-// user's actual choice lives in `currencyPresetId` state below, so
-// the trigger reflects the preset they tapped instead of snapping
-// back to the first match.
+// settings. Currencies that render identically are collapsed into a
+// single preset (e.g. the kronor preset covers SEK/NOK/DKK/ISK,
+// the dollar preset covers USD/CAD), so the (symbol, position,
+// space) triplet uniquely identifies a preset. The "Custom…" entry
+// is the only fallback — anything that doesn't match a preset
+// triplet reveals the free-form inputs.
 function presetIdForCurrency(settings: Settings): string {
   const match = CURRENCY_PRESETS.find(
     (p) =>
@@ -211,10 +210,10 @@ export function SettingsModal({
   const [draft, setDraft] = useState<Settings>(settings);
   // The user's currency-preset choice for this editing session. The
   // persisted shape only stores the resulting (symbol, position,
-  // space) triplet, and several presets share the same triplet — so
-  // re-deriving the id on every render snaps the trigger back to the
-  // first match. Tracking it locally keeps the picker honest about
-  // which preset the user just tapped.
+  // space) triplet, so tracking the id locally lets "Custom…" stay
+  // selected after the user edits the free-form inputs (otherwise
+  // hitting a triplet that matches a preset would snap the picker
+  // back to that preset).
   const [currencyPresetId, setCurrencyPresetId] = useState<string>(() =>
     presetIdForCurrency(settings),
   );
@@ -258,10 +257,10 @@ export function SettingsModal({
   }
 
   function applyCurrencyPreset(id: string) {
-    // Always record the user's pick so the trigger reflects what they
-    // tapped — even when several presets share the same display
-    // triplet (SEK/NOK/DKK/ISK; USD/CAD) and the derived selection
-    // would otherwise collapse to the first match.
+    // Record the user's pick so the trigger reflects what they
+    // tapped — in particular, "Custom…" stays selected after the
+    // user edits the free-form inputs to a value that happens to
+    // match a preset's display triplet.
     setCurrencyPresetId(id);
     // "custom" reveals the free-form inputs without touching the
     // existing values — the user keeps whatever symbol / position /

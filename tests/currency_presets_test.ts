@@ -12,6 +12,10 @@ describe("CURRENCY_PRESETS", () => {
   it("has well-formed entries", () => {
     for (const p of CURRENCY_PRESETS) {
       expect(p.id.length).toBeGreaterThan(0);
+      expect(p.codes.length).toBeGreaterThan(0);
+      for (const code of p.codes) {
+        expect(code.length).toBeGreaterThan(0);
+      }
       expect(p.symbol.length).toBeGreaterThan(0);
       expect(["before", "after"]).toContain(p.position);
       expect(typeof p.space).toBe("boolean");
@@ -26,13 +30,12 @@ describe("CURRENCY_PRESETS", () => {
     }
   });
 
-  // Multiple presets share the same (symbol, position, space) triplet
-  // on purpose so each country sees its own currency name in the
-  // picker. The settings UI must therefore track the user's chosen
-  // preset id explicitly — re-deriving it from the triplet would
-  // collapse the picker's value onto the first match (SEK / USD) and
-  // make NOK / DKK / ISK / CAD un-selectable.
-  it("has groups of presets that share the same display triplet", () => {
+  // Presets that render identically (same symbol, position, spacing)
+  // are collapsed into a single entry whose `codes` list joins the
+  // covered ISO codes. Keeps the picker short and avoids the false
+  // impression that picking SEK vs NOK changes anything about how
+  // amounts are stored or formatted.
+  it("has no two presets sharing the same display triplet", () => {
     const groups = new Map<string, string[]>();
     for (const p of CURRENCY_PRESETS) {
       const key = `${p.symbol}|${p.position}|${p.space}`;
@@ -41,11 +44,17 @@ describe("CURRENCY_PRESETS", () => {
       groups.set(key, ids);
     }
     const collisions = [...groups.values()].filter((ids) => ids.length > 1);
-    expect(collisions.length).toBeGreaterThan(0);
-    const allCollidingIds = collisions.flat().sort();
-    expect(allCollidingIds).toEqual(
-      ["CAD", "DKK", "ISK", "NOK", "SEK", "USD"].sort(),
-    );
+    expect(collisions).toEqual([]);
+  });
+
+  it("collapses the kronor and dollar presets", () => {
+    const nordic = CURRENCY_PRESETS.find((p) => p.id === "nordic-kr");
+    expect(nordic?.codes).toEqual(["SEK", "NOK", "DKK", "ISK"]);
+    expect(nordic?.symbol).toBe("kr");
+
+    const dollar = CURRENCY_PRESETS.find((p) => p.id === "dollar");
+    expect(dollar?.codes).toEqual(["USD", "CAD"]);
+    expect(dollar?.symbol).toBe("$");
   });
 });
 

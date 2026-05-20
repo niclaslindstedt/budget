@@ -231,11 +231,23 @@ export const NUMBER_FORMATS: readonly NumberFormatPreset[] = [
 // North American) — the SelectPicker has no group support so order is
 // the only grouping cue.
 //
+// Currencies that render identically (same symbol, position, and
+// spacing) are collapsed into a single preset whose label joins the
+// ISO codes with "/" — e.g. SEK/NOK/DKK/ISK all print as "kr" after
+// the amount, so picking any one would produce the same output. The
+// merged form keeps the picker short and avoids the misleading
+// impression that the choice affects exchange rates (it doesn't —
+// this app stores raw numbers, not currency-typed amounts).
+//
 // `nameKey` is a dotted i18n path looked up at render time; the
 // constants module deliberately doesn't import the i18n catalog so
 // startup stays cheap.
 export type CurrencyPreset = {
   id: string;
+  // ISO codes the preset covers, joined with "/" for the picker label.
+  // Single-code entries (EUR, GBP, CHF) still use a one-element array
+  // so the picker code can treat every preset uniformly.
+  codes: readonly string[];
   symbol: string;
   position: "before" | "after";
   space: boolean;
@@ -243,38 +255,19 @@ export type CurrencyPreset = {
 };
 
 export const CURRENCY_PRESETS: readonly CurrencyPreset[] = [
-  // Nordic
+  // Nordic kronor — all four render as "kr" after the amount.
   {
-    id: "SEK",
+    id: "nordic-kr",
+    codes: ["SEK", "NOK", "DKK", "ISK"],
     symbol: "kr",
     position: "after",
     space: true,
-    nameKey: "settings.format.currencyName.SEK",
-  },
-  {
-    id: "NOK",
-    symbol: "kr",
-    position: "after",
-    space: true,
-    nameKey: "settings.format.currencyName.NOK",
-  },
-  {
-    id: "DKK",
-    symbol: "kr",
-    position: "after",
-    space: true,
-    nameKey: "settings.format.currencyName.DKK",
-  },
-  {
-    id: "ISK",
-    symbol: "kr",
-    position: "after",
-    space: true,
-    nameKey: "settings.format.currencyName.ISK",
+    nameKey: "settings.format.currencyName.nordicKr",
   },
   // European
   {
     id: "EUR",
+    codes: ["EUR"],
     symbol: "€",
     position: "before",
     space: false,
@@ -282,6 +275,7 @@ export const CURRENCY_PRESETS: readonly CurrencyPreset[] = [
   },
   {
     id: "GBP",
+    codes: ["GBP"],
     symbol: "£",
     position: "before",
     space: false,
@@ -289,25 +283,20 @@ export const CURRENCY_PRESETS: readonly CurrencyPreset[] = [
   },
   {
     id: "CHF",
+    codes: ["CHF"],
     symbol: "CHF",
     position: "before",
     space: true,
     nameKey: "settings.format.currencyName.CHF",
   },
-  // North American
+  // North American dollars — both render as "$" before the amount.
   {
-    id: "USD",
+    id: "dollar",
+    codes: ["USD", "CAD"],
     symbol: "$",
     position: "before",
     space: false,
-    nameKey: "settings.format.currencyName.USD",
-  },
-  {
-    id: "CAD",
-    symbol: "$",
-    position: "before",
-    space: false,
-    nameKey: "settings.format.currencyName.CAD",
+    nameKey: "settings.format.currencyName.dollar",
   },
 ];
 
@@ -315,10 +304,10 @@ export const CURRENCY_PRESETS: readonly CurrencyPreset[] = [
 // on fresh install — existing users are not retroactively re-detected,
 // mirroring the language-detection contract.
 export const REGION_TO_CURRENCY_ID: Readonly<Record<string, string>> = {
-  SE: "SEK",
-  NO: "NOK",
-  DK: "DKK",
-  IS: "ISK",
+  SE: "nordic-kr",
+  NO: "nordic-kr",
+  DK: "nordic-kr",
+  IS: "nordic-kr",
   // Eurozone members covered by the EUR preset.
   AT: "EUR",
   BE: "EUR",
@@ -342,8 +331,8 @@ export const REGION_TO_CURRENCY_ID: Readonly<Record<string, string>> = {
   GB: "GBP",
   CH: "CHF",
   LI: "CHF",
-  US: "USD",
-  CA: "CAD",
+  US: "dollar",
+  CA: "dollar",
 };
 
 // Palette for new categories. The set is tuned to read well over both

@@ -37,16 +37,17 @@ export type DetectedCurrency = Pick<
 // Only consulted on a brand-new install (mirrors `detectInitialLanguage`:
 // existing buckets keep whatever they had so a returning user's currency
 // doesn't flip on upgrade). Parses the region subtag of
-// `navigator.language` — e.g. "sv-SE" → "SE" → SEK, "en-US" → "US" →
-// USD. Falls back to USD when the region is missing or unmapped.
+// `navigator.language` — e.g. "sv-SE" → "SE" → nordic-kr, "en-US" →
+// "US" → dollar. Falls back to the dollar preset when the region is
+// missing or unmapped.
 export function detectInitialCurrency(): DetectedCurrency {
   const raw =
     typeof navigator === "undefined" ? "" : (navigator.language ?? "");
   const region = raw.split(/[-_]/)[1]?.toUpperCase() ?? "";
-  const id = REGION_TO_CURRENCY_ID[region] ?? "USD";
+  const id = REGION_TO_CURRENCY_ID[region] ?? "dollar";
   const preset =
     CURRENCY_PRESETS.find((p) => p.id === id) ??
-    CURRENCY_PRESETS.find((p) => p.id === "USD")!;
+    CURRENCY_PRESETS.find((p) => p.id === "dollar")!;
   return {
     currency: preset.symbol,
     currencyPosition: preset.position,
