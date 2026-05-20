@@ -1,5 +1,13 @@
 import { memo, useMemo, useRef, useState } from "react";
-import { ArrowLeftRight, Pencil, Repeat, Tags, Trash2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Eye,
+  EyeOff,
+  Pencil,
+  Repeat,
+  Tags,
+  Trash2,
+} from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
 import { useT } from "../i18n";
@@ -30,6 +38,26 @@ type Props = {
   // source) — the button stays visible but disabled, with a tooltip
   // explaining why.
   canTransfer: boolean;
+  // Number of hidden transfer rows that immediately precede this row
+  // in chronological order (i.e. that contributed to the visible
+  // running balance step at this row). When > 0, the balance cell
+  // renders a small ↔ icon button; clicking it fires
+  // `onToggleTransferAnchor` so MonthTable reveals the hidden run
+  // inline beneath this row. 0 (the default) means no icon.
+  hiddenTransferCount?: number;
+  transferExpanded?: boolean;
+  onToggleTransferAnchor?: () => void;
+  // True when this row is itself a hidden transfer being revealed
+  // inline under its anchor. The row renders with a muted background
+  // so the user can tell at a glance it's not part of the normal
+  // visible stream. No other behaviour changes — the action buttons
+  // remain available so the user can unmark the transfer in place.
+  revealedTransfer?: boolean;
+  // Flip the row's `isTransfer` flag. The eye-toggle action button
+  // dispatches this for budget rows (synth transactions and history
+  // rows manage their transfer status through other paths and don't
+  // get the button).
+  onToggleRowTransfer?: (row: Row) => void;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Fires after the user finishes editing a cell (blur / discrete select).
   // Used to prompt for series-wide propagation on recurring rows; the
@@ -73,6 +101,11 @@ function SheetRowImpl({
   selectMode,
   selected,
   canTransfer,
+  hiddenTransferCount = 0,
+  transferExpanded = false,
+  onToggleTransferAnchor,
+  revealedTransfer = false,
+  onToggleRowTransfer,
   onUpdateCell,
   onCommitCell,
   onDeleteRequest,
@@ -265,6 +298,7 @@ function SheetRowImpl({
     isSeries ? "is-series" : "",
     selectMode ? "is-selecting-row" : "",
     selected ? "is-selected" : "",
+    revealedTransfer ? "is-revealed-transfer" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -345,6 +379,11 @@ function SheetRowImpl({
           outgoing={isOutgoing}
           isHistory={isHistory}
           hasFormula={typeof row.amountFormula === "string"}
+          hiddenTransferCount={col.type === "balance" ? hiddenTransferCount : 0}
+          transferExpanded={col.type === "balance" ? transferExpanded : false}
+          onToggleTransferAnchor={
+            col.type === "balance" ? onToggleTransferAnchor : undefined
+          }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />
@@ -420,6 +459,33 @@ function SheetRowImpl({
               }}
             >
               <ArrowLeftRight size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {!isTransaction && !isHistory && onToggleRowTransfer && (
+            <button
+              type="button"
+              className="action-btn action-btn-transfer-flag inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={
+                row.isTransfer
+                  ? tr("cell.unmarkAsTransfer")
+                  : tr("cell.markAsTransfer")
+              }
+              title={
+                row.isTransfer
+                  ? tr("cell.unmarkAsTransfer")
+                  : tr("cell.markAsTransferTitle")
+              }
+              aria-pressed={row.isTransfer === true}
+              onClick={() => {
+                setSwiped(false);
+                onToggleRowTransfer(row);
+              }}
+            >
+              {row.isTransfer ? (
+                <EyeOff size={16} aria-hidden focusable={false} />
+              ) : (
+                <Eye size={16} aria-hidden focusable={false} />
+              )}
             </button>
           )}
           {!isTransaction && !isHistory && (

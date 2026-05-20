@@ -495,7 +495,20 @@ export function synthesizeHistoryRow(
     historyEntryId: entry.id,
   };
   if (typeId) row.typeId = typeId;
+  if (entry.isTransfer) row.isTransfer = true;
   return row;
+}
+
+// True when this row should be treated as an inter-account transfer
+// for the `Settings.hideTransfers` filter. Three signals qualify a row:
+//   1. a synthesized Transaction row carries `peerAccountId`
+//   2. a synthesized history row whose underlying entry was flagged
+//      `isTransfer` (propagated by `synthesizeHistoryRow`)
+//   3. a budget row flagged `isTransfer` via the per-row eye action
+// Centralised here so callers (display filter, balance-icon detector,
+// expand toggle) never drift on what counts as a transfer.
+export function isTransferRow(row: Row): boolean {
+  return row.peerAccountId !== undefined || row.isTransfer === true;
 }
 
 // Sum of the account's budget rows' amounts plus signed transaction

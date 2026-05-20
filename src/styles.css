@@ -452,6 +452,19 @@ body {
       background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     }
   }
+
+  /* Hidden transfers revealed inline under their anchor balance row.
+     Softer tone + a thin left stripe so the user can tell at a glance
+     these rows came from behind the ↔ icon and aren't part of the
+     normal visible stream. */
+  .sheet-table > tbody > tr.is-revealed-transfer > td {
+    background: color-mix(in srgb, var(--muted) 10%, var(--surface));
+    color: var(--muted);
+    font-style: italic;
+  }
+  .sheet-table > tbody > tr.is-revealed-transfer > td:first-child {
+    box-shadow: inset 2px 0 0 0 var(--accent);
+  }
 }
 
 /* Landscape phones (≤ 500px tall, e.g. iPhone 12+ in landscape at

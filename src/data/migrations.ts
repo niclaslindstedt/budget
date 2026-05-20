@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 28 as const;
+export const LATEST_VERSION = 29 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -451,6 +451,16 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // its existing rule / hint / raw-text priority; the migration is a
   // bare version bump.
   27: (v27) => ({ ...v27, version: 28 }),
+
+  // v28 → v29: introduces `Settings.hideTransfers` (default false), an
+  // optional `Row.isTransfer` flag, and an optional `HistoryEntry.isTransfer`
+  // flag. Together they let users suppress inter-account transfers from
+  // the budget tables while the amounts continue to feed the running
+  // balance. Existing exports lack the fields entirely; the settings
+  // validator fills in `hideTransfers: false` and the row / entry
+  // validators leave the flag absent, which matches the legacy "always
+  // show every row" behaviour. The migration is a bare version bump.
+  28: (v28) => ({ ...v28, version: 29 }),
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by

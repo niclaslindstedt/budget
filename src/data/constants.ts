@@ -132,6 +132,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // whatever the v26 → v27 migration assigned (always "en") so a
   // returning user's UI doesn't suddenly flip language.
   language: "en",
+  hideTransfers: false,
 };
 
 // Allowed UI languages, in the order the picker shows them. Used by

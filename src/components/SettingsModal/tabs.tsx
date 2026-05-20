@@ -171,6 +171,12 @@ export function GeneralTab({
             onChange={(v) => onUpdate("alwaysAbbreviateBalance", v)}
           />
         )}
+        <ToggleRow
+          label={t("settings.display.hideTransfers")}
+          hint={t("settings.display.hideTransfersHint")}
+          checked={draft.hideTransfers}
+          onChange={(v) => onUpdate("hideTransfers", v)}
+        />
       </Section>
     </>
   );

@@ -394,6 +394,17 @@ export const USER_DATA_SCHEMA = {
             "persisted (a stored `false` is indistinguishable from absent " +
             "and is dropped on save).",
         },
+        isTransfer: {
+          type: "boolean",
+          description:
+            "True when the user has flagged this row as an inter-account " +
+            "transfer. The `Settings.hideTransfers` toggle suppresses such " +
+            "rows from the budget table while their amounts continue to " +
+            "feed the running balance (i.e. they're hidden, not removed). " +
+            "Only `true` is persisted — absent means 'not a transfer'. " +
+            "Synthesized transaction rows (those carrying `peerAccountId`) " +
+            "are implicitly transfers and don't need this flag.",
+        },
         amountFormula: {
           type: "string",
           minLength: 1,
@@ -680,6 +691,18 @@ export const USER_DATA_SCHEMA = {
             "`MerchantHint`. Absent means 'fall through to rules / " +
             "hints / no type'. Dangling references to deleted types " +
             "are dropped on load.",
+        },
+        isTransfer: {
+          type: "boolean",
+          description:
+            "True when the user has flagged this bank row as an inter-" +
+            "account transfer (set via the history-entry edit modal). " +
+            "Mirrored onto the synthesized row so the `Settings." +
+            "hideTransfers` toggle suppresses it from the budget table " +
+            "while the amount still contributes to the running balance. " +
+            "Independent of `collapsedIntoTransactionId`, which dedups a " +
+            "matched pair into a single Transaction; this flag stands in " +
+            "when no peer side is available yet.",
         },
       },
     },
@@ -1045,6 +1068,7 @@ export const USER_DATA_SCHEMA = {
         "sessionTimeoutMinutes",
         "lastSeenChangelogVersion",
         "language",
+        "hideTransfers",
       ],
       description:
         "Display and entry preferences. The validator is lenient: bad " +
@@ -1192,6 +1216,23 @@ export const USER_DATA_SCHEMA = {
             'default to "en" through the v26 → v27 migration so the UI ' +
             "doesn't suddenly flip language on upgrade; fresh installs " +
             "auto-detect from the browser's preferred language.",
+        },
+        hideTransfers: {
+          type: "boolean",
+          default: DEFAULT_SETTINGS.hideTransfers,
+          description:
+            "Suppress rows flagged as inter-account transfers from the " +
+            "budget table. The running balance still incorporates their " +
+            "amounts — they're hidden, not removed. A row counts as a " +
+            "transfer when any of three signals applies: a synthesized " +
+            "Transaction row's `peerAccountId` is set, a `HistoryEntry." +
+            "isTransfer` is true (and propagated by `synthesizeHistoryRow`), " +
+            "or a budget row's `Row.isTransfer` is true. Each visible row " +
+            "whose computed balance step crossed at least one hidden " +
+            "transfer surfaces a small ↔ icon on its balance cell that " +
+            "inline-expands the hidden rows underneath when clicked. " +
+            "Default false so the out-of-the-box view matches existing " +
+            "builds.",
         },
       },
     },

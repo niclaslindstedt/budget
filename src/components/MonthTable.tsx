@@ -1,7 +1,7 @@
-import { memo } from "react";
+import { Fragment, memo, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
-import { findColumnByType } from "../data/sheet";
+import { findColumnByType, isTransferRow } from "../data/sheet";
 import type {
   Category,
   CellValue,
@@ -39,6 +39,22 @@ type Props = {
   // bank has authoritative data there, so a user-added row would
   // double-count.
   covered: boolean;
+  // True when the user has opted into hiding inter-account transfers
+  // (a `Settings.hideTransfers` mirror). Rows flagged as transfers are
+  // filtered out of the rendered tbody when this is on; the running
+  // balance still includes their amounts because `computeBalances`
+  // ran on the unfiltered set upstream. Each visible row whose
+  // balance step crossed at least one hidden transfer surfaces a
+  // small ↔ icon on its balance cell that toggles inline-expansion
+  // via `onToggleTransferAnchor`.
+  hideTransfers: boolean;
+  // Anchor rows the user has expanded — their immediately preceding
+  // hidden transfers render inline beneath the anchor. Lifted into
+  // SheetView so a future "collapse all on sheet switch" stays a
+  // single source of truth; MonthTable just reads-and-renders.
+  expandedTransferAnchors: ReadonlySet<string>;
+  onToggleTransferAnchor: (rowId: string) => void;
+  onToggleRowTransfer: (row: Row) => void;
   onToggleCollapsed: () => void;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
@@ -94,6 +110,10 @@ function MonthTableImpl({
   balanceChars,
   collapsed,
   covered,
+  hideTransfers,
+  expandedTransferAnchors,
+  onToggleTransferAnchor,
+  onToggleRowTransfer,
   onToggleCollapsed,
   onUpdateCell,
   onCommitCell,
@@ -112,14 +132,57 @@ function MonthTableImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  // When the hide-transfers setting is on, partition the month's
+  // chronologically-sorted rows into the visible set (rendered as
+  // normal SheetRows) and a map from each visible anchor to the
+  // contiguous run of hidden transfer rows immediately preceding it.
+  // The map is what powers the balance-cell ↔ icon: a non-empty run
+  // means at least one hidden transfer contributed to the anchor's
+  // running balance step, and clicking the icon reveals that run
+  // inline. With the setting off, no hiding happens and the map is
+  // empty so the chain behaves exactly like before.
+  const { hiddenBefore } = useMemo(() => {
+    const map = new Map<string, Row[]>();
+    if (!hideTransfers) return { hiddenBefore: map };
+    let buffer: Row[] = [];
+    for (const r of rows) {
+      // Correction rows render as full-width dividers, never as
+      // transfers; treat them like visible anchors so a hidden run
+      // doesn't leak past a divider into the next concrete row.
+      if (!r.isCorrection && isTransferRow(r)) {
+        buffer.push(r);
+      } else {
+        if (buffer.length > 0) {
+          map.set(r.id, buffer);
+          buffer = [];
+        }
+      }
+    }
+    // Any hidden rows trailing the last visible anchor get dropped
+    // from the map — there's no balance row in this month to attach
+    // the icon to. The amounts still feed the running balance via
+    // computeBalances; they just don't surface an expand affordance
+    // here. The "next month's first visible row" inheriting them is
+    // intentionally out of scope.
+    return { hiddenBefore: map };
+  }, [rows, hideTransfers]);
   // Synthesized transaction rows live in `rows` (the parent merges them
   // in) but they are not selectable for bulk operations — they aren't
   // real budget rows, so a delete or move that targets them would do
   // nothing. Correction rows render as a divider line rather than a
   // columned row, so a bulk-edit selection on one would have nothing to
   // act on either; both are filtered out of selection helpers.
+  // Hidden transfer rows are also excluded from the bulk-select pool
+  // even when revealed via the expand toggle — the user expressed an
+  // explicit intent to suppress them, so they shouldn't be roped into
+  // mass operations from the month header's "select all" checkbox.
   const selectableRowIds = rows
-    .filter((r) => r.transactionId === undefined && !r.isCorrection)
+    .filter(
+      (r) =>
+        r.transactionId === undefined &&
+        !r.isCorrection &&
+        !(hideTransfers && isTransferRow(r)),
+    )
     .map((r) => r.id);
   const amountCol = findColumnByType(columns, "amount");
   // Columns + action cell + (optional) select cell = total td count we
@@ -239,6 +302,11 @@ function MonthTableImpl({
                years of history are revealed via "Show more". */}
             {!collapsed &&
               rows.map((row) => {
+                // Skip hidden transfers — they're rendered inline under
+                // their anchor when the anchor's expand toggle is on.
+                if (hideTransfers && !row.isCorrection && isTransferRow(row)) {
+                  return null;
+                }
                 if (row.isCorrection) {
                   const amount =
                     amountCol && typeof row.cells[amountCol.id] === "number"
@@ -254,30 +322,70 @@ function MonthTableImpl({
                     />
                   );
                 }
+                const hiddenRun = hiddenBefore.get(row.id);
+                const expanded =
+                  hiddenRun !== undefined &&
+                  expandedTransferAnchors.has(row.id);
                 return (
-                  <SheetRow
-                    key={row.id}
-                    row={row}
-                    columns={columns}
-                    balances={balances}
-                    types={types}
-                    categories={categories}
-                    typeUsageById={typeUsageById}
-                    onCreateType={onCreateType}
-                    settings={settings}
-                    selectMode={selectMode}
-                    selected={selectedIds.has(row.id)}
-                    canTransfer={canTransfer}
-                    onUpdateCell={onUpdateCell}
-                    onCommitCell={onCommitCell}
-                    onDeleteRequest={onDeleteRequest}
-                    onEditRequest={onEditRequest}
-                    onEditRowRequest={onEditRowRequest}
-                    onTransactionRequest={onTransactionRequest}
-                    onMatchRuleRequest={onMatchRuleRequest}
-                    onEditHistoryRequest={onEditHistoryRequest}
-                    onToggleSelect={onToggleSelect}
-                  />
+                  <Fragment key={row.id}>
+                    <SheetRow
+                      row={row}
+                      columns={columns}
+                      balances={balances}
+                      types={types}
+                      categories={categories}
+                      typeUsageById={typeUsageById}
+                      onCreateType={onCreateType}
+                      settings={settings}
+                      selectMode={selectMode}
+                      selected={selectedIds.has(row.id)}
+                      canTransfer={canTransfer}
+                      hiddenTransferCount={hiddenRun?.length ?? 0}
+                      transferExpanded={expanded}
+                      onToggleTransferAnchor={() =>
+                        onToggleTransferAnchor(row.id)
+                      }
+                      onUpdateCell={onUpdateCell}
+                      onCommitCell={onCommitCell}
+                      onDeleteRequest={onDeleteRequest}
+                      onEditRequest={onEditRequest}
+                      onEditRowRequest={onEditRowRequest}
+                      onTransactionRequest={onTransactionRequest}
+                      onToggleRowTransfer={onToggleRowTransfer}
+                      onMatchRuleRequest={onMatchRuleRequest}
+                      onEditHistoryRequest={onEditHistoryRequest}
+                      onToggleSelect={onToggleSelect}
+                    />
+                    {expanded &&
+                      hiddenRun !== undefined &&
+                      hiddenRun.map((hidden) => (
+                        <SheetRow
+                          key={hidden.id}
+                          row={hidden}
+                          columns={columns}
+                          balances={balances}
+                          types={types}
+                          categories={categories}
+                          typeUsageById={typeUsageById}
+                          onCreateType={onCreateType}
+                          settings={settings}
+                          selectMode={selectMode}
+                          selected={selectedIds.has(hidden.id)}
+                          canTransfer={canTransfer}
+                          revealedTransfer
+                          onUpdateCell={onUpdateCell}
+                          onCommitCell={onCommitCell}
+                          onDeleteRequest={onDeleteRequest}
+                          onEditRequest={onEditRequest}
+                          onEditRowRequest={onEditRowRequest}
+                          onTransactionRequest={onTransactionRequest}
+                          onToggleRowTransfer={onToggleRowTransfer}
+                          onMatchRuleRequest={onMatchRuleRequest}
+                          onEditHistoryRequest={onEditHistoryRequest}
+                          onToggleSelect={onToggleSelect}
+                        />
+                      ))}
+                  </Fragment>
                 );
               })}
           </tbody>

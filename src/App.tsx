@@ -228,6 +228,17 @@ type ItemAction =
       columnId: string;
       value: CellValue;
     }
+  | {
+      // Flip a budget row's `isTransfer` flag. The synthesized
+      // transaction and history row variants set their transfer status
+      // through other paths (`peerAccountId` and
+      // `HistoryEntry.isTransfer` respectively) — this action only
+      // touches user-authored rows that live in `item.rows`.
+      type: "toggleRowTransfer";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+    }
   | { type: "addRow"; sheetId: string; itemId: string; date: string }
   | {
       type: "addRowsFromComplex";
@@ -506,6 +517,7 @@ type Action =
       patch: {
         userDescription?: string;
         userTypeId?: string | null;
+        isTransfer?: boolean;
       };
     }
   | {
@@ -621,6 +633,21 @@ function reduceAccountBudget(
             ? { ...r, cells: { ...r.cells, [action.columnId]: action.value } }
             : r,
         ),
+      };
+    }
+
+    case "toggleRowTransfer": {
+      return {
+        ...item,
+        rows: item.rows.map((r) => {
+          if (r.id !== action.rowId) return r;
+          if (r.isTransfer) {
+            const next = { ...r };
+            delete next.isTransfer;
+            return next;
+          }
+          return { ...r, isTransfer: true };
+        }),
       };
     }
 
@@ -1496,10 +1523,16 @@ function reducer(state: UserData, action: Action): UserData {
       if (action.patch.userTypeId === null) delete next.userTypeId;
       else next.userTypeId = action.patch.userTypeId;
     }
+    if (action.patch.isTransfer !== undefined) {
+      // Only persist `true` — absent means "not a transfer".
+      if (action.patch.isTransfer) next.isTransfer = true;
+      else delete next.isTransfer;
+    }
     // Bail if the patch is a no-op so React skips a wasted render.
     if (
       next.userDescription === prev.userDescription &&
-      next.userTypeId === prev.userTypeId
+      next.userTypeId === prev.userTypeId &&
+      next.isTransfer === prev.isTransfer
     ) {
       return state;
     }
@@ -3868,6 +3901,11 @@ function BudgetView({
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
   );
+  const onToggleRowTransfer = useCallback(
+    (row: Row) =>
+      dispatch({ type: "toggleRowTransfer", sheetId, itemId, rowId: row.id }),
+    [dispatch, sheetId, itemId],
+  );
   const onAddComplex = useCallback((date: string) => {
     setComplexSeedDate(date);
     setComplexSeed(null);
@@ -4890,7 +4928,11 @@ function BudgetView({
   }, [historyEditPrompt, activeItem.accountId, data.history]);
 
   const onSubmitHistoryEdit = useCallback(
-    (patch: { userDescription: string; userTypeId: string | null }) => {
+    (patch: {
+      userDescription: string;
+      userTypeId: string | null;
+      isTransfer: boolean;
+    }) => {
       const accountId = activeItem.accountId;
       if (!accountId || !historyEditPrompt) return;
       dispatch({
@@ -5430,6 +5472,7 @@ function BudgetView({
                 onEditRequest={onEditRequest}
                 onEditRowRequest={onEditRowRequest}
                 onTransactionRequest={onTransactionRequest}
+                onToggleRowTransfer={onToggleRowTransfer}
                 onMatchRuleRequest={onMatchRuleRequest}
                 onEditHistoryRequest={onEditHistoryRequest}
                 onUpdateHistoryEntry={onUpdateHistoryEntry}

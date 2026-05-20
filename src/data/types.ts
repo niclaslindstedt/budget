@@ -66,6 +66,15 @@ export type Row = {
   // order they appear in `item.rows`"; a row's own contribution is
   // excluded from its own variables to avoid self-reference.
   amountFormula?: string;
+  // True when the user has flagged this row as an inter-account
+  // transfer that should not show as real income / expense. The
+  // setting `hideTransfers` filters such rows out of the budget table
+  // while their amounts continue to contribute to the running balance.
+  // Set via the per-row "mark as transfer" (eye-slash) action and
+  // mirrored from `HistoryEntry.isTransfer` by `synthesizeHistoryRow`.
+  // Synthesized transaction rows (those carrying `peerAccountId`) are
+  // implicitly transfers and don't need this flag set.
+  isTransfer?: boolean;
 };
 
 // Master allowlist of glyph names used anywhere in the app. The picker
@@ -265,6 +274,15 @@ export type HistoryEntry = {
   importedAt: number;
   hidden?: boolean;
   collapsedIntoTransactionId?: string;
+  // True when the user has flagged this bank row as an inter-account
+  // transfer (set via the history-entry edit modal). The synthesized
+  // row picks this up and the `hideTransfers` setting filters it out of
+  // the budget projection. The amount still contributes to the running
+  // balance — the row is suppressed, not deleted. Independent of the
+  // auto-collapse path (`collapsedIntoTransactionId`), which dedups a
+  // matched pair into a single Transaction; this flag stands in when no
+  // peer side is available yet.
+  isTransfer?: boolean;
   // Per-entry user overrides for the synthesized row's description /
   // type. Higher priority than `MatchRule` and `MerchantHint` — set by
   // the per-entry edit modal (pen button on a history row) and the
@@ -471,6 +489,17 @@ export type Settings = {
   // field — a Swedish-speaking user may still want, say, currency
   // before the amount.
   language: "en" | "sv";
+  // Suppress rows flagged as inter-account transfers from the budget
+  // tables. The running balance still accounts for their amounts —
+  // they're hidden, not removed. Triggered by: a synthesized
+  // Transaction row's `peerAccountId`, a `HistoryEntry.isTransfer`
+  // flagged in the entry-edit modal, or a budget row's `isTransfer`
+  // flagged by the per-row eye action. Each visible row whose
+  // computed balance step crossed at least one hidden transfer gets
+  // a small ↔ icon on its balance cell that inline-expands the
+  // hidden rows underneath when clicked. Default false so the
+  // out-of-the-box view matches existing builds.
+  hideTransfers: boolean;
 };
 
 // Persistent memory of which type the user assigned to which
@@ -573,7 +602,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 28;
+  version: 29;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

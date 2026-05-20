@@ -130,7 +130,15 @@ function validateRow(
   knownTypeIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, cells, seriesId, typeId, isCorrection, amountFormula } = raw;
+  const {
+    id,
+    cells,
+    seriesId,
+    typeId,
+    isCorrection,
+    amountFormula,
+    isTransfer,
+  } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (!isObject(cells)) return fail(`${path}.cells`, "expected an object");
@@ -169,6 +177,13 @@ function validateRow(
     if (typeof amountFormula !== "string")
       return fail(`${path}.amountFormula`, "expected a string");
     if (amountFormula !== "") row.amountFormula = amountFormula;
+  }
+  if (isTransfer !== undefined) {
+    if (typeof isTransfer !== "boolean")
+      return fail(`${path}.isTransfer`, "expected a boolean");
+    // Only persist `true` — stored `false` is indistinguishable from
+    // "field absent" and just bloats the snapshot.
+    if (isTransfer) row.isTransfer = true;
   }
   return { ok: true, value: row };
 }
@@ -432,6 +447,11 @@ function validateHistoryEntry(
     // doesn't render a chip pointing at nothing. Same contract as
     // `MerchantHint` and `MatchRule`.
     if (knownTypeIds.has(raw.userTypeId)) entry.userTypeId = raw.userTypeId;
+  }
+  if (raw.isTransfer !== undefined) {
+    if (typeof raw.isTransfer !== "boolean")
+      return fail(`${path}.isTransfer`, "expected a boolean");
+    if (raw.isTransfer) entry.isTransfer = true;
   }
   return { ok: true, value: entry };
 }
@@ -791,6 +811,10 @@ function validateSettings(raw: unknown): Settings {
     raw.language === "sv" || raw.language === "en"
       ? raw.language
       : DEFAULT_SETTINGS.language;
+  const hideTransfers =
+    typeof raw.hideTransfers === "boolean"
+      ? raw.hideTransfers
+      : DEFAULT_SETTINGS.hideTransfers;
   return {
     startOfMonth,
     dateFormat,
@@ -809,6 +833,7 @@ function validateSettings(raw: unknown): Settings {
     sessionTimeoutMinutes,
     lastSeenChangelogVersion,
     language,
+    hideTransfers,
   };
 }
 

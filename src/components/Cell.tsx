@@ -3,6 +3,8 @@ import {
   ArrowLeftRight,
   ArrowRight,
   Check,
+  ChevronDown,
+  ChevronUp,
   Minus,
   Plus,
   Repeat,
@@ -24,7 +26,7 @@ import {
   withCurrency,
 } from "../utils/format";
 import type { FloatingPlacement } from "../hooks";
-import { useT } from "../i18n";
+import { plural, useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { DatePickerModal } from "./DatePickerModal";
@@ -76,6 +78,14 @@ type Props = {
   // the number isn't a literal entry. Editing the formula goes
   // through the ComplexEntryModal, not inline.
   hasFormula?: boolean;
+  // Number of hidden transfer rows that immediately precede this row
+  // in chronological order. Only meaningful on the `balance` column —
+  // when > 0, the cell renders a small ↔ icon button that toggles
+  // inline-expansion of those hidden rows via `onToggleTransferAnchor`.
+  // 0 (the default) renders the balance text alone.
+  hiddenTransferCount?: number;
+  transferExpanded?: boolean;
+  onToggleTransferAnchor?: () => void;
   // Parent-level update / commit handlers. Carry rowId + columnId so
   // SheetRow can pass the same reference-stable function to every cell
   // in the row — React.memo's shallow compare then skips re-rendering a
@@ -106,6 +116,9 @@ function CellImpl({
   outgoing,
   isHistory,
   hasFormula,
+  hiddenTransferCount = 0,
+  transferExpanded = false,
+  onToggleTransferAnchor,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -155,19 +168,16 @@ function CellImpl({
             settings={settings}
           />
         );
-      case "balance": {
-        const n = computedBalance ?? 0;
+      case "balance":
         return (
-          <td
-            className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
-              n < 0 ? "text-negative" : "text-positive"
-            }`}
-            aria-readonly="true"
-          >
-            <span className="block">{formatRunningBalance(n, settings)}</span>
-          </td>
+          <BalanceCell
+            value={computedBalance ?? 0}
+            settings={settings}
+            hiddenTransferCount={hiddenTransferCount}
+            transferExpanded={transferExpanded}
+            onToggleTransferAnchor={onToggleTransferAnchor}
+          />
         );
-      }
       case "completed": {
         const checked = value === true;
         return (
@@ -212,19 +222,16 @@ function CellImpl({
             settings={settings}
           />
         );
-      case "balance": {
-        const n = computedBalance ?? 0;
+      case "balance":
         return (
-          <td
-            className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
-              n < 0 ? "text-negative" : "text-positive"
-            }`}
-            aria-readonly="true"
-          >
-            <span className="block">{formatRunningBalance(n, settings)}</span>
-          </td>
+          <BalanceCell
+            value={computedBalance ?? 0}
+            settings={settings}
+            hiddenTransferCount={hiddenTransferCount}
+            transferExpanded={transferExpanded}
+            onToggleTransferAnchor={onToggleTransferAnchor}
+          />
         );
-      }
       case "completed": {
         const checked = value === true;
         return (
@@ -313,23 +320,16 @@ function CellImpl({
       );
     }
 
-    case "balance": {
-      const n = computedBalance ?? 0;
+    case "balance":
       return (
-        <td
-          className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
-            n < 0 ? "text-negative" : "text-positive"
-          }`}
-          aria-readonly="true"
-        >
-          {/* Wrap the text so the mobile layout (where each td is
-             display:flex) gets a full-width child for `text-right` to bite
-             on — otherwise the bare text node becomes a narrow anonymous
-             flex item that sits at the start of the cell. */}
-          <span className="block">{formatRunningBalance(n, settings)}</span>
-        </td>
+        <BalanceCell
+          value={computedBalance ?? 0}
+          settings={settings}
+          hiddenTransferCount={hiddenTransferCount}
+          transferExpanded={transferExpanded}
+          onToggleTransferAnchor={onToggleTransferAnchor}
+        />
       );
-    }
 
     case "completed": {
       const checked = value === true;
@@ -390,6 +390,75 @@ function CellImpl({
 // `onUpdateCell` / `onCommitCell` straight through (stable refs), and
 // the other props are scalars or stable references derived from the row.
 export const Cell = memo(CellImpl);
+
+// Shared readonly balance cell. Three render paths in `Cell` (default,
+// `isTransaction`, `isHistory`) all need the same display logic plus
+// the optional ↔ button that reveals hidden transfers behind this
+// balance step, so the JSX is factored out here. When
+// `hiddenTransferCount` is 0 the button branch never renders, so a
+// balance with no hidden run upstream looks exactly like it always
+// did.
+function BalanceCell({
+  value,
+  settings,
+  hiddenTransferCount,
+  transferExpanded,
+  onToggleTransferAnchor,
+}: {
+  value: number;
+  settings: Settings;
+  hiddenTransferCount: number;
+  transferExpanded: boolean;
+  onToggleTransferAnchor?: () => void;
+}) {
+  const t = useT();
+  const colourClass = value < 0 ? "text-negative" : "text-positive";
+  const text = formatRunningBalance(value, settings);
+  const showButton = hiddenTransferCount > 0 && !!onToggleTransferAnchor;
+  return (
+    <td
+      className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${colourClass}`}
+      aria-readonly="true"
+    >
+      {/* Wrap the text so the mobile layout (where each td is
+         display:flex) gets a full-width child for `text-right` to bite
+         on — otherwise the bare text node becomes a narrow anonymous
+         flex item that sits at the start of the cell. */}
+      <span className="flex items-center justify-end gap-1.5">
+        {showButton && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleTransferAnchor?.();
+            }}
+            aria-label={plural(
+              t,
+              "sheet.hiddenTransferOne",
+              "sheet.hiddenTransferOther",
+              hiddenTransferCount,
+            )}
+            title={
+              transferExpanded
+                ? t("sheet.collapseHiddenTransfers")
+                : t("sheet.expandHiddenTransfers")
+            }
+            aria-expanded={transferExpanded}
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded border-0 bg-transparent p-0.5 text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            <ArrowLeftRight size={12} aria-hidden focusable={false} />
+            {transferExpanded ? (
+              <ChevronUp size={10} aria-hidden focusable={false} />
+            ) : (
+              <ChevronDown size={10} aria-hidden focusable={false} />
+            )}
+          </button>
+        )}
+        <span>{text}</span>
+      </span>
+    </td>
+  );
+}
 
 // Readonly variant of the type cell — used for synthesized transaction
 // and history rows where the row is sourced from outside the budget's
