@@ -45,19 +45,22 @@ export function FormulaHelpButton() {
         placement={PLACEMENT}
       >
         <div className="max-h-96 overflow-auto px-3 py-2 text-xs text-fg">
-          <p className="mb-2 text-muted">
-            {t("formula.summary")}
-          </p>
+          <p className="mb-2 text-muted">{t("formula.summary")}</p>
           <Section title={t("formula.variables")}>
             <p className="text-muted">
               {t("formula.variablesIntro")}{" "}
-              <strong className="text-fg">{t("formula.variablesDropdown")}</strong>{" "}
+              <strong className="text-fg">
+                {t("formula.variablesDropdown")}
+              </strong>{" "}
               {t("formula.variablesIntroEnd")}
             </p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4 font-mono text-[11px]">
               <li>
                 <span className="text-flag">endOfMonthBalance</span>
-                <span className="text-muted"> {t("formula.endOfMonthBalanceHint")}</span>
+                <span className="text-muted">
+                  {" "}
+                  {t("formula.endOfMonthBalanceHint")}
+                </span>
               </li>
               <li>
                 <span className="text-flag">balanceBefore</span>

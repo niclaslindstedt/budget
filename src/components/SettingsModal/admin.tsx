@@ -22,6 +22,7 @@ import {
   TYPE_GLYPH_NAMES,
 } from "../../data/constants";
 import type { Category, CategoryIcon, EntryType } from "../../data/types";
+import { useT } from "../../i18n";
 import { CategoryChip } from "../CategoryPicker";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -64,6 +65,7 @@ export function CategoriesAndTypesAdmin({
   onDeleteType,
   onSetPresetTypeHidden,
 }: Props) {
+  const t = useT();
   const hiddenCats = useMemo(
     () => new Set(hiddenPresetCategoryIds),
     [hiddenPresetCategoryIds],
@@ -124,12 +126,7 @@ export function CategoriesAndTypesAdmin({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-muted">
-        Categories group your expenses for analysis ("how much went to Food this
-        month"). Each type belongs to one category — adding "Restaurant" under
-        Food gives every restaurant entry the same chip and rolls it into Food
-        in summaries.
-      </p>
+      <p className="text-xs text-muted">{t("settings.categoriesTab.intro")}</p>
       <ul className="flex flex-col gap-2">
         {allCategories.map((cat) => {
           const isPreset = PRESET_CATEGORY_IDS.has(cat.id);
@@ -144,7 +141,7 @@ export function CategoriesAndTypesAdmin({
               >
                 <CategoryEditor
                   initial={cat}
-                  submitLabel="Save"
+                  submitLabel={t("settings.categoriesTab.saveSubmit")}
                   onCancel={() => setEditingCategoryId(null)}
                   onSubmit={(draft) => {
                     onUpdateCategory(cat.id, draft);
@@ -164,7 +161,11 @@ export function CategoriesAndTypesAdmin({
                   type="button"
                   onClick={() => toggleExpanded(cat.id)}
                   aria-expanded={isOpen}
-                  aria-label={isOpen ? "Collapse category" : "Expand category"}
+                  aria-label={
+                    isOpen
+                      ? t("settings.categoriesTab.collapseCategory")
+                      : t("settings.categoriesTab.expandCategory")
+                  }
                   className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
                 >
                   {isOpen ? (
@@ -175,22 +176,34 @@ export function CategoriesAndTypesAdmin({
                 </button>
                 <CategoryChip category={cat} compact />
                 {isPreset && (
-                  <span className="text-xs text-muted">Built-in</span>
+                  <span className="text-xs text-muted">
+                    {t("settings.categoriesTab.builtIn")}
+                  </span>
                 )}
                 <span className="ml-auto text-xs text-muted">
                   {childTypes.length === 0
-                    ? "no types"
+                    ? t("settings.categoriesTab.noTypesShort")
                     : childTypes.length === 1
-                      ? "1 type"
-                      : `${childTypes.length} types`}
+                      ? t("settings.categoriesTab.typeCountOne")
+                      : t("settings.categoriesTab.typeCountOther", {
+                          n: childTypes.length,
+                        })}
                 </span>
                 {isPreset ? (
                   <button
                     type="button"
                     onClick={() => onSetPresetCategoryHidden(cat.id, !isHidden)}
                     aria-pressed={!isHidden}
-                    aria-label={isHidden ? "Show category" : "Hide category"}
-                    title={isHidden ? "Show in picker" : "Hide from picker"}
+                    aria-label={
+                      isHidden
+                        ? t("settings.categoriesTab.showCategory")
+                        : t("settings.categoriesTab.hideCategory")
+                    }
+                    title={
+                      isHidden
+                        ? t("settings.categoriesTab.showInPicker")
+                        : t("settings.categoriesTab.hideFromPicker")
+                    }
                     className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line ${
                       isHidden
                         ? "bg-surface text-muted hover:text-fg"
@@ -208,8 +221,8 @@ export function CategoriesAndTypesAdmin({
                     <button
                       type="button"
                       onClick={() => setEditingCategoryId(cat.id)}
-                      aria-label="Edit category"
-                      title="Edit"
+                      aria-label={t("settings.categoriesTab.editCategory")}
+                      title={t("settings.categoriesTab.editLabel")}
                       className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
                     >
                       <Pencil size={13} aria-hidden focusable={false} />
@@ -217,8 +230,8 @@ export function CategoriesAndTypesAdmin({
                     <button
                       type="button"
                       onClick={() => setPendingDeleteCategoryId(cat.id)}
-                      aria-label="Delete category"
-                      title="Delete"
+                      aria-label={t("settings.categoriesTab.deleteCategory")}
+                      title={t("settings.categoriesTab.deleteLabel")}
                       className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-danger hover:text-danger"
                     >
                       <Trash2 size={13} aria-hidden focusable={false} />
@@ -246,7 +259,7 @@ export function CategoriesAndTypesAdmin({
         <div className="rounded border border-line bg-surface-2 p-2">
           <CategoryEditor
             initial={null}
-            submitLabel="Add"
+            submitLabel={t("settings.categoriesTab.addSubmit")}
             onCancel={() => setCreatingCategory(false)}
             onSubmit={(draft) => {
               onCreateCategory(draft);
@@ -261,20 +274,22 @@ export function CategoriesAndTypesAdmin({
           className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
         >
           <Plus size={14} aria-hidden focusable={false} />
-          Add category
+          {t("settings.categoriesTab.addCategory")}
         </button>
       )}
       <ConfirmDialog
         open={pendingDeleteCategory !== null}
-        title="Delete category"
+        title={t("settings.categoriesTab.deleteCategoryTitle")}
         description={
           pendingDeleteCategory
-            ? `Remove "${pendingDeleteCategory.name}"? Types under it stay, but they'll be reassigned to "Other".`
+            ? t("settings.categoriesTab.deleteCategoryHint", {
+                name: pendingDeleteCategory.name,
+              })
             : null
         }
         actions={[
           {
-            label: "Delete",
+            label: t("settings.categoriesTab.deleteLabel"),
             tone: "danger",
             onSelect: () => {
               if (pendingDeleteCategoryId) {
@@ -312,35 +327,36 @@ function TypesSection({
   onDelete: (id: string) => void;
   onSetPresetHidden: (presetId: string, hidden: boolean) => void;
 }) {
+  const t = useT();
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const pendingDelete =
     pendingDeleteId !== null
-      ? (types.find((t) => t.id === pendingDeleteId) ?? null)
+      ? (types.find((ty) => ty.id === pendingDeleteId) ?? null)
       : null;
 
   return (
     <div className="flex flex-col gap-2 border-t border-line bg-surface-3 p-2 pl-8">
       {types.length === 0 ? (
         <p className="text-xs text-muted">
-          No types in this category yet. Add one below.
+          {t("settings.categoriesTab.noTypesYet")}
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-line overflow-hidden rounded border border-line bg-surface-2">
-          {types.map((t) => {
-            const isPreset = PRESET_ENTRY_TYPE_IDS.has(t.id);
-            const isHidden = isPreset && hiddenPresetTypeIds.has(t.id);
-            if (editingId === t.id) {
+          {types.map((ty) => {
+            const isPreset = PRESET_ENTRY_TYPE_IDS.has(ty.id);
+            const isHidden = isPreset && hiddenPresetTypeIds.has(ty.id);
+            if (editingId === ty.id) {
               return (
-                <li key={t.id} className="px-2 py-2">
+                <li key={ty.id} className="px-2 py-2">
                   <TypeEditor
-                    initial={t}
+                    initial={ty}
                     categories={allCategories}
-                    submitLabel="Save"
+                    submitLabel={t("settings.categoriesTab.saveSubmit")}
                     onCancel={() => setEditingId(null)}
                     onSubmit={(draft) => {
-                      onUpdate(t.id, draft);
+                      onUpdate(ty.id, draft);
                       setEditingId(null);
                     }}
                   />
@@ -349,21 +365,31 @@ function TypesSection({
             }
             return (
               <li
-                key={t.id}
+                key={ty.id}
                 className="flex items-center gap-2 px-2 py-1.5 text-sm"
               >
-                <TypeChip type={t} compact />
+                <TypeChip type={ty} compact />
                 {isPreset && (
-                  <span className="text-xs text-muted">Built-in</span>
+                  <span className="text-xs text-muted">
+                    {t("settings.categoriesTab.builtIn")}
+                  </span>
                 )}
                 <div className="ml-auto flex items-center gap-1">
                   {isPreset ? (
                     <button
                       type="button"
-                      onClick={() => onSetPresetHidden(t.id, !isHidden)}
+                      onClick={() => onSetPresetHidden(ty.id, !isHidden)}
                       aria-pressed={!isHidden}
-                      aria-label={isHidden ? "Show type" : "Hide type"}
-                      title={isHidden ? "Show in picker" : "Hide from picker"}
+                      aria-label={
+                        isHidden
+                          ? t("settings.categoriesTab.showType")
+                          : t("settings.categoriesTab.hideType")
+                      }
+                      title={
+                        isHidden
+                          ? t("settings.categoriesTab.showInPicker")
+                          : t("settings.categoriesTab.hideFromPicker")
+                      }
                       className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line ${
                         isHidden
                           ? "bg-surface text-muted hover:text-fg"
@@ -380,18 +406,18 @@ function TypesSection({
                     <>
                       <button
                         type="button"
-                        onClick={() => setEditingId(t.id)}
-                        aria-label="Edit type"
-                        title="Edit"
+                        onClick={() => setEditingId(ty.id)}
+                        aria-label={t("settings.categoriesTab.editType")}
+                        title={t("settings.categoriesTab.editLabel")}
                         className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
                       >
                         <Pencil size={13} aria-hidden focusable={false} />
                       </button>
                       <button
                         type="button"
-                        onClick={() => setPendingDeleteId(t.id)}
-                        aria-label="Delete type"
-                        title="Delete"
+                        onClick={() => setPendingDeleteId(ty.id)}
+                        aria-label={t("settings.categoriesTab.deleteType")}
+                        title={t("settings.categoriesTab.deleteLabel")}
                         className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-danger hover:text-danger"
                       >
                         <Trash2 size={13} aria-hidden focusable={false} />
@@ -410,7 +436,7 @@ function TypesSection({
             initial={null}
             initialCategoryId={category.id}
             categories={allCategories}
-            submitLabel="Add"
+            submitLabel={t("settings.categoriesTab.addSubmit")}
             onCancel={() => setCreating(false)}
             onSubmit={(draft) => {
               onCreate(draft);
@@ -425,20 +451,22 @@ function TypesSection({
           className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-xs text-fg hover:border-accent hover:text-accent"
         >
           <Plus size={12} aria-hidden focusable={false} />
-          Add type to {category.name}
+          {t("settings.categoriesTab.addTypeTo", { name: category.name })}
         </button>
       )}
       <ConfirmDialog
         open={pendingDelete !== null}
-        title="Delete type"
+        title={t("settings.categoriesTab.deleteTypeTitle")}
         description={
           pendingDelete
-            ? `Remove "${pendingDelete.name}"? Any rows labelled with it lose the chip; their description stays intact.`
+            ? t("settings.categoriesTab.deleteTypeHint", {
+                name: pendingDelete.name,
+              })
             : null
         }
         actions={[
           {
-            label: "Delete",
+            label: t("settings.categoriesTab.deleteLabel"),
             tone: "danger",
             onSelect: () => {
               if (pendingDeleteId) onDelete(pendingDeleteId);
@@ -463,6 +491,7 @@ function CategoryEditor({
   onCancel: () => void;
   onSubmit: (draft: Omit<Category, "id">) => void;
 }) {
+  const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [color, setColor] = useState<string>(
     initial?.color ?? CATEGORY_COLORS[0],
@@ -478,7 +507,7 @@ function CategoryEditor({
   return (
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>Name</span>
+        <span>{t("settings.categoriesTab.name")}</span>
         <input
           type="text"
           autoFocus
@@ -491,11 +520,11 @@ function CategoryEditor({
               handleSubmit();
             }
           }}
-          placeholder="Bills"
+          placeholder={t("settings.categoriesTab.categoryNamePlaceholder")}
         />
       </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Color</span>
+        <span>{t("settings.categoriesTab.color")}</span>
         <ColorPalette
           colors={CATEGORY_COLORS}
           value={color}
@@ -504,7 +533,7 @@ function CategoryEditor({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Icon</span>
+        <span>{t("settings.categoriesTab.icon")}</span>
         <GlyphGrid
           icons={CATEGORY_GLYPH_NAMES}
           value={icon}
@@ -537,6 +566,7 @@ function TypeEditor({
   onCancel: () => void;
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
+  const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [color, setColor] = useState<string>(
     initial?.color ?? CATEGORY_COLORS[0],
@@ -555,7 +585,7 @@ function TypeEditor({
   return (
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>Name</span>
+        <span>{t("settings.categoriesTab.name")}</span>
         <input
           type="text"
           autoFocus
@@ -568,11 +598,11 @@ function TypeEditor({
               handleSubmit();
             }
           }}
-          placeholder="Padel"
+          placeholder={t("settings.categoriesTab.typeNamePlaceholder")}
         />
       </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Category</span>
+        <span>{t("type.category")}</span>
         <CategoryDropdown
           categories={categories}
           value={categoryId}
@@ -580,7 +610,7 @@ function TypeEditor({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Color</span>
+        <span>{t("settings.categoriesTab.color")}</span>
         <ColorPalette
           colors={CATEGORY_COLORS}
           value={color}
@@ -589,7 +619,7 @@ function TypeEditor({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>Glyph</span>
+        <span>{t("type.glyph")}</span>
         <GlyphGrid
           icons={TYPE_GLYPH_NAMES}
           value={glyph}
@@ -620,6 +650,7 @@ function CategoryDropdown({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
@@ -634,7 +665,9 @@ function CategoryDropdown({
         {selected ? (
           <CategoryChip category={selected} compact />
         ) : (
-          <span className="text-muted">Pick a category…</span>
+          <span className="text-muted">
+            {t("settings.categoriesTab.pickCategoryEllipsis")}
+          </span>
         )}
         <ChevronDown
           size={12}
@@ -689,6 +722,7 @@ function EditorButtons({
   onCancel: () => void;
   onSubmit: () => void;
 }) {
+  const t = useT();
   return (
     <div className="mt-1 flex justify-end gap-2">
       <button
@@ -697,7 +731,7 @@ function EditorButtons({
         className="inline-flex cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
       >
         <X size={12} aria-hidden focusable={false} />
-        Cancel
+        {t("settings.categoriesTab.cancelSubmit")}
       </button>
       <button
         type="button"
