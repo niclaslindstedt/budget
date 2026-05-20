@@ -124,6 +124,7 @@ export function HistoryModal({
       onClose={onCancel}
       labelledBy="history-modal-title"
       size="max-w-2xl"
+      centered
     >
       <Modal.Header
         title={t("history.titleAccount", { name: account?.name ?? "" })}
@@ -239,6 +240,7 @@ export function HistoryModal({
         labelledBy="history-description-title"
         size="max-w-md"
         scrollableBody={false}
+        centered
       >
         <Modal.Header
           title={t("history.description")}

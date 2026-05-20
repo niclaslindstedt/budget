@@ -47,7 +47,12 @@ export function ChangelogModal({ open, onClose, since }: Props) {
   // here with nothing to show.
   if (releases.length === 0) return null;
   return (
-    <Modal open={open} onClose={onClose} labelledBy="changelog-modal-title">
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="changelog-modal-title"
+      centered
+    >
       <Modal.Header title={t("changelog.title")} onClose={onClose} />
       <Modal.Body className="flex flex-col gap-4 text-sm">
         {releases.map((release) => (

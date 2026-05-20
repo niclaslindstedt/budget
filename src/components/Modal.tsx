@@ -12,7 +12,9 @@ import { useBodyScrollLock } from "../utils/scroll-lock";
 //   (true sub-screen layout, every pixel goes to content), translucent
 //   black backdrop with a centered card on desktop. Clicking the
 //   backdrop dismisses; on mobile the modal covers the whole viewport
-//   so there's nothing exposed to click anyway.
+//   so there's nothing exposed to click anyway. When `centered` is
+//   true the modal renders as a translucent-backdrop centered card on
+//   every viewport size — see below.
 //
 // * The bordered surface shell — edge-to-edge `100svh` on mobile,
 //   capped to `min(95svh, viewport - 2rem)` for the desktop card.
@@ -26,6 +28,9 @@ import { useBodyScrollLock } from "../utils/scroll-lock";
 //   mobile so the footer stays visible. Android Chrome with
 //   `interactive-widget=resizes-content` (set in `index.html`) resizes
 //   the layout viewport itself so the math collapses to ~0 there.
+//   This handling is only wired when the default (fullscreen-on-mobile)
+//   layout is used — `centered` modals must not contain inputs that
+//   open the soft keyboard, so the math is irrelevant for them.
 //
 // Usage:
 //
@@ -57,6 +62,17 @@ type RootProps = {
   // content where neither scrolling nor a sticky footer is desired
   // (e.g. ConfirmDialog, DatePickerModal).
   scrollableBody?: boolean;
+  // When true, the modal renders as a centered card on every viewport
+  // size (mobile + desktop) instead of filling the screen on mobile.
+  // Use this for modals that don't open the soft keyboard — pickers,
+  // confirmations, read-only info — where the dead space under a short
+  // fullscreen modal looks worse than a centered card. The rule of
+  // thumb is: if the modal contains no text inputs (`<input type="text"`,
+  // `inputMode="decimal"`, `<textarea>`, `contentEditable`, etc.) it
+  // can be `centered`. Modals with such inputs must stay default so the
+  // iOS visual-viewport math (`useVirtualKeyboardInset`) keeps the
+  // footer above the keyboard.
+  centered?: boolean;
   children: React.ReactNode;
 };
 
@@ -67,6 +83,7 @@ export function Modal({
   role = "dialog",
   size = "max-w-lg",
   scrollableBody = true,
+  centered = false,
   children,
 }: RootProps) {
   useBodyScrollLock(open);
@@ -92,19 +109,26 @@ export function Modal({
 
   // Always flex-col + overflow-hidden on mobile so Footer is pinned
   // by flex layout and Body owns its own scroll. Desktop drops the
-  // 100svh constraint and (when scrollableBody) caps the height.
-  const shellLayout = scrollableBody
-    ? `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[min(95svh,calc(100svh-2rem))]`
-    : `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[95svh]`;
+  // 100svh constraint and (when scrollableBody) caps the height. The
+  // `centered` branch uses the desktop layout on every viewport size.
+  const shellLayout = centered
+    ? scrollableBody
+      ? `flex w-full ${size} flex-col overflow-hidden max-h-[min(95svh,calc(100svh-2rem))]`
+      : `flex w-full ${size} flex-col overflow-hidden max-h-[95svh]`
+    : scrollableBody
+      ? `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[min(95svh,calc(100svh-2rem))]`
+      : `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[95svh]`;
 
   // On iOS the visual viewport shifts up to fit the keyboard but the
   // layout viewport (and therefore `100svh`) stays the same — the
   // shell's bottom ends up under the keyboard. Shrink the shell so
   // the footer rides above the keyboard. Desktop never needs this;
   // Android with `interactive-widget=resizes-content` reports an
-  // inset of 0 (the layout viewport already shrunk for us).
+  // inset of 0 (the layout viewport already shrunk for us). `centered`
+  // modals must not contain keyboard-opening inputs (see prop docs),
+  // so the inset stays at 0 and the math is skipped.
   const shellStyle: React.CSSProperties | undefined =
-    isMobile && keyboardInset > 0
+    !centered && isMobile && keyboardInset > 0
       ? { height: `calc(100svh - ${keyboardInset}px)` }
       : undefined;
 
@@ -126,21 +150,26 @@ export function Modal({
   // never sees the tap on a date. Modals opened from outside a sheet
   // row have no registration to dismiss, so the marker is a no-op for
   // them.
+  const overlayClass = centered
+    ? "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    : "fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50 sm:p-4";
+
+  const shellChrome = centered
+    ? "bg-surface rounded-lg shadow-2xl"
+    : "bg-surface sm:rounded-lg sm:shadow-2xl";
+
   return createPortal(
     <div
       role={role}
       aria-modal="true"
       aria-labelledby={labelledBy}
       data-active-portal
-      className="fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50 sm:p-4"
+      className={overlayClass}
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className={`${shellLayout} bg-surface sm:rounded-lg sm:shadow-2xl`}
-        style={shellStyle}
-      >
+      <div className={`${shellLayout} ${shellChrome}`} style={shellStyle}>
         <ModalLabelContext.Provider value={{ id: labelledBy }}>
           {children}
         </ModalLabelContext.Provider>

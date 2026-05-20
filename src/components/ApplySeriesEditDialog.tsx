@@ -50,6 +50,7 @@ export function ApplySeriesEditDialog({
       role="alertdialog"
       size="max-w-md"
       scrollableBody={false}
+      centered
     >
       <Modal.Header
         title={t("applySeries.titleApplyRecurring")}

@@ -401,6 +401,7 @@ export function ReconciliationModal({
       onClose={onClose}
       labelledBy="reconciliation-modal-title"
       size="max-w-2xl"
+      centered
     >
       <Modal.Header title={t("reconciliation.title")} onClose={onClose} />
       <Modal.Body>

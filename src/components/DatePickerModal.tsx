@@ -146,6 +146,7 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
       labelledBy="date-picker-title"
       size="max-w-sm"
       scrollableBody={false}
+      centered
     >
       <Modal.Header title={t("datePicker.title")} onClose={onClose} />
       <div className="px-4 py-3">

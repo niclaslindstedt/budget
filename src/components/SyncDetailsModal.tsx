@@ -157,6 +157,7 @@ export function SyncDetailsModal({
       labelledBy="sync-details-title"
       size="max-w-md"
       scrollableBody={false}
+      centered
     >
       <Modal.Header title={t("sync.cloudSync")} onClose={onClose} />
       <div className="flex flex-col gap-3 px-4 py-4">

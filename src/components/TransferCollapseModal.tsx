@@ -81,6 +81,7 @@ export function TransferCollapseModal({
       onClose={onClose}
       labelledBy="transfer-collapse-title"
       size="max-w-2xl"
+      centered
     >
       <Modal.Header title={t("transferCollapse.title")} onClose={onClose} />
       <Modal.Body>
