@@ -11,6 +11,7 @@ import {
 
 import type { Account, Category, EntryType, Row } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
+import { useT } from "../i18n";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -235,6 +236,7 @@ export function TransactionModal({
 
   const fromAccount = accounts.find((a) => a.id === fromAccountId) ?? null;
   const toAccount = accounts.find((a) => a.id === toAccountId) ?? null;
+  const t = useT();
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="tx-modal-title">
@@ -248,10 +250,10 @@ export function TransactionModal({
               focusable={false}
             />
             {isEdit
-              ? "Edit transaction"
+              ? t("transaction.titleEdit")
               : isPromote
-                ? "Make transaction"
-                : "New transaction"}
+                ? t("transaction.titlePromote")
+                : t("transaction.titleNew")}
           </>
         }
         onClose={onClose}
@@ -260,7 +262,7 @@ export function TransactionModal({
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-[1fr_2fr] gap-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Date</span>
+              <span className="text-xs text-muted">{t("transaction.date")}</span>
               <button
                 type="button"
                 onClick={() => setDatePickerOpen(true)}
@@ -276,7 +278,7 @@ export function TransactionModal({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Amount</span>
+              <span className="text-xs text-muted">{t("transaction.amount")}</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -297,7 +299,7 @@ export function TransactionModal({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Description</span>
+            <span className="text-xs text-muted">{t("transaction.description")}</span>
             <input
               type="text"
               ref={descriptionRef}
@@ -309,15 +311,15 @@ export function TransactionModal({
                   handleSave();
                 }
               }}
-              placeholder="What is this transfer for?"
+              placeholder={t("transaction.descriptionPlaceholder")}
               className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
 
           <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
-            <span className="text-xs text-muted">Transfer</span>
+            <span className="text-xs text-muted">{t("transaction.transfer")}</span>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">From</span>
+              <span className="text-xs text-muted">{t("transaction.from")}</span>
               {lockedFromId !== null ? (
                 <LockedAccountChip account={fromAccount} direction="from" />
               ) : (
@@ -340,7 +342,7 @@ export function TransactionModal({
                 <button
                   type="button"
                   onClick={swap}
-                  aria-label="Swap from and to accounts"
+                  aria-label={t("transaction.swap")}
                   className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
                 >
                   <ArrowDown size={12} aria-hidden focusable={false} />
@@ -348,7 +350,7 @@ export function TransactionModal({
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">To</span>
+              <span className="text-xs text-muted">{t("transaction.to")}</span>
               {lockedToId !== null ? (
                 <LockedAccountChip account={toAccount} direction="to" />
               ) : (
@@ -369,19 +371,19 @@ export function TransactionModal({
             {isPromote && (
               <p className="text-xs text-muted">
                 {request.outgoing
-                  ? "Money leaves this account."
-                  : "Money arrives in this account."}
+                  ? t("transaction.moneyLeaves")
+                  : t("transaction.moneyArrives")}
               </p>
             )}
             {fromAccountId && toAccountId && fromAccountId === toAccountId && (
               <p className="text-xs text-danger">
-                A transfer needs two different accounts.
+                {t("transaction.needTwoAccounts")}
               </p>
             )}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Type</span>
+            <span className="text-xs text-muted">{t("transaction.type")}</span>
             <TypePicker
               types={types}
               categories={categories}
@@ -396,7 +398,7 @@ export function TransactionModal({
           <Checkbox
             checked={completed}
             onChange={setCompleted}
-            label="Mark as done"
+            label={t("transaction.markAsDone")}
             className="items-center"
           />
         </div>
@@ -410,7 +412,7 @@ export function TransactionModal({
               className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20"
             >
               <Trash2 size={14} aria-hidden focusable={false} />
-              Delete
+              {t("common.delete")}
             </button>
           )}
         </div>
@@ -420,7 +422,7 @@ export function TransactionModal({
             onClick={onClose}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -428,7 +430,11 @@ export function TransactionModal({
             disabled={!canSave}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isEdit ? "Save" : isPromote ? "Make transaction" : "Create"}
+            {isEdit
+              ? t("common.save")
+              : isPromote
+                ? t("transaction.titlePromote")
+                : t("account.create")}
           </button>
         </div>
       </Modal.Footer>

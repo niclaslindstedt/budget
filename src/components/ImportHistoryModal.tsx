@@ -7,6 +7,7 @@ import {
   parseBankFile,
 } from "../storage/bank-parsers";
 import type { Account, HistoryEntry, Settings } from "../data/types";
+import { useLang, useT } from "../i18n";
 import { historyEntryId } from "../storage/bank-parsers";
 import { formatDate, formatShortDate } from "../utils/format";
 import { Modal } from "./Modal";
@@ -42,6 +43,8 @@ export function ImportHistoryModal({
   onCancel,
   onConfirm,
 }: Props) {
+  const t = useT();
+  const lang = useLang();
   const [state, setState] = useState<PreviewState>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -54,22 +57,25 @@ export function ImportHistoryModal({
     }
   }, [open]);
 
-  const handleFile = useCallback(async (file: File) => {
-    setState({ kind: "parsing", filename: file.name });
-    try {
-      const bytes = await file.arrayBuffer();
-      const parsed = await parseBankFile(makeBankFile(file.name, bytes));
-      if (parsed.entries.length === 0)
-        throw new Error("File contained no entries.");
-      setState({ kind: "ready", filename: file.name, parsed });
-    } catch (err) {
-      setState({
-        kind: "error",
-        filename: file.name,
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }, []);
+  const handleFile = useCallback(
+    async (file: File) => {
+      setState({ kind: "parsing", filename: file.name });
+      try {
+        const bytes = await file.arrayBuffer();
+        const parsed = await parseBankFile(makeBankFile(file.name, bytes));
+        if (parsed.entries.length === 0)
+          throw new Error(t("importHistory.fileContainedNoEntries"));
+        setState({ kind: "ready", filename: file.name, parsed });
+      } catch (err) {
+        setState({
+          kind: "error",
+          filename: file.name,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+    [t],
+  );
 
   const onFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -95,15 +101,11 @@ export function ImportHistoryModal({
       scrollableBody={false}
     >
       <Modal.Header
-        title={`Import history into ${account?.name ?? ""}`}
+        title={t("importHistory.titleInto", { name: account?.name ?? "" })}
         onClose={onCancel}
       />
       <div className="flex flex-col gap-3 px-4 py-3">
-        <p className="text-xs text-muted">
-          Drop a bank statement file below, or click to pick one. Currently
-          supported: Skandiabanken (.xlsx), Swedbank (.xlsx), Bank Norwegian
-          (.xlsx), ICA Banken (.csv).
-        </p>
+        <p className="text-xs text-muted">{t("importHistory.intro")}</p>
 
         <button
           type="button"
@@ -122,10 +124,10 @@ export function ImportHistoryModal({
         >
           <Upload size={18} aria-hidden focusable={false} />
           <span>
-            Drop file here, or{" "}
-            <span className="text-accent">click to pick</span>
+            {t("importHistory.dropFileOr")}{" "}
+            <span className="text-accent">{t("importHistory.clickToPick")}</span>
           </span>
-          <span className="text-xs text-muted">.xlsx, .csv</span>
+          <span className="text-xs text-muted">{t("importHistory.fileTypes")}</span>
         </button>
         <input
           ref={inputRef}
@@ -137,7 +139,8 @@ export function ImportHistoryModal({
 
         {state.kind === "parsing" && (
           <p className="text-xs text-muted">
-            Parsing <span className="font-mono text-fg">{state.filename}</span>…
+            {t("importHistory.parsing")}{" "}
+            <span className="font-mono text-fg">{state.filename}</span>…
           </p>
         )}
         {state.kind === "error" && (
@@ -148,16 +151,16 @@ export function ImportHistoryModal({
         {ready && preview && (
           <div className="flex flex-col gap-1.5 rounded border border-line bg-surface-2 px-3 py-2 text-xs">
             <div className="flex justify-between text-muted">
-              <span>File</span>
+              <span>{t("importHistory.file")}</span>
               <span className="font-mono text-fg">{ready.filename}</span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>Bank</span>
+              <span>{t("importHistory.bank")}</span>
               <span className="text-fg">{ready.parsed.bankParserId}</span>
             </div>
             {(ready.parsed.bankClearing || ready.parsed.bankAccountNumber) && (
               <div className="flex justify-between text-muted">
-                <span>Account</span>
+                <span>{t("importHistory.accountColumn")}</span>
                 <span className="font-mono text-flag">
                   {[ready.parsed.bankClearing, ready.parsed.bankAccountNumber]
                     .filter(Boolean)
@@ -166,27 +169,30 @@ export function ImportHistoryModal({
               </div>
             )}
             <div className="flex justify-between text-muted">
-              <span>Range</span>
+              <span>{t("importHistory.range")}</span>
               <span className="font-mono text-fg">
-                {formatRange(preview.rangeStart, preview.rangeEnd, settings)}
+                {formatRange(preview.rangeStart, preview.rangeEnd, settings, lang)}
               </span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>New entries</span>
+              <span>{t("importHistory.newEntries")}</span>
               <span className="text-positive">{preview.added}</span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>Duplicates skipped</span>
+              <span>{t("importHistory.duplicatesSkipped")}</span>
               <span className="text-fg">{preview.duplicates}</span>
             </div>
             {preview.openingBalance !== null && (
               <div className="flex justify-between text-muted">
-                <span>Opening balance</span>
+                <span>{t("importHistory.openingBalance")}</span>
                 <span className="font-mono text-fg">
-                  {preview.openingBalance.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {preview.openingBalance.toLocaleString(
+                    lang === "sv" ? "sv-SE" : "en-GB",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    },
+                  )}
                 </span>
               </div>
             )}
@@ -199,7 +205,7 @@ export function ImportHistoryModal({
           onClick={onCancel}
           className="cursor-pointer rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -210,7 +216,7 @@ export function ImportHistoryModal({
           }}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Import
+          {t("importHistory.confirm")}
         </button>
       </Modal.Footer>
     </Modal>
@@ -225,20 +231,23 @@ function formatRange(
   startIso: string,
   endIso: string,
   settings: Settings,
+  lang: Parameters<typeof formatDate>[2],
 ): string {
   const currentYear = String(new Date().getFullYear());
   const startYear = startIso.slice(0, 4);
   const endYear = endIso.slice(0, 4);
   const needsYear = startYear !== currentYear || endYear !== currentYear;
   if (needsYear) {
-    return `${formatDate(startIso, settings.dateFormat)} → ${formatDate(
+    return `${formatDate(startIso, settings.dateFormat, lang)} → ${formatDate(
       endIso,
       settings.dateFormat,
+      lang,
     )}`;
   }
-  return `${formatShortDate(startIso, settings.shortDateFormat)} → ${formatShortDate(
+  return `${formatShortDate(startIso, settings.shortDateFormat, lang)} → ${formatShortDate(
     endIso,
     settings.shortDateFormat,
+    lang,
   )}`;
 }
 
