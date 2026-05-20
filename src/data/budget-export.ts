@@ -119,7 +119,23 @@ export function buildBudgetExportRows(
     rows: [...item.rows, ...transactionRows, ...historyRows],
   };
 
-  const balances = computeBalances(merged, openingBalance);
+  // Mirror SheetView's silent balance-correction pinning so the
+  // exported running balance lines up with what's on screen — each
+  // imported history entry's stored balance overrides the cumulative
+  // amount sum at that row.
+  const balanceOverrides = new Map<string, number>();
+  for (const e of history) {
+    if (e.hidden) continue;
+    if (e.balance !== undefined)
+      balanceOverrides.set(`hist:${e.id}`, e.balance);
+  }
+
+  const balances = computeBalances(
+    merged,
+    openingBalance,
+    undefined,
+    balanceOverrides,
+  );
   const sorted = sortRowsByDate(merged.rows, dateCol.id);
 
   const out: ExportRow[] = [];
