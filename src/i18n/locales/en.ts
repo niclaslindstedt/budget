@@ -632,23 +632,43 @@ export const en = {
   editEntry: {
     titleEdit: "Edit entry",
     titleEditSeries: "Edit recurring entry",
+    titlePromote: "Promote to recurring",
+    titlePromoteHistory: "Promote history entry to recurring",
     description: "Description",
     amount: "Amount",
     type: "Type",
     pickType: "Pick a type",
     scope: "Scope",
     scopeJustThis: "Just this entry",
-    scopeThisAndFuture: "This and future",
+    scopeJustThisDate: "Only this entry ({date})",
+    scopeThisAndFuture: "This entry and all future",
+    stopAfterDate: "Stop after a date (temporary change)",
     promoteToRecurring: "Make recurring",
     deleteEntry: "Delete entry",
     deleteSeries: "Delete series",
+    makePositive: "Make positive",
+    makeNegative: "Make negative",
+    noDate: "no date",
+    promoteHistoryHint:
+      "Generate future entries for this merchant and label past entries from your imported history.",
+    promoteHistoryFooter:
+      "Past history entries that match this merchant will adopt the description and type above. The bank's original text is kept as-is — only the on-screen label changes.",
+    promoteIntro:
+      "Generate future entries from this row using a recurrence rule. The current row stays as-is and joins the new series.",
+    addFutureEntries: "Add {n} future entry",
+    addFutureEntriesPlural: "Add {n} future entries",
   },
 
   editRow: {
     title: "Edit row",
+    titleRecurring: "Edit recurring row",
     scope: "Scope",
+    scopeApplyTo: "Apply description, amount, category, and type to",
     scopeJustThis: "Just this row",
-    scopeThisAndFuture: "This and future rows in the series",
+    scopeJustThisDate: "Only this row ({date})",
+    scopeThisAndFuture: "This row and all future",
+    scopeAlwaysJustThis: "Date and completed always apply to this row only.",
+    completed: "Completed",
   },
 
   history: {

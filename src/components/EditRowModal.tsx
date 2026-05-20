@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import { findColumnByType } from "../data/sheet";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
+import { useT } from "../i18n";
 import {
   formatAmountForInput,
   normalizeAmountInput,
@@ -67,6 +68,7 @@ export function EditRowModal({
   onSave,
   onCreateType,
 }: Props) {
+  const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
   const descCol = useMemo(
     () => findColumnByType(columns, "description"),
@@ -189,13 +191,13 @@ export function EditRowModal({
       size="max-w-2xl"
     >
       <Modal.Header
-        title={isSeries ? "Edit recurring row" : "Edit row"}
+        title={isSeries ? t("editRow.titleRecurring") : t("editRow.title")}
         onClose={onClose}
       />
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Description</span>
+            <span className="text-xs text-muted">{t("editEntry.description")}</span>
             <input
               ref={descriptionRef}
               type="text"
@@ -206,7 +208,7 @@ export function EditRowModal({
           </label>
           {dateCol && (
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">Date</span>
+              <span className="text-xs text-muted">{t("sheet.date")}</span>
               <input
                 type="date"
                 value={date}
@@ -217,12 +219,16 @@ export function EditRowModal({
           )}
           {amountCol && (
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">Amount</span>
+              <span className="text-xs text-muted">{t("editEntry.amount")}</span>
               <div className="relative flex">
                 <button
                   type="button"
                   onClick={toggleSign}
-                  aria-label={negative ? "Make positive" : "Make negative"}
+                  aria-label={
+                    negative
+                      ? t("editEntry.makePositive")
+                      : t("editEntry.makeNegative")
+                  }
                   tabIndex={-1}
                   className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
                     negative ? "text-negative" : "text-positive"
@@ -251,7 +257,7 @@ export function EditRowModal({
             </label>
           )}
           <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">Type</span>
+            <span className="text-xs text-muted">{t("editEntry.type")}</span>
             <TypePicker
               variant="field"
               types={types}
@@ -267,7 +273,7 @@ export function EditRowModal({
               <Checkbox
                 checked={completed}
                 onChange={setCompleted}
-                label="Completed"
+                label={t("editRow.completed")}
                 className="items-center"
               />
             </div>
@@ -277,7 +283,7 @@ export function EditRowModal({
         {isSeries && (
           <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
             <legend className="px-1 text-xs text-muted">
-              Apply description, amount, category, and type to
+              {t("editRow.scopeApplyTo")}
             </legend>
             <RadioGroup
               name="edit-row-scope"
@@ -286,15 +292,20 @@ export function EditRowModal({
             >
               <Radio
                 value="just-this"
-                label={`Only this row (${initialDate || "no date"})`}
+                label={t("editRow.scopeJustThisDate", {
+                  date: initialDate || t("editEntry.noDate"),
+                })}
               />
-              <Radio value="future" label="This row and all future" />
+              <Radio
+                value="future"
+                label={t("editRow.scopeThisAndFuture")}
+              />
               {scopeKind === "future" && (
                 <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
                   <Checkbox
                     checked={untilEnabled}
                     onChange={setUntilEnabled}
-                    label="Stop after a date (temporary change)"
+                    label={t("editEntry.stopAfterDate")}
                     className="items-center"
                   />
                   {untilEnabled && (
@@ -309,7 +320,7 @@ export function EditRowModal({
               )}
             </RadioGroup>
             <p className="mt-2 text-xs text-muted">
-              Date and completed always apply to this row only.
+              {t("editRow.scopeAlwaysJustThis")}
             </p>
           </fieldset>
         )}
@@ -320,14 +331,14 @@ export function EditRowModal({
           onClick={onClose}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
           onClick={handleSave}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
         >
-          Save
+          {t("common.save")}
         </button>
       </Modal.Footer>
     </Modal>

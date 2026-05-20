@@ -624,23 +624,44 @@ export const sv: Catalog = {
   editEntry: {
     titleEdit: "Redigera post",
     titleEditSeries: "Redigera återkommande post",
+    titlePromote: "Gör återkommande",
+    titlePromoteHistory: "Befordra historikpost till återkommande",
     description: "Beskrivning",
     amount: "Belopp",
     type: "Typ",
     pickType: "Välj en typ",
     scope: "Omfattning",
     scopeJustThis: "Bara denna post",
-    scopeThisAndFuture: "Denna och framtida",
+    scopeJustThisDate: "Endast denna post ({date})",
+    scopeThisAndFuture: "Denna post och alla framtida",
+    stopAfterDate: "Stoppa efter ett datum (tillfällig ändring)",
     promoteToRecurring: "Gör återkommande",
     deleteEntry: "Ta bort post",
     deleteSeries: "Ta bort serie",
+    makePositive: "Gör positiv",
+    makeNegative: "Gör negativ",
+    noDate: "inget datum",
+    promoteHistoryHint:
+      "Generera framtida poster för den här handlaren och etikettera tidigare poster från din importerade historik.",
+    promoteHistoryFooter:
+      "Tidigare historikposter som matchar denna handlare tar över beskrivningen och typen ovan. Bankens originaltext behålls — endast etiketten på skärmen ändras.",
+    promoteIntro:
+      "Generera framtida poster från denna rad enligt en upprepningsregel. Den nuvarande raden behålls som den är och ingår i den nya serien.",
+    addFutureEntries: "Lägg till {n} framtida post",
+    addFutureEntriesPlural: "Lägg till {n} framtida poster",
   },
 
   editRow: {
     title: "Redigera rad",
+    titleRecurring: "Redigera återkommande rad",
     scope: "Omfattning",
+    scopeApplyTo: "Tillämpa beskrivning, belopp, kategori och typ på",
     scopeJustThis: "Bara denna rad",
-    scopeThisAndFuture: "Denna och framtida rader i serien",
+    scopeJustThisDate: "Endast denna rad ({date})",
+    scopeThisAndFuture: "Denna rad och alla framtida",
+    scopeAlwaysJustThis:
+      "Datum och klarmarkering gäller alltid endast för denna rad.",
+    completed: "Klar",
   },
 
   history: {
