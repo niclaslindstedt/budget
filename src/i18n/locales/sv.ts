@@ -429,6 +429,9 @@ export const sv: Catalog = {
         "Synkas till din Google Drive vid varje ändring, eller när du trycker på Spara.",
       backendGdriveUnconnected:
         "Godkänn för att lagra din budget i din Google Drive.",
+      reauthAutoOpenTitle: "Öppna återanslutning automatiskt",
+      reauthAutoOpenHint:
+        "När din molnsession går ut, öppna molnsynkpanelen så att du kan återansluta. Stäng av för att hålla panelen stängd och återansluta från synkstatusen själv.",
       saveAlsoHere: "Spara även här",
       importExport: "Importera / exportera",
       importJson: "Importera JSON",
@@ -1388,6 +1391,10 @@ export const sv: Catalog = {
     saveNow: "Spara nu",
     tryAgain: "Försök igen",
     retry: "Försök igen",
+    reauthRequired: "Återanslutning krävs",
+    reauthRequiredDetail:
+      "Din {name}-session har gått ut. Återanslut för att fortsätta synka — inga data går förlorade.",
+    reconnect: "Återanslut {name}",
     pending: "Sparar…",
     details: "Synkdetaljer",
     lastSyncedAt: "Senast synkad {time}",

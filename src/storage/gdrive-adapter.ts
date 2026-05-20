@@ -1,6 +1,7 @@
 import { nsCloudPath } from "../data/constants";
 import { debug } from "../utils/debug";
 import {
+  AuthError,
   type BackupOps,
   ConflictError,
   type Snapshot,
@@ -110,6 +111,15 @@ const SAVE_DEBOUNCE_MS = 1000;
 
 export type FetchImpl = typeof fetch;
 
+// Build the Error a failed Drive response surfaces. A 401 lands as
+// AuthError so the storage hook can surface a "Reconnect" affordance
+// instead of a generic "Try again" — GIS popup tokens have no refresh
+// path and expire after ~1h, so an expired token is the common cause.
+function gdriveError(op: string, status: number, body: string): Error {
+  const message = `Google Drive ${op} failed: ${status} ${body}`;
+  return status === 401 ? new AuthError(message) : new Error(message);
+}
+
 // Returns a URL that opens the budget file (or the Drive home, if
 // the file id isn't known here) in Drive's web UI. Used by the
 // cloud-sync modal's "Open in Google Drive" button.
@@ -156,7 +166,7 @@ export function createGdriveAdapter(
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
       log.error(`search: failed ${res.status}`, body);
-      throw new Error(`Google Drive search failed: ${res.status} ${body}`);
+      throw gdriveError("search", res.status, body);
     }
     const json = (await res.json()) as DriveListResponse;
     return json.files?.[0]?.id ?? null;
@@ -186,9 +196,7 @@ export function createGdriveAdapter(
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw new Error(
-        `Google Drive app folder create failed: ${res.status} ${body}`,
-      );
+      throw gdriveError("app folder create", res.status, body);
     }
     const meta = (await res.json()) as DriveFile;
     cachedAppFolderId = meta.id;
@@ -227,7 +235,7 @@ export function createGdriveAdapter(
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => "<unreadable>");
-      throw new Error(`Google Drive migrate failed: ${res.status} ${errBody}`);
+      throw gdriveError("migrate", res.status, errBody);
     }
     return legacyId;
   }
@@ -283,7 +291,7 @@ export function createGdriveAdapter(
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
       log.error(`load: failed ${res.status}`, body);
-      throw new Error(`Google Drive load failed: ${res.status} ${body}`);
+      throw gdriveError("load", res.status, body);
     }
     const text = await res.text();
     const revision = res.headers.get("ETag") ?? undefined;
@@ -326,7 +334,7 @@ export function createGdriveAdapter(
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
       log.error(`create: failed ${res.status}`, body);
-      throw new Error(`Google Drive create failed: ${res.status} ${body}`);
+      throw gdriveError("create", res.status, body);
     }
     const meta2 = (await res.json()) as DriveFile;
     cachedFileId = meta2.id;
@@ -381,7 +389,7 @@ export function createGdriveAdapter(
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
       log.error(`save: failed ${res.status}`, body);
-      throw new Error(`Google Drive save failed: ${res.status} ${body}`);
+      throw gdriveError("save", res.status, body);
     }
     const revision = res.headers.get("ETag") ?? undefined;
     log.log(`save: ok etag=${revision ?? "<none>"}`);
@@ -430,9 +438,7 @@ export function createGdriveAdapter(
       });
       if (!res.ok) {
         const body = await res.text().catch(() => "<unreadable>");
-        throw new Error(
-          `Google Drive backups migrate failed: ${res.status} ${body}`,
-        );
+        throw gdriveError("backups migrate", res.status, body);
       }
       cachedBackupsFolderId = legacyId;
       return legacyId;
@@ -449,9 +455,7 @@ export function createGdriveAdapter(
     });
     if (!createRes.ok) {
       const body = await createRes.text().catch(() => "<unreadable>");
-      throw new Error(
-        `Google Drive folder create failed: ${createRes.status} ${body}`,
-      );
+      throw gdriveError("folder create", createRes.status, body);
     }
     const meta = (await createRes.json()) as DriveFile;
     cachedBackupsFolderId = meta.id;
@@ -472,9 +476,7 @@ export function createGdriveAdapter(
     const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw new Error(
-        `Google Drive backup lookup failed: ${res.status} ${body}`,
-      );
+      throw gdriveError("backup lookup", res.status, body);
     }
     const json = (await res.json()) as DriveListResponse;
     return json.files?.[0]?.id ?? null;
@@ -489,9 +491,7 @@ export function createGdriveAdapter(
     if (res.status === 404) return null;
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw new Error(
-        `Google Drive backup download failed: ${res.status} ${body}`,
-      );
+      throw gdriveError("backup download", res.status, body);
     }
     return res.text();
   }
@@ -513,9 +513,7 @@ export function createGdriveAdapter(
       );
       if (!res.ok) {
         const body = await res.text().catch(() => "<unreadable>");
-        throw new Error(
-          `Google Drive backup update failed: ${res.status} ${body}`,
-        );
+        throw gdriveError("backup update", res.status, body);
       }
       return;
     }
@@ -540,9 +538,7 @@ export function createGdriveAdapter(
     );
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw new Error(
-        `Google Drive backup create failed: ${res.status} ${body}`,
-      );
+      throw gdriveError("backup create", res.status, body);
     }
   }
 

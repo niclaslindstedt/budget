@@ -115,3 +115,17 @@ export class ConflictError extends Error {
     this.name = "ConflictError";
   }
 }
+
+// Thrown by cloud adapters when an HTTP 401 surfaces after any silent
+// refresh has already been attempted (Dropbox) or when the access token
+// has expired with no refresh path (Google Drive — GIS popup tokens are
+// short-lived and don't ship a refresh token). The storage hook turns
+// this into an `auth-error` status so the UI can show a Reconnect
+// affordance instead of a generic "Try again" that would fail the same
+// way.
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}

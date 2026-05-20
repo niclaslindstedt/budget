@@ -75,6 +75,12 @@ type Props = {
   folderAvailable: boolean;
   folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
+  // Device-local UI preference: when true, a cloud auth-error auto-
+  // opens the sync details modal. Surfaced as a toggle alongside the
+  // cloud-backend controls so a user who finds Google Drive's hourly
+  // token expiry intrusive can opt out without losing the underlying
+  // detection (the cloud status pill still flags it).
+  cloudReauthAutoOpen: boolean;
   // True when the active user is the no-password "guest" account.
   // Disables the encryption toggle (there's no key to derive without
   // a password) and tweaks the help text to point at "Create account".
@@ -108,6 +114,7 @@ type Props = {
   onDisconnectFolder: () => void;
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
+  onSetCloudReauthAutoOpen: (on: boolean) => void;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
@@ -174,6 +181,7 @@ export function SettingsModal({
   folderAvailable,
   folderReconnectNeeded,
   encryption,
+  cloudReauthAutoOpen,
   isGuest,
   merchantHintCount,
   recurringDismissalCount,
@@ -193,6 +201,7 @@ export function SettingsModal({
   onDisconnectFolder,
   onSelectBrowser,
   onSetEncryption,
+  onSetCloudReauthAutoOpen,
   onClearMerchantHints,
   onClearRecurringDismissals,
   onClearTransferDismissals,
@@ -361,6 +370,8 @@ export function SettingsModal({
                 onDisconnectFolder={onDisconnectFolder}
                 onSelectBrowser={onSelectBrowser}
                 onSetEncryption={onSetEncryption}
+                cloudReauthAutoOpen={cloudReauthAutoOpen}
+                onSetCloudReauthAutoOpen={onSetCloudReauthAutoOpen}
               />
             )}
             {activeTab === "categories" && (

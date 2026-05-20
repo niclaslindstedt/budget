@@ -29,6 +29,12 @@ const DROPBOX_TOKEN_PREFIX = "budget.dropbox.token.";
 const DROPBOX_REFRESH_PREFIX = "budget.dropbox.refresh.";
 const GDRIVE_TOKEN_PREFIX = "budget.gdrive.token.";
 const ENCRYPTION_PREFIX = "budget.encryption.";
+// Device-wide UI preference, not per-user: when on (the default) a
+// cloud auth failure auto-opens `SyncDetailsModal` with the Reconnect
+// button. Some users find Google Drive's hourly token expiry annoying
+// and prefer to notice the cloud-status pill themselves, so they can
+// turn the auto-open off without disabling the underlying detection.
+const CLOUD_REAUTH_AUTO_OPEN_KEY = "budget.cloud.reauthAutoOpen";
 
 function backendKey(userId: string): string {
   return nsKey(`${BACKEND_PREFIX}${userId}`);
@@ -108,4 +114,12 @@ export function getEncryption(userId: string): EncryptionMode {
 
 export function setEncryption(userId: string, mode: EncryptionMode): void {
   writeRawStorage(mode, encryptionKey(userId));
+}
+
+export function getCloudReauthAutoOpen(): boolean {
+  return readRawStorage(nsKey(CLOUD_REAUTH_AUTO_OPEN_KEY)) !== "off";
+}
+
+export function setCloudReauthAutoOpen(on: boolean): void {
+  writeRawStorage(on ? "on" : "off", nsKey(CLOUD_REAUTH_AUTO_OPEN_KEY));
 }

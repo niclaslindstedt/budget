@@ -140,11 +140,13 @@ import {
   clearDropboxToken,
   clearGdriveToken,
   getBackend,
+  getCloudReauthAutoOpen,
   getDropboxRefreshToken,
   getDropboxToken,
   getEncryption,
   getGdriveToken,
   setBackend,
+  setCloudReauthAutoOpen,
   setDropboxRefreshToken,
   setDropboxToken,
   setEncryption,
@@ -2440,6 +2442,39 @@ export function App() {
     void startDropboxAuth();
   }, []);
 
+  // Re-issue OAuth for the active cloud backend after an
+  // `auth-error` status. Distinct from `handleConnectGdrive` /
+  // `handleConnectDropbox`, which go through the
+  // `pendingCloudLink` confirmation flow — that flow exists for
+  // linking a fresh backend, not refreshing a token on a backend the
+  // user is already on. Here both copies live in the same cloud, so
+  // we just persist the new token and let `useUserDataStorage`
+  // re-run its load on the rebuilt adapter.
+  const handleReconnectCloud = useCallback(async () => {
+    if (auth.kind !== "signed-in") return;
+    if (backend === "gdrive") {
+      const userId = auth.user.id;
+      try {
+        log.log("reconnect(gdrive): launching GIS popup");
+        const token = await startGdriveAuth();
+        if (auth.kind !== "signed-in") return;
+        setGdriveToken(userId, token);
+        setGdriveTokenState(token);
+      } catch (err) {
+        log.error("reconnect(gdrive): popup failed", err);
+        console.error("Google Drive reconnect failed:", err);
+      }
+      return;
+    }
+    if (backend === "dropbox") {
+      // Dropbox uses URL-redirect OAuth; the existing flow handles
+      // the return trip. The auto-refresh in `authedFetch` covers the
+      // common case, so a Dropbox auth-error means the refresh token
+      // is gone or revoked — a full redirect re-link is appropriate.
+      void startDropboxAuth();
+    }
+  }, [auth, backend]);
+
   // Google Drive uses GIS token client — popup, not redirect — so the
   // probe-and-park-pendingCloudLink dance that Dropbox runs from the
   // URL-redirect handler happens inline here, awaiting the popup
@@ -3062,6 +3097,7 @@ export function App() {
         onDisconnectDropbox={handleDisconnectDropbox}
         onConnectGdrive={handleConnectGdrive}
         onDisconnectGdrive={handleDisconnectGdrive}
+        onReconnectCloud={handleReconnectCloud}
         onConnectFolder={handleConnectFolder}
         onReconnectFolder={handleReconnectFolder}
         onDisconnectFolder={handleDisconnectFolder}
@@ -3322,6 +3358,7 @@ type BudgetViewProps = {
   onDisconnectDropbox: () => void;
   onConnectGdrive: () => void;
   onDisconnectGdrive: () => void;
+  onReconnectCloud: () => void;
   onConnectFolder: () => void;
   onReconnectFolder: () => void;
   onDisconnectFolder: () => void;
@@ -3351,6 +3388,7 @@ function BudgetView({
   onDisconnectDropbox,
   onConnectGdrive,
   onDisconnectGdrive,
+  onReconnectCloud,
   onConnectFolder,
   onReconnectFolder,
   onDisconnectFolder,
@@ -3409,6 +3447,25 @@ function BudgetView({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [cloudReauthAutoOpen, setCloudReauthAutoOpenState] = useState(() =>
+    getCloudReauthAutoOpen(),
+  );
+  const handleSetCloudReauthAutoOpen = useCallback((on: boolean) => {
+    setCloudReauthAutoOpen(on);
+    setCloudReauthAutoOpenState(on);
+  }, []);
+  // Auto-open the sync-details modal the moment a cloud auth-error
+  // surfaces, so the user can reconnect without hunting for the
+  // status pill. The `cloudReauthAutoOpen` device preference flips
+  // this off for users who'd rather notice on their own. Anchored on
+  // `status.kind` so it fires exactly once per error transition —
+  // re-opens on every new auth-error, not on every render while one
+  // sits there.
+  useEffect(() => {
+    if (status.kind !== "auth-error") return;
+    if (!cloudReauthAutoOpen) return;
+    setSyncDetailsOpen(true);
+  }, [status.kind, cloudReauthAutoOpen]);
   // Bumped each time the user clicks the budget icon/title in the
   // header. SheetView watches this counter and re-scrolls to today's
   // row (or the current fiscal month) on every increment, even when
@@ -5657,6 +5714,11 @@ function BudgetView({
         status={status}
         dirty={dirty}
         onSaveNow={saveNow}
+        onReconnect={
+          backend === "dropbox" || backend === "gdrive"
+            ? onReconnectCloud
+            : null
+        }
         onClose={() => setSyncDetailsOpen(false)}
       />
       <SettingsModal
@@ -5688,6 +5750,8 @@ function BudgetView({
         onDisconnectFolder={onDisconnectFolder}
         onSelectBrowser={onSelectBrowser}
         onSetEncryption={onSetEncryption}
+        cloudReauthAutoOpen={cloudReauthAutoOpen}
+        onSetCloudReauthAutoOpen={handleSetCloudReauthAutoOpen}
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
