@@ -1432,6 +1432,77 @@ export const en = {
     noDate: "no date",
     stopAfterDate: "Stop after a date (temporary change)",
   },
+
+  // Display names for the built-in categories shipped in
+  // `PRESET_CATEGORIES`. Keyed by the slug embedded in the preset id
+  // (`preset-cat-<slug>`). User-added categories carry their own name
+  // and bypass this lookup.
+  presetCategories: {
+    housing: "Housing",
+    food: "Food",
+    transport: "Transport",
+    health: "Health",
+    bills: "Bills",
+    entertainment: "Entertainment",
+    savings: "Savings",
+    income: "Income",
+    family: "Family",
+    personal: "Personal",
+    travel: "Travel",
+    other: "Other",
+  },
+
+  // Display names for the built-in entry types shipped in
+  // `PRESET_ENTRY_TYPES`. Keyed by the slug embedded in the preset id
+  // (`preset-type-<slug>`). Swedish institutions (Systembolaget,
+  // A-kassa, CSN, ISK) keep their proper names in every language.
+  presetTypes: {
+    rent: "Rent",
+    mortgage: "Mortgage",
+    "hoa-fee": "HOA fee",
+    "home-insurance": "Home insurance",
+    electricity: "Electricity",
+    heating: "Heating",
+    water: "Water",
+    internet: "Internet",
+    phone: "Phone",
+    groceries: "Groceries",
+    restaurant: "Restaurant",
+    lunch: "Lunch",
+    cafe: "Cafe",
+    systembolaget: "Systembolaget",
+    fuel: "Fuel",
+    "public-transport": "Public transport",
+    parking: "Parking",
+    "car-insurance": "Car insurance",
+    "vehicle-tax": "Vehicle tax",
+    "congestion-tax": "Congestion tax",
+    pharmacy: "Pharmacy",
+    healthcare: "Healthcare",
+    dentist: "Dentist",
+    gym: "Gym",
+    haircut: "Haircut",
+    childcare: "Childcare",
+    "child-allowance": "Child allowance",
+    allowance: "Allowance",
+    spotify: "Spotify",
+    netflix: "Netflix",
+    streaming: "Streaming",
+    subscription: "Subscription",
+    "union-fee": "Union fee",
+    "a-kassa": "A-kassa",
+    csn: "CSN",
+    salary: "Salary",
+    bonus: "Bonus",
+    "tax-refund": "Tax refund",
+    savings: "Savings",
+    isk: "ISK",
+    pension: "Pension",
+    clothing: "Clothing",
+    gift: "Gift",
+    hobby: "Hobby",
+    travel: "Travel",
+  },
 } as const;
 
 // Recursively widen every leaf from its literal type ("Save") to the

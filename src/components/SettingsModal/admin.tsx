@@ -23,6 +23,7 @@ import {
 } from "../../data/constants";
 import type { Category, CategoryIcon, EntryType } from "../../data/types";
 import { useT } from "../../i18n";
+import { displayCategoryName } from "../../i18n/preset-names";
 import { CategoryChip } from "../CategoryPicker";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -451,7 +452,9 @@ function TypesSection({
           className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-xs text-fg hover:border-accent hover:text-accent"
         >
           <Plus size={12} aria-hidden focusable={false} />
-          {t("settings.categoriesTab.addTypeTo", { name: category.name })}
+          {t("settings.categoriesTab.addTypeTo", {
+            name: displayCategoryName(category, t),
+          })}
         </button>
       )}
       <ConfirmDialog

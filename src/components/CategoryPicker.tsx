@@ -5,6 +5,7 @@ import { CATEGORY_COLORS, CATEGORY_GLYPH_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { displayCategoryName } from "../i18n/preset-names";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
@@ -209,6 +210,7 @@ export function CategoryChip({
   category: Category;
   compact?: boolean;
 }) {
+  const t = useT();
   return (
     <span
       className={
@@ -223,7 +225,7 @@ export function CategoryChip({
       }}
     >
       <CategoryIconGlyph name={category.icon} size={compact ? 12 : 13} />
-      <span className="truncate">{category.name}</span>
+      <span className="truncate">{displayCategoryName(category, t)}</span>
     </span>
   );
 }

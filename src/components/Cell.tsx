@@ -25,6 +25,7 @@ import {
 } from "../utils/format";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { displayTypeName } from "../i18n/preset-names";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { DatePickerModal } from "./DatePickerModal";
 import { FloatingPanel } from "./FloatingPanel";
@@ -293,6 +294,7 @@ export function Cell({
 // and history rows where the row is sourced from outside the budget's
 // `rows[]` and inline editing is suppressed.
 function ReadonlyTypeCell({ entryType }: { entryType: EntryType | null }) {
+  const t = useT();
   return (
     <td className={`${CELL_BASE} p-0`} aria-readonly="true">
       <span className="flex h-full min-h-9 w-full items-center justify-center px-2 py-1 font-mono text-xs md:justify-start">
@@ -314,7 +316,7 @@ function ReadonlyTypeCell({ entryType }: { entryType: EntryType | null }) {
               }}
             >
               <CategoryIconGlyph name={entryType.glyph} size={12} />
-              <span className="truncate">{entryType.name}</span>
+              <span className="truncate">{displayTypeName(entryType, t)}</span>
             </span>
           </>
         ) : (
@@ -672,6 +674,7 @@ function TypedRecurringDescriptionCell({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -695,6 +698,8 @@ function TypedRecurringDescriptionCell({
     if (open) textareaRef.current?.focus();
   }, [open]);
 
+  const typeLabel = displayTypeName(entryType, t);
+
   return (
     <td className={`${CELL_BASE} align-middle md:w-full`}>
       <button
@@ -704,8 +709,8 @@ function TypedRecurringDescriptionCell({
         className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2 py-1.5 outline-none focus-visible:bg-surface-2 md:justify-start"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={value ? `${entryType.name}: ${value}` : entryType.name}
-        title={value || entryType.name}
+        aria-label={value ? `${typeLabel}: ${value}` : typeLabel}
+        title={value || typeLabel}
       >
         <span
           className="inline-flex min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono text-xs font-medium"
@@ -716,7 +721,7 @@ function TypedRecurringDescriptionCell({
           }}
         >
           <CategoryIconGlyph name={entryType.glyph} size={12} />
-          <span className="truncate">{entryType.name}</span>
+          <span className="truncate">{typeLabel}</span>
         </span>
       </button>
       <FloatingPanel

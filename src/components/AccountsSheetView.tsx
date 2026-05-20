@@ -22,6 +22,7 @@ import type {
   UserData,
 } from "../data/types";
 import { useLang, useT } from "../i18n";
+import { displayCategoryName } from "../i18n/preset-names";
 import { formatBalance, formatShortDate } from "../utils/format";
 import { CategoryIconGlyph } from "./icons";
 
@@ -416,7 +417,7 @@ export function AccountsSheetView({
                             backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
                           }}
                         >
-                          {category.name}
+                          {displayCategoryName(category, t)}
                         </span>
                       )}
                       {/* On mobile the dedicated transfer column is
