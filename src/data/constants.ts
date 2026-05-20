@@ -223,6 +223,129 @@ export const NUMBER_FORMATS: readonly NumberFormatPreset[] = [
   { id: "plain-comma", label: "1234,56", thousands: "", decimal: "," },
 ];
 
+// Predefined currency presets shown in the Settings → Format picker.
+// Each entry fills the three free-form fields (`currency`,
+// `currencyPosition`, `currencySpace`) in one go. The picker also
+// exposes a "Custom…" entry that reveals the original inputs for any
+// currency not represented here. Ordered by region (Nordic, European,
+// North American) — the SelectPicker has no group support so order is
+// the only grouping cue.
+//
+// `nameKey` is a dotted i18n path looked up at render time; the
+// constants module deliberately doesn't import the i18n catalog so
+// startup stays cheap.
+export type CurrencyPreset = {
+  id: string;
+  symbol: string;
+  position: "before" | "after";
+  space: boolean;
+  nameKey: string;
+};
+
+export const CURRENCY_PRESETS: readonly CurrencyPreset[] = [
+  // Nordic
+  {
+    id: "SEK",
+    symbol: "kr",
+    position: "after",
+    space: true,
+    nameKey: "settings.format.currencyName.SEK",
+  },
+  {
+    id: "NOK",
+    symbol: "kr",
+    position: "after",
+    space: true,
+    nameKey: "settings.format.currencyName.NOK",
+  },
+  {
+    id: "DKK",
+    symbol: "kr",
+    position: "after",
+    space: true,
+    nameKey: "settings.format.currencyName.DKK",
+  },
+  {
+    id: "ISK",
+    symbol: "kr",
+    position: "after",
+    space: true,
+    nameKey: "settings.format.currencyName.ISK",
+  },
+  // European
+  {
+    id: "EUR",
+    symbol: "€",
+    position: "before",
+    space: false,
+    nameKey: "settings.format.currencyName.EUR",
+  },
+  {
+    id: "GBP",
+    symbol: "£",
+    position: "before",
+    space: false,
+    nameKey: "settings.format.currencyName.GBP",
+  },
+  {
+    id: "CHF",
+    symbol: "CHF",
+    position: "before",
+    space: true,
+    nameKey: "settings.format.currencyName.CHF",
+  },
+  // North American
+  {
+    id: "USD",
+    symbol: "$",
+    position: "before",
+    space: false,
+    nameKey: "settings.format.currencyName.USD",
+  },
+  {
+    id: "CAD",
+    symbol: "$",
+    position: "before",
+    space: false,
+    nameKey: "settings.format.currencyName.CAD",
+  },
+];
+
+// Browser-region → preset id. Consulted only by `detectInitialCurrency`
+// on fresh install — existing users are not retroactively re-detected,
+// mirroring the language-detection contract.
+export const REGION_TO_CURRENCY_ID: Readonly<Record<string, string>> = {
+  SE: "SEK",
+  NO: "NOK",
+  DK: "DKK",
+  IS: "ISK",
+  // Eurozone members covered by the EUR preset.
+  AT: "EUR",
+  BE: "EUR",
+  CY: "EUR",
+  DE: "EUR",
+  EE: "EUR",
+  ES: "EUR",
+  FI: "EUR",
+  FR: "EUR",
+  GR: "EUR",
+  IE: "EUR",
+  IT: "EUR",
+  LT: "EUR",
+  LU: "EUR",
+  LV: "EUR",
+  MT: "EUR",
+  NL: "EUR",
+  PT: "EUR",
+  SI: "EUR",
+  SK: "EUR",
+  GB: "GBP",
+  CH: "CHF",
+  LI: "CHF",
+  US: "USD",
+  CA: "CAD",
+};
+
 // Palette for new categories. The set is tuned to read well over both
 // One Dark and One Light surfaces; users pick from these or override.
 export const CATEGORY_COLORS: readonly string[] = [

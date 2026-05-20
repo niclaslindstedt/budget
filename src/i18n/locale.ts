@@ -3,6 +3,9 @@
 // Intl APIs expect. Kept tiny and standalone so format helpers can
 // import it without dragging React or the catalog modules in.
 
+import { CURRENCY_PRESETS, REGION_TO_CURRENCY_ID } from "../data/constants";
+import type { Settings } from "../data/types";
+
 export type Lang = "en" | "sv";
 
 export const SUPPORTED_LANGS: readonly Lang[] = ["en", "sv"];
@@ -24,4 +27,29 @@ export function detectInitialLanguage(): Lang {
   if (typeof navigator === "undefined") return "en";
   const raw = navigator.language ?? "";
   return raw.toLowerCase().startsWith("sv") ? "sv" : "en";
+}
+
+export type DetectedCurrency = Pick<
+  Settings,
+  "currency" | "currencyPosition" | "currencySpace"
+>;
+
+// Only consulted on a brand-new install (mirrors `detectInitialLanguage`:
+// existing buckets keep whatever they had so a returning user's currency
+// doesn't flip on upgrade). Parses the region subtag of
+// `navigator.language` — e.g. "sv-SE" → "SE" → SEK, "en-US" → "US" →
+// USD. Falls back to USD when the region is missing or unmapped.
+export function detectInitialCurrency(): DetectedCurrency {
+  const raw =
+    typeof navigator === "undefined" ? "" : (navigator.language ?? "");
+  const region = raw.split(/[-_]/)[1]?.toUpperCase() ?? "";
+  const id = REGION_TO_CURRENCY_ID[region] ?? "USD";
+  const preset =
+    CURRENCY_PRESETS.find((p) => p.id === id) ??
+    CURRENCY_PRESETS.find((p) => p.id === "USD")!;
+  return {
+    currency: preset.symbol,
+    currencyPosition: preset.position,
+    currencySpace: preset.space,
+  };
 }

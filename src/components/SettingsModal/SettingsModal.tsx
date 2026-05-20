@@ -11,7 +11,11 @@ import {
   X,
 } from "lucide-react";
 
-import { DEFAULT_SETTINGS, NUMBER_FORMATS } from "../../data/constants";
+import {
+  CURRENCY_PRESETS,
+  DEFAULT_SETTINGS,
+  NUMBER_FORMATS,
+} from "../../data/constants";
 import { detectPaydayDayOfMonth } from "../../data/payday";
 import type {
   Category,
@@ -225,6 +229,21 @@ export function SettingsModal({
     }));
   }
 
+  function applyCurrencyPreset(id: string) {
+    // "custom" reveals the free-form inputs without touching the
+    // existing values — the user keeps whatever symbol / position /
+    // space they had so the picker switch isn't destructive.
+    if (id === "custom") return;
+    const preset = CURRENCY_PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    setDraft((prev) => ({
+      ...prev,
+      currency: preset.symbol,
+      currencyPosition: preset.position,
+      currencySpace: preset.space,
+    }));
+  }
+
   function applyDecimal(d: DecimalSeparator) {
     setDraft((prev) => ({
       ...prev,
@@ -278,6 +297,7 @@ export function SettingsModal({
                 draft={draft}
                 onUpdate={update}
                 onApplyNumberFormat={applyNumberFormat}
+                onApplyCurrencyPreset={applyCurrencyPreset}
                 onApplyDecimal={applyDecimal}
               />
             )}
