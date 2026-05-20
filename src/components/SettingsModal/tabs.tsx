@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import {
@@ -731,6 +732,13 @@ function Section({
   );
 }
 
+// Grouping wrapper for a labelled row of custom controls. Renders as a
+// `<div role="group">` rather than a `<label>` because the children are
+// custom pickers (button + portalled listbox), not native form
+// controls. A real `<label>` forwards clicks on any of its descendants
+// to the first labelable element inside — for these rows, that meant
+// clicking the hint text, the preview chip, or the empty space beside
+// the picker would silently open the dropdown.
 function Field({
   label,
   children,
@@ -738,11 +746,18 @@ function Field({
   label: string;
   children: React.ReactNode;
 }) {
+  const labelId = useId();
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs text-muted">{label}</span>
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      className="flex flex-col gap-1.5"
+    >
+      <span id={labelId} className="text-xs text-muted">
+        {label}
+      </span>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
-    </label>
+    </div>
   );
 }
 
