@@ -135,26 +135,28 @@ function compute(
   const visibleBottom = visibleTop + vv.height;
 
   let top = rect.bottom + gap + scrollY;
-  // Push the panel into the visible region only when the trigger
-  // itself has already been pushed above it (e.g. a fixed-position
-  // picker inside a modal whose visual viewport iOS shifted up for
-  // the keyboard — the trigger is out of sight, so there's no arrow
-  // connection left to preserve and the panel must reposition to
-  // stay reachable). When the trigger is still on screen, leave the
-  // panel anchored at the natural offset below it; otherwise the
-  // panel "chases" the visible region while the sheet row stays
-  // put and the arrow ends up dangling off the row above. That's
-  // the regression where iOS's keyboard animation was throwing the
-  // description popover off its trigger row.
-  const triggerBottomCoord = rect.bottom + scrollY;
-  const triggerHiddenAbove = triggerBottomCoord < visibleTop;
-  if (triggerHiddenAbove && top < visibleTop + margin) {
-    top = visibleTop + margin;
+  // Viewport-coord floats (`position: fixed` pickers anchored to the
+  // layout viewport) need clamping into the visible region — they
+  // don't scroll with the page, so iOS's visual-viewport shift for
+  // the keyboard could leave them above the visible area where the
+  // user can never reach them. Document-coord popovers (description
+  // reveal) opt out: they scroll with the page, iOS auto-scrolls the
+  // focused textarea into view above the keyboard, and the popover
+  // rides along with the trigger row. Clamping would yank the panel
+  // off its row every time the visual viewport shifts during the
+  // keyboard animation — the user perceives that as the popover
+  // jumping away from where it should be.
+  if (!document) {
+    const triggerBottomCoord = rect.bottom + scrollY;
+    const triggerHiddenAbove = triggerBottomCoord < visibleTop;
+    if (triggerHiddenAbove && top < visibleTop + margin) {
+      top = visibleTop + margin;
+    }
+    // Don't park the panel below the visible region either — better
+    // to let it cover the trigger than render off-screen at the bottom.
+    const maxTop = visibleBottom - margin - 80;
+    if (top > maxTop) top = Math.max(visibleTop + margin, maxTop);
   }
-  // Don't park the panel below the visible region either — better to
-  // let it cover the trigger than render off-screen at the bottom.
-  const maxTop = visibleBottom - margin - 80;
-  if (top > maxTop) top = Math.max(visibleTop + margin, maxTop);
 
   const maxHeight = Math.max(120, visibleBottom - top - margin);
 

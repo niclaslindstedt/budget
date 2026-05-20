@@ -74,13 +74,20 @@ export function FloatingPanel({
   // bordered edges meet the panel border flush on either side.
   // `overflow-y-auto` on the panel would otherwise clip the tip, which
   // is why the arrow lives outside the panel rather than inside.
+  //
+  // The `peer` class on the panel + `peer-focus-within:` on the arrow
+  // continues the panel's focus-within accent ring across the arrow's
+  // two visible edges, so an editable popover (description reveal) draws
+  // a single uninterrupted accent shape around the textarea and its tip.
+  // Without it the arrow stayed `border-line` even with the textarea
+  // focused, cutting the highlight off at the panel's top border.
   const ARROW_SIZE = 12;
   return createPortal(
     <>
       <div
         ref={dropdownRef}
         data-active-portal
-        className={`${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg ${className}`.trim()}
+        className={`peer ${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg focus-within:border-accent ${className}`.trim()}
         style={{
           top: position.top,
           left: position.left,
@@ -93,7 +100,7 @@ export function FloatingPanel({
       {arrow === "up" && (
         <div
           aria-hidden
-          className={`${positionClass} z-50 rotate-45 border-t border-l border-line bg-surface-2`}
+          className={`${positionClass} z-50 rotate-45 border-t border-l border-line bg-surface-2 peer-focus-within:border-accent`}
           style={{
             top: position.top - ARROW_SIZE / 2,
             left: position.left + position.arrowLeft - ARROW_SIZE / 2,
