@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Plus } from "lucide-react";
 
 import type { Sheet } from "../data/types";
+import { useT } from "../i18n";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -27,6 +28,7 @@ export function SheetTabs({
   onEdit,
   onAdd,
 }: Props) {
+  const t = useT();
   return (
     <div
       data-floating-chrome
@@ -46,8 +48,8 @@ export function SheetTabs({
         <button
           type="button"
           onClick={onAdd}
-          aria-label="New sheet"
-          title="New sheet"
+          aria-label={t("sheetTabs.newSheet")}
+          title={t("sheetTabs.newSheet")}
           className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-accent hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
         >
           <Plus size={18} aria-hidden focusable={false} />
@@ -68,6 +70,7 @@ function SheetTab({
   onSelect: () => void;
   onEdit: () => void;
 }) {
+  const t = useT();
   // Long-press / right-click both open the edit modal. Mirrors the
   // AddRowButton pattern: a timer fires after LONG_PRESS_MS and a
   // `triggered` flag guards the trailing click so the tap doesn't
@@ -134,7 +137,7 @@ function SheetTab({
       onPointerLeave={handlePointerUp}
       onContextMenu={handleContextMenu}
       aria-pressed={active}
-      aria-label={`${sheet.name} (long-press to edit)`}
+      aria-label={t("sheetTabs.tabAriaLabel", { name: sheet.name })}
       title={
         sheet.description ? `${sheet.name} — ${sheet.description}` : sheet.name
       }

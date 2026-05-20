@@ -16,6 +16,7 @@ import {
 } from "../data/sheet";
 import { coveredMonths } from "../data/coverage";
 import { resolveEffectiveAmounts } from "../data/formula-resolve";
+import { useT } from "../i18n";
 import type {
   Account,
   AccountBudget,
@@ -193,6 +194,7 @@ export function SheetView({
   onEditSheet,
   data,
 }: Props) {
+  const t = useT();
   const sectionRef = useRef<HTMLElement | null>(null);
   const dateCol = useMemo(
     () => findColumnByType(item.columns, "date"),
@@ -444,8 +446,8 @@ export function SheetView({
           <button
             type="button"
             onClick={() => onEditSheet(sheet.id)}
-            aria-label={`Edit ${sheet.name}`}
-            title="Edit sheet"
+            aria-label={t("sheet.edit", { name: sheet.name })}
+            title={t("sheet.editSheet")}
             className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
           >
             <Pencil size={14} aria-hidden focusable={false} />
@@ -460,7 +462,7 @@ export function SheetView({
             >
               <span aria-hidden className="h-px flex-1 bg-line" />
               <span className="whitespace-nowrap">
-                Show {HISTORY_PAGE_SIZE} earlier months
+                {t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
               </span>
               <span aria-hidden className="h-px flex-1 bg-line" />
             </button>
