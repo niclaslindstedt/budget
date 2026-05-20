@@ -25,6 +25,28 @@ describe("CURRENCY_PRESETS", () => {
       expect(ids.has(id), `region ${region} → unknown preset ${id}`).toBe(true);
     }
   });
+
+  // Multiple presets share the same (symbol, position, space) triplet
+  // on purpose so each country sees its own currency name in the
+  // picker. The settings UI must therefore track the user's chosen
+  // preset id explicitly — re-deriving it from the triplet would
+  // collapse the picker's value onto the first match (SEK / USD) and
+  // make NOK / DKK / ISK / CAD un-selectable.
+  it("has groups of presets that share the same display triplet", () => {
+    const groups = new Map<string, string[]>();
+    for (const p of CURRENCY_PRESETS) {
+      const key = `${p.symbol}|${p.position}|${p.space}`;
+      const ids = groups.get(key) ?? [];
+      ids.push(p.id);
+      groups.set(key, ids);
+    }
+    const collisions = [...groups.values()].filter((ids) => ids.length > 1);
+    expect(collisions.length).toBeGreaterThan(0);
+    const allCollidingIds = collisions.flat().sort();
+    expect(allCollidingIds).toEqual(
+      ["CAD", "DKK", "ISK", "NOK", "SEK", "USD"].sort(),
+    );
+  });
 });
 
 describe("detectInitialCurrency", () => {

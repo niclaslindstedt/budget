@@ -41,6 +41,24 @@ import {
   StorageTab,
 } from "./tabs";
 
+// Derives the picker's initial selection from the persisted format
+// settings. Several presets share the same (symbol, position, space)
+// triplet (SEK/NOK/DKK/ISK all render as "kr after with space"; USD
+// and CAD both as "$ before no space"), so this only returns *a*
+// matching id — the first one in declaration order. After that the
+// user's actual choice lives in `currencyPresetId` state below, so
+// the trigger reflects the preset they tapped instead of snapping
+// back to the first match.
+function presetIdForCurrency(settings: Settings): string {
+  const match = CURRENCY_PRESETS.find(
+    (p) =>
+      p.symbol === settings.currency &&
+      p.position === settings.currencyPosition &&
+      p.space === settings.currencySpace,
+  );
+  return match ? match.id : "custom";
+}
+
 type Props = {
   open: boolean;
   settings: Settings;
@@ -191,6 +209,15 @@ export function SettingsModal({
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
   const [draft, setDraft] = useState<Settings>(settings);
+  // The user's currency-preset choice for this editing session. The
+  // persisted shape only stores the resulting (symbol, position,
+  // space) triplet, and several presets share the same triplet — so
+  // re-deriving the id on every render snaps the trigger back to the
+  // first match. Tracking it locally keeps the picker honest about
+  // which preset the user just tapped.
+  const [currencyPresetId, setCurrencyPresetId] = useState<string>(() =>
+    presetIdForCurrency(settings),
+  );
   const [backupsOpen, setBackupsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("general");
   // Auto-detected payday day-of-month from the user's salary
@@ -206,6 +233,7 @@ export function SettingsModal({
     if (!open) return;
     setDraft(settings);
     setActiveTab("general");
+    setCurrencyPresetId(presetIdForCurrency(settings));
     // Re-sync the draft and reset to the General tab only when the
     // modal transitions from closed to open. Depending on `settings`
     // here would yank the user off whatever tab they're on every time
@@ -230,6 +258,11 @@ export function SettingsModal({
   }
 
   function applyCurrencyPreset(id: string) {
+    // Always record the user's pick so the trigger reflects what they
+    // tapped — even when several presets share the same display
+    // triplet (SEK/NOK/DKK/ISK; USD/CAD) and the derived selection
+    // would otherwise collapse to the first match.
+    setCurrencyPresetId(id);
     // "custom" reveals the free-form inputs without touching the
     // existing values — the user keeps whatever symbol / position /
     // space they had so the picker switch isn't destructive.
@@ -261,6 +294,7 @@ export function SettingsModal({
 
   function handleReset() {
     setDraft({ ...DEFAULT_SETTINGS });
+    setCurrencyPresetId(presetIdForCurrency(DEFAULT_SETTINGS));
   }
 
   return (
@@ -295,6 +329,7 @@ export function SettingsModal({
             {activeTab === "format" && (
               <FormatTab
                 draft={draft}
+                currencyPresetId={currencyPresetId}
                 onUpdate={update}
                 onApplyNumberFormat={applyNumberFormat}
                 onApplyCurrencyPreset={applyCurrencyPreset}
