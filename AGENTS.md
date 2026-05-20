@@ -114,6 +114,19 @@ src/
 │   ├── oauth-pkce.ts          # Shared PKCE helpers (verifier, challenge)
 │   ├── encrypting-adapter.ts  # AES-GCM envelope wrapper around any adapter
 │   └── backend-preference.ts  # Per-user backend choice + cloud tokens
+├── i18n/
+│   ├── index.ts               # LanguageProvider, useT(), typed `t()`,
+│   │                          #   plural() helper, MessageKey type
+│   ├── LanguageRoot.tsx       # Top-level provider mounted by main.tsx;
+│   │                          #   listens for `budget:language` events
+│   ├── locale.ts              # Lang type, bcp47(), detectInitialLanguage()
+│   ├── language-preference.ts # Plaintext localStorage mirror so pre-auth
+│   │                          #   and standalone routes pick up the choice
+│   └── locales/
+│       ├── en.ts              # Canonical English catalog. The `Catalog`
+│       │                      #   type widens this so `sv.ts` is enforced
+│       └── sv.ts              # Swedish; typed against `Catalog` so missing
+│                              #   keys are compile errors
 └── seo/
     ├── siteConfig.ts          # SITE_URL, SITE_NAME, AUTHOR, OG defaults
     └── routes.ts              # per-route <title> / description / JSON-LD
@@ -128,24 +141,26 @@ that way.
 
 ## Where new code goes
 
-| Change                                  | Location                                                                              |
-| --------------------------------------- | ------------------------------------------------------------------------------------- |
-| New UI section / page                   | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                 |
-| Reusable React hook                     | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                       |
-| Persisted-data shape changes            | `src/data/` (add types + a migration if needed)                                       |
-| Public JSON Schema document             | `src/data/schema.ts` (rendered at `/schema`)                                          |
-| Read/write to `localStorage`            | `src/storage/local.ts`                                                                |
-| Export / import file format             | `src/storage/file.ts`                                                                 |
-| Vite config (base path, plugins)        | `vite.config.ts`                                                                      |
-| Vite plugin (build-time codegen)        | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                      |
-| Build-time generated TS                 | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                        |
-| New persisted storage key               | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`        |
-| SEO copy / per-route head               | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                          |
-| Site-wide discovery files               | `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, `public/og-default.png` |
-| ESLint rules, TS config                 | `eslint.config.js`, `tsconfig.app.json`                                               |
-| New `make` target                       | `Makefile` + the README Usage table + `ci.yml`                                        |
-| Changelog fragment (user-affecting PRs) | `.changes/unreleased/<unix-ts>-<slug>.md`                                             |
-| Release / changelog tooling             | `scripts/release/*.mjs` (collator, extractor, PR check)                               |
+| Change                                  | Location                                                                                                                                                                                                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New UI section / page                   | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                                                                                                                                                                                           |
+| Reusable React hook                     | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                                                                                                                                                                                                 |
+| Persisted-data shape changes            | `src/data/` (add types + a migration if needed)                                                                                                                                                                                                                 |
+| Public JSON Schema document             | `src/data/schema.ts` (rendered at `/schema`)                                                                                                                                                                                                                    |
+| Read/write to `localStorage`            | `src/storage/local.ts`                                                                                                                                                                                                                                          |
+| Export / import file format             | `src/storage/file.ts`                                                                                                                                                                                                                                           |
+| Vite config (base path, plugins)        | `vite.config.ts`                                                                                                                                                                                                                                                |
+| Vite plugin (build-time codegen)        | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                                                                                                                                                                                                |
+| Build-time generated TS                 | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                                                                                                                                                                                                  |
+| New persisted storage key               | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`                                                                                                                                                                                  |
+| SEO copy / per-route head               | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                                                                                                                                                                                                    |
+| Site-wide discovery files               | `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, `public/og-default.png`                                                                                                                                                                           |
+| ESLint rules, TS config                 | `eslint.config.js`, `tsconfig.app.json`                                                                                                                                                                                                                         |
+| New `make` target                       | `Makefile` + the README Usage table + `ci.yml`                                                                                                                                                                                                                  |
+| Changelog fragment (user-affecting PRs) | `.changes/unreleased/<unix-ts>-<slug>.md`                                                                                                                                                                                                                       |
+| Release / changelog tooling             | `scripts/release/*.mjs` (collator, extractor, PR check)                                                                                                                                                                                                         |
+| New user-facing string                  | `src/i18n/locales/en.ts` (canonical) + `src/i18n/locales/sv.ts` (Swedish). See "Translations" below.                                                                                                                                                            |
+| New language                            | `src/i18n/locale.ts` (`Lang` union, `bcp47`, `detectInitialLanguage`), `src/i18n/locales/<code>.ts`, `src/data/constants.ts` (`SUPPORTED_LANGUAGES`), `src/data/schema.ts` (enum), `src/components/LanguagePicker.tsx` (flag button). See "Translations" below. |
 
 ## Conventions
 
@@ -180,6 +195,15 @@ that way.
   when the dropdown lives in a tight cell or could overflow its
   container). Apply the same rule when refactoring older code: if you
   touch a screen that still has a native `<select>`, replace it.
+- **No hardcoded user-facing strings.** Every visible string —
+  button labels, `placeholder`, `aria-label`, `title`, modal titles,
+  toast messages — goes through `t("section.key")` from
+  `useT()`. The two catalogs in `src/i18n/locales/{en,sv}.ts` are
+  the source of truth; the `Catalog` type widens English so Swedish
+  is enforced at compile time. See the "Translations" section below
+  for the full workflow. Date / month rendering goes through the
+  `lang`-aware helpers in `src/utils/format.ts` so calendar text
+  follows the picker too.
 - **PR conventions**: PR titles must follow Conventional Commits
   because the title becomes the squash-merge commit on `main`.
   Squash-merge is the only permitted merge strategy. **Rebase on
@@ -198,16 +222,104 @@ in).
 
 ## Documentation sync points
 
-| If you change …                                 | Also update …                                                                                                         |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `package.json` scripts                          | `Makefile`, `README.md` Usage section                                                                                 |
-| `Makefile` targets                              | `README.md` Usage section, `ci.yml`                                                                                   |
-| `src/` top-level layout                         | `README.md`, this file                                                                                                |
-| Node version in `.nvmrc`                        | `ci.yml`, `pages.yml`, `README.md`                                                                                    |
-| Persisted-data shape                            | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`)                                    |
-| CHANGELOG fragment format                       | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below |
-| `nsKey` / `nsCloudPath` / `nsIdbName` semantics | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`       |
-| Vite `base` handling                            | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                |
+| If you change …                                 | Also update …                                                                                                                 |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `package.json` scripts                          | `Makefile`, `README.md` Usage section                                                                                         |
+| `Makefile` targets                              | `README.md` Usage section, `ci.yml`                                                                                           |
+| `src/` top-level layout                         | `README.md`, this file                                                                                                        |
+| Node version in `.nvmrc`                        | `ci.yml`, `pages.yml`, `README.md`                                                                                            |
+| Persisted-data shape                            | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`)                                            |
+| CHANGELOG fragment format                       | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |
+| `nsKey` / `nsCloudPath` / `nsIdbName` semantics | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`               |
+| Vite `base` handling                            | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                        |
+| `src/i18n/locales/en.ts` shape                  | `src/i18n/locales/sv.ts` (compile-time enforced via the `Catalog` type) + `tests/i18n_catalog_test.ts` (runtime parity check) |
+
+## Translations
+
+The app ships in English and Swedish. The runtime is custom — no
+`react-i18next` — because the string surface is small enough that a
+typed `t(key)` lookup against per-language catalog modules is cheaper
+than the library's bundle cost. See `src/i18n/` for the moving parts.
+
+### How `t()` works in a component
+
+```tsx
+import { useT } from "../i18n";
+
+export function MyComponent() {
+  const t = useT();
+  return <button>{t("common.save")}</button>;
+}
+```
+
+- `useT()` is a thin hook that reads the active `Lang` from
+  `LanguageContext` (wired in `src/i18n/LanguageRoot.tsx`, mounted by
+  `src/main.tsx`). It returns a `t(key, params?)` function whose `key`
+  is autocompleted from the `Catalog` type.
+- Placeholders use `{name}`-style braces: `t("sheet.edit", { name })`
+  resolves `"Edit {name}"` against the active language's catalog.
+- For plurals, prefer two sibling keys (`...One` / `...Other`) chosen
+  at the call site by the count, e.g.
+  `n === 1 ? t("foo.entryOne", { n }) : t("foo.entryOther", { n })`.
+  Use the `plural()` helper in `src/i18n/index.ts` when the same
+  one/other pair appears in more than three call sites.
+- Outside React (validators, format helpers), use `tFor(lang, key)`
+  from `src/i18n/index.ts` — pass the language explicitly so the
+  function stays pure.
+
+### Adding a new string
+
+1. Add the key to `src/i18n/locales/en.ts` under the most specific
+   existing group (`common`, `settings`, `sheet`, `modal`, etc.).
+   Group new top-level keys by component / feature area, not by
+   visual grouping.
+2. Add the same key to `src/i18n/locales/sv.ts` with the Swedish
+   translation. The `Catalog` type derived from `en.ts` makes
+   `sv.ts` a compile error until you do — `make typecheck` will
+   surface the missing key.
+3. Replace the literal in the component with `t("section.key")`.
+   Capture `t` once at the top of the component: `const t = useT();`.
+4. The `tests/i18n_catalog_test.ts` parity check is the runtime
+   safety net — it asserts the catalogs have the same shape and that
+   Swedish has no empty strings. Runs as part of `make test`.
+
+### Adding a new language
+
+1. Add the two-letter code to the `Lang` union in
+   `src/i18n/locale.ts`, extend `SUPPORTED_LANGS`, map it to a BCP-47
+   tag in `bcp47()`, and teach `detectInitialLanguage()` how to
+   recognise it from `navigator.language`.
+2. Mirror the code in `src/data/constants.ts` (`SUPPORTED_LANGUAGES`)
+   and `src/data/schema.ts` (the `language` property's `enum`); the
+   validator at `src/data/validate.ts` picks it up via the constant.
+3. Create `src/i18n/locales/<code>.ts` exporting an object typed as
+   `Catalog` — TypeScript will then fail the build until every leaf
+   is translated.
+4. Add a flag SVG + button to `src/components/LanguagePicker.tsx`.
+   Inline SVG, not emoji (`🇬🇧`/`🇸🇪`) — the One Dark / One Light
+   aesthetic depends on deterministic rendering across OSes, and
+   flag emojis fall back to letter-pairs on Windows.
+5. Add per-language month-name arrays to `MONTH_SHORT_BY_LANG` in
+   `src/utils/format.ts` so the `"D MMM"` / `"D MMM YYYY"` date
+   formats render correctly when the language is selected.
+
+### What's intentionally not translated
+
+- `src/components/SchemaPage.tsx` body — machine-readable contract
+  for external tools (see "Agent analysis" below).
+- `src/components/PrivacyPage.tsx` body — privacy policy referencing
+  storage/encryption claims; the prose tracks those guarantees and
+  is reviewed as a whole.
+- The rendered `CHANGELOG.md` body inside `ChangelogModal` and
+  `ChangelogPage` — driven by `src/generated/changelog.ts` which
+  mirrors the markdown source-of-truth. Only the chrome (modal
+  title, "Got it" button, page heading) translates.
+- `Column.label` — stored per-sheet user data, not a translatable
+  string. New sheets get default column labels in the language
+  active at creation time.
+- Formula identifiers (`endOfMonthBalance`, `sheet("Wife", …)`, …)
+  are code tokens the user types. Only the surrounding prose in
+  `FormulaHelpButton` translates.
 
 ## Agent analysis — the JSON Schema at `/schema`
 
