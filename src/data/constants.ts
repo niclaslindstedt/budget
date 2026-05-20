@@ -348,6 +348,9 @@ export const REGION_TO_CURRENCY_ID: Readonly<Record<string, string>> = {
 
 // Palette for new categories. The set is tuned to read well over both
 // One Dark and One Light surfaces; users pick from these or override.
+// Colorless swatches (black / white / gray) are deliberately excluded —
+// categories and types should always carry a hue so they stay
+// distinguishable in chips and pickers.
 export const CATEGORY_COLORS: readonly string[] = [
   "#e06c75",
   "#d19a66",
@@ -357,7 +360,6 @@ export const CATEGORY_COLORS: readonly string[] = [
   "#61afef",
   "#c678dd",
   "#be5046",
-  "#5c6370",
 ];
 
 // Sheets reuse the category palette. Keeping them aligned means a
@@ -425,13 +427,13 @@ export function createSeedEntryTypes(): Omit<EntryType, "categoryId">[] {
     { name: "Coffee", color: C[7], glyph: "coffee" },
     { name: "Transport", color: C[4], glyph: "car" },
     { name: "Electricity", color: C[2], glyph: "zap" },
-    { name: "Insurance", color: C[8], glyph: "receipt" },
+    { name: "Insurance", color: C[7], glyph: "receipt" },
     { name: "Streaming", color: C[6], glyph: "music" },
     { name: "Healthcare", color: C[0], glyph: "stethoscope" },
     { name: "Gift", color: C[6], glyph: "gift" },
     { name: "Salary", color: C[3], glyph: "banknote" },
     { name: "Savings", color: C[5], glyph: "piggy-bank" },
-    { name: "Subscription", color: C[8], glyph: "credit-card" },
+    { name: "Subscription", color: C[7], glyph: "credit-card" },
   ];
   return seeds.map((s) => ({
     id: seedEntryTypeId(),
@@ -773,7 +775,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     {
       slug: "home-insurance",
       name: "Home insurance",
-      color: C[8],
+      color: C[7],
       glyph: "receipt",
       category: "housing",
     },
@@ -866,21 +868,21 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     {
       slug: "parking",
       name: "Parking",
-      color: C[8],
+      color: C[7],
       glyph: "car",
       category: "transport",
     },
     {
       slug: "car-insurance",
       name: "Car insurance",
-      color: C[8],
+      color: C[7],
       glyph: "car",
       category: "transport",
     },
     {
       slug: "vehicle-tax",
       name: "Vehicle tax",
-      color: C[8],
+      color: C[7],
       glyph: "car",
       category: "transport",
     },
@@ -974,21 +976,21 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     {
       slug: "subscription",
       name: "Subscription",
-      color: C[8],
+      color: C[7],
       glyph: "credit-card",
       category: "bills",
     },
     {
       slug: "union-fee",
       name: "Fackavgift",
-      color: C[8],
+      color: C[7],
       glyph: "briefcase",
       category: "bills",
     },
     {
       slug: "a-kassa",
       name: "A-kassa",
-      color: C[8],
+      color: C[7],
       glyph: "briefcase",
       category: "bills",
     },
@@ -1107,7 +1109,7 @@ export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
     { slug: "food", name: "Food", color: C[3], icon: "utensils" },
     { slug: "transport", name: "Transport", color: C[4], icon: "car" },
     { slug: "health", name: "Health", color: C[0], icon: "heart-pulse" },
-    { slug: "bills", name: "Bills", color: C[8], icon: "receipt" },
+    { slug: "bills", name: "Bills", color: C[7], icon: "receipt" },
     {
       slug: "entertainment",
       name: "Entertainment",
