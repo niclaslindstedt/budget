@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 
 import {
   computeBalances,
@@ -104,6 +104,7 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onEditSheet: (sheetId: string) => void;
+  onDownloadSheet: (sheetId: string) => void;
   // Full workspace state — needed by the formula resolver so
   // `sheet("<id>", <variable>)` references can look up other sheets'
   // running balances at this row's month.
@@ -192,6 +193,7 @@ export function SheetView({
   onToggleSelect,
   onToggleSelectMonth,
   onEditSheet,
+  onDownloadSheet,
   data,
 }: Props) {
   const t = useT();
@@ -451,6 +453,15 @@ export function SheetView({
             className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
           >
             <Pencil size={14} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDownloadSheet(sheet.id)}
+            aria-label={t("download.downloadSheet")}
+            title={t("download.downloadSheetTitle")}
+            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
+            <Download size={14} aria-hidden focusable={false} />
           </button>
         </header>
         <div className="flex flex-col gap-3 md:gap-6">

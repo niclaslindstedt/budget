@@ -39,6 +39,7 @@ import {
   type EditRowPatch,
   type EditRowScope,
 } from "./components/EditRowModal";
+import { DownloadModal, type DownloadConfig } from "./components/DownloadModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { ImportHistoryModal } from "./components/ImportHistoryModal";
 import {
@@ -63,6 +64,17 @@ import {
   STORAGE_KEY,
   userDataKey,
 } from "./data/constants";
+import {
+  buildBudgetExportRows,
+  CSV_MIME_TYPE,
+  exportRowsToTable,
+  rowsToCsv,
+} from "./data/budget-export";
+import {
+  buildAccountsExport,
+  JSON_MIME_TYPE,
+  serializeAccountsExport,
+} from "./data/accounts-export";
 import { allCategories, allTypes } from "./data/presets";
 import {
   accountBalance,
@@ -170,12 +182,22 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
+import {
+  type AccountsDownloadPrefs,
+  type BudgetDownloadPrefs,
+  getAccountsDownloadPrefs,
+  getBudgetDownloadPrefs,
+  setAccountsDownloadPrefs,
+  setBudgetDownloadPrefs,
+} from "./storage/download-preferences";
 import { bcp47, type Lang, useT } from "./i18n";
 import { writeLanguagePreference } from "./i18n/language-preference";
 import { APP_VERSION } from "./utils/build-env";
 import { debug } from "./utils/debug";
+import { slugifyFilename, todayStamp, triggerDownload } from "./utils/download";
 import { formatNumber, withCurrency } from "./utils/format";
 import { cmpSemver } from "./utils/semver";
+import { buildXlsx, XLSX_MIME_TYPE } from "./utils/xlsx";
 
 const log = debug("app");
 import {
@@ -3411,6 +3433,14 @@ function BudgetView({
   const [matchRulePrompt, setMatchRulePrompt] = useState<{
     entryId: string;
   } | null>(null);
+  // null = closed; otherwise the sheet the user is downloading. The
+  // shape carries the resolved prefs so the modal can seed itself
+  // from per-device defaults without re-reading localStorage.
+  const [downloadPrompt, setDownloadPrompt] = useState<{
+    sheetId: string;
+    budgetPrefs: BudgetDownloadPrefs;
+    accountsPrefs: AccountsDownloadPrefs;
+  } | null>(null);
 
   const activeSheet =
     data.sheets.find((s) => s.id === data.activeSheetId) ?? data.sheets[0];
@@ -3872,6 +3902,131 @@ function BudgetView({
       if (target) setSheetModal({ sheet: target });
     },
     [data.sheets],
+  );
+  const onOpenDownloadSheet = useCallback(
+    (id: string) => {
+      const target = data.sheets.find((s) => s.id === id);
+      if (!target) return;
+      setDownloadPrompt({
+        sheetId: id,
+        budgetPrefs: getBudgetDownloadPrefs(user.id),
+        accountsPrefs: getAccountsDownloadPrefs(user.id),
+      });
+    },
+    [data.sheets, user.id],
+  );
+  const onCloseDownload = useCallback(() => setDownloadPrompt(null), []);
+  const onConfirmDownload = useCallback(
+    (config: DownloadConfig) => {
+      if (!downloadPrompt) return;
+      const target = data.sheets.find((s) => s.id === downloadPrompt.sheetId);
+      if (!target) {
+        setDownloadPrompt(null);
+        return;
+      }
+      const stamp = todayStamp();
+      const baseSlug = slugifyFilename(target.name);
+      if (config.kind === "budget") {
+        const budgetItem = target.items.find(
+          (it): it is AccountBudget => it.type === "accountBudget",
+        );
+        if (budgetItem) {
+          const accountsById = new Map<string, string>();
+          for (const a of data.accounts) accountsById.set(a.id, a.name);
+          const opening = budgetItem.accountId
+            ? (data.accounts.find((a) => a.id === budgetItem.accountId)
+                ?.openingBalance ?? 0)
+            : 0;
+          const history = budgetItem.accountId
+            ? (data.history[budgetItem.accountId] ?? [])
+            : [];
+          const rows = buildBudgetExportRows({
+            item: budgetItem,
+            openingBalance: opening,
+            history,
+            transactions: data.transactions,
+            accountsById,
+            types: allTypesMerged,
+            categories: allCategoriesMerged,
+            merchantHints: data.merchantHints,
+            matchRules: data.matchRules,
+            includeHistory: config.includeHistory,
+            includeFuture: config.includeFuture,
+          });
+          const table = exportRowsToTable(rows, {
+            date: t("sheet.date"),
+            type: t("sheet.type"),
+            category: t("sheet.category"),
+            description: t("sheet.description"),
+            amount: t("sheet.amount"),
+            balance: t("sheet.balance"),
+          });
+          if (config.format === "csv") {
+            const csv = rowsToCsv(table);
+            triggerDownload(csv, `${baseSlug}-${stamp}.csv`, CSV_MIME_TYPE);
+          } else {
+            const bytes = buildXlsx([{ name: target.name, rows: table }]);
+            triggerDownload(bytes, `${baseSlug}-${stamp}.xlsx`, XLSX_MIME_TYPE);
+          }
+          setBudgetDownloadPrefs(user.id, {
+            format: config.format,
+            includeHistory: config.includeHistory,
+          });
+        }
+      } else {
+        const payload = buildAccountsExport({
+          accounts: data.accounts,
+          transactions: data.transactions,
+          selectedAccountIds: config.selectedAccountIds,
+          accountInfo: config.accountInfo,
+          includeTransactions: config.includeTransactions,
+        });
+        // The selected list only carries the accounts the user kept
+        // ticked, but we still want to remember every account's per-
+        // row decision so a re-open with a new account doesn't
+        // forget the older toggles.
+        const accountSelected: Record<string, boolean> = {};
+        for (const a of data.accounts) {
+          accountSelected[a.id] = config.selectedAccountIds.includes(a.id);
+        }
+        // The TransactionsExportEntry list (when present) is
+        // gated per-account by `accountTransactions` — drop the
+        // entries whose endpoints are toggled off so a per-account
+        // exclude actually removes them from the JSON.
+        if (payload.transactions) {
+          const allowed = new Set<string>();
+          for (const id of config.selectedAccountIds) {
+            if (config.accountTransactions[id] ?? true) allowed.add(id);
+          }
+          payload.transactions = payload.transactions.filter(
+            (tx) =>
+              allowed.has(tx.fromAccountId) || allowed.has(tx.toAccountId),
+          );
+        }
+        const text = serializeAccountsExport(payload);
+        triggerDownload(text, `accounts-${stamp}.json`, JSON_MIME_TYPE);
+        setAccountsDownloadPrefs(user.id, {
+          accountInfo: config.accountInfo,
+          accountTransactions: config.accountTransactions,
+          accountSelected,
+          includeTransactions: config.includeTransactions,
+        });
+      }
+      setDownloadPrompt(null);
+    },
+    [
+      downloadPrompt,
+      data.sheets,
+      data.accounts,
+      data.transactions,
+      data.history,
+      data.merchantHints,
+      data.matchRules,
+      allTypesMerged,
+      allCategoriesMerged,
+      user.id,
+      t,
+    ],
   );
   const onSaveSheet = useCallback(
     (draft: SheetDraft) => {
@@ -5003,6 +5158,7 @@ function BudgetView({
               onViewHistory={onOpenViewHistory}
               onFindTransfers={onOpenTransferCollapse}
               onEditSheet={onOpenEditSheet}
+              onDownloadSheet={onOpenDownloadSheet}
             />
           ) : (
             <>
@@ -5061,6 +5217,7 @@ function BudgetView({
                 onToggleSelect={onToggleSelect}
                 onToggleSelectMonth={onToggleSelectMonth}
                 onEditSheet={onOpenEditSheet}
+                onDownloadSheet={onOpenDownloadSheet}
               />
             </>
           )}
@@ -5106,6 +5263,43 @@ function BudgetView({
         onSave={onSaveSheet}
         onDelete={onDeleteSheet}
       />
+      {downloadPrompt !== null &&
+        (() => {
+          const target = data.sheets.find(
+            (s) => s.id === downloadPrompt.sheetId,
+          );
+          if (!target) return null;
+          if (target.type === "accounts") {
+            return (
+              <DownloadModal
+                open
+                kind="accounts"
+                accounts={data.accounts}
+                initial={downloadPrompt.accountsPrefs}
+                onClose={onCloseDownload}
+                onSubmit={onConfirmDownload}
+              />
+            );
+          }
+          const budgetItem = target.items.find(
+            (it): it is AccountBudget => it.type === "accountBudget",
+          );
+          const accountId = budgetItem?.accountId ?? null;
+          const hasHistory = accountId
+            ? (data.history[accountId]?.length ?? 0) > 0
+            : false;
+          return (
+            <DownloadModal
+              open
+              kind="budget"
+              initial={downloadPrompt.budgetPrefs}
+              hasHistory={hasHistory}
+              sheetName={target.name}
+              onClose={onCloseDownload}
+              onSubmit={onConfirmDownload}
+            />
+          );
+        })()}
       <AccountModal
         open={accountModal !== null}
         account={accountModal?.account ?? null}

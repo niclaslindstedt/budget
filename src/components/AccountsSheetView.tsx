@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
+  Download,
   History,
   Pencil,
   Plus,
@@ -45,6 +46,7 @@ type Props = {
   // user to an empty modal.
   onFindTransfers: () => void;
   onEditSheet: (sheetId: string) => void;
+  onDownloadSheet: (sheetId: string) => void;
 };
 
 export function AccountsSheetView({
@@ -60,6 +62,7 @@ export function AccountsSheetView({
   onViewHistory,
   onFindTransfers,
   onEditSheet,
+  onDownloadSheet,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -139,6 +142,15 @@ export function AccountsSheetView({
           className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
         >
           <Pencil size={14} aria-hidden focusable={false} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDownloadSheet(sheet.id)}
+          aria-label={t("download.downloadSheet")}
+          title={t("download.downloadSheetTitle")}
+          className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+        >
+          <Download size={14} aria-hidden focusable={false} />
         </button>
       </header>
 

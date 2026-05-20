@@ -1507,4 +1507,30 @@ export const sv: Catalog = {
     hobby: "Hobby",
     travel: "Resa",
   },
+
+  download: {
+    budgetTitle: "Ladda ner {name}",
+    accountsTitle: "Ladda ner konton",
+    downloadSheet: "Ladda ner blad",
+    downloadSheetTitle: "Ladda ner det här bladet",
+    formatLabel: "Format",
+    contentsLabel: "Inkludera",
+    includeHistory: "Historik (tidigare poster)",
+    includeFuture: "Kommande poster",
+    noHistoryHint: "Det här bladet har ingen importerad historik",
+    includeTransactionsAll: "Inkludera överföringar",
+    noAccountsToExport: "Inga konton att inkludera ännu.",
+    submit: "Ladda ner",
+    column: {
+      account: "Konto",
+      accountInfo: "Kontoinfo",
+      transactions: "Överföringar",
+    },
+    accountInfoFor: "Inkludera kontoinfo för {name}",
+    accountTransactionsFor: "Inkludera överföringar för {name}",
+    format: {
+      csv: "CSV (.csv)",
+      xlsx: "Excel (.xlsx)",
+    },
+  },
 };
