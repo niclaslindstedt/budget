@@ -145,8 +145,7 @@ describe("computeFloatingRect", () => {
     // region whenever its natural top sat outside it — but for a
     // `position: absolute` popover that already scrolls with the
     // page, that clamp pushed the popover off its row and broke the
-    // arrow's visual connection to the trigger. The clamps must only
-    // fire when the trigger itself is hidden.
+    // arrow's visual connection to the trigger.
     const result = computeFloatingRect(
       // Trigger at layout y=200, height 40 (rect.bottom=240). With
       // scrollY=400 the trigger sits at document y=600..640.
@@ -164,22 +163,27 @@ describe("computeFloatingRect", () => {
     expect(result.top).toBe(644);
   });
 
-  it("clamps a document-coord popover only when the trigger itself scrolled off the top", () => {
-    // Same popover, but iOS shifted the visual viewport far enough
-    // that the trigger row has scrolled above the visible region.
-    // Here the clamp does need to step in — without it the panel
-    // would render entirely above the visible area, leaving its
-    // textarea unreachable. The trigger's already invisible so
-    // there's no arrow connection left to preserve.
+  it("never clamps a document-coord popover, even when iOS shifts the trigger above the visible region", () => {
+    // iOS shifts the visual viewport up while opening the keyboard,
+    // briefly leaving the trigger row above the new visible top.
+    // The previous behaviour clamped the panel DOWN to
+    // `visibleTop + margin` so it stayed reachable — but that
+    // produced a visible "jump" the moment the keyboard appeared
+    // and ripped the popover away from its trigger. A document-coord
+    // popover scrolls with the page; iOS's auto-scroll keeps the
+    // focused textarea above the keyboard without our help, and the
+    // popover rides along with it. So leave the natural position
+    // alone and let the page scroll do the work.
     const result = computeFloatingRect(
       rectAt(100, 40),
       DOCUMENT_PLACEMENT,
       { offsetTop: 600, height: 340 },
       { ...PHONE_WINDOW, scrollY: 0 },
     );
-    // visibleTop = 600 + 0 = 600. trigger.bottom (140) sits above it,
-    // so the clamp pulls the panel down to visibleTop + margin.
-    expect(result.top).toBe(608);
+    // Natural top = rect.bottom (140) + gap (4) + scrollY (0) = 144.
+    // No clamp toward visibleTop+margin (= 608) — the panel stays
+    // anchored to its row in document space.
+    expect(result.top).toBe(144);
   });
 
   it("clamps arrowLeft into the panel when the panel got shoved sideways", () => {
