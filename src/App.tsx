@@ -170,7 +170,7 @@ import {
 } from "./storage/local-adapter";
 import { clearSession, loadSession, saveSession } from "./storage/session";
 import { useUserDataStorage } from "./storage/useUserDataStorage";
-import { bcp47, type Lang } from "./i18n";
+import { bcp47, type Lang, useT } from "./i18n";
 import { writeLanguagePreference } from "./i18n/language-preference";
 import { APP_VERSION } from "./utils/build-env";
 import { debug } from "./utils/debug";
@@ -1089,7 +1089,13 @@ function reducer(state: UserData, action: Action): UserData {
           if (!dateCol || !descCol || !amountCol) return item;
           const cells: Record<string, CellValue> = {
             [dateCol.id]: action.date,
-            [descCol.id]: "Balance correction",
+            // The reducer is pure — no useT() available here. The balance-
+            // correction row gets a description in whichever language the
+            // user's chosen at the moment they correct the balance.
+            // The state already carries it; pick from settings.
+            [descCol.id]: state.settings.language === "sv"
+              ? "Saldokorrigering"
+              : "Balance correction",
             [amountCol.id]: action.amount,
           };
           const newRow: Row = {
@@ -3286,6 +3292,7 @@ function BudgetView({
   onSelectBrowser,
   onSetEncryption,
 }: BudgetViewProps) {
+  const t = useT();
   const { data, dispatch, status, dirty, saveNow } = useUserDataStorage(
     adapter,
     reducer,
@@ -4910,8 +4917,8 @@ function BudgetView({
           <button
             type="button"
             onClick={onScrollToToday}
-            aria-label="Scroll to today"
-            title="Scroll to today"
+            aria-label={t("app.scrollToToday")}
+            title={t("app.scrollToToday")}
             className="inline-flex cursor-pointer items-center gap-2 rounded border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
           >
             <img
@@ -4949,8 +4956,10 @@ function BudgetView({
               type="button"
               onClick={onToggleSelectMode}
               aria-pressed={selectMode}
-              aria-label={selectMode ? "Exit select mode" : "Select rows"}
-              title={selectMode ? "Cancel" : "Select"}
+              aria-label={
+                selectMode ? t("app.exitSelectMode") : t("app.selectRows")
+              }
+              title={selectMode ? t("app.cancelShort") : t("app.selectShort")}
               className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
                 selectMode
                   ? "border-pipe bg-pipe/15 text-pipe"
@@ -4962,8 +4971,8 @@ function BudgetView({
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              aria-label="Open settings"
-              title="Settings"
+              aria-label={t("app.openSettings")}
+              title={t("app.settings")}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
             >
               <SettingsIcon size={18} aria-hidden focusable={false} />
@@ -5272,66 +5281,63 @@ function BudgetView({
       <ConfirmDialog
         open={deletePrompt !== null}
         title={
-          deletePrompt?.row.seriesId ? "Delete recurring entry" : "Delete row"
+          deletePrompt?.row.seriesId
+            ? t("confirm.deleteRecurring")
+            : t("confirm.deleteRow")
         }
         description={
           deletePrompt?.row.seriesId
-            ? "This entry is part of a recurring series. How much should be removed?"
-            : "This row will be permanently removed."
+            ? t("confirm.deleteRecurringHint")
+            : t("confirm.deleteRowHint")
         }
         actions={deleteActions}
         onCancel={() => setDeletePrompt(null)}
       />
       <ConfirmDialog
         open={bulkDeletePrompt !== null}
-        title="Delete selected"
-        description={`${bulkDeletePrompt?.rowIds.length ?? 0} row${
-          (bulkDeletePrompt?.rowIds.length ?? 0) === 1 ? "" : "s"
-        } will be permanently removed.`}
+        title={t("app.deleteSelected")}
+        description={
+          (bulkDeletePrompt?.rowIds.length ?? 0) === 1
+            ? t("confirm.deleteSelectedHintOne", {
+                n: bulkDeletePrompt?.rowIds.length ?? 0,
+              })
+            : t("confirm.deleteSelectedHintOther", {
+                n: bulkDeletePrompt?.rowIds.length ?? 0,
+              })
+        }
         actions={bulkDeleteActions}
         onCancel={() => setBulkDeletePrompt(null)}
       />
       <ConfirmDialog
         open={deleteSheetPrompt !== null}
-        title="Delete sheet"
+        title={t("app.deleteSheet")}
         description={
-          deleteSheetPrompt ? (
-            <>
-              <strong className="text-fg-bright">
-                {deleteSheetPrompt.name}
-              </strong>{" "}
-              and all of its rows will be permanently removed. This can&apos;t
-              be undone.
-            </>
-          ) : null
+          deleteSheetPrompt
+            ? t("confirm.deleteSheetHint", { name: deleteSheetPrompt.name })
+            : null
         }
         actions={deleteSheetActions}
         onCancel={() => setDeleteSheetPrompt(null)}
       />
       <ConfirmDialog
         open={deleteAccountPrompt !== null}
-        title="Delete account"
+        title={t("app.deleteAccount")}
         description={
-          deleteAccountPrompt ? (
-            <>
-              <strong className="text-fg-bright">
-                {deleteAccountPrompt.name}
-              </strong>{" "}
-              will be permanently removed, along with its transfers and bank
-              history. Sheets attached to it will be detached. This can&apos;t
-              be undone.
-            </>
-          ) : null
+          deleteAccountPrompt
+            ? t("confirm.deleteAccountHint", { name: deleteAccountPrompt.name })
+            : null
         }
         actions={deleteAccountActions}
         onCancel={() => setDeleteAccountPrompt(null)}
       />
       <ConfirmDialog
         open={correctionDeletePrompt !== null}
-        title="Remove balance correction"
+        title={t("app.removeBalanceCorrection")}
         description={
           correctionDeletePrompt
-            ? `The ${correctionDeletePrompt.deltaText} correction will be removed and the running balance will revert.`
+            ? t("confirm.correctionRemoveHint", {
+                delta: correctionDeletePrompt.deltaText,
+              })
             : ""
         }
         actions={correctionDeleteActions}
@@ -5393,15 +5399,15 @@ function BudgetView({
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}
-        title="About to sign out"
+        title={t("app.aboutToSignOut")}
         description={
           warningSecondsLeft !== null
-            ? `For your security, you'll be signed out in ${warningSecondsLeft} ${
-                warningSecondsLeft === 1 ? "second" : "seconds"
-              } unless you stay signed in.`
+            ? warningSecondsLeft === 1
+              ? t("confirm.signOutWarningOne", { n: warningSecondsLeft })
+              : t("confirm.signOutWarningOther", { n: warningSecondsLeft })
             : null
         }
-        actions={[{ label: "Stay signed in", onSelect: onStaySignedIn }]}
+        actions={[{ label: t("confirm.stayActive"), onSelect: onStaySignedIn }]}
         hideCancel
         onCancel={onStaySignedIn}
       />

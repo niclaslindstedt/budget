@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader } from "lucide-react";
 
+import { useT } from "../i18n";
 import { Modal } from "./Modal";
 
 type Tone = "default" | "danger";
@@ -49,6 +50,7 @@ export function ConfirmDialog({
   hideCancel,
   onCancel,
 }: Props) {
+  const t = useT();
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -125,7 +127,7 @@ export function ConfirmDialog({
                 isPending ? "" : "cursor-pointer"
               }`}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           )}
         </div>

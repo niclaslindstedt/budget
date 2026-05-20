@@ -1,5 +1,7 @@
 import { Loader, Save } from "lucide-react";
 
+import { useT } from "../i18n";
+
 type Props = {
   dirty: boolean;
   saving: boolean;
@@ -15,11 +17,12 @@ type Props = {
 // glyph swaps for a spinner so the click has visible feedback even
 // when the cloud round-trip takes a moment.
 export function SaveStateButton({ dirty, saving, onSave }: Props) {
+  const t = useT();
   const label = saving
-    ? "Saving…"
+    ? t("saveState.saving")
     : dirty
-      ? "Save unsaved changes"
-      : "All changes saved";
+      ? t("saveState.saveUnsaved")
+      : t("saveState.allSaved");
   const enabled = dirty && !saving;
   return (
     <button

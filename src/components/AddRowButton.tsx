@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Plus, Sparkles } from "lucide-react";
 
+import { useT } from "../i18n";
 import { useActiveRow } from "./useActiveRow";
 
 type Props = {
@@ -16,6 +17,7 @@ const MOVE_THRESHOLD_PX = 8;
 // hold (or right-click on desktop) = open the modal for a recurring
 // or categorised entry.
 export function AddRowButton({ onAdd, onComplex }: Props) {
+  const t = useT();
   const timer = useRef<number | null>(null);
   const triggered = useRef(false);
   const startX = useRef(0);
@@ -86,7 +88,7 @@ export function AddRowButton({ onAdd, onComplex }: Props) {
       onPointerCancel={handlePointerUp}
       onPointerLeave={handlePointerUp}
       onContextMenu={handleContextMenu}
-      aria-label="Add row (long-press for recurring or categorised entry)"
+      aria-label={t("addRow.ariaLabel")}
     >
       <Plus size={22} aria-hidden focusable={false} />
       <Sparkles

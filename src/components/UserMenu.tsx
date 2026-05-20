@@ -12,6 +12,7 @@ import {
 
 import type { StoredUser } from "../data/types";
 import { useEscapeKey, usePointerOutside } from "../hooks";
+import { useT } from "../i18n";
 
 type Props = {
   user: StoredUser;
@@ -42,6 +43,7 @@ export function UserMenu({
   onCreateAccount,
   onDeleteAccount,
 }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"main" | "delete">("main");
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -56,8 +58,8 @@ export function UserMenu({
 
   const isGuest = user.isDefault === true;
   const buttonTitle = isGuest
-    ? "Using guest mode — no account"
-    : `Signed in as ${user.username}`;
+    ? t("userMenu.guestModeButton")
+    : t("userMenu.signedInAsName", { name: user.username });
 
   return (
     <div ref={rootRef} className="relative">
@@ -66,7 +68,9 @@ export function UserMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account menu (${buttonTitle.toLowerCase()})`}
+        aria-label={t("userMenu.accountMenuLabel", {
+          status: buttonTitle.toLowerCase(),
+        })}
         title={buttonTitle}
         className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
           open
@@ -135,44 +139,51 @@ function MainView({
   onCreateAccount: () => void;
   onAskDelete: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col">
       <div className="border-b border-line bg-surface-3 px-3 py-3">
         <p className="text-xs text-muted">
-          {isGuest ? "Using guest mode" : "Signed in as"}
+          {isGuest ? t("userMenu.guestMode") : t("userMenu.signedInAs")}
         </p>
         <p className="truncate text-sm font-bold text-fg-bright">
-          {isGuest ? "No account" : user.username}
+          {isGuest ? t("userMenu.guestNoAccount") : user.username}
         </p>
         {isGuest && (
-          <p className="mt-1 text-xs text-muted">
-            Create an account to lock your budget behind a password.
-          </p>
+          <p className="mt-1 text-xs text-muted">{t("userMenu.guestModeHint")}</p>
         )}
       </div>
       {!isGuest && (
         <MenuItem
           icon={<LogOut size={16} aria-hidden focusable={false} />}
-          label="Sign out"
+          label={t("userMenu.signOut")}
           onClick={onSignOut}
         />
       )}
       {hasOtherUsers && (
         <MenuItem
           icon={<Users size={16} aria-hidden focusable={false} />}
-          label="Switch user"
+          label={t("userMenu.switchUser")}
           onClick={onSwitchUser}
         />
       )}
       <MenuItem
         icon={<UserPlus size={16} aria-hidden focusable={false} />}
-        label={isGuest ? "Create account" : "Create another account"}
+        label={
+          isGuest
+            ? t("userMenu.createAccount")
+            : t("userMenu.createAnother")
+        }
         onClick={onCreateAccount}
       />
       <div className="border-t border-line">
         <MenuItem
           icon={<Trash2 size={16} aria-hidden focusable={false} />}
-          label={isGuest ? "Clear data" : "Delete this account"}
+          label={
+            isGuest
+              ? t("userMenu.clearData")
+              : t("userMenu.deleteThisAccount")
+          }
           danger
           onClick={onAskDelete}
         />
@@ -218,6 +229,7 @@ function DeleteView({
   onCancel: () => void;
   onConfirm: (password: string) => Promise<void>;
 }) {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -247,27 +259,23 @@ function DeleteView({
         <AlertTriangle size={16} aria-hidden focusable={false} />
         <div className="flex-1">
           <p className="text-sm font-bold text-fg-bright">
-            {isGuest ? "Clear guest data?" : "Delete account?"}
+            {isGuest
+              ? t("userMenu.clearGuestTitle")
+              : t("userMenu.deleteAccountTitle")}
           </p>
           <p className="mt-1 text-xs text-muted">
-            {isGuest ? (
-              <>
-                This permanently removes the budget stored in this
-                browser&apos;s guest session.
-              </>
-            ) : (
-              <>
-                This permanently removes <strong>{username}</strong> and the
-                budget data stored under it on this device.
-              </>
-            )}
+            {isGuest
+              ? t("userMenu.clearGuestHint")
+              : t("userMenu.deleteAccountHint", { username })}
           </p>
         </div>
       </div>
 
       {!isGuest && (
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted">Confirm with password</span>
+          <span className="text-xs text-muted">
+            {t("userMenu.confirmWithPassword")}
+          </span>
           <div className="relative flex items-center">
             <input
               type={show ? "text" : "password"}
@@ -280,7 +288,9 @@ function DeleteView({
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
-              aria-label={show ? "Hide password" : "Show password"}
+              aria-label={
+                show ? t("auth.hidePassword") : t("auth.showPassword")
+              }
               className="absolute right-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
             >
               {show ? (
@@ -302,7 +312,7 @@ function DeleteView({
           disabled={busy}
           className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="submit"
@@ -312,11 +322,11 @@ function DeleteView({
         >
           {busy
             ? isGuest
-              ? "Clearing…"
-              : "Deleting…"
+              ? t("userMenu.clearingData")
+              : t("userMenu.deletingAccount")
             : isGuest
-              ? "Clear data"
-              : "Delete account"}
+              ? t("userMenu.clearData")
+              : t("userMenu.deleteThisAccount")}
         </button>
       </div>
     </form>

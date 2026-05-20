@@ -1,5 +1,6 @@
 import { CloudAlert, CloudCheck, Loader, Save } from "lucide-react";
 
+import { type TFunction, useT } from "../i18n";
 import type { SaveStatus } from "../storage/useUserDataStorage";
 
 // Single header affordance for cloud-backed sessions: collapses the
@@ -32,12 +33,13 @@ function viewFor(
   status: SaveStatus,
   dirty: boolean,
   providerName: string,
+  t: TFunction,
 ): View {
   switch (status.kind) {
     case "loading":
       return {
         Icon: Loader,
-        label: "Loading…",
+        label: t("sync.loading"),
         tone: "busy",
         spin: true,
         action: "open",
@@ -45,7 +47,7 @@ function viewFor(
     case "saving":
       return {
         Icon: Loader,
-        label: "Saving…",
+        label: t("sync.saving"),
         tone: "busy",
         spin: true,
         action: "open",
@@ -53,14 +55,14 @@ function viewFor(
     case "error":
       return {
         Icon: CloudAlert,
-        label: `Sync failed: ${status.message}`,
+        label: t("sync.failedWithMessage", { message: status.message }),
         tone: "err",
         action: "open",
       };
     case "conflict":
       return {
         Icon: CloudAlert,
-        label: "Sync conflict",
+        label: t("sync.syncConflict"),
         tone: "warn",
         action: "open",
       };
@@ -69,13 +71,13 @@ function viewFor(
       return dirty
         ? {
             Icon: Save,
-            label: "Save unsaved changes",
+            label: t("sync.saveUnsaved"),
             tone: "accent",
             action: "save",
           }
         : {
             Icon: CloudCheck,
-            label: `Synced to ${providerName}`,
+            label: t("sync.syncedTo", { name: providerName }),
             tone: "ok",
             action: "open",
           };
@@ -97,7 +99,8 @@ export function SyncStatus({
   onSave,
   onOpenDetails,
 }: Props) {
-  const view = viewFor(status, dirty, providerName);
+  const t = useT();
+  const view = viewFor(status, dirty, providerName, t);
   const busy = status.kind === "saving" || status.kind === "loading";
   const onClick = view.action === "save" ? onSave : onOpenDetails;
   return (

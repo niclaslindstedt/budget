@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../data/constants";
 import type { Account, CategoryIcon } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
+import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
 import { GlyphPicker } from "./GlyphPicker";
 import { Modal } from "./Modal";
@@ -44,6 +45,7 @@ export function AccountModal({
   onSave,
   onDelete,
 }: Props) {
+  const t = useT();
   const isEdit = account !== null;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -105,7 +107,7 @@ export function AccountModal({
   return (
     <Modal open={open} onClose={onClose} labelledBy="account-modal-title">
       <Modal.Header
-        title={isEdit ? "Edit account" : "New account"}
+        title={isEdit ? t("account.titleEdit") : t("account.titleNew")}
         onClose={onClose}
       />
       <Modal.Body>
@@ -127,7 +129,7 @@ export function AccountModal({
               )}
             </div>
             <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <span className="text-xs text-muted">Name</span>
+              <span className="text-xs text-muted">{t("account.name")}</span>
               <input
                 type="text"
                 value={name}
@@ -139,25 +141,25 @@ export function AccountModal({
                   }
                 }}
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                placeholder="Checking, Travel fund, Cash…"
+                placeholder={t("account.namePlaceholder")}
                 ref={nameRef}
               />
             </label>
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Description</span>
+            <span className="text-xs text-muted">{t("account.description")}</span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              placeholder="Optional. e.g. shared household savings."
+              placeholder={t("account.descriptionPlaceholder")}
               className="field-input w-full min-w-0 resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Glyph</span>
+            <span className="text-xs text-muted">{t("account.glyph")}</span>
             <GlyphPicker
               value={glyph}
               onChange={setGlyph}
@@ -168,7 +170,7 @@ export function AccountModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Color</span>
+            <span className="text-xs text-muted">{t("account.color")}</span>
             <ColorPalette
               colors={SHEET_COLORS}
               value={color}
@@ -177,34 +179,36 @@ export function AccountModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Bank</span>
+            <span className="text-xs text-muted">{t("account.bank")}</span>
             <input
               type="text"
               value={bank}
               onChange={(e) => setBank(e.target.value)}
-              placeholder="e.g. Swedbank, Nordea, Revolut…"
+              placeholder={t("account.bankPlaceholder")}
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </div>
 
           <div className="grid grid-cols-[1fr_2fr] gap-2">
             <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">Clearing</span>
+              <span className="text-xs text-muted">{t("account.clearing")}</span>
               <input
                 type="text"
                 value={clearing}
                 onChange={(e) => setClearing(e.target.value)}
-                placeholder="8327"
+                placeholder={t("account.clearingPlaceholder")}
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
             <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">Account number</span>
+              <span className="text-xs text-muted">
+                {t("account.accountNumber")}
+              </span>
               <input
                 type="text"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder="123 456 789"
+                placeholder={t("account.accountNumberPlaceholder")}
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
@@ -212,45 +216,46 @@ export function AccountModal({
 
           <div className="grid grid-cols-[2fr_1fr] gap-2">
             <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">IBAN</span>
+              <span className="text-xs text-muted">{t("account.iban")}</span>
               <input
                 type="text"
                 value={iban}
                 onChange={(e) => setIban(e.target.value)}
-                placeholder="SE45 5000 0000 0583 9825 7466"
+                placeholder={t("account.ibanPlaceholder")}
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
             <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">BIC / SWIFT</span>
+              <span className="text-xs text-muted">{t("account.bic")}</span>
               <input
                 type="text"
                 value={bic}
                 onChange={(e) => setBic(e.target.value)}
-                placeholder="SWEDSESS"
+                placeholder={t("account.bicPlaceholder")}
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
             </label>
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">Currency override</span>
+            <span className="text-xs text-muted">
+              {t("account.currencyOverride")}
+            </span>
             <input
               type="text"
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              placeholder="Leave blank to use the global setting"
+              placeholder={t("account.currencyOverridePlaceholder")}
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
             />
             <span className="text-xs text-muted">
-              Free-form token. Empty means use the workspace setting.
+              {t("account.currencyOverrideHint")}
             </span>
           </label>
 
           {!hasDetails && (
             <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-              This account has no bank details. You can still track its balance
-              and transfers — fill them in later for easier reconciliation.
+              {t("account.noDetailsHint")}
             </p>
           )}
         </div>
@@ -264,7 +269,7 @@ export function AccountModal({
               className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20"
             >
               <Trash2 size={14} aria-hidden focusable={false} />
-              Delete
+              {t("common.delete")}
             </button>
           )}
         </div>
@@ -274,7 +279,7 @@ export function AccountModal({
             onClick={onClose}
             className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -282,7 +287,7 @@ export function AccountModal({
             disabled={!canSave}
             className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isEdit ? "Save" : "Create"}
+            {isEdit ? t("common.save") : t("account.create")}
           </button>
         </div>
       </Modal.Footer>
