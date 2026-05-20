@@ -261,6 +261,20 @@ export function SheetView({
     [item, transactionRows, historyRows],
   );
 
+  // Each imported bank entry's stored balance is the truth: it pins
+  // the running total at that row so an off-by-one opening balance
+  // or a hand-edited authored row can't drag the column away from
+  // what the bank says. Credit-card exports (no per-row balance) and
+  // hidden entries fall through to the amount-based computation.
+  const balanceOverrides = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of history) {
+      if (e.hidden) continue;
+      if (e.balance !== undefined) m.set(`hist:${e.id}`, e.balance);
+    }
+    return m;
+  }, [history]);
+
   // Calendar months fully covered by imported history. Computed once
   // per render; passed down so each `MonthTable` can hide its
   // `+ Add row` footer.
@@ -299,8 +313,14 @@ export function SheetView({
   }, [mergedItem, openingBalance, data, settings.startOfMonth]);
 
   const balances = useMemo(
-    () => computeBalances(decoratedItem, openingBalance, effectiveAmounts),
-    [decoratedItem, openingBalance, effectiveAmounts],
+    () =>
+      computeBalances(
+        decoratedItem,
+        openingBalance,
+        effectiveAmounts,
+        balanceOverrides,
+      ),
+    [decoratedItem, openingBalance, effectiveAmounts, balanceOverrides],
   );
 
   // History rows are synthesized — their cells don't exist in

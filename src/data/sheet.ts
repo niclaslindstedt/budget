@@ -202,10 +202,20 @@ export function sortRowsByDate(rows: Row[], dateColumnId: string): Row[] {
 // account already held before the first row in the view (e.g. the
 // pre-statement balance anchored by an imported history file). Pass
 // 0 for the historical behaviour.
+//
+// `balanceOverrides` lets a caller pin the running total to a known
+// value at specific rows — imported bank-statement entries carry an
+// authoritative post-transaction balance, and feeding that map in
+// snaps the running total to the bank's number at every history row.
+// Acts as a silent balance correction: any forecast amounts the user
+// authored on or before the anchor are absorbed, and the next row
+// resumes its running computation from the anchored value. Rows
+// without an override fall through to the amount-based accumulator.
 export function computeBalances(
   item: AccountBudget,
   openingBalance = 0,
   effectiveAmounts?: ReadonlyMap<string, number>,
+  balanceOverrides?: ReadonlyMap<string, number>,
 ): Map<string, number> {
   const result = new Map<string, number>();
   const dateCol = findColumnByType(item.columns, "date");
@@ -214,19 +224,24 @@ export function computeBalances(
   const sorted = sortRowsByDate(item.rows, dateCol.id);
   let running = openingBalance;
   for (const row of sorted) {
-    // When an effective-amounts map is supplied, prefer it over the
-    // stored cell — that's how formula rows get their evaluated value
-    // into the running balance. Falls back to the cell so existing
-    // call sites that haven't been threaded through the resolver
-    // behave exactly as before.
-    let amount: number;
-    if (effectiveAmounts && effectiveAmounts.has(row.id)) {
-      amount = effectiveAmounts.get(row.id) ?? 0;
+    const override = balanceOverrides?.get(row.id);
+    if (override !== undefined) {
+      running = override;
     } else {
-      const raw = row.cells[amountCol.id];
-      amount = typeof raw === "number" ? raw : Number(raw) || 0;
+      // When an effective-amounts map is supplied, prefer it over the
+      // stored cell — that's how formula rows get their evaluated value
+      // into the running balance. Falls back to the cell so existing
+      // call sites that haven't been threaded through the resolver
+      // behave exactly as before.
+      let amount: number;
+      if (effectiveAmounts && effectiveAmounts.has(row.id)) {
+        amount = effectiveAmounts.get(row.id) ?? 0;
+      } else {
+        const raw = row.cells[amountCol.id];
+        amount = typeof raw === "number" ? raw : Number(raw) || 0;
+      }
+      running += amount;
     }
-    running += amount;
     result.set(row.id, running);
   }
   return result;
@@ -498,16 +513,28 @@ export function accountBalance(
   accountId: string,
   today: string = todayIso(),
 ): number {
-  // Imported bank history anchors the sum: the account's
-  // `openingBalance` is what the account held the day BEFORE the
-  // earliest imported entry, so adding every historical amount on
-  // top of it reconstructs the bank's running balance. Accounts
-  // without imported history use 0 as the implicit opening.
+  // Imported bank-statement entries carry the authoritative
+  // post-transaction balance, so anchor on the latest such entry
+  // dated on or before `today` and only sum items that happen after
+  // it. Falling back to `openingBalance + Σ amounts` for accounts
+  // that have never been seeded from history keeps the old
+  // zero-anchored behaviour for free.
   const account = data.accounts.find((a) => a.id === accountId);
-  let total = account?.openingBalance ?? 0;
   const history = data.history[accountId] ?? [];
+  let anchorDate = "";
+  let total = account?.openingBalance ?? 0;
+  let anchored = false;
   for (const entry of history) {
     if (entry.date > today) continue;
+    if (entry.balance !== undefined && entry.date >= anchorDate) {
+      anchorDate = entry.date;
+      total = entry.balance;
+      anchored = true;
+    }
+  }
+  for (const entry of history) {
+    if (entry.date > today) continue;
+    if (anchored && entry.date <= anchorDate) continue;
     total += entry.amount;
   }
   for (const sheet of data.sheets) {
@@ -520,6 +547,7 @@ export function accountBalance(
       for (const row of item.rows) {
         const d = row.cells[dateCol.id];
         if (typeof d !== "string" || d === "" || d > today) continue;
+        if (anchored && d <= anchorDate) continue;
         const v = row.cells[amountCol.id];
         if (typeof v === "number") total += v;
       }
@@ -527,6 +555,7 @@ export function accountBalance(
   }
   for (const tx of data.transactions) {
     if (tx.date > today) continue;
+    if (anchored && tx.date <= anchorDate) continue;
     if (tx.fromAccountId === accountId) total -= tx.amount;
     if (tx.toAccountId === accountId) total += tx.amount;
   }

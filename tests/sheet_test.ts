@@ -225,6 +225,46 @@ describe("computeBalances", () => {
     sheet.columns = sheet.columns.filter((c) => c.type !== "amount");
     expect(computeBalances(sheet).size).toBe(0);
   });
+
+  it("snaps the running total to balanceOverrides at matching rows", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    const r1 = seedRow(dateCol.id, amountCol.id, "2026-04-15", -100);
+    const r2 = seedRow(dateCol.id, amountCol.id, "2026-04-20", -50);
+    const r3 = seedRow(dateCol.id, amountCol.id, "2026-05-01", -25);
+    sheet.rows = [r1, r2, r3];
+
+    // r1 and r2 anchor to authoritative bank balances; r3 falls
+    // through to amount-based accumulation off the latest anchor.
+    const overrides = new Map([
+      [r1.id, 900],
+      [r2.id, 850],
+    ]);
+    const balances = computeBalances(sheet, 1000, undefined, overrides);
+    expect(balances.get(r1.id)).toBe(900);
+    expect(balances.get(r2.id)).toBe(850);
+    expect(balances.get(r3.id)).toBe(825);
+  });
+
+  it("override absorbs earlier authored amounts on the same anchor date", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    // A forecast row the user authored before the bank statement
+    // arrived, on the same day as the anchored history entry.
+    const authored = seedRow(dateCol.id, amountCol.id, "2026-04-15", -500);
+    const historyAnchor = seedRow(dateCol.id, amountCol.id, "2026-04-15", -100);
+    sheet.rows = [authored, historyAnchor];
+
+    const overrides = new Map([[historyAnchor.id, 900]]);
+    const balances = computeBalances(sheet, 1000, undefined, overrides);
+    // The authored row computes its own intermediate (1000 - 500 =
+    // 500), but the history snap drops it on the floor — future rows
+    // resume from 900, not from 500 - 100.
+    expect(balances.get(authored.id)).toBe(500);
+    expect(balances.get(historyAnchor.id)).toBe(900);
+  });
 });
 
 describe("shiftIsoToMonth", () => {

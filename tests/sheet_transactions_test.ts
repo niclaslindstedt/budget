@@ -378,4 +378,74 @@ describe("accountBalance", () => {
     expect(accountBalance(data, "savings-id", TODAY)).toBe(0);
     expect(accountBalance(data, "checking-id", TODAY)).toBe(999);
   });
+
+  it("anchors on the latest history balance and adds only newer items", () => {
+    // Imported history is authoritative: the latest entry with a
+    // stored balance pins the total at that moment, and only events
+    // after it contribute.
+    const data = workspace();
+    data.accounts = data.accounts.map((a) =>
+      // Pretend an older import set an opening balance that's gone
+      // stale — the latest history entry's stored balance should
+      // override the cumulative sum off `openingBalance`.
+      a.id === "checking-id" ? { ...a, openingBalance: 50_000 } : a,
+    );
+    const history: HistoryEntry[] = [
+      {
+        id: "h-old",
+        date: "2026-04-10",
+        description: "Older",
+        amount: -100,
+        balance: 9_900,
+        importedAt: 0,
+      },
+      {
+        id: "h-anchor",
+        date: "2026-05-01",
+        description: "Anchor",
+        amount: -500,
+        balance: 9_400,
+        importedAt: 0,
+      },
+    ];
+    data.history = { "checking-id": history };
+    const item = data.sheets[0].items[0] as AccountBudget;
+    const amountCol = item.columns.find((c) => c.type === "amount")!;
+    const dateCol = item.columns.find((c) => c.type === "date")!;
+    item.rows = [
+      // Authored row dated before the anchor — absorbed by the snap.
+      {
+        id: "r-old-authored",
+        cells: { [dateCol.id]: "2026-04-15", [amountCol.id]: -10_000 },
+      },
+      // Authored row dated after the anchor — adds on top.
+      {
+        id: "r-new-authored",
+        cells: { [dateCol.id]: "2026-05-10", [amountCol.id]: -250 },
+      },
+    ];
+    // 9_400 (anchor) + (-250 authored after) = 9_150.
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(9_150);
+  });
+
+  it("falls back to openingBalance sum when no history entry has a balance", () => {
+    // Credit-card-style import: amounts only, no per-row balance.
+    // The anchor never engages, so we keep the legacy behaviour.
+    const data = workspace();
+    data.accounts = data.accounts.map((a) =>
+      a.id === "checking-id" ? { ...a, openingBalance: 100 } : a,
+    );
+    data.history = {
+      "checking-id": [
+        {
+          id: "h-cc",
+          date: "2026-05-01",
+          description: "Card purchase",
+          amount: -30,
+          importedAt: 0,
+        },
+      ],
+    };
+    expect(accountBalance(data, "checking-id", TODAY)).toBe(70);
+  });
 });
