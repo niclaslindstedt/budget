@@ -682,7 +682,6 @@ body {
 
 .field-input {
   border-radius: var(--radius-md);
-  border-width: var(--border-width);
   padding-top: var(--density-row-py);
   padding-bottom: var(--density-row-py);
 }

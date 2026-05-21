@@ -497,6 +497,24 @@ function ReadonlyTypeCell({ entryType }: { entryType: EntryType | null }) {
   );
 }
 
+// Enter in an inline description textarea commits the value (by
+// blurring — `handleBlur` snapshots and bubbles the commit). Shift +
+// Enter still inserts a newline so multi-line descriptions remain
+// possible. The IME-composing guard avoids stealing the Enter that
+// confirms an Asian-input candidate.
+function handleDescriptionCommitKey(
+  event: React.KeyboardEvent<HTMLTextAreaElement>,
+) {
+  if (
+    event.key === "Enter" &&
+    !event.shiftKey &&
+    !event.nativeEvent.isComposing
+  ) {
+    event.preventDefault();
+    event.currentTarget.blur();
+  }
+}
+
 function AmountCell({
   rowId,
   value,
@@ -809,6 +827,7 @@ function PlainDescriptionCell({
           onChange={(e) => onChange(e.target.value)}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onKeyDown={handleDescriptionCommitKey}
           rows={1}
           placeholder={t("cell.placeholderEllipsis")}
         />
@@ -892,6 +911,7 @@ function TypedDescriptionCell({
           onChange={(e) => onChange(e.target.value)}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onKeyDown={handleDescriptionCommitKey}
           rows={1}
           placeholder={t("cell.placeholderEllipsis")}
         />
@@ -970,6 +990,16 @@ function TypedDescriptionPopover({
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              setOpen(false);
+            }
+          }}
           placeholder={t("cell.descriptionPlaceholder")}
           rows={1}
           className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
@@ -1068,6 +1098,16 @@ function PlainDescriptionPopover({
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              setOpen(false);
+            }
+          }}
           placeholder={t("cell.descriptionPlaceholder")}
           rows={1}
           className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
