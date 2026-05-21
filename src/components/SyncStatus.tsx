@@ -1,17 +1,29 @@
-import { CloudAlert, CloudCheck, CloudOff, Loader, Save } from "lucide-react";
+import {
+  CloudAlert,
+  CloudCheck,
+  CloudOff,
+  CloudUpload,
+  Loader,
+} from "lucide-react";
 
 import { type TFunction, useT } from "../i18n";
 import type { SaveStatus } from "../storage/useUserDataStorage";
 
 // Single header affordance for cloud-backed sessions: collapses the
 // separate "save now" disk and "sync status" cloud into one glyph
-// that morphs with state. Disk when there are unsaved edits (tap to
-// save), spinner while a save is in flight, green cloud-check when
-// the remote is in sync, red cloud-alert when something has gone
-// wrong. Errors take precedence over the dirty disk because if the
-// cloud round-trip is failing, "save now" can't make progress until
-// the user sees the modal and acts on it. Tapping the disk saves;
-// every other state opens the sync-details modal.
+// that morphs with state. Cloud-upload (with the accent ring) when
+// there are unsaved edits the user can push, spinner while a save
+// is in flight, green cloud-check when the remote is in sync, red
+// cloud-alert when something has gone wrong, cloud-off when we're
+// offline. Errors take precedence over the dirty upload glyph
+// because if the cloud round-trip is failing, "save now" can't
+// make progress until the user sees the modal and acts on it.
+// Tapping the upload glyph saves; every other state opens the
+// sync-details modal. The dirty state intentionally keeps a cloud
+// icon (not a floppy disk) so the user always sees which backend
+// they're on — a floppy here looks like the local-disk affordance
+// and hides the fact that the session is bound to a cloud
+// provider.
 
 type Props = {
   providerName: string;
@@ -84,7 +96,7 @@ function viewFor(
     case "idle":
       return dirty
         ? {
-            Icon: Save,
+            Icon: CloudUpload,
             label: t("sync.saveUnsaved"),
             tone: "accent",
             action: "save",

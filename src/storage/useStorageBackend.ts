@@ -586,6 +586,19 @@ export function useStorageBackend({
             pending.remoteSnapshot?.revision,
           );
         }
+        // Drop any cloud-mirror cache the previous backend left
+        // behind. The mirror key is per-user only, so without this
+        // the new provider's load() would see the old provider's
+        // pending edits and either push them into the new cloud or
+        // surface a bogus cross-provider conflict — both of which
+        // end with a blank budget on the freshly linked backend.
+        // The cloud-mirror wrapper now also guards against this
+        // internally via the backendId tag, but clearing here is
+        // the explicit, observable handoff.
+        log.info(
+          `cloud-link: clearing cloud-mirror before flipping backend to ${pending.provider}`,
+        );
+        clearCloudMirror(cloudMirrorKey(userId));
         log.info(
           `cloud-link: committing — flipping backend to ${pending.provider}`,
         );
