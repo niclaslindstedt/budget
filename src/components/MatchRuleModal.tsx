@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
 import { useDesktopAutoFocus } from "../hooks";
@@ -15,10 +14,9 @@ import {
   formatAmountForInput,
   formatBalance,
   formatShortDate,
-  normalizeAmountInput,
   parseAmount,
 } from "../utils/format";
-import { ClearableTextInput } from "./form";
+import { ClearableTextInput, SignedAmountInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -375,11 +373,13 @@ export function MatchRuleModal({
                   <SignedAmountInput
                     value={amountMinText}
                     negative={amountMinNegative}
-                    placeholder={t("matchRule.amountFrom")}
-                    settings={settings}
-                    onChangeText={setAmountMinText}
+                    onValueChange={setAmountMinText}
                     onToggleSign={() => setAmountMinNegative((s) => !s)}
+                    settings={settings}
                     ariaLabel={t("matchRule.amountFromAria")}
+                    placeholder={t("matchRule.amountFrom")}
+                    density="compact"
+                    width="w-32"
                   />
                   <span className="text-xs text-muted">
                     {t("matchRule.amountToLabel")}
@@ -387,11 +387,13 @@ export function MatchRuleModal({
                   <SignedAmountInput
                     value={amountMaxText}
                     negative={amountMaxNegative}
-                    placeholder={t("matchRule.amountTo")}
-                    settings={settings}
-                    onChangeText={setAmountMaxText}
+                    onValueChange={setAmountMaxText}
                     onToggleSign={() => setAmountMaxNegative((s) => !s)}
+                    settings={settings}
                     ariaLabel={t("matchRule.amountToAria")}
+                    placeholder={t("matchRule.amountTo")}
+                    density="compact"
+                    width="w-32"
                   />
                 </div>
                 {rangeInverted && (
@@ -516,71 +518,6 @@ function parseSignedAmount(
   const mag = Math.abs(abs);
   if (mag === 0) return 0;
   return negative ? -mag : mag;
-}
-
-type SignedAmountInputProps = {
-  value: string;
-  negative: boolean;
-  placeholder: string;
-  settings: Settings;
-  onChangeText: (next: string) => void;
-  onToggleSign: () => void;
-  ariaLabel: string;
-};
-
-// One side of the "between" band: a +/- toggle that lives flush with
-// the input, mirroring the pattern used by `ComplexEntryModal` and
-// `Cell.tsx` so the sign lives on the button, not in the text.
-function SignedAmountInput({
-  value,
-  negative,
-  placeholder,
-  settings,
-  onChangeText,
-  onToggleSign,
-  ariaLabel,
-}: SignedAmountInputProps) {
-  const handleChange = (next: string) => {
-    // The toggle owns the sign — strip any minus the keyboard or a
-    // paste introduces so the input shows only the magnitude.
-    const stripped = next.replace(/-/g, "");
-    onChangeText(normalizeAmountInput(stripped, settings));
-  };
-  const parsed = parseAmount(value);
-  const tone =
-    parsed !== null && parsed !== 0
-      ? negative
-        ? "text-negative"
-        : "text-positive"
-      : "text-fg";
-  return (
-    <div className="relative flex w-32">
-      <button
-        type="button"
-        onClick={onToggleSign}
-        aria-label={negative ? "Make positive" : "Make negative"}
-        tabIndex={-1}
-        className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-          negative ? "text-negative" : "text-positive"
-        }`}
-      >
-        {negative ? (
-          <Minus size={14} aria-hidden focusable={false} />
-        ) : (
-          <Plus size={14} aria-hidden focusable={false} />
-        )}
-      </button>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        className={`field-input w-full rounded border border-line bg-surface-2 py-1 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${tone}`}
-      />
-    </div>
-  );
 }
 
 type SegmentedOption = { value: string; label: string };

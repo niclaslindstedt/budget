@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
@@ -8,10 +8,10 @@ import { useT } from "../i18n";
 import {
   formatAmountForInput,
   formatNumber,
-  normalizeAmountInput,
   parseAmount,
   withCurrency,
 } from "../utils/format";
+import { SignedAmountInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -195,14 +195,6 @@ export function SplitEntryModal({
     setSplits((prev) => [...prev, makeEmptySplit(originalNegative)]);
   }
 
-  function handleAmountChange(uiId: string, next: string) {
-    // Sign lives on the per-split toggle button — strip any minus the
-    // keyboard or a paste produces so the input only ever shows the
-    // absolute value.
-    const stripped = next.replace(/-/g, "");
-    updateSplit(uiId, { amount: normalizeAmountInput(stripped, settings) });
-  }
-
   function toggleSign(uiId: string) {
     setSplits((prev) =>
       prev.map((s) => (s.uiId === uiId ? { ...s, negative: !s.negative } : s)),
@@ -310,8 +302,6 @@ export function SplitEntryModal({
 
         <div className="flex flex-col gap-3">
           {splits.map((s, i) => {
-            const parsedAbs = parseAmount(s.amount);
-            const hasAmount = parsedAbs !== null && parsedAbs !== 0;
             return (
               <div
                 key={s.uiId}
@@ -352,42 +342,17 @@ export function SplitEntryModal({
                     <span className="text-xs text-muted">
                       {t("splitRow.amount")}
                     </span>
-                    <div className="relative flex min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => toggleSign(s.uiId)}
-                        aria-label={
-                          s.negative
-                            ? t("editEntry.makePositive")
-                            : t("editEntry.makeNegative")
-                        }
-                        tabIndex={-1}
-                        className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-                          s.negative ? "text-negative" : "text-positive"
-                        }`}
-                      >
-                        {s.negative ? (
-                          <Minus size={14} aria-hidden focusable={false} />
-                        ) : (
-                          <Plus size={14} aria-hidden focusable={false} />
-                        )}
-                      </button>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={s.amount}
-                        onChange={(e) =>
-                          handleAmountChange(s.uiId, e.target.value)
-                        }
-                        className={`field-input min-w-0 flex-1 rounded border border-line bg-surface py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
-                          hasAmount
-                            ? s.negative
-                              ? "text-negative"
-                              : "text-positive"
-                            : "text-fg"
-                        }`}
-                      />
-                    </div>
+                    <SignedAmountInput
+                      value={s.amount}
+                      negative={s.negative}
+                      onValueChange={(next) =>
+                        updateSplit(s.uiId, { amount: next })
+                      }
+                      onToggleSign={() => toggleSign(s.uiId)}
+                      settings={settings}
+                      ariaLabel={t("splitRow.amount")}
+                      surface="surface"
+                    />
                   </label>
                   <div className="flex flex-col gap-1">
                     <span className="text-xs text-muted">
