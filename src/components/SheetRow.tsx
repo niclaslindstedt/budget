@@ -1,14 +1,5 @@
 import { memo, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeftRight,
-  Eye,
-  EyeOff,
-  Pencil,
-  Repeat,
-  Scissors,
-  Tags,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
 import { useLang, useT } from "../i18n";
@@ -24,6 +15,7 @@ import { formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { Cell } from "./Cell";
+import { RowActionsMenu } from "./RowActionsMenu";
 
 type Props = {
   row: Row;
@@ -91,6 +83,11 @@ type Props = {
   // history rows; called on a non-history row, the parent guards the
   // dispatch.
   onEditHistoryRequest: (row: Row) => void;
+  // Open the move-copy modal seeded with just this row. The modal is
+  // shared with the bulk-select toolbar — single-row move/copy goes
+  // through the same dispatch path with a one-element rowIds array.
+  onMoveRequest: (row: Row) => void;
+  onCopyRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
 };
 
@@ -124,6 +121,8 @@ function SheetRowImpl({
   onTransactionRequest,
   onMatchRuleRequest,
   onEditHistoryRequest,
+  onMoveRequest,
+  onCopyRequest,
   onToggleSelect,
 }: Props) {
   const tr = useT();
@@ -431,34 +430,23 @@ function SheetRowImpl({
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <div className="action-stack flex h-full w-full items-stretch">
-          {!isTransaction && (
+          {isTransaction && (
             <button
               type="button"
-              className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={isSeries ? "Edit recurring entry" : "Make recurring"}
+              disabled={!transferEnabled}
+              className="action-btn action-btn-transfer inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white disabled:cursor-not-allowed disabled:opacity-40 md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={tr("cell.editTransaction")}
+              title={tr("cell.editTransaction")}
               onClick={() => {
+                if (!transferEnabled) return;
                 setSwiped(false);
-                onEditRequest(row);
+                onTransactionRequest(row);
               }}
             >
-              <Repeat size={16} aria-hidden focusable={false} />
+              <ArrowLeftRight size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {isHistory && (
-            <button
-              type="button"
-              className="action-btn action-btn-edit inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={tr("cell.labelByPattern")}
-              title={tr("cell.labelByPatternTitle")}
-              onClick={() => {
-                setSwiped(false);
-                onMatchRuleRequest(row);
-              }}
-            >
-              <Tags size={16} aria-hidden focusable={false} />
-            </button>
-          )}
-          {isHistory && (
+          {!isTransaction && isHistory && (
             <button
               type="button"
               className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
@@ -470,77 +458,6 @@ function SheetRowImpl({
               }}
             >
               <Pencil size={16} aria-hidden focusable={false} />
-            </button>
-          )}
-          {!isHistory && (
-            <button
-              type="button"
-              disabled={!transferEnabled}
-              className="action-btn action-btn-transfer inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white disabled:cursor-not-allowed disabled:opacity-40 md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={
-                isTransaction
-                  ? tr("cell.editTransaction")
-                  : canTransfer
-                    ? tr("cell.makeTransaction")
-                    : tr("cell.needAccountForTransfer")
-              }
-              title={
-                !canTransfer
-                  ? tr("cell.needAccountForTransfer")
-                  : isTransaction
-                    ? tr("cell.editTransaction")
-                    : !transferEnabled
-                      ? tr("cell.needDescAndAmount")
-                      : undefined
-              }
-              onClick={() => {
-                if (!transferEnabled) return;
-                setSwiped(false);
-                onTransactionRequest(row);
-              }}
-            >
-              <ArrowLeftRight size={16} aria-hidden focusable={false} />
-            </button>
-          )}
-          {!isTransaction && !isHistory && onToggleRowTransfer && (
-            <button
-              type="button"
-              className="action-btn action-btn-transfer-flag inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={
-                row.isTransfer
-                  ? tr("cell.unmarkAsTransfer")
-                  : tr("cell.markAsTransfer")
-              }
-              title={
-                row.isTransfer
-                  ? tr("cell.unmarkAsTransfer")
-                  : tr("cell.markAsTransferTitle")
-              }
-              aria-pressed={row.isTransfer === true}
-              onClick={() => {
-                setSwiped(false);
-                onToggleRowTransfer(row);
-              }}
-            >
-              {row.isTransfer ? (
-                <EyeOff size={16} aria-hidden focusable={false} />
-              ) : (
-                <Eye size={16} aria-hidden focusable={false} />
-              )}
-            </button>
-          )}
-          {!isTransaction && (
-            <button
-              type="button"
-              className="action-btn action-btn-split inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={tr("splitRow.cell")}
-              title={tr("splitRow.cellTitle")}
-              onClick={() => {
-                setSwiped(false);
-                onSplitRequest(row);
-              }}
-            >
-              <Scissors size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isTransaction && !isHistory && (
@@ -569,6 +486,23 @@ function SheetRowImpl({
             >
               <Trash2 size={16} aria-hidden focusable={false} />
             </button>
+          )}
+          {!isTransaction && (
+            <RowActionsMenu
+              row={row}
+              isHistory={isHistory}
+              isSeries={isSeries}
+              canTransfer={canTransfer}
+              transferEnabled={transferEnabled}
+              onEditRequest={onEditRequest}
+              onMatchRuleRequest={onMatchRuleRequest}
+              onTransactionRequest={onTransactionRequest}
+              onToggleRowTransfer={onToggleRowTransfer}
+              onSplitRequest={onSplitRequest}
+              onCopyRequest={onCopyRequest}
+              onMoveRequest={onMoveRequest}
+              onAction={() => setSwiped(false)}
+            />
           )}
         </div>
       </td>

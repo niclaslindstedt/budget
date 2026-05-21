@@ -707,7 +707,13 @@ export const sv: Catalog = {
     editRow: "Redigera rad",
     deleteRow: "Ta bort rad",
     rowActions: "Radåtgärder",
+    moreActions: "Fler åtgärder",
     recurring: "Återkommande post",
+    makeRecurring: "Gör återkommande",
+    editRecurring: "Redigera återkommande post",
+    split: "Dela rad",
+    move: "Flytta till annan månad",
+    copy: "Kopiera till andra månader",
     labelByPattern: "Etikett via mönster",
     labelByPatternTitle:
       "Etikettera alla historikposter som matchar ett wildcard-mönster",

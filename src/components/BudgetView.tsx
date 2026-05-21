@@ -1763,15 +1763,21 @@ export function BudgetView({
     [activeItem.rows, selectedIds],
   );
 
-  const selectedSourceMonths = useMemo<ReadonlySet<string>>(() => {
+  // Source-month set fed to MoveCopyModal so the user can't pick a no-op
+  // target. Driven by whichever rows the modal is currently acting on:
+  // the bulk selection when the prompt was opened from the bulk-select
+  // toolbar, the single row when opened from the row's swipe-menu …
+  // dropdown.
+  const moveCopySourceMonths = useMemo<ReadonlySet<string>>(() => {
     if (!dateCol) return new Set();
+    const rows = moveCopyPrompt?.rows ?? [];
     const set = new Set<string>();
-    for (const r of selectedRows) {
+    for (const r of rows) {
       const key = getMonthKey(r.cells[dateCol.id], data.settings.startOfMonth);
       if (key !== "undated") set.add(key);
     }
     return set;
-  }, [selectedRows, dateCol, data.settings.startOfMonth]);
+  }, [moveCopyPrompt, dateCol, data.settings.startOfMonth]);
 
   // Last ISO date in the candidate series — defaults the "until" picker.
   const editLastSeriesDate = useMemo<string | null>(() => {
@@ -2027,6 +2033,12 @@ export function BudgetView({
   const onBulkCopy = useCallback(() => {
     setMoveCopyPrompt({ kind: "copy", rows: selectedRows });
   }, [selectedRows]);
+  const onMoveRequest = useCallback((row: Row) => {
+    setMoveCopyPrompt({ kind: "move", rows: [row] });
+  }, []);
+  const onCopyRequest = useCallback((row: Row) => {
+    setMoveCopyPrompt({ kind: "copy", rows: [row] });
+  }, []);
 
   const onApplyBulkPatch = useCallback(
     (rowIds: string[], patch: BulkPatch) => {
@@ -2397,6 +2409,8 @@ export function BudgetView({
                 onToggleRowTransfer={onToggleRowTransfer}
                 onMatchRuleRequest={onMatchRuleRequest}
                 onEditHistoryRequest={onEditHistoryRequest}
+                onMoveRequest={onMoveRequest}
+                onCopyRequest={onCopyRequest}
                 onUpdateHistoryEntry={onUpdateHistoryEntry}
                 onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                 onReorderColumns={onReorderColumns}
@@ -2685,7 +2699,7 @@ export function BudgetView({
         open={moveCopyPrompt !== null}
         mode={moveCopyPrompt?.kind ?? "move"}
         rows={moveCopyPrompt?.rows ?? []}
-        sourceMonths={selectedSourceMonths}
+        sourceMonths={moveCopySourceMonths}
         onClose={() => setMoveCopyPrompt(null)}
         onSubmit={handleMoveCopySubmit}
       />
