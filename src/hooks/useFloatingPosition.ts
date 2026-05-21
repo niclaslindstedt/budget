@@ -1,26 +1,34 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
-// {top, left, width, maxHeight} for a floating element (dropdown,
-// popover) anchored to a trigger element. `null` until the first
-// measurement lands — call sites short-circuit rendering until then.
-// `maxHeight` is the room left between the floating element's top and
-// the bottom of the visible visual viewport (accounting for the iOS
-// soft-keyboard inset). Call sites apply it as `max-height` with
-// `overflow-y: auto` so the panel scrolls internally when its content
-// is taller than the available space — keeps an input inside the panel
-// reachable when the keyboard opens.
+// {top, left, width, maxHeight, placement} for a floating element
+// (dropdown, popover) anchored to a trigger element. `null` until the
+// first measurement lands — call sites short-circuit rendering until
+// then. `maxHeight` is the room left along the chosen axis (between
+// the panel's top and the visible bottom for "below", or between the
+// visible top and the panel's bottom for "above"). Call sites apply
+// it as `max-height` with `overflow-y: auto` so the panel scrolls
+// internally when its content is taller than the available space —
+// keeps an input inside the panel reachable when the keyboard opens.
 // `arrowLeft` is the trigger's horizontal centre, expressed in panel-
 // local coordinates (pixels from the panel's left edge), and clamped
 // into the panel's interior so it stays a sensible tip position even
 // when the panel got shoved sideways to fit the viewport. Used by
-// `FloatingPanel` to pin an optional upward pointer to the trigger.
+// `FloatingPanel` to pin an optional pointer to the trigger.
+//
+// `placement` says which side of the trigger the panel sits on:
+// - "below": `top` is the panel's TOP edge y-coordinate; the panel
+//   grows downward from there.
+// - "above": `top` is the y-coordinate where the panel's BOTTOM edge
+//   should sit; consumers apply `transform: translateY(-100%)` to
+//   anchor the bottom there without needing to measure panel height.
 export type FloatingRect = {
   top: number;
   left: number;
   width: number;
   maxHeight: number;
   arrowLeft: number;
+  placement: "below" | "above";
 };
 
 // How wide the floating element should be.
@@ -134,31 +142,60 @@ function compute(
   const visibleTop = vv.offsetTop + (document ? scrollY : 0);
   const visibleBottom = visibleTop + vv.height;
 
-  let top = rect.bottom + gap + scrollY;
-  // Viewport-coord floats (`position: fixed` pickers anchored to the
-  // layout viewport) need clamping into the visible region — they
-  // don't scroll with the page, so iOS's visual-viewport shift for
-  // the keyboard could leave them above the visible area where the
-  // user can never reach them. Document-coord popovers (description
-  // reveal) opt out: they scroll with the page, iOS auto-scrolls the
-  // focused textarea into view above the keyboard, and the popover
-  // rides along with the trigger row. Clamping would yank the panel
-  // off its row every time the visual viewport shifts during the
-  // keyboard animation — the user perceives that as the popover
-  // jumping away from where it should be.
-  if (!document) {
-    const triggerBottomCoord = rect.bottom + scrollY;
-    const triggerHiddenAbove = triggerBottomCoord < visibleTop;
-    if (triggerHiddenAbove && top < visibleTop + margin) {
-      top = visibleTop + margin;
-    }
-    // Don't park the panel below the visible region either — better
-    // to let it cover the trigger than render off-screen at the bottom.
-    const maxTop = visibleBottom - margin - 80;
-    if (top > maxTop) top = Math.max(visibleTop + margin, maxTop);
-  }
+  // Pick a side. Default to "below", but flip to "above" when there
+  // isn't enough room below to render a useful number of rows AND
+  // there's more room above. The threshold matches the listbox-with-
+  // a-handful-of-items case the pickers were designed for (category /
+  // type / backend / generic select): ~5 rows + the create row. Below
+  // that, an upward flip is the difference between "showing 1 item
+  // with a scrollbar pinned to the visible-bottom margin" and "showing
+  // the whole list growing toward the top of the screen". Users
+  // working at the end of a long sheet hit the former constantly,
+  // which is the bug this flip fixes.
+  const MIN_USEFUL_BELOW = 180;
+  const triggerTopCoord = rect.top + scrollY;
+  const triggerBottomCoord = rect.bottom + scrollY;
+  const spaceBelow = visibleBottom - triggerBottomCoord - gap - margin;
+  const spaceAbove = triggerTopCoord - visibleTop - gap - margin;
+  const verticalPlacement: "below" | "above" =
+    spaceBelow < MIN_USEFUL_BELOW && spaceAbove > spaceBelow
+      ? "above"
+      : "below";
 
-  const maxHeight = Math.max(120, visibleBottom - top - margin);
+  let top: number;
+  let maxHeight: number;
+  if (verticalPlacement === "above") {
+    // Anchor the panel's BOTTOM edge `gap` px above the trigger.
+    // Consumer applies `translateY(-100%)` so we never need to know
+    // the actual rendered panel height up front.
+    top = triggerTopCoord - gap;
+    maxHeight = Math.max(120, spaceAbove);
+  } else {
+    top = triggerBottomCoord + gap;
+    // Viewport-coord floats (`position: fixed` pickers anchored to the
+    // layout viewport) need clamping into the visible region — they
+    // don't scroll with the page, so iOS's visual-viewport shift for
+    // the keyboard could leave them above the visible area where the
+    // user can never reach them. Document-coord popovers (description
+    // reveal) opt out: they scroll with the page, iOS auto-scrolls the
+    // focused textarea into view above the keyboard, and the popover
+    // rides along with the trigger row. Clamping would yank the panel
+    // off its row every time the visual viewport shifts during the
+    // keyboard animation — the user perceives that as the popover
+    // jumping away from where it should be.
+    if (!document) {
+      const triggerHiddenAbove = triggerBottomCoord < visibleTop;
+      if (triggerHiddenAbove && top < visibleTop + margin) {
+        top = visibleTop + margin;
+      }
+      // Don't park the panel below the visible region either — better
+      // to let it cover the trigger than render off-screen at the
+      // bottom.
+      const maxTop = visibleBottom - margin - 80;
+      if (top > maxTop) top = Math.max(visibleTop + margin, maxTop);
+    }
+    maxHeight = Math.max(120, visibleBottom - top - margin);
+  }
 
   // Trigger centre in panel-local coordinates, clamped to leave room
   // for the rounded corner + the arrow's own half-width so the tip
@@ -169,7 +206,14 @@ function compute(
   if (arrowLeft < arrowGutter) arrowLeft = arrowGutter;
   if (arrowLeft > width - arrowGutter) arrowLeft = width - arrowGutter;
 
-  return { top, left, width, maxHeight, arrowLeft };
+  return {
+    top,
+    left,
+    width,
+    maxHeight,
+    arrowLeft,
+    placement: verticalPlacement,
+  };
 }
 
 // Measures `triggerRef` while `open` is true and returns its

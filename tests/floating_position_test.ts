@@ -186,6 +186,70 @@ describe("computeFloatingRect", () => {
     expect(result.top).toBe(144);
   });
 
+  it("flips the panel upward when there isn't enough room below the trigger", () => {
+    // Trigger near the bottom of a tall viewport — typical "user is
+    // editing the last row of a long sheet" scenario. With only ~50px
+    // of room below, opening downward would render the listbox as a
+    // sliver with a scrollbar. Flip upward instead so the full menu
+    // is visible.
+    const result = computeFloatingRect(
+      rectAt(780, 32), // trigger.bottom = 812 in an 844 viewport
+      VIEWPORT_PLACEMENT,
+      { offsetTop: 0, height: 844 },
+      PHONE_WINDOW,
+    );
+    expect(result.placement).toBe("above");
+    // `top` is the y where the panel's BOTTOM edge sits — trigger.top
+    // (780) - gap (4) = 776.
+    expect(result.top).toBe(776);
+    // maxHeight is the room above the trigger: trigger.top (780) -
+    // visibleTop (0) - gap (4) - margin (8) = 768.
+    expect(result.maxHeight).toBe(768);
+  });
+
+  it("stays below when there's at least the useful-height threshold of room", () => {
+    // Same shape but with enough room below — the heuristic should
+    // prefer "below" so the panel doesn't jump above the trigger
+    // unnecessarily.
+    const result = computeFloatingRect(
+      rectAt(600, 32), // 844 - 632 = 212 > 180 (MIN_USEFUL_BELOW)
+      VIEWPORT_PLACEMENT,
+      { offsetTop: 0, height: 844 },
+      PHONE_WINDOW,
+    );
+    expect(result.placement).toBe("below");
+    expect(result.top).toBe(636);
+  });
+
+  it("stays below when there isn't enough room on either side (covers trigger less awkwardly)", () => {
+    // Tiny visible region (e.g. exotic embedded preview). Both sides
+    // are cramped; falling through to "below" matches the keyboard-
+    // squeeze case the suite already covers and keeps the legacy
+    // clamp into the visible region active.
+    const result = computeFloatingRect(
+      rectAt(80, 32),
+      VIEWPORT_PLACEMENT,
+      { offsetTop: 0, height: 200 },
+      PHONE_WINDOW,
+    );
+    expect(result.placement).toBe("below");
+  });
+
+  it("flips the document-coord popover upward too, in document space", () => {
+    // Description popover near the bottom of a tall scrolled document.
+    // Document-coord placements participate in the same flip — the
+    // textarea body would otherwise sit under the viewport bottom.
+    const result = computeFloatingRect(
+      rectAt(540, 40), // viewport trigger.bottom = 580, in a 600 visible region
+      DOCUMENT_PLACEMENT,
+      { offsetTop: 0, height: 600 },
+      { ...PHONE_WINDOW, scrollY: 1000 },
+    );
+    expect(result.placement).toBe("above");
+    // top = trigger.top (540) - gap (4) + scrollY (1000) = 1536.
+    expect(result.top).toBe(1536);
+  });
+
   it("clamps arrowLeft into the panel when the panel got shoved sideways", () => {
     // Narrow trigger at the far-right edge of the viewport. The panel
     // gets shoved left to fit, but the trigger centre sits past the
