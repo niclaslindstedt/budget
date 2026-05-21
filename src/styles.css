@@ -472,14 +472,18 @@ body {
       /* Amount and balance widths are driven by --amount-col-ch /
          --balance-col-ch, set per-sheet from the longest formatted value
          across every month so each month aligns on the same column
-         widths instead of sizing independently. Padding is folded into
-         the calc so the cell content has room to breathe. The category
-         and completed tracks are kept narrow (icon-only on mobile) so
-         the description column gets as much of the row as possible. */
+         widths instead of sizing independently. The 3rem buffer covers
+         the +/- glyph (w-6 = 1.5rem) plus the right-side padding the
+         body span reserves for the currency overlay (pr-8 = 2rem when
+         currency-after) — currency-before only needs pl-10 (2.5rem)
+         on the input, so 3rem fits both modes without truncation. The
+         category and completed tracks are kept narrow (icon-only on
+         mobile) so the description column gets as much of the row as
+         possible. */
       grid-template-columns:
         46px minmax(0, 1fr) 56px
-        minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 2.25rem))
-        minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 1rem))
+        minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
+        minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 3rem))
         40px;
       position: relative;
       overflow: hidden;
@@ -490,8 +494,8 @@ body {
     .sheet-table.is-selecting > tbody > tr {
       grid-template-columns:
         30px 46px minmax(0, 1fr) 56px
-        minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 2.25rem))
-        minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 1rem))
+        minmax(72px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
+        minmax(72px, calc(var(--balance-col-ch, 8) * 1ch + 3rem))
         40px;
     }
     /* Highlight the row in select mode and tint the selected ones. */

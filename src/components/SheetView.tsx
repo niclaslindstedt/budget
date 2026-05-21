@@ -32,11 +32,7 @@ import type {
   Transaction,
   UserData,
 } from "../data/types";
-import {
-  formatNumber,
-  formatRunningBalance,
-  withCurrency,
-} from "../utils/format";
+import { formatNumber, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
 
@@ -396,8 +392,12 @@ export function SheetView({
     }
     if (balanceCol) {
       for (const b of balances.values()) {
-        const text = formatRunningBalance(b, settings);
-        if (text.length > balanceChars) balanceChars = text.length;
+        const body = formatNumber(Math.abs(b), settings, {
+          alwaysTwoFractionDigits: true,
+          alwaysAbbreviate: settings.alwaysAbbreviateBalance,
+        });
+        const full = withCurrency(body, settings);
+        if (full.length > balanceChars) balanceChars = full.length;
       }
     }
     return { amountChars, balanceChars };

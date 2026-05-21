@@ -20,7 +20,6 @@ import type {
 import {
   formatAmountForInput,
   formatNumber,
-  formatRunningBalance,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
@@ -412,50 +411,79 @@ function BalanceCell({
   onToggleTransferAnchor?: () => void;
 }) {
   const t = useT();
-  const colourClass = value < 0 ? "text-negative" : "text-positive";
-  const text = formatRunningBalance(value, settings);
+  const negative = value < 0;
+  const abs = Math.abs(value);
+  const body = formatNumber(abs, settings, {
+    alwaysTwoFractionDigits: true,
+    alwaysAbbreviate: settings.alwaysAbbreviateBalance,
+  });
+  const colourClass = negative ? "text-negative" : "text-positive";
   const showButton = hiddenTransferCount > 0 && !!onToggleTransferAnchor;
   return (
-    <td
-      className={`${CELL_BASE} items-center bg-surface-3 px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${colourClass}`}
-      aria-readonly="true"
-    >
-      {/* Wrap the text so the mobile layout (where each td is
-         display:flex) gets a full-width child for `text-right` to bite
-         on — otherwise the bare text node becomes a narrow anonymous
-         flex item that sits at the start of the cell. */}
-      <span className="flex items-center justify-end gap-1.5">
-        {showButton && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleTransferAnchor?.();
-            }}
-            aria-label={plural(
-              t,
-              "sheet.hiddenTransferOne",
-              "sheet.hiddenTransferOther",
-              hiddenTransferCount,
-            )}
-            title={
-              transferExpanded
-                ? t("sheet.collapseHiddenTransfers")
-                : t("sheet.expandHiddenTransfers")
-            }
-            aria-expanded={transferExpanded}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded border-0 bg-transparent p-0.5 text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+    <td className={`${CELL_BASE} bg-surface-3`} aria-readonly="true">
+      <div className="relative flex items-stretch">
+        {/* Non-clickable +/- glyph mirrors AmountCellDisplay so the
+           balance reads in the same visual format as the amount column;
+           sign is conveyed by the glyph rather than baked into the text. */}
+        <span
+          className={`pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center ${colourClass}`}
+          aria-hidden
+        >
+          {negative ? (
+            <Minus size={14} aria-hidden focusable={false} />
+          ) : (
+            <Plus size={14} aria-hidden focusable={false} />
+          )}
+        </span>
+        <span
+          className={`flex w-full items-center justify-end gap-1.5 px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre ${
+            settings.showCurrency && settings.currencyPosition === "after"
+              ? "pr-8"
+              : ""
+          } ${colourClass}`}
+        >
+          {showButton && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleTransferAnchor?.();
+              }}
+              aria-label={plural(
+                t,
+                "sheet.hiddenTransferOne",
+                "sheet.hiddenTransferOther",
+                hiddenTransferCount,
+              )}
+              title={
+                transferExpanded
+                  ? t("sheet.collapseHiddenTransfers")
+                  : t("sheet.expandHiddenTransfers")
+              }
+              aria-expanded={transferExpanded}
+              className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded border-0 bg-transparent p-0.5 text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              <ArrowLeftRight size={12} aria-hidden focusable={false} />
+              {transferExpanded ? (
+                <ChevronDown size={10} aria-hidden focusable={false} />
+              ) : (
+                <ChevronUp size={10} aria-hidden focusable={false} />
+              )}
+            </button>
+          )}
+          <span>{body}</span>
+        </span>
+        {settings.showCurrency && (
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute inset-y-0 ${
+              settings.currencyPosition === "before" ? "left-6" : "right-2"
+            } flex items-center font-mono text-xs text-muted`}
           >
-            <ArrowLeftRight size={12} aria-hidden focusable={false} />
-            {transferExpanded ? (
-              <ChevronDown size={10} aria-hidden focusable={false} />
-            ) : (
-              <ChevronUp size={10} aria-hidden focusable={false} />
-            )}
-          </button>
+            {settings.currency}
+          </span>
         )}
-        <span>{text}</span>
-      </span>
+      </div>
     </td>
   );
 }
