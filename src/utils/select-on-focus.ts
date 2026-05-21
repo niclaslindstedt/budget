@@ -1,3 +1,10 @@
+import { createLogger } from "./logger";
+
+// Diagnostic logger paired with `src/utils/focus-diagnostic.ts` for the
+// "amount auto-selects on page refresh" investigation. Remove with the
+// diagnostic helper once root-caused.
+const diagLog = createLogger("focus-diag/select");
+
 // Global focusin handler that selects all text when a numeric input or
 // a textarea gains focus, so tapping a field replaces rather than
 // inserts when the user starts typing.
@@ -53,13 +60,23 @@ export function installSelectOnFocus(): void {
   document.addEventListener("keydown", markInteracted, true);
 
   document.addEventListener("focusin", (event) => {
-    if (!userInteracted) return;
     const target = event.target;
+    if (!userInteracted) {
+      if (
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLInputElement && isNumericInput(target))
+      ) {
+        diagLog.info("skipped: no user interaction yet");
+      }
+      return;
+    }
     if (target instanceof HTMLTextAreaElement) {
+      diagLog.info("selectAll textarea");
       selectAll(target);
       return;
     }
     if (target instanceof HTMLInputElement && isNumericInput(target)) {
+      diagLog.info("selectAll numeric input");
       selectAll(target);
     }
   });
