@@ -20,6 +20,7 @@ import "@fontsource/inter/700.css";
 import "@fontsource/source-serif-4/400.css";
 import "@fontsource/source-serif-4/700.css";
 import { BUILD_LABEL } from "./utils/build-env";
+import { installFocusDiagnostic } from "./utils/focus-diagnostic";
 import { installSelectOnFocus } from "./utils/select-on-focus";
 
 const rootElement = document.getElementById("root");
@@ -34,6 +35,7 @@ if (!rootElement) {
 // gains the suffix.
 document.title = `${document.title} (${BUILD_LABEL})`;
 
+installFocusDiagnostic();
 installSelectOnFocus();
 
 // Trivial path-based switch. The build emits `dist/<alias>/index.html`
