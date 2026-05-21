@@ -560,8 +560,10 @@ export type Settings = {
   // smaller values fit more on screen, larger values help readability.
   // Stored as a plain number (not a preset id) so a future slider can
   // pick any value in range without another schema bump. The runtime
-  // applies it by setting `--app-font-scale` on the document root; the
-  // body's `font-size` reads through that variable so the whole UI
+  // applies it by setting `--app-font-scale` on the document root;
+  // both the html root font-size (so every `rem`-based Tailwind utility
+  // scales) and the body's absolute pixel font-size (so body-inherited
+  // content scales too) read through that variable so the whole UI
   // scales together. Bounded by `MIN_FONT_SCALE` / `MAX_FONT_SCALE`.
   fontScale: number;
   // Minutes the decrypted password may sit in the tab's sessionStorage

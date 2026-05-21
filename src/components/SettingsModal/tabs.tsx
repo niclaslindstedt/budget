@@ -150,22 +150,6 @@ export function GeneralTab({
       </Section>
 
       <Section title={t("settings.display.title")}>
-        <Field label={t("settings.display.textSize")}>
-          <SelectPicker
-            value={draft.fontScale}
-            options={FONT_SCALE_PRESETS.map((p) => ({
-              value: p.scale,
-              label: p.label,
-            }))}
-            onChange={(v) => onUpdate("fontScale", v)}
-            ariaLabel={t("settings.display.textSize")}
-            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
-            panelClassName="font-mono tabular-nums"
-          />
-          <p className="text-xs text-muted">
-            {t("settings.display.textSizeHint")}
-          </p>
-        </Field>
         <ToggleRow
           label={t("settings.format.formatNumbers")}
           checked={draft.formatNumbers}
@@ -850,6 +834,22 @@ export function AppearanceTab({
           />
           <p className="text-xs text-muted">
             {t("settings.appearance.fontHint")}
+          </p>
+        </Field>
+        <Field label={t("settings.appearance.textSize")}>
+          <SelectPicker
+            value={draft.fontScale}
+            options={FONT_SCALE_PRESETS.map((p) => ({
+              value: p.scale,
+              label: p.label,
+            }))}
+            onChange={(v) => onUpdate("fontScale", v)}
+            ariaLabel={t("settings.appearance.textSize")}
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+            panelClassName="font-mono tabular-nums"
+          />
+          <p className="text-xs text-muted">
+            {t("settings.appearance.textSizeHint")}
           </p>
         </Field>
       </Section>

@@ -40,9 +40,14 @@
 
 :root {
   /* User-facing UI font-size multiplier. Set by the Settings panel
-     ("Text size") and applied to the body `font-size` via `calc()`
-     below so every `rem`/`em`-based dimension downstream scales with
-     it. Defaults to 1 here so a fresh page (before React has read the
+     ("Text size") and applied to BOTH the html root font-size (so
+     every `rem`-based Tailwind utility — `text-xs`, `text-sm`,
+     `text-base`, etc. — scales) and the body's absolute pixel
+     `font-size` (so body-inherited content with no explicit text-*
+     class scales too). `html` uses `calc(100% * var(--app-font-scale))`
+     so at scale 1 it stays at the browser default and there's no
+     visual regression; only the multiplied values diverge.
+     Defaults to 1 here so a fresh page (before React has read the
      user's settings) renders at the canonical size and a brief
      post-login re-scale is the only transition. */
   --app-font-scale: 1;
@@ -280,6 +285,12 @@
 
 html {
   color-scheme: light dark;
+  /* Scale the root font-size so every `rem`-based dimension (Tailwind
+     text utilities, modal sizing, sticky-header offsets) follows the
+     user's "Text size" preference. `100%` resolves to the browser
+     default (typically 16px) so scale 1 is a no-op visually; non-1
+     values scale the whole UI proportionally. */
+  font-size: calc(100% * var(--app-font-scale));
 }
 
 html,
@@ -307,9 +318,10 @@ body {
      stack so a pre-mount render stays coherent. */
   font-family: var(--app-font-family);
   /* Mobile default — bumped up for legibility and to avoid iOS focus-zoom.
-     `--app-font-scale` is the user's "Text size" preference; the rest of
-     the UI sizes itself in `rem`/`em` so this single multiplier scales
-     every modal, label, and sheet cell together. */
+     Multiplied by `--app-font-scale` so body-inherited content (anything
+     without an explicit Tailwind `text-*` class) scales alongside the
+     `rem`-based UI; the html root carries the same multiplier for
+     `rem` resolution. */
   font-size: calc(15.5px * var(--app-font-scale));
   line-height: 1.55;
 }
