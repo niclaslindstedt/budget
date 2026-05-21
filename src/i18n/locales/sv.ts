@@ -1370,6 +1370,8 @@ export const sv: Catalog = {
     newType: "Ny typ",
     noTypesYet: "Inga typer än.",
     create: "Skapa",
+    mostUsed: "Mest använda",
+    unused: "Oanvända",
   },
 
   glyph: {
