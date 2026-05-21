@@ -38,6 +38,7 @@ import type {
   BackendId,
   EncryptionMode,
 } from "../../storage/backend-preference";
+import { IS_PREVIEW } from "../../utils/build-env";
 import { withCurrency } from "../../utils/format";
 import {
   clearLogs,
@@ -161,14 +162,16 @@ export function GeneralTab({
         />
       </Section>
 
-      <Section title={t("settings.developer.section")}>
-        <ToggleRow
-          label={t("settings.developer.mode")}
-          hint={t("settings.developer.modeHint")}
-          checked={devMode}
-          onChange={setDevMode}
-        />
-      </Section>
+      {IS_PREVIEW && (
+        <Section title={t("settings.developer.section")}>
+          <ToggleRow
+            label={t("settings.developer.mode")}
+            hint={t("settings.developer.modeHint")}
+            checked={devMode}
+            onChange={setDevMode}
+          />
+        </Section>
+      )}
     </>
   );
 }
