@@ -209,6 +209,122 @@ describe("sortRowsByDate", () => {
       "2026-05-10",
     ]);
   });
+
+  it("within a date, incomes come before expenses, then by largest category sum, then |amount| desc, then alphabetical", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const descCol = findColumnByType(sheet.columns, "description")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+
+    // Two categories on the same date: "food" rows sum to |200|+|100|
+    // = 300, "housing" rows sum to |500|. Housing wins the category
+    // bucket. Income row (+1000) of type "salary" / category "pay"
+    // must come before every expense regardless of category sum.
+    function r(
+      id: string,
+      date: string,
+      desc: string,
+      amount: number,
+      typeId?: string,
+    ): Row {
+      return {
+        id,
+        cells: {
+          [dateCol.id]: date,
+          [descCol.id]: desc,
+          [amountCol.id]: amount,
+        },
+        ...(typeId ? { typeId } : {}),
+      };
+    }
+
+    const rows: Row[] = [
+      r("food-small", "2026-05-10", "Snack", -100, "food-type"),
+      r("food-big", "2026-05-10", "Groceries", -200, "food-type"),
+      r("housing", "2026-05-10", "Rent", -500, "housing-type"),
+      r("salary", "2026-05-10", "Paycheck", 1000, "salary-type"),
+      r("next-day", "2026-05-11", "Coffee", -30, "food-type"),
+    ];
+
+    const typesById = new Map([
+      [
+        "food-type",
+        {
+          id: "food-type",
+          name: "Food",
+          color: "#fff",
+          glyph: "utensils" as const,
+          categoryId: "cat-food",
+        },
+      ],
+      [
+        "housing-type",
+        {
+          id: "housing-type",
+          name: "Housing",
+          color: "#fff",
+          glyph: "home" as const,
+          categoryId: "cat-housing",
+        },
+      ],
+      [
+        "salary-type",
+        {
+          id: "salary-type",
+          name: "Salary",
+          color: "#fff",
+          glyph: "banknote" as const,
+          categoryId: "cat-income",
+          kind: "income" as const,
+        },
+      ],
+    ]);
+
+    const sorted = sortRowsByDate(rows, dateCol.id, {
+      descriptionColumnId: descCol.id,
+      amountColumnId: amountCol.id,
+      typesById,
+    });
+
+    expect(sorted.map((r) => r.id)).toEqual([
+      "salary",
+      "housing",
+      "food-big",
+      "food-small",
+      "next-day",
+    ]);
+  });
+
+  it("breaks ties alphabetically by description when amounts also match", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const descCol = findColumnByType(sheet.columns, "description")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    const rows: Row[] = [
+      {
+        id: "b",
+        cells: {
+          [dateCol.id]: "2026-05-10",
+          [descCol.id]: "Bravo",
+          [amountCol.id]: -50,
+        },
+      },
+      {
+        id: "a",
+        cells: {
+          [dateCol.id]: "2026-05-10",
+          [descCol.id]: "Alpha",
+          [amountCol.id]: -50,
+        },
+      },
+    ];
+    const sorted = sortRowsByDate(rows, dateCol.id, {
+      descriptionColumnId: descCol.id,
+      amountColumnId: amountCol.id,
+      typesById: new Map(),
+    });
+    expect(sorted.map((r) => r.id)).toEqual(["a", "b"]);
+  });
 });
 
 describe("computeBalances", () => {

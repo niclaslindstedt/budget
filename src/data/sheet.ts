@@ -7,6 +7,7 @@ import type {
   CellValue,
   Column,
   ColumnType,
+  EntryType,
   HistoryEntry,
   MatchRule,
   MerchantHint,
@@ -186,14 +187,127 @@ export function sortMonthKeys(keys: Iterable<string>): string[] {
   });
 }
 
-export function sortRowsByDate(rows: Row[], dateColumnId: string): Row[] {
-  return [...rows].sort((a, b) => {
-    const da = a.cells[dateColumnId];
-    const db = b.cells[dateColumnId];
-    const sa = typeof da === "string" ? da : "";
-    const sb = typeof db === "string" ? db : "";
-    return sa < sb ? -1 : sa > sb ? 1 : 0;
+// Secondary-sort context for `sortRowsByDate`. When supplied, rows
+// sharing the same date are ordered by: incomes first, then by largest
+// category sum (within that date+sign group) descending, then by
+// absolute amount descending within the category, then alphabetically
+// by description. Without it, the function falls back to a date-only
+// sort (legacy behaviour kept for callers — `rowsInSeriesFrom`,
+// existing unit tests — where the within-date order doesn't matter).
+export type RowSortContext = {
+  descriptionColumnId: string;
+  amountColumnId: string;
+  typesById: ReadonlyMap<string, EntryType>;
+};
+
+function rowDateString(row: Row, dateColumnId: string): string {
+  const v = row.cells[dateColumnId];
+  return typeof v === "string" ? v : "";
+}
+
+function rowAmountNumber(row: Row, amountColumnId: string): number {
+  const v = row.cells[amountColumnId];
+  if (typeof v === "number") return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function rowDescriptionString(row: Row, descriptionColumnId: string): string {
+  const v = row.cells[descriptionColumnId];
+  return typeof v === "string" ? v : "";
+}
+
+function rowCategoryKey(
+  row: Row,
+  typesById: ReadonlyMap<string, EntryType>,
+): string {
+  if (!row.typeId) return "";
+  const type = typesById.get(row.typeId);
+  return type ? type.categoryId : "";
+}
+
+function rowIsIncome(
+  amount: number,
+  row: Row,
+  typesById: ReadonlyMap<string, EntryType>,
+): boolean {
+  if (amount > 0) return true;
+  if (amount < 0) return false;
+  if (row.typeId) {
+    const type = typesById.get(row.typeId);
+    if (type?.kind === "income") return true;
+  }
+  return false;
+}
+
+export function sortRowsByDate(
+  rows: Row[],
+  dateColumnId: string,
+  ctx?: RowSortContext,
+): Row[] {
+  if (!ctx) {
+    return [...rows].sort((a, b) => {
+      const sa = rowDateString(a, dateColumnId);
+      const sb = rowDateString(b, dateColumnId);
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
+    });
+  }
+  type Aux = {
+    row: Row;
+    date: string;
+    amount: number;
+    absAmount: number;
+    isIncome: boolean;
+    categoryKey: string;
+    desc: string;
+  };
+  const auxes: Aux[] = rows.map((row) => {
+    const amount = rowAmountNumber(row, ctx.amountColumnId);
+    return {
+      row,
+      date: rowDateString(row, dateColumnId),
+      amount,
+      absAmount: Math.abs(amount),
+      isIncome: rowIsIncome(amount, row, ctx.typesById),
+      categoryKey: rowCategoryKey(row, ctx.typesById),
+      desc: rowDescriptionString(row, ctx.descriptionColumnId),
+    };
   });
+  // Per (date, income/expense) bucket, the absolute-amount sum of each
+  // category. Drives the "largest category first" ordering inside each
+  // date — the category whose rows add up to the most ends up on top,
+  // regardless of how many rows it has.
+  const sumByBucket = new Map<string, Map<string, number>>();
+  for (const aux of auxes) {
+    const bucketKey = `${aux.date}|${aux.isIncome ? "i" : "e"}`;
+    let inner = sumByBucket.get(bucketKey);
+    if (!inner) {
+      inner = new Map();
+      sumByBucket.set(bucketKey, inner);
+    }
+    inner.set(
+      aux.categoryKey,
+      (inner.get(aux.categoryKey) ?? 0) + aux.absAmount,
+    );
+  }
+  return auxes
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      if (a.isIncome !== b.isIncome) return a.isIncome ? -1 : 1;
+      const bucketKey = `${a.date}|${a.isIncome ? "i" : "e"}`;
+      const inner = sumByBucket.get(bucketKey);
+      const sa = inner?.get(a.categoryKey) ?? 0;
+      const sb = inner?.get(b.categoryKey) ?? 0;
+      if (sa !== sb) return sb - sa;
+      // Two categories with the same sum still need a stable grouping
+      // so their rows don't interleave — break sum-ties by category id.
+      if (a.categoryKey !== b.categoryKey) {
+        return a.categoryKey < b.categoryKey ? -1 : 1;
+      }
+      if (a.absAmount !== b.absAmount) return b.absAmount - a.absAmount;
+      return a.desc.localeCompare(b.desc);
+    })
+    .map((aux) => aux.row);
 }
 
 // Running balance per row, chronological across the whole AccountBudget
@@ -216,12 +330,13 @@ export function computeBalances(
   openingBalance = 0,
   effectiveAmounts?: ReadonlyMap<string, number>,
   balanceOverrides?: ReadonlyMap<string, number>,
+  sortContext?: RowSortContext,
 ): Map<string, number> {
   const result = new Map<string, number>();
   const dateCol = findColumnByType(item.columns, "date");
   const amountCol = findColumnByType(item.columns, "amount");
   if (!dateCol || !amountCol) return result;
-  const sorted = sortRowsByDate(item.rows, dateCol.id);
+  const sorted = sortRowsByDate(item.rows, dateCol.id, sortContext);
   let running = openingBalance;
   for (const row of sorted) {
     const override = balanceOverrides?.get(row.id);

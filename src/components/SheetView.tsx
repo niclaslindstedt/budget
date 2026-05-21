@@ -13,6 +13,7 @@ import {
   synthesizeHistoryRow,
   synthesizeTransactionRow,
   transactionsForAccount,
+  type RowSortContext,
 } from "../data/sheet";
 import { coveredMonths } from "../data/coverage";
 import { resolveEffectiveAmounts } from "../data/formula-resolve";
@@ -224,6 +225,24 @@ export function SheetView({
     () => findColumnByType(item.columns, "date"),
     [item.columns],
   );
+  // Built once per (columns, types) tick so every sort within this
+  // render — month-grouped display order, computeBalances, the formula
+  // engine's running-balance lookup — agrees on income/category/amount
+  // ordering. Without a shared context the running balance column
+  // would drift from the visible row order on dates with multiple
+  // entries.
+  const sortContext = useMemo<RowSortContext | undefined>(() => {
+    const descCol = findColumnByType(item.columns, "description");
+    const amountCol = findColumnByType(item.columns, "amount");
+    if (!descCol || !amountCol) return undefined;
+    const typesById = new Map<string, EntryType>();
+    for (const t of types) typesById.set(t.id, t);
+    return {
+      descriptionColumnId: descCol.id,
+      amountColumnId: amountCol.id,
+      typesById,
+    };
+  }, [item.columns, types]);
 
   // Interleave synthesized transaction rows alongside the budget's own
   // rows so month grouping, running balance, and sort-by-date pick them
@@ -336,8 +355,15 @@ export function SheetView({
         openingBalance,
         effectiveAmounts,
         balanceOverrides,
+        sortContext,
       ),
-    [decoratedItem, openingBalance, effectiveAmounts, balanceOverrides],
+    [
+      decoratedItem,
+      openingBalance,
+      effectiveAmounts,
+      balanceOverrides,
+      sortContext,
+    ],
   );
 
   // History rows are synthesized — their cells don't exist in
@@ -422,10 +448,10 @@ export function SheetView({
     if (!dateCol) return monthGroups;
     const out = new Map<string, Row[]>();
     for (const [key, rows] of monthGroups) {
-      out.set(key, sortRowsByDate(rows, dateCol.id));
+      out.set(key, sortRowsByDate(rows, dateCol.id, sortContext));
     }
     return out;
-  }, [monthGroups, dateCol]);
+  }, [monthGroups, dateCol, sortContext]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
