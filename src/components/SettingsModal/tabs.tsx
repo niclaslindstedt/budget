@@ -12,7 +12,6 @@ import {
   DENSITY_PRESETS,
   FONT_FAMILIES,
   FONT_SCALE_PRESETS,
-  NUMBER_FORMATS,
   RADIUS_PRESETS,
   SESSION_TIMEOUT_PRESETS,
   SHORT_DATE_FORMATS,
@@ -39,7 +38,7 @@ import type {
   EncryptionMode,
 } from "../../storage/backend-preference";
 import { IS_PREVIEW } from "../../utils/build-env";
-import { withCurrency } from "../../utils/format";
+import { formatNumber, withCurrency } from "../../utils/format";
 import {
   clearLogs,
   createLogger,
@@ -77,15 +76,6 @@ function cloudCopy(id: CloudId, t: TFunction): CloudCopy {
     connectedHint: t("settings.storage.backendGdriveConnected"),
     unconnectedHint: t("settings.storage.backendGdriveUnconnected"),
   };
-}
-
-function presetIdFor(settings: Settings): string {
-  const match = NUMBER_FORMATS.find(
-    (f) =>
-      f.thousands === settings.thousandsSeparator &&
-      f.decimal === settings.decimalSeparator,
-  );
-  return match ? match.id : "custom";
 }
 
 type Update = <K extends keyof Settings>(key: K, value: Settings[K]) => void;
@@ -180,7 +170,6 @@ export function FormatTab({
   draft,
   currencyPresetId,
   onUpdate,
-  onApplyNumberFormat,
   onApplyCurrencyPreset,
   onApplyDecimal,
 }: {
@@ -190,7 +179,6 @@ export function FormatTab({
   // SEK/USD (they share the same display triplet).
   currencyPresetId: string;
   onUpdate: Update;
-  onApplyNumberFormat: (id: string) => void;
   onApplyCurrencyPreset: (id: string) => void;
   onApplyDecimal: (d: DecimalSeparator) => void;
 }) {
@@ -315,24 +303,8 @@ export function FormatTab({
       </Section>
 
       <Section title={t("settings.format.numberTitle")}>
-        <Field label={t("settings.format.numberFormat")}>
-          <SelectPicker
-            value={presetIdFor(draft)}
-            options={NUMBER_FORMATS.map((f) => ({
-              value: f.id,
-              label: f.label,
-            }))}
-            onChange={onApplyNumberFormat}
-            ariaLabel={t("settings.format.numberFormat")}
-            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
-          />
-          <Preview>
-            {previewNumber(
-              numberPreviewSample,
-              draft.thousandsSeparator,
-              draft.decimalSeparator,
-            )}
-          </Preview>
+        <Field label={t("settings.format.numberPreview")}>
+          <Preview>{formatNumber(numberPreviewSample, draft)}</Preview>
         </Field>
 
         <Field label={t("settings.format.decimalSeparator")}>
@@ -352,6 +324,41 @@ export function FormatTab({
                 {d === "." ? "." : ","}
               </button>
             ))}
+          </div>
+        </Field>
+
+        <Field label={t("settings.format.thousandsSeparator")}>
+          <div className="inline-flex overflow-hidden rounded border border-line">
+            {(
+              [
+                { value: " " as ThousandsSeparator, label: " " },
+                { value: "." as ThousandsSeparator, label: "." },
+                { value: "," as ThousandsSeparator, label: "," },
+              ] as const
+            ).map((opt) => {
+              const selected =
+                draft.thousandsSeparator === opt.value ||
+                (draft.thousandsSeparator === "" && opt.value === " ");
+              const disabled = !draft.formatNumbers;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onUpdate("thousandsSeparator", opt.value)}
+                  aria-pressed={selected}
+                  disabled={disabled}
+                  className={`border-0 px-3 py-1.5 font-mono text-sm ${
+                    disabled
+                      ? "cursor-not-allowed bg-surface-2 text-muted opacity-50"
+                      : selected
+                        ? "cursor-pointer bg-accent/15 text-accent"
+                        : "cursor-pointer bg-surface-2 text-fg hover:bg-surface-3"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </Field>
 
@@ -1427,26 +1434,6 @@ function ToggleRow({
       description={hint}
     />
   );
-}
-
-function previewNumber(
-  n: number,
-  thousands: ThousandsSeparator,
-  decimal: DecimalSeparator,
-): string {
-  const sign = n < 0 ? "-" : "";
-  const abs = Math.abs(n);
-  const fixed = abs.toFixed(2);
-  const [intPart, fracPart] = fixed.split(".");
-  let grouped = intPart;
-  if (thousands !== "" && intPart.length > 3) {
-    const out: string[] = [];
-    for (let i = intPart.length; i > 0; i -= 3) {
-      out.unshift(intPart.slice(Math.max(0, i - 3), i));
-    }
-    grouped = out.join(thousands);
-  }
-  return `${sign}${grouped}${decimal}${fracPart}`;
 }
 
 const MONTH_PREVIEW: Record<Lang, readonly string[]> = {

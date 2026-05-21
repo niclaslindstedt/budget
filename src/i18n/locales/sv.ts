@@ -430,11 +430,9 @@ export const sv: Catalog = {
       shortDateFormat: "Kort datumformat",
       shortDateFormatHint: "Används i tabellceller där utrymmet är trångt.",
       numberTitle: "Tal",
-      numberFormat: "Talformat",
       numberPreview: "Förhandsvisning",
       decimalSeparator: "Decimaltecken",
       thousandsSeparator: "Tusentalsavgränsare",
-      thousandsNone: "Ingen gruppering",
       currencyTitle: "Valuta",
       currencyPreset: "Förval",
       currencyCustom: "Anpassad…",
@@ -457,8 +455,6 @@ export const sv: Catalog = {
       abbreviate: "Förkorta stora tal (12K, 1,2M)",
       alwaysAbbreviateBalance:
         "Förkorta alltid det löpande saldot, även för små värden",
-      customFormat: "Anpassat",
-      formatExample: "Exempel: {example}",
     },
     storage: {
       browserTitle: "Webbläsare",
