@@ -1228,7 +1228,7 @@ export function LogsTab() {
       <div
         ref={listRef}
         onScroll={handleScroll}
-        className="max-h-96 overflow-y-auto rounded border border-line bg-surface font-mono text-xs"
+        className="max-h-[334px] overflow-y-auto rounded border border-line bg-surface font-mono text-xs"
       >
         {entries.length === 0 ? (
           <p className="px-2 py-3 text-muted">{t("settings.logs.empty")}</p>
