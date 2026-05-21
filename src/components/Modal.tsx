@@ -73,6 +73,12 @@ type RootProps = {
   // iOS visual-viewport math (`useVirtualKeyboardInset`) keeps the
   // footer above the keyboard.
   centered?: boolean;
+  // When true, the desktop card uses the height cap as its actual
+  // height (`h-…`) rather than just an upper bound (`max-h-…`), so the
+  // shell stays a constant size as its inner content changes. Mobile
+  // keeps the full-screen layout. Use this for tabbed modals where
+  // switching tabs would otherwise make the whole card jump.
+  fixedHeight?: boolean;
   children: React.ReactNode;
 };
 
@@ -84,6 +90,7 @@ export function Modal({
   size = "max-w-lg",
   scrollableBody = true,
   centered = false,
+  fixedHeight = false,
   children,
 }: RootProps) {
   useBodyScrollLock(open);
@@ -111,13 +118,25 @@ export function Modal({
   // by flex layout and Body owns its own scroll. Desktop drops the
   // 100svh constraint and (when scrollableBody) caps the height. The
   // `centered` branch uses the desktop layout on every viewport size.
-  const shellLayout = centered
+  // When `fixedHeight` is set, desktop pins the card to the cap height
+  // instead of using it as an upper bound — see prop docs.
+  const desktopHeightClass = fixedHeight
     ? scrollableBody
-      ? `flex w-full ${size} flex-col overflow-hidden max-h-[min(95svh,calc(100svh-2rem))]`
-      : `flex w-full ${size} flex-col overflow-hidden max-h-[95svh]`
+      ? "sm:h-[min(95svh,calc(100svh-2rem))]"
+      : "sm:h-[95svh]"
     : scrollableBody
-      ? `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[min(95svh,calc(100svh-2rem))]`
-      : `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto sm:max-h-[95svh]`;
+      ? "sm:max-h-[min(95svh,calc(100svh-2rem))]"
+      : "sm:max-h-[95svh]";
+  const centeredHeightClass = fixedHeight
+    ? scrollableBody
+      ? "h-[min(95svh,calc(100svh-2rem))]"
+      : "h-[95svh]"
+    : scrollableBody
+      ? "max-h-[min(95svh,calc(100svh-2rem))]"
+      : "max-h-[95svh]";
+  const shellLayout = centered
+    ? `flex w-full ${size} flex-col overflow-hidden ${centeredHeightClass}`
+    : `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto ${desktopHeightClass}`;
 
   // On iOS the visual viewport shifts up to fit the keyboard but the
   // layout viewport (and therefore `100svh`) stays the same — the
