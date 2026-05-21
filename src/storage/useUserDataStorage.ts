@@ -340,6 +340,25 @@ export function useUserDataStorage<Action>(
       skipNextSave.current = false;
       return;
     }
+    // Don't paper over a load failure by writing the empty in-memory
+    // state back to storage. The hook initialises with
+    // `freshUserData()` until the load resolves; if the load failed
+    // (auth expired, decryption error, transient I/O) the user's
+    // real data is still on disk/cloud, and pushing the empty
+    // starter state through the adapter would silently overwrite it.
+    // The "conflict" status has its own resolution UI and explicitly
+    // re-enters the save path via `resolveKeepLocal`.
+    if (
+      status.kind === "auth-error" ||
+      status.kind === "error" ||
+      status.kind === "conflict" ||
+      status.kind === "loading"
+    ) {
+      log.info(
+        `save skipped — status=${status.kind} (refusing to overwrite real data with the post-failure in-memory copy)`,
+      );
+      return;
+    }
     const delay = adapter.saveDebounceMs ?? 0;
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -360,19 +379,39 @@ export function useUserDataStorage<Action>(
       window.clearTimeout(timer);
       if (pendingTimerRef.current === timer) pendingTimerRef.current = null;
     };
-  }, [adapter, data, performSave]);
+  }, [adapter, data, performSave, status]);
 
   // Save the current in-memory state verbatim. Used by the explicit
   // "save" button — bypasses `beforeSerialize` so the user can persist
-  // half-filled rows when they ask for it.
+  // half-filled rows when they ask for it. Mirrors the auto-save
+  // guards above: refuse to push when the load hasn't completed yet
+  // or when the previous load failed, so the user can't accidentally
+  // overwrite their real data with the post-failure empty starter
+  // state.
   const saveNow = useCallback(() => {
+    if (!hasLoadedRef.current) {
+      log.warn(
+        `saveNow ignored [${adapter.id}] — no successful load yet (status=${status.kind})`,
+      );
+      return;
+    }
+    if (
+      status.kind === "auth-error" ||
+      status.kind === "error" ||
+      status.kind === "loading"
+    ) {
+      log.warn(
+        `saveNow ignored [${adapter.id}] — status=${status.kind}; resolve the failure before saving`,
+      );
+      return;
+    }
     if (pendingTimerRef.current !== null) {
       window.clearTimeout(pendingTimerRef.current);
       pendingTimerRef.current = null;
     }
     const text = serializeUserData(data);
     void performSave(text, () => false);
-  }, [data, performSave]);
+  }, [adapter, data, performSave, status]);
 
   // Conflict resolution. The hook stashed `err.remote` in
   // `lastSnapshot` when the conflict surfaced, so "keep mine" can

@@ -89,6 +89,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-7",
       localRevision: 0,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const inner = makeInner({
       async load() {
@@ -112,6 +113,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-3",
       localRevision: 0,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const inner = makeInner({
       async load() {
@@ -129,6 +131,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-2",
       localRevision: 0,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const inner = makeInner({
       async save() {
@@ -155,6 +158,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-2",
       localRevision: 1,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     let received: { text: string; baseRev?: string } | null = null;
     const inner = makeInner({
@@ -179,6 +183,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-2",
       localRevision: 1,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const remote: Snapshot = { text: "remote-bytes", revision: "rev-9" };
     const inner = makeInner({
@@ -204,6 +209,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-2",
       localRevision: 1,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     let pushed: { text: string; baseRev?: string } | null = null;
     const inner = makeInner({
@@ -231,6 +237,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-5",
       localRevision: 0,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const remote: Snapshot = { text: "winner", revision: "rev-9" };
     const inner = makeInner({
@@ -259,6 +266,7 @@ describe("withCloudMirror", () => {
       cloudRevision: "rev-5",
       localRevision: 3,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const inner = makeInner();
     const adapter = withCloudMirror(inner, { storageKey: KEY });
@@ -270,12 +278,72 @@ describe("withCloudMirror", () => {
     expect(mirror?.localRevision).toBe(0);
   });
 
+  it("drops a cache written by a different backend instead of treating it as pending edits", async () => {
+    // Regression: the mirror key is per-user only, so a Google
+    // Drive ↔ Dropbox switch would re-use the previous provider's
+    // cache. With `localRevision > 0` the wrapper would either
+    // push the stale bytes through the new provider or trip a
+    // bogus conflict on revisions from a completely different
+    // service. Both end with a blank budget on the new cloud.
+    writeCloudMirror(KEY, {
+      text: "gdrive-pending",
+      cloudRevision: "gdrive-rev",
+      localRevision: 5,
+      updatedAt: 1,
+      backendId: "gdrive",
+    });
+    let pushed = false;
+    const inner = makeInner({
+      // makeInner defaults to id="dropbox" — different backend.
+      async load() {
+        return { text: "real-dropbox-bytes", revision: "dropbox-rev" };
+      },
+      async save() {
+        pushed = true;
+        return { text: "", revision: "" };
+      },
+    });
+    const adapter = withCloudMirror(inner, { storageKey: KEY });
+
+    const snap = await adapter.load();
+    expect(snap).toEqual({
+      text: "real-dropbox-bytes",
+      revision: "dropbox-rev",
+    });
+    // Critically: no save fired. The stale GDrive bytes did not
+    // overwrite Dropbox.
+    expect(pushed).toBe(false);
+    // The mirror is re-stamped with the new backend's bytes.
+    const mirror = readCloudMirror(KEY);
+    expect(mirror?.text).toBe("real-dropbox-bytes");
+    expect(mirror?.backendId).toBe("dropbox");
+    expect(mirror?.localRevision).toBe(0);
+  });
+
+  it("ignores a v1 mirror (no backendId) instead of trusting it after the upgrade", () => {
+    // Simulate a pre-upgrade serialized mirror landing in
+    // localStorage. The reader must reject it so we don't apply
+    // pending edits from a cache we can't attribute to a backend.
+    const legacy = {
+      v: 1,
+      text: "legacy",
+      cloudRevision: "rev-old",
+      localRevision: 2,
+      updatedAt: 1,
+    };
+    (globalThis as unknown as { localStorage: MemoryStorage }).localStorage[
+      "setItem"
+    ](KEY, JSON.stringify(legacy));
+    expect(readCloudMirror(KEY)).toBeNull();
+  });
+
   it("clears the mirror when the remote returns null and a cache existed", async () => {
     writeCloudMirror(KEY, {
       text: "stale",
       cloudRevision: "rev-1",
       localRevision: 0,
       updatedAt: 1,
+      backendId: "dropbox",
     });
     const inner = makeInner({
       async load() {

@@ -50,15 +50,22 @@ const log = createLogger("cloud-mirror");
 // bumps every time `save` was called while offline; 0 means the
 // mirror matches the cloud at `cloudRevision`. `updatedAt` is the
 // wall-clock ms the mirror was last written, surfaced in the
-// "offline since {when}" copy.
+// "offline since {when}" copy. `backendId` records which inner
+// adapter wrote the cache (e.g. "dropbox", "gdrive") — the mirror
+// key is per-user only, so without this tag a switch from one
+// cloud to another would re-use the previous provider's pending
+// edits against the new provider and either overwrite the new
+// cloud with stale bytes or trip a bogus conflict on cross-
+// provider revisions.
 export type CloudMirrorState = {
   text: string;
   cloudRevision: string | null;
   localRevision: number;
   updatedAt: number;
+  backendId: string;
 };
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 type SerializedMirror = {
   v: typeof SCHEMA_VERSION;
@@ -66,6 +73,7 @@ type SerializedMirror = {
   cloudRevision: string | null;
   localRevision: number;
   updatedAt: number;
+  backendId: string;
 };
 
 export function readCloudMirror(key: string): CloudMirrorState | null {
@@ -73,8 +81,12 @@ export function readCloudMirror(key: string): CloudMirrorState | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as SerializedMirror;
+    // Drop any pre-v2 cache — it doesn't know which backend wrote
+    // it, so we can't trust it after a backend switch. The next
+    // load will re-stamp the mirror from the cloud.
     if (parsed.v !== SCHEMA_VERSION) return null;
     if (typeof parsed.text !== "string") return null;
+    if (typeof parsed.backendId !== "string") return null;
     return {
       text: parsed.text,
       cloudRevision:
@@ -83,6 +95,7 @@ export function readCloudMirror(key: string): CloudMirrorState | null {
         typeof parsed.localRevision === "number" ? parsed.localRevision : 0,
       updatedAt:
         typeof parsed.updatedAt === "number" ? parsed.updatedAt : Date.now(),
+      backendId: parsed.backendId,
     };
   } catch (err) {
     log.warn(`mirror parse failed key=${key}`, err);
@@ -97,6 +110,7 @@ export function writeCloudMirror(key: string, state: CloudMirrorState): void {
     cloudRevision: state.cloudRevision,
     localRevision: state.localRevision,
     updatedAt: state.updatedAt,
+    backendId: state.backendId,
   };
   writeRawStorage(JSON.stringify(payload), key);
 }
@@ -141,13 +155,29 @@ export function withCloudMirror(
   options: CloudMirrorOptions,
 ): StorageAdapter {
   const { storageKey } = options;
+  const backendId = inner.id;
 
+  // Read the cache, but only honour it if it was written by the
+  // same backend that's wrapped now. A cross-backend cache (Dropbox
+  // ↔ Google Drive switch, or Local ↔ cloud) carries pending
+  // edits and a cloudRevision token that mean nothing to the new
+  // provider; treating them as authoritative is how blank-budget
+  // wipes happen after a switch.
   function mirror(): CloudMirrorState | null {
-    return readCloudMirror(storageKey);
+    const cached = readCloudMirror(storageKey);
+    if (!cached) return null;
+    if (cached.backendId !== backendId) {
+      log.warn(
+        `mirror: dropping stale cache from backend=${cached.backendId} (now wrapping ${backendId})`,
+      );
+      clearCloudMirror(storageKey);
+      return null;
+    }
+    return cached;
   }
 
-  function persist(state: CloudMirrorState): void {
-    writeCloudMirror(storageKey, state);
+  function persist(state: Omit<CloudMirrorState, "backendId">): void {
+    writeCloudMirror(storageKey, { ...state, backendId });
   }
 
   // Helper to compare an inner-adapter snapshot against the mirror's
@@ -350,7 +380,7 @@ export function withCloudMirror(
         if (err instanceof AuthError) throw err;
         if (isOfflineError(err)) {
           const cached = mirror();
-          const nextState: CloudMirrorState = {
+          const nextState: Omit<CloudMirrorState, "backendId"> = {
             text,
             cloudRevision: cached?.cloudRevision ?? baseRevision ?? null,
             localRevision: (cached?.localRevision ?? 0) + 1,
