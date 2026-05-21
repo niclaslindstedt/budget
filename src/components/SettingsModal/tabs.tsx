@@ -183,7 +183,11 @@ export function FormatTab({
   onApplyDecimal: (d: DecimalSeparator) => void;
 }) {
   const t = useT();
-  const numberPreviewSample = 1234567.89;
+  // Three samples so each Numbers setting stays previewable regardless of
+  // the others: 12.34 always shows decimal/decimal-separator behaviour
+  // (below the abbreviate threshold), 1234.56 adds thousands grouping,
+  // and 1234567.89 exercises the abbreviator when that toggle is on.
+  const numberPreviewSamples = [12.34, 1234.56, 1234567.89];
   const datePreviewIso = "2026-05-16";
   const showCustomCurrency = currencyPresetId === "custom";
 
@@ -304,7 +308,9 @@ export function FormatTab({
 
       <Section title={t("settings.format.numberTitle")}>
         <Field label={t("settings.format.numberPreview")}>
-          <Preview>{formatNumber(numberPreviewSample, draft)}</Preview>
+          {numberPreviewSamples.map((sample) => (
+            <Preview key={sample}>{formatNumber(sample, draft)}</Preview>
+          ))}
         </Field>
 
         <Field label={t("settings.format.decimalSeparator")}>
