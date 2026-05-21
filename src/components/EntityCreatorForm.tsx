@@ -4,8 +4,9 @@ import { CATEGORY_COLORS } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
-import { ClearableTextInput } from "./form";
+import { Button, ClearableTextInput } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
+import { Modal } from "./Modal";
 
 export type EntityCreatorLabels = {
   name: string;
@@ -17,6 +18,10 @@ export type EntityCreatorLabels = {
 
 type Props = {
   glyphs: readonly CategoryIcon[];
+  // Modal title — e.g. "New type" / "New category". The form opens as a
+  // fullscreen modal on mobile and a centered card on desktop, so the
+  // header sets the context the way any other top-level dialog would.
+  title: string;
   labels: EntityCreatorLabels;
   initialColor?: string;
   initialGlyph?: CategoryIcon;
@@ -37,15 +42,21 @@ type Props = {
   }) => void;
 };
 
-// Shared form used by `CategoryPicker`'s inline category creator and
-// `TypePicker`'s inline type creator. Owns the name / color / glyph
-// fields, the auto-focus + Enter-to-submit affordance, and the
-// Cancel / Create footer. Callers stay in charge of any extra fields
-// (e.g. the category selector inside the type creator) by passing
-// them through `extras` and folding the chosen value into the submit
-// handler.
+// Shared modal used by `CategoryPicker`'s and `TypePicker`'s create
+// affordances. Owns the name / color / glyph fields, the auto-focus +
+// Enter-to-submit affordance, and the Cancel / Create footer. Callers
+// stay in charge of any extra fields (e.g. the category selector
+// inside the type creator) by passing them through `extras` and
+// folding the chosen value into the submit handler.
+//
+// Renders a top-level `<Modal>` so the form escapes the picker's
+// floating dropdown — a modal-inside-a-dropdown is unworkable on
+// mobile and visually wrong on desktop. The modal uses the default
+// fullscreen-on-mobile / centered-card-on-desktop layout because the
+// name field opens the soft keyboard.
 export function EntityCreatorForm({
   glyphs,
+  title,
   labels,
   initialColor = CATEGORY_COLORS[0],
   initialGlyph = "tag",
@@ -72,59 +83,55 @@ export function EntityCreatorForm({
   }
 
   return (
-    <div className="flex flex-col gap-2 p-3">
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>{labels.name}</span>
-        <ClearableTextInput
-          ref={nameRef}
-          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-          value={name}
-          onValueChange={setName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder={labels.namePlaceholder}
-        />
-      </label>
-      {extras}
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{labels.color}</span>
-        <ColorPalette
-          colors={CATEGORY_COLORS}
-          value={color}
-          onChange={setColor}
-          size={5}
-        />
-      </div>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{labels.glyph}</span>
-        <GlyphGrid
-          icons={glyphs}
-          value={glyph}
-          onChange={setGlyph}
-          tintColor={color}
-        />
-      </div>
-      <div className="mt-1 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
-        >
+    <Modal open onClose={onCancel} labelledBy="entity-creator-title">
+      <Modal.Header title={title} onClose={onCancel} />
+      <Modal.Body>
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            <span>{labels.name}</span>
+            <ClearableTextInput
+              ref={nameRef}
+              className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+              value={name}
+              onValueChange={setName}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              placeholder={labels.namePlaceholder}
+            />
+          </label>
+          {extras}
+          <div className="flex flex-col gap-1 text-xs text-muted">
+            <span>{labels.color}</span>
+            <ColorPalette
+              colors={CATEGORY_COLORS}
+              value={color}
+              onChange={setColor}
+              size={5}
+            />
+          </div>
+          <div className="flex flex-col gap-1 text-xs text-muted">
+            <span>{labels.glyph}</span>
+            <GlyphGrid
+              icons={glyphs}
+              value={glyph}
+              onChange={setGlyph}
+              tintColor={color}
+            />
+          </div>
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        </Button>
+        <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit}>
           {labels.create}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 }

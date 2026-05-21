@@ -226,6 +226,7 @@ function TypeCreator({
   return (
     <EntityCreatorForm
       glyphs={TYPE_GLYPH_NAMES}
+      title={t("type.newType")}
       labels={{
         name: t("type.name"),
         namePlaceholder: t("type.namePlaceholder"),
