@@ -8,6 +8,12 @@
 // surrounding modal. Those inputs use `ClearableTextInput` which
 // renders an inline X clear button instead.
 //
+// Gated on the first user interaction (`pointerdown` / `keydown`) so
+// iOS Safari's focus restoration on page reload — which targets the
+// previously focused amount cell and would otherwise pop the keyboard
+// with its text pre-selected before the user has touched the page —
+// does not trigger the select.
+//
 // Deferred via setTimeout so iOS Safari's post-focus caret placement
 // (which runs on the touchend that produced the focus) doesn't undo
 // our selection.
@@ -37,7 +43,17 @@ function selectAll(el: HTMLInputElement | HTMLTextAreaElement): void {
 }
 
 export function installSelectOnFocus(): void {
+  let userInteracted = false;
+  const markInteracted = () => {
+    userInteracted = true;
+    document.removeEventListener("pointerdown", markInteracted, true);
+    document.removeEventListener("keydown", markInteracted, true);
+  };
+  document.addEventListener("pointerdown", markInteracted, true);
+  document.addEventListener("keydown", markInteracted, true);
+
   document.addEventListener("focusin", (event) => {
+    if (!userInteracted) return;
     const target = event.target;
     if (target instanceof HTMLTextAreaElement) {
       selectAll(target);
