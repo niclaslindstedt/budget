@@ -161,134 +161,65 @@ function CellImpl({
   // while date / amount / balance / completed stay read-only — those
   // are bank-authoritative and the user shouldn't be able to rewrite
   // them without re-importing.
-  if (isTransaction) {
-    switch (column.type) {
-      case "date":
-        return (
-          <ReadonlyDateCell
-            value={typeof value === "string" ? value : ""}
-            settings={settings}
-          />
-        );
-      case "description":
-        return (
-          <TransactionDescriptionCell
-            value={typeof value === "string" ? value : ""}
-            peerName={peerName ?? ""}
-            outgoing={!!outgoing}
-          />
-        );
-      case "amount":
-        return (
-          <AmountCellDisplay
-            value={typeof value === "number" ? value : null}
-            settings={settings}
-          />
-        );
-      case "balance":
-        return (
-          <BalanceCell
-            value={computedBalance ?? 0}
-            settings={settings}
-            hiddenTransferCount={hiddenTransferCount}
-            transferExpanded={transferExpanded}
-            onToggleTransferAnchor={onToggleTransferAnchor}
-          />
-        );
-      case "completed": {
-        const checked = value === true;
-        return (
-          <td
-            className={`${CELL_BASE} p-0 text-center text-muted`}
-            aria-readonly="true"
-          >
-            <span className="flex h-full min-h-9 w-full items-center justify-center p-1.5">
-              {checked && <Check size={18} aria-hidden focusable={false} />}
-            </span>
-          </td>
-        );
+  // The two synthesized-row modes (transaction, history) share the same
+  // readonly leaves for date / amount / balance / completed — the only
+  // per-mode variation is in the description and type cells. Route the
+  // shared half through a single helper so the leaves stay in lock-step
+  // when their prop contracts change.
+  if (isTransaction || isHistory) {
+    const readonly = renderReadonlyColumn({
+      column,
+      value,
+      settings,
+      computedBalance,
+      hiddenTransferCount,
+      transferExpanded,
+      onToggleTransferAnchor,
+    });
+    if (readonly) return readonly;
+    if (isTransaction) {
+      switch (column.type) {
+        case "description":
+          return (
+            <TransactionDescriptionCell
+              value={typeof value === "string" ? value : ""}
+              peerName={peerName ?? ""}
+              outgoing={!!outgoing}
+            />
+          );
+        case "type":
+          return <ReadonlyTypeCell entryType={entryType ?? null} />;
       }
-      case "type":
-        return <ReadonlyTypeCell entryType={entryType ?? null} />;
-    }
-  }
-  if (isHistory) {
-    switch (column.type) {
-      case "date":
-        return (
-          <ReadonlyDateCell
-            value={typeof value === "string" ? value : ""}
-            settings={settings}
-          />
-        );
-      case "description":
-        return (
-          <DescriptionCell
-            rowId={rowId}
-            value={typeof value === "string" ? value : ""}
-            isRecurring={false}
-            entryType={entryType ?? null}
-            onChange={onChange}
-            onCommit={onCommit}
-          />
-        );
-      case "amount":
-        return (
-          <AmountCellDisplay
-            value={typeof value === "number" ? value : null}
-            settings={settings}
-          />
-        );
-      case "balance":
-        return (
-          <BalanceCell
-            value={computedBalance ?? 0}
-            settings={settings}
-            hiddenTransferCount={hiddenTransferCount}
-            transferExpanded={transferExpanded}
-            onToggleTransferAnchor={onToggleTransferAnchor}
-          />
-        );
-      case "completed": {
-        const checked = value === true;
-        return (
-          <td
-            className={`${CELL_BASE} p-0 text-center text-muted`}
-            aria-readonly="true"
-          >
-            <span className="flex h-full min-h-9 w-full items-center justify-center p-1.5">
-              {checked && <Check size={18} aria-hidden focusable={false} />}
-            </span>
-          </td>
-        );
-      }
-      case "type":
-        return (
-          <td className={`${CELL_BASE} p-0`}>
-            <TypePicker
+    } else {
+      switch (column.type) {
+        case "description":
+          return (
+            <DescriptionCell
+              rowId={rowId}
+              value={typeof value === "string" ? value : ""}
+              isRecurring={false}
+              entryType={entryType ?? null}
+              onChange={onChange}
+              onCommit={onCommit}
+            />
+          );
+        case "type":
+          return (
+            <TypePickerCell
               rowId={rowId}
               types={types ?? []}
               categories={categories ?? []}
-              selectedId={entryType?.id ?? null}
-              usageById={typeUsageById}
+              entryType={entryType ?? null}
+              typeUsageById={typeUsageById}
               rowDate={rowDate}
               rowDateColor={rowDateColor}
               rowDescription={rowDescription}
-              onSelect={(id) => {
-                onChange(id);
-                onCommit?.(id);
-              }}
-              onCreate={
-                onCreateType ??
-                ((draft) => ({
-                  id: `tmp-${Math.random().toString(36).slice(2)}`,
-                  ...draft,
-                }))
-              }
-              variant="chip"
+              onChange={onChange}
+              onCommit={onCommit}
+              onCreateType={onCreateType}
             />
-          </td>
-        );
+          );
+      }
     }
   }
   switch (column.type) {
@@ -370,7 +301,7 @@ function CellImpl({
       );
     }
 
-    case "type": {
+    case "type":
       // The cell reads the row's `typeId` directly (via `entryType`)
       // rather than its own `cells[col.id]` slot — typeId is the source
       // of truth on `Row`, and the `updateCell` reducer routes a value
@@ -378,33 +309,21 @@ function CellImpl({
       // every other consumer (description chip, modals, hints) stay
       // aligned without duplicating the id into a parallel cell.
       return (
-        <td className={`${CELL_BASE} p-0`}>
-          <TypePicker
-            rowId={rowId}
-            types={types ?? []}
-            categories={categories ?? []}
-            selectedId={entryType?.id ?? null}
-            usageById={typeUsageById}
-            amountSign={amountSign}
-            rowDate={rowDate}
-            rowDateColor={rowDateColor}
-            rowDescription={rowDescription}
-            onSelect={(id) => {
-              onChange(id);
-              onCommit?.(id);
-            }}
-            onCreate={
-              onCreateType ??
-              ((draft) => ({
-                id: `tmp-${Math.random().toString(36).slice(2)}`,
-                ...draft,
-              }))
-            }
-            variant="chip"
-          />
-        </td>
+        <TypePickerCell
+          rowId={rowId}
+          types={types ?? []}
+          categories={categories ?? []}
+          entryType={entryType ?? null}
+          typeUsageById={typeUsageById}
+          amountSign={amountSign}
+          rowDate={rowDate}
+          rowDateColor={rowDateColor}
+          rowDescription={rowDescription}
+          onChange={onChange}
+          onCommit={onCommit}
+          onCreateType={onCreateType}
+        />
       );
-    }
   }
 }
 
@@ -1167,4 +1086,138 @@ function TransactionDescriptionCell({
       </div>
     </td>
   );
+}
+
+// Readonly variant of the `completed` cell — used by synthesized
+// transaction and history rows. The editable variant in `CellImpl`
+// renders a `<button>` instead; this one is just a static glyph so the
+// row reads identically without becoming clickable.
+function ReadonlyCompletedCell({ checked }: { checked: boolean }) {
+  return (
+    <td
+      className={`${CELL_BASE} p-0 text-center text-muted`}
+      aria-readonly="true"
+    >
+      <span className="flex h-full min-h-9 w-full items-center justify-center p-1.5">
+        {checked && <Check size={18} aria-hidden focusable={false} />}
+      </span>
+    </td>
+  );
+}
+
+// Shared `type` cell wrapper. The `<td>` chrome, `onSelect` /
+// `onCreate` plumbing, and `variant="chip"` are identical between the
+// history and normal-mode call sites; the only difference is whether
+// `amountSign` is forwarded (history mode omits it so the dropdown
+// doesn't filter income / expense types out, since history rows aren't
+// sign-restricted the way a sheet entry is).
+function TypePickerCell({
+  rowId,
+  types,
+  categories,
+  entryType,
+  typeUsageById,
+  amountSign,
+  rowDate,
+  rowDateColor,
+  rowDescription,
+  onChange,
+  onCommit,
+  onCreateType,
+}: {
+  rowId: string;
+  types: readonly EntryType[];
+  categories: readonly Category[];
+  entryType: EntryType | null;
+  typeUsageById?: ReadonlyMap<string, number>;
+  amountSign?: "positive" | "negative" | "any";
+  rowDate?: string;
+  rowDateColor?: string;
+  rowDescription?: string;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+  onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
+}) {
+  return (
+    <td className={`${CELL_BASE} p-0`}>
+      <TypePicker
+        rowId={rowId}
+        types={types}
+        categories={categories}
+        selectedId={entryType?.id ?? null}
+        usageById={typeUsageById}
+        amountSign={amountSign}
+        rowDate={rowDate}
+        rowDateColor={rowDateColor}
+        rowDescription={rowDescription}
+        onSelect={(id) => {
+          onChange(id);
+          onCommit?.(id);
+        }}
+        onCreate={
+          onCreateType ??
+          ((draft) => ({
+            id: `tmp-${Math.random().toString(36).slice(2)}`,
+            ...draft,
+          }))
+        }
+        variant="chip"
+      />
+    </td>
+  );
+}
+
+// Cells that are read-only in both the `isTransaction` and `isHistory`
+// modes. The two modes used to repeat these four switch arms verbatim
+// — keeping them in sync was a recurring source of drift (e.g. when
+// `BalanceCell` grew its hidden-transfer toggle, every copy had to be
+// updated). Adding a new readonly column type now means touching one
+// arm in this helper instead of two switches in `CellImpl`.
+function renderReadonlyColumn({
+  column,
+  value,
+  settings,
+  computedBalance,
+  hiddenTransferCount,
+  transferExpanded,
+  onToggleTransferAnchor,
+}: {
+  column: Column;
+  value: CellValue;
+  settings: Settings;
+  computedBalance: number | undefined;
+  hiddenTransferCount: number;
+  transferExpanded: boolean;
+  onToggleTransferAnchor: (() => void) | undefined;
+}) {
+  switch (column.type) {
+    case "date":
+      return (
+        <ReadonlyDateCell
+          value={typeof value === "string" ? value : ""}
+          settings={settings}
+        />
+      );
+    case "amount":
+      return (
+        <AmountCellDisplay
+          value={typeof value === "number" ? value : null}
+          settings={settings}
+        />
+      );
+    case "balance":
+      return (
+        <BalanceCell
+          value={computedBalance ?? 0}
+          settings={settings}
+          hiddenTransferCount={hiddenTransferCount}
+          transferExpanded={transferExpanded}
+          onToggleTransferAnchor={onToggleTransferAnchor}
+        />
+      );
+    case "completed":
+      return <ReadonlyCompletedCell checked={value === true} />;
+    default:
+      return null;
+  }
 }
