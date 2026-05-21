@@ -649,23 +649,26 @@ Agent-driven maintenance playbooks live under
 discovery paths (`.claude/skills/`) are symlinks to `.agent/skills/`
 so every tool sees the same canonical set.
 
-| Skill             | Run when                                                                                                                                                                                                                                                                                                                               | Run order |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `update-docs`     | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                                                                         | 1         |
-| `update-readme`   | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                                                                                     | 2         |
-| `sync-oss-spec`   | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                                                                                    | last      |
-| `maintenance`     | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                                                                               | umbrella  |
-| `release`         | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe.                                                          | manual    |
-| `write-changeset` | Decide whether the current change needs a `.changes/unreleased/<unix-ts>-<slug>.md` fragment. Resolves the latest `v*` tag, lists commits and existing fragments since, classifies the change, and either writes a new fragment, edits a parent fragment in place, or labels the PR `no-changelog`. Run per-PR, before opening the PR. | manual    |
+| Skill             | Run when                                                                                                                                                                                                                                                                                                                                                                                                            | Run order |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `update-docs`     | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                                                                                                                                                      | 1         |
+| `update-readme`   | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                                                                                                                                                                  | 2         |
+| `sync-oss-spec`   | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                                                                                                                                                                 | last      |
+| `maintenance`     | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                                                                                                                                                            | umbrella  |
+| `release`         | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe.                                                                                                                                       | manual    |
+| `write-changeset` | Decide whether the current change needs a `.changes/unreleased/<unix-ts>-<slug>.md` fragment. Resolves the latest `v*` tag, lists commits and existing fragments since, classifies the change, and either writes a new fragment, edits a parent fragment in place, or labels the PR `no-changelog`. Run per-PR, before opening the PR.                                                                              | manual    |
+| `debug-from-logs` | The user pasted captured log output (in-app Logs tab, console transcript, CI snippet, anything timestamped or scoped). Walks the trace from last-known-good to the failure, traces each suspicious line back to its source by greping the logged string, forms and verifies a root-cause hypothesis, and ends by evaluating log sufficiency — adding the missing diagnostics in the same change when they were not. | manual    |
 
 `update-manpages` and `update-website` are listed in `OSS_SPEC.md`
 §21.5 but are intentionally omitted here — see the "OSS_SPEC.md
-exceptions" section above. The `release` and `write-changeset`
-skills are manual playbooks (a maintainer dispatches the release
-workflow; the contributor decides per-PR whether a fragment is
-warranted), so neither is part of the `maintenance` umbrella —
-that umbrella only runs automatic sync skills. New automatic-sync
-skills go in this table in the order they should run — upstream
-fixes first, downstream mirrors last; `sync-oss-spec` always runs
-last to catch residual violations, and the `maintenance` umbrella
-reflects the same order in its own registry.
+exceptions" section above. The `release`, `write-changeset`, and
+`debug-from-logs` skills are manual playbooks (a maintainer
+dispatches the release workflow; the contributor decides per-PR
+whether a fragment is warranted; the agent runs the debug playbook
+whenever the user pastes logs), so none of them are part of the
+`maintenance` umbrella — that umbrella only runs automatic sync
+skills. New automatic-sync skills go in this table in the order
+they should run — upstream fixes first, downstream mirrors last;
+`sync-oss-spec` always runs last to catch residual violations,
+and the `maintenance` umbrella reflects the same order in its own
+registry.
