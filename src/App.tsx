@@ -2705,6 +2705,13 @@ export function App() {
   // probe-and-park-pendingCloudLink dance that Dropbox runs from the
   // URL-redirect handler happens inline here, awaiting the popup
   // result.
+  //
+  // Throws on OAuth failure (popup blocked, GIS script unreachable,
+  // user dismissed) so the caller can surface the error inline. The
+  // Settings storage tab catches and displays it next to the picker
+  // — silently returning here meant the picker option flipped to
+  // Google Drive but nothing visible happened, leaving the user
+  // wondering whether the app got the click.
   const handleConnectGdrive = useCallback(async () => {
     if (auth.kind !== "signed-in") return;
     const userId = auth.user.id;
@@ -2715,7 +2722,7 @@ export function App() {
       token = await startGdriveAuth();
     } catch (err) {
       log.error("oauth(gdrive): popup failed", err);
-      return;
+      throw err;
     }
     if (auth.kind !== "signed-in") {
       log.info("oauth(gdrive): aborted after token (signed out)");
@@ -3613,7 +3620,7 @@ type BudgetViewProps = {
   onDeleteAccount: (password: string) => Promise<void>;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
-  onConnectGdrive: () => void;
+  onConnectGdrive: () => Promise<void>;
   onDisconnectGdrive: () => void;
   onReconnectCloud: () => Promise<void>;
   onConnectFolder: () => void;

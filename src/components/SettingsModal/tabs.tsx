@@ -41,12 +41,15 @@ import type {
 import { withCurrency } from "../../utils/format";
 import {
   clearLogs,
+  createLogger,
   getLogs,
   type LogEntry,
   type LogLevel,
   subscribeToLogs,
 } from "../../utils/logger";
 import { BackendPicker } from "../BackendPicker";
+
+const storageTabLog = createLogger("settings-storage");
 import { Checkbox, ClearableTextInput, SelectPicker } from "../form";
 import { ImportExportControls } from "../ImportExportControls";
 import { LanguagePicker } from "../LanguagePicker";
@@ -438,7 +441,7 @@ export function StorageTab({
   onUpdate: Update;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
-  onConnectGdrive: () => void;
+  onConnectGdrive: () => Promise<void>;
   onDisconnectGdrive: () => void;
   onConnectFolder: () => void;
   onReconnectFolder: () => void;
@@ -451,6 +454,23 @@ export function StorageTab({
   onSetCloudOfflineMode: (on: boolean) => void;
 }) {
   const t = useT();
+  // OAuth errors from the Google Drive popup land here. The GIS
+  // script is served from accounts.google.com, so a content blocker
+  // or restrictive network can reject it — silently swallowing that
+  // upstream meant picking "Google Drive" looked like a no-op.
+  const [gdriveConnectError, setGdriveConnectError] = useState<string | null>(
+    null,
+  );
+  const connectGdriveWithErrorCapture = async (): Promise<void> => {
+    setGdriveConnectError(null);
+    try {
+      await onConnectGdrive();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      storageTabLog.warn(`gdrive connect failed: ${message}`);
+      setGdriveConnectError(message);
+    }
+  };
   return (
     <>
       <Section title={t("settings.tabs.storage")}>
@@ -458,10 +478,11 @@ export function StorageTab({
           <BackendPicker
             value={backend}
             onSelect={(next) => {
+              if (next !== "gdrive") setGdriveConnectError(null);
               if (next === "browser") onSelectBrowser();
               else if (next === "folder") onConnectFolder();
               else if (next === "dropbox") onConnectDropbox();
-              else onConnectGdrive();
+              else void connectGdriveWithErrorCapture();
             }}
           />
           <p className="text-xs text-muted">
@@ -488,6 +509,14 @@ export function StorageTab({
                       : copy.unconnectedHint;
                   })()}
           </p>
+          {gdriveConnectError && (
+            <p
+              role="alert"
+              className="rounded border border-danger/50 px-2 py-1.5 text-xs break-words text-danger"
+            >
+              {gdriveConnectError}
+            </p>
+          )}
         </Field>
         {backend === "folder" && (
           <div className="flex items-center gap-2">
@@ -531,7 +560,9 @@ export function StorageTab({
             const connected =
               cloudBackend === "dropbox" ? dropboxConnected : gdriveConnected;
             const onConnect =
-              cloudBackend === "dropbox" ? onConnectDropbox : onConnectGdrive;
+              cloudBackend === "dropbox"
+                ? onConnectDropbox
+                : () => void connectGdriveWithErrorCapture();
             const onDisconnect =
               cloudBackend === "dropbox"
                 ? onDisconnectDropbox
