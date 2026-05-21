@@ -418,6 +418,8 @@ export function StorageTab({
   onSetEncryption,
   cloudReauthAutoOpen,
   onSetCloudReauthAutoOpen,
+  cloudOfflineMode,
+  onSetCloudOfflineMode,
 }: {
   draft: Settings;
   backend: BackendId;
@@ -445,6 +447,8 @@ export function StorageTab({
   onSetEncryption: (mode: EncryptionMode) => void;
   cloudReauthAutoOpen: boolean;
   onSetCloudReauthAutoOpen: (on: boolean) => void;
+  cloudOfflineMode: boolean;
+  onSetCloudOfflineMode: (on: boolean) => void;
 }) {
   const t = useT();
   return (
@@ -560,12 +564,20 @@ export function StorageTab({
             );
           })()}
         {(backend === "dropbox" || backend === "gdrive") && (
-          <ToggleRow
-            label={t("settings.storage.reauthAutoOpenTitle")}
-            hint={t("settings.storage.reauthAutoOpenHint")}
-            checked={cloudReauthAutoOpen}
-            onChange={onSetCloudReauthAutoOpen}
-          />
+          <>
+            <ToggleRow
+              label={t("settings.storage.offlineModeTitle")}
+              hint={t("settings.storage.offlineModeHint")}
+              checked={cloudOfflineMode}
+              onChange={onSetCloudOfflineMode}
+            />
+            <ToggleRow
+              label={t("settings.storage.reauthAutoOpenTitle")}
+              hint={t("settings.storage.reauthAutoOpenHint")}
+              checked={cloudReauthAutoOpen}
+              onChange={onSetCloudReauthAutoOpen}
+            />
+          </>
         )}
         <Field label={t("settings.storage.importExport")}>
           <ImportExportControls

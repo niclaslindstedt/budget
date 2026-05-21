@@ -67,6 +67,26 @@ export function withEncryption(
     saveDebounceMs: inner.saveDebounceMs,
     backups: wrappedBackups,
 
+    // The hook hands us plaintext bytes here; the inner cache (in
+    // `withCloudMirror`) expects the same envelope shape the cloud
+    // holds. Encrypt before forwarding so a "keep remote" resolution
+    // stamps the mirror with bytes that will decrypt cleanly on the
+    // next load. Falls back to forwarding plaintext if the password
+    // isn't held — the inner cache will then sit with plaintext and
+    // the next online round-trip will replace it.
+    markSynced: inner.markSynced
+      ? (snapshot) => {
+          const password = passwordRef.current;
+          if (!password) {
+            inner.markSynced!(snapshot);
+            return;
+          }
+          void encryptText(snapshot.text, password).then((payload) => {
+            inner.markSynced!({ ...snapshot, text: payload });
+          });
+        }
+      : undefined,
+
     // No `loadSync`: even when the inner adapter can hand back bytes
     // synchronously, decryption is asynchronous. Callers fall back to
     // `load()` and tolerate the brief loading state.

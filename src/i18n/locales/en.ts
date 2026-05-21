@@ -506,6 +506,9 @@ export const en = {
       reauthAutoOpenTitle: "Auto-open re-auth popup",
       reauthAutoOpenHint:
         "When your cloud session expires, open the cloud sync panel so you can reconnect. Turn off to keep the panel closed and reconnect from the sync status pill yourself.",
+      offlineModeTitle: "Work offline when the cloud is unreachable",
+      offlineModeHint:
+        "When on, the app keeps a copy of your cloud file on this device and lets you keep editing if the cloud can't be reached. Edits push automatically when the connection comes back; if another device edited in the meantime, you'll be asked which copy to keep.",
       saveAlsoHere: "Save also here",
       importExport: "Import / export",
       importJson: "Import JSON",
@@ -1548,9 +1551,17 @@ export const en = {
     details: "Sync details",
     lastSyncedAt: "Last synced {time}",
     conflict: "Conflict",
-    conflictHint: "The file changed somewhere else. Pick which copy to keep.",
+    conflictHint:
+      "This device and {name} edited the budget separately while you were offline. Pick which copy to keep — the other one is discarded.",
+    conflictTitle: "Sync conflict with {name}",
+    conflictLocalLabel: "This device",
+    conflictRemoteLabel: "{name}",
+    conflictSheetsEntries: "{sheets} sheets · {entries} entries",
     keepLocal: "Keep mine",
     keepRemote: "Keep the other",
+    offlineMode: "{name} unreachable",
+    offlineModeDetail:
+      "Editing a local copy because {name} can't be reached. Changes push automatically when the connection is back.",
   },
 
   saveState: {

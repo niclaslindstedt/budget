@@ -498,6 +498,9 @@ export const sv: Catalog = {
       reauthAutoOpenTitle: "Öppna återanslutning automatiskt",
       reauthAutoOpenHint:
         "När din molnsession går ut, öppna molnsynkpanelen så att du kan återansluta. Stäng av för att hålla panelen stängd och återansluta från synkstatusen själv.",
+      offlineModeTitle: "Arbeta offline när molnet inte kan nås",
+      offlineModeHint:
+        "När det är på behåller appen en kopia av din molnfil på den här enheten och låter dig fortsätta redigera om molnet inte kan nås. Ändringar skickas automatiskt när anslutningen är tillbaka; om en annan enhet redigerat under tiden får du välja vilken kopia som ska behållas.",
       saveAlsoHere: "Spara även här",
       importExport: "Importera / exportera",
       importJson: "Importera JSON",
@@ -1547,9 +1550,16 @@ export const sv: Catalog = {
     lastSyncedAt: "Senast synkad {time}",
     conflict: "Konflikt",
     conflictHint:
-      "Filen ändrades någon annanstans. Välj vilken kopia som ska behållas.",
+      "Den här enheten och {name} redigerade budgeten var för sig medan du var offline. Välj vilken kopia som ska behållas — den andra kastas.",
+    conflictTitle: "Synkkonflikt med {name}",
+    conflictLocalLabel: "Den här enheten",
+    conflictRemoteLabel: "{name}",
+    conflictSheetsEntries: "{sheets} ark · {entries} poster",
     keepLocal: "Behåll min",
     keepRemote: "Behåll den andra",
+    offlineMode: "{name} ej nåbar",
+    offlineModeDetail:
+      "Redigerar en lokal kopia eftersom {name} inte kan nås. Ändringar skickas automatiskt när anslutningen är tillbaka.",
   },
 
   saveState: {

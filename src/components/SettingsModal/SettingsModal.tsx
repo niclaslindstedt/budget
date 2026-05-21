@@ -87,6 +87,12 @@ type Props = {
   // token expiry intrusive can opt out without losing the underlying
   // detection (the cloud status pill still flags it).
   cloudReauthAutoOpen: boolean;
+  // Per-user opt-in: when true, cloud backends keep a copy of the
+  // latest cloud bytes in this browser's storage so the session can
+  // boot and accept edits even when the cloud is unreachable.
+  // Surfaced as a checkbox next to the cloud connection because it
+  // only matters once a cloud backend is selected.
+  cloudOfflineMode: boolean;
   // True when the active user is the no-password "guest" account.
   // Disables the encryption toggle (there's no key to derive without
   // a password) and tweaks the help text to point at "Create account".
@@ -121,6 +127,7 @@ type Props = {
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
   onSetCloudReauthAutoOpen: (on: boolean) => void;
+  onSetCloudOfflineMode: (on: boolean) => void;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
@@ -200,6 +207,7 @@ export function SettingsModal({
   folderReconnectNeeded,
   encryption,
   cloudReauthAutoOpen,
+  cloudOfflineMode,
   isGuest,
   merchantHintCount,
   recurringDismissalCount,
@@ -220,6 +228,7 @@ export function SettingsModal({
   onSelectBrowser,
   onSetEncryption,
   onSetCloudReauthAutoOpen,
+  onSetCloudOfflineMode,
   onClearMerchantHints,
   onClearRecurringDismissals,
   onClearTransferDismissals,
@@ -413,6 +422,8 @@ export function SettingsModal({
                 onSetEncryption={onSetEncryption}
                 cloudReauthAutoOpen={cloudReauthAutoOpen}
                 onSetCloudReauthAutoOpen={onSetCloudReauthAutoOpen}
+                cloudOfflineMode={cloudOfflineMode}
+                onSetCloudOfflineMode={onSetCloudOfflineMode}
               />
             )}
             {activeTab === "categories" && (
