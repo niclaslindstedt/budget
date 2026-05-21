@@ -30,28 +30,17 @@ import { emitChangelogData } from "./vite/changelog-plugin";
 const BASE_PATH = process.env.VITE_BASE_PATH || "/";
 const IS_PREVIEW = BASE_PATH !== "/";
 
-// Short build identifier shown next to the title in the browser tab.
-// Production builds (checked-out tag) label themselves with the
-// released `vX.Y.Z`. Preview builds (current `main`) label themselves
-// `preview` and — when running under GitHub Actions, where
-// `GITHUB_RUN_NUMBER` / `GITHUB_SHA` are populated automatically —
-// suffix the workflow run number plus a short commit sha so the
-// deployed `/preview/` slot tells you which build it was. Local
-// preview builds (no CI env) just say `preview`.
+// Short build identifier rendered next to the "budget" header on
+// the page and suffixed onto the browser-tab title. Shape is
+// `<pkg.version>[.<run>][-preview]`, where `<run>` is the
+// `GITHUB_RUN_NUMBER` GitHub Actions populates automatically (so
+// local builds drop it) and `-preview` only appears on the preview
+// slot (`VITE_BASE_PATH !== "/"`).
 const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
-const GITHUB_SHA = process.env.GITHUB_SHA;
-const SHORT_SHA = GITHUB_SHA ? GITHUB_SHA.slice(0, 7) : "";
-const PREVIEW_SUFFIX = [
-  GITHUB_RUN_NUMBER ? `#${GITHUB_RUN_NUMBER}` : "",
-  SHORT_SHA,
-]
-  .filter(Boolean)
-  .join(" ");
-const BUILD_LABEL = IS_PREVIEW
-  ? PREVIEW_SUFFIX
-    ? `preview ${PREVIEW_SUFFIX}`
-    : "preview"
-  : `v${pkg.version}`;
+const BUILD_LABEL =
+  pkg.version +
+  (GITHUB_RUN_NUMBER ? `.${GITHUB_RUN_NUMBER}` : "") +
+  (IS_PREVIEW ? "-preview" : "");
 
 function escapeHtmlAttr(s: string): string {
   return s
