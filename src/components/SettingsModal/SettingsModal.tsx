@@ -348,9 +348,11 @@ export function SettingsModal({
       // content split has room to breathe without forcing tab content
       // into a narrow column.
       size="max-w-3xl"
-      // Pin the desktop card to a constant height so swapping tabs
-      // doesn't make the modal jump around as the content shrinks or
-      // grows. Mobile keeps the fullscreen layout regardless.
+      // Fill the full viewport height on every viewport size so all
+      // tabs get the same generous content area — the tallest tabs
+      // (Storage, Categories) otherwise pushed their footer off the
+      // visible card at 95svh. Also pins the height so swapping tabs
+      // doesn't make the modal jump around as content shrinks/grows.
       fixedHeight
     >
       <SettingsHeader
