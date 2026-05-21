@@ -7,6 +7,7 @@ import type { Account, HistoryEntry, Settings } from "../data/types";
 import { useLang, useT } from "../i18n";
 import { formatNumber, withCurrency } from "../utils/format";
 import { formatShortDate } from "../utils/format";
+import { Button } from "./form";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -136,23 +137,18 @@ export function TransferCollapseModal({
             : ""}
         </span>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-          >
+          <Button variant="secondary" onClick={onClose}>
             {t("common.close")}
-          </button>
+          </Button>
           {hasAny && (
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => {
                 for (const c of remaining) onCollapse(c);
               }}
-              className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
             >
               {t("transferCollapse.collapseAll")}
-            </button>
+            </Button>
           )}
         </div>
       </Modal.Footer>

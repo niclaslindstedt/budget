@@ -3,6 +3,7 @@ import { Database, Download, History, RotateCcw, Upload } from "lucide-react";
 
 import type { UserData } from "../data/types";
 import { type TFunction, useT } from "../i18n";
+import { Button } from "./form";
 import { parseUserData, serializeUserData } from "../storage/file";
 import type { BackupMetadata, StorageAdapter } from "../storage/adapter";
 import {
@@ -171,15 +172,16 @@ export function CloudBackupModal({
                   name: labelFor(adapter.id, t),
                 })}
               </p>
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                withIcon
                 onClick={() => void handleBackup()}
                 disabled={busy}
-                className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+                className="shrink-0 justify-center self-start"
               >
                 <Upload size={14} aria-hidden focusable={false} />
                 {t("cloudBackup.backUpNow")}
-              </button>
+              </Button>
             </div>
 
             {status.kind !== "idle" && (
@@ -221,14 +223,9 @@ export function CloudBackupModal({
           </div>
         </Modal.Body>
         <Modal.Footer>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
             {t("common.close")}
-          </button>
+          </Button>
         </Modal.Footer>
       </Modal>
       <ConfirmDialog

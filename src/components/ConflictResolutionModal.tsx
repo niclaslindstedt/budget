@@ -2,6 +2,7 @@ import { CloudAlert, CloudDownload, CloudUpload } from "lucide-react";
 
 import type { UserData } from "../data/types";
 import { useT } from "../i18n";
+import { Button } from "./form";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -122,22 +123,14 @@ export function ConflictResolutionModal({
         </div>
       </div>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onKeepRemote}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" withIcon onClick={onKeepRemote}>
           <CloudDownload size={14} aria-hidden focusable={false} />
           {t("sync.keepRemote")}
-        </button>
-        <button
-          type="button"
-          onClick={onKeepLocal}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-        >
+        </Button>
+        <Button variant="primary" withIcon onClick={onKeepLocal}>
           <CloudUpload size={14} aria-hidden focusable={false} />
           {t("sync.keepLocal")}
-        </button>
+        </Button>
       </Modal.Footer>
     </Modal>
   );

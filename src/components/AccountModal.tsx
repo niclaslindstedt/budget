@@ -6,7 +6,7 @@ import type { Account, CategoryIcon } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
-import { ClearableTextInput } from "./form";
+import { Button, ClearableTextInput } from "./form";
 import { GlyphPicker } from "./GlyphPicker";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
@@ -268,32 +268,19 @@ export function AccountModal({
       <Modal.Footer className="justify-between">
         <div>
           {isEdit && onDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-danger/60 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20"
-            >
+            <Button variant="danger" withIcon onClick={onDelete}>
               <Trash2 size={14} aria-hidden focusable={false} />
               {t("common.delete")}
-            </button>
+            </Button>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-          >
+          <Button variant="secondary" onClick={onClose}>
             {t("common.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!canSave}
-            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="primary" onClick={handleSave} disabled={!canSave}>
             {isEdit ? t("common.save") : t("account.create")}
-          </button>
+          </Button>
         </div>
       </Modal.Footer>
     </Modal>

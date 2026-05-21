@@ -5,6 +5,7 @@ import type { UserData } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
 import type { EncryptionMode } from "../storage/backend-preference";
+import { Button } from "./form";
 import { Modal } from "./Modal";
 import {
   decryptEnvelope,
@@ -330,23 +331,18 @@ function ImportPasswordPrompt({
         {error && <p className="text-xs text-danger">{error}</p>}
 
         <div className="mt-1 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button variant="secondary" onClick={onCancel} disabled={busy}>
             {t("common.cancel")}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             type="submit"
             disabled={busy || password.length === 0}
-            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy
               ? t("importExport.decrypting")
               : t("importExport.decryptAndImport")}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

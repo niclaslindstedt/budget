@@ -50,7 +50,7 @@ import {
 import { BackendPicker } from "../BackendPicker";
 
 const storageTabLog = createLogger("settings-storage");
-import { Checkbox, ClearableTextInput, SelectPicker } from "../form";
+import { Button, Checkbox, ClearableTextInput, SelectPicker } from "../form";
 import { ImportExportControls } from "../ImportExportControls";
 import { LanguagePicker } from "../LanguagePicker";
 import { CategoriesAndTypesAdmin } from "./admin";
@@ -522,30 +522,21 @@ export function StorageTab({
         {backend === "folder" && (
           <div className="flex items-center gap-2">
             {folderConnected ? (
-              <button
-                type="button"
-                onClick={onDisconnectFolder}
-                className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-              >
+              <Button variant="secondary" onClick={onDisconnectFolder}>
                 {t("settings.storage.disconnectFolder")}
-              </button>
+              </Button>
             ) : folderReconnectNeeded ? (
-              <button
-                type="button"
-                onClick={onReconnectFolder}
-                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-              >
+              <Button variant="primary" onClick={onReconnectFolder}>
                 {t("settings.storage.cloudReconnect")}
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="primary"
                 onClick={onConnectFolder}
                 disabled={!folderAvailable}
-                className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("settings.storage.pickFolder")}
-              </button>
+              </Button>
             )}
             {folderConnected && (
               <span className="text-xs text-success">
@@ -571,21 +562,13 @@ export function StorageTab({
             return (
               <div className="flex items-center gap-2">
                 {connected ? (
-                  <button
-                    type="button"
-                    onClick={onDisconnect}
-                    className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-                  >
+                  <Button variant="secondary" onClick={onDisconnect}>
                     {t("settings.storage.cloudDisconnect")} {copy.name}
-                  </button>
+                  </Button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={onConnect}
-                    className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-                  >
+                  <Button variant="primary" onClick={onConnect}>
                     {t("settings.storage.cloudConnect")} {copy.name}
-                  </button>
+                  </Button>
                 )}
                 {connected && (
                   <span className="text-xs text-success">

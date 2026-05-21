@@ -9,6 +9,7 @@ import type {
   BudgetDownloadFormat,
   BudgetDownloadPrefs,
 } from "../storage/download-preferences";
+import { Button } from "./form";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
 
@@ -158,22 +159,18 @@ function BudgetDownloadModal({
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          withIcon
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download size={14} aria-hidden focusable={false} />
           {t("download.submit")}
-        </button>
+        </Button>
       </Modal.Footer>
     </Modal>
   );
@@ -420,22 +417,18 @@ function AccountsDownloadModal({
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          withIcon
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download size={14} aria-hidden focusable={false} />
           {t("download.submit")}
-        </button>
+        </Button>
       </Modal.Footer>
     </Modal>
   );

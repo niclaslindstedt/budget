@@ -9,6 +9,7 @@ import { useT } from "../i18n";
 import { formatAmountForInput, parseAmount } from "../utils/format";
 import { Modal } from "./Modal";
 import {
+  Button,
   Checkbox,
   ClearableTextInput,
   Radio,
@@ -469,27 +470,18 @@ export function EditEntryModal({
         )}
       </Modal.Body>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
-        </button>
+        </Button>
         {isSeries ? (
-          <button
-            type="button"
-            onClick={handleSaveEdit}
-            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-          >
+          <Button variant="primary" onClick={handleSaveEdit}>
             {t("common.save")}
-          </button>
+          </Button>
         ) : isHistory ? (
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={handlePromoteHistory}
             disabled={!canPromoteHistory}
-            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {(() => {
               const n = recurringDates.length;
@@ -497,15 +489,14 @@ export function EditEntryModal({
                 ? t("editEntry.addFutureEntries", { n })
                 : t("editEntry.addFutureEntriesPlural", { n });
             })()}
-          </button>
+          </Button>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={handleConvert}
             disabled={
               recurringDates.filter((d) => d !== initialDate).length === 0
             }
-            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {(() => {
               const n = recurringDates.filter((d) => d !== initialDate).length;
@@ -513,7 +504,7 @@ export function EditEntryModal({
                 ? t("editEntry.addFutureEntries", { n })
                 : t("editEntry.addFutureEntriesPlural", { n });
             })()}
-          </button>
+          </Button>
         )}
       </Modal.Footer>
     </Modal>

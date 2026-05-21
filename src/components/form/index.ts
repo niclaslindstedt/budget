@@ -1,3 +1,4 @@
+export { Button, type ButtonVariant } from "./Button";
 export { Checkbox } from "./Checkbox";
 export { ClearableTextInput } from "./ClearableTextInput";
 export { Radio, RadioGroup } from "./Radio";
