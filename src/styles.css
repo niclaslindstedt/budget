@@ -60,7 +60,43 @@
      app-header-h + month-header-h. */
   --month-header-h: 28px;
 
-  /* One Dark — default. */
+  /* Corner-radius scale consumed by the Custom-theme reach. Only a
+     small handful of "big-impact" selectors read these — currently
+     `.field-input` and `.formula-pill`. Tailwind `rounded-*`
+     utilities scattered through components are intentionally NOT
+     refactored to read through these vars (would be a much wider
+     change). When adding a new surface that should follow the custom
+     radius, document it next to the rule that consumes the var. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+
+  /* Row-padding driven by the density preset on Custom themes.
+     Defaults match the existing visual rhythm; consumed by the same
+     "big-impact reach" surfaces as the radius scale. */
+  --density-row-py: 0.375rem;
+  --density-row-px: 0.5rem;
+
+  /* Border thickness consumed by chrome that opts in (`.field-input`,
+     modal containers, picker triggers). 1px is the legacy default;
+     custom themes override inline on `<html>`. */
+  --border-width: 1px;
+
+  /* Active webfont stack. Inline-set by React when
+     `settings.fontFamily` changes; the body's `font-family` reads
+     through this variable so the whole UI swaps in one place. The
+     default mirrors the historical mono stack so a fresh page
+     (before React has read settings) keeps the JetBrains-Mono look. */
+  --app-font-family:
+    "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* One Dark — applied when `data-theme="dark"` AND when no
+   `data-theme` attribute is set yet (pre-React render). The latter
+   keeps the brief flash before React mounts visually coherent. */
+:root,
+:root[data-theme="dark"] {
   --page-bg: #1d2027;
   --surface: #282c34;
   --surface-2: #2c313a;
@@ -103,9 +139,47 @@
   --month-12: #c88898;
 }
 
+/* One Light — applied when the user explicitly picked Light. */
+:root[data-theme="light"] {
+  --page-bg: #eef0f2;
+  --surface: #f8f9fa;
+  --surface-2: #f1f3f5;
+  --surface-3: #e4e7eb;
+  --fg: #2f323a;
+  --fg-bright: #15171c;
+  --muted: #6a6f7c;
+  --accent: #3f8c3e;
+  --meta: #9c6a00;
+  --link: #2960c2;
+  --path: #0a6e92;
+  --flag: #ad4c00;
+  --pipe: #872187;
+  --danger: #c9434c;
+  --success: #3f8c3e;
+  --positive: #5fa057;
+  --negative: #d77a82;
+  --line: #ccd0d6;
+  /* Same wheel, retuned for the lighter surface — pastels deepened so
+     they retain enough chroma to read against the light backdrop. */
+  --month-1: #4f86b3;
+  --month-2: #7670b8;
+  --month-3: #4f9c75;
+  --month-4: #6e9c3a;
+  --month-5: #c0556f;
+  --month-6: #b88b1a;
+  --month-7: #c47220;
+  --month-8: #a4601c;
+  --month-9: #95521e;
+  --month-10: #9e4a23;
+  --month-11: #815a6a;
+  --month-12: #985367;
+}
+
+/* System theme — follow the OS colour-scheme. Dark is the default
+   (set in the unscoped `:root` above); only the light branch needs
+   an explicit rule. */
 @media (prefers-color-scheme: light) {
-  :root {
-    /* One Light. */
+  :root[data-theme="system"] {
     --page-bg: #eef0f2;
     --surface: #f8f9fa;
     --surface-2: #f1f3f5;
@@ -124,8 +198,6 @@
     --positive: #5fa057;
     --negative: #d77a82;
     --line: #ccd0d6;
-    /* Same wheel, retuned for the lighter surface — pastels deepened so
-       they retain enough chroma to read against the light backdrop. */
     --month-1: #4f86b3;
     --month-2: #7670b8;
     --month-3: #4f9c75;
@@ -139,6 +211,60 @@
     --month-11: #815a6a;
     --month-12: #985367;
   }
+}
+
+/* Pre-React fallback: a browser whose OS is in light mode and that
+   hasn't received a `data-theme` attribute yet (i.e. the bundle is
+   still parsing) should still flip to the Light palette so the brief
+   pre-mount flash is coherent. Once React runs, `data-theme=...` on
+   `<html>` takes precedence. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --page-bg: #eef0f2;
+    --surface: #f8f9fa;
+    --surface-2: #f1f3f5;
+    --surface-3: #e4e7eb;
+    --fg: #2f323a;
+    --fg-bright: #15171c;
+    --muted: #6a6f7c;
+    --accent: #3f8c3e;
+    --meta: #9c6a00;
+    --link: #2960c2;
+    --path: #0a6e92;
+    --flag: #ad4c00;
+    --pipe: #872187;
+    --danger: #c9434c;
+    --success: #3f8c3e;
+    --positive: #5fa057;
+    --negative: #d77a82;
+    --line: #ccd0d6;
+    --month-1: #4f86b3;
+    --month-2: #7670b8;
+    --month-3: #4f9c75;
+    --month-4: #6e9c3a;
+    --month-5: #c0556f;
+    --month-6: #b88b1a;
+    --month-7: #c47220;
+    --month-8: #a4601c;
+    --month-9: #95521e;
+    --month-10: #9e4a23;
+    --month-11: #815a6a;
+    --month-12: #985367;
+  }
+}
+
+/* Reduce-motion guard. Applied by the runtime when
+   `settings.theme === "custom"` AND `customTheme.reduceMotion` is
+   true (the hook writes `data-reduce-motion="true"` on `<html>`).
+   High specificity + `!important` so per-component transition rules
+   can't accidentally win — bypassing this would silently override
+   the user's accessibility choice. */
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  transition-duration: 0ms !important;
+  animation-duration: 0ms !important;
+  animation-iteration-count: 1 !important;
 }
 
 @media (min-width: 720px) {
@@ -172,9 +298,10 @@ body,
 }
 
 body {
-  font-family:
-    "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  /* `--app-font-family` is set by the React `useTheme` hook from
+     `settings.fontFamily`; defaults to the historical JetBrains-Mono
+     stack so a pre-mount render stays coherent. */
+  font-family: var(--app-font-family);
   /* Mobile default — bumped up for legibility and to avoid iOS focus-zoom.
      `--app-font-scale` is the user's "Text size" preference; the rest of
      the UI sizes itself in `rem`/`em` so this single multiplier scales
@@ -234,7 +361,7 @@ body {
   .formula-pill {
     display: inline-block;
     padding: 0 0.35rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     /* Slight vertical squeeze so the pill aligns with adjacent
        monospaced glyphs without growing the line box. */
     line-height: 1.25rem;
@@ -488,4 +615,20 @@ body {
     justify-content: center;
     gap: 0.375rem;
   }
+}
+
+/* Custom-theme reach for the shape vars (radius, border width,
+   density). Intentionally narrow — only `.field-input` and
+   `.formula-pill` follow the user's choice. Tailwind `rounded-*`
+   utilities scattered through the codebase are NOT refactored to
+   read through `--radius-*`; a wider rollout is a follow-up.
+   Unlayered so this overrides Tailwind's utilities-layer `rounded`
+   / `border` / vertical-padding rules on `.field-input` elements
+   that combine the class with both. The pill rule itself lives in
+   `@layer components` and already reads `var(--radius-sm)`. */
+.field-input {
+  border-radius: var(--radius-md);
+  border-width: var(--border-width);
+  padding-top: var(--density-row-py);
+  padding-bottom: var(--density-row-py);
 }

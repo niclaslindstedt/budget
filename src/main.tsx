@@ -7,6 +7,18 @@ import { PrivacyPage } from "./components/PrivacyPage";
 import { SchemaPage } from "./components/SchemaPage";
 import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
+// Bundled webfonts powering the Appearance → Font picker. Each
+// `@fontsource/*` side-effect import injects a `@font-face` rule and
+// (via the bundler) references the WOFF2 file so it ends up in the
+// build output. Three families × regular + bold weights — see
+// `FONT_FAMILIES` in `src/data/constants.ts` for the user-facing
+// surface. Local-first: no CDN at runtime.
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/700.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/700.css";
+import "@fontsource/source-serif-4/400.css";
+import "@fontsource/source-serif-4/700.css";
 import { BUILD_LABEL } from "./utils/build-env";
 import { announceDebugHint } from "./utils/debug";
 import { installSelectOnFocus } from "./utils/select-on-focus";

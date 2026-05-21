@@ -1,34 +1,48 @@
 import {
+  BORDER_WIDTH_PRESETS,
+  COLOR_KEYS,
   DATE_FORMATS,
+  DEFAULT_CUSTOM_THEME,
+  DEFAULT_CUSTOM_THEME_COLORS_DARK,
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
+  DENSITY_PRESETS,
+  FONT_FAMILIES,
   MAX_FONT_SCALE,
   MAX_SESSION_TIMEOUT_MINUTES,
   MIN_FONT_SCALE,
   MIN_SESSION_TIMEOUT_MINUTES,
   PRESET_CATEGORY_IDS,
   PRESET_ENTRY_TYPE_IDS,
+  RADIUS_PRESETS,
   SHORT_DATE_FORMATS,
+  THEMES,
 } from "./constants";
 import { LATEST_VERSION } from "./migrations";
 import type {
   Account,
   AccountBudget,
   AccountsView,
+  BorderWidthPreset,
   Category,
   CategoryIcon,
   CellValue,
   Column,
   ColumnType,
+  CustomTheme,
+  CustomThemeColors,
   DateFormat,
   DecimalSeparator,
+  DensityPreset,
   EntryType,
+  FontFamilyId,
   HistoryEntry,
   HistoryEntrySplit,
   HistoryImport,
   MatchRule,
   MerchantHint,
+  RadiusPreset,
   Row,
   SeriesMatchRule,
   Settings,
@@ -37,6 +51,7 @@ import type {
   SheetItem,
   SheetType,
   ShortDateFormat,
+  ThemePreset,
   ThousandsSeparator,
   Transaction,
   UserData,
@@ -50,6 +65,68 @@ const DECIMAL_SEPARATORS: ReadonlySet<DecimalSeparator> =
   new Set<DecimalSeparator>([".", ","]);
 const THOUSANDS_SEPARATORS: ReadonlySet<ThousandsSeparator> =
   new Set<ThousandsSeparator>([" ", ".", ",", ""]);
+
+const THEME_SET: ReadonlySet<ThemePreset> = new Set(THEMES);
+const FONT_FAMILY_SET: ReadonlySet<FontFamilyId> = new Set(
+  FONT_FAMILIES.map((f) => f.id),
+);
+const RADIUS_SET: ReadonlySet<RadiusPreset> = new Set(RADIUS_PRESETS);
+const DENSITY_SET: ReadonlySet<DensityPreset> = new Set(DENSITY_PRESETS);
+const BORDER_WIDTH_SET: ReadonlySet<BorderWidthPreset> = new Set(
+  BORDER_WIDTH_PRESETS,
+);
+
+// Strict CSS hex matcher — `#rgb`, `#rrggbb`, `#rrggbbaa`. Named
+// colours, `rgb()`, and `color()` are intentionally rejected: the
+// custom-theme picker emits hex, so any value outside the regex is a
+// signal of a hand-edited file gone wrong rather than a feature.
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+function isHexColor(v: unknown): v is string {
+  return typeof v === "string" && HEX_COLOR_RE.test(v);
+}
+
+// Soft-recovering custom-theme colour validator. Each slot falls back
+// to the Dark default when missing or malformed so a single bad hex
+// in an export can't trap the user out of the file — custom themes
+// are cosmetic.
+function validateCustomThemeColors(raw: unknown): CustomThemeColors {
+  const out: CustomThemeColors = { ...DEFAULT_CUSTOM_THEME_COLORS_DARK };
+  if (!isObject(raw)) return out;
+  for (const k of COLOR_KEYS) {
+    const v = raw[k];
+    if (isHexColor(v)) out[k] = v;
+  }
+  return out;
+}
+
+function validateCustomTheme(raw: unknown): CustomTheme {
+  if (!isObject(raw)) return { ...DEFAULT_CUSTOM_THEME };
+  const radius: RadiusPreset =
+    typeof raw.radius === "string" && RADIUS_SET.has(raw.radius as RadiusPreset)
+      ? (raw.radius as RadiusPreset)
+      : DEFAULT_CUSTOM_THEME.radius;
+  const density: DensityPreset =
+    typeof raw.density === "string" &&
+    DENSITY_SET.has(raw.density as DensityPreset)
+      ? (raw.density as DensityPreset)
+      : DEFAULT_CUSTOM_THEME.density;
+  const borderWidth: BorderWidthPreset =
+    typeof raw.borderWidth === "string" &&
+    BORDER_WIDTH_SET.has(raw.borderWidth as BorderWidthPreset)
+      ? (raw.borderWidth as BorderWidthPreset)
+      : DEFAULT_CUSTOM_THEME.borderWidth;
+  const reduceMotion =
+    typeof raw.reduceMotion === "boolean"
+      ? raw.reduceMotion
+      : DEFAULT_CUSTOM_THEME.reduceMotion;
+  return {
+    colors: validateCustomThemeColors(raw.colors),
+    radius,
+    density,
+    borderWidth,
+    reduceMotion,
+  };
+}
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -859,6 +936,16 @@ function validateSettings(raw: unknown): Settings {
     typeof raw.hideTransfers === "boolean"
       ? raw.hideTransfers
       : DEFAULT_SETTINGS.hideTransfers;
+  const theme: ThemePreset =
+    typeof raw.theme === "string" && THEME_SET.has(raw.theme as ThemePreset)
+      ? (raw.theme as ThemePreset)
+      : DEFAULT_SETTINGS.theme;
+  const fontFamily: FontFamilyId =
+    typeof raw.fontFamily === "string" &&
+    FONT_FAMILY_SET.has(raw.fontFamily as FontFamilyId)
+      ? (raw.fontFamily as FontFamilyId)
+      : DEFAULT_SETTINGS.fontFamily;
+  const customTheme = validateCustomTheme(raw.customTheme);
   return {
     startOfMonth,
     dateFormat,
@@ -878,6 +965,9 @@ function validateSettings(raw: unknown): Settings {
     lastSeenChangelogVersion,
     language,
     hideTransfers,
+    theme,
+    fontFamily,
+    customTheme,
   };
 }
 

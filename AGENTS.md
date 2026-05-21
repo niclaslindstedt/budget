@@ -184,6 +184,45 @@ that way.
   row"); form labels are plain words ("Description", "Amount"). The
   `text-flag` / `text-path` / `text-pipe` utilities exist for sheet
   cells and similar data tokens, not for chrome.
+- **Theming and tokens.** The Appearance settings tab lets users pick
+  Dark / Light / System / Custom themes plus a font family; the
+  Custom theme also exposes radius, density, border width, and a
+  reduce-motion toggle. The runtime (see `src/hooks/useTheme.ts`)
+  writes the user's choice as CSS custom properties on `<html>`, so
+  **every new colour, border-radius, transition, animation,
+  font-family declaration, and border thickness must read through a
+  CSS variable — never a hardcoded literal.** Anything baked in as a
+  magic value silently ignores the user's Custom theme.
+  - **Colours** → use the existing tokens (`--page-bg`, `--surface`,
+    `--surface-2`, `--surface-3`, `--fg`, `--fg-bright`, `--muted`,
+    `--line`, `--accent`, `--meta`, `--link`, `--path`, `--flag`,
+    `--pipe`, `--danger`, `--success`, `--positive`, `--negative`).
+    Add a new token to `:root` and mirror it in every palette block
+    (dark / light / system) before reaching for a fresh hex literal.
+    Then map it into Tailwind's utility surface via `@theme inline`
+    so `bg-foo` / `text-foo` work.
+  - **Border-radius** → `var(--radius-sm | --radius-md | --radius-lg)`
+    for surfaces that should follow the Custom-theme radius preset,
+    or Tailwind's `rounded-*` utilities for chrome that intentionally
+    keeps its own shape. The current "Custom-theme reach" is narrow
+    (`.field-input` and `.formula-pill` only); when widening it,
+    update the comment block near the end of `src/styles.css` so the
+    surface area stays discoverable.
+  - **Font family** → `var(--app-font-family)`, set by the
+    `useTheme` hook from `settings.fontFamily`. Component-specific
+    stacks are fine only when the deviation is the point (e.g. a
+    font-preview row that shows each option in its own face).
+  - **Border thickness** → `var(--border-width)` for chrome that
+    should follow the Custom-theme preset. Tailwind's `border` /
+    `border-2` utilities still work for chrome that pins its own
+    weight (status indicators, accent strips).
+  - **Transitions / animations** → must respect
+    `[data-reduce-motion="true"]`. The unlayered rule at the bottom
+    of `src/styles.css` short-circuits every `transition-duration` /
+    `animation-duration` to 0ms when the attribute is set. Don't
+    write `transition-duration: 200ms !important` without gating it
+    on `:root:not([data-reduce-motion="true"])` — bypassing the
+    guard silently overrides the user's accessibility choice.
 - **Always use custom dropdowns.** Never reach for the native
   `<select>` / `<option>` elements — the browser renders them with the
   OS's own widget, which breaks the monospaced One Dark / One Light
@@ -239,17 +278,18 @@ in).
 
 ## Documentation sync points
 
-| If you change …                                 | Also update …                                                                                                                 |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `package.json` scripts                          | `Makefile`, `README.md` Usage section                                                                                         |
-| `Makefile` targets                              | `README.md` Usage section, `ci.yml`                                                                                           |
-| `src/` top-level layout                         | `README.md`, this file                                                                                                        |
-| Node version in `.nvmrc`                        | `ci.yml`, `pages.yml`, `README.md`                                                                                            |
-| Persisted-data shape                            | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`)                                            |
-| CHANGELOG fragment format                       | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |
-| `nsKey` / `nsCloudPath` / `nsIdbName` semantics | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`               |
-| Vite `base` handling                            | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                        |
-| `src/i18n/locales/en.ts` shape                  | `src/i18n/locales/sv.ts` (compile-time enforced via the `Catalog` type) + `tests/i18n_catalog_test.ts` (runtime parity check) |
+| If you change …                                                                            | Also update …                                                                                                                 |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `package.json` scripts                                                                     | `Makefile`, `README.md` Usage section                                                                                         |
+| `Makefile` targets                                                                         | `README.md` Usage section, `ci.yml`                                                                                           |
+| `src/` top-level layout                                                                    | `README.md`, this file                                                                                                        |
+| Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                            |
+| Persisted-data shape                                                                       | `docs/architecture.md`, `src/data/schema.ts` (the public JSON Schema at `/schema`)                                            |
+| CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |
+| `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`               |
+| Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                        |
+| `src/i18n/locales/en.ts` shape                                                             | `src/i18n/locales/sv.ts` (compile-time enforced via the `Catalog` type) + `tests/i18n_catalog_test.ts` (runtime parity check) |
+| Custom-theme reach (selectors reading `--radius-*` / `--border-width` / `--density-row-*`) | `src/styles.css` (the rule + comment block at the end) and the "Theming and tokens" bullet in this file                       |
 
 ## Translations
 

@@ -201,6 +201,7 @@ import {
   setBudgetDownloadPrefs,
 } from "./storage/download-preferences";
 import { bcp47, type Lang, useT } from "./i18n";
+import { useTheme } from "./hooks/useTheme";
 import { writeLanguagePreference } from "./i18n/language-preference";
 import { APP_VERSION } from "./utils/build-env";
 import { debug } from "./utils/debug";
@@ -3846,6 +3847,14 @@ function BudgetView({
       document.documentElement.style.removeProperty("--app-font-scale");
     };
   }, [fontScale]);
+
+  // Theme / font / custom-theme — writes `data-theme`,
+  // `--app-font-family`, and the inline colour / shape / motion vars
+  // on `<html>` so the styles.css palette rules (and every Tailwind
+  // utility resolved through `@theme inline`) follow the user's
+  // Appearance picks. See src/hooks/useTheme.ts for the per-effect
+  // contract.
+  useTheme(data.settings);
 
   // Mirror the bucket's language preference into the plaintext
   // localStorage store and notify the top-level <LanguageProvider> in

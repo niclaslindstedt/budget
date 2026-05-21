@@ -5,6 +5,7 @@ import {
   Heart,
   type LucideIcon,
   Menu,
+  Palette,
   Settings as SettingsIcon,
   Sliders,
   Tag,
@@ -34,6 +35,7 @@ import type {
 import { CloudBackupModal } from "../CloudBackupModal";
 import { Modal } from "../Modal";
 import {
+  AppearanceTab,
   CategoriesTab,
   FormatTab,
   GeneralTab,
@@ -136,7 +138,13 @@ type Props = {
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
 };
 
-type TabId = "general" | "format" | "storage" | "categories" | "memory";
+type TabId =
+  | "general"
+  | "appearance"
+  | "format"
+  | "storage"
+  | "categories"
+  | "memory";
 
 type TabDef = {
   id: TabId;
@@ -149,6 +157,7 @@ type TabDef = {
 
 const TAB_ICONS: Record<TabId, LucideIcon> = {
   general: Sliders,
+  appearance: Palette,
   format: Hash,
   storage: HardDrive,
   categories: Tag,
@@ -157,6 +166,7 @@ const TAB_ICONS: Record<TabId, LucideIcon> = {
 
 const TAB_IDS: readonly TabId[] = [
   "general",
+  "appearance",
   "format",
   "storage",
   "categories",
@@ -333,6 +343,9 @@ export function SettingsModal({
                 onUpdate={update}
                 detectedPayday={detectedPayday}
               />
+            )}
+            {activeTab === "appearance" && (
+              <AppearanceTab draft={draft} onUpdate={update} />
             )}
             {activeTab === "format" && (
               <FormatTab

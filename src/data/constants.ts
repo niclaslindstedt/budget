@@ -1,9 +1,15 @@
 import { IS_PREVIEW } from "../utils/build-env";
 import type {
+  BorderWidthPreset,
   Category,
   CategoryIcon,
+  CustomTheme,
+  CustomThemeColors,
   DateFormat,
+  DensityPreset,
   EntryType,
+  FontFamilyId,
+  RadiusPreset,
   Settings,
   SheetGlyph,
   SheetType,
@@ -107,6 +113,181 @@ export const PASSWORD_SALT_BYTES = 16;
 // be created under this name while a default user is around.
 export const DEFAULT_USERNAME = "Guest";
 
+// Allowed theme presets, in the order the Appearance picker shows
+// them. Source of truth for the validator, the public JSON Schema,
+// and the picker UI so all three agree on which values are valid.
+export const THEMES = ["dark", "light", "system", "custom"] as const;
+
+// Bundled webfont families. `stack` is the full CSS `font-family`
+// value written to `--app-font-family`; `label` is an i18n key path
+// resolved at render time so the picker shows translated names.
+// Loaded as side-effect `@fontsource/*` imports in `src/main.tsx` —
+// the project bundles them rather than fetching from a CDN at
+// runtime (local-first invariant).
+export const FONT_FAMILIES: readonly {
+  id: FontFamilyId;
+  label: string;
+  stack: string;
+}[] = [
+  {
+    id: "mono",
+    label: "settings.appearance.font.mono",
+    stack:
+      '"JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+  },
+  {
+    id: "sans",
+    label: "settings.appearance.font.sans",
+    stack:
+      '"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  },
+  {
+    id: "serif",
+    label: "settings.appearance.font.serif",
+    stack: '"Source Serif 4", ui-serif, Georgia, "Times New Roman", serif',
+  },
+];
+
+export const RADIUS_PRESETS: readonly RadiusPreset[] = [
+  "none",
+  "sm",
+  "md",
+  "lg",
+];
+
+export const DENSITY_PRESETS: readonly DensityPreset[] = [
+  "compact",
+  "comfortable",
+  "spacious",
+];
+
+export const BORDER_WIDTH_PRESETS: readonly BorderWidthPreset[] = [
+  "thin",
+  "normal",
+  "bold",
+];
+
+// One Dark palette mirrored from `src/styles.css`. Used as the Custom
+// theme's pristine default and as the fallback the validator snaps
+// back to when a hex value is missing or malformed.
+export const DEFAULT_CUSTOM_THEME_COLORS_DARK: CustomThemeColors = {
+  pageBg: "#1d2027",
+  surface: "#282c34",
+  surface2: "#2c313a",
+  surface3: "#21252b",
+  fg: "#abb2bf",
+  fgBright: "#e6e6e6",
+  muted: "#7a8090",
+  line: "#3e4451",
+  accent: "#98c379",
+  meta: "#e5c07b",
+  link: "#61afef",
+  path: "#56b6c2",
+  flag: "#d19a66",
+  pipe: "#c678dd",
+  danger: "#e06c75",
+  success: "#98c379",
+  positive: "#b5e3a0",
+  negative: "#f0b4ba",
+};
+
+// One Light palette mirrored from `src/styles.css`. Source for the
+// "pre-fill custom from active preset" flow when the user is on Light
+// and switches to Custom for the first time.
+export const DEFAULT_CUSTOM_THEME_COLORS_LIGHT: CustomThemeColors = {
+  pageBg: "#eef0f2",
+  surface: "#f8f9fa",
+  surface2: "#f1f3f5",
+  surface3: "#e4e7eb",
+  fg: "#2f323a",
+  fgBright: "#15171c",
+  muted: "#6a6f7c",
+  line: "#ccd0d6",
+  accent: "#3f8c3e",
+  meta: "#9c6a00",
+  link: "#2960c2",
+  path: "#0a6e92",
+  flag: "#ad4c00",
+  pipe: "#872187",
+  danger: "#c9434c",
+  success: "#3f8c3e",
+  positive: "#5fa057",
+  negative: "#d77a82",
+};
+
+export const DEFAULT_CUSTOM_THEME: CustomTheme = {
+  colors: DEFAULT_CUSTOM_THEME_COLORS_DARK,
+  radius: "md",
+  density: "comfortable",
+  borderWidth: "normal",
+  reduceMotion: false,
+};
+
+// Ordered list of colour keys. The validator iterates this to walk
+// every slot; the picker UI uses it via `COLOR_GROUPS` below for
+// display order inside each group.
+export const COLOR_KEYS: readonly (keyof CustomThemeColors)[] = [
+  "pageBg",
+  "surface",
+  "surface2",
+  "surface3",
+  "fg",
+  "fgBright",
+  "muted",
+  "line",
+  "accent",
+  "meta",
+  "link",
+  "path",
+  "flag",
+  "pipe",
+  "danger",
+  "success",
+  "positive",
+  "negative",
+];
+
+// Maps each `CustomThemeColors` key to the CSS-variable slug (the part
+// after `--`) the runtime writes when Custom is active. Keeping the
+// mapping explicit (rather than camelCase-to-kebab-case at runtime)
+// makes the contract obvious to a reader and avoids surprises if a
+// key gains an unusual capitalisation later.
+export const COLOR_KEY_TO_CSS_VAR: Record<keyof CustomThemeColors, string> = {
+  pageBg: "page-bg",
+  surface: "surface",
+  surface2: "surface-2",
+  surface3: "surface-3",
+  fg: "fg",
+  fgBright: "fg-bright",
+  muted: "muted",
+  line: "line",
+  accent: "accent",
+  meta: "meta",
+  link: "link",
+  path: "path",
+  flag: "flag",
+  pipe: "pipe",
+  danger: "danger",
+  success: "success",
+  positive: "positive",
+  negative: "negative",
+};
+
+// How the Custom theme panel groups the 18 colour controls so the
+// section stays scannable. Group ids are i18n keys
+// (`settings.appearance.colorGroup.<id>`); the per-colour labels
+// resolve through `settings.appearance.color.<key>`.
+export const COLOR_GROUPS: readonly {
+  id: "backgrounds" | "text" | "lines" | "accents" | "status";
+  keys: readonly (keyof CustomThemeColors)[];
+}[] = [
+  { id: "backgrounds", keys: ["pageBg", "surface", "surface2", "surface3"] },
+  { id: "text", keys: ["fg", "fgBright", "muted"] },
+  { id: "lines", keys: ["line"] },
+  { id: "accents", keys: ["accent", "meta", "link", "path", "flag", "pipe"] },
+  { id: "status", keys: ["danger", "success", "positive", "negative"] },
+];
+
 // Defaults are Sweden-leaning: salary on the 25th drives the fiscal
 // month, "kr" is SEK, and the number format is the Swedish convention
 // (space as thousands separator, comma as decimal).
@@ -133,6 +314,12 @@ export const DEFAULT_SETTINGS: Settings = {
   // returning user's UI doesn't suddenly flip language.
   language: "en",
   hideTransfers: false,
+  // Default tracks the OS colour-scheme — matches the pre-picker
+  // behaviour so existing users notice nothing until they open the
+  // Appearance tab. Monospaced font keeps the One Dark aesthetic.
+  theme: "system",
+  fontFamily: "mono",
+  customTheme: DEFAULT_CUSTOM_THEME,
 };
 
 // Allowed UI languages, in the order the picker shows them. Used by

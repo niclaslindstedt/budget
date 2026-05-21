@@ -18,15 +18,23 @@
 // signal that the writer is a newer build than the schema document.
 
 import {
+  BORDER_WIDTH_PRESETS,
   CATEGORY_ICON_NAMES,
+  COLOR_KEYS,
+  COLOR_KEY_TO_CSS_VAR,
   DATE_FORMATS,
+  DEFAULT_CUSTOM_THEME,
   DEFAULT_SETTINGS,
+  DENSITY_PRESETS,
+  FONT_FAMILIES,
   MAX_FONT_SCALE,
   MAX_SESSION_TIMEOUT_MINUTES,
   MIN_FONT_SCALE,
   MIN_SESSION_TIMEOUT_MINUTES,
+  RADIUS_PRESETS,
   SHEET_TYPES,
   SHORT_DATE_FORMATS,
+  THEMES,
 } from "./constants";
 import { LATEST_VERSION } from "./migrations";
 
@@ -1116,6 +1124,9 @@ export const USER_DATA_SCHEMA = {
         "lastSeenChangelogVersion",
         "language",
         "hideTransfers",
+        "theme",
+        "fontFamily",
+        "customTheme",
       ],
       description:
         "Display and entry preferences. The validator is lenient: bad " +
@@ -1280,6 +1291,104 @@ export const USER_DATA_SCHEMA = {
             "inline-expands the hidden rows underneath when clicked. " +
             "Default false so the out-of-the-box view matches existing " +
             "builds.",
+        },
+        theme: {
+          type: "string",
+          enum: [...THEMES],
+          default: DEFAULT_SETTINGS.theme,
+          description:
+            "UI theme preset. `dark` / `light` lock to the One Dark / " +
+            "One Light palettes; `system` follows the operating system's " +
+            "`prefers-color-scheme`; `custom` applies the colour and " +
+            "shape overrides held under `customTheme`. The runtime " +
+            "projects the active value to `data-theme` on `<html>`.",
+        },
+        fontFamily: {
+          type: "string",
+          enum: FONT_FAMILIES.map((f) => f.id),
+          default: DEFAULT_SETTINGS.fontFamily,
+          description:
+            "Bundled webfont family applied across every theme preset. " +
+            "`mono` is the default JetBrains-Mono stack; `sans` is " +
+            "Inter; `serif` is Source Serif 4. All three are " +
+            "self-hosted via `@fontsource/*` — no network fetches at " +
+            "runtime. Written to the `--app-font-family` CSS custom " +
+            "property on the document root.",
+        },
+        customTheme: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "colors",
+            "radius",
+            "density",
+            "borderWidth",
+            "reduceMotion",
+          ],
+          description:
+            'Active overrides when `theme === "custom"`. Cloned from the ' +
+            "Dark palette on first selection — the user customises from " +
+            "there. Ignored when `theme` is `dark` / `light` / `system`, " +
+            'but kept on disk so flipping back to `"custom"` restores ' +
+            "the previous tweaks.",
+          properties: {
+            colors: {
+              type: "object",
+              additionalProperties: false,
+              required: [...COLOR_KEYS],
+              description:
+                "Per-slot hex colour overrides. Each key maps to a CSS " +
+                "custom property the chrome reads (e.g. `accent` → " +
+                "`--accent`). Missing or malformed hex values fall back " +
+                "to the Dark default for that slot rather than rejecting " +
+                "the whole document.",
+              properties: Object.fromEntries(
+                COLOR_KEYS.map((k) => [
+                  k,
+                  {
+                    type: "string",
+                    pattern:
+                      "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+                    default: DEFAULT_CUSTOM_THEME.colors[k],
+                    description: `CSS hex colour written to --${COLOR_KEY_TO_CSS_VAR[k]}.`,
+                  },
+                ]),
+              ),
+            },
+            radius: {
+              type: "string",
+              enum: [...RADIUS_PRESETS],
+              default: DEFAULT_CUSTOM_THEME.radius,
+              description:
+                "Corner-radius preset consumed by `.field-input` and " +
+                "`.formula-pill`. `none` flattens corners; `lg` rounds " +
+                "them noticeably.",
+            },
+            density: {
+              type: "string",
+              enum: [...DENSITY_PRESETS],
+              default: DEFAULT_CUSTOM_THEME.density,
+              description:
+                "UI density preset. Scales the row padding exposed via " +
+                "the `--density-row-py` / `--density-row-px` CSS vars.",
+            },
+            borderWidth: {
+              type: "string",
+              enum: [...BORDER_WIDTH_PRESETS],
+              default: DEFAULT_CUSTOM_THEME.borderWidth,
+              description:
+                "Border thickness preset. Written to `--border-width`; " +
+                "`thin` is sub-pixel on hi-DPI screens, `bold` is 2px.",
+            },
+            reduceMotion: {
+              type: "boolean",
+              default: DEFAULT_CUSTOM_THEME.reduceMotion,
+              description:
+                'When true, the runtime sets `data-reduce-motion="true"` ' +
+                "on `<html>`, which short-circuits every `transition-` " +
+                "and `animation-duration` to 0ms.",
+            },
+          },
         },
       },
     },
