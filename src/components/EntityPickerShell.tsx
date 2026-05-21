@@ -119,12 +119,17 @@ export function EntityPickerShell<T extends { id: string }>({
         {selected ? (
           renderTrigger(selected, isChip)
         ) : isChip ? (
-          <Plus
-            size={16}
-            className="text-muted"
+          // Dashed-outlined pill rather than a bare muted Plus. The chip
+          // mirrors the shape of a filled TypeChip / CategoryChip, so the
+          // empty state reads as "a slot you can fill" instead of an
+          // ambient glyph that competes with the read-only +/- icons in
+          // adjacent amount / balance cells.
+          <span
+            className="inline-flex items-center justify-center rounded-full border border-dashed border-muted px-1.5 py-0.5 text-muted"
             aria-hidden
-            focusable={false}
-          />
+          >
+            <Plus size={12} aria-hidden focusable={false} />
+          </span>
         ) : (
           <span className="inline-flex items-center gap-2 text-muted">
             <Tag size={14} aria-hidden focusable={false} />
