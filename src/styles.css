@@ -646,10 +646,12 @@ body {
    visually identical; only Custom themes drift.
 
    `.rounded-sm` / `.rounded-md` / `.rounded-lg` / `.rounded-full` and
-   `.border-2` / `.border-0` / `.border-r-0` keep their explicit
-   Tailwind values — those are deliberate accent / sizing choices, not
-   theme-driven. The `.formula-pill` rule lives in `@layer components`
-   and already reads `var(--radius-sm)`.
+   `.border-2` / `.border-r-0` keep their explicit Tailwind values —
+   those are deliberate accent / sizing choices, not theme-driven.
+   `.border-0` is also explicit (zero), but is re-declared unlayered
+   at the bottom of this block so it can win over `.field-input`'s
+   shorthand border-width override. The `.formula-pill` rule lives in
+   `@layer components` and already reads `var(--radius-sm)`.
 
    `.field-input` keeps its dedicated rule because inputs use a
    slightly larger radius (`--radius-md`) than chrome and own the
@@ -683,4 +685,16 @@ body {
   border-width: var(--border-width);
   padding-top: var(--density-row-py);
   padding-bottom: var(--density-row-py);
+}
+
+/* `.border-0` is repeated unlayered so it wins over `.field-input`'s
+   shorthand `border-width: var(--border-width)`. Without this, the
+   transparent textareas that combine `field-input` (for the
+   density-row vertical padding + radius + focus halo) with `border-0`
+   (to suppress the field's border in popovers / cell inline editors)
+   ended up with a faint inner stroke at the user's `--fg` colour —
+   visible as a "second border" tracing the panel's outer border and
+   the arrow tip of the description popover. */
+.border-0 {
+  border-width: 0;
 }
