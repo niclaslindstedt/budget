@@ -438,11 +438,9 @@ export const en = {
       shortDateFormat: "Short date format",
       shortDateFormatHint: "Used inside sheet cells where space is tight.",
       numberTitle: "Numbers",
-      numberFormat: "Number format",
       numberPreview: "Preview",
       decimalSeparator: "Decimal separator",
       thousandsSeparator: "Thousands separator",
-      thousandsNone: "No grouping",
       currencyTitle: "Currency",
       currencyPreset: "Preset",
       currencyCustom: "Custom…",
@@ -465,8 +463,6 @@ export const en = {
       abbreviate: "Abbreviate big numbers (12K, 1.2M)",
       alwaysAbbreviateBalance:
         "Always abbreviate the running balance, even for small values",
-      customFormat: "Custom",
-      formatExample: "Example: {example}",
     },
     storage: {
       browserTitle: "Browser",

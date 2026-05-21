@@ -14,7 +14,6 @@ import type {
   SheetGlyph,
   SheetType,
   ShortDateFormat,
-  ThousandsSeparator,
 } from "./types";
 
 // Maximum visual width of a column before its content wraps. Used to cap
@@ -414,27 +413,6 @@ export const SHORT_DATE_FORMATS: readonly ShortDateFormat[] = [
   "DD.MM",
   "MM-DD",
   "D MMM",
-];
-
-// Pre-baked number-format combinations. Each entry pairs a thousands
-// separator with a decimal separator so the settings UI can offer a
-// single dropdown of valid combinations; the underlying settings store
-// the two characters independently so a future custom combo doesn't
-// require a schema bump.
-export type NumberFormatPreset = {
-  id: string;
-  label: string;
-  thousands: ThousandsSeparator;
-  decimal: "." | ",";
-};
-
-export const NUMBER_FORMATS: readonly NumberFormatPreset[] = [
-  { id: "space-comma", label: "1 234,56", thousands: " ", decimal: "," },
-  { id: "space-dot", label: "1 234.56", thousands: " ", decimal: "." },
-  { id: "comma-dot", label: "1,234.56", thousands: ",", decimal: "." },
-  { id: "dot-comma", label: "1.234,56", thousands: ".", decimal: "," },
-  { id: "plain-dot", label: "1234.56", thousands: "", decimal: "." },
-  { id: "plain-comma", label: "1234,56", thousands: "", decimal: "," },
 ];
 
 // Predefined currency presets shown in the Settings → Format picker.

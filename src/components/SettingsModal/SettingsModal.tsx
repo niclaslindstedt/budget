@@ -14,11 +14,7 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  CURRENCY_PRESETS,
-  DEFAULT_SETTINGS,
-  NUMBER_FORMATS,
-} from "../../data/constants";
+import { CURRENCY_PRESETS, DEFAULT_SETTINGS } from "../../data/constants";
 import { detectPaydayDayOfMonth } from "../../data/payday";
 import type {
   Category,
@@ -302,16 +298,6 @@ export function SettingsModal({
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function applyNumberFormat(id: string) {
-    const preset = NUMBER_FORMATS.find((f) => f.id === id);
-    if (!preset) return;
-    setDraft((prev) => ({
-      ...prev,
-      thousandsSeparator: preset.thousands,
-      decimalSeparator: preset.decimal,
-    }));
-  }
-
   function applyCurrencyPreset(id: string) {
     // Record the user's pick so the trigger reflects what they
     // tapped — in particular, "Custom…" stays selected after the
@@ -398,7 +384,6 @@ export function SettingsModal({
                 draft={draft}
                 currencyPresetId={currencyPresetId}
                 onUpdate={update}
-                onApplyNumberFormat={applyNumberFormat}
                 onApplyCurrencyPreset={applyCurrencyPreset}
                 onApplyDecimal={applyDecimal}
               />
