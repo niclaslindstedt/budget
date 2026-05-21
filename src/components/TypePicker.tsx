@@ -113,6 +113,20 @@ export function TypePicker({
     });
   }, [types, usageById, amountSign, selectedId, t]);
 
+  // Compute the boundary index where unused types start, so the
+  // shell can drop "Most used" / "Unused" dividers around the split.
+  // Only meaningful when usage data is present AND both groups have
+  // members — otherwise the dropdown is uniform and dividers would
+  // just be visual noise.
+  const splitIndex = useMemo(() => {
+    if (!usageById) return -1;
+    const firstUnused = sortedTypes.findIndex(
+      (ty) => (usageById.get(ty.id) ?? 0) === 0,
+    );
+    if (firstUnused <= 0 || firstUnused >= sortedTypes.length) return -1;
+    return firstUnused;
+  }, [sortedTypes, usageById]);
+
   return (
     <EntityPickerShell
       items={sortedTypes}
@@ -151,6 +165,15 @@ export function TypePicker({
         );
       }}
       renderOption={(ty) => <TypeChip type={ty} compact />}
+      renderSeparatorBefore={
+        splitIndex > 0
+          ? (_item, index) => {
+              if (index === 0) return t("type.mostUsed");
+              if (index === splitIndex) return t("type.unused");
+              return null;
+            }
+          : undefined
+      }
       renderHeader={
         hasHeader
           ? () => (

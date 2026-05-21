@@ -1371,6 +1371,8 @@ export const en = {
     newType: "New type",
     noTypesYet: "No types yet.",
     create: "Create",
+    mostUsed: "Most used",
+    unused: "Unused",
   },
 
   glyph: {
