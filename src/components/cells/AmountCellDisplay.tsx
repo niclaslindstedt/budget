@@ -26,10 +26,12 @@ export function AmountCellDisplay({ value, settings, formula }: Props) {
   return (
     <td className={CELL_BASE} aria-readonly="true">
       <div className="relative flex items-stretch">
+        {/* The +/- glyph stays muted on read-only cells — a colour-matched
+           sign reads as a tappable button next to the editable AmountCell,
+           which it isn't here. The number itself keeps its sign colour so
+           direction is still legible at a glance. */}
         <span
-          className={`pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center ${
-            negative ? "text-negative" : "text-positive"
-          }`}
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center text-muted opacity-60"
           aria-hidden
         >
           {negative ? (

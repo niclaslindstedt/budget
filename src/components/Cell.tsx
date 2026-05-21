@@ -368,9 +368,12 @@ function BalanceCell({
       <div className="relative flex items-stretch">
         {/* Non-clickable +/- glyph mirrors AmountCellDisplay so the
            balance reads in the same visual format as the amount column;
-           sign is conveyed by the glyph rather than baked into the text. */}
+           sign is conveyed by the glyph rather than baked into the text.
+           Muted on purpose — a colour-matched sign would read as a
+           tappable sign-toggle button (which it is on the editable
+           AmountCell). The number itself keeps its sign colour. */}
         <span
-          className={`pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center ${colourClass}`}
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center text-muted opacity-60"
           aria-hidden
         >
           {negative ? (
