@@ -126,6 +126,7 @@ function CategoryCreator({
   return (
     <EntityCreatorForm
       glyphs={CATEGORY_GLYPH_NAMES}
+      title={t("category.newCategory")}
       labels={{
         name: t("category.name"),
         namePlaceholder: t("category.namePlaceholder"),
