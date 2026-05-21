@@ -1572,6 +1572,14 @@ export const en = {
     offlineMode: "{name} unreachable",
     offlineModeDetail:
       "Editing a local copy because {name} can't be reached. Changes push automatically when the connection is back.",
+    parseError: "File unreadable",
+    parseErrorDetail:
+      "{name} returned data this build can't parse: {message}. Auto-save is paused so your stored data isn't overwritten. Try reloading on a newer build, or restore an earlier version from your provider's file history.",
+    shrinkWarning: "Save paused — large shrink",
+    shrinkWarningDetail:
+      "The next save would shrink your budget from {prev} to {next} bytes ({pct}% smaller). Confirm to save anyway, or discard to revert the in-memory state to the last saved copy.",
+    confirmShrink: "Save anyway",
+    discardShrink: "Discard local changes",
   },
 
   saveState: {

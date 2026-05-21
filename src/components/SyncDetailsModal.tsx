@@ -39,6 +39,10 @@ type Props = {
   // message instead of silently swallowing it. Null when the current
   // backend has no concept of reconnection (local / folder).
   onReconnect: (() => Promise<void>) | null;
+  // Confirm / discard the paused save that tripped the shrink
+  // safeguard. Only meaningful while `status.kind === "shrink-warning"`.
+  onConfirmShrink: () => void;
+  onDiscardShrink: () => void;
   onClose: () => void;
 };
 
@@ -125,6 +129,32 @@ function statusView(
         tone: "warn",
         detail: t("sync.offlineModeDetail", { name: providerName }),
       };
+    case "parse-error":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.parseError"),
+        tone: "err",
+        detail: t("sync.parseErrorDetail", {
+          name: providerName,
+          message: status.message,
+        }),
+      };
+    case "shrink-warning": {
+      const pct = (
+        (1 - status.newBytes / Math.max(status.prevBytes, 1)) *
+        100
+      ).toFixed(1);
+      return {
+        Icon: CloudAlert,
+        label: t("sync.shrinkWarning"),
+        tone: "warn",
+        detail: t("sync.shrinkWarningDetail", {
+          prev: String(status.prevBytes),
+          next: String(status.newBytes),
+          pct,
+        }),
+      };
+    }
     case "saved":
     case "idle":
       return dirty
@@ -163,6 +193,8 @@ export function SyncDetailsModal({
   dirty,
   onSaveNow,
   onReconnect,
+  onConfirmShrink,
+  onDiscardShrink,
   onClose,
 }: Props) {
   const t = useT();
@@ -289,6 +321,26 @@ export function SyncDetailsModal({
               <CloudUpload size={14} aria-hidden focusable={false} />
               {saveLabel}
             </button>
+          )}
+          {status.kind === "shrink-warning" && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onConfirmShrink}
+                className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded border border-pipe/50 bg-pipe/10 px-3 py-1.5 text-sm font-bold text-pipe hover:bg-pipe/20"
+              >
+                <CloudUpload size={14} aria-hidden focusable={false} />
+                {t("sync.confirmShrink")}
+              </button>
+              <button
+                type="button"
+                onClick={onDiscardShrink}
+                className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded border border-line bg-surface-2 px-3 py-1.5 text-sm font-bold text-fg hover:bg-surface-3"
+              >
+                <RefreshCw size={14} aria-hidden focusable={false} />
+                {t("sync.discardShrink")}
+              </button>
+            </div>
           )}
         </div>
         <div className="flex flex-col gap-1">

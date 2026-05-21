@@ -1,5 +1,6 @@
 import {
   BORDER_WIDTH_PRESETS,
+  CATEGORY_ICON_NAMES,
   COLOR_KEYS,
   DATE_FORMATS,
   DEFAULT_CUSTOM_THEME,
@@ -145,33 +146,14 @@ const SHEET_TYPES: ReadonlySet<SheetType> = new Set<SheetType>([
   "accounts",
 ]);
 
-const CATEGORY_ICONS: ReadonlySet<CategoryIcon> = new Set<CategoryIcon>([
-  "tag",
-  "home",
-  "car",
-  "shopping-bag",
-  "shopping-cart",
-  "utensils",
-  "coffee",
-  "pizza",
-  "heart",
-  "gift",
-  "music",
-  "film",
-  "plane",
-  "briefcase",
-  "graduation-cap",
-  "stethoscope",
-  "pill",
-  "receipt",
-  "banknote",
-  "credit-card",
-  "piggy-bank",
-  "wallet",
-  "zap",
-  "sparkles",
-  "star",
-]);
+// Derived from the canonical CATEGORY_ICON_NAMES so a glyph added to
+// the picker grids (TYPE_GLYPH_NAMES, etc.) never falls out of the
+// validator's accepted set. A drift here previously caused a parse
+// failure on reload, which the surrounding fallback silently
+// converted into a fresh-budget overwrite of cloud data.
+const CATEGORY_ICONS: ReadonlySet<CategoryIcon> = new Set<CategoryIcon>(
+  CATEGORY_ICON_NAMES,
+);
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -806,11 +788,17 @@ function validateCategory(raw: unknown, path: string): Result<Category> {
     return fail(`${path}.name`, "expected a string");
   if (typeof color !== "string" || color === "")
     return fail(`${path}.color`, "expected a non-empty string");
-  if (typeof icon !== "string" || !CATEGORY_ICONS.has(icon as CategoryIcon))
-    return fail(`${path}.icon`, `unknown category icon "${String(icon)}"`);
+  // Glyph is cosmetic — fall back to the default rather than trapping
+  // the whole file (an unknown name typically means a glyph removed
+  // in a newer build, or one added in a newer build than this one
+  // knows about). This mirrors `validateSheet` above.
+  const safeIcon: CategoryIcon =
+    typeof icon === "string" && CATEGORY_ICONS.has(icon as CategoryIcon)
+      ? (icon as CategoryIcon)
+      : DEFAULT_SHEET_GLYPH;
   return {
     ok: true,
-    value: { id, name, color, icon: icon as CategoryIcon },
+    value: { id, name, color, icon: safeIcon },
   };
 }
 
@@ -827,8 +815,15 @@ function validateEntryType(
     return fail(`${path}.name`, "expected a string");
   if (typeof color !== "string" || color === "")
     return fail(`${path}.color`, "expected a non-empty string");
-  if (typeof glyph !== "string" || !CATEGORY_ICONS.has(glyph as CategoryIcon))
-    return fail(`${path}.glyph`, `unknown glyph "${String(glyph)}"`);
+  // Glyph is cosmetic — fall back to the default rather than trapping
+  // the whole file. An unknown name typically means a glyph removed
+  // in a newer build, or one added in a newer build than this one
+  // knows about; previously this `fail` cascaded into a fresh-budget
+  // fallback that could overwrite the user's data on next save.
+  const safeGlyph: CategoryIcon =
+    typeof glyph === "string" && CATEGORY_ICONS.has(glyph as CategoryIcon)
+      ? (glyph as CategoryIcon)
+      : DEFAULT_SHEET_GLYPH;
   if (typeof categoryId !== "string" || categoryId === "")
     return fail(`${path}.categoryId`, "expected a non-empty string");
   if (!knownCategoryIds.has(categoryId))
@@ -845,7 +840,7 @@ function validateEntryType(
     id,
     name,
     color,
-    glyph: glyph as CategoryIcon,
+    glyph: safeGlyph,
     categoryId,
   };
   if (kind === "income" || kind === "expense") cleaned.kind = kind;

@@ -52,19 +52,38 @@ export function freshUserData(): UserData {
 // the user. Consumed by both the local adapter and the storage hook so
 // every load path shares the same parse / migrate / validate pipeline.
 export function readUserDataFromText(raw: string | null): UserData {
+  return tryReadUserDataFromText(raw).data;
+}
+
+export type ReadUserDataResult =
+  | { data: UserData; status: "fresh" }
+  | { data: UserData; status: "parsed"; migrated: boolean }
+  | { data: UserData; status: "parse-failed"; error: string };
+
+// Variant that tells the caller whether the bytes parsed cleanly,
+// whether they were absent (fresh seed), or whether they were
+// non-empty but rejected by the validator. The storage hook uses
+// the `parse-failed` signal to refuse to autosave the fresh fallback
+// over the user's real cloud data — a parse failure on bytes that
+// *did* come back from the adapter means the file on disk is real,
+// just unreadable by this build, and silently overwriting it with
+// `freshUserData()` is data loss.
+export function tryReadUserDataFromText(
+  raw: string | null,
+): ReadUserDataResult {
   if (!raw) {
     log.info("readUserDataFromText: no bytes — seeding fresh budget");
-    return freshUserData();
+    return { data: freshUserData(), status: "fresh" };
   }
   const result = parseUserData(raw);
   if (result.ok) {
     log.info(
       `readUserDataFromText: parsed ok (migrated=${result.migrated}) bytes=${raw.length}`,
     );
-    return result.data;
+    return { data: result.data, status: "parsed", migrated: result.migrated };
   }
   log.error(
     `readUserDataFromText: parse failed — falling back to fresh budget. error=${result.error}`,
   );
-  return freshUserData();
+  return { data: freshUserData(), status: "parse-failed", error: result.error };
 }
