@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ListChecks, Settings as SettingsIcon } from "lucide-react";
+import {
+  ListChecks,
+  Redo2,
+  Settings as SettingsIcon,
+  Undo2,
+} from "lucide-react";
 
 import { AccountModal, type AccountDraft } from "./AccountModal";
 import { UpdateBalanceModal } from "./UpdateBalanceModal";
@@ -277,6 +282,10 @@ export function BudgetView({
     resolveKeepRemote,
     confirmShrinkSave,
     discardShrinkSave,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
   });
@@ -526,6 +535,40 @@ export function BudgetView({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
+
+  // Global Cmd/Ctrl+Z (and Cmd/Ctrl+Shift+Z / Ctrl+Y for redo) handler.
+  // Bails out when the focus is inside an editable element so the
+  // browser's native field-level undo keeps working while typing.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      const isUndo = key === "z" && !e.shiftKey;
+      const isRedo = (key === "z" && e.shiftKey) || key === "y";
+      if (!isUndo && !isRedo) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      if (isUndo && canUndo) {
+        e.preventDefault();
+        undo();
+      } else if (isRedo && canRedo) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo, canUndo, canRedo]);
 
   // Project the user's "Text size" preference onto the document root so
   // the body's `font-size: calc(... * var(--app-font-scale))` rule (and
@@ -2288,6 +2331,26 @@ export function BudgetView({
                 onSave={saveNow}
               />
             )}
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              aria-label={t("app.undo")}
+              title={t("app.undoShort")}
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-muted"
+            >
+              <Undo2 size={18} aria-hidden focusable={false} />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              aria-label={t("app.redo")}
+              title={t("app.redoShort")}
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-muted"
+            >
+              <Redo2 size={18} aria-hidden focusable={false} />
+            </button>
             <button
               type="button"
               onClick={onToggleSelectMode}
