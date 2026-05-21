@@ -84,9 +84,10 @@ Deployment runs separately in **Pages**
 ```
 src/
 ├── main.tsx              # React 18 entry, mounts <App /> into #root
-├── App.tsx               # owns the budget reducer + persistence wiring
+├── App.tsx               # thin auth state machine + storage hookup
 ├── styles.css            # global styles + sheet layout
 ├── components/
+│   ├── BudgetView.tsx    # main editor — owns the budget reducer, modal state, and every handler
 │   ├── SheetView.tsx     # one sheet — month grouping + opening balance
 │   ├── MonthTable.tsx    # one month's table (header + rows + add row)
 │   ├── ColumnHeader.tsx  # draggable column header (HTML5 drag-and-drop)
@@ -101,11 +102,14 @@ src/
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
 │   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
 ├── hooks/
+│   ├── useChangelogAutoOpen.ts # gate the "What's new" popup per APP_VERSION
 │   ├── useEscapeKey.ts          # close-on-Escape listener
+│   ├── useIdleSignOut.ts        # activity tracker + session re-stamp + sign-out warning
 │   ├── usePointerOutside.ts     # close-on-outside-click listener
 │   └── useFloatingPosition.ts   # anchor a float to a trigger element
 ├── storage/
 │   ├── adapter.ts             # StorageAdapter interface + ConflictError
+│   ├── boot-auth.ts           # `readBootAuth` + `AuthState` resolved from session + users registry
 │   ├── local-adapter.ts       # localStorage adapter (id "browser")
 │   ├── folder-adapter.ts      # File System Access adapter (id "folder")
 │   ├── folder-handle-store.ts # IDB persistence + permission helpers for the folder handle
@@ -127,13 +131,15 @@ src/
 │       │                      #   type widens this so `sv.ts` is enforced
 │       └── sv.ts              # Swedish; typed against `Catalog` so missing
 │                              #   keys are compile errors
+├── utils/
+│   ├── date.ts                # `todayIso`, `addMonthsIso` (pure date helpers)
+│   ├── format.ts              # `formatNumber`, `withCurrency`, lang-aware month names
+│   ├── semver.ts              # `cmpSemver` for changelog gating
+│   └── …                       # logger, download, xlsx, scroll-lock, build-env
 └── seo/
     ├── siteConfig.ts          # SITE_URL, SITE_NAME, AUTHOR, OG defaults
     └── routes.ts              # per-route <title> / description / JSON-LD
 ```
-
-Planned additions (not in place yet): `utils/` for money/date helpers,
-multi-sheet UI polish.
 
 Dependency direction: `components/` depend on `data/` and `storage/`.
 Nothing in `data/` or `storage/` imports from `components/`. Keep it

@@ -3,6 +3,8 @@
 // is sorted, de-duplicated, and clamped to `[start, end]` so callers
 // can feed it straight into row creation without re-sanitising.
 
+import { addMonthsIso } from "../utils/date";
+
 export type RecurrenceRule =
   | { kind: "once"; date: string }
   | { kind: "dates"; dates: string[] }
@@ -96,6 +98,42 @@ export function nextOccurrenceWithSameDom(
   }
   const day = Math.min(sourceDay, daysInMonth(y, m));
   return toIso(new Date(Date.UTC(y, m, day)));
+}
+
+// Shift a candidate-derived rule so its first occurrence is on or
+// after `today`. The recurring-candidate detector emits a rule whose
+// `start` is the last historical occurrence — useful for cadence
+// inference, but the user only ever wants to schedule future rows.
+// When every expanded date is already past `today` (the candidate
+// has gone quiet) we fall back to the rule's original window so the
+// user still sees the detected cadence in the form.
+export function shiftRuleStartToFuture(
+  rule: RecurrenceRule,
+  today: string,
+): RecurrenceRule {
+  const all = expandRecurrence(rule);
+  const firstFuture = all.find((d) => d > today);
+  if (!firstFuture) return rule;
+  switch (rule.kind) {
+    case "once":
+      return { kind: "once", date: firstFuture };
+    case "dates":
+      return { kind: "dates", dates: rule.dates.filter((d) => d > today) };
+    case "everyNDays":
+      return {
+        ...rule,
+        start: firstFuture,
+        end: addMonthsIso(firstFuture, 12),
+      };
+    case "everyNMonths": {
+      const span = rule.intervalMonths >= 12 ? 24 : 12;
+      return {
+        ...rule,
+        start: firstFuture,
+        end: addMonthsIso(firstFuture, span),
+      };
+    }
+  }
 }
 
 export function expandRecurrence(rule: RecurrenceRule): string[] {

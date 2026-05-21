@@ -638,6 +638,22 @@ export function rowsInSeriesFrom(
   return sortRowsByDate(matched, dateColumnId);
 }
 
+// Return the highest ISO date held by any row sharing `seriesId`, or
+// null if the series has no rows with a string date in `dateColumnId`.
+// Used by the edit-row modals to default the "until" picker so the
+// scope-picker reaches the natural end of the series.
+export function getLastSeriesDate(
+  rows: readonly Row[],
+  seriesId: string,
+  dateColumnId: string,
+): string | null {
+  const dates = rows
+    .filter((r) => r.seriesId === seriesId)
+    .map((r) => r.cells[dateColumnId])
+    .filter((d): d is string => typeof d === "string");
+  return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
+}
+
 // Set `cellColumnId` to `value` on the anchor and every later sibling in
 // the same series, optionally clamped by `untilIso`. Returns `rows`
 // unchanged when the anchor is not part of a series.
