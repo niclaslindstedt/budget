@@ -56,24 +56,8 @@ export type ComplexEntrySeed = {
   rule: import("../data/recurrence").RecurrenceRule | null;
 };
 
-export type ComplexEntryDraft = {
-  description: string;
-  amount: number;
-  // `null` = no type assigned (row falls back to its description as
-  // the primary label); a string stamps every generated row with that
-  // typeId so the cell renders the type's chip in the description
-  // column.
-  typeId: string | null;
-  dates: string[];
-  // Optional formula string in the canonical stored form (any
-  // `sheet("…")` reference holds the target's stable id, not its
-  // display name). When present, the dispatcher attaches it to each
-  // generated row's `amountFormula`; the renderer recomputes the
-  // effective amount on every render. `amount` still carries a
-  // numeric preview for the cached cell so older builds without
-  // formula support see a sensible static fallback.
-  amountFormula?: string;
-};
+export type { ComplexEntryDraft } from "../data/action-payloads";
+import type { ComplexEntryDraft } from "../data/action-payloads";
 
 export function ComplexEntryModal({
   open,

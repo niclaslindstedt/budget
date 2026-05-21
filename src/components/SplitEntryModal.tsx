@@ -28,11 +28,8 @@ type SplitDraft = {
   typeId: string | null;
 };
 
-export type SplitSubmission = {
-  description: string;
-  amount: number;
-  typeId: string | null;
-};
+export type { SplitSubmission } from "../data/action-payloads";
+import type { SplitSubmission } from "../data/action-payloads";
 
 type Props = {
   open: boolean;

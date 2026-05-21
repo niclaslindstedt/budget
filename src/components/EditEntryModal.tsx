@@ -92,18 +92,8 @@ export type HistoryPromotion = {
   dates: string[];
 };
 
-export type EditPatch = {
-  description: string;
-  amount: number | null;
-  // `undefined` = don't touch the row's type; `null` = clear it (the
-  // row falls back to its description as the primary label); a string
-  // sets the typeId.
-  typeId?: string | null;
-};
-
-export type EditScope =
-  | { kind: "just-this" }
-  | { kind: "future"; untilIso: string | null };
+export type { EditPatch, EditScope } from "../data/action-payloads";
+import type { EditPatch, EditScope } from "../data/action-payloads";
 
 export function EditEntryModal({
   open,
