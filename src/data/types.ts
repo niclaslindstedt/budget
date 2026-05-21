@@ -447,6 +447,76 @@ export type DateFormat =
 // while keeping a long-form like "YYYY-MM-DD" elsewhere.
 export type ShortDateFormat = "DD/MM" | "MM/DD" | "DD.MM" | "MM-DD" | "D MMM";
 
+// Theme preset. `dark` / `light` lock to the One Dark / One Light
+// palettes; `system` follows `prefers-color-scheme`; `custom` applies
+// the colour and density overrides held under `customTheme`. The
+// runtime writes the active value to `data-theme` on `<html>`.
+export type ThemePreset = "dark" | "light" | "system" | "custom";
+
+// Bundled webfont family the body reads through `--app-font-family`.
+// Three options — one mono, one sans, one serif — bundled via
+// `@fontsource/*` so they ship with the build instead of being fetched
+// from a CDN at runtime. Applies across every theme preset.
+export type FontFamilyId = "mono" | "sans" | "serif";
+
+// Corner-radius preset consumed by the Custom theme. Only a handful
+// of "big-impact" surfaces (modal/picker/input chrome via
+// `.field-input`, the formula pill) read through `--radius-*`; the
+// rest of the UI keeps its Tailwind `rounded-*` utilities so a wider
+// rollout doesn't ride on this single feature.
+export type RadiusPreset = "none" | "sm" | "md" | "lg";
+
+// UI density preset. Scales the row padding the `--density-row-*` vars
+// expose to the chrome that opts in.
+export type DensityPreset = "compact" | "comfortable" | "spacious";
+
+// Border thickness preset consumed by chrome that reads
+// `var(--border-width)`. `thin` is sub-pixel friendly on hi-DPI
+// screens; `bold` makes the dividers more emphatic.
+export type BorderWidthPreset = "thin" | "normal" | "bold";
+
+// Per-slot custom colours. One field per CSS variable the chrome reads,
+// minus the 12 month-wheel colours (those are hand-tuned for legibility
+// on both One Dark and One Light and aren't user-customisable). The
+// runtime maps each key to its `--<slug>` CSS var on `<html>` when the
+// active theme is `custom`.
+export type CustomThemeColors = {
+  pageBg: string;
+  surface: string;
+  surface2: string;
+  surface3: string;
+  fg: string;
+  fgBright: string;
+  muted: string;
+  line: string;
+  accent: string;
+  meta: string;
+  link: string;
+  path: string;
+  flag: string;
+  pipe: string;
+  danger: string;
+  success: string;
+  positive: string;
+  negative: string;
+};
+
+// User-authored theme applied when `Settings.theme === "custom"`. Kept
+// on disk even when another preset is active so flipping back to
+// `"custom"` restores the previous tweaks. The picker pre-fills it
+// from whichever preset (Dark or Light) was effective the first time
+// the user switches to Custom; subsequent edits move on from there.
+export type CustomTheme = {
+  colors: CustomThemeColors;
+  radius: RadiusPreset;
+  density: DensityPreset;
+  borderWidth: BorderWidthPreset;
+  // Globally short-circuits `transition-duration` and
+  // `animation-duration` via a high-specificity rule keyed off
+  // `[data-reduce-motion="true"]` on `<html>`.
+  reduceMotion: boolean;
+};
+
 export type Settings = {
   // Day-of-month the fiscal month rolls over on. Defaults to 25 because
   // the typical Swedish payday is the 25th, so the budget month aligns
@@ -524,6 +594,21 @@ export type Settings = {
   // hidden rows underneath when clicked. Default false so the
   // out-of-the-box view matches existing builds.
   hideTransfers: boolean;
+  // Active theme preset. Defaults to `"system"` so a fresh install
+  // tracks the OS colour scheme — matching the legacy behaviour
+  // before the picker existed. Switching to `"custom"` activates
+  // the colour / shape / motion overrides held under `customTheme`.
+  theme: ThemePreset;
+  // Active bundled webfont. Defaults to `"mono"` so existing users
+  // keep the monospaced One Dark aesthetic. Applies across every
+  // theme preset; the runtime writes the chosen stack to
+  // `--app-font-family`.
+  fontFamily: FontFamilyId;
+  // Custom theme overrides. Always present in the persisted shape so
+  // a "Reset to defaults" lands on a sensible baseline (clone of the
+  // Dark palette) and flipping `theme` between `"custom"` and a
+  // preset is a no-op for the colour bytes.
+  customTheme: CustomTheme;
 };
 
 // Persistent memory of which type the user assigned to which
@@ -626,7 +711,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 30;
+  version: 31;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

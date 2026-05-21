@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 30 as const;
+export const LATEST_VERSION = 31 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -470,6 +470,17 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // field; the synthesizer falls back to its existing single-row
   // path. Bare version bump.
   29: (v29) => ({ ...v29, version: 30 }),
+
+  // v30 → v31: introduces the theme picker (`Settings.theme`), the
+  // font-family picker (`Settings.fontFamily`), and the nested
+  // `Settings.customTheme` overrides (colours + radius + density +
+  // border width + reduce-motion). The settings validator fills the
+  // canonical defaults for v30 records that don't carry the fields,
+  // so no payload rewrite is needed — the version bump just flags
+  // that this build understands the new shape. Existing users land
+  // on `theme: "system"` and `fontFamily: "mono"`, matching the
+  // pre-picker behaviour so the UI doesn't change on upgrade.
+  30: (v30) => ({ ...v30, version: 31 }),
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by
