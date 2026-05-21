@@ -356,6 +356,10 @@ export function SettingsModal({
       // content split has room to breathe without forcing tab content
       // into a narrow column.
       size="max-w-3xl"
+      // Pin the desktop card to a constant height so swapping tabs
+      // doesn't make the modal jump around as the content shrinks or
+      // grows. Mobile keeps the fullscreen layout regardless.
+      fixedHeight
     >
       <SettingsHeader
         activeTab={activeTab}
