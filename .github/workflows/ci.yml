@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+    # Include `labeled` / `unlabeled` so the `no-changelog` escape
+    # hatch re-runs the changeset job when the label is toggled after
+    # the PR opened. Default `pull_request` activity types
+    # (`opened`, `synchronize`, `reopened`) would otherwise leave the
+    # check stuck red until the next push.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
