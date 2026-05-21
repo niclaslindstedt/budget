@@ -112,9 +112,17 @@ describe("amountFormatCode / balanceFormatCode", () => {
     expect(amountFormatCode(settings)).toBe('[$-409]"$"#,##0.00');
   });
 
-  it("balance always renders two decimals even when showDecimals is off", () => {
+  it("showDecimals=false strips decimals from both amount and balance", () => {
+    // Mirrors the website's `formatNumber`: when the user disables
+    // decimals globally, the always-two-decimals balance override
+    // short-circuits too, so Amount and Balance read consistently.
     const settings = makeSettings({ showDecimals: false });
     expect(amountFormatCode(settings)).toBe('[$-41D]#,##0 "kr"');
+    expect(balanceFormatCode(settings)).toBe('[$-41D]#,##0 "kr"');
+  });
+
+  it("balance pins two decimals when showDecimals is on", () => {
+    const settings = makeSettings({ showDecimals: true });
     expect(balanceFormatCode(settings)).toBe('[$-41D]#,##0.00 "kr"');
   });
 
