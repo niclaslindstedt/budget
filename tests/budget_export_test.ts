@@ -187,15 +187,57 @@ describe("rowsToCsv", () => {
     const csv = rowsToCsv(table);
     const lines = csv.split("\r\n");
     expect(lines[0]).toBe(
-      '"Date","Type","Category","Description","Amount","Balance"',
+      '"Date","Description","Type","Category","Amount","Balance"',
     );
-    // Numeric cells are bare; strings are quoted.
-    expect(lines[1]).toBe('"2026-06-01","","","Café",25.5,25.5');
+    // Numeric cells are bare; strings are quoted. Description sits in
+    // position 2 so the eye finds it next to the date.
+    expect(lines[1]).toBe('"2026-06-01","Café","","",25.5,25.5');
   });
 
   it("escapes embedded quotes inside string cells", () => {
     const csv = rowsToCsv([['He said "hi"', 1]]);
     expect(csv).toBe('"He said ""hi""",1');
+  });
+});
+
+describe("exportRowsToTable", () => {
+  it("emits Date, Description, Type, Category, Amount, Balance in that order", () => {
+    const table = exportRowsToTable(
+      [
+        {
+          date: "2026-06-01",
+          type: "Salary",
+          category: "Income",
+          description: "Monthly pay",
+          amount: 25000,
+          balance: 25000,
+        },
+      ],
+      {
+        date: "Date",
+        type: "Type",
+        category: "Category",
+        description: "Description",
+        amount: "Amount",
+        balance: "Balance",
+      },
+    );
+    expect(table[0]).toEqual([
+      "Date",
+      "Description",
+      "Type",
+      "Category",
+      "Amount",
+      "Balance",
+    ]);
+    expect(table[1]).toEqual([
+      "2026-06-01",
+      "Monthly pay",
+      "Salary",
+      "Income",
+      25000,
+      25000,
+    ]);
   });
 });
 

@@ -159,6 +159,7 @@ import { slugifyFilename, todayStamp, triggerDownload } from "./utils/download";
 import { formatNumber, withCurrency } from "./utils/format";
 import { cmpSemver } from "./utils/semver";
 import { buildXlsx, XLSX_MIME_TYPE } from "./utils/xlsx";
+import { budgetExportFormats } from "./utils/xlsx-format";
 import {
   createDefaultUser,
   createUser,
@@ -1436,19 +1437,59 @@ function BudgetView({
             includeHistory: config.includeHistory,
             includeFuture: config.includeFuture,
           });
-          const table = exportRowsToTable(rows, {
+          const currencySuffix = data.settings.currency.trim();
+          const amountHeader = t("sheet.amount");
+          const balanceHeader = t("sheet.balance");
+          // CSV headers carry the currency in parentheses so the
+          // column is self-describing once it leaves the app; XLSX
+          // encodes the symbol inside each cell's number format
+          // instead, so its headers stay plain.
+          const csvAmountHeader =
+            currencySuffix !== ""
+              ? `${amountHeader} (${currencySuffix})`
+              : amountHeader;
+          const csvBalanceHeader =
+            currencySuffix !== ""
+              ? `${balanceHeader} (${currencySuffix})`
+              : balanceHeader;
+          const baseHeaders = {
             date: t("sheet.date"),
             type: t("sheet.type"),
             category: t("sheet.category"),
             description: t("sheet.description"),
-            amount: t("sheet.amount"),
-            balance: t("sheet.balance"),
-          });
+          };
           if (config.format === "csv") {
+            const table = exportRowsToTable(rows, {
+              ...baseHeaders,
+              amount: csvAmountHeader,
+              balance: csvBalanceHeader,
+            });
             const csv = rowsToCsv(table);
             triggerDownload(csv, `${baseSlug}-${stamp}.csv`, CSV_MIME_TYPE);
           } else {
-            const bytes = buildXlsx([{ name: target.name, rows: table }]);
+            const table = exportRowsToTable(rows, {
+              ...baseHeaders,
+              amount: amountHeader,
+              balance: balanceHeader,
+            });
+            const bytes = buildXlsx([
+              {
+                name: target.name,
+                rows: table,
+                // Column order matches `exportRowsToTable`:
+                // date, description, type, category, amount, balance.
+                columnFormats: [
+                  { kind: "date" },
+                  { kind: "general" },
+                  { kind: "general" },
+                  { kind: "general" },
+                  { kind: "currency" },
+                  { kind: "currency", alwaysTwoDecimals: true },
+                ],
+                formats: budgetExportFormats(data.settings),
+                asTable: true,
+              },
+            ]);
             triggerDownload(bytes, `${baseSlug}-${stamp}.xlsx`, XLSX_MIME_TYPE);
           }
           setBudgetDownloadPrefs(user.id, {
@@ -1505,6 +1546,7 @@ function BudgetView({
       data.history,
       data.merchantHints,
       data.matchRules,
+      data.settings,
       allTypesMerged,
       allCategoriesMerged,
       user.id,

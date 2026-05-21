@@ -204,14 +204,14 @@ export function exportRowsToTable(
   const out: (string | number | null)[][] = [];
   out.push([
     headers.date,
+    headers.description,
     headers.type,
     headers.category,
-    headers.description,
     headers.amount,
     headers.balance,
   ]);
   for (const r of rows) {
-    out.push([r.date, r.type, r.category, r.description, r.amount, r.balance]);
+    out.push([r.date, r.description, r.type, r.category, r.amount, r.balance]);
   }
   return out;
 }
