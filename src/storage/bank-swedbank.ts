@@ -32,7 +32,18 @@
 
 import { createLogger } from "../utils/logger";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
+import {
+  collapseWhitespace,
+  findHeaderRow,
+  numericCell,
+  stringCell,
+  tryReadFirstSheet,
+} from "./bank-helpers";
 import { readFirstSheet, type XlsxCellValue } from "./xlsx-reader";
+
+// Re-exported for tests; the shared implementation lives in
+// `bank-helpers.ts`.
+export { numericCell } from "./bank-helpers";
 
 const PARSER_ID = "swedbank-xlsx";
 const log = createLogger("bank-swedbank");
@@ -61,17 +72,12 @@ registerBankParser({
   name: "Swedbank (xlsx)",
   async sniff(file) {
     if (!file.name.toLowerCase().endsWith(".xlsx")) return false;
-    try {
-      const sheet = await readFirstSheet(file.bytes);
-      return findHeaderRow(sheet.rows) >= 0;
-    } catch (err) {
-      log.warn("sniff: readFirstSheet threw — treating as no match", err);
-      return false;
-    }
+    const sheet = await tryReadFirstSheet(file, log);
+    return sheet !== null && findHeaderRow(sheet.rows, HEADERS) >= 0;
   },
   async parse(file) {
     const sheet = await readFirstSheet(file.bytes);
-    const headerIdx = findHeaderRow(sheet.rows);
+    const headerIdx = findHeaderRow(sheet.rows, HEADERS);
     if (headerIdx < 0)
       throw new Error(
         "File does not look like a Swedbank statement (header row not found).",
@@ -93,7 +99,7 @@ registerBankParser({
       if (amount === null || balance === null) continue;
       entries.push({
         date,
-        description: description.trim().replace(/\s+/g, " "),
+        description: collapseWhitespace(description),
         amount,
         balance,
       });
@@ -107,23 +113,6 @@ registerBankParser({
     };
   },
 });
-
-function findHeaderRow(rows: readonly Map<number, XlsxCellValue>[]): number {
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row) continue;
-    let match = true;
-    for (let c = 0; c < HEADERS.length; c++) {
-      const v = row.get(c);
-      if (typeof v !== "string" || v.trim() !== HEADERS[c]) {
-        match = false;
-        break;
-      }
-    }
-    if (match) return i;
-  }
-  return -1;
-}
 
 export function readAccountIds(rows: readonly Map<number, XlsxCellValue>[]): {
   clearing?: string;
@@ -144,23 +133,4 @@ export function readAccountIds(rows: readonly Map<number, XlsxCellValue>[]): {
     }
   }
   return { clearing, accountNumber };
-}
-
-function stringCell(v: XlsxCellValue | undefined): string | null {
-  if (typeof v === "string") return v;
-  return null;
-}
-
-// Numeric cells are usually plain numbers in xlsx, but accept a
-// Swedish-formatted string fallback ("1 219,80" → 1219.80) so a
-// future export that quotes amounts still parses cleanly.
-export function numericCell(v: XlsxCellValue | undefined): number | null {
-  if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  if (typeof v === "string") {
-    const cleaned = v.replace(/\s/g, "").replace(",", ".");
-    if (cleaned === "") return null;
-    const n = Number(cleaned);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
 }

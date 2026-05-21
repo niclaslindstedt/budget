@@ -24,6 +24,11 @@ import {
   type BankFile,
   type ParsedBankFile,
 } from "./bank-import";
+import { collapseWhitespace, parseSwedishAmount } from "./bank-helpers";
+
+// Re-exported so existing tests that imported it from this module
+// keep working. The implementation lives in `bank-helpers.ts`.
+export { parseSwedishAmount } from "./bank-helpers";
 
 const PARSER_ID = "ica-banken-csv";
 
@@ -50,7 +55,7 @@ registerBankParser({
       const fields = line.split(";");
       if (fields.length < 5) continue;
       const date = fields[0].trim();
-      const description = fields[1].trim().replace(/\s+/g, " ");
+      const description = collapseWhitespace(fields[1]);
       const type = fields[2].trim();
       const balanceStr = fields[4].trim();
       if (type === PENDING_TYPE) continue;
@@ -88,17 +93,4 @@ function headerMatches(line: string): boolean {
     if (fields[i].trim() !== HEADER_FIELDS[i]) return false;
   }
   return true;
-}
-
-// "-1 234,56 kr" → -1234.56. The Swedish locale separates thousands
-// with a regular or non-breaking space and uses a comma decimal
-// point. The " kr" suffix is stripped if present. Returns `null` for
-// strings that don't parse as a finite number so the caller can skip
-// the row instead of inserting a `NaN`.
-export function parseSwedishAmount(s: string): number | null {
-  const trimmed = s.replace(/\s*kr\s*$/i, "").trim();
-  if (trimmed === "") return null;
-  const normalised = trimmed.replace(/\s/g, "").replace(",", ".");
-  const n = Number(normalised);
-  return Number.isFinite(n) ? n : null;
 }
