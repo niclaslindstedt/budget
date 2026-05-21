@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { CATEGORY_COLORS, CATEGORY_GLYPH_NAMES } from "../data/constants";
 import type { Category, CategoryIcon } from "../data/types";
@@ -7,8 +6,9 @@ import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayCategoryName } from "../i18n/preset-names";
 import { ColorPalette } from "./ColorPalette";
+import { EntityChip } from "./EntityChip";
+import { EntityPickerShell } from "./EntityPickerShell";
 import { ClearableTextInput } from "./form";
-import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
@@ -47,160 +47,57 @@ export function CategoryPicker({
 }: Props) {
   const t = useT();
   const placeholderText = placeholder ?? t("category.addCategoryEllipsis");
-  const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => {
-    setOpen(false);
-    setCreating(false);
-  }, []);
-
-  const selected = categories.find((c) => c.id === selectedId) ?? null;
-
-  function handlePick(id: string | null) {
-    onSelect(id);
-    setOpen(false);
-    setCreating(false);
-  }
-
-  function handleCreated(draft: Omit<Category, "id">) {
-    const created = onCreate(draft);
-    onSelect(created.id);
-    setOpen(false);
-    setCreating(false);
-  }
-
-  const isChip = variant === "chip";
-  // Cells are tight on width on mobile — the chevron is decorative there
-  // and the chip itself signals tappability, so it's only shown for the
-  // form-field variant used inside modals.
-  const showChevron = !isChip;
 
   return (
-    <div ref={rootRef} className="relative inline-block w-full">
-      <button
-        type="button"
-        className={
-          isChip
-            ? "flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1 text-left font-mono text-xs hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-            : "field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
-        }
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={!selected && isChip ? t("category.addCategory") : undefined}
-      >
-        {selected ? (
-          isChip ? (
-            <>
-              {/* Mobile: glyph only, in the category's colour, prominent.
-                 The cell is 40px wide on mobile — a chip with a tinted
-                 background fades into the row, so render the bare icon
-                 instead and let the colour carry the identity. */}
-              <span
-                className="inline-flex items-center justify-center md:hidden"
-                style={{ color: selected.color }}
-                aria-hidden
-              >
-                <CategoryIconGlyph name={selected.icon} size={18} />
-              </span>
-              {/* Desktop: full chip with glyph + name. */}
-              <span className="hidden md:inline-flex">
-                <CategoryChip category={selected} compact />
-              </span>
-            </>
-          ) : (
-            <CategoryChip category={selected} />
-          )
-        ) : isChip ? (
-          <Plus
-            size={16}
-            className="text-muted"
-            aria-hidden
-            focusable={false}
-          />
-        ) : (
-          <span className="inline-flex items-center gap-2 text-muted">
-            <Tag size={14} aria-hidden focusable={false} />
-            <span>{placeholderText}</span>
-          </span>
-        )}
-        {showChevron && (
-          <ChevronDown
-            size={12}
-            className="ml-auto shrink-0 text-muted"
-            aria-hidden
-            focusable={false}
-          />
-        )}
-      </button>
-
-      <FloatingPanel
-        open={open}
-        onClose={close}
-        triggerRef={rootRef}
-        placement={PLACEMENT}
-        rowId={rowId}
-      >
-        {creating ? (
-          <CategoryCreator
-            onCancel={() => setCreating(false)}
-            onSubmit={handleCreated}
-          />
-        ) : (
-          <ul role="listbox" className="max-h-72 overflow-auto py-1">
-            {categories.length === 0 && (
-              <li className="px-3 py-2 text-xs text-muted">
-                {t("category.noCategoriesYet")}
-              </li>
-            )}
-            {categories.map((cat) => (
-              <li key={cat.id}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={cat.id === selectedId}
-                  onClick={() => handlePick(cat.id)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <CategoryChip category={cat} compact />
-                  {cat.id === selectedId && (
-                    <Check
-                      size={14}
-                      className="ml-auto text-accent"
-                      aria-hidden
-                      focusable={false}
-                    />
-                  )}
-                </button>
-              </li>
-            ))}
-            {selectedId && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handlePick(null)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <X size={12} aria-hidden focusable={false} />
-                  {t("category.clearCategory")}
-                </button>
-              </li>
-            )}
-            <li className="mt-1 border-t border-line">
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-              >
-                <Plus size={14} aria-hidden focusable={false} />
-                {t("category.newCategory")}
-              </button>
-            </li>
-          </ul>
-        )}
-      </FloatingPanel>
-    </div>
+    <EntityPickerShell
+      items={categories}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      placement={PLACEMENT}
+      variant={variant}
+      rowId={rowId}
+      labels={{
+        addAriaLabel: t("category.addCategory"),
+        fieldPlaceholder: placeholderText,
+        empty: t("category.noCategoriesYet"),
+        clear: t("category.clearCategory"),
+        create: t("category.newCategory"),
+      }}
+      renderTrigger={(selected, isChip) => {
+        if (!selected) return null;
+        if (!isChip) return <CategoryChip category={selected} />;
+        return (
+          <>
+            {/* Mobile: glyph only, in the category's colour, prominent.
+               The cell is 40px wide on mobile — a chip with a tinted
+               background fades into the row, so render the bare icon
+               instead and let the colour carry the identity. */}
+            <span
+              className="inline-flex items-center justify-center md:hidden"
+              style={{ color: selected.color }}
+              aria-hidden
+            >
+              <CategoryIconGlyph name={selected.icon} size={18} />
+            </span>
+            {/* Desktop: full chip with glyph + name. */}
+            <span className="hidden md:inline-flex">
+              <CategoryChip category={selected} compact />
+            </span>
+          </>
+        );
+      }}
+      renderOption={(cat) => <CategoryChip category={cat} compact />}
+      renderCreator={(done) => (
+        <CategoryCreator
+          onCancel={done}
+          onSubmit={(draft) => {
+            const created = onCreate(draft);
+            onSelect(created.id);
+            done();
+          }}
+        />
+      )}
+    />
   );
 }
 
@@ -213,21 +110,12 @@ export function CategoryChip({
 }) {
   const t = useT();
   return (
-    <span
-      className={
-        compact
-          ? "inline-flex min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium"
-          : "inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium"
-      }
-      style={{
-        backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
-        borderColor: `color-mix(in srgb, ${category.color} 55%, transparent)`,
-        color: category.color,
-      }}
-    >
-      <CategoryIconGlyph name={category.icon} size={compact ? 12 : 13} />
-      <span className="truncate">{displayCategoryName(category, t)}</span>
-    </span>
+    <EntityChip
+      name={displayCategoryName(category, t)}
+      color={category.color}
+      icon={category.icon}
+      compact={compact}
+    />
   );
 }
 

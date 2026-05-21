@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 
 import {
   CATEGORY_COLORS,
@@ -12,8 +12,9 @@ import { useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
 import { CategoryChip } from "./CategoryPicker";
 import { ColorPalette } from "./ColorPalette";
+import { EntityChip } from "./EntityChip";
+import { EntityPickerShell } from "./EntityPickerShell";
 import { ClearableTextInput } from "./form";
-import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
@@ -70,15 +71,6 @@ export function TypePicker({
 }: Props) {
   const t = useT();
   const placeholderText = placeholder ?? t("type.pickTypeEllipsis");
-  const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => {
-    setOpen(false);
-    setCreating(false);
-  }, []);
-
-  const selected = types.find((t) => t.id === selectedId) ?? null;
 
   // Pre-sort the list: most-used first (descending count), then
   // alphabetical by display name as a stable tiebreaker. Sorting by
@@ -108,147 +100,56 @@ export function TypePicker({
     });
   }, [types, usageById, amountSign, selectedId, t]);
 
-  function handlePick(id: string | null) {
-    onSelect(id);
-    setOpen(false);
-    setCreating(false);
-  }
-
-  function handleCreated(draft: Omit<EntryType, "id">) {
-    const created = onCreate(draft);
-    onSelect(created.id);
-    setOpen(false);
-    setCreating(false);
-  }
-
-  const isChip = variant === "chip";
-  const showChevron = !isChip;
-
   return (
-    <div ref={rootRef} className="relative inline-block w-full">
-      <button
-        type="button"
-        className={
-          isChip
-            ? "flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1 text-left font-mono text-xs hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-            : "field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
-        }
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={!selected && isChip ? t("type.addType") : undefined}
-      >
-        {selected ? (
-          isChip ? (
-            // Inside a sheet row, the column is narrow on mobile — show
-            // the glyph alone in the type's colour so it's legible at
-            // glance, and only promote to the full pill on desktop where
-            // there's room for the name. Mirrors ReadonlyTypeCell.
-            <>
-              <span
-                className="inline-flex items-center justify-center md:hidden"
-                style={{ color: selected.color }}
-                aria-hidden
-              >
-                <CategoryIconGlyph name={selected.glyph} size={18} />
-              </span>
-              <span className="hidden md:inline-flex">
-                <TypeChip type={selected} compact />
-              </span>
-            </>
-          ) : (
-            <TypeChip type={selected} compact={false} />
-          )
-        ) : isChip ? (
-          <Plus
-            size={16}
-            className="text-muted"
-            aria-hidden
-            focusable={false}
-          />
-        ) : (
-          <span className="inline-flex items-center gap-2 text-muted">
-            <Tag size={14} aria-hidden focusable={false} />
-            <span>{placeholderText}</span>
-          </span>
-        )}
-        {showChevron && (
-          <ChevronDown
-            size={12}
-            className="ml-auto shrink-0 text-muted"
-            aria-hidden
-            focusable={false}
-          />
-        )}
-      </button>
-
-      <FloatingPanel
-        open={open}
-        onClose={close}
-        triggerRef={rootRef}
-        placement={PLACEMENT}
-        rowId={rowId}
-      >
-        {creating ? (
-          <TypeCreator
-            categories={categories}
-            onCancel={() => setCreating(false)}
-            onSubmit={handleCreated}
-          />
-        ) : (
-          <ul role="listbox" className="max-h-72 overflow-auto py-1">
-            {sortedTypes.length === 0 && (
-              <li className="px-3 py-2 text-xs text-muted">
-                {t("type.noTypesYet")}
-              </li>
-            )}
-            {sortedTypes.map((t) => (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={t.id === selectedId}
-                  onClick={() => handlePick(t.id)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <TypeChip type={t} compact />
-                  {t.id === selectedId && (
-                    <Check
-                      size={14}
-                      className="ml-auto text-accent"
-                      aria-hidden
-                      focusable={false}
-                    />
-                  )}
-                </button>
-              </li>
-            ))}
-            {selectedId && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handlePick(null)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <X size={12} aria-hidden focusable={false} />
-                  {t("type.clearType")}
-                </button>
-              </li>
-            )}
-            <li className="mt-1 border-t border-line">
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-              >
-                <Plus size={14} aria-hidden focusable={false} />
-                {t("type.newType")}
-              </button>
-            </li>
-          </ul>
-        )}
-      </FloatingPanel>
-    </div>
+    <EntityPickerShell
+      items={sortedTypes}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      placement={PLACEMENT}
+      variant={variant}
+      rowId={rowId}
+      labels={{
+        addAriaLabel: t("type.addType"),
+        fieldPlaceholder: placeholderText,
+        empty: t("type.noTypesYet"),
+        clear: t("type.clearType"),
+        create: t("type.newType"),
+      }}
+      renderTrigger={(selected, isChip) => {
+        if (!selected) return null;
+        if (!isChip) return <TypeChip type={selected} compact={false} />;
+        // Inside a sheet row, the column is narrow on mobile — show
+        // the glyph alone in the type's colour so it's legible at
+        // glance, and only promote to the full pill on desktop where
+        // there's room for the name. Mirrors ReadonlyTypeCell.
+        return (
+          <>
+            <span
+              className="inline-flex items-center justify-center md:hidden"
+              style={{ color: selected.color }}
+              aria-hidden
+            >
+              <CategoryIconGlyph name={selected.glyph} size={18} />
+            </span>
+            <span className="hidden md:inline-flex">
+              <TypeChip type={selected} compact />
+            </span>
+          </>
+        );
+      }}
+      renderOption={(ty) => <TypeChip type={ty} compact />}
+      renderCreator={(done) => (
+        <TypeCreator
+          categories={categories}
+          onCancel={done}
+          onSubmit={(draft) => {
+            const created = onCreate(draft);
+            onSelect(created.id);
+            done();
+          }}
+        />
+      )}
+    />
   );
 }
 
@@ -261,21 +162,12 @@ export function TypeChip({
 }) {
   const t = useT();
   return (
-    <span
-      className={
-        compact
-          ? "inline-flex min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium"
-          : "inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium"
-      }
-      style={{
-        backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
-        borderColor: `color-mix(in srgb, ${type.color} 55%, transparent)`,
-        color: type.color,
-      }}
-    >
-      <CategoryIconGlyph name={type.glyph} size={compact ? 12 : 13} />
-      <span className="truncate">{displayTypeName(type, t)}</span>
-    </span>
+    <EntityChip
+      name={displayTypeName(type, t)}
+      color={type.color}
+      icon={type.glyph}
+      compact={compact}
+    />
   );
 }
 
