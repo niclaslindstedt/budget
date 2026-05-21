@@ -73,11 +73,13 @@ type RootProps = {
   // iOS visual-viewport math (`useVirtualKeyboardInset`) keeps the
   // footer above the keyboard.
   centered?: boolean;
-  // When true, the desktop card uses the height cap as its actual
-  // height (`h-…`) rather than just an upper bound (`max-h-…`), so the
-  // shell stays a constant size as its inner content changes. Mobile
-  // keeps the full-screen layout. Use this for tabbed modals where
-  // switching tabs would otherwise make the whole card jump.
+  // When true, the desktop card fills the full viewport height
+  // (`100svh`, edge-to-edge) instead of being a centered card capped
+  // at 95svh. The mobile layout already fills the viewport. Use this
+  // for tabbed modals where (a) switching tabs would otherwise make
+  // the whole card jump as content grows/shrinks and (b) the content
+  // surface benefits from every available pixel — e.g. SettingsModal,
+  // whose tallest tabs would otherwise scroll beyond the visible card.
   fixedHeight?: boolean;
   children: React.ReactNode;
 };
@@ -118,19 +120,15 @@ export function Modal({
   // by flex layout and Body owns its own scroll. Desktop drops the
   // 100svh constraint and (when scrollableBody) caps the height. The
   // `centered` branch uses the desktop layout on every viewport size.
-  // When `fixedHeight` is set, desktop pins the card to the cap height
-  // instead of using it as an upper bound — see prop docs.
+  // When `fixedHeight` is set, desktop fills the full viewport
+  // (`100svh`, edge-to-edge) — see prop docs.
   const desktopHeightClass = fixedHeight
-    ? scrollableBody
-      ? "sm:h-[min(95svh,calc(100svh-2rem))]"
-      : "sm:h-[95svh]"
+    ? "sm:h-[100svh]"
     : scrollableBody
       ? "sm:max-h-[min(95svh,calc(100svh-2rem))]"
       : "sm:max-h-[95svh]";
   const centeredHeightClass = fixedHeight
-    ? scrollableBody
-      ? "h-[min(95svh,calc(100svh-2rem))]"
-      : "h-[95svh]"
+    ? "h-[100svh]"
     : scrollableBody
       ? "max-h-[min(95svh,calc(100svh-2rem))]"
       : "max-h-[95svh]";
@@ -169,9 +167,16 @@ export function Modal({
   // never sees the tap on a date. Modals opened from outside a sheet
   // row have no registration to dismiss, so the marker is a no-op for
   // them.
+  // When `fixedHeight` is set the shell fills the viewport top-to-
+  // bottom, so drop the desktop `sm:p-4` that would otherwise leave a
+  // 1rem dead strip above and below. The shell stays horizontally
+  // centered at the configured `size` width, so rounded corners +
+  // shadow still apply along its vertical edges.
   const overlayClass = centered
     ? "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    : "fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50 sm:p-4";
+    : fixedHeight
+      ? "fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50"
+      : "fixed inset-0 z-50 flex justify-center bg-surface sm:items-center sm:bg-black/50 sm:p-4";
 
   const shellChrome = centered
     ? "bg-surface rounded-lg shadow-2xl"
