@@ -295,6 +295,10 @@ export type Action =
       amount: number;
       typeId: string | null;
       dates: string[];
+      // When false, the merchant hint is not stamped — past entries
+      // sharing the merchant key keep their raw bank text. The future
+      // series still gets minted.
+      applyToHistoric: boolean;
       now: number;
     }
   | {
@@ -1308,6 +1312,10 @@ export function reducer(state: UserData, action: Action): UserData {
     // the user declined to set a type. The new rows still got minted;
     // the user can backfill labels later by promoting again with one.
     if (action.typeId === null) return next;
+    // Honour the "apply to historic matches" opt-out from the modal:
+    // when the user unchecked it, mint the future series but skip the
+    // merchant-hint stamp so past entries keep their bank text.
+    if (!action.applyToHistoric) return next;
     return recordMerchantHints(
       next,
       [
