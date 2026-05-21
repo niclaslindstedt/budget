@@ -60,6 +60,7 @@ import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
+import { ReconnectCloudModal } from "./components/ReconnectCloudModal";
 import { SyncDetailsModal } from "./components/SyncDetailsModal";
 import { SyncStatus } from "./components/SyncStatus";
 import { UserMenu } from "./components/UserMenu";
@@ -2639,20 +2640,19 @@ export function App() {
   // user is already on. Here both copies live in the same cloud, so
   // we just persist the new token and let `useUserDataStorage`
   // re-run its load on the rebuilt adapter.
-  const handleReconnectCloud = useCallback(async () => {
+  //
+  // Throws on failure (popup blocked, user dismissed, network) so the
+  // calling button / modal can show the message inline instead of
+  // silently swallowing it.
+  const handleReconnectCloud = useCallback(async (): Promise<void> => {
     if (auth.kind !== "signed-in") return;
     if (backend === "gdrive") {
       const userId = auth.user.id;
-      try {
-        log.log("reconnect(gdrive): launching GIS popup");
-        const token = await startGdriveAuth();
-        if (auth.kind !== "signed-in") return;
-        setGdriveToken(userId, token);
-        setGdriveTokenState(token);
-      } catch (err) {
-        log.error("reconnect(gdrive): popup failed", err);
-        console.error("Google Drive reconnect failed:", err);
-      }
+      log.log("reconnect(gdrive): launching GIS popup");
+      const token = await startGdriveAuth();
+      if (auth.kind !== "signed-in") return;
+      setGdriveToken(userId, token);
+      setGdriveTokenState(token);
       return;
     }
     if (backend === "dropbox") {
@@ -2660,7 +2660,9 @@ export function App() {
       // the return trip. The auto-refresh in `authedFetch` covers the
       // common case, so a Dropbox auth-error means the refresh token
       // is gone or revoked — a full redirect re-link is appropriate.
-      void startDropboxAuth();
+      // The promise resolves once the navigation has been kicked off
+      // — the page unloads shortly after.
+      await startDropboxAuth();
     }
   }, [auth, backend]);
 
@@ -3547,7 +3549,7 @@ type BudgetViewProps = {
   onDisconnectDropbox: () => void;
   onConnectGdrive: () => void;
   onDisconnectGdrive: () => void;
-  onReconnectCloud: () => void;
+  onReconnectCloud: () => Promise<void>;
   onConnectFolder: () => void;
   onReconnectFolder: () => void;
   onDisconnectFolder: () => void;
@@ -3639,6 +3641,7 @@ function BudgetView({
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
+  const [reconnectCloudOpen, setReconnectCloudOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [cloudReauthAutoOpen, setCloudReauthAutoOpenState] = useState(() =>
     getCloudReauthAutoOpen(),
@@ -3647,18 +3650,27 @@ function BudgetView({
     setCloudReauthAutoOpen(on);
     setCloudReauthAutoOpenState(on);
   }, []);
-  // Auto-open the sync-details modal the moment a cloud auth-error
-  // surfaces, so the user can reconnect without hunting for the
-  // status pill. The `cloudReauthAutoOpen` device preference flips
-  // this off for users who'd rather notice on their own. Anchored on
-  // `status.kind` so it fires exactly once per error transition —
-  // re-opens on every new auth-error, not on every render while one
-  // sits there.
+  // Auto-open the dedicated reconnect modal the moment a cloud
+  // auth-error surfaces, so the user can reconnect without hunting
+  // for the status pill. The `cloudReauthAutoOpen` device preference
+  // flips this off for users who'd rather notice on their own.
+  // Anchored on `status.kind` so it fires exactly once per error
+  // transition — re-opens on every new auth-error, not on every
+  // render while one sits there.
   useEffect(() => {
     if (status.kind !== "auth-error") return;
     if (!cloudReauthAutoOpen) return;
-    setSyncDetailsOpen(true);
+    setReconnectCloudOpen(true);
   }, [status.kind, cloudReauthAutoOpen]);
+  // Once the storage hook moves out of `auth-error` (token refreshed,
+  // user disconnected, backend swapped), drop the modal automatically
+  // so it doesn't sit on top of the sheet after the user has solved
+  // the problem somewhere else.
+  useEffect(() => {
+    if (status.kind !== "auth-error" && reconnectCloudOpen) {
+      setReconnectCloudOpen(false);
+    }
+  }, [status.kind, reconnectCloudOpen]);
   // Bumped each time the user clicks the budget icon/title in the
   // header. SheetView watches this counter and re-scrolls to today's
   // row (or the current fiscal month) on every increment, even when
@@ -6107,6 +6119,12 @@ function BudgetView({
             : null
         }
         onClose={() => setSyncDetailsOpen(false)}
+      />
+      <ReconnectCloudModal
+        open={reconnectCloudOpen}
+        backend={backend}
+        onConfirm={onReconnectCloud}
+        onClose={() => setReconnectCloudOpen(false)}
       />
       <SettingsModal
         open={settingsOpen}
