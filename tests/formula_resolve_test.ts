@@ -60,13 +60,14 @@ function workspace(
     items: [item],
   };
   return {
-    version: 31,
+    version: 32,
     sheets: [main, ...extra],
     activeSheetId: "sht_main",
     accounts: [],
     categories: [],
     types,
     hiddenPresetTypeIds: [],
+    presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     matchRules: [],
     seriesMatchRules: [],

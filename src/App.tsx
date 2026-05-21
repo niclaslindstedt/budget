@@ -1324,6 +1324,11 @@ function BudgetView({
       dispatch({ type: "setPresetTypeHidden", presetId, hidden }),
     [dispatch],
   );
+  const onSetPresetTypeKind = useCallback(
+    (presetId: string, kind: "income" | "expense" | "any") =>
+      dispatch({ type: "setPresetTypeKind", presetId, kind }),
+    [dispatch],
+  );
   const onSaveSettings = useCallback(
     (settings: Settings) => dispatch({ type: "updateSettings", settings }),
     [dispatch],
@@ -3301,6 +3306,7 @@ function BudgetView({
         onUpdateType={onUpdateType}
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
+        onSetPresetTypeKind={onSetPresetTypeKind}
       />
       <ChangelogModal
         open={changelogOpen}

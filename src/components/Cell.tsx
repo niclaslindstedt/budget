@@ -86,6 +86,10 @@ type Props = {
   hiddenTransferCount?: number;
   transferExpanded?: boolean;
   onToggleTransferAnchor?: () => void;
+  // Sign of the row's amount, derived once by SheetRow from the
+  // amount cell. Only consulted by the `type` column's TypePicker
+  // to filter income-only / expense-only types out of the list.
+  amountSign?: "positive" | "negative" | "any";
   // Parent-level update / commit handlers. Carry rowId + columnId so
   // SheetRow can pass the same reference-stable function to every cell
   // in the row — React.memo's shallow compare then skips re-rendering a
@@ -119,6 +123,7 @@ function CellImpl({
   hiddenTransferCount = 0,
   transferExpanded = false,
   onToggleTransferAnchor,
+  amountSign,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -365,6 +370,7 @@ function CellImpl({
             categories={categories ?? []}
             selectedId={entryType?.id ?? null}
             usageById={typeUsageById}
+            amountSign={amountSign}
             onSelect={(id) => {
               onChange(id);
               onCommit?.(id);

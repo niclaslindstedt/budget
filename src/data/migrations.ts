@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 31 as const;
+export const LATEST_VERSION = 32 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -481,6 +481,16 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // on `theme: "system"` and `fontFamily: "mono"`, matching the
   // pre-picker behaviour so the UI doesn't change on upgrade.
   30: (v30) => ({ ...v30, version: 31 }),
+
+  // v31 → v32: introduces `EntryType.kind` (income / expense / any)
+  // and the matching `UserData.presetTypeKindOverrides` map. Preset
+  // types ship with their built-in kind (Salary / Bonus / Tax refund /
+  // Barnbidrag are income, the rest are expense or "any" for
+  // ambiguous savings instruments). User-added types default to
+  // "any" by omitting the field. The validator fills in an empty
+  // overrides map when missing, so this is a bare version bump for
+  // the payload.
+  31: (v31) => ({ ...v31, version: 32, presetTypeKindOverrides: {} }),
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by

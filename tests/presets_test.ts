@@ -8,6 +8,8 @@ import {
 import {
   allCategories,
   allTypes,
+  effectivePresetKind,
+  effectiveTypeKind,
   isPresetCategoryId,
   isPresetTypeId,
 } from "../src/data/presets";
@@ -18,13 +20,14 @@ import { validateUserData } from "../src/data/validate";
 function workspace(patch: Partial<UserData> = {}): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 31,
+    version: 32,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],
+    presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},
@@ -138,6 +141,79 @@ describe("preset helpers", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.error).toMatch(/preset/);
+    }
+  });
+
+  it("preset income types ship with kind = 'income'", () => {
+    const salary = PRESET_ENTRY_TYPES.find(
+      (t) => t.id === "preset-type-salary",
+    );
+    const childAllowance = PRESET_ENTRY_TYPES.find(
+      (t) => t.id === "preset-type-child-allowance",
+    );
+    expect(salary?.kind).toBe("income");
+    expect(childAllowance?.kind).toBe("income");
+  });
+
+  it("preset expense types ship with kind = 'expense'", () => {
+    const rent = PRESET_ENTRY_TYPES.find((t) => t.id === "preset-type-rent");
+    const groceries = PRESET_ENTRY_TYPES.find(
+      (t) => t.id === "preset-type-groceries",
+    );
+    expect(rent?.kind).toBe("expense");
+    expect(groceries?.kind).toBe("expense");
+  });
+
+  it("effectiveTypeKind reads through the override map for presets", () => {
+    const child = PRESET_ENTRY_TYPES.find(
+      (t) => t.id === "preset-type-child-allowance",
+    )!;
+    expect(effectivePresetKind(child, {})).toBe("income");
+    expect(
+      effectivePresetKind(child, { "preset-type-child-allowance": "any" }),
+    ).toBe("any");
+    expect(
+      effectiveTypeKind(child, { "preset-type-child-allowance": "expense" }),
+    ).toBe("expense");
+  });
+
+  it("effectiveTypeKind returns the user type's own kind", () => {
+    const userType = {
+      id: "u1",
+      name: "Padel",
+      color: "#61afef",
+      glyph: "ticket" as const,
+      categoryId: "preset-cat-other",
+      kind: "expense" as const,
+    };
+    expect(effectiveTypeKind(userType, {})).toBe("expense");
+  });
+
+  it("allTypes projects preset kind through the override map", () => {
+    const state = workspace({
+      presetTypeKindOverrides: { "preset-type-child-allowance": "any" },
+    });
+    const merged = allTypes(state);
+    const child = merged.find((t) => t.id === "preset-type-child-allowance");
+    expect(child?.kind).toBeUndefined();
+  });
+
+  it("validateUserData drops unknown ids and bad values from kind overrides", () => {
+    const r = validateUserData(
+      workspace({
+        presetTypeKindOverrides: {
+          "preset-type-rent": "income",
+          "not-a-preset": "income",
+          // @ts-expect-error testing runtime sanitisation of bad value
+          "preset-type-salary": "garbage",
+        },
+      }),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.presetTypeKindOverrides).toEqual({
+        "preset-type-rent": "income",
+      });
     }
   });
 

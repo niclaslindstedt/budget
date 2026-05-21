@@ -182,6 +182,15 @@ export type Category = {
   icon: CategoryIcon;
 };
 
+// Whether an EntryType belongs on the income side, the expense side,
+// or works for either direction. Drives the `TypePicker` filter so
+// "Salary" disappears when the user enters a negative amount and
+// "Groceries" disappears on a positive one. `any` is the implicit
+// default for user-created types (and for any preset that fits both
+// directions) — when `kind` is missing, the type is offered in every
+// sign context.
+export type EntryTypeKind = "income" | "expense" | "any";
+
 // Reusable label assigned to a row to describe what kind of entry it
 // is — "Mortgage", "Groceries", "Restaurant", "Salary". Sits between
 // the free-text description (which is specific to the row) and the
@@ -192,12 +201,20 @@ export type Category = {
 // used to live on `Row`: now every row that shares a type also shares
 // a visual identity, so the picker is the single source of truth for
 // what a row looks like.
+//
+// `kind` narrows the picker so income-only entries (Salary, Bonus,
+// Barnbidrag) never surface on a negative-amount row and expense-only
+// entries never surface on a positive one. Absent on a type means
+// "fits either direction". For preset types the default `kind` is
+// hard-coded; the per-user override lives in
+// `UserData.presetTypeKindOverrides`.
 export type EntryType = {
   id: string;
   name: string;
   color: string;
   glyph: CategoryIcon;
   categoryId: string;
+  kind?: EntryTypeKind;
 };
 
 // A real-world account (a bank account, credit card, cash envelope, …)
@@ -713,7 +730,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 31;
+  version: 32;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -734,6 +751,14 @@ export type UserData = {
   // preset (e.g. a preset removed in a later app version) are dropped
   // on load.
   hiddenPresetTypeIds: string[];
+  // Per-user overrides for the `kind` of preset entry types (Income /
+  // Expense / Any). Lets a user re-classify a built-in preset without
+  // shipping a new app version — e.g. flip Barnbidrag from income to
+  // any if their household treats it differently. Keys are preset
+  // type ids; values are the override. Absent / unknown ids fall back
+  // to the preset's hard-coded `kind`. User-added types carry their
+  // own `kind` on the `EntryType` record instead.
+  presetTypeKindOverrides: Record<string, EntryTypeKind>;
   // Same shape as `hiddenPresetTypeIds`, scoped to preset categories.
   hiddenPresetCategoryIds: string[];
   // Transfers between accounts. Each transaction renders as a read-only

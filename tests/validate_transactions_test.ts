@@ -21,7 +21,7 @@ const knownType: EntryType = {
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 31,
+    version: 32,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -31,6 +31,7 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
     categories: [],
     types: [knownType],
     hiddenPresetTypeIds: [],
+    presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},
@@ -137,7 +138,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 31,
+      version: 32,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -158,6 +159,7 @@ describe("validateUserData — accounts metadata", () => {
       categories: [],
       types: [],
       hiddenPresetTypeIds: [],
+      presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},
@@ -182,13 +184,14 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 31,
+      version: 32,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
       categories: [],
       types: [],
       hiddenPresetTypeIds: [],
+      presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},
@@ -210,7 +213,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose typeId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 31,
+      version: 32,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
@@ -219,6 +222,7 @@ describe("validateUserData — accounts metadata", () => {
       ],
       types: [knownType],
       hiddenPresetTypeIds: [],
+      presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
       transactions: [],
       history: {},

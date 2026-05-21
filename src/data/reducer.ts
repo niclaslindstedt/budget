@@ -22,6 +22,7 @@ import type {
   Category,
   CellValue,
   EntryType,
+  EntryTypeKind,
   HistoryEntry,
   HistoryEntrySplit,
   MatchRule,
@@ -179,6 +180,7 @@ export type Action =
     }
   | { type: "deleteType"; typeId: string }
   | { type: "setPresetTypeHidden"; presetId: string; hidden: boolean }
+  | { type: "setPresetTypeKind"; presetId: string; kind: EntryTypeKind }
   | { type: "updateSettings"; settings: Settings }
   | { type: "renameSheet"; sheetId: string; name: string }
   | {
@@ -920,6 +922,13 @@ export function reducer(state: UserData, action: Action): UserData {
         ? [...current, action.presetId]
         : current.filter((id) => id !== action.presetId),
     };
+  }
+  if (action.type === "setPresetTypeKind") {
+    if (!PRESET_ENTRY_TYPE_IDS.has(action.presetId)) return state;
+    const current = state.presetTypeKindOverrides;
+    if (current[action.presetId] === action.kind) return state;
+    const next = { ...current, [action.presetId]: action.kind };
+    return { ...state, presetTypeKindOverrides: next };
   }
   if (action.type === "updateSettings") {
     return { ...state, settings: action.settings };

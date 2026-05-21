@@ -155,6 +155,19 @@ export function EditRowModal({
       : negative
         ? -Math.abs(parsedAbs)
         : Math.abs(parsedAbs);
+  // The picker filter follows the +/- toggle (and the parsed value
+  // when present) so flipping the sign immediately changes which
+  // types are offered.
+  const pickerSign: "positive" | "negative" | "any" =
+    parsedAmount !== null && parsedAmount > 0
+      ? "positive"
+      : parsedAmount !== null && parsedAmount < 0
+        ? "negative"
+        : amountCol
+          ? negative
+            ? "negative"
+            : "positive"
+          : "any";
 
   function toggleSign() {
     setNegative((s) => !s);
@@ -237,6 +250,7 @@ export function EditRowModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               usageById={typeUsageById}
+              amountSign={pickerSign}
             />
           </div>
           {completedCol && (

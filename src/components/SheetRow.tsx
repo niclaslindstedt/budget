@@ -170,6 +170,15 @@ function SheetRowImpl({
     amountCol !== undefined ? row.cells[amountCol.id] : undefined;
   const isOutgoing =
     isTransaction && typeof amountValue === "number" && amountValue < 0;
+  // Sign hint for the type column's TypePicker. Only meaningful when
+  // the row carries a non-zero numeric amount — zero / empty rows
+  // are still ambiguous so the picker shows every type.
+  const amountSign: "positive" | "negative" | "any" =
+    typeof amountValue === "number" && amountValue > 0
+      ? "positive"
+      : typeof amountValue === "number" && amountValue < 0
+        ? "negative"
+        : "any";
 
   // Expose the row's ISO date so SheetView's scroll-to-today can target
   // it directly. Skipped when the date cell is empty or non-string.
@@ -392,6 +401,7 @@ function SheetRowImpl({
           onToggleTransferAnchor={
             col.type === "balance" ? onToggleTransferAnchor : undefined
           }
+          amountSign={col.type === "type" ? amountSign : undefined}
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />

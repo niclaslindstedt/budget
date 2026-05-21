@@ -17,13 +17,14 @@ export function freshUserData(): UserData {
   // data living in their export.
   const sheet = createDefaultSheet("Sheet 1");
   return {
-    version: 31,
+    version: 32,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],
+    presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},

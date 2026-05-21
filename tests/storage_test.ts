@@ -30,13 +30,14 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 31,
+    version: 32,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
     types: [],
     hiddenPresetTypeIds: [],
+    presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     transactions: [],
     history: {},
@@ -98,6 +99,7 @@ describe("serializeUserData", () => {
       categories: b.categories,
       types: b.types,
       hiddenPresetTypeIds: b.hiddenPresetTypeIds,
+      presetTypeKindOverrides: b.presetTypeKindOverrides,
       hiddenPresetCategoryIds: b.hiddenPresetCategoryIds,
       transactions: b.transactions,
       history: b.history,
@@ -120,7 +122,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 17)).toEqual([
+    expect(topKeys.slice(0, 18)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -130,6 +132,7 @@ describe("serializeUserData", () => {
       "historyImports",
       "matchRules",
       "merchantHints",
+      "presetTypeKindOverrides",
       "recurringDismissals",
       "seriesMatchRules",
       "settings",
@@ -1064,6 +1067,7 @@ describe("migrate", () => {
       categories: [],
       types: [],
       hiddenPresetTypeIds: [],
+      presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
       transactions: [],
       // Settings as they'd look pre-v21: no alwaysAbbreviateBalance field.

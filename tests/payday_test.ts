@@ -52,13 +52,14 @@ function userData(over: Partial<UserData>): UserData {
     ],
   };
   return {
-    version: 31,
+    version: 32,
     sheets: over.sheets ?? [sheet],
     activeSheetId: "s",
     accounts: [{ id: "acc", name: "A" }],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],
+    presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     transactions: [],
     history: over.history ?? {},
