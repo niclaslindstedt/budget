@@ -89,6 +89,16 @@ type Props = {
   // amount cell. Only consulted by the `type` column's TypePicker
   // to filter income-only / expense-only types out of the list.
   amountSign?: "positive" | "negative" | "any";
+  // Row context surfaced inside the `type` column's TypePicker
+  // dropdown header — the dropdown physically overlaps the date and
+  // description columns on mobile, so the picker re-displays them at
+  // the top of the panel. Pre-formatted upstream by SheetRow (date
+  // through the user's short-date format, month-tint colour through
+  // `monthColorVar`). Only the `type` column reads them; other
+  // columns receive undefined and pass shallow-compare cleanly.
+  rowDate?: string;
+  rowDateColor?: string;
+  rowDescription?: string;
   // Parent-level update / commit handlers. Carry rowId + columnId so
   // SheetRow can pass the same reference-stable function to every cell
   // in the row — React.memo's shallow compare then skips re-rendering a
@@ -123,6 +133,9 @@ function CellImpl({
   transferExpanded = false,
   onToggleTransferAnchor,
   amountSign,
+  rowDate,
+  rowDateColor,
+  rowDescription,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -258,6 +271,9 @@ function CellImpl({
               categories={categories ?? []}
               selectedId={entryType?.id ?? null}
               usageById={typeUsageById}
+              rowDate={rowDate}
+              rowDateColor={rowDateColor}
+              rowDescription={rowDescription}
               onSelect={(id) => {
                 onChange(id);
                 onCommit?.(id);
@@ -370,6 +386,9 @@ function CellImpl({
             selectedId={entryType?.id ?? null}
             usageById={typeUsageById}
             amountSign={amountSign}
+            rowDate={rowDate}
+            rowDateColor={rowDateColor}
+            rowDescription={rowDescription}
             onSelect={(id) => {
               onChange(id);
               onCommit?.(id);

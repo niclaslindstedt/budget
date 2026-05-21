@@ -46,6 +46,16 @@ type Props = {
   // a row has been labelled "Salary" we don't drop it from the
   // picker just because the user is reconsidering the sign.
   amountSign?: "positive" | "negative" | "any";
+  // When rendered inside a sheet row, the row's date + description
+  // are surfaced in a small header above the listbox so the user
+  // keeps that context visible while picking — the dropdown
+  // physically overlaps the date and description columns on mobile.
+  // `rowDate` is the pre-formatted short date; `rowDateColor` is the
+  // matching month-tint CSS value (passed straight through from the
+  // sheet's date column). Modal callers leave them undefined.
+  rowDate?: string;
+  rowDateColor?: string;
+  rowDescription?: string;
   // Render style. "chip" fills a table cell; "field" looks like a form field.
   variant?: "chip" | "field";
   placeholder?: string;
@@ -60,11 +70,20 @@ export function TypePicker({
   onCreate,
   usageById,
   amountSign,
+  rowDate,
+  rowDateColor,
+  rowDescription,
   variant = "field",
   placeholder,
 }: Props) {
   const t = useT();
   const placeholderText = placeholder ?? t("type.pickTypeEllipsis");
+  // Show the header only when either side has content — an empty
+  // header band over a fresh row would just be visual noise.
+  const hasHeader = !!(
+    (rowDate && rowDate.length > 0) ||
+    (rowDescription && rowDescription.length > 0)
+  );
 
   // Pre-sort the list: most-used first (descending count), then
   // alphabetical by display name as a stable tiebreaker. Sorting by
@@ -132,6 +151,27 @@ export function TypePicker({
         );
       }}
       renderOption={(ty) => <TypeChip type={ty} compact />}
+      renderHeader={
+        hasHeader
+          ? () => (
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line bg-surface-3 px-3 py-2 font-mono text-xs">
+                {rowDate ? (
+                  <span
+                    className="font-bold tabular-nums whitespace-nowrap"
+                    style={rowDateColor ? { color: rowDateColor } : undefined}
+                  >
+                    {rowDate}
+                  </span>
+                ) : null}
+                {rowDescription ? (
+                  <span className="min-w-0 break-words text-fg">
+                    {rowDescription}
+                  </span>
+                ) : null}
+              </div>
+            )
+          : undefined
+      }
       renderCreator={(done) => (
         <TypeCreator
           categories={categories}
