@@ -64,24 +64,40 @@ export function FloatingPanel({
   const positionClass =
     placement.coordinateSpace === "viewport" ? "fixed" : "absolute";
 
+  // When the hook flips the panel to "above" (not enough room below to
+  // render a useful list), `position.top` is the y-coordinate the
+  // panel's BOTTOM edge should sit at. `translateY(-100%)` anchors the
+  // bottom there without us needing to know the actual rendered panel
+  // height — the panel still grows downward from `top` in the
+  // pre-transform sense, but the transform shifts it up by its own
+  // height so the bottom lands where we wanted.
+  const flipUp = position.placement === "above";
+
   // The arrow is a rotated square whose centre sits on the panel's top
-  // edge: the top-left and top-right edges of the diamond stick up out
-  // of the panel (the visible arrow), the bottom-left and bottom-right
-  // edges sit just inside the panel's top border. Rendered after the
-  // panel in DOM order at the same z-index so the arrow's opaque
-  // background paints over the segment of the panel's top border that
-  // would otherwise cut across the arrow base, while the arrow's two
-  // bordered edges meet the panel border flush on either side.
-  // `overflow-y-auto` on the panel would otherwise clip the tip, which
-  // is why the arrow lives outside the panel rather than inside.
+  // edge ("below" placement) or bottom edge ("above" placement): two
+  // of its edges stick out (the visible arrow point) and two sit just
+  // inside the panel border. Rendered after the panel in DOM order at
+  // the same z-index so the arrow's opaque background paints over the
+  // segment of the panel's border that would otherwise cut across the
+  // arrow base, while the arrow's two bordered edges meet the panel
+  // border flush on either side. `overflow-y-auto` on the panel would
+  // otherwise clip the tip, which is why the arrow lives outside the
+  // panel rather than inside.
   //
   // The `peer` class on the panel + `peer-focus-within:` on the arrow
   // continues the panel's focus-within accent ring across the arrow's
   // two visible edges, so an editable popover (description reveal) draws
   // a single uninterrupted accent shape around the textarea and its tip.
   // Without it the arrow stayed `border-line` even with the textarea
-  // focused, cutting the highlight off at the panel's top border.
+  // focused, cutting the highlight off at the panel's border.
   const ARROW_SIZE = 12;
+  // Arrow border edges: for an upward-pointing arrow at the panel's
+  // top edge, the visible tip is the top-left + top-right of the
+  // rotated square — so we border the bottom-left + bottom-right and
+  // let the panel's background hide the rest. For a downward arrow at
+  // the panel's bottom edge, mirror that: border the top-left +
+  // top-right of the rotated square.
+  const arrowBorderClass = flipUp ? "border-b border-r" : "border-t border-l";
   return createPortal(
     <>
       <div
@@ -93,6 +109,7 @@ export function FloatingPanel({
           left: position.left,
           minWidth: position.width,
           maxHeight: position.maxHeight,
+          transform: flipUp ? "translateY(-100%)" : undefined,
         }}
       >
         {children}
@@ -100,7 +117,7 @@ export function FloatingPanel({
       {arrow === "up" && (
         <div
           aria-hidden
-          className={`${positionClass} z-50 rotate-45 border-t border-l border-line bg-surface-2 peer-focus-within:border-accent`}
+          className={`${positionClass} z-50 rotate-45 ${arrowBorderClass} border-line bg-surface-2 peer-focus-within:border-accent`}
           style={{
             top: position.top - ARROW_SIZE / 2,
             left: position.left + position.arrowLeft - ARROW_SIZE / 2,
