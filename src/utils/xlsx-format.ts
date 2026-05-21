@@ -82,15 +82,20 @@ function localePrefix(settings: Settings): string | null {
 
 // Build the numeric portion of a format code (without currency wrap).
 // Honours `formatNumbers` (thousands grouping) and `showDecimals`
-// (fractional portion). `alwaysTwoDecimals` overrides `showDecimals=true`
-// to force two-digit fractions even when the user hasn't pinned them.
+// (fractional portion). When `showDecimals` is off, the result is
+// an integer format regardless of `alwaysTwoDecimals` — mirroring
+// the website's `formatNumber`, where the `!showDecimals` branch
+// short-circuits before the `alwaysTwoFractionDigits` check. That
+// keeps Amount and Balance reading consistently in the export.
 function numericBody(settings: Settings, alwaysTwoDecimals: boolean): string {
   const grouped = settings.formatNumbers;
-  const decimals = alwaysTwoDecimals || settings.showDecimals;
-  if (grouped && decimals) return "#,##0.00";
-  if (grouped && !decimals) return "#,##0";
-  if (!grouped && decimals) return "0.00";
-  return "0";
+  if (!settings.showDecimals) {
+    return grouped ? "#,##0" : "0";
+  }
+  if (alwaysTwoDecimals) {
+    return grouped ? "#,##0.00" : "0.00";
+  }
+  return grouped ? "#,##0.00" : "0.00";
 }
 
 // Wrap a numeric format code with the user's currency symbol. `before`
