@@ -2247,14 +2247,16 @@ export function BudgetView({
               height={24}
               className="h-6 w-6 rounded-sm"
             />
-            <span className="text-base font-bold tracking-wide text-fg-bright">
-              budget
-            </span>
-            <span
-              className="text-xs font-normal text-muted tabular-nums"
-              aria-label={`Build ${BUILD_LABEL}`}
-            >
-              {BUILD_LABEL}
+            <span className="flex flex-col items-start leading-tight md:flex-row md:items-baseline md:gap-2 md:leading-normal">
+              <span className="text-base font-bold tracking-wide text-fg-bright">
+                budget
+              </span>
+              <span
+                className="text-[0.625rem] font-normal text-muted tabular-nums md:text-xs"
+                aria-label={`Build ${BUILD_LABEL}`}
+              >
+                {BUILD_LABEL}
+              </span>
             </span>
           </button>
           <div className="ml-auto inline-flex items-center gap-2">
