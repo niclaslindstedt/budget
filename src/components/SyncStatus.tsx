@@ -1,4 +1,4 @@
-import { CloudAlert, CloudCheck, Loader, Save } from "lucide-react";
+import { CloudAlert, CloudCheck, CloudOff, Loader, Save } from "lucide-react";
 
 import { type TFunction, useT } from "../i18n";
 import type { SaveStatus } from "../storage/useUserDataStorage";
@@ -70,6 +70,13 @@ function viewFor(
       return {
         Icon: CloudAlert,
         label: t("sync.syncConflict"),
+        tone: "warn",
+        action: "open",
+      };
+    case "offline":
+      return {
+        Icon: CloudOff,
+        label: t("sync.offlineMode", { name: providerName }),
         tone: "warn",
         action: "open",
       };

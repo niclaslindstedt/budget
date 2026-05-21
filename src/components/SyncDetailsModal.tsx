@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   CloudAlert,
   CloudCheck,
+  CloudOff,
   CloudUpload,
   ExternalLink,
   type LucideIcon,
@@ -116,6 +117,13 @@ function statusView(
         tone: "warn",
         detail: t("sync.syncConflictDetail", { name: providerName }),
       };
+    case "offline":
+      return {
+        Icon: CloudOff,
+        label: t("sync.offlineMode", { name: providerName }),
+        tone: "warn",
+        detail: t("sync.offlineModeDetail", { name: providerName }),
+      };
     case "saved":
     case "idle":
       return dirty
@@ -190,9 +198,13 @@ export function SyncDetailsModal({
   const showSaveNow =
     !busy &&
     !showReconnect &&
-    (status.kind === "error" || (dirty && status.kind !== "conflict"));
+    (status.kind === "error" ||
+      status.kind === "offline" ||
+      (dirty && status.kind !== "conflict"));
   const saveLabel =
-    status.kind === "error" ? t("sync.tryAgain") : t("sync.saveNow");
+    status.kind === "error" || status.kind === "offline"
+      ? t("sync.tryAgain")
+      : t("sync.saveNow");
 
   return (
     <Modal

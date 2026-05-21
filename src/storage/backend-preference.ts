@@ -36,6 +36,15 @@ const ENCRYPTION_PREFIX = "budget.encryption.";
 // turn the auto-open off without disabling the underlying detection.
 const CLOUD_REAUTH_AUTO_OPEN_KEY = "budget.cloud.reauthAutoOpen";
 
+// Per-user opt-in: when on, cloud backends are wrapped with
+// `withCloudMirror` so a copy of the latest cloud bytes is kept in
+// localStorage and surfaced when the network is unreachable. Default
+// is off — without it the app waits for the cloud to answer before
+// the user can edit, which is the historical contract. Stored per
+// user so a multi-account device can mix offline-tolerant and
+// strictly-online accounts.
+const CLOUD_OFFLINE_PREFIX = "budget.cloud.offline.";
+
 function backendKey(userId: string): string {
   return nsKey(`${BACKEND_PREFIX}${userId}`);
 }
@@ -54,6 +63,10 @@ function gdriveTokenKey(userId: string): string {
 
 function encryptionKey(userId: string): string {
   return nsKey(`${ENCRYPTION_PREFIX}${userId}`);
+}
+
+function cloudOfflineKey(userId: string): string {
+  return nsKey(`${CLOUD_OFFLINE_PREFIX}${userId}`);
 }
 
 export function getBackend(userId: string): BackendId {
@@ -122,4 +135,20 @@ export function getCloudReauthAutoOpen(): boolean {
 
 export function setCloudReauthAutoOpen(on: boolean): void {
   writeRawStorage(on ? "on" : "off", nsKey(CLOUD_REAUTH_AUTO_OPEN_KEY));
+}
+
+// Defaults to "off" — the historical contract is that a cloud-backed
+// session waits for the cloud before letting the user edit, so users
+// have to opt in to the local-mirror fallback. Any value other than
+// "on" reads as off (covers missing keys and the legacy "off" value).
+export function getCloudOfflineMode(userId: string): boolean {
+  return readRawStorage(cloudOfflineKey(userId)) === "on";
+}
+
+export function setCloudOfflineMode(userId: string, on: boolean): void {
+  writeRawStorage(on ? "on" : "off", cloudOfflineKey(userId));
+}
+
+export function clearCloudOfflineMode(userId: string): void {
+  clearRawStorage(cloudOfflineKey(userId));
 }

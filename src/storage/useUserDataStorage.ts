@@ -32,7 +32,16 @@ export type SaveStatus =
   | { kind: "loading" }
   | { kind: "saving" }
   | { kind: "saved"; at: number }
-  | { kind: "conflict"; remote: UserData }
+  // Editing a local mirror because the cloud was unreachable. The
+  // hook keeps trying on every save so the moment the network
+  // returns we push automatically. `since` is the wall-clock ms of
+  // the load (or save) that flipped us into this state.
+  | { kind: "offline"; since: number }
+  // Local mirror and remote diverged. `local` is what this device
+  // has been editing; `remote` is the bytes currently on the cloud.
+  // The UI offers a resolution modal whose buttons call
+  // `resolveKeepLocal` / `resolveKeepRemote`.
+  | { kind: "conflict"; local: UserData; remote: UserData }
   | { kind: "error"; message: string }
   // The cloud backend rejected the request with a 401 after any silent
   // refresh has already been tried. The UI shows a Reconnect button
@@ -61,6 +70,13 @@ export type UserDataStorage<Action> = {
   // Save the current in-memory state as-is — skipping any
   // `beforeSerialize` filter and the debounce timer.
   saveNow: () => void;
+  // Discard the remote and push the local copy in its place. Only
+  // meaningful while `status.kind === "conflict"` — a no-op
+  // otherwise.
+  resolveKeepLocal: () => void;
+  // Discard the local edits and adopt the remote copy. Only
+  // meaningful while `status.kind === "conflict"`.
+  resolveKeepRemote: () => void;
 };
 
 export function useUserDataStorage<Action>(
@@ -161,10 +177,17 @@ export function useUserDataStorage<Action>(
         }
         lastSnapshot.current = next;
         setLastSavedText(next.text);
-        setStatus({ kind: "saved", at: Date.now() });
-        log.info(
-          `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
-        );
+        if (next.offline) {
+          setStatus({ kind: "offline", since: Date.now() });
+          log.info(
+            `save offline (${ms}ms) [${adapter.id}] mirroredRev=${next.revision ?? "<none>"}`,
+          );
+        } else {
+          setStatus({ kind: "saved", at: Date.now() });
+          log.info(
+            `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+          );
+        }
       } catch (err) {
         const ms = (performance.now() - start).toFixed(0);
         if (isStale()) {
@@ -175,11 +198,18 @@ export function useUserDataStorage<Action>(
           log.warn(
             `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
               err.remote.revision ?? "<none>"
-            }`,
+            } hasLocal=${Boolean(err.local)}`,
           );
           const remote = readUserDataFromText(err.remote.text);
+          // The cloud-mirror wrapper attaches `local`; bare cloud
+          // adapters don't, in which case the in-memory `data` is
+          // the freshest local view we have.
+          const local = err.local ? readUserDataFromText(err.local.text) : data;
+          // Stash the remote revision so a follow-up "keep mine"
+          // save uses the right baseRev and goes through cleanly
+          // instead of looping on the same conflict.
           lastSnapshot.current = err.remote;
-          setStatus({ kind: "conflict", remote });
+          setStatus({ kind: "conflict", local, remote });
           return;
         }
         if (err instanceof AuthError) {
@@ -194,7 +224,7 @@ export function useUserDataStorage<Action>(
         });
       }
     },
-    [adapter],
+    [adapter, data],
   );
 
   // Async load. Skipped when `loadSync` already handed us data.
@@ -241,7 +271,7 @@ export function useUserDataStorage<Action>(
         log.info(
           `load ok (${ms}ms) [${adapter.id}] ${
             snap
-              ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"}`
+              ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"} offline=${Boolean(snap.offline)}`
               : "<empty>"
           }`,
         );
@@ -250,12 +280,39 @@ export function useUserDataStorage<Action>(
         hasLoadedRef.current = true;
         setData(snap ? readUserDataFromText(snap.text) : freshUserData());
         setLastSavedText(snap?.text ?? null);
-        setStatus({ kind: "idle" });
+        if (snap?.offline) {
+          setStatus({ kind: "offline", since: Date.now() });
+        } else {
+          setStatus({ kind: "idle" });
+        }
       })
       .catch((err: unknown) => {
         const ms = (performance.now() - start).toFixed(0);
         if (cancelled) {
           log.info(`load failed (${ms}ms) [${adapter.id}] but cancelled`, err);
+          return;
+        }
+        if (err instanceof ConflictError) {
+          log.warn(
+            `load conflict (${ms}ms) [${adapter.id}] remoteRev=${
+              err.remote.revision ?? "<none>"
+            } hasLocal=${Boolean(err.local)}`,
+          );
+          const remote = readUserDataFromText(err.remote.text);
+          const localText = err.local?.text;
+          const local = localText
+            ? readUserDataFromText(localText)
+            : freshUserData();
+          lastSnapshot.current = err.remote;
+          // Seed in-memory state with the local copy so the user
+          // sees what they were editing while the modal asks them
+          // to pick a side; the alternative (seeding remote) would
+          // make "keep mine" look like it discarded their work.
+          hasLoadedRef.current = true;
+          skipNextSave.current = true;
+          setData(local);
+          setLastSavedText(localText ?? null);
+          setStatus({ kind: "conflict", local, remote });
           return;
         }
         if (err instanceof AuthError) {
@@ -317,6 +374,44 @@ export function useUserDataStorage<Action>(
     void performSave(text, () => false);
   }, [data, performSave]);
 
+  // Conflict resolution. The hook stashed `err.remote` in
+  // `lastSnapshot` when the conflict surfaced, so "keep mine" can
+  // re-issue the save with the current remote revision as baseRev —
+  // the cloud accepts it cleanly because we're explicitly saying
+  // "overwrite whatever's there now". "Keep the other" swaps
+  // in-memory state for the remote bytes and silences the next
+  // auto-save so we don't immediately push it back.
+  const resolveKeepLocal = useCallback(() => {
+    log.info("conflict resolve: keep local — pushing in-memory data");
+    if (pendingTimerRef.current !== null) {
+      window.clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
+    }
+    const text = serializeUserData(data);
+    void performSave(text, () => false);
+  }, [data, performSave]);
+
+  const resolveKeepRemote = useCallback(() => {
+    if (status.kind !== "conflict") return;
+    log.info("conflict resolve: keep remote — replacing in-memory data");
+    const { remote } = status;
+    const remoteText = serializeUserData(remote);
+    // Mirror what a successful load would have set so the
+    // surrounding effects don't double-handle the swap.
+    lastSnapshot.current = lastSnapshot.current
+      ? { ...lastSnapshot.current, text: remoteText }
+      : { text: remoteText };
+    skipNextSave.current = true;
+    setData(remote);
+    setLastSavedText(remoteText);
+    setStatus({ kind: "idle" });
+    // Tell the adapter chain that the bytes we're now showing are
+    // the authoritative ones — without this the cloud-mirror cache
+    // would still hold the unsynced local edits and the next reload
+    // would re-surface the conflict.
+    adapter.markSynced?.(lastSnapshot.current);
+  }, [status, adapter]);
+
   // Remote-change subscription. Cloud adapters call this when
   // another device pushes; local adapters typically don't supply it.
   useEffect(() => {
@@ -326,14 +421,18 @@ export function useUserDataStorage<Action>(
       log.info(
         `watch fired [${adapter.id}] bytes=${snap.text.length} rev=${
           snap.revision ?? "<none>"
-        }`,
+        } offline=${Boolean(snap.offline)}`,
       );
       lastSnapshot.current = snap;
       skipNextSave.current = true;
       hasLoadedRef.current = true;
       setData(readUserDataFromText(snap.text));
       setLastSavedText(snap.text);
-      setStatus({ kind: "idle" });
+      setStatus(
+        snap.offline
+          ? { kind: "offline", since: Date.now() }
+          : { kind: "idle" },
+      );
     });
     return () => {
       log.info(`watch unsubscribe [${adapter.id}]`);
@@ -344,5 +443,13 @@ export function useUserDataStorage<Action>(
   const currentText = useMemo(() => serializeUserData(data), [data]);
   const dirty = lastSavedText !== null && currentText !== lastSavedText;
 
-  return { data, dispatch, status, dirty, saveNow };
+  return {
+    data,
+    dispatch,
+    status,
+    dirty,
+    saveNow,
+    resolveKeepLocal,
+    resolveKeepRemote,
+  };
 }

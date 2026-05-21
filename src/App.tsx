@@ -60,6 +60,7 @@ import { MoveCopyModal } from "./components/MoveCopyModal";
 import { SaveStateButton } from "./components/SaveStateButton";
 import { SettingsModal } from "./components/SettingsModal";
 import { SheetView } from "./components/SheetView";
+import { ConflictResolutionModal } from "./components/ConflictResolutionModal";
 import { ReconnectCloudModal } from "./components/ReconnectCloudModal";
 import { SyncDetailsModal } from "./components/SyncDetailsModal";
 import { SyncStatus } from "./components/SyncStatus";
@@ -69,6 +70,7 @@ import {
   PRESET_CATEGORY_IDS,
   PRESET_ENTRY_TYPE_IDS,
   STORAGE_KEY,
+  cloudMirrorKey,
   userDataKey,
 } from "./data/constants";
 import {
@@ -143,16 +145,19 @@ import type { Snapshot, StorageAdapter } from "./storage/adapter";
 import {
   type BackendId,
   type EncryptionMode,
+  clearCloudOfflineMode,
   clearDropboxRefreshToken,
   clearDropboxToken,
   clearGdriveToken,
   getBackend,
+  getCloudOfflineMode,
   getCloudReauthAutoOpen,
   getDropboxRefreshToken,
   getDropboxToken,
   getEncryption,
   getGdriveToken,
   setBackend,
+  setCloudOfflineMode,
   setCloudReauthAutoOpen,
   setDropboxRefreshToken,
   setDropboxToken,
@@ -175,6 +180,7 @@ import {
 } from "./storage/bank-parsers";
 import { serializeUserData } from "./storage/file";
 import { createGdriveAdapter, startGdriveAuth } from "./storage/gdrive-adapter";
+import { withCloudMirror, clearCloudMirror } from "./storage/cloud-mirror";
 import { withEncryption } from "./storage/encrypting-adapter";
 import { createFolderAdapter } from "./storage/folder-adapter";
 import {
@@ -2165,6 +2171,16 @@ export function App() {
       ? "plaintext"
       : getEncryption(boot.auth.user.id);
   });
+  // Per-user, per-device opt-in for the cloud-mirror fallback. Off by
+  // default — without it a cloud-backed session waits for the cloud to
+  // answer before letting the user edit, which is the historical
+  // contract. Seeded from the same per-user key as `encryption` above
+  // so the adapter `useMemo` below sees the right wrapping on first
+  // render.
+  const [cloudOfflineMode, setCloudOfflineModeState] = useState<boolean>(() => {
+    if (boot.auth.kind !== "signed-in") return false;
+    return getCloudOfflineMode(boot.auth.user.id);
+  });
 
   // Pending cloud-link conflict resolution. Non-null while the user is
   // being asked to decide between adopting the cloud file or replacing
@@ -2196,6 +2212,7 @@ export function App() {
       dropboxRefreshTokenRef.current = null;
       setGdriveTokenState(null);
       setEncryptionState("encrypted");
+      setCloudOfflineModeState(false);
       return;
     }
     const nextBackend = getBackend(auth.user.id);
@@ -2205,14 +2222,16 @@ export function App() {
     const nextEncryption = auth.user.isDefault
       ? "plaintext"
       : getEncryption(auth.user.id);
+    const nextOffline = getCloudOfflineMode(auth.user.id);
     log.info(
-      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} hasDropboxToken=${Boolean(nextDropboxToken)} hasDropboxRefresh=${Boolean(nextRefresh)} hasGdriveToken=${Boolean(nextGdriveToken)} encryption=${nextEncryption}`,
+      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} hasDropboxToken=${Boolean(nextDropboxToken)} hasDropboxRefresh=${Boolean(nextRefresh)} hasGdriveToken=${Boolean(nextGdriveToken)} encryption=${nextEncryption} cloudOffline=${nextOffline}`,
     );
     setBackendState(nextBackend);
     setDropboxTokenState(nextDropboxToken);
     dropboxRefreshTokenRef.current = nextRefresh;
     setGdriveTokenState(nextGdriveToken);
     setEncryptionState(nextEncryption);
+    setCloudOfflineModeState(nextOffline);
   }, [auth]);
 
   // Persist the OAuth tokens and flip the active backend in one batch,
@@ -2549,6 +2568,7 @@ export function App() {
       return null;
     }
     let inner: StorageAdapter;
+    let isCloud = false;
     if (backend === "dropbox" && dropboxToken) {
       log.info(
         `adapter: building dropbox (hasRefresh=${Boolean(dropboxRefreshTokenRef.current)})`,
@@ -2566,9 +2586,11 @@ export function App() {
           setDropboxToken(userId, next);
         },
       });
+      isCloud = true;
     } else if (backend === "gdrive" && gdriveToken) {
       log.info("adapter: building gdrive");
       inner = createGdriveAdapter(gdriveToken);
+      isCloud = true;
     } else if (backend === "folder" && folderHandle) {
       log.info("adapter: building folder");
       inner = createFolderAdapter({
@@ -2600,6 +2622,20 @@ export function App() {
       // them out.
       inner = createLocalAdapter(userDataKey(userId));
     }
+    // Wrap cloud backends with the offline-mirror so a session that
+    // boots without network can still load the last-known bytes and
+    // accept edits. The wrapper sits *under* `withEncryption` so it
+    // sees and mirrors the same ciphertext the cloud holds, keeping
+    // the on-disk threat model end-to-end. Gated on the per-user
+    // `cloudOfflineMode` preference — when off, cloud sessions
+    // behave the historical way (wait for the cloud, surface errors
+    // on failure).
+    if (isCloud && cloudOfflineMode) {
+      log.info(`adapter: wrapping ${inner.id} with cloud-mirror`);
+      inner = withCloudMirror(inner, {
+        storageKey: cloudMirrorKey(userId),
+      });
+    }
     // Skip the encryption wrapper entirely when the user has opted
     // out — keeps `loadSync` available on local and writes plaintext
     // bytes to whichever inner backend is active (including the
@@ -2624,6 +2660,7 @@ export function App() {
     folderHandle,
     folderHandleLoaded,
     encryption,
+    cloudOfflineMode,
   ]);
 
   const handleConnectDropbox = useCallback(() => {
@@ -2753,6 +2790,10 @@ export function App() {
     clearDropboxToken(userId);
     clearDropboxRefreshToken(userId);
     setBackend(userId, "browser");
+    // Dropping the cloud connection invalidates the cached cloud
+    // bytes — leaving them around would let a future reconnect
+    // surface a stale conflict against the new remote.
+    clearCloudMirror(cloudMirrorKey(userId));
     setDropboxTokenState(null);
     dropboxRefreshTokenRef.current = null;
     setBackendState("browser");
@@ -2788,6 +2829,9 @@ export function App() {
     }
     clearGdriveToken(userId);
     setBackend(userId, "browser");
+    // Same as the Dropbox disconnect: drop the mirror so a future
+    // reconnect doesn't trip over a stale local copy of the cloud.
+    clearCloudMirror(cloudMirrorKey(userId));
     setGdriveTokenState(null);
     setBackendState("browser");
   }, [auth, gdriveToken, encryption]);
@@ -3068,6 +3112,27 @@ export function App() {
     [auth, backend, dropboxToken, gdriveToken, folderHandle, encryption],
   );
 
+  // Flip the per-user offline-mirror opt-in. Persisted to localStorage
+  // and reflected in React state so the adapter `useMemo` above rebuilds
+  // — turning the toggle off also drops the cached mirror bytes so the
+  // user doesn't leave a stale copy behind on a shared device.
+  const handleSetCloudOfflineMode = useCallback(
+    (on: boolean) => {
+      if (auth.kind !== "signed-in") return;
+      const userId = auth.user.id;
+      if (on) {
+        log.info("cloud-offline: enabling for user");
+        setCloudOfflineMode(userId, true);
+      } else {
+        log.info("cloud-offline: disabling for user — clearing mirror");
+        clearCloudOfflineMode(userId);
+        clearCloudMirror(cloudMirrorKey(userId));
+      }
+      setCloudOfflineModeState(on);
+    },
+    [auth],
+  );
+
   const persistRegistry = useCallback(
     (nextUsers: StoredUser[], activeUserId: string | null) => {
       saveUsersFile({ version: 1, users: nextUsers, activeUserId });
@@ -3210,6 +3275,11 @@ export function App() {
       }
       const remaining = users.filter((u) => u.id !== auth.user.id);
       clearRawStorage(userDataKey(auth.user.id));
+      // Mop up the per-user cloud mirror so a future account on the
+      // same device can't accidentally resurrect this user's bytes
+      // from a cached snapshot.
+      clearCloudMirror(cloudMirrorKey(auth.user.id));
+      clearCloudOfflineMode(auth.user.id);
       setUsers(remaining);
       persistRegistry(remaining, null);
       passwordRef.current = null;
@@ -3271,6 +3341,7 @@ export function App() {
         folderAvailable={isFolderBackendAvailable()}
         folderReconnectNeeded={folderReconnectNeeded}
         encryption={encryption}
+        cloudOfflineMode={cloudOfflineMode}
         getEncryptionPassword={() => passwordRef.current}
         currentDataRef={currentDataRef}
         onSignOut={handleSignOut}
@@ -3287,6 +3358,7 @@ export function App() {
         onDisconnectFolder={handleDisconnectFolder}
         onSelectBrowser={handleSelectBrowser}
         onSetEncryption={handleSetEncryption}
+        onSetCloudOfflineMode={handleSetCloudOfflineMode}
       />
       <CloudLinkDialog
         pending={pendingCloudLink}
@@ -3525,6 +3597,7 @@ type BudgetViewProps = {
   folderAvailable: boolean;
   folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
+  cloudOfflineMode: boolean;
   // Returns the active user's password — used by the export flow to
   // wrap downloaded files in the same envelope shape the storage
   // adapter uses.
@@ -3548,6 +3621,7 @@ type BudgetViewProps = {
   onDisconnectFolder: () => void;
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
+  onSetCloudOfflineMode: (on: boolean) => void;
 };
 
 function BudgetView({
@@ -3562,6 +3636,7 @@ function BudgetView({
   folderAvailable,
   folderReconnectNeeded,
   encryption,
+  cloudOfflineMode,
   getEncryptionPassword,
   currentDataRef,
   onSignOut,
@@ -3578,13 +3653,20 @@ function BudgetView({
   onDisconnectFolder,
   onSelectBrowser,
   onSetEncryption,
+  onSetCloudOfflineMode,
 }: BudgetViewProps) {
   const t = useT();
-  const { data, dispatch, status, dirty, saveNow } = useUserDataStorage(
-    adapter,
-    reducer,
-    { beforeSerialize: userDataWithSavableRows },
-  );
+  const {
+    data,
+    dispatch,
+    status,
+    dirty,
+    saveNow,
+    resolveKeepLocal,
+    resolveKeepRemote,
+  } = useUserDataStorage(adapter, reducer, {
+    beforeSerialize: userDataWithSavableRows,
+  });
   // Mirror in-memory data into the App-owned ref so the cloud-link
   // conflict path can upload the latest budget. Updated on every render
   // because both data changes and ref-identity changes (after a sign-
@@ -6127,6 +6209,20 @@ function BudgetView({
         onConfirm={onReconnectCloud}
         onClose={() => setReconnectCloudOpen(false)}
       />
+      <ConflictResolutionModal
+        open={status.kind === "conflict"}
+        providerName={
+          backend === "dropbox"
+            ? "Dropbox"
+            : backend === "gdrive"
+              ? "Google Drive"
+              : t("settings.storage.cloudConnect")
+        }
+        local={status.kind === "conflict" ? status.local : data}
+        remote={status.kind === "conflict" ? status.remote : data}
+        onKeepLocal={resolveKeepLocal}
+        onKeepRemote={resolveKeepRemote}
+      />
       <SettingsModal
         open={settingsOpen}
         settings={data.settings}
@@ -6137,6 +6233,7 @@ function BudgetView({
         folderAvailable={folderAvailable}
         folderReconnectNeeded={folderReconnectNeeded}
         encryption={encryption}
+        cloudOfflineMode={cloudOfflineMode}
         isGuest={isGuest}
         merchantHintCount={Object.keys(data.merchantHints).length}
         recurringDismissalCount={data.recurringDismissals.length}
@@ -6156,6 +6253,7 @@ function BudgetView({
         onDisconnectFolder={onDisconnectFolder}
         onSelectBrowser={onSelectBrowser}
         onSetEncryption={onSetEncryption}
+        onSetCloudOfflineMode={onSetCloudOfflineMode}
         cloudReauthAutoOpen={cloudReauthAutoOpen}
         onSetCloudReauthAutoOpen={handleSetCloudReauthAutoOpen}
         onClearMerchantHints={onClearMerchantHints}

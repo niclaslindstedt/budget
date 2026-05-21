@@ -115,6 +115,16 @@ export const LOGS_KEY = nsKey("budget.logs");
 // enough tail for a typical mobile debugging session.
 export const MAX_LOG_ENTRIES = 500;
 
+// Per-user, per-device mirror of the active cloud backend. Holds the
+// last bytes the cloud returned plus any offline edits that haven't
+// pushed yet, so `withCloudMirror` can serve a snapshot on a cold
+// load when the network is down. Keyed alongside the user's bucket
+// so deleting a user wipes the mirror too. Preview build sees the
+// `budget.preview.cloud-mirror.<id>` namespace.
+export function cloudMirrorKey(userId: string): string {
+  return nsKey(`budget.cloud-mirror.${userId}`);
+}
+
 // PBKDF2 parameters for the login password hash. Matches the data
 // encryption module's iterations so an attacker sees no cheaper
 // attack path; the salt is per-user, the iteration count is

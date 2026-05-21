@@ -18,6 +18,13 @@ export type Snapshot = {
   // too. The hook hands it back unchanged on the next save so the
   // adapter can refuse to overwrite a newer remote revision.
   revision?: string;
+
+  // Set by adapters that can serve cached bytes when the live
+  // backend is unreachable (see `withCloudMirror`). The hook turns
+  // a truthy value into an `offline` status so the UI can tell the
+  // user they're editing a local copy, and keeps trying to push on
+  // the next save instead of latching into a hard error.
+  offline?: boolean;
 };
 
 export type StorageAdapter = {
@@ -56,6 +63,16 @@ export type StorageAdapter = {
   // keystrokes inside a single edit gesture into one network request
   // while still feeling like "save on every change".
   readonly saveDebounceMs?: number;
+
+  // Adopt an externally-supplied snapshot as the new in-sync state
+  // without round-tripping through the network. Implemented by the
+  // `withCloudMirror` wrapper so the hook can resolve a "keep
+  // remote" conflict by stamping the local mirror with the remote
+  // bytes — without it a reload would see the unsynced local edits
+  // still in the mirror and re-surface the conflict. Adapters with
+  // no internal cache can omit it; the hook treats absence as a
+  // no-op.
+  markSynced?(snapshot: Snapshot): void;
 
   // Optional support for explicit timestamped backups, stored in a
   // sibling `backups/` folder next to the live budget file. Cloud
@@ -110,7 +127,17 @@ export type BackupOps = {
 };
 
 export class ConflictError extends Error {
-  constructor(readonly remote: Snapshot) {
+  // `local` is set by the `withCloudMirror` wrapper when an offline
+  // edit collides with another device's edit — the wrapper has the
+  // unsynced local bytes in its mirror and surfaces them alongside
+  // the remote so the resolution modal can offer "keep mine" /
+  // "keep the other" without having to dig the bytes out again. The
+  // bare cloud adapters don't set it because they only know about
+  // the remote side.
+  constructor(
+    readonly remote: Snapshot,
+    readonly local?: Snapshot,
+  ) {
     super("Remote revision moved");
     this.name = "ConflictError";
   }
