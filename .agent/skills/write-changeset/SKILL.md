@@ -35,6 +35,15 @@ feature, which would surface a non-event in the changelog).
    repo's initial commit:
 
    ```sh
+   # Fetch tags first — agent sessions sometimes start with a
+   # shallow clone that has no tags, which would silently fall
+   # through to the initial-commit branch below and classify every
+   # shipped feature as "in-flight unreleased". The SessionStart
+   # hook at .claude/hooks/session-start.sh does this on web
+   # sessions, but re-running here keeps the skill correct in any
+   # environment.
+   git fetch --tags origin >/dev/null 2>&1 || true
+
    BASELINE=$(git tag --list 'v*' --sort=-v:refname | head -1)
    if [ -n "$BASELINE" ]; then
        BASELINE=$(git rev-list -n 1 "$BASELINE")
