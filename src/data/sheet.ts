@@ -742,7 +742,8 @@ export function updateHistoryEntry(
   const idx = entries.findIndex((e) => e.id === entryId);
   if (idx < 0) return history as Record<string, HistoryEntry[]>;
   const replaced = fn(entries[idx]);
-  if (replaced === entries[idx]) return history as Record<string, HistoryEntry[]>;
+  if (replaced === entries[idx])
+    return history as Record<string, HistoryEntry[]>;
   const nextEntries = entries.slice();
   nextEntries[idx] = replaced;
   return { ...history, [accountId]: nextEntries };

@@ -1299,7 +1299,10 @@ export function reducer(state: UserData, action: Action): UserData {
     // render. The source description (raw bank text) is what we feed
     // to `recordMerchantHints` so the normalised key matches future
     // imports too.
-    const next = { ...state, sheets: appendSeriesRowsToBudget(state.sheets, action) };
+    const next = {
+      ...state,
+      sheets: appendSeriesRowsToBudget(state.sheets, action),
+    };
     // The hint must carry typeId (`recordMerchantHints` derives the
     // category through `type.categoryId`), so skip the recording when
     // the user declined to set a type. The new rows still got minted;
