@@ -7,11 +7,16 @@ import {
   createEmptyRow,
   defaultCompletedForDate,
   findColumnByType,
+  getStandardColumns,
+  mapRowsByIds,
+  mintBudgetRow,
   moveColumn,
   newId,
   propagateCellInSeries,
   rowsInSeriesFrom,
   shiftIsoToMonth,
+  updateAccountBudget,
+  updateHistoryEntry,
 } from "./sheet";
 import { nextUncoveredDate } from "./coverage";
 import { findRuleDrivenCandidates } from "./reconciliation";
@@ -459,6 +464,40 @@ function applyPatch(
   return next;
 }
 
+// Shared row-minting body for the two recurring-promote actions
+// (`promoteRecurringCandidate` and `promoteHistoryToRecurring`).
+// Both produce a series of N rows from a single (description, amount,
+// typeId, dates) tuple targeting one AccountBudget; only their hint
+// recording bookkeeping differs, which stays in the per-action body.
+function appendSeriesRowsToBudget(
+  sheets: readonly Sheet[],
+  action: {
+    sheetId: string;
+    itemId: string;
+    dates: string[];
+    description: string;
+    amount: number;
+    typeId: string | null;
+  },
+): Sheet[] {
+  const seriesId = action.dates.length > 1 ? newId() : undefined;
+  return updateAccountBudget(sheets, action.sheetId, action.itemId, (item) => {
+    const newRows: Row[] = [];
+    for (const date of action.dates) {
+      const row = mintBudgetRow(item.columns, {
+        date,
+        description: action.description,
+        amount: action.amount,
+        typeId: action.typeId,
+        seriesId,
+      });
+      if (!row) return item;
+      newRows.push(row);
+    }
+    return { ...item, rows: [...item.rows, ...newRows] };
+  });
+}
+
 function reduceAccountBudget(
   item: AccountBudget,
   action: ItemAction,
@@ -713,18 +752,16 @@ function reduceAccountBudget(
 
     case "bulkUpdate": {
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(item.columns, "date")?.id;
-      const amountColId = findColumnByType(item.columns, "amount")?.id;
+      const { dateCol, amountCol } = getStandardColumns(item.columns);
       return {
         ...item,
-        rows: item.rows.map((r) => {
-          if (!ids.has(r.id)) return r;
+        rows: mapRowsByIds(item.rows, ids, (r) => {
           const next: Row = { ...r, cells: { ...r.cells } };
-          if (action.patch.date !== undefined && dateColId) {
-            next.cells[dateColId] = action.patch.date;
+          if (action.patch.date !== undefined && dateCol) {
+            next.cells[dateCol.id] = action.patch.date;
           }
-          if (action.patch.amount !== undefined && amountColId) {
-            next.cells[amountColId] = action.patch.amount;
+          if (action.patch.amount !== undefined && amountCol) {
+            next.cells[amountCol.id] = action.patch.amount;
             // Same policy as applyPatch above: a bulk-typed literal
             // replaces any previous formula on the row.
             if (next.amountFormula !== undefined) delete next.amountFormula;
@@ -739,20 +776,19 @@ function reduceAccountBudget(
     }
 
     case "bulkShiftToMonth": {
+      const { dateCol } = getStandardColumns(item.columns);
+      if (!dateCol) return item;
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(item.columns, "date")?.id;
-      if (!dateColId) return item;
       return {
         ...item,
-        rows: item.rows.map((r) => {
-          if (!ids.has(r.id)) return r;
-          const cur = r.cells[dateColId];
+        rows: mapRowsByIds(item.rows, ids, (r) => {
+          const cur = r.cells[dateCol.id];
           if (typeof cur !== "string") return r;
           return {
             ...r,
             cells: {
               ...r.cells,
-              [dateColId]: shiftIsoToMonth(cur, action.targetMonth),
+              [dateCol.id]: shiftIsoToMonth(cur, action.targetMonth),
             },
           };
         }),
@@ -760,20 +796,20 @@ function reduceAccountBudget(
     }
 
     case "bulkCopyToMonths": {
+      const { dateCol } = getStandardColumns(item.columns);
+      if (!dateCol) return item;
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(item.columns, "date")?.id;
-      if (!dateColId) return item;
       const newRows: Row[] = [];
       for (const r of item.rows) {
         if (!ids.has(r.id)) continue;
-        const cur = r.cells[dateColId];
+        const cur = r.cells[dateCol.id];
         if (typeof cur !== "string") continue;
         for (const month of action.targetMonths) {
           // Copies are independent — drop any seriesId so they don't
           // accidentally inherit the source row's recurring group.
           newRows.push({
             id: newId(),
-            cells: { ...r.cells, [dateColId]: shiftIsoToMonth(cur, month) },
+            cells: { ...r.cells, [dateCol.id]: shiftIsoToMonth(cur, month) },
           });
         }
       }
@@ -781,25 +817,26 @@ function reduceAccountBudget(
     }
 
     case "bulkMakeRecurring": {
+      const { dateCol } = getStandardColumns(item.columns);
+      if (!dateCol) return item;
       const ids = new Set(action.rowIds);
-      const dateColId = findColumnByType(item.columns, "date")?.id;
-      if (!dateColId) return item;
       // Stamp each selected row with a fresh seriesId (preserving an
       // existing one if it already had one), then replicate it at every
       // recurrence date except its own anchor date.
-      const updated = item.rows.map((r) =>
-        ids.has(r.id) ? { ...r, seriesId: r.seriesId ?? newId() } : r,
-      );
+      const updated = mapRowsByIds(item.rows, ids, (r) => ({
+        ...r,
+        seriesId: r.seriesId ?? newId(),
+      }));
       const additions: Row[] = [];
       for (const r of updated) {
         if (!ids.has(r.id)) continue;
-        const anchorDate = r.cells[dateColId];
+        const anchorDate = r.cells[dateCol.id];
         if (typeof anchorDate !== "string") continue;
         for (const date of action.futureDates) {
           if (date === anchorDate) continue;
           const next: Row = {
             id: newId(),
-            cells: { ...r.cells, [dateColId]: date },
+            cells: { ...r.cells, [dateCol.id]: date },
             seriesId: r.seriesId,
           };
           if (r.typeId) next.typeId = r.typeId;
@@ -1082,44 +1119,40 @@ export function reducer(state: UserData, action: Action): UserData {
     // lands in the earliest one — `accountBalance` walks all budgets so
     // the displayed total still agrees regardless of where the row
     // physically sits. No-op when nothing matches.
-    let placed = false;
-    return {
-      ...state,
-      sheets: state.sheets.map((sheet) => {
-        if (placed) return sheet;
-        let touched = false;
-        const items = sheet.items.map((item) => {
-          if (placed) return item;
-          if (item.type !== "accountBudget") return item;
-          if (item.accountId !== action.accountId) return item;
-          const dateCol = findColumnByType(item.columns, "date");
-          const descCol = findColumnByType(item.columns, "description");
-          const amountCol = findColumnByType(item.columns, "amount");
-          if (!dateCol || !descCol || !amountCol) return item;
-          const cells: Record<string, CellValue> = {
-            [dateCol.id]: action.date,
-            // The reducer is pure — no useT() available here. The balance-
-            // correction row gets a description in whichever language the
-            // user's chosen at the moment they correct the balance.
-            // The state already carries it; pick from settings.
-            [descCol.id]:
-              state.settings.language === "sv"
-                ? "Saldokorrigering"
-                : "Balance correction",
-            [amountCol.id]: action.amount,
-          };
-          const newRow: Row = {
-            id: newId(),
-            cells,
-            isCorrection: true,
-          };
-          placed = true;
-          touched = true;
-          return { ...item, rows: [...item.rows, newRow] };
+    let target: { sheetId: string; itemId: string } | null = null;
+    outer: for (const sheet of state.sheets) {
+      for (const item of sheet.items) {
+        if (item.type !== "accountBudget") continue;
+        if (item.accountId !== action.accountId) continue;
+        target = { sheetId: sheet.id, itemId: item.id };
+        break outer;
+      }
+    }
+    if (!target) return state;
+    // The reducer is pure — no useT() available here. The balance-
+    // correction row gets a description in whichever language the
+    // user's chosen at the moment they correct the balance.
+    const description =
+      state.settings.language === "sv"
+        ? "Saldokorrigering"
+        : "Balance correction";
+    const sheets = updateAccountBudget(
+      state.sheets,
+      target.sheetId,
+      target.itemId,
+      (item) => {
+        const row = mintBudgetRow(item.columns, {
+          date: action.date,
+          description,
+          amount: action.amount,
         });
-        return touched ? { ...sheet, items } : sheet;
-      }),
-    };
+        if (!row) return item;
+        row.isCorrection = true;
+        return { ...item, rows: [...item.rows, row] };
+      },
+    );
+    if (sheets === state.sheets) return state;
+    return { ...state, sheets };
   }
   if (action.type === "createTransaction") {
     const next = {
@@ -1197,20 +1230,14 @@ export function reducer(state: UserData, action: Action): UserData {
     const next = {
       ...state,
       transactions: [...state.transactions, action.transaction],
-      sheets: state.sheets.map((sheet) =>
-        sheet.id === action.sheetId
-          ? {
-              ...sheet,
-              items: sheet.items.map((item) =>
-                item.id === action.itemId && item.type === "accountBudget"
-                  ? {
-                      ...item,
-                      rows: item.rows.filter((r) => r.id !== action.rowId),
-                    }
-                  : item,
-              ),
-            }
-          : sheet,
+      sheets: updateAccountBudget(
+        state.sheets,
+        action.sheetId,
+        action.itemId,
+        (item) => ({
+          ...item,
+          rows: item.rows.filter((r) => r.id !== action.rowId),
+        }),
       ),
     };
     return recordMerchantHints(
@@ -1233,34 +1260,7 @@ export function reducer(state: UserData, action: Action): UserData {
     // pushed onto `recurringDismissals` after row creation so the
     // panel drops it on the next render and future imports won't
     // resurface a series the user has already promoted.
-    const seriesId = action.dates.length > 1 ? newId() : undefined;
-    const nextSheets = state.sheets.map((sheet) => {
-      if (sheet.id !== action.sheetId) return sheet;
-      return {
-        ...sheet,
-        items: sheet.items.map((item) => {
-          if (item.id !== action.itemId || item.type !== "accountBudget") {
-            return item;
-          }
-          const dateCol = findColumnByType(item.columns, "date");
-          const descCol = findColumnByType(item.columns, "description");
-          const amountCol = findColumnByType(item.columns, "amount");
-          if (!dateCol || !descCol || !amountCol) return item;
-          const newRows: Row[] = action.dates.map((date) => {
-            const cells: Record<string, CellValue> = {
-              [dateCol.id]: date,
-              [descCol.id]: action.description,
-              [amountCol.id]: action.amount,
-            };
-            const row: Row = { id: newId(), cells };
-            if (seriesId) row.seriesId = seriesId;
-            if (action.typeId) row.typeId = action.typeId;
-            return row;
-          });
-          return { ...item, rows: [...item.rows, ...newRows] };
-        }),
-      };
-    });
+    const nextSheets = appendSeriesRowsToBudget(state.sheets, action);
     const dismissals = state.recurringDismissals.includes(action.key)
       ? state.recurringDismissals
       : [...state.recurringDismissals, action.key];
@@ -1299,35 +1299,7 @@ export function reducer(state: UserData, action: Action): UserData {
     // render. The source description (raw bank text) is what we feed
     // to `recordMerchantHints` so the normalised key matches future
     // imports too.
-    const seriesId = action.dates.length > 1 ? newId() : undefined;
-    const nextSheets = state.sheets.map((sheet) => {
-      if (sheet.id !== action.sheetId) return sheet;
-      return {
-        ...sheet,
-        items: sheet.items.map((item) => {
-          if (item.id !== action.itemId || item.type !== "accountBudget") {
-            return item;
-          }
-          const dateCol = findColumnByType(item.columns, "date");
-          const descCol = findColumnByType(item.columns, "description");
-          const amountCol = findColumnByType(item.columns, "amount");
-          if (!dateCol || !descCol || !amountCol) return item;
-          const newRows: Row[] = action.dates.map((date) => {
-            const cells: Record<string, CellValue> = {
-              [dateCol.id]: date,
-              [descCol.id]: action.description,
-              [amountCol.id]: action.amount,
-            };
-            const row: Row = { id: newId(), cells };
-            if (seriesId) row.seriesId = seriesId;
-            if (action.typeId) row.typeId = action.typeId;
-            return row;
-          });
-          return { ...item, rows: [...item.rows, ...newRows] };
-        }),
-      };
-    });
-    const next = { ...state, sheets: nextSheets };
+    const next = { ...state, sheets: appendSeriesRowsToBudget(state.sheets, action) };
     // The hint must carry typeId (`recordMerchantHints` derives the
     // category through `type.categoryId`), so skip the recording when
     // the user declined to set a type. The new rows still got minted;
@@ -1448,63 +1420,61 @@ export function reducer(state: UserData, action: Action): UserData {
     return { ...state, matchRules: next };
   }
   if (action.type === "updateHistoryEntry") {
-    const entries = state.history[action.accountId];
-    if (!entries) return state;
-    const idx = entries.findIndex((e) => e.id === action.entryId);
-    if (idx < 0) return state;
-    const prev = entries[idx];
-    const next: HistoryEntry = { ...prev };
-    if (action.patch.userDescription !== undefined) {
-      const trimmed = action.patch.userDescription.trim();
-      if (trimmed === "") delete next.userDescription;
-      else next.userDescription = trimmed;
-    }
-    if (action.patch.userTypeId !== undefined) {
-      if (action.patch.userTypeId === null) delete next.userTypeId;
-      else next.userTypeId = action.patch.userTypeId;
-    }
-    if (action.patch.isTransfer !== undefined) {
-      // Only persist `true` — absent means "not a transfer".
-      if (action.patch.isTransfer) next.isTransfer = true;
-      else delete next.isTransfer;
-    }
-    // Bail if the patch is a no-op so React skips a wasted render.
-    if (
-      next.userDescription === prev.userDescription &&
-      next.userTypeId === prev.userTypeId &&
-      next.isTransfer === prev.isTransfer
-    ) {
-      return state;
-    }
-    const nextEntries = entries.slice();
-    nextEntries[idx] = next;
-    return {
-      ...state,
-      history: { ...state.history, [action.accountId]: nextEntries },
-    };
+    const history = updateHistoryEntry(
+      state.history,
+      action.accountId,
+      action.entryId,
+      (prev) => {
+        const next: HistoryEntry = { ...prev };
+        if (action.patch.userDescription !== undefined) {
+          const trimmed = action.patch.userDescription.trim();
+          if (trimmed === "") delete next.userDescription;
+          else next.userDescription = trimmed;
+        }
+        if (action.patch.userTypeId !== undefined) {
+          if (action.patch.userTypeId === null) delete next.userTypeId;
+          else next.userTypeId = action.patch.userTypeId;
+        }
+        if (action.patch.isTransfer !== undefined) {
+          // Only persist `true` — absent means "not a transfer".
+          if (action.patch.isTransfer) next.isTransfer = true;
+          else delete next.isTransfer;
+        }
+        // Bail if the patch is a no-op so React skips a wasted render.
+        if (
+          next.userDescription === prev.userDescription &&
+          next.userTypeId === prev.userTypeId &&
+          next.isTransfer === prev.isTransfer
+        ) {
+          return prev;
+        }
+        return next;
+      },
+    );
+    if (history === state.history) return state;
+    return { ...state, history };
   }
   if (action.type === "splitHistoryEntry") {
-    const entries = state.history[action.accountId];
-    if (!entries) return state;
-    const idx = entries.findIndex((e) => e.id === action.entryId);
-    if (idx < 0) return state;
-    const prev = entries[idx];
-    // An empty splits array means "clear the split" — drop the field
-    // so the synthesizer falls back to the single-row path.
-    const next: HistoryEntry = { ...prev };
-    if (action.splits.length === 0) {
-      delete next.splits;
-    } else {
-      // Defensive copy so the reducer never holds a reference to the
-      // dispatcher's payload.
-      next.splits = action.splits.map((s) => ({ ...s }));
-    }
-    const nextEntries = entries.slice();
-    nextEntries[idx] = next;
-    return {
-      ...state,
-      history: { ...state.history, [action.accountId]: nextEntries },
-    };
+    const history = updateHistoryEntry(
+      state.history,
+      action.accountId,
+      action.entryId,
+      (prev) => {
+        const next: HistoryEntry = { ...prev };
+        // An empty splits array means "clear the split" — drop the field
+        // so the synthesizer falls back to the single-row path.
+        if (action.splits.length === 0) {
+          delete next.splits;
+        } else {
+          // Defensive copy so the reducer never holds a reference to the
+          // dispatcher's payload.
+          next.splits = action.splits.map((s) => ({ ...s }));
+        }
+        return next;
+      },
+    );
+    if (history === state.history) return state;
+    return { ...state, history };
   }
   if (action.type === "applyReconciliation") {
     const mergedSet = new Set(action.mergedRowIds);
@@ -1606,17 +1576,11 @@ export function reducer(state: UserData, action: Action): UserData {
   if (action.type === "setItemAccount") {
     return {
       ...state,
-      sheets: state.sheets.map((sheet) =>
-        sheet.id === action.sheetId
-          ? {
-              ...sheet,
-              items: sheet.items.map((item) =>
-                item.id === action.itemId && item.type === "accountBudget"
-                  ? { ...item, accountId: action.accountId }
-                  : item,
-              ),
-            }
-          : sheet,
+      sheets: updateAccountBudget(
+        state.sheets,
+        action.sheetId,
+        action.itemId,
+        (item) => ({ ...item, accountId: action.accountId }),
       ),
     };
   }
@@ -1661,12 +1625,11 @@ export function reducer(state: UserData, action: Action): UserData {
   // budget contributes recordings; sheets the action didn't reach are
   // referentially identical and short-circuit the diff.
   const recordings: HintRecording[] = [];
-  const sheets = state.sheets.map((sheet) => {
-    if (sheet.id !== action.sheetId) return sheet;
-    const items = sheet.items.map((item) => {
-      if (item.id !== action.itemId || item.type !== "accountBudget") {
-        return item;
-      }
+  const sheets = updateAccountBudget(
+    state.sheets,
+    action.sheetId,
+    action.itemId,
+    (item) => {
       const next = reduceAccountBudget(item, effectiveAction);
       if (next === item) return item;
       recordings.push(...hintRecordingsFromBudget(item, next));
@@ -1699,9 +1662,8 @@ export function reducer(state: UserData, action: Action): UserData {
         }
       }
       return next;
-    });
-    return { ...sheet, items };
-  });
-  const next = { ...state, sheets };
+    },
+  );
+  const next = sheets === state.sheets ? state : { ...state, sheets };
   return recordMerchantHints(next, recordings, Date.now());
 }

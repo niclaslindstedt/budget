@@ -9,9 +9,12 @@ import {
   findColumnByType,
   fiscalMonthSeedIso,
   getMonthKey,
+  getStandardColumns,
   groupRowsByMonth,
   isRowHalfDone,
   isRowSavable,
+  mapRowsByIds,
+  mintBudgetRow,
   moveColumn,
   previousMonthKey,
   propagateCellInSeries,
@@ -20,15 +23,19 @@ import {
   sortMonthKeys,
   sortRowsByDate,
   synthesizeHistoryRow,
+  updateAccountBudget,
+  updateHistoryEntry,
   userDataHasHalfDoneRows,
   userDataWithSavableRows,
 } from "../src/data/sheet";
 import type {
   AccountBudget,
+  AccountsView,
   HistoryEntry,
   MatchRule,
   MerchantHint,
   Row,
+  Sheet,
   UserData,
 } from "../src/data/types";
 
@@ -629,5 +636,215 @@ describe("defaultCompletedForDate", () => {
     expect(defaultCompletedForDate(null, today)).toBe(false);
     expect(defaultCompletedForDate(undefined, today)).toBe(false);
     expect(defaultCompletedForDate("", today)).toBe(false);
+  });
+});
+
+describe("getStandardColumns", () => {
+  it("returns the date / description / amount / completed columns from a default budget", () => {
+    const item = createDefaultAccountBudget();
+    const { dateCol, descCol, amountCol, completedCol } = getStandardColumns(
+      item.columns,
+    );
+    expect(dateCol?.type).toBe("date");
+    expect(descCol?.type).toBe("description");
+    expect(amountCol?.type).toBe("amount");
+    expect(completedCol?.type).toBe("completed");
+  });
+
+  it("returns undefined for any missing column type rather than throwing", () => {
+    // A column set with only `date` exercises the partial-presence case
+    // that future migrations might create.
+    const cols = [{ id: "d", type: "date" as const, label: "Date" }];
+    const std = getStandardColumns(cols);
+    expect(std.dateCol).toBeDefined();
+    expect(std.descCol).toBeUndefined();
+    expect(std.amountCol).toBeUndefined();
+    expect(std.completedCol).toBeUndefined();
+  });
+});
+
+describe("updateAccountBudget", () => {
+  function makeSheets(accountId: string | null = null): Sheet[] {
+    const a = createDefaultSheet("A", accountId);
+    const b = createDefaultSheet("B", accountId);
+    return [a, b];
+  }
+
+  it("rebuilds only the matching sheet + item and leaves siblings referentially identical", () => {
+    const sheets = makeSheets();
+    const target = sheets[1];
+    const item = target.items[0] as AccountBudget;
+    const next = updateAccountBudget(sheets, target.id, item.id, (i) => ({
+      ...i,
+      accountId: "acct-x",
+    }));
+    expect(next).not.toBe(sheets);
+    expect(next[0]).toBe(sheets[0]);
+    expect(next[1]).not.toBe(sheets[1]);
+    const nextItem = next[1].items[0] as AccountBudget;
+    expect(nextItem.accountId).toBe("acct-x");
+  });
+
+  it("returns the same sheets reference when no sheet matches `sheetId`", () => {
+    const sheets = makeSheets();
+    const result = updateAccountBudget(sheets, "nope", "nope", (i) => i);
+    expect(result).toBe(sheets);
+  });
+
+  it("returns the same sheets reference when no item in the sheet matches `itemId`", () => {
+    const sheets = makeSheets();
+    const result = updateAccountBudget(sheets, sheets[0].id, "nope", () => {
+      throw new Error("fn should not be called");
+    });
+    expect(result).toBe(sheets);
+  });
+
+  it("skips items whose type !== 'accountBudget' even when the id matches", () => {
+    // Hand-build a sheet whose single item is an AccountsView with the
+    // same id we'll target — the helper must refuse to dispatch `fn`
+    // because the type doesn't match.
+    const view: AccountsView = { id: "shared-id", type: "accountsView" };
+    const sheet: Sheet = {
+      id: "sh",
+      name: "x",
+      type: "accounts",
+      glyph: "circle",
+      color: "#fff",
+      description: "",
+      items: [view],
+    };
+    const result = updateAccountBudget([sheet], "sh", "shared-id", () => {
+      throw new Error("fn should not be called");
+    });
+    expect(result).toEqual([sheet]);
+  });
+
+  it("returns the same sheets reference when `fn` returns the same item", () => {
+    const sheets = makeSheets();
+    const item = sheets[0].items[0] as AccountBudget;
+    const result = updateAccountBudget(sheets, sheets[0].id, item.id, (i) => i);
+    expect(result).toBe(sheets);
+  });
+});
+
+describe("mapRowsByIds", () => {
+  it("returns the same rows reference when the id set is empty", () => {
+    const rows: Row[] = [{ id: "r1", cells: {} }];
+    const result = mapRowsByIds(rows, new Set(), () => {
+      throw new Error("transform should not run");
+    });
+    expect(result).toBe(rows);
+  });
+
+  it("only calls the transform on matching ids", () => {
+    const rows: Row[] = [
+      { id: "r1", cells: { x: 1 } },
+      { id: "r2", cells: { x: 2 } },
+      { id: "r3", cells: { x: 3 } },
+    ];
+    const called: string[] = [];
+    const result = mapRowsByIds(rows, new Set(["r1", "r3"]), (r) => {
+      called.push(r.id);
+      return { ...r, cells: { x: 99 } };
+    });
+    expect(called.sort()).toEqual(["r1", "r3"]);
+    expect(result[0].cells.x).toBe(99);
+    expect(result[1]).toBe(rows[1]);
+    expect(result[2].cells.x).toBe(99);
+  });
+});
+
+describe("updateHistoryEntry", () => {
+  function makeEntry(id: string, desc: string): HistoryEntry {
+    return {
+      id,
+      date: "2026-05-01",
+      description: desc,
+      amount: -10,
+      importedAt: 0,
+    };
+  }
+
+  it("rebuilds only the matching entries array and leaves siblings referentially identical", () => {
+    const a = makeEntry("a", "alpha");
+    const b = makeEntry("b", "bravo");
+    const history = { acct1: [a, b], acct2: [makeEntry("c", "charlie")] };
+    const next = updateHistoryEntry(history, "acct1", "b", (e) => ({
+      ...e,
+      userDescription: "Bravo",
+    }));
+    expect(next).not.toBe(history);
+    expect(next.acct2).toBe(history.acct2);
+    expect(next.acct1).not.toBe(history.acct1);
+    expect(next.acct1[0]).toBe(a);
+    expect(next.acct1[1].userDescription).toBe("Bravo");
+  });
+
+  it("returns the same history reference when the account has no entries", () => {
+    const history: Record<string, HistoryEntry[]> = {};
+    const result = updateHistoryEntry(history, "missing", "x", () => {
+      throw new Error("fn should not be called");
+    });
+    expect(result).toBe(history);
+  });
+
+  it("returns the same history reference when the entry id is unknown", () => {
+    const history = { acct1: [makeEntry("a", "alpha")] };
+    const result = updateHistoryEntry(history, "acct1", "missing", () => {
+      throw new Error("fn should not be called");
+    });
+    expect(result).toBe(history);
+  });
+
+  it("returns the same history reference when `fn` returns the same entry", () => {
+    const a = makeEntry("a", "alpha");
+    const history = { acct1: [a] };
+    const result = updateHistoryEntry(history, "acct1", "a", (e) => e);
+    expect(result).toBe(history);
+  });
+});
+
+describe("mintBudgetRow", () => {
+  it("populates date / description / amount cells and tags series + type", () => {
+    const item = createDefaultAccountBudget();
+    const row = mintBudgetRow(item.columns, {
+      date: "2026-05-16",
+      description: "Spotify",
+      amount: -149,
+      typeId: "type-x",
+      seriesId: "ser-x",
+    });
+    expect(row).not.toBeNull();
+    const dateCol = findColumnByType(item.columns, "date");
+    const descCol = findColumnByType(item.columns, "description");
+    const amountCol = findColumnByType(item.columns, "amount");
+    expect(row!.cells[dateCol!.id]).toBe("2026-05-16");
+    expect(row!.cells[descCol!.id]).toBe("Spotify");
+    expect(row!.cells[amountCol!.id]).toBe(-149);
+    expect(row!.seriesId).toBe("ser-x");
+    expect(row!.typeId).toBe("type-x");
+  });
+
+  it("omits seriesId and typeId when they're not provided", () => {
+    const item = createDefaultAccountBudget();
+    const row = mintBudgetRow(item.columns, {
+      date: "2026-05-16",
+      description: "Spotify",
+      amount: -149,
+    });
+    expect(row!.seriesId).toBeUndefined();
+    expect(row!.typeId).toBeUndefined();
+  });
+
+  it("returns null when any of date / description / amount is missing", () => {
+    // A column set missing `amount` exercises the guard so callers can
+    // bail without re-implementing the validation.
+    const cols = [
+      { id: "d", type: "date" as const, label: "Date" },
+      { id: "desc", type: "description" as const, label: "Description" },
+    ];
+    expect(
+      mintBudgetRow(cols, { date: "2026-05-16", description: "x", amount: 1 }),
+    ).toBeNull();
   });
 });

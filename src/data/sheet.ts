@@ -654,6 +654,128 @@ export function getLastSeriesDate(
   return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
 }
 
+// Standard column trio every AccountBudget surface relies on:
+// date / description / amount, plus the optional completed column.
+// Returning the columns instead of just their ids lets callers decide
+// what to do when one is missing — a row-minting handler bails, a
+// formatter that only needs `dateCol.id` can use optional chaining.
+// Centralised here so a future migration that renames or splits one
+// of these column types only touches this helper.
+export type StandardColumns = {
+  dateCol: Column | undefined;
+  descCol: Column | undefined;
+  amountCol: Column | undefined;
+  completedCol: Column | undefined;
+};
+export function getStandardColumns(
+  columns: readonly Column[],
+): StandardColumns {
+  return {
+    dateCol: findColumnByType(columns, "date"),
+    descCol: findColumnByType(columns, "description"),
+    amountCol: findColumnByType(columns, "amount"),
+    completedCol: findColumnByType(columns, "completed"),
+  };
+}
+
+// Patch one AccountBudget inside `sheets` by `(sheetId, itemId)`.
+// Returns the same `sheets` reference when no sheet matches, the item
+// doesn't exist, the item isn't an AccountBudget, or `fn` returns the
+// same item reference — the referential identity preservation lets
+// callers detect "nothing changed" by comparing `next === sheets`.
+//
+// Replaces the hand-rolled `sheets.map(s => s.id === ? ... : s)` +
+// `items.map(i => i.id === && i.type === "accountBudget" ? ... : i)`
+// boilerplate that every item-targeting action used to inline.
+export function updateAccountBudget(
+  sheets: readonly Sheet[],
+  sheetId: string,
+  itemId: string,
+  fn: (item: AccountBudget) => AccountBudget,
+): Sheet[] {
+  let changed = false;
+  const next = sheets.map((sheet) => {
+    if (sheet.id !== sheetId) return sheet;
+    let itemChanged = false;
+    const items = sheet.items.map((item) => {
+      if (item.id !== itemId || item.type !== "accountBudget") return item;
+      const replaced = fn(item);
+      if (replaced === item) return item;
+      itemChanged = true;
+      return replaced;
+    });
+    if (!itemChanged) return sheet;
+    changed = true;
+    return { ...sheet, items };
+  });
+  return changed ? next : (sheets as Sheet[]);
+}
+
+// `rows.map(r => ids.has(r.id) ? transform(r) : r)` with a short name.
+// The bulk action handlers all share this shape and used to spell it
+// out inline, which obscured that they were doing the same operation
+// with different transforms. Returns the same `rows` reference when
+// `ids` is empty so callers can skip an enclosing spread.
+export function mapRowsByIds(
+  rows: readonly Row[],
+  ids: ReadonlySet<string>,
+  transform: (row: Row) => Row,
+): Row[] {
+  if (ids.size === 0) return rows as Row[];
+  return rows.map((r) => (ids.has(r.id) ? transform(r) : r));
+}
+
+// Patch one entry inside `history[accountId]` by `entryId`. Mirrors
+// `updateAccountBudget`: same identity-preserving behaviour, same
+// "return the same map reference when nothing changed" contract.
+// `fn` returns the same entry reference to signal "no change", and the
+// helper short-circuits the whole map without rebuilding the account's
+// entries array.
+export function updateHistoryEntry(
+  history: Readonly<Record<string, HistoryEntry[]>>,
+  accountId: string,
+  entryId: string,
+  fn: (entry: HistoryEntry) => HistoryEntry,
+): Record<string, HistoryEntry[]> {
+  const entries = history[accountId];
+  if (!entries) return history as Record<string, HistoryEntry[]>;
+  const idx = entries.findIndex((e) => e.id === entryId);
+  if (idx < 0) return history as Record<string, HistoryEntry[]>;
+  const replaced = fn(entries[idx]);
+  if (replaced === entries[idx]) return history as Record<string, HistoryEntry[]>;
+  const nextEntries = entries.slice();
+  nextEntries[idx] = replaced;
+  return { ...history, [accountId]: nextEntries };
+}
+
+// Mint a budget Row carrying the standard (date, description, amount)
+// cell trio, optionally tagged with a `seriesId` / `typeId`. Returns
+// `null` when any of the three required columns is missing so the
+// caller can bail (`return item` from its sheet-mapper) without
+// re-implementing the validation.
+export function mintBudgetRow(
+  columns: readonly Column[],
+  values: {
+    date: string;
+    description: string;
+    amount: number;
+    typeId?: string | null;
+    seriesId?: string;
+  },
+): Row | null {
+  const { dateCol, descCol, amountCol } = getStandardColumns(columns);
+  if (!dateCol || !descCol || !amountCol) return null;
+  const cells: Record<string, CellValue> = {
+    [dateCol.id]: values.date,
+    [descCol.id]: values.description,
+    [amountCol.id]: values.amount,
+  };
+  const row: Row = { id: newId(), cells };
+  if (values.seriesId) row.seriesId = values.seriesId;
+  if (values.typeId) row.typeId = values.typeId;
+  return row;
+}
+
 // Set `cellColumnId` to `value` on the anchor and every later sibling in
 // the same series, optionally clamped by `untilIso`. Returns `rows`
 // unchanged when the anchor is not part of a series.
