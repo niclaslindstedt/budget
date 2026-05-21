@@ -130,7 +130,7 @@ export function HistoryModal({
         title={t("history.titleAccount", { name: account?.name ?? "" })}
         onClose={onCancel}
       />
-      <Modal.Body className="px-0 py-0 overflow-x-hidden">
+      <Modal.Body noPadding className="overflow-x-hidden">
         {sortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("history.noEntries")}
@@ -145,7 +145,13 @@ export function HistoryModal({
                 <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
               )}
             </colgroup>
-            <thead className="sticky top-0 z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted">
+            {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
+                where scrolled rows would otherwise bleed through above the
+                sticky band. Mirrors the `.sheet-table > thead` trick. */}
+            <thead
+              className="sticky z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted"
+              style={{ top: "-1px" }}
+            >
               <tr className="border-b border-line">
                 <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
                   {t("history.date")}

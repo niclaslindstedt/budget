@@ -234,12 +234,22 @@ function Header({ title, onClose }: HeaderProps) {
 type BodyProps = {
   children: React.ReactNode;
   className?: string;
+  // Drop the default `px-3 py-3 sm:px-4 sm:py-4` so callers that own
+  // their own padding (a flush table with a sticky `<thead>`, say) can
+  // start their content at y=0 of the scroll container. Tailwind sorts
+  // utilities by value in its emitted CSS, so a `px-0 py-0` passed via
+  // `className` would lose the cascade to the defaults above — this
+  // prop removes them at the source.
+  noPadding?: boolean;
 };
 
-function Body({ children, className = "" }: BodyProps) {
+function Body({ children, className = "", noPadding = false }: BodyProps) {
+  const paddingClass = noPadding ? "" : "px-3 py-3 sm:px-4 sm:py-4";
   return (
     <div
-      className={`flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4 ${className}`.trim()}
+      className={`flex-1 overflow-y-auto overflow-x-hidden ${paddingClass} ${className}`
+        .replace(/\s+/g, " ")
+        .trim()}
     >
       {children}
     </div>
