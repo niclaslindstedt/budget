@@ -533,7 +533,7 @@ body {
       transition: transform 200ms ease;
     }
     .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
-      transform: translateX(-160px);
+      transform: translateX(-192px);
       background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
     .sheet-table > thead > tr > .action-cell,
@@ -542,7 +542,13 @@ body {
       top: 0;
       right: 0;
       bottom: 0;
-      width: 160px;
+      /* Width must fit the maximum visible button count (6 on a regular
+         budget row: repeat, transfer, transfer-flag, split, edit, delete).
+         Each `action-btn` has `p-2` padding and a 16px icon, giving a
+         32px min-content width, so the container needs 6 × 32 = 192px.
+         At 160px the rightmost button (Trash) overflowed and was clipped
+         by the row's `overflow: hidden`. */
+      width: 192px;
       transform: translateX(100%);
       transition: transform 200ms ease;
       background: var(--page-bg);

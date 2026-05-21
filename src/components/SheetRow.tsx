@@ -561,7 +561,11 @@ function SheetRowImpl({
               type="button"
               className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
               aria-label={tr("cell.deleteRow")}
-              onClick={() => onDeleteRequest(row)}
+              title={tr("cell.deleteRow")}
+              onClick={() => {
+                setSwiped(false);
+                onDeleteRequest(row);
+              }}
             >
               <Trash2 size={16} aria-hidden focusable={false} />
             </button>
