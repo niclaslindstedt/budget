@@ -49,7 +49,7 @@ type Props = {
   // via `onToggleTransferAnchor`.
   hideTransfers: boolean;
   // Anchor rows the user has expanded — their immediately preceding
-  // hidden transfers render inline beneath the anchor. Lifted into
+  // hidden transfers render inline above the anchor. Lifted into
   // SheetView so a future "collapse all on sheet switch" stays a
   // single source of truth; MonthTable just reads-and-renders.
   expandedTransferAnchors: ReadonlySet<string>;
@@ -304,7 +304,7 @@ function MonthTableImpl({
                years of history are revealed via "Show more". */}
             {!collapsed &&
               rows.map((row) => {
-                // Skip hidden transfers — they're rendered inline under
+                // Skip hidden transfers — they're rendered inline above
                 // their anchor when the anchor's expand toggle is on.
                 if (hideTransfers && !row.isCorrection && isTransferRow(row)) {
                   return null;
@@ -330,35 +330,6 @@ function MonthTableImpl({
                   expandedTransferAnchors.has(row.id);
                 return (
                   <Fragment key={row.id}>
-                    <SheetRow
-                      row={row}
-                      columns={columns}
-                      balances={balances}
-                      types={types}
-                      categories={categories}
-                      typeUsageById={typeUsageById}
-                      onCreateType={onCreateType}
-                      settings={settings}
-                      selectMode={selectMode}
-                      selected={selectedIds.has(row.id)}
-                      canTransfer={canTransfer}
-                      hiddenTransferCount={hiddenRun?.length ?? 0}
-                      transferExpanded={expanded}
-                      onToggleTransferAnchor={() =>
-                        onToggleTransferAnchor(row.id)
-                      }
-                      onUpdateCell={onUpdateCell}
-                      onCommitCell={onCommitCell}
-                      onDeleteRequest={onDeleteRequest}
-                      onEditRequest={onEditRequest}
-                      onEditRowRequest={onEditRowRequest}
-                      onSplitRequest={onSplitRequest}
-                      onTransactionRequest={onTransactionRequest}
-                      onToggleRowTransfer={onToggleRowTransfer}
-                      onMatchRuleRequest={onMatchRuleRequest}
-                      onEditHistoryRequest={onEditHistoryRequest}
-                      onToggleSelect={onToggleSelect}
-                    />
                     {expanded &&
                       hiddenRun !== undefined &&
                       hiddenRun.map((hidden) => (
@@ -389,6 +360,35 @@ function MonthTableImpl({
                           onToggleSelect={onToggleSelect}
                         />
                       ))}
+                    <SheetRow
+                      row={row}
+                      columns={columns}
+                      balances={balances}
+                      types={types}
+                      categories={categories}
+                      typeUsageById={typeUsageById}
+                      onCreateType={onCreateType}
+                      settings={settings}
+                      selectMode={selectMode}
+                      selected={selectedIds.has(row.id)}
+                      canTransfer={canTransfer}
+                      hiddenTransferCount={hiddenRun?.length ?? 0}
+                      transferExpanded={expanded}
+                      onToggleTransferAnchor={() =>
+                        onToggleTransferAnchor(row.id)
+                      }
+                      onUpdateCell={onUpdateCell}
+                      onCommitCell={onCommitCell}
+                      onDeleteRequest={onDeleteRequest}
+                      onEditRequest={onEditRequest}
+                      onEditRowRequest={onEditRowRequest}
+                      onSplitRequest={onSplitRequest}
+                      onTransactionRequest={onTransactionRequest}
+                      onToggleRowTransfer={onToggleRowTransfer}
+                      onMatchRuleRequest={onMatchRuleRequest}
+                      onEditHistoryRequest={onEditHistoryRequest}
+                      onToggleSelect={onToggleSelect}
+                    />
                   </Fragment>
                 );
               })}

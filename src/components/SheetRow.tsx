@@ -44,12 +44,12 @@ type Props = {
   // running balance step at this row). When > 0, the balance cell
   // renders a small ↔ icon button; clicking it fires
   // `onToggleTransferAnchor` so MonthTable reveals the hidden run
-  // inline beneath this row. 0 (the default) means no icon.
+  // inline above this row. 0 (the default) means no icon.
   hiddenTransferCount?: number;
   transferExpanded?: boolean;
   onToggleTransferAnchor?: () => void;
   // True when this row is itself a hidden transfer being revealed
-  // inline under its anchor. The row renders with a muted background
+  // inline above its anchor. The row renders with a muted background
   // so the user can tell at a glance it's not part of the normal
   // visible stream. No other behaviour changes — the action buttons
   // remain available so the user can unmark the transfer in place.
@@ -496,19 +496,6 @@ function SheetRowImpl({
               )}
             </button>
           )}
-          {!isTransaction && !isHistory && (
-            <button
-              type="button"
-              className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={tr("cell.editRow")}
-              onClick={() => {
-                setSwiped(false);
-                onEditRowRequest(row);
-              }}
-            >
-              <Pencil size={16} aria-hidden focusable={false} />
-            </button>
-          )}
           {!isTransaction && (
             <button
               type="button"
@@ -521,6 +508,19 @@ function SheetRowImpl({
               }}
             >
               <Scissors size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {!isTransaction && !isHistory && (
+            <button
+              type="button"
+              className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={tr("cell.editRow")}
+              onClick={() => {
+                setSwiped(false);
+                onEditRowRequest(row);
+              }}
+            >
+              <Pencil size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isTransaction && !isHistory && (
