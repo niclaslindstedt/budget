@@ -7,7 +7,9 @@ fields, …) no longer select all on focus. Tapping a long pre-filled
 description on mobile to wipe it would pop the soft keyboard before
 the user had decided what to do, which jolted the modal layout and
 buried the field they meant to look at. Each text input now carries
-an inline × button that clears the value in one tap without opening
-the keyboard. Amount and other numeric inputs still select on focus
-so a fast retype works as before, and the inline description /
-amount editors in the sheet are unchanged.
+an inline × button that clears the value in one tap and drops focus
+straight into the field, so you can start typing the replacement
+immediately (and the soft keyboard comes up with it on mobile).
+Amount and other numeric inputs still select on focus so a fast
+retype works as before, and the inline description / amount editors
+in the sheet are unchanged.

@@ -1,5 +1,5 @@
-import { forwardRef } from "react";
-import type { InputHTMLAttributes } from "react";
+import { forwardRef, useCallback, useRef } from "react";
+import type { InputHTMLAttributes, Ref } from "react";
 import { X } from "lucide-react";
 
 import { useT } from "../../i18n";
@@ -36,13 +36,21 @@ export const ClearableTextInput = forwardRef<HTMLInputElement, Props>(
     ref,
   ) {
     const t = useT();
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const setRefs = useCallback(
+      (node: HTMLInputElement | null) => {
+        inputRef.current = node;
+        assignRef(ref, node);
+      },
+      [ref],
+    );
     const hasValue = value.length > 0;
     const canClear = hasValue && !disabled && !readOnly;
 
     return (
       <div className={`relative ${wrapperClassName ?? ""}`.trim()}>
         <input
-          ref={ref}
+          ref={setRefs}
           type="text"
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
@@ -56,12 +64,15 @@ export const ClearableTextInput = forwardRef<HTMLInputElement, Props>(
             type="button"
             tabIndex={-1}
             aria-label={t("common.clear")}
-            // Don't steal focus from the input on mobile (would close
-            // the keyboard if it's open) or trigger blur logic on
-            // desktop while the user is mid-edit.
+            // Keep the press from shifting focus to the button itself —
+            // we want focus to land on the input so the soft keyboard
+            // stays up (mobile) and the user can keep typing (desktop).
             onMouseDown={(e) => e.preventDefault()}
             onTouchStart={(e) => e.preventDefault()}
-            onClick={() => onValueChange("")}
+            onClick={() => {
+              onValueChange("");
+              inputRef.current?.focus();
+            }}
             className="absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
           >
             <X size={14} aria-hidden focusable={false} />
@@ -71,3 +82,11 @@ export const ClearableTextInput = forwardRef<HTMLInputElement, Props>(
     );
   },
 );
+
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") {
+    ref(value);
+  } else if (ref) {
+    (ref as React.MutableRefObject<T | null>).current = value;
+  }
+}
