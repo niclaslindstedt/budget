@@ -32,15 +32,15 @@ const IS_PREVIEW = BASE_PATH !== "/";
 
 // Short build identifier rendered next to the "budget" header on
 // the page and suffixed onto the browser-tab title. Shape is
-// `<pkg.version>[.<run>][-preview]`, where `<run>` is the
+// `<pkg.version>[.<run>][-pre]`, where `<run>` is the
 // `GITHUB_RUN_NUMBER` GitHub Actions populates automatically (so
-// local builds drop it) and `-preview` only appears on the preview
+// local builds drop it) and `-pre` only appears on the preview
 // slot (`VITE_BASE_PATH !== "/"`).
 const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
 const BUILD_LABEL =
   pkg.version +
   (GITHUB_RUN_NUMBER ? `.${GITHUB_RUN_NUMBER}` : "") +
-  (IS_PREVIEW ? "-preview" : "");
+  (IS_PREVIEW ? "-pre" : "");
 
 function escapeHtmlAttr(s: string): string {
   return s
