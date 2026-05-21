@@ -201,21 +201,26 @@ that way.
     (dark / light / system) before reaching for a fresh hex literal.
     Then map it into Tailwind's utility surface via `@theme inline`
     so `bg-foo` / `text-foo` work.
-  - **Border-radius** → `var(--radius-sm | --radius-md | --radius-lg)`
-    for surfaces that should follow the Custom-theme radius preset,
-    or Tailwind's `rounded-*` utilities for chrome that intentionally
-    keeps its own shape. The current "Custom-theme reach" is narrow
-    (`.field-input` and `.formula-pill` only); when widening it,
-    update the comment block near the end of `src/styles.css` so the
-    surface area stays discoverable.
+  - **Border-radius** → Tailwind's bare `.rounded` is remapped to
+    `var(--radius-sm)` and `.rounded-sm` / `.rounded-md` / `.rounded-lg`
+    resolve through `var(--radius-*)` by default, so the whole bare-
+    `rounded` surface follows the Custom-theme radius preset
+    automatically. Reach for `.rounded-full` (or `.rounded-none`) when
+    a surface should keep its shape regardless of theme. `.field-input`
+    has its own dedicated rule pinned to `var(--radius-md)`. When
+    widening the reach further (e.g. opting more sized variants into
+    `--radius-*` instead of Tailwind's), update the comment block near
+    the end of `src/styles.css` so the surface area stays discoverable.
   - **Font family** → `var(--app-font-family)`, set by the
     `useTheme` hook from `settings.fontFamily`. Component-specific
     stacks are fine only when the deviation is the point (e.g. a
     font-preview row that shows each option in its own face).
-  - **Border thickness** → `var(--border-width)` for chrome that
-    should follow the Custom-theme preset. Tailwind's `border` /
-    `border-2` utilities still work for chrome that pins its own
-    weight (status indicators, accent strips).
+  - **Border thickness** → Tailwind's bare `.border` and
+    `.border-{t,r,b,l}` are remapped to `var(--border-width)` so the
+    default chrome surface follows the Custom-theme preset. Explicit
+    `.border-0` / `.border-2` (and equivalent side-pinned variants)
+    stay literal — reach for those when a surface should keep its
+    weight regardless of theme (status indicators, accent strips).
   - **Transitions / animations** → must respect
     `[data-reduce-motion="true"]`. The unlayered rule at the bottom
     of `src/styles.css` short-circuits every `transition-duration` /

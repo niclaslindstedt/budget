@@ -60,26 +60,30 @@
      app-header-h + month-header-h. */
   --month-header-h: 28px;
 
-  /* Corner-radius scale consumed by the Custom-theme reach. Only a
-     small handful of "big-impact" selectors read these — currently
-     `.field-input` and `.formula-pill`. Tailwind `rounded-*`
-     utilities scattered through components are intentionally NOT
-     refactored to read through these vars (would be a much wider
-     change). When adding a new surface that should follow the custom
-     radius, document it next to the rule that consumes the var. */
+  /* Corner-radius scale. Tailwind v4 resolves `rounded-sm` / `rounded-md`
+     / `rounded-lg` through these vars by default; the bare `rounded`
+     utility (used ~300× across the codebase) is remapped to
+     `var(--radius-sm)` by the unlayered overrides at the bottom of
+     this file. Defaults match Tailwind's so Light / Dark themes render
+     identically; flipping into a Custom theme then walks the whole
+     surface at once. */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 12px;
 
   /* Row-padding driven by the density preset on Custom themes.
-     Defaults match the existing visual rhythm; consumed by the same
-     "big-impact reach" surfaces as the radius scale. */
+     Defaults match the existing visual rhythm; reach is still narrow
+     (just `.field-input` vertical padding) — density bites less than
+     the radius / border-width controls. */
   --density-row-py: 0.375rem;
   --density-row-px: 0.5rem;
 
-  /* Border thickness consumed by chrome that opts in (`.field-input`,
-     modal containers, picker triggers). 1px is the legacy default;
-     custom themes override inline on `<html>`. */
+  /* Border thickness. The bare Tailwind `.border` / `.border-{t,r,b,l}`
+     utilities are remapped to this var by the unlayered overrides at
+     the bottom of this file, so chrome that combines `border
+     border-line` with no explicit width follows the user's choice.
+     `.border-2` / `.border-0` stay literal — they're deliberate
+     accent or no-border choices, not theme-driven. */
   --border-width: 1px;
 
   /* Active webfont stack. Inline-set by React when
@@ -618,14 +622,50 @@ body {
 }
 
 /* Custom-theme reach for the shape vars (radius, border width,
-   density). Intentionally narrow — only `.field-input` and
-   `.formula-pill` follow the user's choice. Tailwind `rounded-*`
-   utilities scattered through the codebase are NOT refactored to
-   read through `--radius-*`; a wider rollout is a follow-up.
-   Unlayered so this overrides Tailwind's utilities-layer `rounded`
-   / `border` / vertical-padding rules on `.field-input` elements
-   that combine the class with both. The pill rule itself lives in
-   `@layer components` and already reads `var(--radius-sm)`. */
+   density). Unlayered so these win over Tailwind's `utilities` layer.
+
+   Tailwind v4's bare `.rounded` compiles to a literal `0.25rem` and
+   bare `.border` / `.border-{t,r,b,l}` compile to literal `1px` — both
+   ignore the user's Custom-theme picks. The overrides below remap
+   them to `var(--radius-sm)` / `var(--border-width)` so the ~300
+   bare-`rounded` and hundred-or-so bare-`border` call sites scattered
+   through components follow the picker without per-component edits.
+   Defaults match Tailwind's exactly (4px / 1px) so Light / Dark stay
+   visually identical; only Custom themes drift.
+
+   `.rounded-sm` / `.rounded-md` / `.rounded-lg` / `.rounded-full` and
+   `.border-2` / `.border-0` / `.border-r-0` keep their explicit
+   Tailwind values — those are deliberate accent / sizing choices, not
+   theme-driven. The `.formula-pill` rule lives in `@layer components`
+   and already reads `var(--radius-sm)`.
+
+   `.field-input` keeps its dedicated rule because inputs use a
+   slightly larger radius (`--radius-md`) than chrome and own the
+   density-row vertical padding. */
+.rounded {
+  border-radius: var(--radius-sm);
+}
+
+.border {
+  border-width: var(--border-width);
+}
+
+.border-t {
+  border-top-width: var(--border-width);
+}
+
+.border-r {
+  border-right-width: var(--border-width);
+}
+
+.border-b {
+  border-bottom-width: var(--border-width);
+}
+
+.border-l {
+  border-left-width: var(--border-width);
+}
+
 .field-input {
   border-radius: var(--radius-md);
   border-width: var(--border-width);
