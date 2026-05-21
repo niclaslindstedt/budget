@@ -97,14 +97,29 @@ function isLogEntry(v: unknown): v is LogEntry {
   );
 }
 
-// Serializer for log payloads. Handles Errors (full stack), cycles,
-// bigints, and functions — anything JSON can't round-trip on its own.
+// Render an Error for the log buffer. Always leads with
+// `name: message` and appends the stack when one's available —
+// Safari / iOS Safari format `err.stack` as bare frames (no
+// leading `Error: <message>` line), so naively falling back to
+// `err.stack` swallows the message and leaves only a file:line
+// location. That made the GIS-popup network failure look like
+// `oauth(gdrive): popup failed @.../index.js:751:2079` with no
+// hint about the cause.
+function describeError(err: Error): string {
+  const head = err.message ? `${err.name}: ${err.message}` : err.name;
+  if (!err.stack) return head;
+  return err.stack.startsWith(err.name) ? err.stack : `${head}\n${err.stack}`;
+}
+
+// Serializer for log payloads. Handles Errors (full stack + message),
+// cycles, bigints, and functions — anything JSON can't round-trip on
+// its own.
 function safeStringify(value: unknown): string {
   const seen = new WeakSet<object>();
   try {
     const out = JSON.stringify(value, (_key, v: unknown) => {
       if (v instanceof Error) {
-        return v.stack || `${v.name}: ${v.message}`;
+        return describeError(v);
       }
       if (typeof v === "object" && v !== null) {
         if (seen.has(v as object)) return "[Circular]";
@@ -127,7 +142,7 @@ function formatMessage(args: unknown[]): string {
   return args
     .map((a) => {
       if (typeof a === "string") return a;
-      if (a instanceof Error) return a.stack || `${a.name}: ${a.message}`;
+      if (a instanceof Error) return describeError(a);
       return safeStringify(a);
     })
     .join(" ");

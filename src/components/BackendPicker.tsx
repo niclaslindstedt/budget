@@ -7,9 +7,12 @@ import type { BackendId } from "../storage/backend-preference";
 import { isDropboxConfigured } from "../storage/dropbox-adapter";
 import { isFolderBackendAvailable } from "../storage/folder-handle-store";
 import { isGdriveConfigured } from "../storage/gdrive-adapter";
+import { createLogger } from "../utils/logger";
 import { DropboxGlyph } from "./DropboxGlyph";
 import { FloatingPanel } from "./FloatingPanel";
 import { GoogleDriveGlyph } from "./GoogleDriveGlyph";
+
+const log = createLogger("backend-picker");
 
 const PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 224 },
@@ -83,9 +86,17 @@ export function BackendPicker({ value, onSelect }: Props) {
   const selected = options.find((o) => o.id === value) ?? options[0];
 
   function handlePick(opt: Option) {
-    if (opt.disabledReason) return;
+    if (opt.disabledReason) {
+      log.info(`pick ignored: ${opt.id} disabled (${opt.disabledReason})`);
+      return;
+    }
     setOpen(false);
-    if (opt.id !== value) onSelect(opt.id);
+    if (opt.id === value) {
+      log.info(`pick: ${opt.id} (no change)`);
+      return;
+    }
+    log.info(`pick: ${value} → ${opt.id}`);
+    onSelect(opt.id);
   }
 
   return (
