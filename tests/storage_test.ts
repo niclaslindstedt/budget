@@ -188,13 +188,21 @@ describe("parseUserData — error paths", () => {
     if (!r.ok) expect(r.error).toMatch(/duplicate id/);
   });
 
-  it("rejects unknown category icon", () => {
+  it("replaces unknown category icon with the default rather than rejecting", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));
     raw.categories[0].icon = "not-an-icon";
     const r = parseUserData(JSON.stringify(raw));
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/unknown category icon/);
+    // An unknown glyph is cosmetic, not data. Failing the parse used
+    // to cascade into a fresh-budget fallback that overwrote the
+    // user's cloud copy on the next save — the validator now falls
+    // back to the default glyph instead, matching the lenient
+    // pattern already used for unknown sheet glyphs and dangling
+    // type references.
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.categories[0].icon).not.toBe("not-an-icon");
+    }
   });
 });
 

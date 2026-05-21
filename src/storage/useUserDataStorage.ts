@@ -17,7 +17,11 @@ import {
   type StorageAdapter,
 } from "./adapter";
 import { serializeUserData } from "./file";
-import { freshUserData, readUserDataFromText } from "./local";
+import {
+  freshUserData,
+  readUserDataFromText,
+  tryReadUserDataFromText,
+} from "./local";
 
 const log = createLogger("storage-hook");
 
@@ -46,7 +50,36 @@ export type SaveStatus =
   // The cloud backend rejected the request with a 401 after any silent
   // refresh has already been tried. The UI shows a Reconnect button
   // instead of a Try-again that would fail the same way.
-  | { kind: "auth-error"; message: string };
+  | { kind: "auth-error"; message: string }
+  // The adapter returned bytes but the validator rejected them (a
+  // schema drift in this build vs the data on disk). In-memory state
+  // is the fresh-budget fallback, but the real bytes are still on
+  // disk/cloud — refusing to autosave preserves them until the user
+  // resolves the situation (newer build, manual export, etc.).
+  | { kind: "parse-error"; message: string }
+  // The next autosave would shrink the file by more than
+  // SHRINK_WARN_THRESHOLD vs the last-saved bytes. We pause and
+  // surface the previous / new size so the user can confirm or
+  // discard the pending write. A real-world shrink that's not
+  // catastrophic (a category deletion, big bulk delete) is still
+  // legitimate; the safeguard exists for "fresh-budget fallback
+  // about to overwrite 1MB" data-loss shapes.
+  | {
+      kind: "shrink-warning";
+      pendingText: string;
+      prevBytes: number;
+      newBytes: number;
+    };
+
+// Fraction of the previous saved size below which a save is paused
+// for confirmation. 0.05 = "shrunk by more than 5%". A 1 MB → 3 KB
+// fresh-budget overwrite (the original incident) is a 99.7% shrink
+// and trips this trivially; routine edits never do.
+const SHRINK_WARN_THRESHOLD = 0.05;
+// Minimum previous size for the shrink check to engage. A new user
+// going from 0 → small budget should never be challenged, and edits
+// that toggle a 200-byte settings blob shouldn't be either.
+const SHRINK_WARN_MIN_PREV_BYTES = 4096;
 
 export type UserDataStorageOptions = {
   // Pre-serialize transform applied to the in-memory state before the
@@ -77,6 +110,13 @@ export type UserDataStorage<Action> = {
   // Discard the local edits and adopt the remote copy. Only
   // meaningful while `status.kind === "conflict"`.
   resolveKeepRemote: () => void;
+  // Confirm the paused save that tripped the shrink safeguard. Only
+  // meaningful while `status.kind === "shrink-warning"`.
+  confirmShrinkSave: () => void;
+  // Abandon the paused save and revert the in-memory state to the
+  // last successfully saved snapshot. Only meaningful while
+  // `status.kind === "shrink-warning"`.
+  discardShrinkSave: () => void;
 };
 
 export function useUserDataStorage<Action>(
@@ -91,10 +131,14 @@ export function useUserDataStorage<Action>(
   const initial = useState<{ data: UserData; status: SaveStatus }>(() => {
     const snap = adapter.loadSync?.() ?? null;
     if (snap) {
-      return {
-        data: readUserDataFromText(snap.text),
-        status: { kind: "idle" },
-      };
+      const parsed = tryReadUserDataFromText(snap.text);
+      if (parsed.status === "parse-failed") {
+        return {
+          data: parsed.data,
+          status: { kind: "parse-error", message: parsed.error },
+        };
+      }
+      return { data: parsed.data, status: { kind: "idle" } };
     }
     return {
       data: freshUserData(),
@@ -156,9 +200,42 @@ export function useUserDataStorage<Action>(
   // `isStale` predicate lets a debounced caller bail out if the
   // effect was cleaned up while the request was in flight.
   const performSave = useCallback(
-    async (text: string, isStale: () => boolean): Promise<void> => {
+    async (
+      text: string,
+      isStale: () => boolean,
+      { skipShrinkCheck = false }: { skipShrinkCheck?: boolean } = {},
+    ): Promise<void> => {
       if (isStale()) {
         log.info(`save skipped (stale before start) [${adapter.id}]`);
+        return;
+      }
+      // Block catastrophic size collapses unless the user has
+      // explicitly confirmed them via `confirmShrinkSave`. The
+      // baseline is the last bytes we successfully read or wrote;
+      // if the new payload is < (1 - SHRINK_WARN_THRESHOLD) of that
+      // and the previous size was non-trivial, pause and surface
+      // the numbers to the user. A fresh-budget fallback writing
+      // 3 KB over a 1 MB cloud file (the original incident) trips
+      // this trivially.
+      const prevBytes = lastSnapshot.current?.text.length ?? null;
+      if (
+        !skipShrinkCheck &&
+        prevBytes !== null &&
+        prevBytes >= SHRINK_WARN_MIN_PREV_BYTES &&
+        text.length < prevBytes * (1 - SHRINK_WARN_THRESHOLD)
+      ) {
+        const pct = ((1 - text.length / prevBytes) * 100).toFixed(1);
+        log.warn(
+          `save paused: shrink ${prevBytes}→${text.length} bytes (-${pct}%) > ${
+            SHRINK_WARN_THRESHOLD * 100
+          }% [${adapter.id}]`,
+        );
+        setStatus({
+          kind: "shrink-warning",
+          pendingText: text,
+          prevBytes,
+          newBytes: text.length,
+        });
         return;
       }
       setStatus({ kind: "saving" });
@@ -248,9 +325,16 @@ export function useUserDataStorage<Action>(
         lastSnapshot.current = snap;
         skipNextSave.current = true;
         hasLoadedRef.current = true;
-        setData(snap ? readUserDataFromText(snap.text) : freshUserData());
+        const parsed = snap
+          ? tryReadUserDataFromText(snap.text)
+          : ({ data: freshUserData(), status: "fresh" } as const);
+        setData(parsed.data);
         setLastSavedText(snap?.text ?? null);
-        setStatus({ kind: "idle" });
+        if (parsed.status === "parse-failed") {
+          setStatus({ kind: "parse-error", message: parsed.error });
+        } else {
+          setStatus({ kind: "idle" });
+        }
         return;
       }
       log.info(`adapter mount [${adapter.id}] sync — load skipped`);
@@ -278,9 +362,18 @@ export function useUserDataStorage<Action>(
         lastSnapshot.current = snap;
         skipNextSave.current = true;
         hasLoadedRef.current = true;
-        setData(snap ? readUserDataFromText(snap.text) : freshUserData());
+        const parsed = snap
+          ? tryReadUserDataFromText(snap.text)
+          : ({ data: freshUserData(), status: "fresh" } as const);
+        setData(parsed.data);
         setLastSavedText(snap?.text ?? null);
-        if (snap?.offline) {
+        if (parsed.status === "parse-failed") {
+          // Real bytes came back from the adapter but this build
+          // can't parse them. The autosave guard refuses to write
+          // the fresh fallback over the user's real data on disk —
+          // the user reconnects via the sync details panel.
+          setStatus({ kind: "parse-error", message: parsed.error });
+        } else if (snap?.offline) {
           setStatus({ kind: "offline", since: Date.now() });
         } else {
           setStatus({ kind: "idle" });
@@ -352,7 +445,9 @@ export function useUserDataStorage<Action>(
       status.kind === "auth-error" ||
       status.kind === "error" ||
       status.kind === "conflict" ||
-      status.kind === "loading"
+      status.kind === "loading" ||
+      status.kind === "parse-error" ||
+      status.kind === "shrink-warning"
     ) {
       log.info(
         `save skipped — status=${status.kind} (refusing to overwrite real data with the post-failure in-memory copy)`,
@@ -398,7 +493,9 @@ export function useUserDataStorage<Action>(
     if (
       status.kind === "auth-error" ||
       status.kind === "error" ||
-      status.kind === "loading"
+      status.kind === "loading" ||
+      status.kind === "parse-error" ||
+      status.kind === "shrink-warning"
     ) {
       log.warn(
         `saveNow ignored [${adapter.id}] — status=${status.kind}; resolve the failure before saving`,
@@ -429,6 +526,41 @@ export function useUserDataStorage<Action>(
     const text = serializeUserData(data);
     void performSave(text, () => false);
   }, [data, performSave]);
+
+  // Resolution for the shrink safeguard. "Confirm" re-enters the
+  // save path with the shrink check disabled so the paused payload
+  // goes through. "Discard" reverts the in-memory state to the
+  // last-saved bytes so the user's cloud copy is preserved and the
+  // dirty flag clears.
+  const confirmShrinkSave = useCallback(() => {
+    if (status.kind !== "shrink-warning") return;
+    log.warn(
+      `shrink resolve: confirm — pushing ${status.newBytes} bytes over ${status.prevBytes} [${adapter.id}]`,
+    );
+    const { pendingText } = status;
+    void performSave(pendingText, () => false, { skipShrinkCheck: true });
+  }, [adapter, performSave, status]);
+
+  const discardShrinkSave = useCallback(() => {
+    if (status.kind !== "shrink-warning") return;
+    log.info(
+      `shrink resolve: discard — reverting to last-saved snapshot [${adapter.id}]`,
+    );
+    const snap = lastSnapshot.current;
+    if (snap) {
+      const parsed = tryReadUserDataFromText(snap.text);
+      skipNextSave.current = true;
+      setData(parsed.data);
+      setLastSavedText(snap.text);
+      setStatus(
+        parsed.status === "parse-failed"
+          ? { kind: "parse-error", message: parsed.error }
+          : { kind: "idle" },
+      );
+    } else {
+      setStatus({ kind: "idle" });
+    }
+  }, [adapter.id, status]);
 
   const resolveKeepRemote = useCallback(() => {
     if (status.kind !== "conflict") return;
@@ -465,13 +597,16 @@ export function useUserDataStorage<Action>(
       lastSnapshot.current = snap;
       skipNextSave.current = true;
       hasLoadedRef.current = true;
-      setData(readUserDataFromText(snap.text));
+      const parsed = tryReadUserDataFromText(snap.text);
+      setData(parsed.data);
       setLastSavedText(snap.text);
-      setStatus(
-        snap.offline
-          ? { kind: "offline", since: Date.now() }
-          : { kind: "idle" },
-      );
+      if (parsed.status === "parse-failed") {
+        setStatus({ kind: "parse-error", message: parsed.error });
+      } else if (snap.offline) {
+        setStatus({ kind: "offline", since: Date.now() });
+      } else {
+        setStatus({ kind: "idle" });
+      }
     });
     return () => {
       log.info(`watch unsubscribe [${adapter.id}]`);
@@ -490,5 +625,7 @@ export function useUserDataStorage<Action>(
     saveNow,
     resolveKeepLocal,
     resolveKeepRemote,
+    confirmShrinkSave,
+    discardShrinkSave,
   };
 }

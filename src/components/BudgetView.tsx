@@ -275,6 +275,8 @@ export function BudgetView({
     saveNow,
     resolveKeepLocal,
     resolveKeepRemote,
+    confirmShrinkSave,
+    discardShrinkSave,
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
   });
@@ -327,6 +329,15 @@ export function BudgetView({
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
+  // Auto-surface the sync-details modal for states the user can't
+  // ignore: a paused shrink save (data-loss safeguard) and a parse
+  // failure (build can't read the stored bytes). Both block
+  // autosave, so the user must see the explanation to act.
+  useEffect(() => {
+    if (status.kind === "shrink-warning" || status.kind === "parse-error") {
+      setSyncDetailsOpen(true);
+    }
+  }, [status.kind]);
   const [reconnectCloudOpen, setReconnectCloudOpen] = useState(false);
   const [cloudReauthAutoOpen, setCloudReauthAutoOpenState] = useState(() =>
     getCloudReauthAutoOpen(),
@@ -2754,6 +2765,8 @@ export function BudgetView({
             ? onReconnectCloud
             : null
         }
+        onConfirmShrink={confirmShrinkSave}
+        onDiscardShrink={discardShrinkSave}
         onClose={() => setSyncDetailsOpen(false)}
       />
       <ReconnectCloudModal

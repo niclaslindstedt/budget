@@ -1568,6 +1568,14 @@ export const sv: Catalog = {
     offlineMode: "{name} ej nåbar",
     offlineModeDetail:
       "Redigerar en lokal kopia eftersom {name} inte kan nås. Ändringar skickas automatiskt när anslutningen är tillbaka.",
+    parseError: "Filen kan inte läsas",
+    parseErrorDetail:
+      "{name} returnerade data som den här versionen inte kan tolka: {message}. Autosparning är pausad så att din lagrade data inte skrivs över. Försök ladda om i en nyare version, eller återställ en tidigare version från leverantörens filhistorik.",
+    shrinkWarning: "Sparning pausad — stor minskning",
+    shrinkWarningDetail:
+      "Nästa sparning skulle krympa din budget från {prev} till {next} byte ({pct}% mindre). Bekräfta för att spara ändå, eller kassera för att återställa minnesläget till senast sparade kopia.",
+    confirmShrink: "Spara ändå",
+    discardShrink: "Kassera lokala ändringar",
   },
 
   saveState: {

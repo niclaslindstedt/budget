@@ -92,6 +92,20 @@ function viewFor(
         tone: "warn",
         action: "open",
       };
+    case "parse-error":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.parseError"),
+        tone: "err",
+        action: "open",
+      };
+    case "shrink-warning":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.shrinkWarning"),
+        tone: "warn",
+        action: "open",
+      };
     case "saved":
     case "idle":
       return dirty
