@@ -14,12 +14,8 @@ import { Checkbox } from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
 
-export type BulkPatch = {
-  // `undefined` = don't touch; `null` (where applicable) = clear.
-  typeId?: string | null;
-  amount?: number;
-  date?: string;
-};
+export type { BulkPatch } from "../data/action-payloads";
+import type { BulkPatch } from "../data/action-payloads";
 
 type Props = {
   open: boolean;

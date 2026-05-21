@@ -17,22 +17,8 @@ import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
 
-export type SheetDraft = {
-  name: string;
-  type: SheetType;
-  glyph: SheetGlyph;
-  color: string;
-  description: string;
-  // Type-specific payload. Today only `budget` exists and carries an
-  // optional account id; future flavours can grow their own branches
-  // without affecting the existing shape.
-  accountId: string | null;
-  // When set, the parent should mint a new Account by this name and
-  // attach it to the budget. Lets the user create both a sheet and
-  // the account it lives on in a single round-trip through the
-  // modal.
-  newAccountName: string | null;
-};
+export type { SheetDraft } from "../data/action-payloads";
+import type { SheetDraft } from "../data/action-payloads";
 
 type Props = {
   open: boolean;
