@@ -657,28 +657,56 @@ function loadGisScript(): Promise<void> {
     return Promise.resolve();
   }
   if (gisLoaderPromise) return gisLoaderPromise;
-  log.log("loadGisScript: injecting <script>");
+  const startedAt =
+    typeof performance !== "undefined" ? performance.now() : Date.now();
+  const online =
+    typeof navigator !== "undefined" && "onLine" in navigator
+      ? navigator.onLine
+      : "unknown";
+  log.log(
+    `loadGisScript: injecting <script> src=${GIS_SCRIPT_URL} navigator.onLine=${online}`,
+  );
   gisLoaderPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = GIS_SCRIPT_URL;
     script.async = true;
     script.defer = true;
     script.onload = () => {
+      const took = Math.round(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+          startedAt,
+      );
       if (window.google?.accounts?.oauth2) {
-        log.log("loadGisScript: ready");
+        log.log(`loadGisScript: ready (${took}ms)`);
         resolve();
       } else {
-        log.error("loadGisScript: loaded but globals missing");
+        log.error(`loadGisScript: loaded but globals missing (${took}ms)`);
         gisLoaderPromise = null;
         reject(
-          new Error("Google Identity Services loaded but globals missing"),
+          new Error(
+            "Google sign-in loaded but didn't initialise. Reload the page and try again.",
+          ),
         );
       }
     };
     script.onerror = () => {
-      log.error("loadGisScript: network error");
+      const took = Math.round(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+          startedAt,
+      );
+      const onlineNow =
+        typeof navigator !== "undefined" && "onLine" in navigator
+          ? navigator.onLine
+          : "unknown";
+      log.error(
+        `loadGisScript: network error (${took}ms) src=${GIS_SCRIPT_URL} navigator.onLine=${onlineNow}`,
+      );
       gisLoaderPromise = null;
-      reject(new Error("Failed to load Google Identity Services script"));
+      reject(
+        new Error(
+          "Couldn't reach Google to start sign-in. Check your connection (Wi-Fi, VPN, Private Relay, or content blocker) and tap Retry.",
+        ),
+      );
     };
     document.head.appendChild(script);
   });
@@ -692,7 +720,14 @@ function loadGisScript(): Promise<void> {
 // `requestAccessToken` call runs synchronously inside the user gesture
 // and the popup isn't blocked by iOS Safari / strict popup blockers.
 export function preloadGdriveAuth(): void {
-  void loadGisScript().catch(() => {});
+  log.log("preloadGdriveAuth: warming GIS script");
+  void loadGisScript().catch((err: unknown) => {
+    log.warn(
+      `preloadGdriveAuth: preload failed (will retry on click): ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  });
 }
 
 // Opens the Google consent popup and resolves with a short-lived

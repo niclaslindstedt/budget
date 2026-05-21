@@ -4,6 +4,7 @@ import {
   CloudCheck,
   CloudUpload,
   ExternalLink,
+  type LucideIcon,
   Loader,
   LogIn,
   RefreshCw,
@@ -228,36 +229,44 @@ export function SyncDetailsModal({
               )}
             </div>
           </div>
-          {showReconnect && (
-            <>
-              <button
-                type="button"
-                onClick={handleReconnect}
-                disabled={reconnectPending}
-                aria-busy={reconnectPending || undefined}
-                className={`inline-flex items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-70 ${
-                  reconnectPending ? "" : "cursor-pointer"
-                }`}
-              >
-                {reconnectPending ? (
-                  <Loader
-                    size={14}
-                    aria-hidden
-                    focusable={false}
-                    className="animate-spin"
-                  />
-                ) : (
-                  <LogIn size={14} aria-hidden focusable={false} />
-                )}
-                {t("sync.reconnect", { name: view.name })}
-              </button>
-              {reconnectError && (
-                <p className="text-xs break-words text-danger">
-                  {reconnectError}
-                </p>
-              )}
-            </>
-          )}
+          {showReconnect &&
+            (() => {
+              const showRetry = reconnectError !== null;
+              const label = showRetry
+                ? t("common.retry")
+                : t("sync.reconnect", { name: view.name });
+              const Icon: LucideIcon = reconnectPending
+                ? Loader
+                : showRetry
+                  ? RefreshCw
+                  : LogIn;
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleReconnect}
+                    disabled={reconnectPending}
+                    aria-busy={reconnectPending || undefined}
+                    className={`inline-flex items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-70 ${
+                      reconnectPending ? "" : "cursor-pointer"
+                    }`}
+                  >
+                    <Icon
+                      size={14}
+                      aria-hidden
+                      focusable={false}
+                      className={reconnectPending ? "animate-spin" : undefined}
+                    />
+                    {label}
+                  </button>
+                  {reconnectError && (
+                    <p className="text-xs break-words text-danger">
+                      {reconnectError}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           {showSaveNow && (
             <button
               type="button"
