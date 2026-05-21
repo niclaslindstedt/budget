@@ -135,6 +135,7 @@ import {
 import { bcp47, type Lang, useT } from "../i18n";
 import { useChangelogAutoOpen, useIdleSignOut, useTheme } from "../hooks";
 import { writeLanguagePreference } from "../i18n/language-preference";
+import { BUILD_LABEL } from "../utils/build-env";
 import { todayIso } from "../utils/date";
 import {
   slugifyFilename,
@@ -2248,6 +2249,12 @@ export function BudgetView({
             />
             <span className="text-base font-bold tracking-wide text-fg-bright">
               budget
+            </span>
+            <span
+              className="text-xs font-normal text-muted tabular-nums"
+              aria-label={`Build ${BUILD_LABEL}`}
+            >
+              {BUILD_LABEL}
             </span>
           </button>
           <div className="ml-auto inline-flex items-center gap-2">

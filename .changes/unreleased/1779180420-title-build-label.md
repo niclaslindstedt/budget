@@ -2,6 +2,8 @@
 type: Added
 ---
 
-Browser-tab title now shows which build is running: `vX.Y.Z` on the
-production site and `preview` (with a CI run number and short commit
-sha when available) on the `/preview/` slot.
+The running build is now shown next to the "budget" header on the page
+and suffixed onto the browser-tab title, so you can tell at a glance
+which build is running. Shape: `<version>[.<run>][-preview]` — e.g.
+`0.1.0` for a local release build, `0.1.0.89` for a CI release build,
+and `0.1.0.89-preview` for the deployed preview slot.
