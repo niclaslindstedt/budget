@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import type {
   Account,
@@ -56,11 +57,29 @@ export function HistoryModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
-  const sortedEntries = useMemo(() => {
+  const allSortedEntries = useMemo(() => {
     return [...entries].sort((a, b) =>
       a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
     );
   }, [entries]);
+  const hiddenCount = useMemo(
+    () => allSortedEntries.reduce((n, e) => (e.hidden ? n + 1 : n), 0),
+    [allSortedEntries],
+  );
+
+  // Default to suppressing entries the user (or the transfer-collapse
+  // flow) has shelved. The eye toggle in the table header reveals them
+  // again when needed — usually to inspect a collapsed pair.
+  const [showHidden, setShowHidden] = useState(false);
+  useEffect(() => {
+    if (!open) setShowHidden(false);
+  }, [open]);
+
+  const sortedEntries = useMemo(
+    () =>
+      showHidden ? allSortedEntries : allSortedEntries.filter((e) => !e.hidden),
+    [allSortedEntries, showHidden],
+  );
 
   // The description column wraps with break-words to fit narrow phone
   // screens, which can mangle a long memo into a tower of two- or
@@ -131,9 +150,36 @@ export function HistoryModal({
         onClose={onCancel}
       />
       <Modal.Body noPadding className="overflow-x-hidden">
-        {sortedEntries.length === 0 ? (
+        {hiddenCount > 0 && (
+          <div className="flex items-center justify-end border-b border-line bg-surface-2 px-2 py-1">
+            <button
+              type="button"
+              onClick={() => setShowHidden((v) => !v)}
+              aria-pressed={showHidden}
+              aria-label={
+                showHidden ? t("history.hideHidden") : t("history.showHidden")
+              }
+              title={
+                showHidden ? t("history.hideHidden") : t("history.showHidden")
+              }
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded px-2 text-xs text-muted hover:bg-surface-3 hover:text-fg aria-pressed:text-accent"
+            >
+              {showHidden ? (
+                <Eye size={16} aria-hidden focusable={false} />
+              ) : (
+                <EyeOff size={16} aria-hidden focusable={false} />
+              )}
+              <span className="font-mono tabular-nums">{hiddenCount}</span>
+            </button>
+          </div>
+        )}
+        {allSortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("history.noEntries")}
+          </p>
+        ) : sortedEntries.length === 0 ? (
+          <p className="px-4 py-6 text-center text-xs text-muted">
+            {t("history.allHidden", { n: hiddenCount })}
           </p>
         ) : (
           <table className="w-full table-fixed border-collapse text-sm">
