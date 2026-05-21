@@ -23,6 +23,7 @@
 // wrapped fn always runs.
 
 import { CAPTURE_LOGS_KEY, LOGS_KEY, MAX_LOG_ENTRIES } from "../data/constants";
+import { IS_PREVIEW } from "./build-env";
 
 export type LogLevel = "info" | "warn" | "error";
 
@@ -83,6 +84,10 @@ function safeRemoveLocal(key: string): void {
 }
 
 function readCaptureFlag(): boolean {
+  // Capture is preview-only — the Developer surface that toggles it
+  // is hidden in production. A stale "true" from an older build must
+  // not keep the production logger persisting silently.
+  if (!IS_PREVIEW) return false;
   return safeReadLocal(CAPTURE_LOGS_KEY) === "true";
 }
 

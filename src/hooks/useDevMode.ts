@@ -17,10 +17,17 @@
 // in the same render, not on the next reload. (The browser only fires
 // the `storage` event in *other* tabs, so cross-component same-tab
 // sync would otherwise be silently broken.)
+//
+// Production builds force both flags to false and ignore writes —
+// developer mode and on-device log capture are preview-only, gated on
+// the `IS_PREVIEW` build flag. A stale `budget.devMode=true` from an
+// older build cannot resurrect the Developer / Logs surface in
+// production.
 
 import { useEffect, useState } from "react";
 
 import { CAPTURE_LOGS_KEY, DEV_MODE_KEY } from "../data/constants";
+import { IS_PREVIEW } from "../utils/build-env";
 import { setCaptureEnabled } from "../utils/logger";
 
 function readBool(key: string): boolean {
@@ -42,8 +49,8 @@ function writeBool(key: string, value: boolean): void {
   }
 }
 
-let devModeState = readBool(DEV_MODE_KEY);
-let captureLogsState = readBool(CAPTURE_LOGS_KEY);
+let devModeState = IS_PREVIEW && readBool(DEV_MODE_KEY);
+let captureLogsState = IS_PREVIEW && readBool(CAPTURE_LOGS_KEY);
 const subscribers = new Set<() => void>();
 
 function notify(): void {
@@ -57,6 +64,9 @@ function notify(): void {
 }
 
 function setDevModeGlobal(next: boolean): void {
+  // Production builds have no developer surface, so toggling is a
+  // no-op rather than a silent localStorage write that gets ignored.
+  if (!IS_PREVIEW) return;
   if (devModeState !== next) {
     devModeState = next;
     writeBool(DEV_MODE_KEY, next);
@@ -72,6 +82,7 @@ function setDevModeGlobal(next: boolean): void {
 }
 
 function setCaptureLogsGlobal(next: boolean): void {
+  if (!IS_PREVIEW) return;
   if (captureLogsState === next) return;
   captureLogsState = next;
   // `setCaptureEnabled` handles writing CAPTURE_LOGS_KEY itself.
@@ -81,8 +92,9 @@ function setCaptureLogsGlobal(next: boolean): void {
 
 // Pick up writes from other tabs once, at module load, so a toggle in
 // one window propagates to every open tab. Per-hook subscriptions
-// then fan the change out to React.
-if (typeof window !== "undefined") {
+// then fan the change out to React. Skipped in production builds —
+// there's no Developer toggle to fire a cross-tab event from.
+if (typeof window !== "undefined" && IS_PREVIEW) {
   window.addEventListener("storage", (e) => {
     if (e.key === DEV_MODE_KEY) {
       const next = readBool(DEV_MODE_KEY);
