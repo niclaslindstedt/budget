@@ -121,7 +121,12 @@ export function Modal({
   // 100svh constraint and (when scrollableBody) caps the height. The
   // `centered` branch uses the desktop layout on every viewport size.
   // When `fixedHeight` is set, desktop fills the full viewport
-  // (`100svh`, edge-to-edge) — see prop docs.
+  // (`100svh`, edge-to-edge) — see prop docs. Note: when fixedHeight
+  // is true we drop the `sm:h-auto` from the mobile/desktop layout
+  // because Tailwind v4 emits named utilities AFTER arbitrary ones,
+  // so `sm:h-auto` would otherwise win over `sm:h-[100svh]` and let
+  // the modal grow with its content (notably the tall Categories
+  // tab) past the visible viewport.
   const desktopHeightClass = fixedHeight
     ? "sm:h-[100svh]"
     : scrollableBody
@@ -132,9 +137,12 @@ export function Modal({
     : scrollableBody
       ? "max-h-[min(95svh,calc(100svh-2rem))]"
       : "max-h-[95svh]";
+  const mobileToDesktopHeight = fixedHeight
+    ? `h-[100svh] ${desktopHeightClass}`
+    : `h-[100svh] sm:h-auto ${desktopHeightClass}`;
   const shellLayout = centered
     ? `flex w-full ${size} flex-col overflow-hidden ${centeredHeightClass}`
-    : `flex h-[100svh] w-full ${size} flex-col overflow-hidden sm:h-auto ${desktopHeightClass}`;
+    : `flex w-full ${size} flex-col overflow-hidden ${mobileToDesktopHeight}`;
 
   // On iOS the visual viewport shifts up to fit the keyboard but the
   // layout viewport (and therefore `100svh`) stays the same — the
