@@ -1,21 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
-import {
-  CATEGORY_COLORS,
-  DEFAULT_CATEGORY_ID,
-  TYPE_GLYPH_NAMES,
-} from "../data/constants";
-import type { Category, CategoryIcon, EntryType } from "../data/types";
+import { DEFAULT_CATEGORY_ID, TYPE_GLYPH_NAMES } from "../data/constants";
+import type { Category, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
 import { CategoryChip } from "./CategoryPicker";
-import { ColorPalette } from "./ColorPalette";
 import { EntityChip } from "./EntityChip";
+import { EntityCreatorForm } from "./EntityCreatorForm";
 import { EntityPickerShell } from "./EntityPickerShell";
-import { ClearableTextInput } from "./form";
-import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
 // Mirrors CategoryPicker: prefer aligning the dropdown's right edge
@@ -181,9 +175,6 @@ function TypeCreator({
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
   const t = useT();
-  const [name, setName] = useState("");
-  const [color, setColor] = useState<string>(CATEGORY_COLORS[0]);
-  const [glyph, setGlyph] = useState<CategoryIcon>("tag");
   // Default to the catch-all "Other" preset so the create form always
   // has a valid selection — the user can change it before submitting.
   const [categoryId, setCategoryId] = useState<string>(
@@ -191,80 +182,32 @@ function TypeCreator({
       ? DEFAULT_CATEGORY_ID
       : (categories[0]?.id ?? DEFAULT_CATEGORY_ID),
   );
-  const nameRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
-
-  function handleSubmit() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmit({ name: trimmed, color, glyph, categoryId });
-  }
 
   return (
-    <div className="flex flex-col gap-2 p-3">
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("type.name")}</span>
-        <ClearableTextInput
-          ref={nameRef}
-          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-          value={name}
-          onValueChange={setName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder={t("type.namePlaceholder")}
-        />
-      </label>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("type.category")}</span>
-        <CategorySelector
-          categories={categories}
-          value={categoryId}
-          onChange={setCategoryId}
-        />
-      </div>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("type.color")}</span>
-        <ColorPalette
-          colors={CATEGORY_COLORS}
-          value={color}
-          onChange={setColor}
-          size={5}
-        />
-      </div>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("type.glyph")}</span>
-        <GlyphGrid
-          icons={TYPE_GLYPH_NAMES}
-          value={glyph}
-          onChange={setGlyph}
-          tintColor={color}
-        />
-      </div>
-      <div className="mt-1 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
-        >
-          {t("common.cancel")}
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!name.trim()}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t("type.create")}
-        </button>
-      </div>
-    </div>
+    <EntityCreatorForm
+      glyphs={TYPE_GLYPH_NAMES}
+      labels={{
+        name: t("type.name"),
+        namePlaceholder: t("type.namePlaceholder"),
+        color: t("type.color"),
+        glyph: t("type.glyph"),
+        create: t("type.create"),
+      }}
+      extras={
+        <div className="flex flex-col gap-1 text-xs text-muted">
+          <span>{t("type.category")}</span>
+          <CategorySelector
+            categories={categories}
+            value={categoryId}
+            onChange={setCategoryId}
+          />
+        </div>
+      }
+      onCancel={onCancel}
+      onSubmit={({ name, color, glyph }) =>
+        onSubmit({ name, color, glyph, categoryId })
+      }
+    />
   );
 }
 
