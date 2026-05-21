@@ -15,6 +15,7 @@
 
 import type { HistoryEntry } from "../data/types";
 import { createLogger } from "../utils/logger";
+import { collapseWhitespace } from "./bank-helpers";
 
 const log = createLogger("bank-import");
 
@@ -141,7 +142,7 @@ export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
 // `date|amt|bal|desc`) while giving balance-less rows a stable id of
 // their own (`date|amt|desc`).
 export function historyEntryId(entry: ParsedBankEntry): string {
-  const desc = entry.description.trim().replace(/\s+/g, " ").toLowerCase();
+  const desc = collapseWhitespace(entry.description).toLowerCase();
   const amt = Math.round(entry.amount * 100) / 100;
   if (entry.balance === undefined)
     return hashString(`${entry.date}|${amt}|${desc}`);
@@ -224,9 +225,16 @@ export function mergeHistory(
 // authoritative anchor on the earliest row the import flow leaves
 // `Account.openingBalance` untouched and the user can set it
 // manually via the "update balance" affordance.
-export function computeOpeningBalanceFromEntries(
-  entries: readonly ParsedBankEntry[],
-): number | null {
+//
+// Generic over the entry shape so the same logic serves both freshly
+// parsed `ParsedBankEntry`s and already-stored `HistoryEntry`s — the
+// import flow uses both: parsed-only when seeding a new account, and
+// the merged set when the user imports older statements on top of
+// newer ones (picking the *globally* earliest keeps the anchor
+// correct in either order).
+function computeOpeningBalance<
+  T extends { date: string; amount: number; balance?: number },
+>(entries: readonly T[]): number | null {
   if (entries.length === 0) return null;
   // Entries may arrive in any order; find the one with the earliest
   // (lex-comparable ISO) date.
@@ -238,20 +246,14 @@ export function computeOpeningBalanceFromEntries(
   return earliest.balance - earliest.amount;
 }
 
-// Same idea, but reads from already-stored history entries (used
-// when the import flow has just merged with prior entries and we
-// need the anchor for the combined set). Picking the *globally*
-// earliest entry — not just the newly-imported ones — keeps the
-// opening balance correct as the user imports older statements
-// after newer ones.
+export function computeOpeningBalanceFromEntries(
+  entries: readonly ParsedBankEntry[],
+): number | null {
+  return computeOpeningBalance(entries);
+}
+
 export function computeOpeningBalanceFromHistory(
   entries: readonly HistoryEntry[],
 ): number | null {
-  if (entries.length === 0) return null;
-  let earliest = entries[0];
-  for (let i = 1; i < entries.length; i++) {
-    if (entries[i].date < earliest.date) earliest = entries[i];
-  }
-  if (earliest.balance === undefined) return null;
-  return earliest.balance - earliest.amount;
+  return computeOpeningBalance(entries);
 }

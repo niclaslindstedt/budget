@@ -33,7 +33,18 @@
 
 import { createLogger } from "../utils/logger";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
+import {
+  collapseWhitespace,
+  numericCell,
+  rowMatchesHeaders,
+  stringCell,
+  tryReadFirstSheet,
+} from "./bank-helpers";
 import { readFirstSheet, type XlsxCellValue } from "./xlsx-reader";
+
+// Re-exported for tests; the shared implementation lives in
+// `bank-helpers.ts`.
+export { numericCell } from "./bank-helpers";
 
 const PARSER_ID = "bank-norwegian-xlsx";
 const log = createLogger("bank-norwegian");
@@ -61,17 +72,12 @@ registerBankParser({
   name: "Bank Norwegian (xlsx)",
   async sniff(file) {
     if (!file.name.toLowerCase().endsWith(".xlsx")) return false;
-    try {
-      const sheet = await readFirstSheet(file.bytes);
-      return matchesHeader(sheet.rows[0]);
-    } catch (err) {
-      log.warn("sniff: readFirstSheet threw — treating as no match", err);
-      return false;
-    }
+    const sheet = await tryReadFirstSheet(file, log);
+    return sheet !== null && rowMatchesHeaders(sheet.rows[0], HEADERS);
   },
   async parse(file) {
     const sheet = await readFirstSheet(file.bytes);
-    if (!matchesHeader(sheet.rows[0]))
+    if (!rowMatchesHeaders(sheet.rows[0], HEADERS))
       throw new Error(
         "File does not look like a Bank Norwegian statement (header row mismatch).",
       );
@@ -87,7 +93,7 @@ registerBankParser({
       if (amount === null) continue;
       entries.push({
         date,
-        description: description.trim().replace(/\s+/g, " "),
+        description: collapseWhitespace(description),
         amount,
       });
     }
@@ -95,15 +101,6 @@ registerBankParser({
     return { bankParserId: PARSER_ID, entries };
   },
 });
-
-function matchesHeader(row: Map<number, XlsxCellValue> | undefined): boolean {
-  if (!row) return false;
-  for (let i = 0; i < HEADERS.length; i++) {
-    const v = row.get(i);
-    if (typeof v !== "string" || v.trim() !== HEADERS[i]) return false;
-  }
-  return true;
-}
 
 // Excel stores dates as serial numbers — the count of days since the
 // epoch Dec 30, 1899 (UTC). For any date past Mar 1, 1900 this lines
@@ -117,24 +114,4 @@ export function excelDateSerialToISO(
   const ms = Date.UTC(1899, 11, 30) + v * 86400 * 1000;
   if (!Number.isFinite(ms)) return null;
   return new Date(ms).toISOString().slice(0, 10);
-}
-
-function stringCell(v: XlsxCellValue | undefined): string | null {
-  if (typeof v === "string") return v;
-  return null;
-}
-
-// Numeric cells are plain numbers in this export. Accept a
-// Swedish-formatted string fallback ("-189,00") just in case a
-// future variant quotes amounts; mirrors what the Swedbank parser
-// does.
-export function numericCell(v: XlsxCellValue | undefined): number | null {
-  if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  if (typeof v === "string") {
-    const cleaned = v.replace(/\s/g, "").replace(",", ".");
-    if (cleaned === "") return null;
-    const n = Number(cleaned);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
 }

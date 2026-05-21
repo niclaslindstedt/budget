@@ -16,36 +16,32 @@
 
 import { createLogger } from "../utils/logger";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
+import { rowMatchesHeaders, tryReadFirstSheet } from "./bank-helpers";
 import { readFirstSheet } from "./xlsx-reader";
 
 const PARSER_ID = "skandia-xlsx";
 const log = createLogger("bank-skandia");
 
-// Header tokens we expect on row 4. Used both for sniffing (a file
-// matches when these strings appear in the first ~2 KB of the
-// uncompressed sheet XML) and for the runtime parser's sanity check.
+// Header tokens we expect on row 4. Skandia's header cells append a
+// long-form description after the column name (e.g. "Belopp\nThe
+// transaction amount…"), so we match with `startsWith`.
 const HEADERS = ["Bokf. datum", "Beskrivning", "Belopp", "Saldo"] as const;
+const HEADER_ROW_INDEX = 3;
 
 registerBankParser({
   id: PARSER_ID,
   name: "Skandiabanken (xlsx)",
   async sniff(file) {
     if (!file.name.toLowerCase().endsWith(".xlsx")) return false;
-    // Read the first sheet and check for the canonical header set.
     // Doing a full parse here is wasted work but the files are tiny
     // (a year of daily entries is ~50 KB) so it's not worth a
     // separate "peek at the bytes" code path.
-    try {
-      const sheet = await readFirstSheet(file.bytes);
-      return matchesHeader(sheet.rows);
-    } catch (err) {
-      log.warn("sniff: readFirstSheet threw — treating as no match", err);
-      return false;
-    }
+    const sheet = await tryReadFirstSheet(file, log);
+    return sheet !== null && headerMatches(sheet.rows);
   },
   async parse(file) {
     const sheet = await readFirstSheet(file.bytes);
-    if (!matchesHeader(sheet.rows))
+    if (!headerMatches(sheet.rows))
       throw new Error(
         "File does not look like a Skandiabanken statement (header row mismatch).",
       );
@@ -89,14 +85,15 @@ registerBankParser({
   },
 });
 
-function matchesHeader(rows: readonly Map<number, unknown>[]): boolean {
-  const header = rows[3];
-  if (!header) return false;
-  for (let i = 0; i < HEADERS.length; i++) {
-    const v = header.get(i);
-    if (typeof v !== "string" || !v.startsWith(HEADERS[i])) return false;
-  }
-  return true;
+function headerMatches(rows: readonly Map<number, unknown>[]): boolean {
+  // `rowMatchesHeaders` works on XlsxCellValue rows; the public
+  // `readFirstSheet` signature exposes the same shape, the `unknown`
+  // here is just a structural alias used elsewhere.
+  return rowMatchesHeaders(
+    rows[HEADER_ROW_INDEX] as Map<number, string | number | boolean | null>,
+    HEADERS,
+    "startsWith",
+  );
 }
 
 // "9150-897.480-4" → { clearing: "9150", accountNumber: "897.480-4" }.
