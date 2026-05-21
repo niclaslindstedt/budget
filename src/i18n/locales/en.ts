@@ -356,8 +356,6 @@ export const en = {
     },
     display: {
       title: "Display",
-      textSize: "Text size",
-      textSizeHint: "Scales the whole UI together.",
       hideTransfers: "Hide transfers between accounts",
       hideTransfersHint:
         "Suppress transfer rows from the budget table. The running balance still accounts for them — a small ↔ icon on the balance shows where they sit, and clicking it reveals them inline.",
@@ -381,6 +379,8 @@ export const en = {
         sans: "Sans-serif (Inter)",
         serif: "Serif (Source Serif 4)",
       },
+      textSize: "Text size",
+      textSizeHint: "Scales the whole UI together.",
       colorsSection: "Colours",
       colorGroup: {
         backgrounds: "Backgrounds",

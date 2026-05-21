@@ -348,8 +348,6 @@ export const sv: Catalog = {
     },
     display: {
       title: "Visning",
-      textSize: "Textstorlek",
-      textSizeHint: "Skalar hela gränssnittet tillsammans.",
       hideTransfers: "Dölj överföringar mellan konton",
       hideTransfersHint:
         "Dölj överföringsrader från budgettabellen. Saldot räknar fortfarande med dem — en liten ↔-ikon på saldot visar var de ligger, och ett klick visar dem inbäddat.",
@@ -373,6 +371,8 @@ export const sv: Catalog = {
         sans: "Sans-serif (Inter)",
         serif: "Serif (Source Serif 4)",
       },
+      textSize: "Textstorlek",
+      textSizeHint: "Skalar hela gränssnittet tillsammans.",
       colorsSection: "Färger",
       colorGroup: {
         backgrounds: "Bakgrunder",

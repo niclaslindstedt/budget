@@ -1237,8 +1237,10 @@ export const USER_DATA_SCHEMA = {
             "Multiplier applied to the base UI font size. 1 keeps the " +
             "default, values below 1 fit more on screen, values above 1 " +
             "make the UI easier to read. The runtime exposes it as the " +
-            "`--app-font-scale` CSS custom property on the document root " +
-            "and the body's `font-size` reads through it so the whole UI " +
+            "`--app-font-scale` CSS custom property on the document root; " +
+            "both the html root font-size (so every `rem`-based Tailwind " +
+            "utility scales) and the body's absolute pixel font-size (for " +
+            "body-inherited content) read through it so the whole UI " +
             "(sheet cells, modals, headers) scales together.",
         },
         sessionTimeoutMinutes: {
