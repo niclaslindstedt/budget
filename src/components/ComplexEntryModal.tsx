@@ -5,7 +5,7 @@ import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../data/types";
 import { useT } from "../i18n";
 import { normalizeAmountInput, parseAmount } from "../utils/format";
-import { ClearableTextInput, SignedAmountInput } from "./form";
+import { Button, ClearableTextInput, SignedAmountInput } from "./form";
 import { FormulaHelpButton } from "./FormulaHelpButton";
 import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
 import { FormulaVariableHelper } from "./FormulaVariableHelper";
@@ -328,26 +328,17 @@ export function ComplexEntryModal({
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        </Button>
+        <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit}>
           {submitVerb ?? t("complex.addVerb")}{" "}
           {dates.length > 0
             ? dates.length === 1
               ? t("complex.rowOne", { n: dates.length })
               : t("complex.rowOther", { n: dates.length })
             : t("complex.rowsPlaceholder")}
-        </button>
+        </Button>
       </Modal.Footer>
     </Modal>
   );

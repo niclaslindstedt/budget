@@ -31,6 +31,7 @@ import type {
   EncryptionMode,
 } from "../../storage/backend-preference";
 import { CloudBackupModal } from "../CloudBackupModal";
+import { Button } from "../form";
 import { Modal } from "../Modal";
 import {
   AppearanceTab,
@@ -628,28 +629,16 @@ function SettingsFooter({
       }}
     >
       <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onReset}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onReset}>
           {t("common.resetToDefaults")}
-        </button>
+        </Button>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-          >
+          <Button variant="secondary" onClick={onCancel}>
             {t("common.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-          >
+          </Button>
+          <Button variant="primary" onClick={onSave}>
             {t("common.save")}
-          </button>
+          </Button>
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs text-muted">

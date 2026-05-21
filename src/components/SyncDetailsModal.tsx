@@ -24,6 +24,7 @@ import {
 } from "../storage/gdrive-adapter";
 import type { SaveStatus } from "../storage/useUserDataStorage";
 import { type TFunction, useT } from "../i18n";
+import { Button } from "./form";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -302,13 +303,9 @@ export function SyncDetailsModal({
         </div>
       </div>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.close")}
-        </button>
+        </Button>
         <a
           href={view.url}
           target="_blank"

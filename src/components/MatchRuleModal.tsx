@@ -16,7 +16,7 @@ import {
   formatShortDate,
   parseAmount,
 } from "../utils/format";
-import { ClearableTextInput, SignedAmountInput } from "./form";
+import { Button, ClearableTextInput, SignedAmountInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -483,23 +483,14 @@ export function MatchRuleModal({
             {t("matchRule.delete")}
           </button>
         )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSave}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        </Button>
+        <Button variant="primary" onClick={handleSubmit} disabled={!canSave}>
           {isEdit
             ? t("common.save")
             : t("matchRule.labelMatchesCount", { n: matches.length })}
-        </button>
+        </Button>
       </Modal.Footer>
     </Modal>
   );

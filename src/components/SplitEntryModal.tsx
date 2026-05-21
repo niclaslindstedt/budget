@@ -11,7 +11,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../utils/format";
-import { SignedAmountInput } from "./form";
+import { Button, SignedAmountInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -435,22 +435,17 @@ export function SplitEntryModal({
             {t("splitRow.revert")}
           </button>
         )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
           onClick={handleSubmit}
           disabled={!canSubmit}
           title={canSubmit ? undefined : t("splitRow.buttonDisabled")}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("splitRow.button")}
-        </button>
+        </Button>
       </Modal.Footer>
     </Modal>
   );

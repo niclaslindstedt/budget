@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { isIsoDate } from "../data/recurrence";
 import { useT } from "../i18n";
 import { type MessageKey } from "../i18n";
-import { SelectPicker } from "./form";
+import { Button, SelectPicker } from "./form";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -228,17 +228,16 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
         </div>
       </div>
       <Modal.Footer className="justify-between">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => {
             onSelect(null);
             onClose();
           }}
           disabled={!selected}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("datePicker.clear")}
-        </button>
+        </Button>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -247,13 +246,9 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
           >
             {t("datePicker.today")}
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-          >
+          <Button variant="secondary" onClick={onClose}>
             {t("common.cancel")}
-          </button>
+          </Button>
         </div>
       </Modal.Footer>
     </Modal>
