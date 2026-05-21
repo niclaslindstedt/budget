@@ -69,6 +69,7 @@ export const USER_DATA_SCHEMA = {
     "categories",
     "types",
     "hiddenPresetTypeIds",
+    "presetTypeKindOverrides",
     "hiddenPresetCategoryIds",
     "transactions",
     "history",
@@ -158,6 +159,22 @@ export const USER_DATA_SCHEMA = {
         "load. Hiding does NOT affect referential integrity — rows " +
         "and rules that point at a hidden preset still resolve.",
       items: { type: "string", minLength: 1 },
+    },
+    presetTypeKindOverrides: {
+      type: "object",
+      description:
+        "Per-user overrides for the income/expense `kind` of a preset " +
+        "entry type. Keys are preset type ids (`preset-type-<slug>`); " +
+        "values pick one of `income`, `expense`, or `any`. Lets a user " +
+        "re-classify a built-in preset (e.g. promote a savings type " +
+        "to income-only) without changing the app version. Unknown " +
+        "ids and unknown values are silently dropped on load. " +
+        "User-added types carry `kind` on the type record itself; " +
+        "this map only covers presets.",
+      additionalProperties: {
+        type: "string",
+        enum: ["income", "expense", "any"],
+      },
     },
     hiddenPresetCategoryIds: {
       type: "array",
@@ -1099,6 +1116,18 @@ export const USER_DATA_SCHEMA = {
             "(or a preset). When the parent category is deleted, the " +
             "type is reassigned to the catch-all 'Other' preset rather " +
             "than orphaned.",
+        },
+        kind: {
+          type: "string",
+          enum: ["income", "expense"],
+          description:
+            "Optional income/expense filter. When set to `income`, " +
+            "the type is offered only on positive-amount rows; when " +
+            "set to `expense`, only on negative-amount rows. Absent " +
+            "means the type works for either direction (the picker's " +
+            "default). Preset types ship with their built-in kind " +
+            "baked into the app code; per-user overrides for presets " +
+            "live in the top-level `presetTypeKindOverrides` map.",
         },
       },
     },

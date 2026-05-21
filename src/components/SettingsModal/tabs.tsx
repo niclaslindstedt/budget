@@ -696,6 +696,7 @@ export function CategoriesTab({
   onUpdateType,
   onDeleteType,
   onSetPresetTypeHidden,
+  onSetPresetTypeKind,
 }: {
   data: UserData;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -709,6 +710,10 @@ export function CategoriesTab({
   onUpdateType: (typeId: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDeleteType: (typeId: string) => void;
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
+  onSetPresetTypeKind: (
+    presetId: string,
+    kind: "income" | "expense" | "any",
+  ) => void;
 }) {
   const t = useT();
   return (
@@ -718,6 +723,7 @@ export function CategoriesTab({
         userTypes={data.types}
         hiddenPresetCategoryIds={data.hiddenPresetCategoryIds}
         hiddenPresetTypeIds={data.hiddenPresetTypeIds}
+        presetTypeKindOverrides={data.presetTypeKindOverrides}
         onCreateCategory={onCreateCategory}
         onUpdateCategory={onUpdateCategory}
         onDeleteCategory={onDeleteCategory}
@@ -726,6 +732,7 @@ export function CategoriesTab({
         onUpdateType={onUpdateType}
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
+        onSetPresetTypeKind={onSetPresetTypeKind}
       />
     </Section>
   );

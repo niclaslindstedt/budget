@@ -341,8 +341,10 @@ const OVERVIEW_TEXT = `UserData
 ├─ categories: Category[]                  analysis buckets (contain types)
 │  └─ Category { id, name, color, icon }
 ├─ types: EntryType[]                      concrete labels; each belongs to one category
-│  └─ EntryType { id, name, color, glyph, categoryId }
+│  └─ EntryType { id, name, color, glyph, categoryId, kind? }
 ├─ hiddenPresetTypeIds: string[]           preset type ids the user hid
+├─ presetTypeKindOverrides:                per-user income/expense overrides on presets
+│    { [presetTypeId]: "income"|"expense"|"any" }
 ├─ hiddenPresetCategoryIds: string[]       preset category ids the user hid
 ├─ transactions: Transaction[]             transfers between accounts
 │  └─ Transaction { id, date, description, amount (>= 0),

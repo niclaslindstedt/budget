@@ -566,6 +566,18 @@ export const en = {
       deleteTypeTitle: "Delete type",
       deleteTypeHint:
         'Remove "{name}"? Any rows labelled with it lose the chip; their description stays intact.',
+      kind: "Direction",
+      kindHint:
+        "Limit when this type shows in the picker. Income hides it on negative rows; expense hides it on positive rows.",
+      kindAny: "Both",
+      kindIncome: "Income",
+      kindExpense: "Expense",
+      kindAnyShort: "Any",
+      kindIncomeShort: "+",
+      kindExpenseShort: "−",
+      kindAnyTitle: "Shows on both income and expense rows",
+      kindIncomeTitle: "Shows only on income rows (positive amount)",
+      kindExpenseTitle: "Shows only on expense rows (negative amount)",
     },
     memory: {
       merchantTitle: "Merchant memory",

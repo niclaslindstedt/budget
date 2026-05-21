@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   Check,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
+  Minus,
   Pencil,
   Plus,
   Trash2,
@@ -21,7 +24,13 @@ import {
   PRESET_ENTRY_TYPE_IDS,
   TYPE_GLYPH_NAMES,
 } from "../../data/constants";
-import type { Category, CategoryIcon, EntryType } from "../../data/types";
+import { effectivePresetKind } from "../../data/presets";
+import type {
+  Category,
+  CategoryIcon,
+  EntryType,
+  EntryTypeKind,
+} from "../../data/types";
 import { useT } from "../../i18n";
 import { displayCategoryName } from "../../i18n/preset-names";
 import { CategoryChip } from "../CategoryPicker";
@@ -43,6 +52,7 @@ type Props = {
   userTypes: EntryType[];
   hiddenPresetCategoryIds: string[];
   hiddenPresetTypeIds: string[];
+  presetTypeKindOverrides: Record<string, EntryTypeKind>;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onUpdateCategory: (id: string, patch: Partial<Omit<Category, "id">>) => void;
   onDeleteCategory: (id: string) => void;
@@ -51,6 +61,7 @@ type Props = {
   onUpdateType: (id: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDeleteType: (id: string) => void;
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
+  onSetPresetTypeKind: (presetId: string, kind: EntryTypeKind) => void;
 };
 
 export function CategoriesAndTypesAdmin({
@@ -58,6 +69,7 @@ export function CategoriesAndTypesAdmin({
   userTypes,
   hiddenPresetCategoryIds,
   hiddenPresetTypeIds,
+  presetTypeKindOverrides,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
@@ -66,6 +78,7 @@ export function CategoriesAndTypesAdmin({
   onUpdateType,
   onDeleteType,
   onSetPresetTypeHidden,
+  onSetPresetTypeKind,
 }: Props) {
   const t = useT();
   const hiddenCats = useMemo(
@@ -246,11 +259,13 @@ export function CategoriesAndTypesAdmin({
                   category={cat}
                   types={childTypes}
                   hiddenPresetTypeIds={hiddenTypes}
+                  presetTypeKindOverrides={presetTypeKindOverrides}
                   allCategories={allCategories}
                   onCreate={onCreateType}
                   onUpdate={onUpdateType}
                   onDelete={onDeleteType}
                   onSetPresetHidden={onSetPresetTypeHidden}
+                  onSetPresetKind={onSetPresetTypeKind}
                 />
               )}
             </li>
@@ -314,20 +329,24 @@ function TypesSection({
   category,
   types,
   hiddenPresetTypeIds,
+  presetTypeKindOverrides,
   allCategories,
   onCreate,
   onUpdate,
   onDelete,
   onSetPresetHidden,
+  onSetPresetKind,
 }: {
   category: Category;
   types: EntryType[];
   hiddenPresetTypeIds: ReadonlySet<string>;
+  presetTypeKindOverrides: Record<string, EntryTypeKind>;
   allCategories: readonly Category[];
   onCreate: (draft: Omit<EntryType, "id">) => EntryType;
   onUpdate: (id: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDelete: (id: string) => void;
   onSetPresetHidden: (presetId: string, hidden: boolean) => void;
+  onSetPresetKind: (presetId: string, kind: EntryTypeKind) => void;
 }) {
   const t = useT();
   const [creating, setCreating] = useState(false);
@@ -365,10 +384,13 @@ function TypesSection({
                 </li>
               );
             }
+            const effectiveKind: EntryTypeKind = isPreset
+              ? effectivePresetKind(ty, presetTypeKindOverrides)
+              : (ty.kind ?? "any");
             return (
               <li
                 key={ty.id}
-                className="flex items-center gap-2 px-2 py-1.5 text-sm"
+                className="flex flex-wrap items-center gap-2 px-2 py-1.5 text-sm"
               >
                 <TypeChip type={ty} compact />
                 {isPreset && (
@@ -376,7 +398,17 @@ function TypesSection({
                     {t("settings.categoriesTab.builtIn")}
                   </span>
                 )}
-                <div className="ml-auto flex items-center gap-1">
+                <div className="ml-auto flex items-center gap-2">
+                  <KindToggle
+                    value={effectiveKind}
+                    onChange={(next) => {
+                      if (isPreset) onSetPresetKind(ty.id, next);
+                      else
+                        onUpdate(ty.id, {
+                          kind: next === "any" ? undefined : next,
+                        });
+                    }}
+                  />
                   {isPreset ? (
                     <button
                       type="button"
@@ -578,11 +610,18 @@ function TypeEditor({
   const [categoryId, setCategoryId] = useState<string>(
     initial?.categoryId ?? initialCategoryId ?? DEFAULT_CATEGORY_ID,
   );
+  const [kind, setKind] = useState<EntryTypeKind>(initial?.kind ?? "any");
 
   function handleSubmit() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSubmit({ name: trimmed, color, glyph, categoryId });
+    onSubmit({
+      name: trimmed,
+      color,
+      glyph,
+      categoryId,
+      ...(kind === "any" ? {} : { kind }),
+    });
   }
 
   return (
@@ -612,6 +651,13 @@ function TypeEditor({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
+        <span>{t("settings.categoriesTab.kind")}</span>
+        <KindToggle value={kind} onChange={setKind} expanded />
+        <span className="text-xs text-muted">
+          {t("settings.categoriesTab.kindHint")}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.color")}</span>
         <ColorPalette
           colors={CATEGORY_COLORS}
@@ -635,6 +681,83 @@ function TypeEditor({
         onCancel={onCancel}
         onSubmit={handleSubmit}
       />
+    </div>
+  );
+}
+
+// Three-way segmented control for the income/expense filter. Renders
+// compactly (icon-only) in list rows and expanded (icon + label) when
+// hosted inside the type editor where there's room. Mirrors the
+// "Always use custom dropdowns" rule — no native <select>.
+function KindToggle({
+  value,
+  onChange,
+  expanded = false,
+}: {
+  value: EntryTypeKind;
+  onChange: (next: EntryTypeKind) => void;
+  expanded?: boolean;
+}) {
+  const t = useT();
+  const options: Array<{
+    kind: EntryTypeKind;
+    icon: typeof Minus;
+    label: string;
+    short: string;
+    title: string;
+  }> = [
+    {
+      kind: "income",
+      icon: ArrowUpCircle,
+      label: t("settings.categoriesTab.kindIncome"),
+      short: t("settings.categoriesTab.kindIncomeShort"),
+      title: t("settings.categoriesTab.kindIncomeTitle"),
+    },
+    {
+      kind: "any",
+      icon: Minus,
+      label: t("settings.categoriesTab.kindAny"),
+      short: t("settings.categoriesTab.kindAnyShort"),
+      title: t("settings.categoriesTab.kindAnyTitle"),
+    },
+    {
+      kind: "expense",
+      icon: ArrowDownCircle,
+      label: t("settings.categoriesTab.kindExpense"),
+      short: t("settings.categoriesTab.kindExpenseShort"),
+      title: t("settings.categoriesTab.kindExpenseTitle"),
+    },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label={t("settings.categoriesTab.kind")}
+      className="inline-flex shrink-0 overflow-hidden rounded border border-line"
+    >
+      {options.map((opt) => {
+        const selected = value === opt.kind;
+        const Icon = opt.icon;
+        return (
+          <button
+            key={opt.kind}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(opt.kind)}
+            title={opt.title}
+            className={`inline-flex h-7 cursor-pointer items-center gap-1 border-0 ${
+              expanded ? "px-2 text-xs" : "w-7 justify-center"
+            } ${
+              selected
+                ? "bg-accent/15 text-accent"
+                : "bg-surface text-muted hover:bg-surface-3 hover:text-fg"
+            }`}
+          >
+            <Icon size={13} aria-hidden focusable={false} />
+            {expanded && <span>{opt.label}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

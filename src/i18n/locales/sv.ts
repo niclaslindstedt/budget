@@ -558,6 +558,18 @@ export const sv: Catalog = {
       deleteTypeTitle: "Ta bort typ",
       deleteTypeHint:
         "Ta bort ”{name}”? Alla rader märkta med den tappar chippet; deras beskrivning behålls.",
+      kind: "Riktning",
+      kindHint:
+        "Begränsa när typen visas i väljaren. Inkomst döljer den på negativa rader; utgift döljer den på positiva rader.",
+      kindAny: "Båda",
+      kindIncome: "Inkomst",
+      kindExpense: "Utgift",
+      kindAnyShort: "Alla",
+      kindIncomeShort: "+",
+      kindExpenseShort: "−",
+      kindAnyTitle: "Visas på både inkomst- och utgiftsrader",
+      kindIncomeTitle: "Visas bara på inkomstrader (positivt belopp)",
+      kindExpenseTitle: "Visas bara på utgiftsrader (negativt belopp)",
     },
     memory: {
       merchantTitle: "Handlarminne",

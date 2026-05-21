@@ -36,6 +36,7 @@ import type {
   DecimalSeparator,
   DensityPreset,
   EntryType,
+  EntryTypeKind,
   FontFamilyId,
   HistoryEntry,
   HistoryEntrySplit,
@@ -819,7 +820,7 @@ function validateEntryType(
   knownCategoryIds: ReadonlySet<string>,
 ): Result<EntryType> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, name, color, glyph, categoryId } = raw;
+  const { id, name, color, glyph, categoryId, kind } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (typeof name !== "string")
@@ -835,10 +836,20 @@ function validateEntryType(
       `${path}.categoryId`,
       `references unknown category "${categoryId}"`,
     );
-  return {
-    ok: true,
-    value: { id, name, color, glyph: glyph as CategoryIcon, categoryId },
+  // `kind` is optional. We accept the three valid values and silently
+  // drop "any" (the implicit default for user types) so a round-trip
+  // never adds spurious fields. Unknown values fall back to absent
+  // rather than failing — the field is a UI filter, not data the
+  // user can't reproduce.
+  const cleaned: EntryType = {
+    id,
+    name,
+    color,
+    glyph: glyph as CategoryIcon,
+    categoryId,
   };
+  if (kind === "income" || kind === "expense") cleaned.kind = kind;
+  return { ok: true, value: cleaned };
 }
 
 // Soft-recovering settings validator: each field falls back to its
@@ -1195,6 +1206,9 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const hiddenPresetCategoryIds = sanitizeStringArray(
     raw.hiddenPresetCategoryIds,
   ).filter((id) => PRESET_CATEGORY_IDS.has(id));
+  const presetTypeKindOverrides = validatePresetTypeKindOverrides(
+    raw.presetTypeKindOverrides,
+  );
 
   const settings = validateSettings(raw.settings);
 
@@ -1208,6 +1222,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       categories,
       types,
       hiddenPresetTypeIds,
+      presetTypeKindOverrides,
       hiddenPresetCategoryIds,
       transactions,
       history,
@@ -1220,6 +1235,26 @@ export function validateUserData(raw: unknown): Result<UserData> {
       settings,
     },
   };
+}
+
+// Per-user override map for the `kind` of preset entry types. Keys
+// must be known preset ids; values must be one of the three valid
+// kinds. Anything else is silently dropped so a hand-edited file
+// can't trap the loader. Returns an empty object when missing or
+// malformed.
+function validatePresetTypeKindOverrides(
+  raw: unknown,
+): Record<string, EntryTypeKind> {
+  if (!isObject(raw)) return {};
+  const out: Record<string, EntryTypeKind> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof key !== "string" || key === "") continue;
+    if (!PRESET_ENTRY_TYPE_IDS.has(key)) continue;
+    if (value === "income" || value === "expense" || value === "any") {
+      out[key] = value;
+    }
+  }
+  return out;
 }
 
 function sanitizeStringArray(raw: unknown): string[] {

@@ -952,6 +952,10 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     color: string;
     glyph: CategoryIcon;
     category: string;
+    // Income / expense filter direction. `undefined` (the default)
+    // means the preset works for either direction; readers translate
+    // that to `kind: "any"` when projecting.
+    kind?: "income" | "expense";
   }> = [
     // Housing
     {
@@ -960,6 +964,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[1],
       glyph: "home",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "mortgage",
@@ -967,6 +972,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "home",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "hoa-fee",
@@ -974,6 +980,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "building-2",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "home-insurance",
@@ -981,6 +988,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "receipt",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "electricity",
@@ -988,6 +996,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[2],
       glyph: "zap",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "heating",
@@ -995,6 +1004,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[1],
       glyph: "flame",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "water",
@@ -1002,6 +1012,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[5],
       glyph: "droplet",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "internet",
@@ -1009,6 +1020,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[5],
       glyph: "wifi",
       category: "housing",
+      kind: "expense",
     },
     {
       slug: "phone",
@@ -1016,6 +1028,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[4],
       glyph: "smartphone",
       category: "bills",
+      kind: "expense",
     },
     // Food
     {
@@ -1024,6 +1037,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "shopping-cart",
       category: "food",
+      kind: "expense",
     },
     {
       slug: "restaurant",
@@ -1031,6 +1045,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[2],
       glyph: "utensils",
       category: "food",
+      kind: "expense",
     },
     {
       slug: "lunch",
@@ -1038,6 +1053,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[2],
       glyph: "utensils",
       category: "food",
+      kind: "expense",
     },
     {
       slug: "cafe",
@@ -1045,6 +1061,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "coffee",
       category: "food",
+      kind: "expense",
     },
     {
       slug: "systembolaget",
@@ -1052,6 +1069,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "wine",
       category: "food",
+      kind: "expense",
     },
     // Transport
     {
@@ -1060,6 +1078,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[1],
       glyph: "fuel",
       category: "transport",
+      kind: "expense",
     },
     {
       slug: "public-transport",
@@ -1067,6 +1086,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[4],
       glyph: "bus",
       category: "transport",
+      kind: "expense",
     },
     {
       slug: "parking",
@@ -1074,6 +1094,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "car",
       category: "transport",
+      kind: "expense",
     },
     {
       slug: "car-insurance",
@@ -1081,6 +1102,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "car",
       category: "transport",
+      kind: "expense",
     },
     {
       slug: "vehicle-tax",
@@ -1088,6 +1110,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "car",
       category: "transport",
+      kind: "expense",
     },
     {
       slug: "congestion-tax",
@@ -1095,6 +1118,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "car",
       category: "transport",
+      kind: "expense",
     },
     // Health & personal
     {
@@ -1103,6 +1127,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "pill",
       category: "health",
+      kind: "expense",
     },
     {
       slug: "healthcare",
@@ -1110,6 +1135,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "stethoscope",
       category: "health",
+      kind: "expense",
     },
     {
       slug: "dentist",
@@ -1117,6 +1143,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "heart-pulse",
       category: "health",
+      kind: "expense",
     },
     {
       slug: "gym",
@@ -1124,6 +1151,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "dumbbell",
       category: "health",
+      kind: "expense",
     },
     {
       slug: "haircut",
@@ -1131,6 +1159,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "scissors",
       category: "personal",
+      kind: "expense",
     },
     // Family
     {
@@ -1139,6 +1168,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "baby",
       category: "family",
+      kind: "expense",
     },
     {
       slug: "child-allowance",
@@ -1146,6 +1176,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "baby",
       category: "family",
+      kind: "income",
     },
     {
       slug: "allowance",
@@ -1153,6 +1184,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "hand-coins",
       category: "family",
+      kind: "expense",
     },
     // Subscriptions / bills
     {
@@ -1161,6 +1193,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "music",
       category: "entertainment",
+      kind: "expense",
     },
     {
       slug: "netflix",
@@ -1168,6 +1201,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[0],
       glyph: "film",
       category: "entertainment",
+      kind: "expense",
     },
     {
       slug: "streaming",
@@ -1175,6 +1209,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "film",
       category: "entertainment",
+      kind: "expense",
     },
     {
       slug: "subscription",
@@ -1182,6 +1217,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "credit-card",
       category: "bills",
+      kind: "expense",
     },
     {
       slug: "union-fee",
@@ -1189,6 +1225,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "briefcase",
       category: "bills",
+      kind: "expense",
     },
     {
       slug: "a-kassa",
@@ -1196,6 +1233,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "briefcase",
       category: "bills",
+      kind: "expense",
     },
     {
       slug: "csn",
@@ -1203,6 +1241,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "graduation-cap",
       category: "bills",
+      kind: "expense",
     },
     // Income
     {
@@ -1211,6 +1250,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "banknote",
       category: "income",
+      kind: "income",
     },
     {
       slug: "bonus",
@@ -1218,6 +1258,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "hand-coins",
       category: "income",
+      kind: "income",
     },
     {
       slug: "tax-refund",
@@ -1225,8 +1266,11 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[3],
       glyph: "landmark",
       category: "income",
+      kind: "income",
     },
-    // Savings
+    // Savings — left as "any" because some households model savings
+    // both ways (a deposit out of checking on one sheet, the matching
+    // arrival on the savings sheet).
     {
       slug: "savings",
       name: "Savings",
@@ -1255,6 +1299,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "shirt",
       category: "personal",
+      kind: "expense",
     },
     {
       slug: "gift",
@@ -1262,6 +1307,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[6],
       glyph: "gift",
       category: "personal",
+      kind: "expense",
     },
     {
       slug: "hobby",
@@ -1269,6 +1315,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[2],
       glyph: "sparkles",
       category: "personal",
+      kind: "expense",
     },
     {
       slug: "travel",
@@ -1276,6 +1323,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[4],
       glyph: "plane",
       category: "travel",
+      kind: "expense",
     },
   ];
   return seeds.map((s) => ({
@@ -1284,6 +1332,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     color: s.color,
     glyph: s.glyph,
     categoryId: `preset-cat-${s.category}`,
+    ...(s.kind === undefined ? {} : { kind: s.kind }),
   }));
 })();
 

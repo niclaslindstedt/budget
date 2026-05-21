@@ -147,6 +147,10 @@ type Props = {
   onUpdateType: (typeId: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDeleteType: (typeId: string) => void;
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
+  onSetPresetTypeKind: (
+    presetId: string,
+    kind: "income" | "expense" | "any",
+  ) => void;
 };
 
 type TabId =
@@ -240,6 +244,7 @@ export function SettingsModal({
   onUpdateType,
   onDeleteType,
   onSetPresetTypeHidden,
+  onSetPresetTypeKind,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
@@ -441,6 +446,7 @@ export function SettingsModal({
                 onUpdateType={onUpdateType}
                 onDeleteType={onDeleteType}
                 onSetPresetTypeHidden={onSetPresetTypeHidden}
+                onSetPresetTypeKind={onSetPresetTypeKind}
               />
             )}
             {activeTab === "memory" && (

@@ -45,6 +45,12 @@ type Props = {
   // section. Optional — pickers without a known usage map fall back
   // to insertion order.
   usageById?: ReadonlyMap<string, number>;
+  // Sign of the row's amount: "positive" hides expense-only types,
+  // "negative" hides income-only types, "any"/undefined shows
+  // everything. The currently selected type is always shown — once
+  // a row has been labelled "Salary" we don't drop it from the
+  // picker just because the user is reconsidering the sign.
+  amountSign?: "positive" | "negative" | "any";
   // Render style. "chip" fills a table cell; "field" looks like a form field.
   variant?: "chip" | "field";
   placeholder?: string;
@@ -58,6 +64,7 @@ export function TypePicker({
   onSelect,
   onCreate,
   usageById,
+  amountSign,
   variant = "field",
   placeholder,
 }: Props) {
@@ -79,15 +86,27 @@ export function TypePicker({
   // language (preset "Bolån" sorts under B, not M from "Mortgage").
   // When `usageById` is absent we fall back to insertion order so
   // callers without usage data still render predictably.
+  //
+  // Filter pass before sort: when the row's amount sign is known
+  // (positive → income context, negative → expense context), drop
+  // types whose `kind` points the wrong way. The currently-selected
+  // type bypasses the filter so an already-labelled row keeps its
+  // chip visible while the user reconsiders.
   const sortedTypes = useMemo(() => {
-    if (!usageById) return [...types];
-    return [...types].sort((a, b) => {
+    const filtered =
+      amountSign === "positive"
+        ? types.filter((tt) => tt.id === selectedId || tt.kind !== "expense")
+        : amountSign === "negative"
+          ? types.filter((tt) => tt.id === selectedId || tt.kind !== "income")
+          : types;
+    if (!usageById) return [...filtered];
+    return [...filtered].sort((a, b) => {
       const ua = usageById.get(a.id) ?? 0;
       const ub = usageById.get(b.id) ?? 0;
       if (ua !== ub) return ub - ua;
       return displayTypeName(a, t).localeCompare(displayTypeName(b, t));
     });
-  }, [types, usageById, t]);
+  }, [types, usageById, amountSign, selectedId, t]);
 
   function handlePick(id: string | null) {
     onSelect(id);
