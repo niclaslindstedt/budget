@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import { nextOccurrenceWithSameDom } from "../data/recurrence";
@@ -7,13 +6,15 @@ import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
-import {
-  formatAmountForInput,
-  normalizeAmountInput,
-  parseAmount,
-} from "../utils/format";
+import { formatAmountForInput, parseAmount } from "../utils/format";
 import { Modal } from "./Modal";
-import { Checkbox, ClearableTextInput, Radio, RadioGroup } from "./form";
+import {
+  Checkbox,
+  ClearableTextInput,
+  Radio,
+  RadioGroup,
+  SignedAmountInput,
+} from "./form";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "./TypePicker";
 
@@ -236,13 +237,6 @@ export function EditEntryModal({
   const amountTouched =
     amount !== initialAmountText || negative !== initialNegative;
 
-  function handleAmountChange(next: string) {
-    // Sign lives on the toggle button — strip any minus the keyboard or
-    // a paste produces so the input only ever shows the absolute value.
-    const stripped = next.replace(/-/g, "");
-    setAmount(normalizeAmountInput(stripped, settings));
-  }
-
   function toggleSign() {
     setNegative((s) => !s);
   }
@@ -337,40 +331,14 @@ export function EditEntryModal({
                 <span className="text-xs text-muted">
                   {t("editEntry.amount")}
                 </span>
-                <div className="relative flex min-w-0">
-                  <button
-                    type="button"
-                    onClick={toggleSign}
-                    aria-label={
-                      negative
-                        ? t("editEntry.makePositive")
-                        : t("editEntry.makeNegative")
-                    }
-                    tabIndex={-1}
-                    className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-                      negative ? "text-negative" : "text-positive"
-                    }`}
-                  >
-                    {negative ? (
-                      <Minus size={14} aria-hidden focusable={false} />
-                    ) : (
-                      <Plus size={14} aria-hidden focusable={false} />
-                    )}
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    className={`field-input min-w-0 flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
-                      parsedAbs !== null && parsedAbs !== 0
-                        ? negative
-                          ? "text-negative"
-                          : "text-positive"
-                        : "text-fg"
-                    }`}
-                  />
-                </div>
+                <SignedAmountInput
+                  value={amount}
+                  negative={negative}
+                  onValueChange={setAmount}
+                  onToggleSign={toggleSign}
+                  settings={settings}
+                  ariaLabel={t("editEntry.amount")}
+                />
               </label>
             </div>
 
@@ -436,40 +404,14 @@ export function EditEntryModal({
                 <span className="text-xs text-muted">
                   {t("editEntry.amount")}
                 </span>
-                <div className="relative flex min-w-0">
-                  <button
-                    type="button"
-                    onClick={toggleSign}
-                    aria-label={
-                      negative
-                        ? t("editEntry.makePositive")
-                        : t("editEntry.makeNegative")
-                    }
-                    tabIndex={-1}
-                    className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-                      negative ? "text-negative" : "text-positive"
-                    }`}
-                  >
-                    {negative ? (
-                      <Minus size={14} aria-hidden focusable={false} />
-                    ) : (
-                      <Plus size={14} aria-hidden focusable={false} />
-                    )}
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    className={`field-input min-w-0 flex-1 rounded border border-line bg-surface-2 py-1.5 pr-2 pl-7 text-right font-mono text-sm tabular-nums ${
-                      parsedAbs !== null && parsedAbs !== 0
-                        ? negative
-                          ? "text-negative"
-                          : "text-positive"
-                        : "text-fg"
-                    }`}
-                  />
-                </div>
+                <SignedAmountInput
+                  value={amount}
+                  negative={negative}
+                  onValueChange={setAmount}
+                  onToggleSign={toggleSign}
+                  settings={settings}
+                  ariaLabel={t("editEntry.amount")}
+                />
               </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <span className="text-xs text-muted">
