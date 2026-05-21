@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
-import { CloudAlert, Loader, LogIn } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CloudAlert, Loader, LogIn, RefreshCw } from "lucide-react";
 
 import { useT } from "../i18n";
 import type { BackendId } from "../storage/backend-preference";
 import { preloadGdriveAuth } from "../storage/gdrive-adapter";
+import { debug } from "../utils/debug";
 import { Modal } from "./Modal";
+
+const log = debug("reconnect-modal");
 
 type Props = {
   open: boolean;
@@ -46,13 +49,19 @@ export function ReconnectCloudModal({
   const t = useT();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bumps each failed attempt so the user can tell repeat retries
+  // are doing something even when the same error comes back. Reset
+  // whenever the modal closes.
+  const attemptRef = useRef(0);
 
   useEffect(() => {
     if (!open) {
       setPending(false);
       setError(null);
+      attemptRef.current = 0;
       return;
     }
+    log.log(`open backend=${backend}`);
     // Warm the GIS script so `requestAccessToken` runs synchronously
     // inside the upcoming click handler. Without this the await in
     // `startGdriveAuth` loses the user gesture and Safari blocks the
@@ -65,21 +74,50 @@ export function ReconnectCloudModal({
 
   const handleClose = () => {
     if (pending) return;
+    log.log("close");
     onClose();
   };
 
   const handleReconnect = async () => {
     if (pending) return;
+    attemptRef.current += 1;
+    const attempt = attemptRef.current;
+    const startedAt =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    log.log(
+      `reconnect: click backend=${backend} attempt=${attempt}${
+        attempt > 1 ? " (retry)" : ""
+      }`,
+    );
     setPending(true);
     setError(null);
     try {
       await onConfirm();
+      const took = Math.round(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+          startedAt,
+      );
+      log.log(`reconnect: success (${took}ms) attempt=${attempt}`);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const took = Math.round(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+          startedAt,
+      );
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(
+        `reconnect: failed (${took}ms) attempt=${attempt} message=${message}`,
+      );
+      setError(message);
       setPending(false);
     }
   };
+
+  const showRetry = error !== null;
+  const buttonLabel = showRetry
+    ? t("common.retry")
+    : t("sync.reconnect", { name: view.name });
+  const ButtonIcon = pending ? Loader : showRetry ? RefreshCw : LogIn;
 
   return (
     <Modal
@@ -132,17 +170,13 @@ export function ReconnectCloudModal({
             pending ? "" : "cursor-pointer"
           }`}
         >
-          {pending ? (
-            <Loader
-              size={14}
-              aria-hidden
-              focusable={false}
-              className="animate-spin"
-            />
-          ) : (
-            <LogIn size={14} aria-hidden focusable={false} />
-          )}
-          {t("sync.reconnect", { name: view.name })}
+          <ButtonIcon
+            size={14}
+            aria-hidden
+            focusable={false}
+            className={pending ? "animate-spin" : undefined}
+          />
+          {buttonLabel}
         </button>
       </Modal.Footer>
     </Modal>
