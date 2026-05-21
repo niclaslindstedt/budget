@@ -685,6 +685,16 @@ function loadGisScript(): Promise<void> {
   return gisLoaderPromise;
 }
 
+// Kick off the GIS script load without blocking. Call this as soon as
+// the UI knows the user will likely click "reconnect" (e.g. when the
+// reconnect modal opens). If the script is already loaded this is a
+// no-op; otherwise it warms the cache so the eventual
+// `requestAccessToken` call runs synchronously inside the user gesture
+// and the popup isn't blocked by iOS Safari / strict popup blockers.
+export function preloadGdriveAuth(): void {
+  void loadGisScript().catch(() => {});
+}
+
 // Opens the Google consent popup and resolves with a short-lived
 // access token. Throws when the user dismisses the popup, the popup
 // is blocked, or Google returns an error. Caller persists the token

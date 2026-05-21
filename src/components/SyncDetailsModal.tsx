@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   CloudAlert,
   CloudCheck,
@@ -29,9 +30,12 @@ type Props = {
   status: SaveStatus;
   dirty: boolean;
   onSaveNow: () => void;
-  // Re-issue OAuth for the active cloud backend. Null when the
-  // current backend has no concept of reconnection (local / folder).
-  onReconnect: (() => void) | null;
+  // Re-issue OAuth for the active cloud backend. Resolves on success
+  // and throws on failure so the inline reconnect button can show a
+  // spinner while the popup / redirect runs and surface the failure
+  // message instead of silently swallowing it. Null when the current
+  // backend has no concept of reconnection (local / folder).
+  onReconnect: (() => Promise<void>) | null;
   onClose: () => void;
 };
 
@@ -152,12 +156,36 @@ export function SyncDetailsModal({
   onClose,
 }: Props) {
   const t = useT();
+  const [reconnectPending, setReconnectPending] = useState(false);
+  const [reconnectError, setReconnectError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      setReconnectPending(false);
+      setReconnectError(null);
+    }
+  }, [open]);
+  useEffect(() => {
+    if (status.kind !== "auth-error") setReconnectError(null);
+  }, [status.kind]);
+
   const view = providerView(backend);
   if (!view) return null;
 
   const state = statusView(status, dirty, view.name, t);
   const busy = status.kind === "saving" || status.kind === "loading";
   const showReconnect = status.kind === "auth-error" && onReconnect !== null;
+  const handleReconnect = async () => {
+    if (!onReconnect || reconnectPending) return;
+    setReconnectPending(true);
+    setReconnectError(null);
+    try {
+      await onReconnect();
+    } catch (err) {
+      setReconnectError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setReconnectPending(false);
+    }
+  };
   const showSaveNow =
     !busy &&
     !showReconnect &&
@@ -200,15 +228,35 @@ export function SyncDetailsModal({
               )}
             </div>
           </div>
-          {showReconnect && onReconnect && (
-            <button
-              type="button"
-              onClick={onReconnect}
-              className="inline-flex cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20"
-            >
-              <LogIn size={14} aria-hidden focusable={false} />
-              {t("sync.reconnect", { name: view.name })}
-            </button>
+          {showReconnect && (
+            <>
+              <button
+                type="button"
+                onClick={handleReconnect}
+                disabled={reconnectPending}
+                aria-busy={reconnectPending || undefined}
+                className={`inline-flex items-center justify-center gap-1.5 self-start rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-70 ${
+                  reconnectPending ? "" : "cursor-pointer"
+                }`}
+              >
+                {reconnectPending ? (
+                  <Loader
+                    size={14}
+                    aria-hidden
+                    focusable={false}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <LogIn size={14} aria-hidden focusable={false} />
+                )}
+                {t("sync.reconnect", { name: view.name })}
+              </button>
+              {reconnectError && (
+                <p className="text-xs break-words text-danger">
+                  {reconnectError}
+                </p>
+              )}
+            </>
           )}
           {showSaveNow && (
             <button
