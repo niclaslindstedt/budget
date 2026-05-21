@@ -4,10 +4,10 @@ import { CloudAlert, Loader, LogIn, RefreshCw } from "lucide-react";
 import { useT } from "../i18n";
 import type { BackendId } from "../storage/backend-preference";
 import { preloadGdriveAuth } from "../storage/gdrive-adapter";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import { Modal } from "./Modal";
 
-const log = debug("reconnect-modal");
+const log = createLogger("reconnect-modal");
 
 type Props = {
   open: boolean;
@@ -61,7 +61,7 @@ export function ReconnectCloudModal({
       attemptRef.current = 0;
       return;
     }
-    log.log(`open backend=${backend}`);
+    log.info(`open backend=${backend}`);
     // Warm the GIS script so `requestAccessToken` runs synchronously
     // inside the upcoming click handler. Without this the await in
     // `startGdriveAuth` loses the user gesture and Safari blocks the
@@ -74,7 +74,7 @@ export function ReconnectCloudModal({
 
   const handleClose = () => {
     if (pending) return;
-    log.log("close");
+    log.info("close");
     onClose();
   };
 
@@ -84,7 +84,7 @@ export function ReconnectCloudModal({
     const attempt = attemptRef.current;
     const startedAt =
       typeof performance !== "undefined" ? performance.now() : Date.now();
-    log.log(
+    log.info(
       `reconnect: click backend=${backend} attempt=${attempt}${
         attempt > 1 ? " (retry)" : ""
       }`,
@@ -97,7 +97,7 @@ export function ReconnectCloudModal({
         (typeof performance !== "undefined" ? performance.now() : Date.now()) -
           startedAt,
       );
-      log.log(`reconnect: success (${took}ms) attempt=${attempt}`);
+      log.info(`reconnect: success (${took}ms) attempt=${attempt}`);
       onClose();
     } catch (err) {
       const took = Math.round(

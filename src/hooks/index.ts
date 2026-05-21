@@ -1,4 +1,5 @@
 export { useDesktopAutoFocus } from "./useDesktopAutoFocus";
+export { useDevMode } from "./useDevMode";
 export { useEscapeKey } from "./useEscapeKey";
 export {
   type FloatingPlacement,

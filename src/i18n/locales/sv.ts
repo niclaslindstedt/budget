@@ -335,6 +335,8 @@ export const sv: Catalog = {
       storage: "Lagring",
       categories: "Kategorier",
       memory: "Minne",
+      developer: "Utvecklare",
+      logs: "Loggar",
     },
     month: {
       title: "Månad",
@@ -579,6 +581,32 @@ export const sv: Catalog = {
       seriesRulesHint:
         "Lärs in när du väljer ”Använd för hela serien” vid avstämning. Rensade regler frågar igen varje gång.",
       clearSeriesRules: "Rensa auto-avstämning",
+    },
+    developer: {
+      section: "Utvecklare",
+      mode: "Utvecklarläge",
+      modeHint:
+        "Visa utvecklarverktyg i inställningarna. Sparas på den här enheten, exporteras aldrig.",
+      title: "Utvecklarverktyg",
+      intro:
+        "Verktyg för att felsöka problem på den här enheten. Inget här lämnar webbläsaren om du inte kopierar ut det manuellt.",
+      captureLogs: "Spara loggar",
+      captureLogsHint:
+        "Spara loggposter på den här enheten så att fliken Loggar kan visa dem. Användbart för felsökning på mobilen där webbläsarens utvecklarkonsol är svår att nå.",
+    },
+    logs: {
+      title: "Loggar",
+      filterLabel: "Nivå",
+      filterAll: "Alla",
+      filterInfo: "Info",
+      filterWarn: "Varning",
+      filterError: "Fel",
+      copy: "Kopiera alla",
+      clear: "Rensa",
+      empty: "Inga loggar sparade ännu.",
+      copied: "Kopierat till urklipp",
+      copyFailed: "Kopiering misslyckades",
+      entryCount: "{count} poster",
     },
     footer: {
       privacy: "Integritetspolicy",

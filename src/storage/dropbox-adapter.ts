@@ -1,5 +1,5 @@
 import { nsCloudPath, nsKey } from "../data/constants";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import {
   AuthError,
   type BackupOps,
@@ -16,7 +16,7 @@ import {
   startAuth,
 } from "./oauth-pkce";
 
-const log = debug("dropbox");
+const log = createLogger("dropbox");
 
 // Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly
 // (no SDK — two endpoints don't justify ~100kB of bundle) and stores
@@ -138,7 +138,7 @@ export function createDropboxAdapter(
     refreshToken = auth.refreshToken;
     onAccessTokenRefreshed = auth.onAccessTokenRefreshed;
   }
-  log.log(
+  log.info(
     `adapter created hasAccessToken=${Boolean(currentAccessToken)} hasRefreshToken=${Boolean(refreshToken)}`,
   );
 
@@ -151,16 +151,16 @@ export function createDropboxAdapter(
       return null;
     }
     if (!pendingRefresh) {
-      log.log("refreshing access token");
+      log.info("refreshing access token");
     } else {
-      log.log("refresh already in flight — joining");
+      log.info("refresh already in flight — joining");
     }
     pendingRefresh ??= (async () => {
       try {
         const start = performance.now();
         const fresh = await refreshDropboxAccessToken(refreshToken!, fetchImpl);
         const ms = (performance.now() - start).toFixed(0);
-        log.log(`refresh ok (${ms}ms)`);
+        log.info(`refresh ok (${ms}ms)`);
         currentAccessToken = fresh;
         onAccessTokenRefreshed?.(fresh);
         return fresh;
@@ -185,7 +185,7 @@ export function createDropboxAdapter(
     build: (token: string) => RequestInit,
   ): Promise<Response> {
     const start = performance.now();
-    log.log(`fetch ${shortUrl(url)}`);
+    log.info(`fetch ${shortUrl(url)}`);
     let res: Response;
     try {
       res = await fetchImpl(url, build(currentAccessToken));
@@ -194,9 +194,9 @@ export function createDropboxAdapter(
       throw err;
     }
     const ms = (performance.now() - start).toFixed(0);
-    log.log(`fetch ${shortUrl(url)} → ${res.status} (${ms}ms)`);
+    log.info(`fetch ${shortUrl(url)} → ${res.status} (${ms}ms)`);
     if (res.status === 401) {
-      log.log("401 received — attempting silent refresh");
+      log.info("401 received — attempting silent refresh");
       const fresh = await refreshOnce();
       if (fresh) {
         const retryStart = performance.now();
@@ -207,7 +207,7 @@ export function createDropboxAdapter(
           throw err;
         }
         const retryMs = (performance.now() - retryStart).toFixed(0);
-        log.log(`retry ${shortUrl(url)} → ${res.status} (${retryMs}ms)`);
+        log.info(`retry ${shortUrl(url)} → ${res.status} (${retryMs}ms)`);
       } else {
         log.warn("no refresh available — surfacing original 401");
       }
@@ -224,7 +224,7 @@ export function createDropboxAdapter(
   }
 
   async function loadFromDropbox(): Promise<Snapshot | null> {
-    log.log(`load: download path=${DROPBOX_FILE_PATH}`);
+    log.info(`load: download path=${DROPBOX_FILE_PATH}`);
     const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
       method: "POST",
       headers: {
@@ -236,7 +236,7 @@ export function createDropboxAdapter(
       // path/not_found — the app folder is empty (first run on a
       // freshly-connected account). Hand back null so the hook seeds
       // `freshUserData`.
-      log.log("load: 409 path/not_found — empty app folder");
+      log.info("load: 409 path/not_found — empty app folder");
       return null;
     }
     if (!res.ok) {
@@ -256,7 +256,7 @@ export function createDropboxAdapter(
     const readStart = performance.now();
     const text = await res.text();
     const readMs = (performance.now() - readStart).toFixed(0);
-    log.log(
+    log.info(
       `load: read body ${text.length} bytes (${readMs}ms) rev=${meta?.rev ?? "<none>"}`,
     );
     return { text, revision: meta?.rev };
@@ -302,12 +302,12 @@ export function createDropboxAdapter(
 
   const backups: BackupOps = {
     async list() {
-      log.log("backups: list");
+      log.info("backups: list");
       const raw = await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH);
       return parseBackupIndex(raw);
     },
     async create(text, metadata) {
-      log.log(`backups: create ${metadata.filename} bytes=${text.length}`);
+      log.info(`backups: create ${metadata.filename} bytes=${text.length}`);
       await uploadBackupFile(
         `${DROPBOX_BACKUPS_FOLDER}/${metadata.filename}`,
         text,
@@ -325,7 +325,7 @@ export function createDropboxAdapter(
       );
     },
     async read(filename) {
-      log.log(`backups: read ${filename}`);
+      log.info(`backups: read ${filename}`);
       const text = await readBackupFile(
         `${DROPBOX_BACKUPS_FOLDER}/${filename}`,
       );
@@ -350,7 +350,7 @@ export function createDropboxAdapter(
         mute: true,
         mode: baseRevision ? { ".tag": "update", update: baseRevision } : "add",
       };
-      log.log(
+      log.info(
         `save: upload bytes=${text.length} mode=${
           baseRevision ? `update(${baseRevision})` : "add"
         }`,
@@ -382,7 +382,7 @@ export function createDropboxAdapter(
         throw new Error(`Dropbox save failed: ${res.status} ${body}`);
       }
       const meta = (await res.json()) as FileMetadata;
-      log.log(`save: ok rev=${meta.rev}`);
+      log.info(`save: ok rev=${meta.rev}`);
       return { text, revision: meta.rev };
     },
   };
@@ -414,7 +414,9 @@ export function startDropboxAuth(): Promise<void> {
 // been stripped or mangled in transit.
 export function hasPendingDropboxAuth(): boolean {
   const present = sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
-  log.log(`hasPendingDropboxAuth: key=${PKCE_VERIFIER_KEY} present=${present}`);
+  log.info(
+    `hasPendingDropboxAuth: key=${PKCE_VERIFIER_KEY} present=${present}`,
+  );
   return present;
 }
 

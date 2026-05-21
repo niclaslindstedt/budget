@@ -1,8 +1,8 @@
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import type { BackupOps, Snapshot, StorageAdapter } from "./adapter";
 import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto";
 
-const log = debug("encrypt");
+const log = createLogger("encrypt");
 
 // Higher-order adapter that wraps any `StorageAdapter` and applies
 // password-based encryption at the byte boundary. The underlying
@@ -37,7 +37,7 @@ export function withEncryption(
             });
             return;
           }
-          log.log(`backup create: encrypting (${text.length} B)`);
+          log.info(`backup create: encrypting (${text.length} B)`);
           const payload = await encryptText(text, password);
           await inner.backups!.create(payload, {
             ...metadata,
@@ -47,7 +47,7 @@ export function withEncryption(
         async read(filename) {
           const raw = await inner.backups!.read(filename);
           if (!isEncryptedEnvelope(raw)) {
-            log.log(`backup read: ${filename} is plaintext`);
+            log.info(`backup read: ${filename} is plaintext`);
             return raw;
           }
           const password = passwordRef.current;
@@ -55,7 +55,7 @@ export function withEncryption(
             log.error(`backup read: ${filename} encrypted but no password`);
             throw new Error("Backup is encrypted; password is required");
           }
-          log.log(`backup read: decrypting ${filename}`);
+          log.info(`backup read: decrypting ${filename}`);
           return decryptEnvelope(raw, password);
         },
       }
@@ -72,17 +72,17 @@ export function withEncryption(
     // `load()` and tolerate the brief loading state.
 
     async load(): Promise<Snapshot | null> {
-      log.log(`load: delegate to inner [${inner.id}]`);
+      log.info(`load: delegate to inner [${inner.id}]`);
       const snap = await inner.load();
       if (!snap) {
-        log.log("load: inner returned null");
+        log.info("load: inner returned null");
         return null;
       }
       if (!isEncryptedEnvelope(snap.text)) {
         // Plaintext leftover (e.g. encryption was just enabled and
         // the imperative re-wrap hasn't run yet) — hand it back as-is
         // so the budget survives the transition.
-        log.log(`load: inner bytes are plaintext (${snap.text.length} B)`);
+        log.info(`load: inner bytes are plaintext (${snap.text.length} B)`);
         return snap;
       }
       const password = passwordRef.current;
@@ -90,12 +90,12 @@ export function withEncryption(
         log.error("load: encrypted envelope but no password available");
         throw new Error("Storage is encrypted; password is required");
       }
-      log.log(`load: decrypting envelope (${snap.text.length} B)`);
+      log.info(`load: decrypting envelope (${snap.text.length} B)`);
       const start = performance.now();
       try {
         const text = await decryptEnvelope(snap.text, password);
         const ms = (performance.now() - start).toFixed(0);
-        log.log(`load: decrypt ok (${ms}ms) → ${text.length} B plaintext`);
+        log.info(`load: decrypt ok (${ms}ms) → ${text.length} B plaintext`);
         return { ...snap, text };
       } catch (err) {
         const ms = (performance.now() - start).toFixed(0);
@@ -111,13 +111,13 @@ export function withEncryption(
           `save: no password — writing plaintext (${text.length} B) to inner [${inner.id}]`,
         );
       } else {
-        log.log(`save: encrypting plaintext (${text.length} B)`);
+        log.info(`save: encrypting plaintext (${text.length} B)`);
       }
       const start = performance.now();
       const payload = password ? await encryptText(text, password) : text;
       if (password) {
         const ms = (performance.now() - start).toFixed(0);
-        log.log(`save: encrypt ok (${ms}ms) → ${payload.length} B envelope`);
+        log.info(`save: encrypt ok (${ms}ms) → ${payload.length} B envelope`);
       }
       const written = await inner.save(payload, baseRevision);
       // The hook compares revisions, not bytes, so it's safe to hand
@@ -130,7 +130,7 @@ export function withEncryption(
       ? (onRemoteChange) =>
           inner.watch!((snap) => {
             if (!isEncryptedEnvelope(snap.text)) {
-              log.log("watch: remote bytes are plaintext — forwarding");
+              log.info("watch: remote bytes are plaintext — forwarding");
               onRemoteChange(snap);
               return;
             }
@@ -143,7 +143,7 @@ export function withEncryption(
             }
             decryptEnvelope(snap.text, password)
               .then((text) => {
-                log.log("watch: decrypt ok — forwarding");
+                log.info("watch: decrypt ok — forwarding");
                 onRemoteChange({ ...snap, text });
               })
               .catch((err) => {

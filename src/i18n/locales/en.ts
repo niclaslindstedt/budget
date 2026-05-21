@@ -343,6 +343,8 @@ export const en = {
       storage: "Storage",
       categories: "Categories",
       memory: "Memory",
+      developer: "Developer",
+      logs: "Logs",
     },
     month: {
       title: "Month",
@@ -587,6 +589,32 @@ export const en = {
       seriesRulesHint:
         "Learned when you say 'Apply to whole series' in reconciliation. Cleared rules go back to asking each time.",
       clearSeriesRules: "Clear auto-reconciliation",
+    },
+    developer: {
+      section: "Developer",
+      mode: "Developer mode",
+      modeHint:
+        "Show developer tools in settings. Stored on this device, never exported.",
+      title: "Developer tools",
+      intro:
+        "Tools to help diagnose issues on this device. Nothing here leaves the browser unless you copy it out manually.",
+      captureLogs: "Capture logs",
+      captureLogsHint:
+        "Save log entries to this device so the Logs tab can show them. Useful for debugging on mobile where the devtools console is out of reach.",
+    },
+    logs: {
+      title: "Logs",
+      filterLabel: "Level",
+      filterAll: "All",
+      filterInfo: "Info",
+      filterWarn: "Warning",
+      filterError: "Error",
+      copy: "Copy all",
+      clear: "Clear",
+      empty: "No logs captured yet.",
+      copied: "Copied to clipboard",
+      copyFailed: "Copy failed",
+      entryCount: "{count} entries",
     },
     footer: {
       privacy: "Privacy policy",

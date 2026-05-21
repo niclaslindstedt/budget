@@ -2,10 +2,10 @@ import { DEFAULT_SETTINGS } from "../data/constants";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
 import { detectInitialCurrency, detectInitialLanguage } from "../i18n/locale";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import { parseUserData } from "./file";
 
-const log = debug("parse");
+const log = createLogger("parse");
 
 export function freshUserData(): UserData {
   // Fresh budgets start with no account attached. Accounts are
@@ -52,12 +52,12 @@ export function freshUserData(): UserData {
 // every load path shares the same parse / migrate / validate pipeline.
 export function readUserDataFromText(raw: string | null): UserData {
   if (!raw) {
-    log.log("readUserDataFromText: no bytes — seeding fresh budget");
+    log.info("readUserDataFromText: no bytes — seeding fresh budget");
     return freshUserData();
   }
   const result = parseUserData(raw);
   if (result.ok) {
-    log.log(
+    log.info(
       `readUserDataFromText: parsed ok (migrated=${result.migrated}) bytes=${raw.length}`,
     );
     return result.data;

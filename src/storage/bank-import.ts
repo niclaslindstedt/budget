@@ -14,9 +14,9 @@
 // registry.
 
 import type { HistoryEntry } from "../data/types";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 
-const log = debug("bank-import");
+const log = createLogger("bank-import");
 
 export type ParsedBankEntry = {
   date: string;
@@ -87,7 +87,7 @@ export function listBankParsers(): readonly BankParser[] {
 }
 
 export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
-  log.log(
+  log.info(
     `parseBankFile: ${file.name} bytes=${file.bytes.byteLength} parsers=${registry.length}`,
   );
   for (const parser of registry) {
@@ -99,7 +99,7 @@ export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
       log.warn(`sniff[${parser.id}] threw — treating as no match`, err);
     }
     const sniffMs = (performance.now() - sniffStart).toFixed(0);
-    log.log(
+    log.info(
       `sniff[${parser.id}]: ${matched ? "match" : "skip"} (${sniffMs}ms)`,
     );
     if (matched) {
@@ -107,7 +107,7 @@ export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
       try {
         const result = await parser.parse(file);
         const parseMs = (performance.now() - parseStart).toFixed(0);
-        log.log(
+        log.info(
           `parse[${parser.id}]: ${result.entries.length} entries (${parseMs}ms)`,
         );
         return result;
@@ -209,7 +209,7 @@ export function mergeHistory(
   const merged = Array.from(byId.values()).sort((a, b) =>
     a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
   );
-  log.log(
+  log.info(
     `mergeHistory: existing=${existing.length} parsed=${parsed.length} added=${addedCount} duplicates=${duplicateCount}`,
   );
   return { merged, addedCount, duplicateCount, addedIds };

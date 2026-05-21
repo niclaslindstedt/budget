@@ -31,12 +31,12 @@
 //   - Shared strings come back with trailing spaces — descriptions
 //     are trimmed and inner whitespace collapsed for a clean key.
 
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
 import { readFirstSheet, type XlsxCellValue } from "./xlsx-reader";
 
 const PARSER_ID = "bank-norwegian-xlsx";
-const log = debug("bank-norwegian");
+const log = createLogger("bank-norwegian");
 
 const HEADERS = [
   "TransactionDate",

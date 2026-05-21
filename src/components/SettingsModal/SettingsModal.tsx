@@ -6,9 +6,11 @@ import {
   type LucideIcon,
   Menu,
   Palette,
+  ScrollText,
   Settings as SettingsIcon,
   Sliders,
   Tag,
+  Wrench,
   X,
 } from "lucide-react";
 
@@ -25,7 +27,7 @@ import type {
   Settings,
   UserData,
 } from "../../data/types";
-import { useEscapeKey, usePointerOutside } from "../../hooks";
+import { useDevMode, useEscapeKey, usePointerOutside } from "../../hooks";
 import { useT, type TFunction } from "../../i18n";
 import type { StorageAdapter } from "../../storage/adapter";
 import type {
@@ -37,8 +39,10 @@ import { Modal } from "../Modal";
 import {
   AppearanceTab,
   CategoriesTab,
+  DeveloperTab,
   FormatTab,
   GeneralTab,
+  LogsTab,
   MemoryTab,
   StorageTab,
 } from "./tabs";
@@ -144,7 +148,9 @@ type TabId =
   | "format"
   | "storage"
   | "categories"
-  | "memory";
+  | "memory"
+  | "developer"
+  | "logs";
 
 type TabDef = {
   id: TabId;
@@ -162,9 +168,11 @@ const TAB_ICONS: Record<TabId, LucideIcon> = {
   storage: HardDrive,
   categories: Tag,
   memory: SettingsIcon,
+  developer: Wrench,
+  logs: ScrollText,
 };
 
-const TAB_IDS: readonly TabId[] = [
+const BASE_TAB_IDS: readonly TabId[] = [
   "general",
   "appearance",
   "format",
@@ -173,8 +181,8 @@ const TAB_IDS: readonly TabId[] = [
   "memory",
 ];
 
-function useTabDefs(t: TFunction): TabDef[] {
-  return TAB_IDS.map((id) => ({
+function useTabDefs(t: TFunction, tabIds: readonly TabId[]): TabDef[] {
+  return tabIds.map((id) => ({
     id,
     label: t(`settings.tabs.${id}` as const),
     icon: TAB_ICONS[id],
@@ -238,6 +246,21 @@ export function SettingsModal({
   );
   const [backupsOpen, setBackupsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("general");
+  // Device-local developer flags drive whether the Developer and Logs
+  // tabs appear at all. Read directly here so the modal re-renders
+  // when the user toggles either flag inside its own UI.
+  const { devMode, captureLogs } = useDevMode();
+  const tabIds = useMemo<readonly TabId[]>(() => {
+    const ids: TabId[] = [...BASE_TAB_IDS];
+    if (devMode) ids.push("developer");
+    if (devMode && captureLogs) ids.push("logs");
+    return ids;
+  }, [devMode, captureLogs]);
+  // Fall back to General if the active tab disappears under us — e.g.
+  // the user turns off Capture logs while sitting on the Logs tab.
+  useEffect(() => {
+    if (!tabIds.includes(activeTab)) setActiveTab("general");
+  }, [tabIds, activeTab]);
   // Auto-detected payday day-of-month from the user's salary
   // postings. Null when no confident pick is available (no series,
   // no positive recurring rows, no history). Only used as a hint —
@@ -327,6 +350,7 @@ export function SettingsModal({
     >
       <SettingsHeader
         activeTab={activeTab}
+        tabIds={tabIds}
         onSelectTab={setActiveTab}
         onClose={onClose}
       />
@@ -334,7 +358,11 @@ export function SettingsModal({
           sidebar+content split that owns its own per-column overflow,
           instead of inheriting the body's single vertical scroll. */}
       <div className="flex flex-1 overflow-hidden">
-        <TabSidebar activeTab={activeTab} onSelect={setActiveTab} />
+        <TabSidebar
+          activeTab={activeTab}
+          tabIds={tabIds}
+          onSelect={setActiveTab}
+        />
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4">
             {activeTab === "general" && (
@@ -410,6 +438,8 @@ export function SettingsModal({
                 onClearTransferDismissals={onClearTransferDismissals}
               />
             )}
+            {activeTab === "developer" && <DeveloperTab />}
+            {activeTab === "logs" && <LogsTab />}
           </div>
         </div>
       </div>
@@ -439,13 +469,15 @@ export function SettingsModal({
 // below `sm`).
 function TabSidebar({
   activeTab,
+  tabIds,
   onSelect,
 }: {
   activeTab: TabId;
+  tabIds: readonly TabId[];
   onSelect: (id: TabId) => void;
 }) {
   const t = useT();
-  const tabs = useTabDefs(t);
+  const tabs = useTabDefs(t, tabIds);
   return (
     <nav
       aria-label={t("settings.chooseSection")}
@@ -481,15 +513,17 @@ function TabSidebar({
 // already owns section selection there.
 function SettingsHeader({
   activeTab,
+  tabIds,
   onSelectTab,
   onClose,
 }: {
   activeTab: TabId;
+  tabIds: readonly TabId[];
   onSelectTab: (id: TabId) => void;
   onClose: () => void;
 }) {
   const t = useT();
-  const tabs = useTabDefs(t);
+  const tabs = useTabDefs(t, tabIds);
   const [menuOpen, setMenuOpen] = useState(false);
   const burgerRef = useRef<HTMLDivElement | null>(null);
   const close = useCallback(() => setMenuOpen(false), []);
