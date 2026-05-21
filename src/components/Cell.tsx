@@ -802,6 +802,11 @@ function DescriptionCell({
   );
 }
 
+// Plain-text description cell. Desktop renders the inline textarea
+// editor; mobile collapses to the default recurring icon (or "…") as
+// the trigger and tucks the editor into a popover behind it (the
+// column is too narrow to wrap long descriptions without ballooning
+// the row).
 function PlainDescriptionCell({
   rowId,
   value,
@@ -816,66 +821,53 @@ function PlainDescriptionCell({
   onCommit?: (value: CellValue) => void;
 }) {
   const t = useT();
-  const [focused, setFocused] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Snapshot the value at focus so blur only emits a commit when the
-  // text actually changed — avoids prompting after a no-op click in.
-  const focusValueRef = useRef<string>(value);
-  useBlocksSheet(rowId, focused, () => textareaRef.current?.blur());
-
-  function handleFocus() {
-    setFocused(true);
-    focusValueRef.current = value;
-  }
-
-  function handleBlur() {
-    setFocused(false);
-    if (!onCommit) return;
-    if (value !== focusValueRef.current) onCommit(value);
-  }
-
+  const hasValue = value.length > 0;
   return (
     <td
       className={`${CELL_BASE} align-middle md:w-full ${
         isRecurring ? "text-flag" : "text-fg"
       }`}
     >
-      {/* Desktop: the description is inline as an auto-growing textarea —
-         the column is wide enough that wrapping reads fine. */}
-      <div className="hidden md:flex md:items-start">
-        {isRecurring && (
-          <span
-            aria-label={t("cell.recurring")}
-            title={t("cell.recurring")}
-            className="flex shrink-0 items-center pt-2 pl-2 text-flag"
-          >
-            <Repeat size={12} aria-hidden focusable={false} />
-          </span>
-        )}
-        <textarea
-          ref={textareaRef}
-          className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-            isRecurring ? "pl-1.5" : ""
-          }`}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onKeyDown={handleDescriptionCommitKey}
-          rows={1}
-          placeholder={t("cell.placeholderEllipsis")}
-        />
-      </div>
-      {/* Mobile: the column is narrow, so a long description wraps to many
-         lines and balloons the row. Render the default recurring icon
-         (or "…") as the trigger so the row is identifiable at a glance,
-         and open the full editable description in a popover. */}
-      <PlainDescriptionPopover
+      <DesktopDescriptionEditor
         rowId={rowId}
         value={value}
         isRecurring={isRecurring}
         onChange={onChange}
         onCommit={onCommit}
+      />
+      <DescriptionPopover
+        rowId={rowId}
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        renderTrigger={({ ref, onClick, open }) => (
+          <button
+            ref={ref}
+            type="button"
+            onClick={onClick}
+            className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-center font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+              isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"
+            }`}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            aria-label={
+              hasValue
+                ? t("cell.descriptionWith", { value })
+                : t("cell.addDescription")
+            }
+          >
+            {isRecurring ? (
+              <Repeat
+                size={16}
+                aria-hidden
+                focusable={false}
+                className="shrink-0 text-flag"
+              />
+            ) : (
+              <span>…</span>
+            )}
+          </button>
+        )}
       />
     </td>
   );
@@ -902,10 +894,65 @@ function TypedDescriptionCell({
   onCommit?: (value: CellValue) => void;
 }) {
   const t = useT();
+  const typeLabel = displayTypeName(entryType, t);
+  return (
+    <td
+      className={`${CELL_BASE} align-middle md:w-full ${
+        isRecurring ? "text-flag" : "text-fg"
+      }`}
+    >
+      <DesktopDescriptionEditor
+        rowId={rowId}
+        value={value}
+        isRecurring={isRecurring}
+        onChange={onChange}
+        onCommit={onCommit}
+      />
+      <DescriptionPopover
+        rowId={rowId}
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        renderTrigger={({ ref, onClick, open }) => (
+          <button
+            ref={ref}
+            type="button"
+            onClick={onClick}
+            className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2.5 py-2 font-mono text-xs font-medium outline-none focus-visible:bg-surface-2 md:hidden"
+            style={{ color: entryType.color }}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            aria-label={value ? `${typeLabel}: ${value}` : typeLabel}
+            title={value || typeLabel}
+          >
+            <span className="truncate">{typeLabel}</span>
+          </button>
+        )}
+      />
+    </td>
+  );
+}
+
+// Desktop branch of the description cell, shared by the Plain and
+// Typed variants. Snapshots the value on focus so blur only emits a
+// commit when the text actually changed — avoids prompting after a
+// no-op click in.
+function DesktopDescriptionEditor({
+  rowId,
+  value,
+  isRecurring,
+  onChange,
+  onCommit,
+}: {
+  rowId: string;
+  value: string;
+  isRecurring: boolean;
+  onChange: (value: CellValue) => void;
+  onCommit?: (value: CellValue) => void;
+}) {
+  const t = useT();
   const [focused, setFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Snapshot the value at focus so blur only emits a commit when the
-  // text actually changed — avoids prompting after a no-op click in.
   const focusValueRef = useRef<string>(value);
   useBlocksSheet(rowId, focused, () => textareaRef.current?.blur());
 
@@ -921,125 +968,30 @@ function TypedDescriptionCell({
   }
 
   return (
-    <td
-      className={`${CELL_BASE} align-middle md:w-full ${
-        isRecurring ? "text-flag" : "text-fg"
-      }`}
-    >
-      <div className="hidden md:flex md:items-start">
-        {isRecurring && (
-          <span
-            aria-label={t("cell.recurring")}
-            title={t("cell.recurring")}
-            className="flex shrink-0 items-center pt-2 pl-2 text-flag"
-          >
-            <Repeat size={12} aria-hidden focusable={false} />
-          </span>
-        )}
-        <textarea
-          ref={textareaRef}
-          className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-            isRecurring ? "pl-1.5" : ""
-          }`}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onKeyDown={handleDescriptionCommitKey}
-          rows={1}
-          placeholder={t("cell.placeholderEllipsis")}
-        />
-      </div>
-      <TypedDescriptionPopover
-        rowId={rowId}
+    <div className="hidden md:flex md:items-start">
+      {isRecurring && (
+        <span
+          aria-label={t("cell.recurring")}
+          title={t("cell.recurring")}
+          className="flex shrink-0 items-center pt-2 pl-2 text-flag"
+        >
+          <Repeat size={12} aria-hidden focusable={false} />
+        </span>
+      )}
+      <textarea
+        ref={textareaRef}
+        className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
+          isRecurring ? "pl-1.5" : ""
+        }`}
         value={value}
-        entryType={entryType}
-        onChange={onChange}
-        onCommit={onCommit}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleDescriptionCommitKey}
+        rows={1}
+        placeholder={t("cell.placeholderEllipsis")}
       />
-    </td>
-  );
-}
-
-function TypedDescriptionPopover({
-  rowId,
-  value,
-  entryType,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  entryType: EntryType;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
-  const t = useT();
-  const [open, setOpen] = useState(false);
-  const openValueRef = useRef<string>(value);
-  const wasOpenRef = useRef(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      openValueRef.current = value;
-    } else if (!open && wasOpenRef.current) {
-      if (onCommit && value !== openValueRef.current) onCommit(value);
-    }
-    wasOpenRef.current = open;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  useLayoutEffect(() => {
-    if (open) textareaRef.current?.focus();
-  }, [open]);
-
-  const typeLabel = displayTypeName(entryType, t);
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2.5 py-2 font-mono text-xs font-medium outline-none focus-visible:bg-surface-2 md:hidden"
-        style={{ color: entryType.color }}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={value ? `${typeLabel}: ${value}` : typeLabel}
-        title={value || typeLabel}
-      >
-        <span className="truncate">{typeLabel}</span>
-      </button>
-      <FloatingPanel
-        open={open}
-        onClose={() => setOpen(false)}
-        triggerRef={triggerRef}
-        placement={DESCRIPTION_POPOVER_PLACEMENT}
-        rowId={rowId}
-        arrow="up"
-      >
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey &&
-              !e.nativeEvent.isComposing
-            ) {
-              e.preventDefault();
-              setOpen(false);
-            }
-          }}
-          placeholder={t("cell.descriptionPlaceholder")}
-          rows={1}
-          className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
-        />
-      </FloatingPanel>
-    </>
+    </div>
   );
 }
 
@@ -1054,18 +1006,27 @@ const DESCRIPTION_POPOVER_PLACEMENT: FloatingPlacement = {
   coordinateSpace: "document",
 };
 
-function PlainDescriptionPopover({
+// Mobile description popover shared by the Plain and Typed cells.
+// The two cells differ only in the trigger button (recurring icon /
+// "…" vs the type's name in the type's colour), so callers pass the
+// trigger via `renderTrigger` and the popover owns the open state,
+// the commit-on-close hook, and the textarea editor.
+function DescriptionPopover({
   rowId,
   value,
-  isRecurring,
   onChange,
   onCommit,
+  renderTrigger,
 }: {
   rowId: string;
   value: string;
-  isRecurring: boolean;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
+  renderTrigger: (ctx: {
+    ref: React.Ref<HTMLButtonElement>;
+    onClick: () => void;
+    open: boolean;
+  }) => React.ReactNode;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -1090,36 +1051,13 @@ function PlainDescriptionPopover({
     if (open) textareaRef.current?.focus();
   }, [open]);
 
-  const hasValue = value.length > 0;
-
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-center font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-          isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"
-        }`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={
-          hasValue
-            ? t("cell.descriptionWith", { value })
-            : t("cell.addDescription")
-        }
-      >
-        {isRecurring ? (
-          <Repeat
-            size={16}
-            aria-hidden
-            focusable={false}
-            className="shrink-0 text-flag"
-          />
-        ) : (
-          <span>…</span>
-        )}
-      </button>
+      {renderTrigger({
+        ref: triggerRef,
+        onClick: () => setOpen((v) => !v),
+        open,
+      })}
       <FloatingPanel
         open={open}
         onClose={() => setOpen(false)}

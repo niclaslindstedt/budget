@@ -1,15 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-
-import { CATEGORY_COLORS, CATEGORY_GLYPH_NAMES } from "../data/constants";
-import type { Category, CategoryIcon } from "../data/types";
+import { CATEGORY_GLYPH_NAMES } from "../data/constants";
+import type { Category } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayCategoryName } from "../i18n/preset-names";
-import { ColorPalette } from "./ColorPalette";
 import { EntityChip } from "./EntityChip";
+import { EntityCreatorForm } from "./EntityCreatorForm";
 import { EntityPickerShell } from "./EntityPickerShell";
-import { ClearableTextInput } from "./form";
-import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
 // Right-aligned with the trigger so the dropdown opens "down and to the
@@ -127,74 +123,20 @@ function CategoryCreator({
   onSubmit: (draft: Omit<Category, "id">) => void;
 }) {
   const t = useT();
-  const [name, setName] = useState("");
-  const [color, setColor] = useState<string>(CATEGORY_COLORS[0]);
-  const [icon, setIcon] = useState<CategoryIcon>("tag");
-  const nameRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
-
-  function handleSubmit() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmit({ name: trimmed, color, icon });
-  }
-
   return (
-    <div className="flex flex-col gap-2 p-3">
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("category.name")}</span>
-        <ClearableTextInput
-          ref={nameRef}
-          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-          value={name}
-          onValueChange={setName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder={t("category.namePlaceholder")}
-        />
-      </label>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("category.color")}</span>
-        <ColorPalette
-          colors={CATEGORY_COLORS}
-          value={color}
-          onChange={setColor}
-          size={5}
-        />
-      </div>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("category.icon")}</span>
-        <GlyphGrid
-          icons={CATEGORY_GLYPH_NAMES}
-          value={icon}
-          onChange={setIcon}
-          tintColor={color}
-        />
-      </div>
-      <div className="mt-1 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
-        >
-          {t("common.cancel")}
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!name.trim()}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t("category.create")}
-        </button>
-      </div>
-    </div>
+    <EntityCreatorForm
+      glyphs={CATEGORY_GLYPH_NAMES}
+      labels={{
+        name: t("category.name"),
+        namePlaceholder: t("category.namePlaceholder"),
+        color: t("category.color"),
+        glyph: t("category.icon"),
+        create: t("category.create"),
+      }}
+      onCancel={onCancel}
+      onSubmit={({ name, color, glyph }) =>
+        onSubmit({ name, color, icon: glyph })
+      }
+    />
   );
 }
