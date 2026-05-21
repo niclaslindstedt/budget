@@ -1,4 +1,4 @@
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import {
   type BackupOps,
   ConflictError,
@@ -11,7 +11,7 @@ import {
   serializeBackupIndex,
 } from "./backup-index";
 
-const log = debug("folder");
+const log = createLogger("folder");
 
 // `StorageAdapter` over a user-picked directory, via the File System
 // Access API. The adapter reads and writes a single file
@@ -67,7 +67,7 @@ export function createFolderAdapter(
       return await handle.getFile();
     } catch (err) {
       if (isNotFoundError(err)) {
-        log.log(`readFile: NotFoundError (${fileName} absent)`);
+        log.info(`readFile: NotFoundError (${fileName} absent)`);
         return null;
       }
       if (isPermissionError(err)) {
@@ -80,7 +80,7 @@ export function createFolderAdapter(
     }
   }
 
-  log.log(`adapter created file=${fileName}`);
+  log.info(`adapter created file=${fileName}`);
 
   async function getBackupsDir(
     create: boolean,
@@ -128,12 +128,12 @@ export function createFolderAdapter(
 
   const backups: BackupOps = {
     async list() {
-      log.log("backups: list");
+      log.info("backups: list");
       const raw = await readBackupFile(BACKUP_INDEX_FILENAME);
       return parseBackupIndex(raw);
     },
     async create(text, metadata) {
-      log.log(`backups: create ${metadata.filename} bytes=${text.length}`);
+      log.info(`backups: create ${metadata.filename} bytes=${text.length}`);
       await writeBackupFile(metadata.filename, text);
       const existing = parseBackupIndex(
         await readBackupFile(BACKUP_INDEX_FILENAME),
@@ -145,7 +145,7 @@ export function createFolderAdapter(
       await writeBackupFile(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
     },
     async read(filename) {
-      log.log(`backups: read ${filename}`);
+      log.info(`backups: read ${filename}`);
       const text = await readBackupFile(filename);
       if (text === null) {
         throw new Error(`Backup not found: ${filename}`);
@@ -161,19 +161,21 @@ export function createFolderAdapter(
     backups,
 
     async load(): Promise<Snapshot | null> {
-      log.log("load: start");
+      log.info("load: start");
       const file = await readFile();
       if (!file) {
-        log.log("load: no file");
+        log.info("load: no file");
         return null;
       }
       const text = await file.text();
-      log.log(`load: bytes=${text.length} mtime=${file.lastModified}`);
+      log.info(`load: bytes=${text.length} mtime=${file.lastModified}`);
       return { text, revision: String(file.lastModified) };
     },
 
     async save(text: string, baseRevision?: string): Promise<Snapshot> {
-      log.log(`save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`);
+      log.info(
+        `save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`,
+      );
       if (baseRevision !== undefined) {
         const current = await readFile();
         // If the file was deleted out from under us but the caller
@@ -235,7 +237,7 @@ export function createFolderAdapter(
       // time, and we need the value subsequent saves will compare
       // against.
       const written = await handle.getFile();
-      log.log(`save: ok mtime=${written.lastModified}`);
+      log.info(`save: ok mtime=${written.lastModified}`);
       return { text, revision: String(written.lastModified) };
     },
   };

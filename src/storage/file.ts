@@ -1,9 +1,9 @@
 import { migrate, type Versioned } from "../data/migrations";
 import type { UserData } from "../data/types";
 import { validateUserData } from "../data/validate";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 
-const log = debug("parse");
+const log = createLogger("parse");
 
 export const FILE_MIME_TYPE = "application/json";
 
@@ -39,7 +39,7 @@ export function parseUserData(text: string): ImportResult {
   try {
     migrated = migrate(parsed);
     if (migrated.migrated) {
-      log.log(
+      log.info(
         `parseUserData: migrated v${fromVersion} → v${migrated.data.version}`,
       );
     }

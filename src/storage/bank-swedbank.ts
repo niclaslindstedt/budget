@@ -30,12 +30,12 @@
 //     or skip lines like "Skapad" / "Valuta"), so we search for the
 //     "Radnummer" row instead.
 
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
 import { readFirstSheet, type XlsxCellValue } from "./xlsx-reader";
 
 const PARSER_ID = "swedbank-xlsx";
-const log = debug("bank-swedbank");
+const log = createLogger("bank-swedbank");
 
 const HEADERS = [
   "Radnummer",

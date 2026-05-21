@@ -14,12 +14,12 @@
 // `xl/sharedStrings.xml` part in the file, no styles, and no
 // formulas — the minimal xlsx reader handles everything we need.
 
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import { registerBankParser, type ParsedBankFile } from "./bank-import";
 import { readFirstSheet } from "./xlsx-reader";
 
 const PARSER_ID = "skandia-xlsx";
-const log = debug("bank-skandia");
+const log = createLogger("bank-skandia");
 
 // Header tokens we expect on row 4. Used both for sniffing (a file
 // matches when these strings appear in the first ~2 KB of the

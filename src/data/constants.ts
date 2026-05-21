@@ -99,6 +99,22 @@ export function userDataKey(userId: string): string {
   return nsKey(`budget.user.${userId}`);
 }
 
+// Device-local flags driving the Developer settings tab and the Logs
+// tab. Stored outside `Settings` so they don't ride along in an
+// export / import cycle — debug capture is per device, not per
+// budget. Plain "true" / absent semantics; any other value is treated
+// as absent. The logs blob lives under its own key so clearing it
+// doesn't touch any other state.
+export const DEV_MODE_KEY = nsKey("budget.devMode");
+export const CAPTURE_LOGS_KEY = nsKey("budget.captureLogs");
+export const LOGS_KEY = nsKey("budget.logs");
+
+// Ring-buffer cap for captured log entries. localStorage has a ~5 MB
+// quota shared with budget data; 500 entries averaging a few hundred
+// bytes each stays well inside that ceiling while giving a long
+// enough tail for a typical mobile debugging session.
+export const MAX_LOG_ENTRIES = 500;
+
 // PBKDF2 parameters for the login password hash. Matches the data
 // encryption module's iterations so an attacker sees no cheaper
 // attack path; the salt is per-user, the iteration count is

@@ -4,9 +4,9 @@
 // `sessionStorage` key for the verifier so parallel auth flows don't
 // race each other.
 
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 
-const log = debug("oauth");
+const log = createLogger("oauth");
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let s = "";
@@ -116,7 +116,7 @@ export type TokenResult = {
 // — the next thing that happens is a full-page redirect back to the
 // app with `?code=…&state=<config.state>` set.
 export async function startAuth(config: OAuthConfig): Promise<void> {
-  log.log(
+  log.info(
     `${config.providerName}: startAuth (redirect=${redirectUri()}, state=${config.state}, verifierKey=${config.verifierKey})`,
   );
   const verifier = randomVerifier();
@@ -136,7 +136,7 @@ export async function startAuth(config: OAuthConfig): Promise<void> {
   // sensitive enough that we'd rather not surface it) so a comparison
   // against the inbound query on return is mechanical.
   const sentKeys = [...params.keys()].sort().join(",");
-  log.log(
+  log.info(
     `${config.providerName}: redirecting to ${config.authBase} sentKeys=${sentKeys}`,
   );
   window.location.assign(dest);
@@ -151,7 +151,7 @@ export async function completeAuth(
   code: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<TokenResult> {
-  log.log(`${config.providerName}: completeAuth (code received)`);
+  log.info(`${config.providerName}: completeAuth (code received)`);
   const verifier = sessionStorage.getItem(config.verifierKey);
   if (!verifier) {
     log.error(
@@ -180,7 +180,7 @@ export async function completeAuth(
     throw err;
   }
   const ms = (performance.now() - start).toFixed(0);
-  log.log(`${config.providerName}: token exchange → ${res.status} (${ms}ms)`);
+  log.info(`${config.providerName}: token exchange → ${res.status} (${ms}ms)`);
   if (!res.ok) {
     const body = await res.text().catch(() => "<unreadable>");
     log.error(`${config.providerName}: token exchange failed`, body);
@@ -198,7 +198,7 @@ export async function completeAuth(
       `${config.providerName} token response missing access_token`,
     );
   }
-  log.log(
+  log.info(
     `${config.providerName}: tokens ok hasRefresh=${Boolean(json.refresh_token)}`,
   );
   return {
@@ -217,7 +217,7 @@ export async function refreshAccessToken(
   refreshToken: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<string> {
-  log.log(`${config.providerName}: refreshAccessToken`);
+  log.info(`${config.providerName}: refreshAccessToken`);
   const params = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
@@ -236,7 +236,7 @@ export async function refreshAccessToken(
     throw err;
   }
   const ms = (performance.now() - start).toFixed(0);
-  log.log(`${config.providerName}: refresh → ${res.status} (${ms}ms)`);
+  log.info(`${config.providerName}: refresh → ${res.status} (${ms}ms)`);
   if (!res.ok) {
     const body = await res.text().catch(() => "<unreadable>");
     log.error(`${config.providerName}: refresh failed`, body);

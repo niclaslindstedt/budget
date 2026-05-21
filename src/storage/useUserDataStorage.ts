@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import type { UserData } from "../data/types";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import {
   AuthError,
   ConflictError,
@@ -19,7 +19,7 @@ import {
 import { serializeUserData } from "./file";
 import { freshUserData, readUserDataFromText } from "./local";
 
-const log = debug("storage-hook");
+const log = createLogger("storage-hook");
 
 // Orchestrates a `StorageAdapter` against a React reducer. The
 // reducer keeps its existing shape — pure `(state, action) => state`
@@ -142,11 +142,11 @@ export function useUserDataStorage<Action>(
   const performSave = useCallback(
     async (text: string, isStale: () => boolean): Promise<void> => {
       if (isStale()) {
-        log.log(`save skipped (stale before start) [${adapter.id}]`);
+        log.info(`save skipped (stale before start) [${adapter.id}]`);
         return;
       }
       setStatus({ kind: "saving" });
-      log.log(
+      log.info(
         `save start [${adapter.id}] bytes=${text.length} baseRev=${
           lastSnapshot.current?.revision ?? "<none>"
         }`,
@@ -156,19 +156,19 @@ export function useUserDataStorage<Action>(
         const next = await adapter.save(text, lastSnapshot.current?.revision);
         const ms = (performance.now() - start).toFixed(0);
         if (isStale()) {
-          log.log(`save ok but stale (${ms}ms) [${adapter.id}]`);
+          log.info(`save ok but stale (${ms}ms) [${adapter.id}]`);
           return;
         }
         lastSnapshot.current = next;
         setLastSavedText(next.text);
         setStatus({ kind: "saved", at: Date.now() });
-        log.log(
+        log.info(
           `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
         );
       } catch (err) {
         const ms = (performance.now() - start).toFixed(0);
         if (isStale()) {
-          log.log(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
+          log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
           return;
         }
         if (err instanceof ConflictError) {
@@ -208,7 +208,7 @@ export function useUserDataStorage<Action>(
       // the spinner never clears.
       if (!hasLoadedRef.current) {
         const snap = adapter.loadSync();
-        log.log(
+        log.info(
           `adapter mount [${adapter.id}] sync — recovering from cancelled async load ${
             snap
               ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"}`
@@ -223,22 +223,22 @@ export function useUserDataStorage<Action>(
         setStatus({ kind: "idle" });
         return;
       }
-      log.log(`adapter mount [${adapter.id}] sync — load skipped`);
+      log.info(`adapter mount [${adapter.id}] sync — load skipped`);
       return;
     }
     let cancelled = false;
     setStatus({ kind: "loading" });
-    log.log(`adapter mount [${adapter.id}] async — load start`);
+    log.info(`adapter mount [${adapter.id}] async — load start`);
     const start = performance.now();
     adapter
       .load()
       .then((snap) => {
         const ms = (performance.now() - start).toFixed(0);
         if (cancelled) {
-          log.log(`load ok (${ms}ms) [${adapter.id}] but cancelled`);
+          log.info(`load ok (${ms}ms) [${adapter.id}] but cancelled`);
           return;
         }
-        log.log(
+        log.info(
           `load ok (${ms}ms) [${adapter.id}] ${
             snap
               ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"}`
@@ -255,7 +255,7 @@ export function useUserDataStorage<Action>(
       .catch((err: unknown) => {
         const ms = (performance.now() - start).toFixed(0);
         if (cancelled) {
-          log.log(`load failed (${ms}ms) [${adapter.id}] but cancelled`, err);
+          log.info(`load failed (${ms}ms) [${adapter.id}] but cancelled`, err);
           return;
         }
         if (err instanceof AuthError) {
@@ -271,7 +271,7 @@ export function useUserDataStorage<Action>(
       });
     return () => {
       cancelled = true;
-      log.log(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
+      log.info(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
     };
   }, [adapter]);
 
@@ -321,9 +321,9 @@ export function useUserDataStorage<Action>(
   // another device pushes; local adapters typically don't supply it.
   useEffect(() => {
     if (!adapter.watch) return;
-    log.log(`watch subscribe [${adapter.id}]`);
+    log.info(`watch subscribe [${adapter.id}]`);
     const unsubscribe = adapter.watch((snap) => {
-      log.log(
+      log.info(
         `watch fired [${adapter.id}] bytes=${snap.text.length} rev=${
           snap.revision ?? "<none>"
         }`,
@@ -336,7 +336,7 @@ export function useUserDataStorage<Action>(
       setStatus({ kind: "idle" });
     });
     return () => {
-      log.log(`watch unsubscribe [${adapter.id}]`);
+      log.info(`watch unsubscribe [${adapter.id}]`);
       unsubscribe();
     };
   }, [adapter]);

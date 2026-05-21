@@ -20,7 +20,6 @@ import "@fontsource/inter/700.css";
 import "@fontsource/source-serif-4/400.css";
 import "@fontsource/source-serif-4/700.css";
 import { BUILD_LABEL } from "./utils/build-env";
-import { announceDebugHint } from "./utils/debug";
 import { installSelectOnFocus } from "./utils/select-on-focus";
 
 const rootElement = document.getElementById("root");
@@ -36,7 +35,6 @@ if (!rootElement) {
 document.title = `${document.title} (${BUILD_LABEL})`;
 
 installSelectOnFocus();
-announceDebugHint();
 
 // Trivial path-based switch. The build emits `dist/<alias>/index.html`
 // aliases (see `vite.config.ts`) so GitHub Pages serves the same SPA

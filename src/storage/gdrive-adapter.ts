@@ -1,5 +1,5 @@
 import { nsCloudPath } from "../data/constants";
-import { debug } from "../utils/debug";
+import { createLogger } from "../utils/logger";
 import {
   AuthError,
   type BackupOps,
@@ -13,7 +13,7 @@ import {
   serializeBackupIndex,
 } from "./backup-index";
 
-const log = debug("gdrive");
+const log = createLogger("gdrive");
 
 // Google-Drive-backed `StorageAdapter`. Talks to the Drive v3 REST
 // API directly (no SDK — Drive v3 is two endpoints away from "two
@@ -136,7 +136,7 @@ export function createGdriveAdapter(
   token: string,
   fetchImpl: FetchImpl = fetch,
 ): StorageAdapter {
-  log.log(`adapter created hasToken=${Boolean(token)}`);
+  log.info(`adapter created hasToken=${Boolean(token)}`);
   // The Drive file id never changes for the lifetime of the file, so
   // we look it up by name once and cache it in the closure. The
   // cache is invalidated on 404 (file deleted in Drive) so the next
@@ -152,7 +152,7 @@ export function createGdriveAdapter(
     const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
       query,
     )}&spaces=drive&fields=files(id)`;
-    log.log(`search: ${query}`);
+    log.info(`search: ${query}`);
     const start = performance.now();
     let res: Response;
     try {
@@ -162,7 +162,7 @@ export function createGdriveAdapter(
       throw err;
     }
     const ms = (performance.now() - start).toFixed(0);
-    log.log(`search: → ${res.status} (${ms}ms)`);
+    log.info(`search: → ${res.status} (${ms}ms)`);
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
       log.error(`search: failed ${res.status}`, body);
@@ -185,7 +185,7 @@ export function createGdriveAdapter(
   async function ensureAppFolder(): Promise<string> {
     const existing = await findAppFolderId();
     if (existing) return existing;
-    log.log("appFolder: creating");
+    log.info("appFolder: creating");
     const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
       method: "POST",
       headers: { ...authHeader(), "Content-Type": "application/json" },
@@ -242,7 +242,7 @@ export function createGdriveAdapter(
 
   async function findFileId(): Promise<string | null> {
     if (cachedFileId) {
-      log.log(`findFileId: cache hit ${cachedFileId}`);
+      log.info(`findFileId: cache hit ${cachedFileId}`);
       return cachedFileId;
     }
     const folderId = await findAppFolderId();
@@ -253,21 +253,21 @@ export function createGdriveAdapter(
       );
       if (id) {
         cachedFileId = id;
-        log.log(`findFileId: in folder ${id}`);
+        log.info(`findFileId: in folder ${id}`);
         return id;
       }
     }
     const migrated = await migrateLegacyAtRoot();
     cachedFileId = migrated;
-    log.log(`findFileId: result ${cachedFileId ?? "<none>"}`);
+    log.info(`findFileId: result ${cachedFileId ?? "<none>"}`);
     return cachedFileId;
   }
 
   async function load(): Promise<Snapshot | null> {
-    log.log("load: start");
+    log.info("load: start");
     const fileId = await findFileId();
     if (!fileId) {
-      log.log("load: no file id — empty");
+      log.info("load: no file id — empty");
       return null;
     }
     const url = `${DRIVE_FILES_API}/${fileId}?alt=media`;
@@ -280,7 +280,7 @@ export function createGdriveAdapter(
       throw err;
     }
     const ms = (performance.now() - start).toFixed(0);
-    log.log(`load: download → ${res.status} (${ms}ms)`);
+    log.info(`load: download → ${res.status} (${ms}ms)`);
     if (res.status === 404) {
       // File was deleted between the search and the download. Drop
       // the cache so the next save recreates it.
@@ -295,12 +295,12 @@ export function createGdriveAdapter(
     }
     const text = await res.text();
     const revision = res.headers.get("ETag") ?? undefined;
-    log.log(`load: bytes=${text.length} etag=${revision ?? "<none>"}`);
+    log.info(`load: bytes=${text.length} etag=${revision ?? "<none>"}`);
     return { text, revision };
   }
 
   async function create(text: string): Promise<Snapshot> {
-    log.log(`create: multipart upload bytes=${text.length}`);
+    log.info(`create: multipart upload bytes=${text.length}`);
     // Multipart upload — one part is the metadata (the file name +
     // parent folder), the other is the body. Drive returns the new
     // file id but not the ETag in this response, so we issue a tiny
@@ -330,7 +330,7 @@ export function createGdriveAdapter(
       },
     );
     const ms = (performance.now() - start).toFixed(0);
-    log.log(`create: → ${res.status} (${ms}ms)`);
+    log.info(`create: → ${res.status} (${ms}ms)`);
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
       log.error(`create: failed ${res.status}`, body);
@@ -338,7 +338,7 @@ export function createGdriveAdapter(
     }
     const meta2 = (await res.json()) as DriveFile;
     cachedFileId = meta2.id;
-    log.log(`create: ok id=${cachedFileId}, fetching ETag`);
+    log.info(`create: ok id=${cachedFileId}, fetching ETag`);
     const head = await fetchImpl(
       `${DRIVE_FILES_API}/${cachedFileId}?fields=id`,
       {
@@ -346,15 +346,15 @@ export function createGdriveAdapter(
       },
     );
     const revision = head.headers.get("ETag") ?? undefined;
-    log.log(`create: etag=${revision ?? "<none>"}`);
+    log.info(`create: etag=${revision ?? "<none>"}`);
     return { text, revision };
   }
 
   async function save(text: string, baseRevision?: string): Promise<Snapshot> {
-    log.log(`save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`);
+    log.info(`save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`);
     const fileId = await findFileId();
     if (!fileId) {
-      log.log("save: no file id — creating");
+      log.info("save: no file id — creating");
       return create(text);
     }
     const headers: Record<string, string> = {
@@ -368,7 +368,7 @@ export function createGdriveAdapter(
       { method: "PATCH", headers, body: text },
     );
     const ms = (performance.now() - start).toFixed(0);
-    log.log(`save: PATCH → ${res.status} (${ms}ms)`);
+    log.info(`save: PATCH → ${res.status} (${ms}ms)`);
     if (res.status === 412) {
       log.warn("save: 412 If-Match failed — re-reading remote");
       // Precondition failed — the remote ETag moved past our
@@ -392,7 +392,7 @@ export function createGdriveAdapter(
       throw gdriveError("save", res.status, body);
     }
     const revision = res.headers.get("ETag") ?? undefined;
-    log.log(`save: ok etag=${revision ?? "<none>"}`);
+    log.info(`save: ok etag=${revision ?? "<none>"}`);
     return { text, revision };
   }
 
@@ -410,7 +410,7 @@ export function createGdriveAdapter(
     );
     if (existing) {
       cachedBackupsFolderId = existing;
-      log.log(`backups: folder found ${existing}`);
+      log.info(`backups: folder found ${existing}`);
       return existing;
     }
     // Pre-subfolder builds parked the backups folder at the root of
@@ -443,7 +443,7 @@ export function createGdriveAdapter(
       cachedBackupsFolderId = legacyId;
       return legacyId;
     }
-    log.log("backups: folder missing — creating");
+    log.info("backups: folder missing — creating");
     const createRes = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
       method: "POST",
       headers: { ...authHeader(), "Content-Type": "application/json" },
@@ -544,12 +544,12 @@ export function createGdriveAdapter(
 
   const backups: BackupOps = {
     async list() {
-      log.log("backups: list");
+      log.info("backups: list");
       const raw = await downloadBackup(BACKUP_INDEX_FILENAME);
       return parseBackupIndex(raw);
     },
     async create(text, metadata) {
-      log.log(`backups: create ${metadata.filename} bytes=${text.length}`);
+      log.info(`backups: create ${metadata.filename} bytes=${text.length}`);
       await uploadBackup(metadata.filename, text);
       const existing = parseBackupIndex(
         await downloadBackup(BACKUP_INDEX_FILENAME),
@@ -561,7 +561,7 @@ export function createGdriveAdapter(
       await uploadBackup(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
     },
     async read(filename) {
-      log.log(`backups: read ${filename}`);
+      log.info(`backups: read ${filename}`);
       const text = await downloadBackup(filename);
       if (text === null) {
         throw new Error(`Backup not found: ${filename}`);
@@ -663,7 +663,7 @@ function loadGisScript(): Promise<void> {
     typeof navigator !== "undefined" && "onLine" in navigator
       ? navigator.onLine
       : "unknown";
-  log.log(
+  log.info(
     `loadGisScript: injecting <script> src=${GIS_SCRIPT_URL} navigator.onLine=${online}`,
   );
   gisLoaderPromise = new Promise<void>((resolve, reject) => {
@@ -677,7 +677,7 @@ function loadGisScript(): Promise<void> {
           startedAt,
       );
       if (window.google?.accounts?.oauth2) {
-        log.log(`loadGisScript: ready (${took}ms)`);
+        log.info(`loadGisScript: ready (${took}ms)`);
         resolve();
       } else {
         log.error(`loadGisScript: loaded but globals missing (${took}ms)`);
@@ -720,7 +720,7 @@ function loadGisScript(): Promise<void> {
 // `requestAccessToken` call runs synchronously inside the user gesture
 // and the popup isn't blocked by iOS Safari / strict popup blockers.
 export function preloadGdriveAuth(): void {
-  log.log("preloadGdriveAuth: warming GIS script");
+  log.info("preloadGdriveAuth: warming GIS script");
   void loadGisScript().catch((err: unknown) => {
     log.warn(
       `preloadGdriveAuth: preload failed (will retry on click): ${
@@ -735,13 +735,13 @@ export function preloadGdriveAuth(): void {
 // is blocked, or Google returns an error. Caller persists the token
 // (via `commitGdriveLink`) once any post-auth confirmation is done.
 export async function startGdriveAuth(): Promise<string> {
-  log.log("startGdriveAuth: loading GIS");
+  log.info("startGdriveAuth: loading GIS");
   await loadGisScript();
   const gis = window.google?.accounts?.oauth2;
   if (!gis) {
     throw new Error("Google Identity Services unavailable after load");
   }
-  log.log("startGdriveAuth: opening consent popup");
+  log.info("startGdriveAuth: opening consent popup");
   return new Promise<string>((resolve, reject) => {
     const client = gis.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
@@ -758,7 +758,7 @@ export async function startGdriveAuth(): Promise<string> {
           reject(new Error("Google did not return an access token"));
           return;
         }
-        log.log(`token client: token received expires_in=${resp.expires_in}`);
+        log.info(`token client: token received expires_in=${resp.expires_in}`);
         resolve(resp.access_token);
       },
       error_callback: (err) => {
