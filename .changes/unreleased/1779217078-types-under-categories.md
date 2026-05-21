@@ -7,6 +7,8 @@ only carry a type — the category is derived from the type's parent. The
 separate category column on each sheet is replaced by a type column showing
 the row's entry type (chip on desktop, glyph on mobile), and on mobile any
 typed row collapses the description down to the type's name in the type's
-colour — tap it to reveal the description text. The Settings panel merges
+colour — tap it to reveal the description text. Opening the type picker
+echoes the row's date and description in a small header above the choices
+so the row's context stays visible while picking. The Settings panel merges
 the Categories and Types tabs into a single nested view where you add
 types under the category they belong to.

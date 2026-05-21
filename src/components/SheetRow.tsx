@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
-import { useT } from "../i18n";
+import { useLang, useT } from "../i18n";
 import type {
   Category,
   CellValue,
@@ -20,6 +20,8 @@ import type {
   Row,
   Settings,
 } from "../data/types";
+import { formatShortDate } from "../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { Cell } from "./Cell";
 
@@ -125,6 +127,7 @@ function SheetRowImpl({
   onToggleSelect,
 }: Props) {
   const tr = useT();
+  const lang = useLang();
   const entryType = useMemo<EntryType | null>(
     () =>
       row.typeId ? (types.find((t) => t.id === row.typeId) ?? null) : null,
@@ -187,6 +190,23 @@ function SheetRowImpl({
     dateCol && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
       : undefined;
+
+  // Pre-render the date + description that the type column's
+  // TypePicker echoes inside its dropdown header. The header keeps
+  // that context visible even though the dropdown physically overlaps
+  // the date and description columns on mobile. Pre-computed here so
+  // the picker stays decoupled from the user's date-format setting.
+  const descriptionCol = findColumnByType(columns, "description");
+  const rowDescription =
+    descriptionCol && typeof row.cells[descriptionCol.id] === "string"
+      ? (row.cells[descriptionCol.id] as string)
+      : "";
+  const rowDateFormatted = isoDate
+    ? formatShortDate(isoDate, settings.shortDateFormat, lang)
+    : "";
+  const rowDateMonthNum = isoDate ? monthNumberFromKey(isoDate) : null;
+  const rowDateColor =
+    rowDateMonthNum !== null ? monthColorVar(rowDateMonthNum) : undefined;
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (selectMode) return;
@@ -402,6 +422,9 @@ function SheetRowImpl({
             col.type === "balance" ? onToggleTransferAnchor : undefined
           }
           amountSign={col.type === "type" ? amountSign : undefined}
+          rowDate={col.type === "type" ? rowDateFormatted : undefined}
+          rowDateColor={col.type === "type" ? rowDateColor : undefined}
+          rowDescription={col.type === "type" ? rowDescription : undefined}
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />

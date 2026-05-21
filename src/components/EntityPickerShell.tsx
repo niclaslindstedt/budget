@@ -42,6 +42,13 @@ type Props<T extends { id: string }> = {
   // handler.
   renderCreator?: (done: () => void) => ReactNode;
 
+  // Optional context header rendered above the listbox — e.g. the
+  // surrounding row's date + description, so the user keeps that
+  // context visible while picking even though the dropdown physically
+  // overlaps those columns on mobile. Skipped while the inline
+  // creator is open (the form replaces the listbox entirely).
+  renderHeader?: () => ReactNode;
+
   labels: Labels;
   placement: FloatingPlacement;
   variant?: "chip" | "field";
@@ -60,6 +67,7 @@ export function EntityPickerShell<T extends { id: string }>({
   renderTrigger,
   renderOption,
   renderCreator,
+  renderHeader,
   labels,
   placement,
   variant = "chip",
@@ -135,56 +143,59 @@ export function EntityPickerShell<T extends { id: string }>({
         {creating && renderCreator ? (
           renderCreator(close)
         ) : (
-          <ul role="listbox" className="max-h-72 overflow-auto py-1">
-            {items.length === 0 && (
-              <li className="px-3 py-2 text-xs text-muted">{labels.empty}</li>
-            )}
-            {items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={item.id === selectedId}
-                  onClick={() => handlePick(item.id)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  {renderOption(item)}
-                  {item.id === selectedId && (
-                    <Check
-                      size={14}
-                      className="ml-auto text-accent"
-                      aria-hidden
-                      focusable={false}
-                    />
-                  )}
-                </button>
-              </li>
-            ))}
-            {selectedId && labels.clear && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handlePick(null)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <X size={12} aria-hidden focusable={false} />
-                  {labels.clear}
-                </button>
-              </li>
-            )}
-            {renderCreator && labels.create && (
-              <li className="mt-1 border-t border-line">
-                <button
-                  type="button"
-                  onClick={() => setCreating(true)}
-                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <Plus size={14} aria-hidden focusable={false} />
-                  {labels.create}
-                </button>
-              </li>
-            )}
-          </ul>
+          <>
+            {renderHeader?.()}
+            <ul role="listbox" className="max-h-72 overflow-auto py-1">
+              {items.length === 0 && (
+                <li className="px-3 py-2 text-xs text-muted">{labels.empty}</li>
+              )}
+              {items.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={item.id === selectedId}
+                    onClick={() => handlePick(item.id)}
+                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {renderOption(item)}
+                    {item.id === selectedId && (
+                      <Check
+                        size={14}
+                        className="ml-auto text-accent"
+                        aria-hidden
+                        focusable={false}
+                      />
+                    )}
+                  </button>
+                </li>
+              ))}
+              {selectedId && labels.clear && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => handlePick(null)}
+                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <X size={12} aria-hidden focusable={false} />
+                    {labels.clear}
+                  </button>
+                </li>
+              )}
+              {renderCreator && labels.create && (
+                <li className="mt-1 border-t border-line">
+                  <button
+                    type="button"
+                    onClick={() => setCreating(true)}
+                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <Plus size={14} aria-hidden focusable={false} />
+                    {labels.create}
+                  </button>
+                </li>
+              )}
+            </ul>
+          </>
         )}
       </FloatingPanel>
     </div>
