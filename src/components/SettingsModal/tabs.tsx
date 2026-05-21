@@ -154,33 +154,6 @@ export function GeneralTab({
 
       <Section title={t("settings.display.title")}>
         <ToggleRow
-          label={t("settings.format.formatNumbers")}
-          checked={draft.formatNumbers}
-          onChange={(v) => onUpdate("formatNumbers", v)}
-        />
-        <ToggleRow
-          label={t("settings.format.showCurrency")}
-          checked={draft.showCurrency}
-          onChange={(v) => onUpdate("showCurrency", v)}
-        />
-        <ToggleRow
-          label={t("settings.format.showDecimals")}
-          checked={draft.showDecimals}
-          onChange={(v) => onUpdate("showDecimals", v)}
-        />
-        <ToggleRow
-          label={t("settings.format.abbreviate")}
-          checked={draft.abbreviateNumbers}
-          onChange={(v) => onUpdate("abbreviateNumbers", v)}
-        />
-        {draft.abbreviateNumbers && (
-          <ToggleRow
-            label={t("settings.format.alwaysAbbreviateBalance")}
-            checked={draft.alwaysAbbreviateBalance}
-            onChange={(v) => onUpdate("alwaysAbbreviateBalance", v)}
-          />
-        )}
-        <ToggleRow
           label={t("settings.display.hideTransfers")}
           hint={t("settings.display.hideTransfersHint")}
           checked={draft.hideTransfers}
@@ -331,6 +304,11 @@ export function FormatTab({
             />
           </>
         )}
+        <ToggleRow
+          label={t("settings.format.showCurrency")}
+          checked={draft.showCurrency}
+          onChange={(v) => onUpdate("showCurrency", v)}
+        />
       </Section>
 
       <Section title={t("settings.format.numberTitle")}>
@@ -373,6 +351,29 @@ export function FormatTab({
             ))}
           </div>
         </Field>
+
+        <ToggleRow
+          label={t("settings.format.formatNumbers")}
+          checked={draft.formatNumbers}
+          onChange={(v) => onUpdate("formatNumbers", v)}
+        />
+        <ToggleRow
+          label={t("settings.format.showDecimals")}
+          checked={draft.showDecimals}
+          onChange={(v) => onUpdate("showDecimals", v)}
+        />
+        <ToggleRow
+          label={t("settings.format.abbreviate")}
+          checked={draft.abbreviateNumbers}
+          onChange={(v) => onUpdate("abbreviateNumbers", v)}
+        />
+        {draft.abbreviateNumbers && (
+          <ToggleRow
+            label={t("settings.format.alwaysAbbreviateBalance")}
+            checked={draft.alwaysAbbreviateBalance}
+            onChange={(v) => onUpdate("alwaysAbbreviateBalance", v)}
+          />
+        )}
       </Section>
     </>
   );
