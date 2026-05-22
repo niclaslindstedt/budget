@@ -198,6 +198,17 @@ export type Action =
   | { type: "updateAccount"; accountId: string; patch: Partial<Account> }
   | { type: "deleteAccount"; accountId: string }
   | {
+      // Drop bank history, transactions, and import-audit rows that
+      // predate `cutoffDate` for the named account. Used when the
+      // account's purpose changes (e.g. a private account turning into
+      // a shared household account) and the user no longer wants the
+      // pre-cutoff history dangling. Entries dated on or after the
+      // cutoff are kept untouched.
+      type: "cutAccountHistory";
+      accountId: string;
+      cutoffDate: string;
+    }
+  | {
       // Append a balance-correction row to the first AccountBudget that
       // tracks `accountId`. The amount carries the signed delta needed
       // to bring the account's running total to the user-asserted
@@ -1024,6 +1035,30 @@ export function reducer(state: UserData, action: Action): UserData {
       ),
       history: nextHistory,
       historyImports: nextHistoryImports,
+    };
+  }
+  if (action.type === "cutAccountHistory") {
+    const accountId = action.accountId;
+    const cutoff = action.cutoffDate;
+    const nextHistory = { ...state.history };
+    const existing = nextHistory[accountId] ?? [];
+    nextHistory[accountId] = existing.filter((entry) => entry.date >= cutoff);
+    const nextHistoryImports = { ...state.historyImports };
+    const existingImports = nextHistoryImports[accountId] ?? [];
+    nextHistoryImports[accountId] = existingImports.filter(
+      (rec) => rec.rangeEnd >= cutoff,
+    );
+    return {
+      ...state,
+      history: nextHistory,
+      historyImports: nextHistoryImports,
+      transactions: state.transactions.filter(
+        (tx) =>
+          !(
+            (tx.fromAccountId === accountId || tx.toAccountId === accountId) &&
+            tx.date < cutoff
+          ),
+      ),
     };
   }
   if (action.type === "importBankHistory") {

@@ -1435,10 +1435,28 @@ export const sv: Catalog = {
     viewHistoryEntries: "Visa {n} historikposter",
     editAccountAria: "Redigera {name}",
     editAccountTitle: "Redigera konto",
+    cutHistoryAria: "Klipp historik för {name}",
+    cutHistoryTitle: "Klipp historik före ett datum",
+    nothingToCut: "Ingen historik eller transaktioner att klippa",
     newTransfer: "Ny överföring",
     needTwoAccounts:
       "Lägg till minst två konton för att registrera en överföring",
     unknown: "Okänd",
+  },
+
+  cutHistory: {
+    title: "Klipp historik — {name}",
+    hint: "Ta bort allt daterat före brytdatumet. Användbart när kontots syfte har ändrats och den gamla historiken inte längre är relevant.",
+    cutoffDate: "Brytdatum",
+    pickDateFirst: "Välj ett brytdatum för förhandsvisning.",
+    nothingToCut: "Inget att klippa före {date}.",
+    preview: "Klippning vid {date} tar bort:",
+    previewHistoryOne: "{n} historikpost",
+    previewHistoryOther: "{n} historikposter",
+    previewTransactionsOne: "{n} överföringstransaktion",
+    previewTransactionsOther: "{n} överföringstransaktioner",
+    irreversible: "Detta kan inte ångras.",
+    confirm: "Klipp historik",
   },
 
   sheetModal: {

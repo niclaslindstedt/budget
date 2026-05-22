@@ -1440,9 +1440,27 @@ export const en = {
     viewHistoryEntries: "View {n} history entries",
     editAccountAria: "Edit {name}",
     editAccountTitle: "Edit account",
+    cutHistoryAria: "Cut history for {name}",
+    cutHistoryTitle: "Cut history before a date",
+    nothingToCut: "No history or transactions to cut",
     newTransfer: "New transfer",
     needTwoAccounts: "Add at least two accounts to record a transfer",
     unknown: "Unknown",
+  },
+
+  cutHistory: {
+    title: "Cut history — {name}",
+    hint: "Drop everything dated before the cutoff. Useful when the account's purpose has changed and the old history is no longer relevant.",
+    cutoffDate: "Cutoff date",
+    pickDateFirst: "Pick a cutoff date to preview.",
+    nothingToCut: "Nothing to cut before {date}.",
+    preview: "Cutting at {date} will drop:",
+    previewHistoryOne: "{n} history entry",
+    previewHistoryOther: "{n} history entries",
+    previewTransactionsOne: "{n} transfer transaction",
+    previewTransactionsOther: "{n} transfer transactions",
+    irreversible: "This cannot be undone.",
+    confirm: "Cut history",
   },
 
   sheetModal: {
