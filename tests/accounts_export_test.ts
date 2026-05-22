@@ -73,6 +73,8 @@ const EMPTY_OPTS = {
   today: TODAY,
   includeUnconfirmed: false,
   includeFuture: false,
+  dateFormat: "YYYY-MM-DD" as const,
+  lang: "en" as const,
 };
 
 describe("buildAccountsExport", () => {
@@ -349,6 +351,82 @@ describe("buildAccountsExport", () => {
       includeTransactions: false,
     });
     expect(payload.budgetEntries).toBeUndefined();
+  });
+});
+
+describe("buildAccountsExport formatting", () => {
+  it("rounds opening balance / amount / balance to two decimals", () => {
+    const drifty: Account = {
+      id: "a",
+      name: "Drift",
+      openingBalance: 251.92999999999998,
+    };
+    const driftyHist: HistoryEntry = {
+      id: "h1",
+      date: "2026-04-15",
+      description: "Tail",
+      amount: -77.90000000000001,
+      balance: 35347.41000000001,
+      importedAt: 1714000000000,
+    };
+    const driftyTransfer: Transaction = {
+      id: "tx1",
+      date: "2026-05-01",
+      description: "Move",
+      amount: 100.10000000000001,
+      fromAccountId: "a",
+      toAccountId: "b",
+    };
+    const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [drifty],
+      transactions: { a: [driftyHist] },
+      transfers: [driftyTransfer],
+      selectedAccountIds: ["a"],
+      accountInfo: { a: true },
+      accountTransactions: { a: true },
+      includeTransactions: true,
+    });
+    expect(payload.accounts[0].openingBalance).toBe(251.93);
+    expect(payload.transactions?.a?.[0].amount).toBe(-77.9);
+    expect(payload.transactions?.a?.[0].balance).toBe(35347.41);
+    expect(payload.transfers?.[0].amount).toBe(100.1);
+  });
+
+  it("formats importedAt as a date string using the user's dateFormat", () => {
+    // 2024-04-25 in local time for any reasonable TZ offset; we
+    // assert via the same local-date conversion the formatter does.
+    const ms = 1714000000000;
+    const d = new Date(ms);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+
+    const iso = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A],
+      transactions: { a: [{ ...HIST_A1, importedAt: ms }] },
+      selectedAccountIds: ["a"],
+      accountInfo: { a: true },
+      accountTransactions: { a: true },
+      includeTransactions: true,
+      dateFormat: "YYYY-MM-DD",
+      lang: "en",
+    });
+    expect(iso.transactions?.a?.[0].importedAt).toBe(`${y}-${m}-${day}`);
+
+    const swedish = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A],
+      transactions: { a: [{ ...HIST_A1, importedAt: ms }] },
+      selectedAccountIds: ["a"],
+      accountInfo: { a: true },
+      accountTransactions: { a: true },
+      includeTransactions: true,
+      dateFormat: "DD.MM.YYYY",
+      lang: "sv",
+    });
+    expect(swedish.transactions?.a?.[0].importedAt).toBe(`${day}.${m}.${y}`);
   });
 });
 

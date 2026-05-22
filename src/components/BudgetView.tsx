@@ -1092,6 +1092,8 @@ export function BudgetView({
           today: todayIso(),
           includeUnconfirmed: config.includeUnconfirmed,
           includeFuture: config.includeFutureEntries,
+          dateFormat: data.settings.dateFormat,
+          lang: language,
         });
         // The selected list only carries the accounts the user kept
         // ticked, but we still want to remember every account's per-
@@ -1123,6 +1125,7 @@ export function BudgetView({
       data.merchantHints,
       data.matchRules,
       data.settings,
+      language,
       allTypesMerged,
       allCategoriesMerged,
       user.id,
