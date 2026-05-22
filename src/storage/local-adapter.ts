@@ -48,6 +48,30 @@ export function clearRawStorage(key: string = STORAGE_KEY): void {
   }
 }
 
+// Sum of every key + value character length currently in localStorage.
+// Browsers count localStorage usage in UTF-16 code units against the
+// per-origin quota (~5 MB in most engines), so character count is the
+// metric that matches "am I about to hit the quota". For JSON-shaped
+// budget data — mostly ASCII — the char count also tracks JSON byte
+// size closely enough that we can render it as "X MB" to the user
+// without compounding two units in the same prompt.
+export function measureLocalStorageSize(): number {
+  try {
+    if (typeof localStorage === "undefined") return 0;
+    let total = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key === null) continue;
+      const value = localStorage.getItem(key);
+      if (value === null) continue;
+      total += key.length + value.length;
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
 // Factory: produce a localStorage adapter bound to a specific key.
 // Used so each user's budget can live under its own key without
 // duplicating the surrounding adapter logic.

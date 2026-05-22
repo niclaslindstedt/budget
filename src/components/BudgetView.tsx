@@ -47,7 +47,8 @@ import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
 import { HeaderMenu } from "./HeaderMenu";
 import { SaveStateButton } from "./SaveStateButton";
-import { SettingsModal } from "./SettingsModal";
+import { SettingsModal, type SettingsTabId } from "./SettingsModal";
+import { StorageSizeWarningModal } from "./StorageSizeWarningModal";
 import { SheetView } from "./SheetView";
 import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import { ReconnectCloudModal } from "./ReconnectCloudModal";
@@ -134,7 +135,12 @@ import {
   setBudgetDownloadPrefs,
 } from "../storage/download-preferences";
 import { bcp47, type Lang, useT } from "../i18n";
-import { useChangelogAutoOpen, useIdleSignOut, useTheme } from "../hooks";
+import {
+  useChangelogAutoOpen,
+  useIdleSignOut,
+  useStorageSizeWarning,
+  useTheme,
+} from "../hooks";
 import { writeLanguagePreference } from "../i18n/language-preference";
 import { BUILD_LABEL } from "../utils/build-env";
 import { todayIso } from "../utils/date";
@@ -336,6 +342,13 @@ export function BudgetView({
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Pre-selected tab when SettingsModal next transitions open — used by
+  // launchers (e.g. the storage-size warning) that should land the user
+  // on a specific section. Cleared back to undefined right after the
+  // modal opens so a subsequent menu-driven open lands on General.
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    SettingsTabId | undefined
+  >(undefined);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   // Transaction-search modal state. `searchOpen` toggles visibility;
@@ -924,6 +937,18 @@ export function BudgetView({
       lastSeenChangelogVersion,
       dispatch,
     });
+
+  const {
+    isOpen: storageWarningOpen,
+    sizeBytes: storageWarningSize,
+    thresholdBytes: storageWarningThreshold,
+    onClose: onCloseStorageWarning,
+  } = useStorageSizeWarning({ backend });
+  const onGoToStorageSettings = useCallback(() => {
+    onCloseStorageWarning();
+    setSettingsInitialTab("storage");
+    setSettingsOpen(true);
+  }, [onCloseStorageWarning]);
 
   const onSelectSheet = useCallback(
     (id: string) => dispatch({ type: "selectSheet", sheetId: id }),
@@ -2850,6 +2875,7 @@ export function BudgetView({
       />
       <SettingsModal
         open={settingsOpen}
+        initialTab={settingsInitialTab}
         settings={data.settings}
         backend={backend}
         dropboxConnected={dropboxConnected}
@@ -2868,7 +2894,10 @@ export function BudgetView({
         onImport={onImport}
         adapter={adapter}
         getEncryptionPassword={getEncryptionPassword}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsInitialTab(undefined);
+        }}
         onSave={onSaveSettings}
         onConnectDropbox={onConnectDropbox}
         onDisconnectDropbox={onDisconnectDropbox}
@@ -2900,6 +2929,13 @@ export function BudgetView({
         open={changelogOpen}
         onClose={onCloseChangelog}
         since={lastSeenChangelogVersion}
+      />
+      <StorageSizeWarningModal
+        open={storageWarningOpen}
+        sizeBytes={storageWarningSize}
+        thresholdBytes={storageWarningThreshold}
+        onClose={onCloseStorageWarning}
+        onGoToSettings={onGoToStorageSettings}
       />
       <ActionHistoryModal
         open={actionHistoryOpen}

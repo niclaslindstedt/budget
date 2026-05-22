@@ -63,6 +63,10 @@ function presetIdForCurrency(settings: Settings): string {
 
 type Props = {
   open: boolean;
+  // Tab to land on when the modal opens. Defaults to "general". Set
+  // when the modal is launched from a context that maps to a specific
+  // section (e.g. the storage-size warning routes to "storage").
+  initialTab?: SettingsTabId;
   settings: Settings;
   backend: BackendId;
   dropboxConnected: boolean;
@@ -157,7 +161,7 @@ type Props = {
   onDeleteAccount: (password: string) => Promise<void>;
 };
 
-type TabId =
+export type SettingsTabId =
   | "general"
   | "appearance"
   | "format"
@@ -166,6 +170,8 @@ type TabId =
   | "memory"
   | "developer"
   | "logs";
+
+type TabId = SettingsTabId;
 
 type TabDef = {
   id: TabId;
@@ -206,6 +212,7 @@ function useTabDefs(t: TFunction, tabIds: readonly TabId[]): TabDef[] {
 
 export function SettingsModal({
   open,
+  initialTab,
   settings,
   backend,
   dropboxConnected,
@@ -293,14 +300,16 @@ export function SettingsModal({
   useEffect(() => {
     if (!open) return;
     setDraft(settings);
-    setActiveTab("general");
+    setActiveTab(initialTab ?? "general");
     setCurrencyPresetId(presetIdForCurrency(settings));
-    // Re-sync the draft and reset to the General tab only when the
-    // modal transitions from closed to open. Depending on `settings`
-    // here would yank the user off whatever tab they're on every time
-    // the store updates (e.g. after switching storage backend and
-    // clicking "Start fresh", which reloads `data` with a fresh
-    // `settings` reference).
+    // Re-sync the draft and reset to the requested initial tab (or
+    // General) only when the modal transitions from closed to open.
+    // Depending on `settings` here would yank the user off whatever
+    // tab they're on every time the store updates (e.g. after
+    // switching storage backend and clicking "Start fresh", which
+    // reloads `data` with a fresh `settings` reference). Depending
+    // on `initialTab` would override the user's tab switch mid-
+    // session if the prop happened to change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
