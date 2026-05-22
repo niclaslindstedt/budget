@@ -83,10 +83,10 @@ type Props = {
   // history rows; called on a non-history row, the parent guards the
   // dispatch.
   onEditHistoryRequest: (row: Row) => void;
-  // Open the move-copy modal seeded with just this row. The modal is
-  // shared with the bulk-select toolbar — single-row move/copy goes
-  // through the same dispatch path with a one-element rowIds array.
-  onMoveRequest: (row: Row) => void;
+  // Open the copy modal seeded with just this row. The modal is
+  // shared with the bulk-select toolbar — single-row copy goes through
+  // the same dispatch path with a one-element rowIds array. Moving a
+  // row to another month is done by editing its date cell.
   onCopyRequest: (row: Row) => void;
   onToggleSelect: (rowId: string) => void;
 };
@@ -121,7 +121,6 @@ function SheetRowImpl({
   onTransactionRequest,
   onMatchRuleRequest,
   onEditHistoryRequest,
-  onMoveRequest,
   onCopyRequest,
   onToggleSelect,
 }: Props) {
@@ -500,7 +499,6 @@ function SheetRowImpl({
               onToggleRowTransfer={onToggleRowTransfer}
               onSplitRequest={onSplitRequest}
               onCopyRequest={onCopyRequest}
-              onMoveRequest={onMoveRequest}
               onAction={() => setSwiped(false)}
             />
           )}

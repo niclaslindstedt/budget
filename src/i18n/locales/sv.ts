@@ -316,6 +316,10 @@ export const sv: Catalog = {
     closeMenu: "Stäng användarmenyn",
   },
 
+  headerMenu: {
+    openMenu: "Öppna meny",
+  },
+
   backend: {
     thisBrowser: "Denna webbläsare",
     localFolder: "Lokal mapp",
@@ -625,7 +629,6 @@ export const sv: Catalog = {
     },
     footer: {
       privacy: "Integritetspolicy",
-      schema: "Dataschema",
       changelog: "Nyheter",
       version: "Version {version}",
     },
@@ -716,7 +719,6 @@ export const sv: Catalog = {
     makeRecurring: "Gör återkommande",
     editRecurring: "Redigera återkommande post",
     split: "Dela rad",
-    move: "Flytta till annan månad",
     copy: "Kopiera till andra månader",
     labelByPattern: "Etikett via mönster",
     labelByPatternTitle:
@@ -1443,8 +1445,6 @@ export const sv: Catalog = {
     insertVariable: "Infoga variabel",
     summary:
       "En formel beräknar radens belopp vid rendering. Tal, aritmetik, parenteser, variabler och funktionerna nedan fungerar.",
-    fullReference: "Fullständig referens: se",
-    dataSchemaLink: "dataschemat",
     endOfMonthBalanceHint: "— utgående saldo",
     balanceBeforeHint: "— löpande saldo precis före denna rad",
     currentSheetSection: "Aktuellt blad",
@@ -1635,11 +1635,6 @@ export const sv: Catalog = {
 
   privacy: {
     pageTitle: "Integritetspolicy",
-  },
-
-  schemaPage: {
-    pageTitle: "Dataschema",
-    openInNewTab: "Öppna i ny flik",
   },
 
   applySeries: {

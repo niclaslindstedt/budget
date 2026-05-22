@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Hash,
   HardDrive,
-  Heart,
   type LucideIcon,
   Menu,
   Palette,
@@ -610,9 +609,10 @@ function SettingsHeader({
   );
 }
 
-// Footer is custom (not Modal.Footer) so links + donate sit pinned
-// below the tab content on every tab — instead of trailing the
-// scroll inside one section the user might never visit.
+// Footer is custom (not Modal.Footer) so the action buttons sit
+// pinned below the tab content on every tab — instead of trailing the
+// scroll inside one section the user might never visit. Privacy /
+// changelog / donate links live in the top-right header menu now.
 function SettingsFooter({
   onReset,
   onCancel,
@@ -625,85 +625,22 @@ function SettingsFooter({
   const t = useT();
   return (
     <footer
-      className="flex shrink-0 flex-col gap-3 border-t border-line bg-surface-3 px-4 pt-3"
+      className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 pt-3"
       style={{
         paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
       }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="secondary" onClick={onReset}>
-          {t("common.resetToDefaults")}
+      <Button variant="secondary" onClick={onReset}>
+        {t("common.resetToDefaults")}
+      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" onClick={onCancel}>
+          {t("common.cancel")}
         </Button>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={onCancel}>
-            {t("common.cancel")}
-          </Button>
-          <Button variant="primary" onClick={onSave}>
-            {t("common.save")}
-          </Button>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center text-xs text-muted">
-        <a
-          href="/privacy"
-          target="_blank"
-          rel="noreferrer"
-          className="text-link hover:underline"
-        >
-          {t("settings.footer.privacy")}
-        </a>
-        <span aria-hidden>·</span>
-        <a
-          href="/schema"
-          target="_blank"
-          rel="noreferrer"
-          className="text-link hover:underline"
-        >
-          {t("settings.footer.schema")}
-        </a>
-        <span aria-hidden>·</span>
-        <a
-          href="/changelog"
-          target="_blank"
-          rel="noreferrer"
-          className="text-link hover:underline"
-        >
-          {t("settings.footer.changelog")}
-        </a>
-        <DonateLink />
+        <Button variant="primary" onClick={onSave}>
+          {t("common.save")}
+        </Button>
       </div>
     </footer>
-  );
-}
-
-// URL is injected at build time from the `VITE_DONATE_URL` GitHub
-// Actions secret (see `.github/workflows/pages.yml`). When the secret
-// isn't set — e.g. on a fork that hasn't configured its own donate
-// page — the button hides entirely so the footer doesn't trail a
-// dead link. The heart is rendered in PayPal-agnostic "danger red"
-// so the button reads as warm regardless of which donate target the
-// maintainer points it at.
-function DonateLink() {
-  const t = useT();
-  const url = import.meta.env.VITE_DONATE_URL?.trim();
-  if (!url) return null;
-  return (
-    <>
-      <span aria-hidden>·</span>
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="inline-flex items-center gap-1 text-link hover:underline"
-      >
-        <Heart
-          size={12}
-          className="text-danger"
-          fill="currentColor"
-          aria-hidden
-        />
-        {t("settings.storage.donate")}
-      </a>
-    </>
   );
 }

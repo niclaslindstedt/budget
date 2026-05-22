@@ -14,11 +14,7 @@ const PLACEMENT: FloatingPlacement = {
   coordinateSpace: "viewport",
 };
 
-// Static reference content for the formula language. Lives next to
-// the button so the wording is a single source of truth — the JSON
-// Schema page at `/schema` and the suggestion table both reference
-// the same primitives but at different fidelity, so we don't try to
-// keep them in sync programmatically.
+// Static reference content for the formula language.
 export function FormulaHelpButton() {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -130,18 +126,6 @@ export function FormulaHelpButton() {
               </li>
             </ul>
           </Section>
-          <p className="mt-2 text-muted">
-            {t("formula.fullReference")}{" "}
-            <a
-              href="/schema"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-link underline"
-            >
-              {t("formula.dataSchemaLink")}
-            </a>
-            .
-          </p>
         </div>
       </FloatingPanel>
     </div>

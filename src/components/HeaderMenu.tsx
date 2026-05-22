@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
-  CircleUser,
   Eye,
   EyeOff,
+  Heart,
+  ListChecks,
   LogOut,
+  Menu,
+  Redo2,
+  Settings as SettingsIcon,
+  Shield,
+  Sparkles,
   Trash2,
+  Undo2,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -16,28 +23,36 @@ import { useT } from "../i18n";
 
 type Props = {
   user: StoredUser;
-  // True when there is more than one real (non-guest) account on the
-  // device, so the menu offers a "Switch user" affordance that signs
-  // out and lands on the picker form.
   hasOtherUsers: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  selectMode: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onToggleSelectMode: () => void;
+  onOpenSettings: () => void;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
-  // Verifies the password then deletes the account + its budget. The
-  // dialog catches the rejection and shows the message verbatim. The
-  // guest account has no password — the menu skips the prompt and
-  // calls this with an empty string.
   onDeleteAccount: (password: string) => Promise<void>;
 };
 
-// Account button in the page header. Click to open a small dropdown
-// with the current user's name and the four destructive-or-navigation
-// actions. The dropdown closes on Escape or click-outside; account
-// deletion drops into a separate confirmation panel inside the same
-// surface so the password prompt does not steal page focus.
-export function UserMenu({
+// Single burger menu in the page header. Houses everything that used
+// to sit on the right side of the top bar (undo/redo, select rows,
+// settings, account actions) plus the privacy / changelog / donate
+// links that used to live in the Settings modal footer. The cloud /
+// save indicator stays on the bar so the user can glance at sync
+// state without opening anything.
+export function HeaderMenu({
   user,
   hasOtherUsers,
+  canUndo,
+  canRedo,
+  selectMode,
+  onUndo,
+  onRedo,
+  onToggleSelectMode,
+  onOpenSettings,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
@@ -57,9 +72,12 @@ export function UserMenu({
   }, [open]);
 
   const isGuest = user.isDefault === true;
-  const buttonTitle = isGuest
-    ? t("userMenu.guestModeButton")
-    : t("userMenu.signedInAsName", { name: user.username });
+  const donateUrl = import.meta.env.VITE_DONATE_URL?.trim();
+
+  function pick(handler: () => void) {
+    setOpen(false);
+    handler();
+  }
 
   return (
     <div ref={rootRef} className="relative">
@@ -68,17 +86,15 @@ export function UserMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={t("userMenu.accountMenuLabel", {
-          status: buttonTitle.toLowerCase(),
-        })}
-        title={buttonTitle}
+        aria-label={t("headerMenu.openMenu")}
+        title={t("headerMenu.openMenu")}
         className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
           open
             ? "border-pipe bg-pipe/15 text-pipe"
-            : "border-line text-pipe hover:border-pipe hover:bg-surface-2"
+            : "border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg"
         }`}
       >
-        <CircleUser size={18} aria-hidden focusable={false} />
+        <Menu size={18} aria-hidden focusable={false} />
       </button>
 
       {open && (
@@ -91,18 +107,17 @@ export function UserMenu({
               user={user}
               isGuest={isGuest}
               hasOtherUsers={hasOtherUsers}
-              onSignOut={() => {
-                setOpen(false);
-                onSignOut();
-              }}
-              onSwitchUser={() => {
-                setOpen(false);
-                onSwitchUser();
-              }}
-              onCreateAccount={() => {
-                setOpen(false);
-                onCreateAccount();
-              }}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              selectMode={selectMode}
+              donateUrl={donateUrl}
+              onUndo={() => pick(onUndo)}
+              onRedo={() => pick(onRedo)}
+              onToggleSelectMode={() => pick(onToggleSelectMode)}
+              onOpenSettings={() => pick(onOpenSettings)}
+              onSignOut={() => pick(onSignOut)}
+              onSwitchUser={() => pick(onSwitchUser)}
+              onCreateAccount={() => pick(onCreateAccount)}
               onAskDelete={() => setView("delete")}
             />
           ) : (
@@ -126,6 +141,14 @@ function MainView({
   user,
   isGuest,
   hasOtherUsers,
+  canUndo,
+  canRedo,
+  selectMode,
+  donateUrl,
+  onUndo,
+  onRedo,
+  onToggleSelectMode,
+  onOpenSettings,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
@@ -134,6 +157,14 @@ function MainView({
   user: StoredUser;
   isGuest: boolean;
   hasOtherUsers: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  selectMode: boolean;
+  donateUrl: string | undefined;
+  onUndo: () => void;
+  onRedo: () => void;
+  onToggleSelectMode: () => void;
+  onOpenSettings: () => void;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
@@ -155,28 +186,88 @@ function MainView({
           </p>
         )}
       </div>
-      {!isGuest && (
+
+      <MenuSection>
         <MenuItem
-          icon={<LogOut size={16} aria-hidden focusable={false} />}
-          label={t("userMenu.signOut")}
-          onClick={onSignOut}
+          icon={<Undo2 size={16} aria-hidden focusable={false} />}
+          label={t("app.undo")}
+          disabled={!canUndo}
+          onClick={onUndo}
         />
-      )}
-      {hasOtherUsers && (
         <MenuItem
-          icon={<Users size={16} aria-hidden focusable={false} />}
-          label={t("userMenu.switchUser")}
-          onClick={onSwitchUser}
+          icon={<Redo2 size={16} aria-hidden focusable={false} />}
+          label={t("app.redo")}
+          disabled={!canRedo}
+          onClick={onRedo}
         />
-      )}
-      <MenuItem
-        icon={<UserPlus size={16} aria-hidden focusable={false} />}
-        label={
-          isGuest ? t("userMenu.createAccount") : t("userMenu.createAnother")
-        }
-        onClick={onCreateAccount}
-      />
-      <div className="border-t border-line">
+      </MenuSection>
+
+      <MenuSection>
+        <MenuItem
+          icon={<ListChecks size={16} aria-hidden focusable={false} />}
+          label={selectMode ? t("app.exitSelectMode") : t("app.selectRows")}
+          onClick={onToggleSelectMode}
+        />
+        <MenuItem
+          icon={<SettingsIcon size={16} aria-hidden focusable={false} />}
+          label={t("app.settings")}
+          onClick={onOpenSettings}
+        />
+      </MenuSection>
+
+      <MenuSection>
+        {!isGuest && (
+          <MenuItem
+            icon={<LogOut size={16} aria-hidden focusable={false} />}
+            label={t("userMenu.signOut")}
+            onClick={onSignOut}
+          />
+        )}
+        {hasOtherUsers && (
+          <MenuItem
+            icon={<Users size={16} aria-hidden focusable={false} />}
+            label={t("userMenu.switchUser")}
+            onClick={onSwitchUser}
+          />
+        )}
+        <MenuItem
+          icon={<UserPlus size={16} aria-hidden focusable={false} />}
+          label={
+            isGuest ? t("userMenu.createAccount") : t("userMenu.createAnother")
+          }
+          onClick={onCreateAccount}
+        />
+      </MenuSection>
+
+      <MenuSection>
+        <MenuLink
+          icon={<Shield size={16} aria-hidden focusable={false} />}
+          label={t("settings.footer.privacy")}
+          href="/privacy"
+        />
+        <MenuLink
+          icon={<Sparkles size={16} aria-hidden focusable={false} />}
+          label={t("settings.footer.changelog")}
+          href="/changelog"
+        />
+        {donateUrl && (
+          <MenuLink
+            icon={
+              <Heart
+                size={16}
+                className="text-danger"
+                fill="currentColor"
+                aria-hidden
+              />
+            }
+            label={t("settings.storage.donate")}
+            href={donateUrl}
+            external
+          />
+        )}
+      </MenuSection>
+
+      <MenuSection>
         <MenuItem
           icon={<Trash2 size={16} aria-hidden focusable={false} />}
           label={
@@ -185,8 +276,16 @@ function MainView({
           danger
           onClick={onAskDelete}
         />
-      </div>
+      </MenuSection>
     </div>
+  );
+}
+
+// Separator between groups of menu items. The first section drops its
+// own top border so the user-info block above sits flush against it.
+function MenuSection({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-t border-line first:border-t-0">{children}</div>
   );
 }
 
@@ -195,24 +294,54 @@ function MenuItem({
   label,
   onClick,
   danger,
+  disabled,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="menuitem"
+      disabled={disabled}
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-        danger ? "text-danger" : "text-fg"
-      }`}
+      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+        disabled
+          ? "cursor-not-allowed opacity-40"
+          : "cursor-pointer hover:bg-surface-2"
+      } ${danger ? "text-danger" : "text-fg"}`}
     >
       <span className={danger ? "text-danger" : "text-muted"}>{icon}</span>
       <span>{label}</span>
     </button>
+  );
+}
+
+function MenuLink({
+  icon,
+  label,
+  href,
+  external,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  href: string;
+  external?: boolean;
+}) {
+  return (
+    <a
+      role="menuitem"
+      href={href}
+      target="_blank"
+      rel={external ? "noreferrer noopener" : "noreferrer"}
+      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-fg hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+    >
+      <span className="text-muted">{icon}</span>
+      <span>{label}</span>
+    </a>
   );
 }
 

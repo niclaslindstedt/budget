@@ -5,29 +5,12 @@
 > localStorage and, optionally, in their own Dropbox app folder. There
 > is no backend, no account on a server, and no analytics SDK.
 
-## For agents
-
-The single highest-value URL on this site for an AI agent is the data
-schema. When a user hands you a `budget-YYYY-MM-DD.json` export, fetch
-the schema and validate against it — every field, every enum, every
-constraint, and a prose description of what each piece means is on
-that one page, both as a `<pre>` code block and as a
-`<script type="application/schema+json">` element you can extract
-without scraping.
-
-- [Data schema](https://budget.niclaslindstedt.se/schema/): JSON Schema
-  (Draft 2020-12) for the `budget-*.json` files Budget exports.
-  Includes the column-id-keyed-cells gotcha, the derived `balance`
-  column, category-cells-hold-ids-not-names, and `seriesId` semantics.
-
 ## Pages
 
 - [Home](https://budget.niclaslindstedt.se/): the app itself. SPA;
   requires JavaScript.
 - [Privacy policy](https://budget.niclaslindstedt.se/privacy/): how
   Budget handles your data. Local-first, no backend, no analytics.
-- [Data schema](https://budget.niclaslindstedt.se/schema/): the JSON
-  Schema reference for exported budget files.
 
 ## Source
 

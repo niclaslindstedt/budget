@@ -131,54 +131,6 @@ export const PRIVACY_ROUTE: RouteSeo = {
   ],
 };
 
-export const SCHEMA_ROUTE: RouteSeo = {
-  path: "/schema/",
-  title: "Data schema — Budget",
-  description:
-    "JSON Schema (Draft 2020-12) for the budget files Budget exports " +
-    "and stores. Field-by-field reference for agents and integrators " +
-    "handed a budget-*.json file.",
-  ogType: "article",
-  jsonLd: [
-    {
-      "@context": "https://schema.org",
-      "@type": "TechArticle",
-      "@id": `${absoluteUrl("/schema/")}#article`,
-      url: absoluteUrl("/schema/"),
-      headline: "Budget data schema",
-      description:
-        "JSON Schema (Draft 2020-12) for budget-*.json exports, with prose " +
-        "annotations on every field. The canonical reference for agents " +
-        "asked to read a Budget export.",
-      inLanguage: SITE_LANGUAGE,
-      isPartOf: { "@id": `${SITE_URL}/#website` },
-      about: { "@id": `${SITE_URL}/#app` },
-      author: { "@id": `${SITE_URL}/#author` },
-      publisher: { "@id": `${SITE_URL}/#author` },
-      mainEntityOfPage: { "@type": "WebPage", "@id": absoluteUrl("/schema/") },
-      audience: { "@type": "Audience", audienceType: "AI agents, developers" },
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: `${SITE_URL}/`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "Data schema",
-          item: absoluteUrl("/schema/"),
-        },
-      ],
-    },
-  ],
-};
-
 export const CHANGELOG_ROUTE: RouteSeo = {
   path: "/changelog/",
   title: "Changelog — Budget",
@@ -231,6 +183,5 @@ export const CHANGELOG_ROUTE: RouteSeo = {
 export const ROUTES: readonly RouteSeo[] = [
   HOME_ROUTE,
   PRIVACY_ROUTE,
-  SCHEMA_ROUTE,
   CHANGELOG_ROUTE,
 ];
