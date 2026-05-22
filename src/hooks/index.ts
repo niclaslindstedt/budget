@@ -11,5 +11,6 @@ export {
 export { useIdleSignOut } from "./useIdleSignOut";
 export { useIsMobile } from "./useIsMobile";
 export { usePointerOutside } from "./usePointerOutside";
+export { useSwallowingPointerOutside } from "./useSwallowingPointerOutside";
 export { useTheme } from "./useTheme";
 export { useVirtualKeyboardInset } from "./useVirtualKeyboardInset";
