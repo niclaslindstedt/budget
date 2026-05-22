@@ -95,7 +95,9 @@ export function ConflictResolutionModal({
             focusable={false}
             className="mt-0.5 shrink-0 text-pipe"
           />
-          <p className="text-sm text-fg">{t("sync.conflictHint")}</p>
+          <p className="text-sm text-fg">
+            {t("sync.conflictHint", { name: providerName })}
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded border border-line bg-surface-2 px-2 py-2">
