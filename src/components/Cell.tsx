@@ -593,7 +593,7 @@ function AmountCell({
   const inputValue = focused ? text : displayText || text;
 
   return (
-    <td className={CELL_BASE}>
+    <td className={`${CELL_BASE} hover:bg-surface-2`}>
       {focused && (
         <DismissBackdrop onDismiss={() => inputRef.current?.blur()} />
       )}
@@ -769,7 +769,7 @@ function PlainDescriptionCell({
   const hasValue = value.length > 0;
   return (
     <td
-      className={`${CELL_BASE} align-middle md:w-full ${
+      className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
         isRecurring ? "text-flag" : "text-fg"
       }`}
     >
@@ -842,7 +842,7 @@ function TypedDescriptionCell({
   const typeLabel = displayTypeName(entryType, t);
   return (
     <td
-      className={`${CELL_BASE} align-middle md:w-full ${
+      className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
         isRecurring ? "text-flag" : "text-fg"
       }`}
     >
