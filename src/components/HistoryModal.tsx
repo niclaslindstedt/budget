@@ -235,7 +235,11 @@ export function HistoryModal({
         if (b > balance) balance = b;
       }
     }
-    return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
+    // Floor each column at the header text length (uppercase "AMOUNT" /
+    // "BALANCE") so the sticky `<thead>` label never overflows the cell
+    // when the data is short — short abbreviated balances like "21K"
+    // would otherwise sit in a 4ch column too narrow for the header.
+    return { amount: Math.max(amount, 7), balance: Math.max(balance, 8) };
   }, [filteredEntries, accountSettings]);
 
   return (
@@ -243,7 +247,8 @@ export function HistoryModal({
       open={open && account !== null}
       onClose={onCancel}
       labelledBy="history-modal-title"
-      size="max-w-2xl"
+      size="max-w-6xl"
+      fixedHeight
     >
       <Modal.Header
         title={t("history.titleAccount", { name: account?.name ?? "" })}
@@ -345,7 +350,7 @@ export function HistoryModal({
                   ? { color: monthColor }
                   : undefined;
                 const colSpan =
-                  2 + (hasAnyType ? 1 : 0) + (hasAnyBalance ? 1 : 0);
+                  3 + (hasAnyType ? 1 : 0) + (hasAnyBalance ? 1 : 0);
                 return (
                   <Fragment key={group.monthKey}>
                     <tr className="border-b border-line bg-surface-2">
