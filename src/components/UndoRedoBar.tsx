@@ -1,4 +1,4 @@
-import { ListChecks, Redo2, Undo2 } from "lucide-react";
+import { History, ListChecks, Redo2, Undo2 } from "lucide-react";
 
 import { useT } from "../i18n";
 
@@ -8,6 +8,7 @@ type Props = {
   selectMode: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onOpenHistory: () => void;
   onToggleSelectMode: () => void;
 };
 
@@ -26,6 +27,7 @@ export function UndoRedoBar({
   selectMode,
   onUndo,
   onRedo,
+  onOpenHistory,
   onToggleSelectMode,
 }: Props) {
   const t = useT();
@@ -60,6 +62,15 @@ export function UndoRedoBar({
           className={iconButton}
         >
           <Redo2 size={14} aria-hidden focusable={false} />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenHistory}
+          aria-label={t("app.actionHistory")}
+          title={t("app.actionHistory")}
+          className={iconButton}
+        >
+          <History size={14} aria-hidden focusable={false} />
         </button>
         <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
         <button
