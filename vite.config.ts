@@ -9,6 +9,7 @@ import pkg from "./package.json" with { type: "json" };
 import {
   CHANGELOG_ROUTE,
   PRIVACY_ROUTE,
+  SYSTEM_ROUTE,
   type RouteSeo,
 } from "./src/seo/routes";
 import {
@@ -205,7 +206,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     emitChangelogData(),
-    emitPathAliasWithSeo([PRIVACY_ROUTE, CHANGELOG_ROUTE], {
+    emitPathAliasWithSeo([PRIVACY_ROUTE, CHANGELOG_ROUTE, SYSTEM_ROUTE], {
       noindex: IS_PREVIEW,
     }),
   ],
