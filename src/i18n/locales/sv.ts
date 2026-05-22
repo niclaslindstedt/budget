@@ -942,6 +942,7 @@ export const sv: Catalog = {
     noEntriesForMonth: "Ingen historik för {month}.",
     showHidden: "Visa dolda",
     hideHidden: "Dölj dolda",
+    allHidden: "{n} dolda — klicka på ögat för att visa.",
     showCollapsed: "Visa sammanslagna par",
     promoteToRecurring: "Gör återkommande",
     deleteEntry: "Ta bort post",

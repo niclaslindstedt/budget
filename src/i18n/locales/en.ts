@@ -945,6 +945,7 @@ export const en = {
     noEntriesForMonth: "No history for {month}.",
     showHidden: "Show hidden",
     hideHidden: "Hide hidden",
+    allHidden: "{n} hidden — click the eye to reveal.",
     showCollapsed: "Show collapsed pairs",
     promoteToRecurring: "Promote to recurring",
     deleteEntry: "Delete entry",
