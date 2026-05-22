@@ -713,7 +713,13 @@ export const en = {
     editRow: "Edit row",
     deleteRow: "Delete row",
     rowActions: "Row actions",
+    moreActions: "More actions",
     recurring: "Recurring entry",
+    makeRecurring: "Make recurring",
+    editRecurring: "Edit recurring entry",
+    split: "Split row",
+    move: "Move to another month",
+    copy: "Copy to other months",
     labelByPattern: "Label by pattern",
     labelByPatternTitle:
       "Label every history entry matching a wildcard pattern",

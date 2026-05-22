@@ -103,6 +103,8 @@ type Props = {
   onToggleRowTransfer: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
+  onMoveRequest: (row: Row) => void;
+  onCopyRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
   // Inline per-cell write for a synthesized history row. Routed by
   // `SheetView` when the user edits the description or type cell on a
@@ -210,6 +212,8 @@ export function SheetView({
   onToggleRowTransfer,
   onMatchRuleRequest,
   onEditHistoryRequest,
+  onMoveRequest,
+  onCopyRequest,
   onCorrectionDeleteRequest,
   onUpdateHistoryEntry,
   onReorderColumns,
@@ -738,6 +742,8 @@ export function SheetView({
                   onTransactionRequest={onTransactionRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onEditHistoryRequest={onEditHistoryRequest}
+                  onMoveRequest={onMoveRequest}
+                  onCopyRequest={onCopyRequest}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}

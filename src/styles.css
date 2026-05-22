@@ -533,7 +533,7 @@ body {
       transition: transform 200ms ease;
     }
     .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
-      transform: translateX(-192px);
+      transform: translateX(-128px);
       background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
     .sheet-table > thead > tr > .action-cell,
@@ -542,13 +542,14 @@ body {
       top: 0;
       right: 0;
       bottom: 0;
-      /* Width must fit the maximum visible button count (6 on a regular
-         budget row: repeat, transfer, transfer-flag, split, edit, delete).
-         Each `action-btn` has `p-2` padding and a 16px icon, giving a
-         32px min-content width, so the container needs 6 × 32 = 192px.
-         At 160px the rightmost button (Trash) overflowed and was clipped
-         by the row's `overflow: hidden`. */
-      width: 192px;
+      /* Width fits the maximum visible button count (3 on a regular
+         budget row: pen, trash, more). Each `action-btn` has `p-2`
+         padding and a 16px icon, giving a 32px min-content width, so
+         3 × 32 = 96px is the minimum. We widen to 128px so the buttons
+         sit at a comfortable ~42px tap-target on phones — extra
+         affordances live in the More dropdown rather than as more
+         siblings in this strip. */
+      width: 128px;
       transform: translateX(100%);
       transition: transform 200ms ease;
       background: var(--page-bg);
@@ -562,26 +563,23 @@ body {
       transform: translateX(0);
     }
     /* Split the revealed area into equal-width action buttons so the
-       gesture telegraphs each option at a glance. Repeat is accent
-       green ("make recurring"), the pen is meta yellow ("edit row"),
-       split is meta yellow too ("carve into parts"), and trash is
-       danger red — the Transaction button (when shown) inherits the
-       row's transparent default and reads as the muted middle option. */
-    .sheet-table > tbody > tr > .action-cell .action-btn-edit {
-      background: var(--accent);
-      color: var(--surface);
-    }
+       gesture telegraphs each option at a glance. Pen is meta yellow
+       ("edit row"), trash is danger red, and the ellipsis (More) sits
+       on a neutral surface tone so it reads as "open a menu" rather
+       than another destructive action. The Transaction button (shown
+       only on synthesized transaction rows) inherits the row's
+       transparent default and reads as the muted middle option. */
     .sheet-table > tbody > tr > .action-cell .action-btn-pen {
-      background: var(--meta);
-      color: var(--surface);
-    }
-    .sheet-table > tbody > tr > .action-cell .action-btn-split {
       background: var(--meta);
       color: var(--surface);
     }
     .sheet-table > tbody > tr > .action-cell .action-btn-delete {
       background: var(--danger);
       color: white;
+    }
+    .sheet-table > tbody > tr > .action-cell .action-btn-more {
+      background: var(--surface-2);
+      color: var(--fg-bright);
     }
 
     /* Done state tint applies on every cell so the entire row reads green */
