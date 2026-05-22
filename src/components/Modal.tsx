@@ -250,12 +250,24 @@ type BodyProps = {
   // `className` would lose the cascade to the defaults above — this
   // prop removes them at the source.
   noPadding?: boolean;
+  // Expose the scrolling element to the caller. The body owns its own
+  // overflow, so any IntersectionObserver tied to a sentinel inside
+  // the body must pass this element as the observer's `root` —
+  // observing against the viewport would never fire for clipped
+  // sentinels.
+  scrollRef?: React.Ref<HTMLDivElement>;
 };
 
-function Body({ children, className = "", noPadding = false }: BodyProps) {
+function Body({
+  children,
+  className = "",
+  noPadding = false,
+  scrollRef,
+}: BodyProps) {
   const paddingClass = noPadding ? "" : "px-3 py-3 sm:px-4 sm:py-4";
   return (
     <div
+      ref={scrollRef}
       className={`flex-1 overflow-y-auto overflow-x-hidden ${paddingClass} ${className}`
         .replace(/\s+/g, " ")
         .trim()}
