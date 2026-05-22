@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 import type { SearchEntry, SearchMatch, SearchResult } from "../data/search";
 import { runSearch } from "../data/search";
@@ -71,7 +71,11 @@ export function TransactionSearchModal({
       onClose={onClose}
       labelledBy="transaction-search-modal-title"
     >
-      <Modal.Header title={t("searchTransaction.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Search size={14} aria-hidden focusable={false} />}
+        title={t("searchTransaction.title")}
+        onClose={onClose}
+      />
       <Modal.Body noPadding>
         <div className="border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
           <div className="relative">

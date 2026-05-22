@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 
 import { CATEGORY_COLORS } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
@@ -22,6 +23,9 @@ type Props = {
   // fullscreen modal on mobile and a centered card on desktop, so the
   // header sets the context the way any other top-level dialog would.
   title: string;
+  // Optional title glyph forwarded to `Modal.Header`. Defaults to a `+`
+  // since both call sites are "create new <thing>" affordances.
+  icon?: ReactNode;
   labels: EntityCreatorLabels;
   initialColor?: string;
   initialGlyph?: CategoryIcon;
@@ -57,6 +61,7 @@ type Props = {
 export function EntityCreatorForm({
   glyphs,
   title,
+  icon,
   labels,
   initialColor = CATEGORY_COLORS[0],
   initialGlyph = "tag",
@@ -84,7 +89,11 @@ export function EntityCreatorForm({
 
   return (
     <Modal open onClose={onCancel} labelledBy="entity-creator-title">
-      <Modal.Header title={title} onClose={onCancel} />
+      <Modal.Header
+        icon={icon ?? <Plus size={14} aria-hidden focusable={false} />}
+        title={title}
+        onClose={onCancel}
+      />
       <Modal.Body>
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs text-muted">

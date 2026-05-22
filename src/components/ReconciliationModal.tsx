@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Scale } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import { expandToSeries, inferSeriesRule } from "../data/reconciliation";
@@ -403,7 +404,11 @@ export function ReconciliationModal({
       size="max-w-2xl"
       centered
     >
-      <Modal.Header title={t("reconciliation.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Scale size={14} aria-hidden focusable={false} />}
+        title={t("reconciliation.title")}
+        onClose={onClose}
+      />
       <Modal.Body>
         {candidateRows.length === 0 && orphanRowItems.length === 0 && (
           <p className="px-4 py-3 text-sm text-muted">

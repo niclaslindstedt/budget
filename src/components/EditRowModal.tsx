@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
@@ -199,6 +200,7 @@ export function EditRowModal({
       size="max-w-2xl"
     >
       <Modal.Header
+        icon={<Pencil size={14} aria-hidden focusable={false} />}
         title={isSeries ? t("editRow.titleRecurring") : t("editRow.title")}
         onClose={onClose}
       />

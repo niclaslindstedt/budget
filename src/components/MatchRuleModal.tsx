@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Wand2 } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
 import { useDesktopAutoFocus } from "../hooks";
@@ -301,6 +302,7 @@ export function MatchRuleModal({
       size="max-w-2xl"
     >
       <Modal.Header
+        icon={<Wand2 size={14} aria-hidden focusable={false} />}
         title={
           isEdit ? t("matchRule.titleEdit") : t("matchRule.titleLabelByPattern")
         }

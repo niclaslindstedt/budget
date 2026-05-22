@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader } from "lucide-react";
+import { AlertTriangle, HelpCircle, Loader } from "lucide-react";
 
 import { useT } from "../i18n";
 import { Modal } from "./Modal";
@@ -23,6 +23,9 @@ type Props = {
   // signed in", which is what cancelling means too). The X close
   // button, Escape, and click-outside still trigger `onCancel`.
   hideCancel?: boolean;
+  // Optional leading glyph for the modal title. Defaults to a warning
+  // triangle when any action is destructive, otherwise a question mark.
+  icon?: React.ReactNode;
   onCancel: () => void;
 };
 
@@ -48,6 +51,7 @@ export function ConfirmDialog({
   description,
   actions,
   hideCancel,
+  icon,
   onCancel,
 }: Props) {
   const t = useT();
@@ -72,6 +76,15 @@ export function ConfirmDialog({
     onCancel();
   };
 
+  const hasDanger = actions.some((a) => a.tone === "danger");
+  const resolvedIcon =
+    icon ??
+    (hasDanger ? (
+      <AlertTriangle size={14} aria-hidden focusable={false} />
+    ) : (
+      <HelpCircle size={14} aria-hidden focusable={false} />
+    ));
+
   return (
     <Modal
       open={open}
@@ -82,7 +95,7 @@ export function ConfirmDialog({
       scrollableBody={false}
       centered
     >
-      <Modal.Header title={title} onClose={handleClose} />
+      <Modal.Header icon={resolvedIcon} title={title} onClose={handleClose} />
       <div className="flex flex-1 flex-col justify-center">
         {description && (
           <div className="border-b border-line px-4 py-3 text-sm text-fg">

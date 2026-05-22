@@ -1,3 +1,5 @@
+import { AlertTriangle } from "lucide-react";
+
 import { useT } from "../i18n";
 import { Modal } from "./Modal";
 
@@ -30,6 +32,7 @@ export function StorageSizeWarningModal({
       centered
     >
       <Modal.Header
+        icon={<AlertTriangle size={14} aria-hidden focusable={false} />}
         title={t("settings.storage.warning.title")}
         onClose={onClose}
       />

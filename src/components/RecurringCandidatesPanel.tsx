@@ -326,6 +326,7 @@ function CandidateEntriesModal({
       centered
     >
       <Modal.Header
+        icon={<Repeat size={14} aria-hidden focusable={false} />}
         title={
           <span className="truncate">
             {t("recurring.entriesTitle", {

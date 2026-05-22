@@ -129,6 +129,7 @@ export function ReconnectCloudModal({
       centered
     >
       <Modal.Header
+        icon={<CloudAlert size={14} aria-hidden focusable={false} />}
         title={t("sync.reconnect", { name: view.name })}
         onClose={handleClose}
       />

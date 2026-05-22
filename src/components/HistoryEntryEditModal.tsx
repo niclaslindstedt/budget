@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 
 import { useDesktopAutoFocus } from "../hooks";
 import { useLang, useT } from "../i18n";
@@ -88,7 +89,11 @@ export function HistoryEntryEditModal({
       labelledBy="edit-history-title"
       size="max-w-2xl"
     >
-      <Modal.Header title={t("editHistory.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Pencil size={14} aria-hidden focusable={false} />}
+        title={t("editHistory.title")}
+        onClose={onClose}
+      />
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">{t("editHistory.hint")}</p>
         <fieldset className="mb-4 flex flex-col gap-1.5 rounded border border-line bg-surface-3 p-3">

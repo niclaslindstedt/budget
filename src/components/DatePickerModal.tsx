@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { isIsoDate } from "../data/recurrence";
 import { useT } from "../i18n";
@@ -148,7 +148,11 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
       scrollableBody={false}
       centered
     >
-      <Modal.Header title={t("datePicker.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Calendar size={14} aria-hidden focusable={false} />}
+        title={t("datePicker.title")}
+        onClose={onClose}
+      />
       <div className="px-4 py-3">
         <div className="mb-3 flex items-center gap-2">
           <button

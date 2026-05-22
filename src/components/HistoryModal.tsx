@@ -5,7 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, FileText, History } from "lucide-react";
 
 import { resolveEntryLabels } from "../data/sheet";
 import type {
@@ -251,6 +251,7 @@ export function HistoryModal({
       fixedHeight
     >
       <Modal.Header
+        icon={<History size={14} aria-hidden focusable={false} />}
         title={t("history.titleAccount", { name: account?.name ?? "" })}
         onClose={onCancel}
       />
@@ -446,6 +447,7 @@ export function HistoryModal({
         centered
       >
         <Modal.Header
+          icon={<FileText size={14} aria-hidden focusable={false} />}
           title={t("history.description")}
           onClose={() => setSelectedEntry(null)}
         />

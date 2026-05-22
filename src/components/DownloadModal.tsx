@@ -107,6 +107,7 @@ function BudgetDownloadModal({
       size="max-w-md"
     >
       <Modal.Header
+        icon={<Download size={14} aria-hidden focusable={false} />}
         title={t("download.budgetTitle", { name: sheetName })}
         onClose={onClose}
       />
@@ -269,7 +270,11 @@ function AccountsDownloadModal({
       labelledBy="download-modal-title"
       size="max-w-xl"
     >
-      <Modal.Header title={t("download.accountsTitle")} onClose={onClose} />
+      <Modal.Header
+        icon={<Download size={14} aria-hidden focusable={false} />}
+        title={t("download.accountsTitle")}
+        onClose={onClose}
+      />
       <Modal.Body>
         <div className="flex flex-col gap-4">
           {accounts.length === 0 ? (

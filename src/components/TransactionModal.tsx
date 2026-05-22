@@ -281,22 +281,13 @@ export function TransactionModal({
   return (
     <Modal open={open} onClose={onClose} labelledBy="tx-modal-title">
       <Modal.Header
+        icon={<ArrowLeftRight size={14} aria-hidden focusable={false} />}
         title={
-          <span className="inline-flex items-center gap-2">
-            <ArrowLeftRight
-              size={14}
-              className="text-flag"
-              aria-hidden
-              focusable={false}
-            />
-            <span>
-              {isEdit
-                ? t("transaction.titleEdit")
-                : isPromote
-                  ? t("transaction.titlePromote")
-                  : t("transaction.titleNew")}
-            </span>
-          </span>
+          isEdit
+            ? t("transaction.titleEdit")
+            : isPromote
+              ? t("transaction.titlePromote")
+              : t("transaction.titleNew")
         }
         onClose={onClose}
       />

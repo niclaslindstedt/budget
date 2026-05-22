@@ -67,6 +67,7 @@ export function CutAccountHistoryModal({
       centered
     >
       <Modal.Header
+        icon={<Scissors size={14} aria-hidden focusable={false} />}
         title={t("cutHistory.title", { name: account?.name ?? "" })}
         onClose={onCancel}
       />

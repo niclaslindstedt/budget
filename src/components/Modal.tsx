@@ -209,10 +209,16 @@ export function Modal({
 
 type HeaderProps = {
   title: React.ReactNode;
+  // Optional leading glyph rendered before the title at the same baseline.
+  // Pass a sized lucide icon (or any inline node) — e.g.
+  // `<Pencil size={14} aria-hidden focusable={false} />`. The header wraps
+  // it in an `inline-flex items-center gap-2` span with the `text-flag`
+  // accent so every modal title has the same hairline of identity.
+  icon?: React.ReactNode;
   onClose: () => void;
 };
 
-function Header({ title, onClose }: HeaderProps) {
+function Header({ title, icon, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
   const t = useT();
   return (
@@ -226,7 +232,14 @@ function Header({ title, onClose }: HeaderProps) {
         id={ctx?.id}
         className="text-sm font-bold tracking-wide text-fg-bright"
       >
-        {title}
+        {icon ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="inline-flex shrink-0 text-flag">{icon}</span>
+            <span className="min-w-0">{title}</span>
+          </span>
+        ) : (
+          title
+        )}
       </h2>
       <button
         type="button"

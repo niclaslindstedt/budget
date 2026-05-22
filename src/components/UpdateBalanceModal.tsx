@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Calculator } from "lucide-react";
 
 import type { Account, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
@@ -117,7 +118,11 @@ export function UpdateBalanceModal({
       size="max-w-md"
       scrollableBody={false}
     >
-      <Modal.Header title={t("updateBalance.title")} onClose={onCancel} />
+      <Modal.Header
+        icon={<Calculator size={14} aria-hidden focusable={false} />}
+        title={t("updateBalance.title")}
+        onClose={onCancel}
+      />
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 text-sm text-fg">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-muted">{t("updateBalance.account")}</span>

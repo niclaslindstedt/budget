@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Sigma } from "lucide-react";
 
 import { formulaToStored, parseFormula } from "../data/formula";
 import type { RecurrenceRule } from "../data/recurrence";
@@ -214,7 +215,11 @@ export function ComplexEntryModal({
       labelledBy="complex-entry-title"
       size="max-w-2xl"
     >
-      <Modal.Header title={title ?? t("complex.titleNew")} onClose={onClose} />
+      <Modal.Header
+        icon={<Sigma size={14} aria-hidden focusable={false} />}
+        title={title ?? t("complex.titleNew")}
+        onClose={onClose}
+      />
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">

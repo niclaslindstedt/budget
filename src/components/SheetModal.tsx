@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, Plus, Trash2, Wallet } from "lucide-react";
+import { Check, ChevronDown, Plus, Table, Trash2, Wallet } from "lucide-react";
 
 import {
   DEFAULT_SHEET_COLOR,
@@ -134,6 +134,7 @@ export function SheetModal({
   return (
     <Modal open={open} onClose={onClose} labelledBy="sheet-modal-title">
       <Modal.Header
+        icon={<Table size={14} aria-hidden focusable={false} />}
         title={isEdit ? t("sheetModal.titleEdit") : t("sheetModal.titleNew")}
         onClose={onClose}
       />

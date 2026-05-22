@@ -625,7 +625,12 @@ function SettingsHeader({
           id="settings-title"
           className="text-sm font-bold tracking-wide text-fg-bright"
         >
-          {t("settings.title")}
+          <span className="inline-flex items-center gap-2">
+            <span className="inline-flex shrink-0 text-flag">
+              <SettingsIcon size={14} aria-hidden focusable={false} />
+            </span>
+            <span className="min-w-0">{t("settings.title")}</span>
+          </span>
         </h2>
       </div>
       <button
