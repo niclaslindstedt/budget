@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import {
+  Code2,
   Heart,
   LogOut,
   Menu,
@@ -177,6 +178,12 @@ function MainView({
           icon={<Sparkles size={16} aria-hidden focusable={false} />}
           label={t("settings.footer.changelog")}
           href={`${import.meta.env.BASE_URL}changelog`}
+        />
+        <MenuLink
+          icon={<Code2 size={16} aria-hidden focusable={false} />}
+          label={t("settings.footer.source")}
+          href="https://github.com/niclaslindstedt/budget"
+          external
         />
         {donateUrl && (
           <MenuLink

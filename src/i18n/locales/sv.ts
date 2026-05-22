@@ -646,6 +646,7 @@ export const sv: Catalog = {
     footer: {
       privacy: "Integritetspolicy",
       changelog: "Nyheter",
+      source: "Visa källkod",
       version: "Version {version}",
     },
   },
