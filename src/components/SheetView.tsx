@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Pencil } from "lucide-react";
+import { Download, Eye, Pencil } from "lucide-react";
 
 import {
   computeBalances,
@@ -36,6 +36,7 @@ import type {
 import { formatNumber, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
+import { SheetViewerModal } from "./SheetViewerModal";
 
 type Props = {
   sheet: Sheet;
@@ -466,6 +467,10 @@ export function SheetView({
   // references across renders.
   const today = useMemo(() => todayIso(), []);
 
+  // Read-only viewer modal, opened from the Eye button next to the
+  // sheet title. Local state — closing wipes it, no need to persist.
+  const [viewerOpen, setViewerOpen] = useState(false);
+
   // Number of extra historical months past the default 1-month window
   // the user has opted into via "Show more". Resets when the active
   // sheet changes so switching budgets starts each one collapsed.
@@ -659,6 +664,15 @@ export function SheetView({
           </button>
           <button
             type="button"
+            onClick={() => setViewerOpen(true)}
+            aria-label={t("sheet.viewMode", { name: sheet.name })}
+            title={t("sheet.viewModeTitle")}
+            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
+            <Eye size={14} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
             onClick={() => onDownloadSheet(sheet.id)}
             aria-label={t("download.downloadSheet")}
             title={t("download.downloadSheetTitle")}
@@ -750,6 +764,15 @@ export function SheetView({
             );
           })}
         </div>
+        <SheetViewerModal
+          open={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+          sheet={sheet}
+          item={decoratedItem}
+          balances={balances}
+          types={types}
+          settings={settings}
+        />
       </section>
     </ActiveRowProvider>
   );
