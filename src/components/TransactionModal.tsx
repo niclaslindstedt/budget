@@ -18,6 +18,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../utils/format";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { Modal } from "./Modal";
 import { DatePickerModal } from "./DatePickerModal";
 import { Button, Checkbox, ClearableTextInput } from "./form";
@@ -515,27 +516,17 @@ function AccountPicker({
   onClose: () => void;
   onPick: (value: string) => void;
 }) {
-  const rootRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
 
-  useEffect(() => {
-    if (!open) return;
-    function handlePointer(e: PointerEvent) {
-      if (rootRef.current?.contains(e.target as Node)) return;
-      onClose();
-    }
-    document.addEventListener("pointerdown", handlePointer);
-    return () => document.removeEventListener("pointerdown", handlePointer);
-  }, [open, onClose]);
-
   return (
-    <div ref={rootRef} className="relative">
+    <div className="relative">
+      {open && <DismissBackdrop onDismiss={onClose} />}
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span
           aria-hidden
@@ -569,7 +560,7 @@ function AccountPicker({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
+          className="absolute left-0 right-0 z-[60] mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
         >
           {accounts.length === 0 && (
             <li className="px-3 py-2 text-xs text-muted">

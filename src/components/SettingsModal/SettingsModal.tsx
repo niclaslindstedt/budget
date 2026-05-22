@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Hash,
   HardDrive,
@@ -22,7 +22,7 @@ import type {
   Settings,
   UserData,
 } from "../../data/types";
-import { useDevMode, useEscapeKey, usePointerOutside } from "../../hooks";
+import { useDevMode, useEscapeKey } from "../../hooks";
 import { useT, type TFunction } from "../../i18n";
 import type { StorageAdapter } from "../../storage/adapter";
 import type {
@@ -30,6 +30,7 @@ import type {
   EncryptionMode,
 } from "../../storage/backend-preference";
 import { CloudBackupModal } from "../CloudBackupModal";
+import { DismissBackdrop } from "../DismissBackdrop";
 import { Button } from "../form";
 import { Modal } from "../Modal";
 import {
@@ -544,11 +545,9 @@ function SettingsHeader({
   const t = useT();
   const tabs = useTabDefs(t, tabIds);
   const [menuOpen, setMenuOpen] = useState(false);
-  const burgerRef = useRef<HTMLDivElement | null>(null);
   const close = useCallback(() => setMenuOpen(false), []);
 
   useEscapeKey(menuOpen, close);
-  usePointerOutside(menuOpen, [burgerRef], close);
 
   return (
     <header
@@ -558,21 +557,22 @@ function SettingsHeader({
       }}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <div ref={burgerRef} className="relative sm:hidden">
+        <div className="relative sm:hidden">
+          {menuOpen && <DismissBackdrop onDismiss={close} />}
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={t("settings.chooseSection")}
-            className="-ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+            className="relative z-[60] -ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
           >
             <Menu size={18} aria-hidden focusable={false} />
           </button>
           {menuOpen && (
             <div
               role="menu"
-              className="absolute left-0 top-full z-30 mt-1 flex w-48 flex-col gap-0.5 rounded border border-line bg-surface-3 p-2 shadow-lg"
+              className="absolute left-0 top-full z-[60] mt-1 flex w-48 flex-col gap-0.5 rounded border border-line bg-surface-3 p-2 shadow-lg"
             >
               {tabs.map((tab) => {
                 const Icon = tab.icon;

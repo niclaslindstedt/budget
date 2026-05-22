@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { ChevronDown, Repeat } from "lucide-react";
 
 import { CATEGORY_ICON_NAMES } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
-import { useEscapeKey, usePointerOutside } from "../hooks";
+import { useEscapeKey } from "../hooks";
 import { useT } from "../i18n";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
@@ -44,11 +45,9 @@ export function GlyphPicker({
       ? t("glyph.defaultPrefix", { name: defaultIcon })
       : t("glyph.defaultRecurring"));
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
 
   useEscapeKey(open, close);
-  usePointerOutside(open, [rootRef], close);
 
   function pick(next: CategoryIcon | null) {
     onChange(next);
@@ -56,10 +55,11 @@ export function GlyphPicker({
   }
 
   return (
-    <div ref={rootRef} className="relative inline-block w-full">
+    <div className="relative inline-block w-full">
+      {open && <DismissBackdrop onDismiss={close} />}
       <button
         type="button"
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
+        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -106,7 +106,7 @@ export function GlyphPicker({
         <div
           role="dialog"
           aria-label={t("glyph.glyphDialog")}
-          className="absolute z-30 mt-1 w-full rounded border border-line bg-surface-2 p-2 shadow-lg"
+          className="absolute z-[60] mt-1 w-full rounded border border-line bg-surface-2 p-2 shadow-lg"
         >
           <GlyphGrid
             icons={icons}
