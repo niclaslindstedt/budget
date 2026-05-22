@@ -774,6 +774,11 @@ function reduceAccountBudget(
             if (action.patch.typeId === null) delete next.typeId;
             else next.typeId = action.patch.typeId;
           }
+          if (action.patch.isTransfer !== undefined) {
+            // Only persist `true` — absent means "not a transfer".
+            if (action.patch.isTransfer) next.isTransfer = true;
+            else delete next.isTransfer;
+          }
           return next;
         }),
       };

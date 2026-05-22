@@ -80,6 +80,9 @@ export function BulkEditModal({
   const [amountEnabled, setAmountEnabled] = useState(false);
   const [amountText, setAmountText] = useState("");
 
+  const [transferEnabled, setTransferEnabled] = useState(false);
+  const [transferValue, setTransferValue] = useState(true);
+
   const [recurringEnabled, setRecurringEnabled] = useState(false);
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
@@ -98,6 +101,8 @@ export function BulkEditModal({
           : formatAmountForInput(sharedAmount, settings)
         : "",
     );
+    setTransferEnabled(false);
+    setTransferValue(true);
     setRecurringEnabled(false);
     setRecurringDates([]);
     setRecurrenceResetKey((k) => k + 1);
@@ -118,7 +123,8 @@ export function BulkEditModal({
   const patchHasChanges =
     typeEnabled ||
     dateEnabled ||
-    (amountEnabled && sharedAmount !== null && parsedAmount !== null);
+    (amountEnabled && sharedAmount !== null && parsedAmount !== null) ||
+    transferEnabled;
   const recurringHasDates = recurringEnabled && recurringDates.length > 0;
   const canSubmit = patchHasChanges || recurringHasDates;
 
@@ -134,6 +140,7 @@ export function BulkEditModal({
     ) {
       patch.amount = parsedAmount;
     }
+    if (transferEnabled) patch.isTransfer = transferValue;
     if (Object.keys(patch).length > 0) onApplyPatch(rowIds, patch);
     if (recurringEnabled && recurringDates.length > 0) {
       onApplyRecurring(rowIds, recurringDates);
@@ -217,6 +224,23 @@ export function BulkEditModal({
             {t("bulkEdit.differentAmountsHint")}
           </p>
         )}
+
+        <Toggle
+          label={t("bulkEdit.markAsTransfer")}
+          enabled={transferEnabled}
+          onToggle={setTransferEnabled}
+          hint={t("bulkEdit.markAsTransferHint")}
+        >
+          <Checkbox
+            checked={transferValue}
+            onChange={setTransferValue}
+            label={
+              transferValue
+                ? t("bulkEdit.markAsTransferOn")
+                : t("bulkEdit.markAsTransferOff")
+            }
+          />
+        </Toggle>
 
         <Toggle
           label={t("bulkEdit.makeEachRecurring")}

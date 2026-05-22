@@ -9,7 +9,7 @@ import type {
   Settings,
 } from "../data/types";
 import { formatBalance, formatShortDate } from "../utils/format";
-import { Button, Checkbox, ClearableTextInput } from "./form";
+import { Button, ClearableTextInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -34,7 +34,6 @@ type Props = {
   onSubmit: (patch: {
     userDescription: string;
     userTypeId: string | null;
-    isTransfer: boolean;
   }) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
 };
@@ -55,11 +54,9 @@ export function HistoryEntryEditModal({
 
   const initialDescription = entry?.userDescription ?? entry?.description ?? "";
   const initialTypeId = entry?.userTypeId ?? null;
-  const initialIsTransfer = entry?.isTransfer === true;
 
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
-  const [isTransfer, setIsTransfer] = useState(initialIsTransfer);
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!entry, entry?.id);
@@ -68,7 +65,6 @@ export function HistoryEntryEditModal({
     if (!open) return;
     setDescription(initialDescription);
     setTypeId(initialTypeId);
-    setIsTransfer(initialIsTransfer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry?.id]);
 
@@ -80,9 +76,8 @@ export function HistoryEntryEditModal({
     onSubmit({
       userDescription: description.trim(),
       userTypeId: typeId,
-      isTransfer,
     });
-  }, [entry, description, typeId, isTransfer, onSubmit]);
+  }, [entry, description, typeId, onSubmit]);
 
   if (!open || !entry) return null;
 
@@ -141,12 +136,6 @@ export function HistoryEntryEditModal({
               usageById={typeUsageById}
             />
           </div>
-          <Checkbox
-            checked={isTransfer}
-            onChange={setIsTransfer}
-            label={t("editHistory.isTransfer")}
-            description={t("editHistory.isTransferHint")}
-          />
         </div>
       </Modal.Body>
       <Modal.Footer>

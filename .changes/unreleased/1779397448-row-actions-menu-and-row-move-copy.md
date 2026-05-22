@@ -10,6 +10,7 @@ new **Copy** action. Copy opens the same modal as the bulk-select
 toolbar's Copy, pre-seeded with just the one row — pick the target
 months on the year grid and the row's date snaps to the chosen
 month(s). History rows show the pen + "…" dropdown (with Label by
-pattern, Make recurring, Split inside). The strip is now narrower so
-the swipe-reveal exposes fewer destructive icons by default. Moving
-a single row to another month is handled by editing its date cell.
+pattern, Make recurring, Mark / Unmark as transfer, Split inside).
+The strip is now narrower so the swipe-reveal exposes fewer
+destructive icons by default. Moving a single row to another month
+is handled by editing its date cell.

@@ -736,9 +736,26 @@ export function BudgetView({
     [dispatch, sheetId, itemId],
   );
   const onToggleRowTransfer = useCallback(
-    (row: Row) =>
-      dispatch({ type: "toggleRowTransfer", sheetId, itemId, rowId: row.id }),
-    [dispatch, sheetId, itemId],
+    (row: Row) => {
+      // Synthesized history rows can't be flipped via the budget-row
+      // reducer — they're derived from `UserData.history`. Route those
+      // through the entry-update path so the flag lands on the
+      // underlying `HistoryEntry` (and propagates back via
+      // `synthesizeHistoryRow` on the next render).
+      if (row.historyEntryId) {
+        const accountId = activeItem.accountId;
+        if (!accountId) return;
+        dispatch({
+          type: "updateHistoryEntry",
+          accountId,
+          entryId: row.historyEntryId,
+          patch: { isTransfer: !row.isTransfer },
+        });
+        return;
+      }
+      dispatch({ type: "toggleRowTransfer", sheetId, itemId, rowId: row.id });
+    },
+    [dispatch, sheetId, itemId, activeItem.accountId],
   );
   const onAddComplex = useCallback((date: string) => {
     setComplexSeedDate(date);
@@ -1884,11 +1901,7 @@ export function BudgetView({
   }, [historyEditPrompt, activeItem.accountId, data.history]);
 
   const onSubmitHistoryEdit = useCallback(
-    (patch: {
-      userDescription: string;
-      userTypeId: string | null;
-      isTransfer: boolean;
-    }) => {
+    (patch: { userDescription: string; userTypeId: string | null }) => {
       const accountId = activeItem.accountId;
       if (!accountId || !historyEditPrompt) return;
       dispatch({
