@@ -29,6 +29,7 @@ import { plural, useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { DatePickerModal } from "./DatePickerModal";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { FloatingPanel } from "./FloatingPanel";
 import { TypePicker } from "./TypePicker";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
@@ -593,7 +594,12 @@ function AmountCell({
 
   return (
     <td className={CELL_BASE}>
-      <div className="relative flex items-stretch">
+      {focused && (
+        <DismissBackdrop onDismiss={() => inputRef.current?.blur()} />
+      )}
+      <div
+        className={`relative flex items-stretch ${focused ? "z-[60]" : ""}`}
+      >
         <button
           type="button"
           onClick={toggleSign}
@@ -909,7 +915,14 @@ function DesktopDescriptionEditor({
   }
 
   return (
-    <div className="hidden md:flex md:items-start">
+    <div
+      className={`relative hidden md:flex md:items-start ${
+        focused ? "z-[60]" : ""
+      }`}
+    >
+      {focused && (
+        <DismissBackdrop onDismiss={() => textareaRef.current?.blur()} />
+      )}
       {isRecurring && (
         <span
           aria-label={t("cell.recurring")}

@@ -6,6 +6,7 @@ import {
   useEscapeKey,
   useFloatingPosition,
 } from "../hooks";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { useBlocksSheet } from "./useBlocksSheet";
 
 type Props = {
@@ -96,30 +97,7 @@ export function FloatingPanel({
   const arrowBorderClass = flipUp ? "border-b border-r" : "border-t border-l";
   return createPortal(
     <>
-      {/* Invisible backdrop that catches every tap outside the panel
-          itself. The only thing a tap on the page can hit while the
-          panel is open is either the panel (which handles its own
-          option / textarea clicks) or this backdrop (which only
-          dismisses). Solves the iOS Safari problem where focus on an
-          `<input>` fires before any document-level capture-phase
-          listener can preventDefault the mouse / touch sequence — the
-          input under the tap simply never receives the events.
-          `data-active-portal` keeps `ActiveRowProvider` from treating
-          the backdrop tap as "outside the active region" and stealing
-          the dismiss. The z-50 matches the panel and Modal layers; DOM
-          order keeps the panel above this backdrop, and keeps this
-          backdrop above any Modal contents that share the same z-50
-          tier (the FloatingPanel portal mounts after the Modal portal,
-          so later-rendered children win on equal z-index). */}
-      <div
-        data-active-portal
-        aria-hidden
-        className="fixed inset-0 z-50"
-        onPointerDown={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      />
+      <DismissBackdrop onDismiss={onClose} />
       <div
         data-active-portal
         className={`peer ${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg focus-within:border-accent ${className}`.trim()}
