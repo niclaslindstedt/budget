@@ -597,9 +597,7 @@ function AmountCell({
       {focused && (
         <DismissBackdrop onDismiss={() => inputRef.current?.blur()} />
       )}
-      <div
-        className={`relative flex items-stretch ${focused ? "z-[60]" : ""}`}
-      >
+      <div className={`relative flex items-stretch ${focused ? "z-[60]" : ""}`}>
         <button
           type="button"
           onClick={toggleSign}
