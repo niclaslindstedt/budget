@@ -36,6 +36,7 @@ import {
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { CategoryIconGlyph } from "./icons";
 import { Modal } from "./Modal";
+import { ModalSearchBar } from "./ModalSearchBar";
 
 type Props = {
   open: boolean;
@@ -149,16 +150,51 @@ export function SheetViewerModal({
     };
   }, [descCol, amountCol, typesById]);
 
+  // In-place filter against description, type name, and the formatted
+  // amount text. Resets on every modal close so re-opening starts
+  // unfiltered. Applied on top of the hide-transfers filter below.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
   // Honour the same hide-transfers filter the main view uses. Running
   // balances were computed upstream against the unfiltered rows so the
   // totals stay correct even when transfer rows are suppressed.
-  const visibleRows = useMemo(
-    () =>
-      settings.hideTransfers
-        ? item.rows.filter((r) => !isTransferRow(r))
-        : item.rows,
-    [item.rows, settings.hideTransfers],
-  );
+  const visibleRows = useMemo(() => {
+    const transferFiltered = settings.hideTransfers
+      ? item.rows.filter((r) => !isTransferRow(r))
+      : item.rows;
+    const q = query.trim().toLowerCase();
+    if (q === "") return transferFiltered;
+    return transferFiltered.filter((row) => {
+      if (row.isCorrection) return false;
+      if (descCol) {
+        const v = row.cells[descCol.id];
+        if (typeof v === "string" && v.toLowerCase().includes(q)) return true;
+      }
+      const typeId = row.typeId ?? null;
+      if (typeId) {
+        const type = typesById.get(typeId);
+        if (type && type.name.toLowerCase().includes(q)) return true;
+      }
+      if (amountCol) {
+        const v = row.cells[amountCol.id];
+        if (typeof v === "number") {
+          const text = withCurrency(
+            formatNumber(Math.abs(v), settings),
+            settings,
+          );
+          if (text.toLowerCase().includes(q)) return true;
+        }
+      }
+      if (dateCol) {
+        const v = row.cells[dateCol.id];
+        if (typeof v === "string" && v.includes(q)) return true;
+      }
+      return false;
+    });
+  }, [item.rows, settings, query, descCol, amountCol, dateCol, typesById]);
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
@@ -297,9 +333,21 @@ export function SheetViewerModal({
         className="overflow-x-hidden"
         scrollRef={scrollRootRef}
       >
+        {!hasNoRows && (
+          <ModalSearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder={t("sheet.viewerSearchPlaceholder")}
+            clearLabel={t("sheet.viewerSearchClear")}
+          />
+        )}
         {hasNoRows ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("sheet.viewerEmpty")}
+          </p>
+        ) : visibleRows.length === 0 && query.trim() !== "" ? (
+          <p className="px-4 py-6 text-center text-xs text-muted">
+            {t("sheet.viewerSearchNoResults")}
           </p>
         ) : (
           <table className="w-full table-fixed border-collapse text-sm">
@@ -337,7 +385,10 @@ export function SheetViewerModal({
                 )}
                 {balanceCol && (
                   <th className="px-1 py-1.5 text-right md:px-2">
-                    {t("sheet.balance")}
+                    <span className="md:hidden">{t("sheet.balanceShort")}</span>
+                    <span className="hidden md:inline">
+                      {t("sheet.balance")}
+                    </span>
                   </th>
                 )}
               </tr>

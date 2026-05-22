@@ -2594,6 +2594,9 @@ export function BudgetView({
             ? (data.historyImports[viewHistoryAccount.id] ?? [])
             : []
         }
+        types={allTypesMerged}
+        merchantHints={data.merchantHints}
+        matchRules={data.matchRules}
         settings={data.settings}
         onCancel={() => setViewHistoryForId(null)}
       />
