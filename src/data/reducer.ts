@@ -806,11 +806,15 @@ function reduceAccountBudget(
         if (typeof cur !== "string") continue;
         for (const month of action.targetMonths) {
           // Copies are independent — drop any seriesId so they don't
-          // accidentally inherit the source row's recurring group.
-          newRows.push({
+          // accidentally inherit the source row's recurring group. The
+          // entry type travels with the copy so the user doesn't have
+          // to re-pick it on every duplicated row.
+          const next: Row = {
             id: newId(),
             cells: { ...r.cells, [dateCol.id]: shiftIsoToMonth(cur, month) },
-          });
+          };
+          if (r.typeId) next.typeId = r.typeId;
+          newRows.push(next);
         }
       }
       return { ...item, rows: [...item.rows, ...newRows] };
