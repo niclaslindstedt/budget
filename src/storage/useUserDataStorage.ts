@@ -76,6 +76,14 @@ export type SaveStatus =
 // fresh-budget overwrite (the original incident) is a 99.7% shrink
 // and trips this trivially; routine edits never do.
 const SHRINK_WARN_THRESHOLD = 0.05;
+// Maximum number of past states retained in the undo stack. Each
+// entry is a `UserData` reference; structural sharing in the reducer
+// means unchanged sub-trees are not duplicated across snapshots.
+const UNDO_HISTORY_LIMIT = 50;
+// Reducer actions that are pure UI navigation — they change the
+// active tab/sheet but no user data. Excluded from the undo stack so
+// ⌘Z reverts the last edit, not a tab switch.
+const UI_ONLY_ACTION_TYPES = new Set<string>(["selectSheet"]);
 // Minimum previous size for the shrink check to engage. A new user
 // going from 0 → small budget should never be challenged, and edits
 // that toggle a 200-byte settings blob shouldn't be either.
@@ -117,9 +125,19 @@ export type UserDataStorage<Action> = {
   // last successfully saved snapshot. Only meaningful while
   // `status.kind === "shrink-warning"`.
   discardShrinkSave: () => void;
+  // Step backward through the history of dispatched actions. No-op
+  // when `canUndo` is false. The reverted state still flows through
+  // the normal save path, so persistence stays consistent.
+  undo: () => void;
+  // Step forward through the redo stack. No-op when `canRedo` is
+  // false. The redo stack is cleared whenever a new mutating action
+  // is dispatched.
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
-export function useUserDataStorage<Action>(
+export function useUserDataStorage<Action extends { type: string }>(
   adapter: StorageAdapter,
   reducer: Reducer<UserData, Action>,
   { beforeSerialize }: UserDataStorageOptions = {},
@@ -187,12 +205,64 @@ export function useUserDataStorage<Action>(
   // it before issuing its own immediate write.
   const pendingTimerRef = useRef<number | null>(null);
 
+  // Undo / redo stacks. Each entry is the `UserData` snapshot that
+  // was current *before* the action ran, so undo can restore it
+  // verbatim. Capped at UNDO_HISTORY_LIMIT — older entries fall off
+  // the bottom when the stack grows past the cap. Redo is cleared on
+  // any new mutating dispatch.
+  const [undoStack, setUndoStack] = useState<UserData[]>([]);
+  const [redoStack, setRedoStack] = useState<UserData[]>([]);
+
   const dispatch: Dispatch<Action> = useCallback(
     (action) => {
-      setData((prev) => reducer(prev, action));
+      const recordHistory = !UI_ONLY_ACTION_TYPES.has(action.type);
+      setData((prev: UserData) => {
+        const next = reducer(prev, action);
+        if (recordHistory && next !== prev) {
+          setUndoStack((stack: UserData[]) => {
+            const appended = [...stack, prev];
+            return appended.length > UNDO_HISTORY_LIMIT
+              ? appended.slice(appended.length - UNDO_HISTORY_LIMIT)
+              : appended;
+          });
+          setRedoStack((stack: UserData[]) =>
+            stack.length === 0 ? stack : [],
+          );
+        }
+        return next;
+      });
     },
     [reducer],
   );
+
+  const undo = useCallback(() => {
+    setUndoStack((stack: UserData[]) => {
+      if (stack.length === 0) return stack;
+      const previous = stack[stack.length - 1];
+      setData((current: UserData) => {
+        setRedoStack((redo: UserData[]) => [...redo, current]);
+        return previous;
+      });
+      return stack.slice(0, -1);
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setRedoStack((stack: UserData[]) => {
+      if (stack.length === 0) return stack;
+      const next = stack[stack.length - 1];
+      setData((current: UserData) => {
+        setUndoStack((undoStackInner: UserData[]) => {
+          const appended = [...undoStackInner, current];
+          return appended.length > UNDO_HISTORY_LIMIT
+            ? appended.slice(appended.length - UNDO_HISTORY_LIMIT)
+            : appended;
+        });
+        return next;
+      });
+      return stack.slice(0, -1);
+    });
+  }, []);
 
   // Shared write path used by both the debounced auto-save and the
   // explicit `saveNow`. Owns status reporting, conflict surfacing,
@@ -631,5 +701,9 @@ export function useUserDataStorage<Action>(
     resolveKeepRemote,
     confirmShrinkSave,
     discardShrinkSave,
+    undo,
+    redo,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
   };
 }
