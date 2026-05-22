@@ -163,6 +163,15 @@ export function BottomBar({
         <div className="flex shrink-0 items-center gap-0.5 border-l border-line pl-1.5 sm:pl-2">
           <button
             type="button"
+            onClick={onOpenSearch}
+            aria-label={t("searchTransaction.open")}
+            title={t("searchTransaction.open")}
+            className={actionButton}
+          >
+            <Search size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
             onClick={onUndo}
             disabled={!canUndo}
             aria-label={t("app.undo")}
@@ -180,15 +189,6 @@ export function BottomBar({
             className={actionButton}
           >
             <Redo2 size={16} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={onOpenSearch}
-            aria-label={t("searchTransaction.open")}
-            title={t("searchTransaction.open")}
-            className={actionButton}
-          >
-            <Search size={16} aria-hidden focusable={false} />
           </button>
           <button
             type="button"
