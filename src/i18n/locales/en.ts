@@ -325,6 +325,10 @@ export const en = {
     closeMenu: "Close user menu",
   },
 
+  headerMenu: {
+    openMenu: "Open menu",
+  },
+
   backend: {
     thisBrowser: "This browser",
     localFolder: "Local folder",
@@ -633,7 +637,6 @@ export const en = {
     },
     footer: {
       privacy: "Privacy policy",
-      schema: "Data schema",
       changelog: "What's new",
       version: "Version {version}",
     },
@@ -722,7 +725,6 @@ export const en = {
     makeRecurring: "Make recurring",
     editRecurring: "Edit recurring entry",
     split: "Split row",
-    move: "Move to another month",
     copy: "Copy to other months",
     labelByPattern: "Label by pattern",
     labelByPatternTitle:
@@ -1444,8 +1446,6 @@ export const en = {
     insertVariable: "Insert variable",
     summary:
       "A formula computes the row's amount at render time. Numbers, arithmetic, parentheses, variables, and the functions below all work.",
-    fullReference: "Full reference: see the",
-    dataSchemaLink: "data schema",
     endOfMonthBalanceHint: "— closing balance",
     balanceBeforeHint: "— running balance just before this row",
     currentSheetSection: "Current sheet",
@@ -1636,11 +1636,6 @@ export const en = {
 
   privacy: {
     pageTitle: "Privacy policy",
-  },
-
-  schemaPage: {
-    pageTitle: "Data schema",
-    openInNewTab: "Open in a new tab",
   },
 
   applySeries: {

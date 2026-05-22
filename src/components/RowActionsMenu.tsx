@@ -5,7 +5,6 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
-  Move,
   Repeat,
   Scissors,
   Tags,
@@ -28,7 +27,6 @@ type Props = {
   onToggleRowTransfer?: (row: Row) => void;
   onSplitRequest: (row: Row) => void;
   onCopyRequest: (row: Row) => void;
-  onMoveRequest: (row: Row) => void;
   // Fired after picking any menu item so the parent can dismiss its
   // swipe state in the same frame the dropdown closes.
   onAction: () => void;
@@ -61,7 +59,6 @@ export function RowActionsMenu({
   onToggleRowTransfer,
   onSplitRequest,
   onCopyRequest,
-  onMoveRequest,
   onAction,
 }: Props) {
   const t = useT();
@@ -134,22 +131,16 @@ export function RowActionsMenu({
     onClick: () => pick(() => onSplitRequest(row)),
   });
 
-  // Copy / move target the row's date cell — only meaningful on the
-  // user-authored budget rows the reducer's bulkShift / bulkCopy
-  // actions can write back. History rows are derived from bank imports
-  // and have no editable date.
+  // Copy targets the row's date cell — only meaningful on the
+  // user-authored budget rows the reducer's bulkCopy action can write
+  // back. History rows are derived from bank imports and have no
+  // editable date. Move is handled by editing the date cell directly.
   if (!isHistory) {
     items.push({
       key: "copy",
       icon: <Copy size={16} aria-hidden focusable={false} />,
       label: t("cell.copy"),
       onClick: () => pick(() => onCopyRequest(row)),
-    });
-    items.push({
-      key: "move",
-      icon: <Move size={16} aria-hidden focusable={false} />,
-      label: t("cell.move"),
-      onClick: () => pick(() => onMoveRequest(row)),
     });
   }
 

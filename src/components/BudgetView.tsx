@@ -1,10 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ListChecks,
-  Redo2,
-  Settings as SettingsIcon,
-  Undo2,
-} from "lucide-react";
 
 import { AccountModal, type AccountDraft } from "./AccountModal";
 import { UpdateBalanceModal } from "./UpdateBalanceModal";
@@ -50,6 +44,7 @@ import {
 } from "./ReconciliationModal";
 import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
+import { HeaderMenu } from "./HeaderMenu";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal } from "./SettingsModal";
 import { SheetView } from "./SheetView";
@@ -57,7 +52,6 @@ import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import { ReconnectCloudModal } from "./ReconnectCloudModal";
 import { SyncDetailsModal } from "./SyncDetailsModal";
 import { SyncStatus } from "./SyncStatus";
-import { UserMenu } from "./UserMenu";
 import {
   buildBudgetExportRows,
   CSV_MIME_TYPE,
@@ -2086,9 +2080,6 @@ export function BudgetView({
   const onBulkCopy = useCallback(() => {
     setMoveCopyPrompt({ kind: "copy", rows: selectedRows });
   }, [selectedRows]);
-  const onMoveRequest = useCallback((row: Row) => {
-    setMoveCopyPrompt({ kind: "move", rows: [row] });
-  }, []);
   const onCopyRequest = useCallback((row: Row) => {
     setMoveCopyPrompt({ kind: "copy", rows: [row] });
   }, []);
@@ -2355,54 +2346,16 @@ export function BudgetView({
                 onSave={saveNow}
               />
             )}
-            <button
-              type="button"
-              onClick={undo}
-              disabled={!canUndo}
-              aria-label={t("app.undo")}
-              title={t("app.undoShort")}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-muted"
-            >
-              <Undo2 size={18} aria-hidden focusable={false} />
-            </button>
-            <button
-              type="button"
-              onClick={redo}
-              disabled={!canRedo}
-              aria-label={t("app.redo")}
-              title={t("app.redoShort")}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-muted"
-            >
-              <Redo2 size={18} aria-hidden focusable={false} />
-            </button>
-            <button
-              type="button"
-              onClick={onToggleSelectMode}
-              aria-pressed={selectMode}
-              aria-label={
-                selectMode ? t("app.exitSelectMode") : t("app.selectRows")
-              }
-              title={selectMode ? t("app.cancelShort") : t("app.selectShort")}
-              className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-                selectMode
-                  ? "border-pipe bg-pipe/15 text-pipe"
-                  : "border-line text-pipe hover:border-pipe hover:bg-surface-2"
-              }`}
-            >
-              <ListChecks size={18} aria-hidden focusable={false} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label={t("app.openSettings")}
-              title={t("app.settings")}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-            >
-              <SettingsIcon size={18} aria-hidden focusable={false} />
-            </button>
-            <UserMenu
+            <HeaderMenu
               user={user}
               hasOtherUsers={hasOtherUsers}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              selectMode={selectMode}
+              onUndo={undo}
+              onRedo={redo}
+              onToggleSelectMode={onToggleSelectMode}
+              onOpenSettings={() => setSettingsOpen(true)}
               onSignOut={onSignOut}
               onSwitchUser={onSwitchUser}
               onCreateAccount={onCreateAccount}
@@ -2484,7 +2437,6 @@ export function BudgetView({
                 onToggleRowTransfer={onToggleRowTransfer}
                 onMatchRuleRequest={onMatchRuleRequest}
                 onEditHistoryRequest={onEditHistoryRequest}
-                onMoveRequest={onMoveRequest}
                 onCopyRequest={onCopyRequest}
                 onUpdateHistoryEntry={onUpdateHistoryEntry}
                 onCorrectionDeleteRequest={onCorrectionDeleteRequest}

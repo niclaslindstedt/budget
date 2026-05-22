@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
-import { SchemaPage } from "./components/SchemaPage";
 import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
 // Bundled webfonts powering the Appearance → Font picker. Each
@@ -40,28 +39,17 @@ installSelectOnFocus();
 
 // Trivial path-based switch. The build emits `dist/<alias>/index.html`
 // aliases (see `vite.config.ts`) so GitHub Pages serves the same SPA
-// at `/privacy/`, `/schema/`, and `/changelog/`, and this check
-// decides which view to mount. The preview build's pages live one
-// segment deeper (e.g. `/preview/privacy/`); the suffix check below
-// matches both. `/schema` is the JSON-Schema reference an agent can
-// fetch when handed an exported `budget-*.json` file.
+// at `/privacy/` and `/changelog/`, and this check decides which view
+// to mount. The preview build's pages live one segment deeper (e.g.
+// `/preview/privacy/`); the suffix check below matches both.
 const path = window.location.pathname.replace(/\/$/, "");
 const isPrivacy = path.endsWith("/privacy") || path === "/privacy";
-const isSchema = path.endsWith("/schema") || path === "/schema";
 const isChangelog = path.endsWith("/changelog") || path === "/changelog";
 
 createRoot(rootElement).render(
   <StrictMode>
     <LanguageRoot>
-      {isSchema ? (
-        <SchemaPage />
-      ) : isPrivacy ? (
-        <PrivacyPage />
-      ) : isChangelog ? (
-        <ChangelogPage />
-      ) : (
-        <App />
-      )}
+      {isPrivacy ? <PrivacyPage /> : isChangelog ? <ChangelogPage /> : <App />}
     </LanguageRoot>
   </StrictMode>,
 );
