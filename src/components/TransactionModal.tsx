@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import type { Account, Category, EntryType, Row } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
+import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import {
   formatAmountForInput,
@@ -18,7 +18,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../utils/format";
-import { DismissBackdrop } from "./DismissBackdrop";
+import { FloatingPanel } from "./FloatingPanel";
 import { Modal } from "./Modal";
 import { DatePickerModal } from "./DatePickerModal";
 import { Button, Checkbox, ClearableTextInput } from "./form";
@@ -497,6 +497,15 @@ function LockedAccountChip({
   );
 }
 
+// Routed through `FloatingPanel` so the list lifts out of the
+// TransactionModal's z-50 stacking context — otherwise its options
+// would render underneath the dismiss backdrop.
+const TRANSACTION_ACCOUNT_PICKER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 function AccountPicker({
   value,
   accounts,
@@ -516,17 +525,17 @@ function AccountPicker({
   onClose: () => void;
   onPick: (value: string) => void;
 }) {
+  const triggerRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
 
   return (
-    <div className="relative">
-      {open && <DismissBackdrop onDismiss={onClose} />}
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span
           aria-hidden
@@ -557,11 +566,13 @@ function AccountPicker({
           focusable={false}
         />
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute left-0 right-0 z-[60] mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={TRANSACTION_ACCOUNT_PICKER_PLACEMENT}
+      >
+        <ul role="listbox" className="max-h-64 overflow-auto py-1">
           {accounts.length === 0 && (
             <li className="px-3 py-2 text-xs text-muted">
               No accounts yet — create one from the Accounts sheet.
@@ -612,7 +623,7 @@ function AccountPicker({
             );
           })}
         </ul>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

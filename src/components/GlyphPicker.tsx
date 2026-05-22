@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ChevronDown, Repeat } from "lucide-react";
 
 import { CATEGORY_ICON_NAMES } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
-import { useEscapeKey } from "../hooks";
+import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
-import { DismissBackdrop } from "./DismissBackdrop";
+import { FloatingPanel } from "./FloatingPanel";
 import { GlyphGrid } from "./GlyphGrid";
 import { CategoryIconGlyph } from "./icons";
 
@@ -30,6 +30,16 @@ type Props = {
   tintColor?: string;
 };
 
+// Routed through `FloatingPanel` so the grid lifts out of any Modal's
+// z-50 stacking context — both AccountModal (where this picker lives
+// today) and the entity-creator dialog cap inline z-index against the
+// dismiss backdrop, so the glyph grid would otherwise be unclickable.
+const PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 260 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 export function GlyphPicker({
   value,
   onChange,
@@ -45,9 +55,8 @@ export function GlyphPicker({
       ? t("glyph.defaultPrefix", { name: defaultIcon })
       : t("glyph.defaultRecurring"));
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
-
-  useEscapeKey(open, close);
 
   function pick(next: CategoryIcon | null) {
     onChange(next);
@@ -55,11 +64,10 @@ export function GlyphPicker({
   }
 
   return (
-    <div className="relative inline-block w-full">
-      {open && <DismissBackdrop onDismiss={close} />}
+    <div ref={triggerRef} className="relative inline-block w-full">
       <button
         type="button"
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -102,11 +110,16 @@ export function GlyphPicker({
           focusable={false}
         />
       </button>
-      {open && (
+      <FloatingPanel
+        open={open}
+        onClose={close}
+        triggerRef={triggerRef}
+        placement={PLACEMENT}
+      >
         <div
           role="dialog"
           aria-label={t("glyph.glyphDialog")}
-          className="absolute z-[60] mt-1 w-full rounded border border-line bg-surface-2 p-2 shadow-lg"
+          className="w-full p-2"
         >
           <GlyphGrid
             icons={icons}
@@ -129,7 +142,7 @@ export function GlyphPicker({
             }}
           />
         </div>
-      )}
+      </FloatingPanel>
     </div>
   );
 }
