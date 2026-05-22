@@ -98,6 +98,7 @@ type Props = {
   onEdit: (transactionId: string, draft: TransactionDraft) => void;
   onDelete: (transactionId: string) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 export function TransactionModal({
@@ -114,6 +115,7 @@ export function TransactionModal({
   onEdit,
   onDelete,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const [date, setDate] = useState("");
@@ -400,6 +402,7 @@ export function TransactionModal({
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
               usageById={typeUsageById}
               variant="field"
             />

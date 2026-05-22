@@ -11,4 +11,7 @@ colour — tap it to reveal the description text. Opening the type picker
 echoes the row's date and description in a small header above the choices
 so the row's context stays visible while picking. The Settings panel merges
 the Categories and Types tabs into a single nested view where you add
-types under the category they belong to.
+types under the category they belong to. The category dropdown inside the
+type creator (and inside the Settings type editor) now ends with a "New
+category" row that opens the creator dialog, so you can spawn a brand-new
+category without leaving the type-creation flow.

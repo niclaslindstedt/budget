@@ -68,6 +68,7 @@ type Props = {
     promotion: HistoryPromotion,
   ) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 function todayIso(): string {
@@ -120,6 +121,7 @@ export function EditEntryModal({
   onEditSeries,
   onPromoteHistory,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const descCol = useMemo(
@@ -329,6 +331,7 @@ export function EditEntryModal({
                   selectedId={typeId}
                   onSelect={setTypeId}
                   onCreate={onCreateType}
+                  onCreateCategory={onCreateCategory}
                   usageById={typeUsageById}
                 />
               </div>
@@ -429,6 +432,7 @@ export function EditEntryModal({
                   selectedId={typeId}
                   onSelect={setTypeId}
                   onCreate={onCreateType}
+                  onCreateCategory={onCreateCategory}
                   usageById={typeUsageById}
                 />
               </div>
@@ -499,6 +503,7 @@ export function EditEntryModal({
                 selectedId={typeId}
                 onSelect={setTypeId}
                 onCreate={onCreateType}
+                onCreateCategory={onCreateCategory}
                 usageById={typeUsageById}
               />
             </div>

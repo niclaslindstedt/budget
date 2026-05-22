@@ -115,7 +115,7 @@ export function CategoryChip({
   );
 }
 
-function CategoryCreator({
+export function CategoryCreator({
   onCancel,
   onSubmit,
 }: {

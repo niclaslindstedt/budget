@@ -36,6 +36,7 @@ type Props = {
     userTypeId: string | null;
   }) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 export function HistoryEntryEditModal({
@@ -48,6 +49,7 @@ export function HistoryEntryEditModal({
   onClose,
   onSubmit,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -133,6 +135,7 @@ export function HistoryEntryEditModal({
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
               usageById={typeUsageById}
             />
           </div>

@@ -53,6 +53,7 @@ type Props = {
   categories: readonly Category[];
   typeUsageById: ReadonlyMap<string, number>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   // All accounts in the workspace. Needed so the view can look up the
   // peer account name when synthesizing a transaction row, and so the
   // running balance can mirror what the Accounts dashboard shows.
@@ -190,6 +191,7 @@ export function SheetView({
   categories,
   typeUsageById,
   onCreateType,
+  onCreateCategory,
   accounts,
   transactions,
   history,
@@ -721,6 +723,7 @@ export function SheetView({
                   categories={categories}
                   typeUsageById={typeUsageById}
                   onCreateType={onCreateType}
+                  onCreateCategory={onCreateCategory}
                   settings={settings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}

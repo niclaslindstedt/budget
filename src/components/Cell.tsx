@@ -57,6 +57,7 @@ type Props = {
   categories?: readonly Category[];
   typeUsageById?: ReadonlyMap<string, number>;
   onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
   // True when this row is a synthesized side of a Transaction. Disables
   // every editor (the row is sourced from `data.transactions`, not the
   // budget's `item.rows`) and swaps the description leading glyph to a
@@ -125,6 +126,7 @@ function CellImpl({
   categories,
   typeUsageById,
   onCreateType,
+  onCreateCategory,
   isTransaction,
   peerName,
   outgoing,
@@ -218,6 +220,7 @@ function CellImpl({
               onChange={onChange}
               onCommit={onCommit}
               onCreateType={onCreateType}
+              onCreateCategory={onCreateCategory}
             />
           );
       }
@@ -323,6 +326,7 @@ function CellImpl({
           onChange={onChange}
           onCommit={onCommit}
           onCreateType={onCreateType}
+          onCreateCategory={onCreateCategory}
         />
       );
   }
@@ -1138,6 +1142,7 @@ function TypePickerCell({
   onChange,
   onCommit,
   onCreateType,
+  onCreateCategory,
 }: {
   rowId: string;
   types: readonly EntryType[];
@@ -1151,6 +1156,7 @@ function TypePickerCell({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
 }) {
   return (
     <td className={`${CELL_BASE} p-0`}>
@@ -1175,6 +1181,7 @@ function TypePickerCell({
             ...draft,
           }))
         }
+        onCreateCategory={onCreateCategory}
         variant="chip"
       />
     </td>

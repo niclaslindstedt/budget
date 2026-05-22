@@ -64,6 +64,7 @@ type Props = {
   onSubmit: (draft: MatchRuleDraft) => void;
   onDelete?: () => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 const PREVIEW_LIMIT = 8;
@@ -108,6 +109,7 @@ export function MatchRuleModal({
   onSubmit,
   onDelete,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -343,6 +345,7 @@ export function MatchRuleModal({
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
               usageById={typeUsageById}
             />
           </div>

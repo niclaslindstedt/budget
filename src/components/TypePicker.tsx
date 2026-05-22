@@ -1,12 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 
 import { DEFAULT_CATEGORY_ID, TYPE_GLYPH_NAMES } from "../data/constants";
 import type { Category, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
-import { CategoryChip } from "./CategoryPicker";
+import { CategoryChip, CategoryCreator } from "./CategoryPicker";
 import { EntityChip } from "./EntityChip";
 import { EntityCreatorForm } from "./EntityCreatorForm";
 import { EntityPickerShell } from "./EntityPickerShell";
@@ -36,6 +36,11 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onCreate: (draft: Omit<EntryType, "id">) => EntryType;
+  // Wired through to the inline type creator's category picker so the
+  // user can spawn a brand-new category without leaving the type
+  // creation flow. Optional — call sites that don't provide it leave
+  // the category dropdown without a "Create category" footer row.
+  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
   // Usage map (typeId → count) used to sort the dropdown so the most-
   // used entries float to the top, like a country picker's "common"
   // section. Optional — pickers without a known usage map fall back
@@ -69,6 +74,7 @@ export function TypePicker({
   selectedId,
   onSelect,
   onCreate,
+  onCreateCategory,
   usageById,
   amountSign,
   rowDate,
@@ -199,6 +205,7 @@ export function TypePicker({
       renderCreator={(done) => (
         <TypeCreator
           categories={categories}
+          onCreateCategory={onCreateCategory}
           onCancel={done}
           onSubmit={(draft) => {
             const created = onCreate(draft);
@@ -231,10 +238,12 @@ export function TypeChip({
 
 function TypeCreator({
   categories,
+  onCreateCategory,
   onCancel,
   onSubmit,
 }: {
   categories: readonly Category[];
+  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
   onCancel: () => void;
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
@@ -265,6 +274,7 @@ function TypeCreator({
             categories={categories}
             value={categoryId}
             onChange={setCategoryId}
+            onCreate={onCreateCategory}
           />
         </div>
       }
@@ -295,13 +305,19 @@ function CategorySelector({
   categories,
   value,
   onChange,
+  onCreate,
 }: {
   categories: readonly Category[];
   value: string;
   onChange: (id: string) => void;
+  // Optional. When provided, the dropdown appends a "New category"
+  // footer row that opens the shared category-creator modal; the new
+  // category becomes the selected value once it lands in the store.
+  onCreate?: (draft: Omit<Category, "id">) => Category;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
@@ -356,8 +372,33 @@ function CategorySelector({
               </button>
             </li>
           ))}
+          {onCreate && (
+            <li className="mt-1 border-t border-line">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setCreating(true);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-2 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+                {t("category.newCategory")}
+              </button>
+            </li>
+          )}
         </ul>
       </FloatingPanel>
+      {creating && onCreate && (
+        <CategoryCreator
+          onCancel={() => setCreating(false)}
+          onSubmit={(draft) => {
+            const created = onCreate(draft);
+            onChange(created.id);
+            setCreating(false);
+          }}
+        />
+      )}
     </div>
   );
 }
