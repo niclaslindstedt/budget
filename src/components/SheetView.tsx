@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Download, Eye, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
 
 import {
   buildVisibleRows,
@@ -610,14 +610,15 @@ export function SheetView({
 
   // Track which rendered month containers are currently intersecting
   // the viewport so the floating "Today" button below can decide when
-  // the user has scrolled far enough back in history to surface it.
+  // the current fiscal month is no longer on screen.
   // Stable join key avoids re-creating the observer on every keystroke
   // (visibleMonths is memoized against monthGroups, which changes on
   // every cell edit — the array reference flips even when its
   // contents don't). Sentinel month keys like "undated" are ignored.
-  const [newestVisibleMonth, setNewestVisibleMonth] = useState<string | null>(
-    null,
-  );
+  const [visibleMonthRange, setVisibleMonthRange] = useState<{
+    oldest: string | null;
+    newest: string | null;
+  }>({ oldest: null, newest: null });
   const visibleMonthsKey = visibleMonths.join(",");
   useEffect(() => {
     const section = sectionRef.current;
@@ -627,11 +628,17 @@ export function SheetView({
     const intersecting = new Set<string>();
     const recompute = () => {
       let newest: string | null = null;
+      let oldest: string | null = null;
       for (const key of intersecting) {
         if (key === "undated") continue;
         if (!newest || key > newest) newest = key;
+        if (!oldest || key < oldest) oldest = key;
       }
-      setNewestVisibleMonth(newest);
+      setVisibleMonthRange((prev) =>
+        prev.newest === newest && prev.oldest === oldest
+          ? prev
+          : { oldest, newest },
+      );
     };
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
@@ -646,21 +653,22 @@ export function SheetView({
     return () => observer.disconnect();
   }, [visibleMonthsKey]);
 
-  // Surface the floating "Today" button once the newest month
-  // intersecting the viewport sits more than three fiscal months
-  // before the current month. Three was picked to mirror
-  // HISTORY_PAGE_SIZE — once the user has scrolled past a full
-  // "Show earlier months" page, jumping back to today via a chrome
-  // affordance is meaningfully faster than scrolling.
-  const showTodayButton = useMemo(() => {
-    if (!newestVisibleMonth) return false;
-    if (newestVisibleMonth >= currentMonth) return false;
-    let cursor = currentMonth;
-    for (let i = 0; i < 3; i += 1) {
-      cursor = previousMonthKey(cursor);
-    }
-    return newestVisibleMonth < cursor;
-  }, [newestVisibleMonth, currentMonth]);
+  // Surface the floating "Today" button whenever the current fiscal
+  // month is scrolled off-screen — in either direction. Anchoring to
+  // the current fiscal month (not today's calendar date) keeps the
+  // button hidden while the user is editing the active budget, even
+  // late in the month when today's row sits near the bottom of the
+  // current month. When the user is scrolled into the past the pill
+  // sits above the BottomBar pointing down; when scrolled into the
+  // future it sits below the header pointing up.
+  const todayButtonDirection = useMemo<"down" | "up" | null>(() => {
+    const { newest, oldest } = visibleMonthRange;
+    if (!newest || !oldest) return null;
+    if (newest < currentMonth) return "down";
+    if (oldest > currentMonth) return "up";
+    return null;
+  }, [visibleMonthRange, currentMonth]);
+  const showTodayButton = todayButtonDirection !== null;
 
   // Honour a one-shot scroll-to-row request from the transaction-search
   // modal. When the row's month falls outside the default history
@@ -907,13 +915,19 @@ export function SheetView({
         />
       </section>
       {showTodayButton && (
-        // Floating pill anchored above the BottomBar (z-30) — z-40 keeps
-        // it above the sheet content but below any modal backdrop
+        // Floating pill anchored above the BottomBar (z-30) when the
+        // user has scrolled into the past, or below the sticky page
+        // header when they've scrolled into the future — z-40 keeps it
+        // above the sheet content but below any modal backdrop
         // (z-50+). `pointer-events-none` on the wrapper lets the rows
         // underneath stay tappable in the gutter; the button itself
         // re-enables them.
         <div
-          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+          className={
+            todayButtonDirection === "up"
+              ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+0.5rem)]"
+              : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+          }
           data-floating-chrome
         >
           <button
@@ -923,7 +937,11 @@ export function SheetView({
             title={t("app.scrollToToday")}
             className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
           >
-            <ChevronDown size={14} aria-hidden focusable={false} />
+            {todayButtonDirection === "up" ? (
+              <ChevronUp size={14} aria-hidden focusable={false} />
+            ) : (
+              <ChevronDown size={14} aria-hidden focusable={false} />
+            )}
             {t("common.today")}
           </button>
         </div>
