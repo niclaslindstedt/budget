@@ -695,6 +695,7 @@ export const sv: Catalog = {
     date: "Datum",
     type: "Typ",
     category: "Kategori",
+    actions: "Åtgärder",
     column: "Kolumn",
     addColumn: "Lägg till kolumn",
     removeColumn: "Ta bort kolumn",

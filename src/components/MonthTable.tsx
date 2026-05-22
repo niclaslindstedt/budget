@@ -1,5 +1,5 @@
 import { Fragment, memo, useMemo, useRef } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
 
 import { findColumnByType, isTransferRow } from "../data/sheet";
 import type {
@@ -345,9 +345,21 @@ function MonthTableImpl({
                 />
               ))}
               <th
-                className="action-cell w-8 bg-surface-3"
+                className="action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
                 aria-label={t("sheet.rowActions")}
-              />
+              >
+                <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">
+                  <Wrench
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="column-header-label hidden md:inline">
+                    {t("sheet.actions")}
+                  </span>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
