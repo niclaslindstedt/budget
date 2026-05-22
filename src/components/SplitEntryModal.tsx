@@ -76,6 +76,7 @@ type Props = {
   // row).
   onRevert?: (rowId: string) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 let nextUiId = 0;
@@ -109,6 +110,7 @@ export function SplitEntryModal({
   onSplit,
   onRevert,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
 
@@ -362,6 +364,7 @@ export function SplitEntryModal({
                       selectedId={s.typeId}
                       onSelect={(id) => updateSplit(s.uiId, { typeId: id })}
                       onCreate={onCreateType}
+                      onCreateCategory={onCreateCategory}
                       usageById={typeUsageById}
                     />
                   </div>

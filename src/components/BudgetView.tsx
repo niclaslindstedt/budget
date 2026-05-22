@@ -2416,6 +2416,7 @@ export function BudgetView({
                 categories={allCategoriesMerged}
                 typeUsageById={typeUsageById}
                 onCreateType={onCreateType}
+                onCreateCategory={onCreateCategory}
                 accounts={data.accounts}
                 transactions={data.transactions}
                 history={
@@ -2620,6 +2621,7 @@ export function BudgetView({
         onEdit={onEditTransactionSave}
         onDelete={onDeleteTransactionFromModal}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <ComplexEntryModal
         open={complexOpen}
@@ -2644,6 +2646,7 @@ export function BudgetView({
         }}
         onCreate={onComplexSubmit}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <EditEntryModal
         open={editPrompt !== null}
@@ -2661,6 +2664,7 @@ export function BudgetView({
         onEditSeries={onEditSeries}
         onPromoteHistory={onPromoteHistory}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <EditRowModal
         open={editRowPrompt !== null}
@@ -2674,6 +2678,7 @@ export function BudgetView({
         onClose={() => setEditRowPrompt(null)}
         onSave={onSaveEditRow}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <SplitEntryModal
         open={splitPrompt !== null}
@@ -2690,6 +2695,7 @@ export function BudgetView({
         onSplit={onSplitSubmit}
         onRevert={onSplitRevert}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <MatchRuleModal
         open={matchRulePrompt !== null && matchRuleSeedEntry !== null}
@@ -2703,6 +2709,7 @@ export function BudgetView({
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <HistoryEntryEditModal
         open={historyEditPrompt !== null && historyEditEntry !== null}
@@ -2714,6 +2721,7 @@ export function BudgetView({
         onClose={() => setHistoryEditPrompt(null)}
         onSubmit={onSubmitHistoryEdit}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <ApplySeriesEditDialog
         open={pendingSeriesEdit !== null}
@@ -2735,6 +2743,7 @@ export function BudgetView({
         onApplyPatch={onApplyBulkPatch}
         onApplyRecurring={onApplyBulkRecurring}
         onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <MoveCopyModal
         open={moveCopyPrompt !== null}

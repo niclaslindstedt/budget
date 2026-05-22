@@ -41,6 +41,7 @@ type Props = {
   onClose: () => void;
   onSave: (rowId: string, patch: EditRowPatch, scope: EditRowScope) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 export type EditRowPatch = {
@@ -69,6 +70,7 @@ export function EditRowModal({
   onClose,
   onSave,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -250,6 +252,7 @@ export function EditRowModal({
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
               usageById={typeUsageById}
               amountSign={pickerSign}
             />

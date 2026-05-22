@@ -25,6 +25,7 @@ type Props = {
   categories: readonly Category[];
   typeUsageById: ReadonlyMap<string, number>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   settings: Settings;
   selectMode: boolean;
   selected: boolean;
@@ -103,6 +104,7 @@ function SheetRowImpl({
   categories,
   typeUsageById,
   onCreateType,
+  onCreateCategory,
   settings,
   selectMode,
   selected,
@@ -409,6 +411,7 @@ function SheetRowImpl({
           categories={categories}
           typeUsageById={typeUsageById}
           onCreateType={onCreateType}
+          onCreateCategory={onCreateCategory}
           isTransaction={isTransaction}
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}

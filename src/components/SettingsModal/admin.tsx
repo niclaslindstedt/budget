@@ -34,7 +34,7 @@ import type {
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { displayCategoryName } from "../../i18n/preset-names";
-import { CategoryChip } from "../CategoryPicker";
+import { CategoryChip, CategoryCreator } from "../CategoryPicker";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { FloatingPanel } from "../FloatingPanel";
@@ -264,6 +264,7 @@ export function CategoriesAndTypesAdmin({
                   presetTypeKindOverrides={presetTypeKindOverrides}
                   allCategories={allCategories}
                   onCreate={onCreateType}
+                  onCreateCategory={onCreateCategory}
                   onUpdate={onUpdateType}
                   onDelete={onDeleteType}
                   onSetPresetHidden={onSetPresetTypeHidden}
@@ -334,6 +335,7 @@ function TypesSection({
   presetTypeKindOverrides,
   allCategories,
   onCreate,
+  onCreateCategory,
   onUpdate,
   onDelete,
   onSetPresetHidden,
@@ -345,6 +347,7 @@ function TypesSection({
   presetTypeKindOverrides: Record<string, EntryTypeKind>;
   allCategories: readonly Category[];
   onCreate: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onUpdate: (id: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDelete: (id: string) => void;
   onSetPresetHidden: (presetId: string, hidden: boolean) => void;
@@ -376,6 +379,7 @@ function TypesSection({
                   <TypeEditor
                     initial={ty}
                     categories={allCategories}
+                    onCreateCategory={onCreateCategory}
                     submitLabel={t("settings.categoriesTab.saveSubmit")}
                     onCancel={() => setEditingId(null)}
                     onSubmit={(draft) => {
@@ -472,6 +476,7 @@ function TypesSection({
             initial={null}
             initialCategoryId={category.id}
             categories={allCategories}
+            onCreateCategory={onCreateCategory}
             submitLabel={t("settings.categoriesTab.addSubmit")}
             onCancel={() => setCreating(false)}
             onSubmit={(draft) => {
@@ -592,6 +597,7 @@ function TypeEditor({
   initial,
   initialCategoryId,
   categories,
+  onCreateCategory,
   submitLabel,
   onCancel,
   onSubmit,
@@ -599,6 +605,7 @@ function TypeEditor({
   initial: EntryType | null;
   initialCategoryId?: string;
   categories: readonly Category[];
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   submitLabel: string;
   onCancel: () => void;
   onSubmit: (draft: Omit<EntryType, "id">) => void;
@@ -650,6 +657,7 @@ function TypeEditor({
           categories={categories}
           value={categoryId}
           onChange={setCategoryId}
+          onCreate={onCreateCategory}
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
@@ -783,13 +791,19 @@ function CategoryDropdown({
   categories,
   value,
   onChange,
+  onCreate,
 }: {
   categories: readonly Category[];
   value: string;
   onChange: (id: string) => void;
+  // Optional. When provided, the dropdown appends a "New category"
+  // footer row that opens the shared category-creator modal; the new
+  // category becomes the selected value once it lands in the store.
+  onCreate?: (draft: Omit<Category, "id">) => Category;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
@@ -846,8 +860,33 @@ function CategoryDropdown({
               </button>
             </li>
           ))}
+          {onCreate && (
+            <li className="mt-1 border-t border-line">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setCreating(true);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-2 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+                {t("category.newCategory")}
+              </button>
+            </li>
+          )}
         </ul>
       </FloatingPanel>
+      {creating && onCreate && (
+        <CategoryCreator
+          onCancel={() => setCreating(false)}
+          onSubmit={(draft) => {
+            const created = onCreate(draft);
+            onChange(created.id);
+            setCreating(false);
+          }}
+        />
+      )}
     </div>
   );
 }

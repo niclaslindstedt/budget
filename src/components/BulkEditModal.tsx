@@ -29,6 +29,7 @@ type Props = {
   onApplyPatch: (rowIds: string[], patch: BulkPatch) => void;
   onApplyRecurring: (rowIds: string[], futureDates: string[]) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 export function BulkEditModal({
@@ -43,6 +44,7 @@ export function BulkEditModal({
   onApplyPatch,
   onApplyRecurring,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -176,6 +178,7 @@ export function BulkEditModal({
             selectedId={typeId}
             onSelect={setTypeId}
             onCreate={onCreateType}
+            onCreateCategory={onCreateCategory}
             usageById={typeUsageById}
           />
         </Toggle>

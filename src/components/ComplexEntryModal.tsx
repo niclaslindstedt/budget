@@ -46,6 +46,7 @@ type Props = {
   onClose: () => void;
   onCreate: (entries: ComplexEntryDraft) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
 export type ComplexEntrySeed = {
@@ -74,6 +75,7 @@ export function ComplexEntryModal({
   onClose,
   onCreate,
   onCreateType,
+  onCreateCategory,
 }: Props) {
   const t = useT();
   const [description, setDescription] = useState("");
@@ -312,6 +314,7 @@ export function ComplexEntryModal({
               selectedId={typeId}
               onSelect={setTypeId}
               onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
               usageById={typeUsageById}
             />
           </div>

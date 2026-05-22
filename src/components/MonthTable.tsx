@@ -27,6 +27,7 @@ type Props = {
   categories: readonly Category[];
   typeUsageById: ReadonlyMap<string, number>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
+  onCreateCategory: (draft: Omit<Category, "id">) => Category;
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
@@ -104,6 +105,7 @@ function MonthTableImpl({
   categories,
   typeUsageById,
   onCreateType,
+  onCreateCategory,
   settings,
   selectMode,
   selectedIds,
@@ -344,6 +346,7 @@ function MonthTableImpl({
                           categories={categories}
                           typeUsageById={typeUsageById}
                           onCreateType={onCreateType}
+                          onCreateCategory={onCreateCategory}
                           settings={settings}
                           selectMode={selectMode}
                           selected={selectedIds.has(hidden.id)}
@@ -371,6 +374,7 @@ function MonthTableImpl({
                       categories={categories}
                       typeUsageById={typeUsageById}
                       onCreateType={onCreateType}
+                      onCreateCategory={onCreateCategory}
                       settings={settings}
                       selectMode={selectMode}
                       selected={selectedIds.has(row.id)}
