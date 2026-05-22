@@ -411,12 +411,24 @@ export function useUserDataStorage<Action extends { type: string }>(
       try {
         const next = await adapter.save(text, lastSnapshot.current?.revision);
         const ms = (performance.now() - start).toFixed(0);
-        if (isStale()) {
-          log.info(`save ok but stale (${ms}ms) [${adapter.id}]`);
-          return;
-        }
+        // Record the new revision before the stale check: the cloud
+        // accepted these bytes at this rev, regardless of whether
+        // the in-memory data has moved on while the request was in
+        // flight. Without this, a stale completion leaves
+        // `lastSnapshot.revision` pinned to the OLD rev, the next
+        // save sends that stale rev as `baseRev`, and the cloud 409s
+        // as soon as the content actually changes — surfacing as a
+        // phantom "Sync conflict" popup on a single-device account.
+        // Mirrors the same "bookkeeping outlives the effect" rule
+        // the ConflictError branch below already follows.
         lastSnapshot.current = next;
         setLastSavedText(next.text);
+        if (isStale()) {
+          log.info(
+            `save ok but stale (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+          );
+          return;
+        }
         if (next.offline) {
           setStatus({ kind: "offline", since: Date.now() });
           log.info(
