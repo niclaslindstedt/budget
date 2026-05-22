@@ -131,6 +131,12 @@ export const en = {
       "{name} is connected. New entries will be saved there from now on.",
   },
 
+  pwa: {
+    updateReady: "Updated to {version} — reload to apply",
+    reload: "Reload",
+    dismiss: "Dismiss update notice",
+  },
+
   app: {
     title: "Budget",
     tagline: "A local-first budget app.",

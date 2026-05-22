@@ -73,12 +73,14 @@ in sync:
 | `make e2e-install`   | Install the Chromium browser Playwright drives              |
 | `make preview-build` | Build `dist/` with `VITE_BASE_PATH=/preview/`               |
 | `make preview-serve` | `preview-build` + serve at `http://localhost:4173/preview/` |
+| `make icons`         | Regenerate the PWA icon set from `public/favicon.svg`       |
+| `make icons-check`   | CI drift guard — fail if `make icons` would change anything |
 | `make clean`         | Remove `dist/` and Vite cache                               |
 
 CI runs on every push and pull request:
 
 - **CI** (`.github/workflows/ci.yml`) — `make fmt-check`, `make lint`,
-  `make build`, `make test`.
+  `make build`, `make icons-check`, `make test`.
 - **Preview** (`.github/workflows/preview.yml`) — runs the Playwright
   end-to-end suite (`e2e/`) against a local `/preview/` build on
   every push to `main`. The release workflow chains into it via
@@ -105,6 +107,7 @@ src/
 │   ├── FloatingPanel.tsx # portalled dropdown shell for pickers
 │   ├── ColorPalette.tsx  # circular color-swatch grid
 │   ├── GlyphGrid.tsx     # 8-column icon-button grid
+│   ├── UpdateToast.tsx   # PWA "new build, click to reload" prompt
 │   └── cells/            # readonly cell variants + shared classes
 ├── data/
 │   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
@@ -169,6 +172,7 @@ that way.
 | New persisted storage key               | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`                                                                                                                                                     |
 | SEO copy / per-route head               | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                                                                                                                                                                       |
 | Site-wide discovery files               | `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, `public/og-default.png`                                                                                                                                              |
+| PWA manifest / service-worker config    | `vite.config.ts` (`pwaPlugin()`); `public/` (icons generated from `public/favicon.svg` via `make icons`). See "Service-worker rollout invariants" below.                                                                           |
 | ESLint rules, TS config                 | `eslint.config.js`, `tsconfig.app.json`                                                                                                                                                                                            |
 | New `make` target                       | `Makefile` + the README Usage table + `ci.yml`                                                                                                                                                                                     |
 | Changelog fragment (user-affecting PRs) | `.changes/unreleased/<unix-ts>-<slug>.md`                                                                                                                                                                                          |
@@ -343,6 +347,7 @@ Conventions:
 | CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |
 | `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`               |
 | Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                        |
+| `pwaPlugin()` manifest / scope / `cacheId` semantics                                       | This file (the "Service-worker rollout invariants" section), the inline comments on `pwaPlugin()` in `vite.config.ts`         |
 | `src/i18n/locales/en.ts` shape                                                             | `src/i18n/locales/sv.ts` (compile-time enforced via the `Catalog` type) + `tests/i18n_catalog_test.ts` (runtime parity check) |
 | Custom-theme reach (selectors reading `--radius-*` / `--border-width` / `--density-row-*`) | `src/styles.css` (the rule + comment block at the end) and the "Theming and tokens" bullet in this file                       |
 
@@ -452,6 +457,43 @@ runtime by `src/data/validate.ts`. When you change it:
   so the app falls back to `<user>.github.io/<repo>/`, update both
   `vite.config.ts` (to `"/<repo>/"`) and the README live-site URL,
   and remove `public/CNAME`.
+
+## Service-worker rollout invariants
+
+The app installs as a PWA from both deploy slots. Production at `/`
+and staging at `/preview/` register as **two independent apps** on
+any device — never one shared install. Every identity-bearing field
+branches on `IS_PREVIEW` inside `pwaPlugin()` in `vite.config.ts`:
+
+- `manifest.id`, `manifest.scope`, `manifest.start_url` — `/` vs
+  `/preview/`. Distinct `id` is what makes Chrome / Android treat
+  the two installs as different apps; without it they dedupe.
+- `manifest.name` / `short_name` — `Budget` vs `Budget (preview)` /
+  `Budget pre`.
+- `workbox.cacheId` — `budget` vs `budget-preview`. Sets the Cache
+  Storage namespace prefix so the two slots can't collide.
+- `apple-mobile-web-app-title` — patched from `Budget` to `Budget pre`
+  for the preview build via the `patchAppleTitle` Vite plugin so iOS
+  home-screen tiles are visually distinguishable.
+
+**Update strategy.** `registerType: "autoUpdate"` with
+`skipWaiting` + `clientsClaim`. New service workers activate
+immediately and claim the open tab, but the JS bundle running in
+the tab is the old one until the user reloads. The
+`UpdateToast` component (mounted from `LanguageRoot`) surfaces a
+non-blocking "reload to apply" prompt — never refresh mid-edit.
+Visibility-gated polling (`reg.update()` every 60 min) catches new
+builds on tabs left open all day.
+
+**Rollback.** If a SW ever ships broken (precaches a bad build,
+infinite refresh loop, anything), ship a "kill" SW via a hotfix:
+either disable `pwaPlugin()` in `vite.config.ts` and add a one-line
+`public/sw.js` (`self.skipWaiting(); caches.keys().then(ks =>
+Promise.all(ks.map(k => caches.delete(k))));
+self.clients.claim();`), or switch the plugin to `strategies:
+"injectManifest"` with the same body in `src/sw.ts`. Combined with
+`cleanupOutdatedCaches: true`, this caps any failure mode at "one
+bad deploy". Documented in the release skill.
 
 ## Releases and changelog
 

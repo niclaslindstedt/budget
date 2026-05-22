@@ -7,6 +7,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { UpdateToast } from "../components/UpdateToast";
+
 import { LanguageProvider, type Lang } from "./index";
 import { readLanguagePreference } from "./language-preference";
 
@@ -20,5 +22,10 @@ export function LanguageRoot({ children }: { children: ReactNode }) {
     window.addEventListener("budget:language", onChange);
     return () => window.removeEventListener("budget:language", onChange);
   }, []);
-  return <LanguageProvider value={lang}>{children}</LanguageProvider>;
+  return (
+    <LanguageProvider value={lang}>
+      {children}
+      <UpdateToast />
+    </LanguageProvider>
+  );
 }

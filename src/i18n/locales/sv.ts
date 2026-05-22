@@ -121,6 +121,12 @@ export const sv: Catalog = {
       "{name} är ansluten. Nya poster sparas där från och med nu.",
   },
 
+  pwa: {
+    updateReady: "Uppdaterad till {version} — ladda om för att tillämpa",
+    reload: "Ladda om",
+    dismiss: "Avfärda uppdateringsmeddelande",
+  },
+
   app: {
     title: "Budget",
     tagline: "En lokalt lagrad budgetapp.",

@@ -1,4 +1,4 @@
-.PHONY: install dev build preview preview-build preview-serve lint typecheck fmt fmt-check test e2e e2e-install e2e-ui clean changelog codegen
+.PHONY: install dev build preview preview-build preview-serve lint typecheck fmt fmt-check test e2e e2e-install e2e-ui clean changelog codegen icons icons-check
 
 install:
 	npm ci
@@ -70,6 +70,31 @@ e2e:
 # inspect the trace inline.
 e2e-ui:
 	npx playwright test --ui
+
+# Regenerate the PWA icon set from public/favicon.svg via
+# @vite-pwa/assets-generator. Committed to public/ so cold builds
+# don't have to regenerate, and so the assets-generator dep can
+# stay devDependencies-only.
+icons:
+	npx pwa-assets-generator
+
+# CI drift guard: regenerate into a temp dir and diff against
+# public/. Fails the build if favicon.svg was edited without
+# rerunning `make icons`.
+icons-check:
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+	  cp public/pwa-64x64.png public/pwa-192x192.png \
+	     public/pwa-512x512.png public/maskable-icon-512x512.png \
+	     public/apple-touch-icon-180x180.png public/favicon.ico \
+	     "$$tmp/" && \
+	  npx pwa-assets-generator >/dev/null && \
+	  for f in pwa-64x64.png pwa-192x192.png pwa-512x512.png \
+	           maskable-icon-512x512.png apple-touch-icon-180x180.png \
+	           favicon.ico; do \
+	    cmp -s "$$tmp/$$f" "public/$$f" || \
+	      { echo "icons drift: $$f differs — run 'make icons' and commit"; \
+	        cp "$$tmp/$$f" "public/$$f"; exit 1; }; \
+	  done
 
 clean:
 	rm -rf dist node_modules/.vite src/generated
