@@ -12,12 +12,14 @@ type Props = {
 };
 
 const iconButton =
-  "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted";
+  "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted";
 
-// Top-pinned overlay holding the undo, redo, and select-mode toggles.
-// Mirrors the bottom-pinned SheetTabs pill so the page's floating
-// chrome reads as a matched pair: row actions at the top, sheet
-// navigation at the bottom.
+// Pill of undo / redo / select-mode actions pinned below the three
+// stacked sticky bands at the top of the sheet (app header, month
+// name, column thead). Mirrors the bottom-pinned SheetTabs so the
+// floating chrome reads as a matched pair, but sits inside the
+// content column instead of overlapping the app header / iOS notch
+// area at the very top of the viewport.
 export function UndoRedoBar({
   canUndo,
   canRedo,
@@ -33,9 +35,12 @@ export function UndoRedoBar({
   return (
     <div
       data-floating-chrome
-      className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] sm:px-4 sm:pt-[calc(0.75rem+env(safe-area-inset-top))]"
+      className="pointer-events-none fixed inset-x-0 z-30 flex justify-center px-2 sm:px-4"
+      style={{
+        top: "calc(var(--app-header-h) + var(--month-header-h) + 2.25rem)",
+      }}
     >
-      <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-line bg-surface-2/95 px-2 py-1.5 shadow-2xl backdrop-blur">
+      <div className="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-line bg-surface-2/95 px-1 py-0.5 shadow-2xl backdrop-blur">
         <button
           type="button"
           onClick={onUndo}
@@ -44,7 +49,7 @@ export function UndoRedoBar({
           title={t("app.undoShort")}
           className={iconButton}
         >
-          <Undo2 size={16} aria-hidden focusable={false} />
+          <Undo2 size={14} aria-hidden focusable={false} />
         </button>
         <button
           type="button"
@@ -54,9 +59,9 @@ export function UndoRedoBar({
           title={t("app.redoShort")}
           className={iconButton}
         >
-          <Redo2 size={16} aria-hidden focusable={false} />
+          <Redo2 size={14} aria-hidden focusable={false} />
         </button>
-        <span aria-hidden className="mx-1 h-5 w-px bg-line" />
+        <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
         <button
           type="button"
           onClick={onToggleSelectMode}
@@ -65,7 +70,7 @@ export function UndoRedoBar({
           title={selectLabel}
           className={`${iconButton} ${selectMode ? "text-accent hover:text-accent" : ""}`}
         >
-          <ListChecks size={16} aria-hidden focusable={false} />
+          <ListChecks size={14} aria-hidden focusable={false} />
         </button>
       </div>
     </div>
