@@ -267,26 +267,30 @@ export function useUserDataStorage<Action>(
         }
       } catch (err) {
         const ms = (performance.now() - start).toFixed(0);
-        if (isStale()) {
-          log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
-          return;
-        }
+        // Conflict bookkeeping must happen even if our caller is now
+        // stale (a re-render between `setStatus("saving")` and the
+        // adapter resolving cancelled the effect). Without stashing
+        // `err.remote` here, the next save reuses the old baseRev
+        // and we loop on the same 409 forever. Setting the conflict
+        // status surfaces the resolution modal AND lands us in the
+        // save effect's bail list so the autosave loop stops.
         if (err instanceof ConflictError) {
           log.warn(
             `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
               err.remote.revision ?? "<none>"
-            } hasLocal=${Boolean(err.local)}`,
+            } hasLocal=${Boolean(err.local)} stale=${isStale()}`,
           );
           const remote = readUserDataFromText(err.remote.text);
           // The cloud-mirror wrapper attaches `local`; bare cloud
           // adapters don't, in which case the in-memory `data` is
           // the freshest local view we have.
           const local = err.local ? readUserDataFromText(err.local.text) : data;
-          // Stash the remote revision so a follow-up "keep mine"
-          // save uses the right baseRev and goes through cleanly
-          // instead of looping on the same conflict.
           lastSnapshot.current = err.remote;
           setStatus({ kind: "conflict", local, remote });
+          return;
+        }
+        if (isStale()) {
+          log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
           return;
         }
         if (err instanceof AuthError) {
