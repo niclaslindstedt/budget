@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   Redo2,
+  Search,
   Trash2,
   Undo2,
   X,
@@ -29,6 +30,7 @@ type Props = {
   onUndo: () => void;
   onRedo: () => void;
   onOpenHistory: () => void;
+  onOpenSearch: () => void;
   onToggleSelectMode: () => void;
 
   bulkSelectedCount: number;
@@ -62,6 +64,7 @@ export function BottomBar({
   onUndo,
   onRedo,
   onOpenHistory,
+  onOpenSearch,
   onToggleSelectMode,
   bulkSelectedCount,
   onBulkEdit,
@@ -177,6 +180,15 @@ export function BottomBar({
             className={actionButton}
           >
             <Redo2 size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            aria-label={t("searchTransaction.open")}
+            title={t("searchTransaction.open")}
+            className={actionButton}
+          >
+            <Search size={16} aria-hidden focusable={false} />
           </button>
           <button
             type="button"

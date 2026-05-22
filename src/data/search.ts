@@ -1,0 +1,239 @@
+import { allCategories, allTypes } from "./presets";
+import { buildVisibleRows, findColumnByType } from "./sheet";
+import type {
+  AccountBudget,
+  Category,
+  EntryType,
+  Row,
+  Sheet,
+  UserData,
+} from "./types";
+import { parseAmount } from "../utils/format";
+
+// Flattened, search-friendly projection of one row that the user sees
+// inside a sheet. The index keys by `(sheetId, itemId, rowId)` because
+// a single Transaction may render on two sheets (from-account and
+// to-account) under the same row id, so `rowId` alone isn't unique
+// across the workspace.
+export type SearchEntry = {
+  sheetId: string;
+  sheetName: string;
+  sheetColor: string;
+  sheetGlyph: string;
+  itemId: string;
+  rowId: string;
+  // ISO date pulled from the row's date cell (empty string for undated
+  // rows). Needed by the navigation flow so SheetView can expand its
+  // history window to include the target row's month.
+  iso: string;
+  description: string;
+  typeName: string;
+  categoryName: string;
+  amount: number | null;
+};
+
+// Where the match landed and the offset / length inside the matched
+// string for substring highlighting. `amount` matches don't carry a
+// range because the score is distance-based, not substring-based.
+export type SearchMatch =
+  | {
+      field: "description" | "typeName" | "categoryName";
+      start: number;
+      end: number;
+    }
+  | { field: "amount"; distance: number };
+
+export type SearchResult = {
+  entry: SearchEntry;
+  // Primary match used for ranking; secondary matches (other fields
+  // that also hit) are not surfaced today but the shape leaves room.
+  match: SearchMatch;
+};
+
+// Build a flat searchable list across every sheet the user has. Pulls
+// in user-authored rows plus the same synthesized rows that
+// `SheetView` renders — `buildVisibleRows` is the single source of
+// truth so the index and the visible UI can't drift. Each row is
+// projected to its searchable fields: description, type name,
+// category name, amount. Computed once per `UserData` snapshot via
+// `useMemo` upstream.
+export function buildSearchIndex(data: UserData): SearchEntry[] {
+  const entries: SearchEntry[] = [];
+  const types = allTypes(data);
+  const categories = allCategories(data);
+  const typesById = new Map<string, EntryType>();
+  for (const t of types) typesById.set(t.id, t);
+  const categoriesById = new Map<string, Category>();
+  for (const c of categories) categoriesById.set(c.id, c);
+  const accountsById = new Map<string, string>();
+  for (const a of data.accounts) accountsById.set(a.id, a.name);
+
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      const accountBudget = item as AccountBudget;
+      const rows = visibleRowsFor(accountBudget, sheet, data, accountsById);
+      const dateColId = findColumnByType(accountBudget.columns, "date")?.id;
+      const descColId = findColumnByType(
+        accountBudget.columns,
+        "description",
+      )?.id;
+      const amountColId = findColumnByType(accountBudget.columns, "amount")?.id;
+      for (const row of rows) {
+        const iso =
+          dateColId !== undefined && typeof row.cells[dateColId] === "string"
+            ? (row.cells[dateColId] as string)
+            : "";
+        const description =
+          descColId !== undefined && typeof row.cells[descColId] === "string"
+            ? (row.cells[descColId] as string)
+            : "";
+        const amount =
+          amountColId !== undefined &&
+          typeof row.cells[amountColId] === "number"
+            ? (row.cells[amountColId] as number)
+            : null;
+        const type =
+          row.typeId !== undefined ? typesById.get(row.typeId) : undefined;
+        const category = type ? categoriesById.get(type.categoryId) : undefined;
+        entries.push({
+          sheetId: sheet.id,
+          sheetName: sheet.name,
+          sheetColor: sheet.color,
+          sheetGlyph: sheet.glyph,
+          itemId: item.id,
+          rowId: row.id,
+          iso,
+          description,
+          typeName: type?.name ?? "",
+          categoryName: category?.name ?? "",
+          amount,
+        });
+      }
+    }
+  }
+
+  return entries;
+}
+
+function visibleRowsFor(
+  item: AccountBudget,
+  _sheet: Sheet,
+  data: UserData,
+  accountsById: ReadonlyMap<string, string>,
+): Row[] {
+  const history = item.accountId ? (data.history[item.accountId] ?? []) : [];
+  return buildVisibleRows(
+    item,
+    data.transactions,
+    history,
+    accountsById,
+    data.merchantHints,
+    data.matchRules,
+  );
+}
+
+// Amount matches accept any row whose amount sits within ±20% of the
+// queried value. Picked over a fixed band ("within 50") because both
+// 5 and 50000 should have a sensible window. Tweak via this constant
+// if it ever feels too loose or too tight.
+const AMOUNT_TOLERANCE = 0.2;
+
+// Score weights for text matches, lower = better. Description hits
+// outrank type-name hits, which outrank category-name hits — the
+// description is the most specific identifier on a row.
+const FIELD_WEIGHT: Record<
+  "description" | "typeName" | "categoryName",
+  number
+> = {
+  description: 0,
+  typeName: 1,
+  categoryName: 2,
+};
+
+// Cap the result list so a query like "a" doesn't render thousands of
+// rows. The modal shows the top hits ordered by relevance; in
+// practice the user refines the query when they don't see what they
+// want.
+const MAX_RESULTS = 50;
+
+export function runSearch(
+  index: readonly SearchEntry[],
+  query: string,
+): SearchResult[] {
+  const trimmed = query.trim();
+  if (trimmed === "") return [];
+  const needle = trimmed.toLowerCase();
+  const parsedAmount = parseAmount(trimmed);
+
+  type Scored = { result: SearchResult; score: number };
+  const scored: Scored[] = [];
+
+  for (const entry of index) {
+    let best: { match: SearchMatch; score: number } | null = null;
+
+    // Text matches first — find earliest hit across fields, weighted
+    // by field priority.
+    const fields: ("description" | "typeName" | "categoryName")[] = [
+      "description",
+      "typeName",
+      "categoryName",
+    ];
+    for (const field of fields) {
+      const haystack = entry[field];
+      if (haystack === "") continue;
+      const idx = haystack.toLowerCase().indexOf(needle);
+      if (idx === -1) continue;
+      // Score: field weight (×1000 so it dominates) + position inside
+      // the field. Earlier matches and higher-priority fields rank
+      // first; ties break on insertion order via stable sort.
+      const score = FIELD_WEIGHT[field] * 1000 + idx;
+      if (best === null || score < best.score) {
+        best = {
+          match: { field, start: idx, end: idx + needle.length },
+          score,
+        };
+      }
+    }
+
+    // Amount match — kicks in when the query parses as a number AND
+    // the row carries an amount within the tolerance band. Distance-
+    // based score; exact match lands at 0 and beats any text hit on
+    // a row that matches both ways. Comparison is on absolute value
+    // so "100" matches both income (+100) and expense (-100) rows —
+    // users typically remember the magnitude, not the sign.
+    if (parsedAmount !== null && entry.amount !== null) {
+      const queryAbs = Math.abs(parsedAmount);
+      const rowAbs = Math.abs(entry.amount);
+      const distance = Math.abs(rowAbs - queryAbs);
+      const band = Math.max(queryAbs * AMOUNT_TOLERANCE, 0.01);
+      if (distance <= band) {
+        // Amount distance is on a different scale than text scores;
+        // map it into the same range so a near-exact amount can
+        // outrank a mid-field text hit. Exact match → 0; full-band
+        // → 999 (just under the next field weight tier).
+        const amountScore = Math.round((distance / band) * 999);
+        if (best === null || amountScore < best.score) {
+          best = {
+            match: { field: "amount", distance },
+            score: amountScore,
+          };
+        }
+      }
+    }
+
+    if (best !== null) {
+      scored.push({
+        result: { entry, match: best.match },
+        score: best.score,
+      });
+    }
+  }
+
+  // Stable sort by score (Array.prototype.sort is stable per ES2019),
+  // then take the top N. Equal scores keep their input order, which
+  // happens to be the row order inside each sheet — newest rows last,
+  // which is fine for a transaction ledger.
+  scored.sort((a, b) => a.score - b.score);
+  return scored.slice(0, MAX_RESULTS).map((s) => s.result);
+}

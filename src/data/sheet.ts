@@ -649,6 +649,41 @@ export function isTransferRow(row: Row): boolean {
   return row.peerAccountId !== undefined || row.isTransfer === true;
 }
 
+// Build the full list of rows a `SheetView` would render for an
+// `AccountBudget` item: the user-authored rows plus synthesized
+// transaction rows and synthesized history rows. Centralised so the
+// search index sees exactly what the user sees — extracting this from
+// `SheetView` keeps the merge rules in one place and avoids drift if
+// the synthesis logic changes later. Hidden history entries are
+// dropped pre-synthesis. Returns `item.rows` unchanged when the
+// budget has no account attached (no transactions or history to
+// project).
+export function buildVisibleRows(
+  item: AccountBudget,
+  transactions: readonly Transaction[],
+  history: readonly HistoryEntry[],
+  accountsById: ReadonlyMap<string, string>,
+  merchantHints: Readonly<Record<string, MerchantHint>> = {},
+  matchRules: readonly MatchRule[] = [],
+): Row[] {
+  if (!item.accountId) return [...item.rows];
+  const accountTxs = transactionsForAccount(transactions, item.accountId);
+  const transactionRows = accountTxs.map((tx) =>
+    synthesizeTransactionRow(
+      tx,
+      item.accountId as string,
+      item.columns,
+      accountsById,
+    ),
+  );
+  const historyRows = history
+    .filter((e) => !e.hidden)
+    .flatMap((e) =>
+      synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
+    );
+  return [...item.rows, ...transactionRows, ...historyRows];
+}
+
 // Sum of the account's budget rows' amounts plus signed transaction
 // amounts (outgoing subtract, incoming add), counting only entries
 // that have actually taken place — i.e. dated on or before `today`.

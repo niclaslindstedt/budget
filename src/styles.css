@@ -815,6 +815,30 @@ body {
   padding-bottom: var(--density-row-py);
 }
 
+/* One-shot highlight applied to a sheet row after the transaction-
+   search modal navigates to it. The attribute is added by SheetView's
+   scroll-to-row effect and removed ~1500ms later, so the same row can
+   pulse again on a future pick. Cells inside the row participate via
+   `[data-row-pulse] > td` so the highlight covers the full row width
+   even when the row uses a CSS grid that distributes the background
+   across cells. `--accent` is mixed into the row background so the
+   pulse rides on top of the user's theme tokens — no hardcoded hue.
+   The Reduce-motion guard at the top of this file zeroes
+   animation-duration when the user opts in, so the pulse collapses
+   to a single static frame for accessibility. */
+@keyframes row-pulse {
+  0% {
+    background-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+[data-row-pulse],
+[data-row-pulse] > td {
+  animation: row-pulse 1500ms ease-out;
+}
+
 /* `.border-0` is repeated unlayered so it wins over `.field-input`'s
    shorthand `border-width: var(--border-width)`. Without this, the
    transparent textareas that combine `field-input` (for the
