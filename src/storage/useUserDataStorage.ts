@@ -185,6 +185,23 @@ type HistoryEntryInternal = {
   timestamp: number;
 };
 
+// SaveStatus kinds the autosave path refuses to write through. The
+// app entered one because something already went wrong (a parse
+// failure, an auth error, an in-progress load) or because the user
+// is mid-resolution (a conflict / shrink-warning modal is up), and
+// pushing the current in-memory state would either clobber real
+// data on disk or race with the resolution flow.
+function isBailStatus(status: SaveStatus): boolean {
+  return (
+    status.kind === "auth-error" ||
+    status.kind === "error" ||
+    status.kind === "conflict" ||
+    status.kind === "loading" ||
+    status.kind === "parse-error" ||
+    status.kind === "shrink-warning"
+  );
+}
+
 function initialHistoryState(seed: UserData): HistoryState {
   return {
     entries: [
@@ -265,6 +282,20 @@ export function useUserDataStorage<Action extends { type: string }>(
   // Handle to the pending debounced save, so `saveNow` can cancel
   // it before issuing its own immediate write.
   const pendingTimerRef = useRef<number | null>(null);
+
+  // Latest status, exposed via a ref so the save effect can bail when
+  // the app is in a bad state without keeping `status` in its dep
+  // list. With `status` in the deps, every `setStatus({kind:"saving"})`
+  // call inside `performSave` re-ran the effect, the cleanup cancelled
+  // the in-flight save as "stale", and the body immediately scheduled
+  // another save — an autosave loop that produced endless saves on
+  // any data change and pinned status to "saving" forever (each stale
+  // completion skipped the success branch that would have flipped
+  // status back to "saved"). Most visible after a `selectSheet`
+  // dispatch, which mutates `data.activeSheetId` and is a real data
+  // change even though the user only switched tabs.
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   // Unified action history. `entries[cursor]` always matches the
   // current `data`. Entries before the cursor are reachable via undo /
@@ -609,6 +640,10 @@ export function useUserDataStorage<Action extends { type: string }>(
 
   // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
+  // `status` is intentionally NOT a dep — it is read through
+  // `statusRef` so that `setStatus({kind:"saving"})` calls inside
+  // `performSave` don't re-run this effect and turn the save chain
+  // into a tight loop (see the statusRef comment above).
   useEffect(() => {
     if (!hasLoadedRef.current) return;
     if (skipNextSave.current) {
@@ -623,16 +658,9 @@ export function useUserDataStorage<Action extends { type: string }>(
     // starter state through the adapter would silently overwrite it.
     // The "conflict" status has its own resolution UI and explicitly
     // re-enters the save path via `resolveKeepLocal`.
-    if (
-      status.kind === "auth-error" ||
-      status.kind === "error" ||
-      status.kind === "conflict" ||
-      status.kind === "loading" ||
-      status.kind === "parse-error" ||
-      status.kind === "shrink-warning"
-    ) {
+    if (isBailStatus(statusRef.current)) {
       log.info(
-        `save skipped — status=${status.kind} (refusing to overwrite real data with the post-failure in-memory copy)`,
+        `save skipped — status=${statusRef.current.kind} (refusing to overwrite real data with the post-failure in-memory copy)`,
       );
       return;
     }
@@ -646,6 +674,16 @@ export function useUserDataStorage<Action extends { type: string }>(
 
     async function runSave() {
       if (cancelled) return;
+      // Re-check status at fire time: a save that errored while we
+      // were debouncing (conflict, auth-error, …) may have flipped
+      // status into a bail state, and without `status` in the deps
+      // the timer wouldn't otherwise know.
+      if (isBailStatus(statusRef.current)) {
+        log.info(
+          `save skipped — status=${statusRef.current.kind} (flipped during debounce)`,
+        );
+        return;
+      }
       const transform = beforeSerializeRef.current;
       const text = serializeUserData(transform ? transform(data) : data);
       await performSave(text, () => cancelled);
@@ -656,7 +694,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       window.clearTimeout(timer);
       if (pendingTimerRef.current === timer) pendingTimerRef.current = null;
     };
-  }, [adapter, data, performSave, status]);
+  }, [adapter, data, performSave]);
 
   // Save the current in-memory state verbatim. Used by the explicit
   // "save" button — bypasses `beforeSerialize` so the user can persist
