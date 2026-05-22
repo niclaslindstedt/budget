@@ -243,8 +243,7 @@ function MonthTableImpl({
   // leave a gap behind the placeholder either).
   const renderedRowCount = hideTransfers
     ? rows.reduce(
-        (acc, r) =>
-          acc + (!r.isCorrection && isTransferRow(r) ? 0 : 1),
+        (acc, r) => acc + (!r.isCorrection && isTransferRow(r) ? 0 : 1),
         0,
       )
     : rows.length;
