@@ -1480,9 +1480,9 @@ export const sv: Catalog = {
     clearType: "Rensa typ",
     newType: "Ny typ",
     noTypesYet: "Inga typer än.",
+    noTypesInCategory: "Inga typer i den här kategorin än.",
     create: "Skapa",
-    mostUsed: "Mest använda",
-    unused: "Oanvända",
+    backToCategories: "Alla kategorier",
   },
 
   glyph: {

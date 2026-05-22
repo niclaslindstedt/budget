@@ -90,7 +90,6 @@ type Props = {
   accounts: Account[];
   categories: readonly Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onPromote: (draft: TransactionDraft) => void;
@@ -107,7 +106,6 @@ export function TransactionModal({
   accounts,
   categories,
   types,
-  typeUsageById,
   settings,
   onClose,
   onPromote,
@@ -403,7 +401,6 @@ export function TransactionModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
-              usageById={typeUsageById}
               variant="field"
             />
           </div>

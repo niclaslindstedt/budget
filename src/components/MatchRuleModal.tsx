@@ -58,7 +58,6 @@ type Props = {
   existing: MatchRule | null;
   categories: readonly Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onSubmit: (draft: MatchRuleDraft) => void;
@@ -103,7 +102,6 @@ export function MatchRuleModal({
   existing,
   categories,
   types,
-  typeUsageById,
   settings,
   onClose,
   onSubmit,
@@ -346,7 +344,6 @@ export function MatchRuleModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
-              usageById={typeUsageById}
             />
           </div>
         </div>

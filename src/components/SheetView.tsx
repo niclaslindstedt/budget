@@ -45,12 +45,11 @@ type Props = {
   // `sheet.items` and rendering one component per variant.
   item: AccountBudget;
   types: readonly EntryType[];
-  // Categories (user + preset, merged) plus per-type usage counts —
-  // threaded through to the `type` column's picker for the inline
-  // creator and the most-used-first sort. Categories are needed
-  // because every new EntryType belongs to a category.
+  // Categories (user + preset, merged) — threaded through to the
+  // `type` column's picker for the inline creator and the tiered
+  // category → type browse. Required because every new EntryType
+  // belongs to a category.
   categories: readonly Category[];
-  typeUsageById: ReadonlyMap<string, number>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   // All accounts in the workspace. Needed so the view can look up the
@@ -204,7 +203,6 @@ export function SheetView({
   item,
   types,
   categories,
-  typeUsageById,
   onCreateType,
   onCreateCategory,
   accounts,
@@ -771,7 +769,6 @@ export function SheetView({
                   balances={balances}
                   types={types}
                   categories={categories}
-                  typeUsageById={typeUsageById}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
                   settings={settings}

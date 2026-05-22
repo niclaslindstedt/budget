@@ -23,7 +23,6 @@ type Props = {
   balances: Map<string, number>;
   types: readonly EntryType[];
   categories: readonly Category[];
-  typeUsageById: ReadonlyMap<string, number>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   settings: Settings;
@@ -102,7 +101,6 @@ function SheetRowImpl({
   balances,
   types,
   categories,
-  typeUsageById,
   onCreateType,
   onCreateCategory,
   settings,
@@ -409,7 +407,6 @@ function SheetRowImpl({
           entryType={entryType}
           types={types}
           categories={categories}
-          typeUsageById={typeUsageById}
           onCreateType={onCreateType}
           onCreateCategory={onCreateCategory}
           isTransaction={isTransaction}

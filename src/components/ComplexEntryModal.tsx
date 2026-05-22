@@ -18,7 +18,6 @@ type Props = {
   initialDate: string;
   categories: Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   // All sheets in the workspace. Used by the formula editor's
   // autocomplete (sheet name suggestions) and the name ↔ id transform
@@ -65,7 +64,6 @@ export function ComplexEntryModal({
   initialDate,
   categories,
   types,
-  typeUsageById,
   settings,
   sheets,
   currentSheetId,
@@ -315,7 +313,6 @@ export function ComplexEntryModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
-              usageById={typeUsageById}
             />
           </div>
         </div>

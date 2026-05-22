@@ -23,7 +23,6 @@ type Props = {
   columns: Column[];
   categories: readonly Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onApplyPatch: (rowIds: string[], patch: BulkPatch) => void;
@@ -38,7 +37,6 @@ export function BulkEditModal({
   columns,
   categories,
   types,
-  typeUsageById,
   settings,
   onClose,
   onApplyPatch,
@@ -179,7 +177,6 @@ export function BulkEditModal({
             onSelect={setTypeId}
             onCreate={onCreateType}
             onCreateCategory={onCreateCategory}
-            usageById={typeUsageById}
           />
         </Toggle>
 
