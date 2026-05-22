@@ -86,6 +86,23 @@ describe("detectRecurringCandidates", () => {
     expect(out[0].suggestedAmount).toBe(-900);
   });
 
+  it("rounds the seeded amount to a whole number", () => {
+    // Recent amounts average to a repeating decimal (-321.333…). The
+    // promote modal should seed with a clean integer, not the raw
+    // floating-point tail the bank statement would never have shown.
+    const entries: HistoryEntry[] = [
+      entry("2026-01-02", "Autogiro IF Skadeförs", -320),
+      entry("2026-02-02", "Autogiro IF Skadeförs", -320),
+      entry("2026-03-02", "Autogiro IF Skadeförs", -324),
+    ];
+    const out = detectRecurringCandidates({
+      entries,
+      referenceDate: "2026-03-15",
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].suggestedAmount).toBe(-321);
+  });
+
   it("respects dismissed keys", () => {
     const entries: HistoryEntry[] = [
       entry("2026-01-01", "Spotify", -119),

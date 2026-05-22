@@ -139,9 +139,12 @@ export function detectRecurringCandidates(
     // cadence and degrades gracefully for shorter histories. For
     // perfectly stable amounts the mean equals the recurring value, so
     // this is a strict generalisation of the previous median seed.
+    // Rounded to a whole number — a utility bill averaging 321.333… kr
+    // seeds the promote modal with 321, not a 13-digit decimal tail.
     const recentAmounts = amounts.slice(-3);
-    const suggestedAmount =
-      recentAmounts.reduce((a, b) => a + b, 0) / recentAmounts.length;
+    const suggestedAmount = Math.round(
+      recentAmounts.reduce((a, b) => a + b, 0) / recentAmounts.length,
+    );
 
     // Skip suggestions that are mostly zero (interest-free statements,
     // empty reversals); the panel would render a row that promotes to
