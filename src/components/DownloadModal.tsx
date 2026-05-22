@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, Download, Wallet } from "lucide-react";
 
 import { useT } from "../i18n";
-import { usePointerOutside } from "../hooks";
+import { DismissBackdrop } from "./DismissBackdrop";
 import type { Account } from "../data/types";
 import type {
   AccountsDownloadPrefs,
@@ -448,9 +448,6 @@ function FormatPicker({
   onPick: (next: BudgetDownloadFormat) => void;
 }) {
   const t = useT();
-  const rootRef = useRef<HTMLDivElement>(null);
-  usePointerOutside(open, [rootRef], onClose);
-
   const options: { id: BudgetDownloadFormat; label: string }[] = [
     { id: "csv", label: t("download.format.csv") },
     { id: "xlsx", label: t("download.format.xlsx") },
@@ -458,13 +455,14 @@ function FormatPicker({
   const selected = options.find((o) => o.id === value) ?? options[0];
 
   return (
-    <div ref={rootRef} className="relative">
+    <div className="relative">
+      {open && <DismissBackdrop onDismiss={onClose} />}
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span className="flex-1 truncate">{selected.label}</span>
         <ChevronDown
@@ -477,7 +475,7 @@ function FormatPicker({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 right-0 z-10 mt-1 overflow-hidden rounded border border-line bg-surface-2 py-1 shadow-lg"
+          className="absolute left-0 right-0 z-[60] mt-1 overflow-hidden rounded border border-line bg-surface-2 py-1 shadow-lg"
         >
           {options.map((opt) => (
             <li key={opt.id}>

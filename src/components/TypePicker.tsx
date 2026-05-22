@@ -7,6 +7,7 @@ import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
 import { CategoryChip } from "./CategoryPicker";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { EntityChip } from "./EntityChip";
 import { EntityCreatorForm } from "./EntityCreatorForm";
 import { EntityPickerShell } from "./EntityPickerShell";
@@ -293,12 +294,13 @@ function CategorySelector({
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
     <div className="relative">
+      {open && <DismissBackdrop onDismiss={() => setOpen(false)} />}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
+        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
       >
         {selected ? (
           <CategoryChip category={selected} compact />
@@ -315,7 +317,7 @@ function CategorySelector({
       {open && (
         <ul
           role="listbox"
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
+          className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
         >
           {categories.map((c) => (
             <li key={c.id}>

@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 
 import type { StoredUser } from "../data/types";
-import { useEscapeKey, usePointerOutside } from "../hooks";
+import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { FloatingPanel } from "./FloatingPanel";
 
 type Props = {
   user: StoredUser;
@@ -28,6 +29,15 @@ type Props = {
 // and select-mode live in the floating UndoRedoBar at the top of the
 // viewport; the danger-zone "Clear data" / "Delete account" action
 // lives in the Storage tab of Settings.
+// Right-anchored 16rem-wide panel that opens just below the burger.
+// The FloatingPanel hook clamps it into the viewport so it never
+// drops off-screen.
+const PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 256 },
+  anchor: "right",
+  coordinateSpace: "viewport",
+};
+
 export function HeaderMenu({
   user,
   hasOtherUsers,
@@ -38,11 +48,8 @@ export function HeaderMenu({
 }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
-
-  useEscapeKey(open, close);
-  usePointerOutside(open, [rootRef], close);
 
   const isGuest = user.isDefault === true;
   const donateUrl = import.meta.env.VITE_DONATE_URL?.trim();
@@ -53,7 +60,7 @@ export function HeaderMenu({
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -69,12 +76,13 @@ export function HeaderMenu({
       >
         <Menu size={18} aria-hidden focusable={false} />
       </button>
-
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-lg border border-line bg-surface shadow-2xl"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={close}
+        triggerRef={triggerRef}
+        placement={PLACEMENT}
+      >
+        <div role="menu" className="w-full">
           <MainView
             user={user}
             isGuest={isGuest}
@@ -86,7 +94,7 @@ export function HeaderMenu({
             onCreateAccount={() => pick(onCreateAccount)}
           />
         </div>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

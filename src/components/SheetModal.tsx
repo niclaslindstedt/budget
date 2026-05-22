@@ -9,9 +9,10 @@ import {
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
-import { useDesktopAutoFocus, usePointerOutside } from "../hooks";
+import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { Button, ClearableTextInput } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
@@ -322,19 +323,17 @@ function AccountPicker({
   onClose: () => void;
   onPick: (value: string) => void;
 }) {
-  const rootRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
 
-  usePointerOutside(open, [rootRef], onClose);
-
   return (
-    <div ref={rootRef} className="relative">
+    <div className="relative">
+      {open && <DismissBackdrop onDismiss={onClose} />}
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span className="text-muted">
           <Wallet size={16} aria-hidden focusable={false} />
@@ -352,7 +351,7 @@ function AccountPicker({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 right-0 z-10 mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
+          className="absolute left-0 right-0 z-[60] mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
         >
           <AccountOption
             label="No account"
@@ -435,19 +434,17 @@ function TypePicker({
   onClose: () => void;
   onPick: (next: SheetType) => void;
 }) {
-  const rootRef = useRef<HTMLDivElement>(null);
   const selected = SHEET_TYPES.find((t) => t.id === value) ?? SHEET_TYPES[0];
 
-  usePointerOutside(open, [rootRef], onClose);
-
   return (
-    <div ref={rootRef} className="relative">
+    <div className="relative">
+      {open && <DismissBackdrop onDismiss={onClose} />}
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span className="text-muted">
           <CategoryIconGlyph name={selected.glyph} size={16} />
@@ -463,7 +460,7 @@ function TypePicker({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 right-0 z-10 mt-1 overflow-hidden rounded border border-line bg-surface-2 py-1 shadow-lg"
+          className="absolute left-0 right-0 z-[60] mt-1 overflow-hidden rounded border border-line bg-surface-2 py-1 shadow-lg"
         >
           {SHEET_TYPES.map((opt) => {
             const isSelected = opt.id === value;
