@@ -1,4 +1,4 @@
-import { Fragment, memo, useMemo } from "react";
+import { Fragment, memo, useMemo, useRef } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { findColumnByType, isTransferRow } from "../data/sheet";
@@ -10,6 +10,7 @@ import type {
   Row,
   Settings,
 } from "../data/types";
+import { useNearViewport } from "../hooks";
 import { type TFunction, useLang, useT } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
 import { formatNumber, withCurrency } from "../utils/format";
@@ -56,6 +57,14 @@ type Props = {
   onToggleTransferAnchor: (rowId: string) => void;
   onToggleRowTransfer: (row: Row) => void;
   onToggleCollapsed: () => void;
+  // Bypass the viewport-proximity gate so the row tree always renders.
+  // Used by SheetView when a scroll-to-row request targets this month —
+  // the row only exists in the DOM (and so can be `querySelector`ed for
+  // scrollIntoView) when it's actually been rendered. Defaults to false:
+  // a far-from-viewport month with no forceMount renders only its
+  // header + a height-preserving placeholder until the user scrolls
+  // close enough that `useNearViewport` flips on.
+  forceMount?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
@@ -95,6 +104,21 @@ function formatMonth(key: string, lang: Lang, t: TFunction): string {
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
+// Roughly how tall a single row renders in the table; used to size the
+// height-preserving placeholder for far-from-viewport months so the
+// scroll offset doesn't jump when their rows mount/unmount. Slightly
+// larger than the typical line-height row to leave headroom for
+// multi-line descriptions — under-shooting causes a visible scroll
+// shift when the placeholder gets swapped for the real rows.
+const ESTIMATED_ROW_HEIGHT_PX = 40;
+
+// How far above and below the viewport the row tree should stay
+// mounted. One viewport-height-ish keeps the rows the user is about to
+// see ready without ballooning the DOM. A larger margin would render
+// more rows at rest (defeating the optimization); a smaller one risks
+// the placeholder still being there when the user scrolls past it.
+const MONTH_VIEWPORT_MARGIN_PX = 1200;
+
 function MonthTableImpl({
   monthKey,
   rows,
@@ -117,6 +141,7 @@ function MonthTableImpl({
   onToggleTransferAnchor,
   onToggleRowTransfer,
   onToggleCollapsed,
+  forceMount = false,
   onUpdateCell,
   onCommitCell,
   onAddRow,
@@ -136,6 +161,12 @@ function MonthTableImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  // Track whether this month's wrapper is near the viewport. When it
+  // isn't, the tbody renders a single height-matched placeholder row
+  // instead of the full row tree — that keeps the DOM small even after
+  // a search jump pulls 60+ months of history into view.
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const nearViewport = useNearViewport(sectionRef, MONTH_VIEWPORT_MARGIN_PX);
   // When the hide-transfers setting is on, partition the month's
   // chronologically-sorted rows into the visible set (rendered as
   // normal SheetRows) and a map from each visible anchor to the
@@ -205,8 +236,30 @@ function MonthTableImpl({
     headerMonthNum !== null ? monthColorVar(headerMonthNum) : undefined;
 
   const monthLabel = formatMonth(monthKey, lang, t);
+  // Count rows that would actually render so the placeholder matches
+  // their combined height. Mirrors the filters applied inside the
+  // tbody (`row.isCorrection` rows still take a slot; hidden transfers
+  // are dropped when `hideTransfers` is on so their absence wouldn't
+  // leave a gap behind the placeholder either).
+  const renderedRowCount = hideTransfers
+    ? rows.reduce(
+        (acc, r) => acc + (!r.isCorrection && isTransferRow(r) ? 0 : 1),
+        0,
+      )
+    : rows.length;
+  const placeholderHeight = renderedRowCount * ESTIMATED_ROW_HEIGHT_PX;
+  // Skip building the row tree when the month is collapsed (the
+  // existing optimization) OR when the month is far from viewport
+  // and no force-mount override is in play. `forceMount` wins so a
+  // scroll-to-row request always materializes its target.
+  const renderRows = !collapsed && (forceMount || nearViewport);
+  // Total cell count across the data row plus the action cell, plus
+  // the optional select cell. Used as the placeholder <tr>'s colSpan
+  // so the lazy stand-in spans the full table width like the rows it
+  // replaces.
+  const placeholderColSpan = columns.length + 1 + (selectMode ? 1 : 0);
   return (
-    <section>
+    <section ref={sectionRef}>
       <h3
         className={`sticky top-[var(--app-header-h)] z-20 bg-page-bg text-xs font-bold tracking-wider uppercase ${
           headerColor ? "" : "text-fg-bright"
@@ -299,12 +352,25 @@ function MonthTableImpl({
           </thead>
           <tbody>
             {/* Skip building the row tree entirely when the month is
-               collapsed. The container above is `hidden`, so rendering
-               into it would only feed React's reconciler — building
-               1000s of cells worth of vnodes for a month the user can't
-               see is pure overhead and dominates the work when many
-               years of history are revealed via "Show more". */}
-            {!collapsed &&
+               collapsed, OR when it sits far enough from the viewport
+               that the user can't see it. The container above is
+               `hidden` for collapsed; the placeholder branch below
+               keeps the section height stable for the viewport-lazy
+               case so scrolling doesn't jump as months load and
+               unload. Building 1000s of cells worth of vnodes for a
+               month nobody can see is pure overhead and used to
+               dominate the work when many years of history were
+               revealed via "Show more" or a search jump. */}
+            {!renderRows && !collapsed && (
+              <tr aria-hidden="true">
+                <td
+                  colSpan={placeholderColSpan}
+                  style={{ height: placeholderHeight }}
+                  className="border-b border-line p-0"
+                />
+              </tr>
+            )}
+            {renderRows &&
               rows.map((row) => {
                 // Skip hidden transfers — they're rendered inline above
                 // their anchor when the anchor's expand toggle is on.

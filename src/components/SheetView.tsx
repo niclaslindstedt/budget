@@ -694,6 +694,23 @@ export function SheetView({
     toggleCollapsed,
   ]);
 
+  // The month key MonthTable should force-mount its rows for, bypassing
+  // its viewport-proximity gate. Set whenever a `scrollToRowRequest`
+  // targets this sheet — without it the search-jump effect below would
+  // `querySelector` for a row that hasn't been rendered yet (every
+  // off-screen month renders only a placeholder by default) and the
+  // scroll-into-view would silently no-op. Cleared back to `null`
+  // between requests so the gate re-engages once the user has finished
+  // navigating.
+  const forceMountMonthKey = useMemo<string | null>(() => {
+    if (!scrollToRowRequest) return null;
+    if (scrollToRowRequest.sheetId !== sheet.id) return null;
+    const { iso } = scrollToRowRequest;
+    if (!iso) return null;
+    const key = getMonthKey(iso, settings.startOfMonth);
+    return /^\d{4}-\d{2}$/.test(key) ? key : null;
+  }, [scrollToRowRequest, sheet.id, settings.startOfMonth]);
+
   const canTransfer = item.accountId !== null;
 
   return (
@@ -789,6 +806,7 @@ export function SheetView({
                     seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
                   }
                   onToggleCollapsed={slotToggle}
+                  forceMount={monthKey === forceMountMonthKey}
                   hideTransfers={settings.hideTransfers}
                   expandedTransferAnchors={expandedTransferAnchors}
                   onToggleTransferAnchor={toggleTransferAnchor}
