@@ -8,7 +8,6 @@ import {
   Plus,
   Repeat,
   Scissors,
-  Upload,
   Wallet,
 } from "lucide-react";
 
@@ -297,7 +296,7 @@ export function AccountsSheetView({
                           title={t("accountsSheet.importHistoryTitle")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent"
                         >
-                          <Upload size={14} aria-hidden focusable={false} />
+                          <Download size={14} aria-hidden focusable={false} />
                         </button>
                         <button
                           type="button"
