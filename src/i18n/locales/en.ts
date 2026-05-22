@@ -521,6 +521,7 @@ export const en = {
       importBankHint: "Drop a CSV / XLSX file from your bank.",
       donate: "Donate",
       donateHint: "Find this useful? Support development.",
+      dangerZoneTitle: "Danger zone",
     },
     categoriesTab: {
       title: "Categories and types",

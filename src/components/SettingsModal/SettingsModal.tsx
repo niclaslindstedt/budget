@@ -93,6 +93,10 @@ type Props = {
   // Disables the encryption toggle (there's no key to derive without
   // a password) and tweaks the help text to point at "Create account".
   isGuest: boolean;
+  // Username of the active account. Surfaced in the danger-zone
+  // confirmation text on the Storage tab so the user can see which
+  // account they're about to delete.
+  username: string;
   // Sizes of the merchant-hint memory and the two dismissal
   // allowlists. Surfaced in the "Memory" tab so the user can see what's
   // accumulated and clear it. Zero counts collapse the sections to a
@@ -147,6 +151,9 @@ type Props = {
     presetId: string,
     kind: "income" | "expense" | "any",
   ) => void;
+  // Danger-zone callback for the Storage tab: deletes the active
+  // account (or clears guest data when no password is set).
+  onDeleteAccount: (password: string) => Promise<void>;
 };
 
 type TabId =
@@ -209,6 +216,7 @@ export function SettingsModal({
   cloudReauthAutoOpen,
   cloudOfflineMode,
   isGuest,
+  username,
   merchantHintCount,
   recurringDismissalCount,
   transferDismissalCount,
@@ -241,6 +249,7 @@ export function SettingsModal({
   onDeleteType,
   onSetPresetTypeHidden,
   onSetPresetTypeKind,
+  onDeleteAccount,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
@@ -401,6 +410,7 @@ export function SettingsModal({
                 folderReconnectNeeded={folderReconnectNeeded}
                 encryption={encryption}
                 isGuest={isGuest}
+                username={username}
                 data={data}
                 onImport={onImport}
                 backupsSupported={Boolean(adapter?.backups)}
@@ -420,6 +430,7 @@ export function SettingsModal({
                 onSetCloudReauthAutoOpen={onSetCloudReauthAutoOpen}
                 cloudOfflineMode={cloudOfflineMode}
                 onSetCloudOfflineMode={onSetCloudOfflineMode}
+                onDeleteAccount={onDeleteAccount}
               />
             )}
             {activeTab === "categories" && (

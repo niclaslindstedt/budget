@@ -513,6 +513,7 @@ export const sv: Catalog = {
       importBankHint: "Släpp en CSV- eller XLSX-fil från din bank.",
       donate: "Donera",
       donateHint: "Tycker du om appen? Stöd utvecklingen.",
+      dangerZoneTitle: "Farozon",
     },
     categoriesTab: {
       title: "Kategorier och typer",

@@ -45,6 +45,7 @@ import {
 import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
 import { HeaderMenu } from "./HeaderMenu";
+import { UndoRedoBar } from "./UndoRedoBar";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal } from "./SettingsModal";
 import { SheetView } from "./SheetView";
@@ -2329,12 +2330,12 @@ export function BudgetView({
               height={24}
               className="h-6 w-6 rounded-sm"
             />
-            <span className="flex flex-col items-start leading-tight md:flex-row md:items-baseline md:gap-2 md:leading-normal">
+            <span className="flex items-baseline gap-2">
               <span className="text-base font-bold tracking-wide text-fg-bright">
                 budget
               </span>
               <span
-                className="text-[0.625rem] font-normal text-muted tabular-nums md:text-xs"
+                className="text-xs font-normal text-muted tabular-nums"
                 aria-label={`Build ${BUILD_LABEL}`}
               >
                 {BUILD_LABEL}
@@ -2362,17 +2363,10 @@ export function BudgetView({
             <HeaderMenu
               user={user}
               hasOtherUsers={hasOtherUsers}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              selectMode={selectMode}
-              onUndo={undo}
-              onRedo={redo}
-              onToggleSelectMode={onToggleSelectMode}
               onOpenSettings={() => setSettingsOpen(true)}
               onSignOut={onSignOut}
               onSwitchUser={onSwitchUser}
               onCreateAccount={onCreateAccount}
-              onDeleteAccount={onDeleteAccount}
             />
           </div>
         </header>
@@ -2462,23 +2456,35 @@ export function BudgetView({
             </>
           )}
         </main>
-        {status.kind === "loading" ? null : selectMode ? (
-          <BulkActionBar
-            count={selectedIds.size}
-            onEdit={onBulkEdit}
-            onDelete={onBulkDelete}
-            onMove={onBulkMove}
-            onCopy={onBulkCopy}
-            onCancel={onCancelSelect}
-          />
-        ) : (
-          <SheetTabs
-            sheets={data.sheets}
-            activeSheetId={activeSheet.id}
-            onSelect={onSelectSheet}
-            onEdit={onOpenEditSheet}
-            onAdd={onOpenNewSheet}
-          />
+        {status.kind === "loading" ? null : (
+          <>
+            <UndoRedoBar
+              canUndo={canUndo}
+              canRedo={canRedo}
+              selectMode={selectMode}
+              onUndo={undo}
+              onRedo={redo}
+              onToggleSelectMode={onToggleSelectMode}
+            />
+            {selectMode ? (
+              <BulkActionBar
+                count={selectedIds.size}
+                onEdit={onBulkEdit}
+                onDelete={onBulkDelete}
+                onMove={onBulkMove}
+                onCopy={onBulkCopy}
+                onCancel={onCancelSelect}
+              />
+            ) : (
+              <SheetTabs
+                sheets={data.sheets}
+                activeSheetId={activeSheet.id}
+                onSelect={onSelectSheet}
+                onEdit={onOpenEditSheet}
+                onAdd={onOpenNewSheet}
+              />
+            )}
+          </>
         )}
       </div>
       <SheetModal
@@ -2855,6 +2861,7 @@ export function BudgetView({
         encryption={encryption}
         cloudOfflineMode={cloudOfflineMode}
         isGuest={isGuest}
+        username={user.username}
         merchantHintCount={Object.keys(data.merchantHints).length}
         recurringDismissalCount={data.recurringDismissals.length}
         transferDismissalCount={data.transferCollapseDismissals.length}
@@ -2888,6 +2895,7 @@ export function BudgetView({
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
+        onDeleteAccount={onDeleteAccount}
       />
       <ChangelogModal
         open={changelogOpen}
