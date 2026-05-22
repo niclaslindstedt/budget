@@ -1,1 +1,1 @@
-export { SettingsModal } from "./SettingsModal";
+export { SettingsModal, type SettingsTabId } from "./SettingsModal";

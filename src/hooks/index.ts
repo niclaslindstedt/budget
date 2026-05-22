@@ -12,5 +12,6 @@ export { useIdleSignOut } from "./useIdleSignOut";
 export { useIsMobile } from "./useIsMobile";
 export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
+export { useStorageSizeWarning } from "./useStorageSizeWarning";
 export { useTheme } from "./useTheme";
 export { useVirtualKeyboardInset } from "./useVirtualKeyboardInset";
