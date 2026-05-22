@@ -102,6 +102,7 @@ export function ImportHistoryModal({
       centered
     >
       <Modal.Header
+        icon={<Upload size={14} aria-hidden focusable={false} />}
         title={t("importHistory.titleInto", { name: account?.name ?? "" })}
         onClose={onCancel}
       />

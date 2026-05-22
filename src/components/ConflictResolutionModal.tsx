@@ -84,7 +84,14 @@ export function ConflictResolutionModal({
           id="conflict-resolution-title"
           className="text-sm font-bold tracking-wide text-fg-bright"
         >
-          {t("sync.conflictTitle", { name: providerName })}
+          <span className="inline-flex items-center gap-2">
+            <span className="inline-flex shrink-0 text-flag">
+              <CloudAlert size={14} aria-hidden focusable={false} />
+            </span>
+            <span className="min-w-0">
+              {t("sync.conflictTitle", { name: providerName })}
+            </span>
+          </span>
         </h2>
       </header>
       <div className="flex flex-col gap-3 px-4 py-4">

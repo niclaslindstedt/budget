@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Split, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
@@ -274,7 +274,11 @@ export function SplitEntryModal({
       labelledBy="split-entry-title"
       size="max-w-2xl"
     >
-      <Modal.Header title={t("splitRow.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Split size={14} aria-hidden focusable={false} />}
+        title={t("splitRow.title")}
+        onClose={onClose}
+      />
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">{t("splitRow.intro")}</p>
 

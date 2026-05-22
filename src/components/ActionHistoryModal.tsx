@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { CornerDownRight } from "lucide-react";
+import { CornerDownRight, History } from "lucide-react";
 
 import { useLang, useT, type MessageKey, type TFunction } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
@@ -56,7 +56,11 @@ export function ActionHistoryModal({
       labelledBy="action-history-modal-title"
       centered
     >
-      <Modal.Header title={t("actionHistory.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<History size={14} aria-hidden focusable={false} />}
+        title={t("actionHistory.title")}
+        onClose={onClose}
+      />
       <Modal.Body noPadding>
         <ol ref={listRef} className="flex flex-col">
           {ordered.map(({ entry, index }) => {

@@ -266,17 +266,8 @@ function ImportPasswordPrompt({
       scrollableBody={false}
     >
       <Modal.Header
-        title={
-          <>
-            <Lock
-              size={16}
-              aria-hidden
-              focusable={false}
-              className="text-pipe"
-            />
-            {t("importExport.encryptedBudget")}
-          </>
-        }
+        icon={<Lock size={14} aria-hidden focusable={false} />}
+        title={t("importExport.encryptedBudget")}
         onClose={onCancel}
       />
       <form

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Wallet } from "lucide-react";
 
 import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../data/constants";
 import type { Account, CategoryIcon } from "../data/types";
@@ -108,6 +108,7 @@ export function AccountModal({
   return (
     <Modal open={open} onClose={onClose} labelledBy="account-modal-title">
       <Modal.Header
+        icon={<Wallet size={14} aria-hidden focusable={false} />}
         title={isEdit ? t("account.titleEdit") : t("account.titleNew")}
         onClose={onClose}
       />

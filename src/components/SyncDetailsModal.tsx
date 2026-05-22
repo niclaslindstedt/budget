@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Cloud,
   CloudAlert,
   CloudCheck,
   CloudOff,
@@ -248,7 +249,11 @@ export function SyncDetailsModal({
       scrollableBody={false}
       centered
     >
-      <Modal.Header title={t("sync.cloudSync")} onClose={onClose} />
+      <Modal.Header
+        icon={<Cloud size={14} aria-hidden focusable={false} />}
+        title={t("sync.cloudSync")}
+        onClose={onClose}
+      />
       <div className="flex flex-col gap-3 px-4 py-4">
         <div className="flex flex-col gap-2">
           <span className="text-xs text-muted">{t("sync.status")}</span>

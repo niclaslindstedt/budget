@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Merge } from "lucide-react";
 
 import type { TransferCandidate } from "../data/transfer-collapse";
 import { detectTransferCandidates } from "../data/transfer-collapse";
@@ -84,7 +84,11 @@ export function TransferCollapseModal({
       size="max-w-2xl"
       centered
     >
-      <Modal.Header title={t("transferCollapse.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Merge size={14} aria-hidden focusable={false} />}
+        title={t("transferCollapse.title")}
+        onClose={onClose}
+      />
       <Modal.Body>
         {!hasAny ? (
           <p className="text-sm text-muted">

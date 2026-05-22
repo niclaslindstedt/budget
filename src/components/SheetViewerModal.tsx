@@ -5,7 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { Check } from "lucide-react";
+import { Check, Eye } from "lucide-react";
 
 import {
   currentFiscalMonthKey,
@@ -250,7 +250,11 @@ export function SheetViewerModal({
       size="max-w-6xl"
       fixedHeight
     >
-      <Modal.Header title={sheet.name} onClose={onClose} />
+      <Modal.Header
+        icon={<Eye size={14} aria-hidden focusable={false} />}
+        title={sheet.name}
+        onClose={onClose}
+      />
       <Modal.Body noPadding className="overflow-x-hidden">
         {!hasNoRows && (
           <ModalSearchBar

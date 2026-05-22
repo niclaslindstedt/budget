@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Move } from "lucide-react";
 
 import type { Row } from "../data/types";
 import { useLang, useT } from "../i18n";
@@ -117,7 +117,17 @@ export function MoveCopyModal({
       size="max-w-md"
       centered
     >
-      <Modal.Header title={t(titleKey, { n: rows.length })} onClose={onClose} />
+      <Modal.Header
+        icon={
+          isMove ? (
+            <Move size={14} aria-hidden focusable={false} />
+          ) : (
+            <Copy size={14} aria-hidden focusable={false} />
+          )
+        }
+        title={t(titleKey, { n: rows.length })}
+        onClose={onClose}
+      />
       <Modal.Body>
         <p className="mb-3 text-xs text-muted">
           {isMove ? t("moveCopy.moveHint") : t("moveCopy.copyHint")}

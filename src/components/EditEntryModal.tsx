@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import { nextOccurrenceWithSameDom } from "../data/recurrence";
@@ -292,6 +293,7 @@ export function EditEntryModal({
       size="max-w-2xl"
     >
       <Modal.Header
+        icon={<Pencil size={14} aria-hidden focusable={false} />}
         title={
           isSeries
             ? t("editEntry.titleEditSeries")

@@ -156,12 +156,8 @@ export function CloudBackupModal({
         centered
       >
         <Modal.Header
-          title={
-            <span className="inline-flex items-center gap-2">
-              <Database size={16} aria-hidden focusable={false} />
-              {t("cloudBackup.title")}
-            </span>
-          }
+          icon={<Database size={14} aria-hidden focusable={false} />}
+          title={t("cloudBackup.title")}
           onClose={busy ? () => {} : onClose}
         />
         <Modal.Body>

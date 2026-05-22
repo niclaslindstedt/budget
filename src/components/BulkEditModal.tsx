@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ListChecks } from "lucide-react";
 
 import { findColumnByType } from "../data/sheet";
 import type { RecurrenceRule } from "../data/recurrence";
@@ -156,6 +157,7 @@ export function BulkEditModal({
       size="max-w-2xl"
     >
       <Modal.Header
+        icon={<ListChecks size={14} aria-hidden focusable={false} />}
         title={
           rows.length === 1
             ? t("bulkEdit.titleOne")

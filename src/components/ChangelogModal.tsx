@@ -1,3 +1,5 @@
+import { Sparkles } from "lucide-react";
+
 import {
   CHANGELOG,
   type ChangelogEntryType,
@@ -53,7 +55,11 @@ export function ChangelogModal({ open, onClose, since }: Props) {
       labelledBy="changelog-modal-title"
       centered
     >
-      <Modal.Header title={t("changelog.title")} onClose={onClose} />
+      <Modal.Header
+        icon={<Sparkles size={14} aria-hidden focusable={false} />}
+        title={t("changelog.title")}
+        onClose={onClose}
+      />
       <Modal.Body className="flex flex-col gap-4 text-sm">
         {releases.map((release) => (
           <section key={release.version} className="flex flex-col gap-2">

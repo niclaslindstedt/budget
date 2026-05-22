@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Repeat } from "lucide-react";
 
 import { useT } from "../i18n";
 import { Checkbox } from "./form";
@@ -53,6 +54,7 @@ export function ApplySeriesEditDialog({
       centered
     >
       <Modal.Header
+        icon={<Repeat size={14} aria-hidden focusable={false} />}
         title={t("applySeries.titleApplyRecurring")}
         onClose={onCancel}
       />
