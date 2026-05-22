@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo, type CSSProperties } from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -23,9 +23,31 @@ import type {
   UserData,
 } from "../data/types";
 import { useLang, useT } from "../i18n";
+import { bcp47, type Lang } from "../i18n/locale";
 import { displayCategoryName } from "../i18n/preset-names";
 import { formatBalance, formatShortDate } from "../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { CategoryIconGlyph } from "./icons";
+
+const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
+
+function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
+  let f = monthFormatCache.get(lang);
+  if (!f) {
+    f = new Intl.DateTimeFormat(bcp47(lang), {
+      month: "long",
+      year: "numeric",
+    });
+    monthFormatCache.set(lang, f);
+  }
+  return f;
+}
+
+function formatMonth(key: string, lang: Lang): string {
+  const [y, m] = key.split("-").map(Number);
+  if (!y || !m) return key;
+  return monthFormatFor(lang).format(new Date(y, m - 1, 1));
+}
 
 type Props = {
   sheet: Sheet;
@@ -124,6 +146,24 @@ export function AccountsSheetView({
       a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
     );
   }, [data.transactions]);
+
+  // Walk the sorted (newest-first) transfers and emit one group per
+  // `YYYY-MM` so the table can drop a colored month-marker row between
+  // groups — mirrors the HistoryModal chrome so short dates (18/5) stay
+  // readable when the year or month rolls over.
+  const transferGroups = useMemo(() => {
+    const result: {
+      monthKey: string;
+      transactions: typeof sortedTransactions;
+    }[] = [];
+    for (const tx of sortedTransactions) {
+      const key = tx.date.slice(0, 7);
+      const last = result[result.length - 1];
+      if (last && last.monthKey === key) last.transactions.push(tx);
+      else result.push({ monthKey: key, transactions: [tx] });
+    }
+    return result;
+  }, [sortedTransactions]);
 
   // How many transfer pairs the detector currently sees. Drives the
   // badge on the "Find transfers" link and whether the link is
@@ -432,70 +472,98 @@ export function AccountsSheetView({
                   </td>
                 </tr>
               )}
-              {sortedTransactions.map((tx) => {
-                const from = accountsById.get(tx.fromAccountId);
-                const to = accountsById.get(tx.toAccountId);
-                const type = tx.typeId
-                  ? (typesById.get(tx.typeId) ?? null)
-                  : null;
-                const category = type
-                  ? (categoriesById.get(type.categoryId) ?? null)
-                  : null;
+              {transferGroups.map((group) => {
+                const monthNum = monthNumberFromKey(group.monthKey);
+                const monthColor =
+                  monthNum !== null ? monthColorVar(monthNum) : undefined;
+                const colorStyle: CSSProperties | undefined = monthColor
+                  ? { color: monthColor }
+                  : undefined;
                 return (
-                  <tr
-                    key={tx.id}
-                    className="cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
-                    onClick={() => onEditTransaction(tx.id)}
-                  >
-                    <td className="w-20 px-2 py-2 align-middle font-mono text-xs text-muted whitespace-nowrap">
-                      {formatShortDate(tx.date, settings.shortDateFormat, lang)}
-                    </td>
-                    <td className="px-2 py-2 align-middle">
-                      <span className="block text-fg-bright">
-                        {tx.description}
-                      </span>
-                      {category && (
-                        <span
-                          className="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs"
-                          style={{
-                            color: category.color,
-                            backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
-                          }}
+                  <Fragment key={group.monthKey}>
+                    <tr className="border-b border-line bg-surface-2">
+                      <td
+                        colSpan={4}
+                        className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                        style={colorStyle}
+                      >
+                        {formatMonth(group.monthKey, lang)}
+                      </td>
+                    </tr>
+                    {group.transactions.map((tx) => {
+                      const from = accountsById.get(tx.fromAccountId);
+                      const to = accountsById.get(tx.toAccountId);
+                      const type = tx.typeId
+                        ? (typesById.get(tx.typeId) ?? null)
+                        : null;
+                      const category = type
+                        ? (categoriesById.get(type.categoryId) ?? null)
+                        : null;
+                      return (
+                        <tr
+                          key={tx.id}
+                          className="cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
+                          onClick={() => onEditTransaction(tx.id)}
                         >
-                          {displayCategoryName(category, t)}
-                        </span>
-                      )}
-                      {/* On mobile the dedicated transfer column is
-                          hidden — fold the from/to summary into the
-                          description cell instead so the row still
-                          shows the direction at a glance. */}
-                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted md:hidden">
-                        <span>{from?.name ?? "?"}</span>
-                        <ArrowRight
-                          size={10}
-                          aria-hidden
-                          focusable={false}
-                          className="shrink-0"
-                        />
-                        <span>{to?.name ?? "?"}</span>
-                      </span>
-                    </td>
-                    <td className="hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
-                      <span className="inline-flex items-center gap-1.5">
-                        <AccountChip account={from ?? null} />
-                        <ArrowRight
-                          size={12}
-                          aria-hidden
-                          focusable={false}
-                          className="shrink-0 text-flag"
-                        />
-                        <AccountChip account={to ?? null} />
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 text-right align-middle font-mono tabular-nums whitespace-nowrap text-fg-bright">
-                      {formatBalance(tx.amount, settings)}
-                    </td>
-                  </tr>
+                          <td
+                            className="w-20 px-2 py-2 align-middle font-mono text-xs whitespace-nowrap"
+                            style={colorStyle}
+                          >
+                            {formatShortDate(
+                              tx.date,
+                              settings.shortDateFormat,
+                              lang,
+                            )}
+                          </td>
+                          <td className="px-2 py-2 align-middle">
+                            <span className="block text-fg-bright">
+                              {tx.description}
+                            </span>
+                            {category && (
+                              <span
+                                className="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs"
+                                style={{
+                                  color: category.color,
+                                  backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
+                                }}
+                              >
+                                {displayCategoryName(category, t)}
+                              </span>
+                            )}
+                            {/* On mobile the dedicated transfer column is
+                                hidden — fold the from/to summary into the
+                                description cell instead so the row still
+                                shows the direction at a glance. */}
+                            <span className="mt-0.5 flex items-center gap-1 text-xs text-muted md:hidden">
+                              <span>{from?.name ?? "?"}</span>
+                              <ArrowRight
+                                size={10}
+                                aria-hidden
+                                focusable={false}
+                                className="shrink-0"
+                              />
+                              <span>{to?.name ?? "?"}</span>
+                            </span>
+                          </td>
+                          <td className="hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
+                            <span className="inline-flex items-center gap-1.5">
+                              <AccountChip account={from ?? null} />
+                              <ArrowRight
+                                size={12}
+                                aria-hidden
+                                focusable={false}
+                                className="shrink-0 text-flag"
+                              />
+                              <AccountChip account={to ?? null} />
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 text-right align-middle font-mono tabular-nums whitespace-nowrap text-fg-bright">
+                            {formatBalance(tx.amount, settings)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
                 );
               })}
             </tbody>

@@ -9,7 +9,9 @@ place of the day-only mobile shorthand. The resolved description and
 type are pulled through the same priority chain
 (`userDescription`/`userTypeId` → match rule → merchant hint → raw bank
 text) the budget view already uses, so a relabelled bank entry now
-reads the same in both surfaces.
+reads the same in both surfaces. The Transfers section on the same
+page picks up the matching month-divider chrome, so day-only dates
+like `18/5` stay readable once the year or month rolls over.
 
 The budget-sheet viewer (Eye button) and the account-history modal also
 gained a search bar at the top that filters rows in place against
