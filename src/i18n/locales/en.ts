@@ -1210,6 +1210,10 @@ export const en = {
       "Detected in imported history. Click Promote to turn one into a recurring series.",
     promote: "Promote",
     promoteFull: "Promote to recurring",
+    promoteHint:
+      "Schedules {n} future entries over the next 12 months from the detected pattern.",
+    promoteHintDisabled:
+      "No future dates left in the detected pattern — nothing to schedule.",
     dismiss: "Not recurring",
     dismissAll: "Dismiss all",
     dismissAllConfirm: "Dismiss all candidates?",

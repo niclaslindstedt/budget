@@ -1204,6 +1204,10 @@ export const sv: Catalog = {
       "Upptäckta i importerad historik. Klicka på Befordra för att göra om en till en återkommande serie.",
     promote: "Befordra",
     promoteFull: "Gör återkommande",
+    promoteHint:
+      "Schemalägger {n} framtida poster över de kommande 12 månaderna från det upptäckta mönstret.",
+    promoteHintDisabled:
+      "Inga framtida datum kvar i det upptäckta mönstret — inget att schemalägga.",
     dismiss: "Ej återkommande",
     dismissAll: "Avvisa alla",
     dismissAllConfirm: "Avvisa alla kandidater?",
