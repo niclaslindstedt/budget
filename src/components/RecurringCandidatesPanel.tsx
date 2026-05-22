@@ -260,6 +260,11 @@ function CandidateRow({
             onPromote(rule, futureDates);
           }}
           disabled={!rule || futureDates.length === 0}
+          title={
+            futureDates.length > 0
+              ? t("recurring.promoteHint", { n: futureDates.length })
+              : t("recurring.promoteHintDisabled")
+          }
           className="cursor-pointer rounded border border-accent bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("recurring.promote")}
