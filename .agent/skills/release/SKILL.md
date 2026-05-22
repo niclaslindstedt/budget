@@ -68,6 +68,21 @@ Before dispatching anything, confirm:
    Without this, preview's "Connect" buttons return an
    `unauthorized redirect` error from the provider.
 
+6. **If the release touches `pwaPlugin()` in `vite.config.ts`,
+   `vite-plugin-pwa`'s version, or `public/favicon.svg`,** double-
+   check the manifest shape locally before dispatching:
+
+   ```sh
+   make build && cat dist/manifest.webmanifest
+   # id, scope, start_url must all be "/"
+   make preview-build && cat dist/manifest.webmanifest
+   # id, scope, start_url must all be "/preview/"
+   ```
+
+   Each PWA-bearing release also warrants a manual install smoke
+   test in a fresh Chrome profile after deploy (post-flight step 6
+   below).
+
 ## Dispatch
 
 Trigger the workflow with the chosen bump:
@@ -131,6 +146,20 @@ After the workflow finishes successfully:
 5. **`/changelog/` renders the new entry** at
    `https://budget.niclaslindstedt.se/changelog/`.
 
+6. **PWA: distinct manifests + isolated service workers per slot.**
+   In a fresh Chrome profile:
+   - `https://budget.niclaslindstedt.se/manifest.webmanifest` — JSON
+     has `"id": "/"`, `"scope": "/"`, `"name": "Budget"`.
+   - `https://budget.niclaslindstedt.se/preview/manifest.webmanifest`
+     — JSON has `"id": "/preview/"`, `"scope": "/preview/"`,
+     `"name": "Budget (preview)"`.
+   - DevTools → Application → Service Workers on each origin
+     shows exactly one registration per slot, scope matches.
+   - DevTools → Application → Cache Storage shows
+     `workbox-precache-v2-budget` for `/` and
+     `workbox-precache-v2-budget-preview` for `/preview/` — never
+     mixed.
+
 ## Rollback
 
 The bundle was never published to a registry, so rollback is
@@ -153,6 +182,49 @@ The next push to `main` (the revert commit itself) will trigger
 If only the changelog body was wrong, you can hand-edit
 `CHANGELOG.md` and `gh release edit $TAG --notes-file …` without
 touching tags or `package.json`.
+
+## Service-worker kill-switch
+
+If a release ships a broken service worker — precaches a bad
+build, gets stuck in a refresh loop, fails to activate — the git
+revert above won't help: the broken SW is still installed in every
+user's browser and will keep serving the bad bundle from its cache
+until it gets replaced.
+
+The recipe is to ship a _replacement_ SW that nukes its own
+caches and unregisters cleanly, then cut a hotfix release so users
+pick it up:
+
+1. On a new branch, edit `vite.config.ts` and either:
+   - Comment out the `pwaPlugin()` line and add a static
+     `public/sw.js` with the kill body:
+
+     ```js
+     self.addEventListener("install", (e) => e.waitUntil(self.skipWaiting()));
+     self.addEventListener("activate", (e) =>
+       e.waitUntil(
+         (async () => {
+           const keys = await caches.keys();
+           await Promise.all(keys.map((k) => caches.delete(k)));
+           await self.clients.claim();
+         })(),
+       ),
+     );
+     ```
+
+   - Or switch `pwaPlugin()` to `strategies: "injectManifest"`
+     pointed at the same body in `src/sw.ts`.
+
+2. Cut a hotfix: `gh workflow run release.yml -f bump=patch`.
+
+3. Users with the broken SW pick up the kill SW on their next
+   visit; it wipes Cache Storage and (with `clientsClaim`) takes
+   over the open tab so the next reload serves a fresh bundle from
+   the network.
+
+4. Once user reports settle, restore the normal `pwaPlugin()`
+   config in a follow-up PR. `cleanupOutdatedCaches: true` plus
+   this recipe caps any failure mode at one bad deploy.
 
 ## Common failure modes
 

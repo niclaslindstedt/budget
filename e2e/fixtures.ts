@@ -60,6 +60,25 @@ export const test = base.extend<{ clean: void }>({
             // the test because the rest of state lives in localStorage.
           }
         }
+        // PWA hygiene: drop any service worker registration and wipe
+        // every Cache Storage namespace before the test body runs.
+        // Without this, a preview SW (registered the first time a
+        // test loaded `/preview/`) would serve precached entries to
+        // every subsequent test in the same context.
+        try {
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+          }
+          if ("caches" in self) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+        } catch {
+          // Best-effort: privacy modes / locked-down contexts may
+          // refuse SW or Cache Storage access. Ignore — the suite
+          // doesn't depend on offline behaviour today.
+        }
       });
       await use();
     },

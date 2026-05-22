@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/react" />
 
 // OAuth public client identifiers injected at build time. Both are
 // readable in the deployed JS bundle either way (PKCE makes them safe

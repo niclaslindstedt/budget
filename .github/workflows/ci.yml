@@ -27,6 +27,7 @@ jobs:
       - run: make fmt-check
       - run: make lint
       - run: make build
+      - run: make icons-check
       - run: make test
 
   changeset:

@@ -27,6 +27,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="me" href="https://github.com/niclaslindstedt" />
 
+    <!-- PWA: vite-plugin-pwa injects <link rel="manifest"> here at
+         build time. The Apple-specific tags below are static; the
+         `apple-mobile-web-app-title` value is rewritten to
+         "Budget pre" for the /preview/ build via the
+         `patchAppleTitle` Vite plugin so the two home-screen
+         installs are visually distinguishable on iOS. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Budget" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
     <!-- HEAD_SEO_START
          Everything between these markers is the homepage's per-route SEO
          payload. The build-time splicer in `vite.config.ts` reads

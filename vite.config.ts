@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 import pkg from "./package.json" with { type: "json" };
 import {
@@ -192,6 +193,118 @@ function emitPathAliasWithSeo(
   };
 }
 
+// Rewrite the static `apple-mobile-web-app-title` meta in `index.html`
+// to "Budget pre" for the preview build. iOS shows this string under
+// the home-screen icon; without per-slot differentiation, a user who
+// installs both `/` and `/preview/` sees two identical "Budget" tiles.
+// The rewrite runs in `transformIndexHtml`, which fires before
+// vite-plugin-pwa's own head-injection and before the alias-emitting
+// `closeBundle` step — so the SEO alias HTMLs inherit the patched
+// value automatically.
+function patchAppleTitle(): Plugin {
+  return {
+    name: "patch-apple-mobile-title",
+    apply: "build",
+    transformIndexHtml(html) {
+      if (!IS_PREVIEW) return html;
+      return html.replace(
+        '<meta name="apple-mobile-web-app-title" content="Budget" />',
+        '<meta name="apple-mobile-web-app-title" content="Budget pre" />',
+      );
+    },
+  };
+}
+
+// Configure vite-plugin-pwa so the two deploy slots (`/` and
+// `/preview/`) install as fully separate apps on a user's device.
+// Every identity-bearing field — manifest `id`, `scope`, `start_url`,
+// app `name`, Workbox `cacheId` — branches on `IS_PREVIEW`. The two
+// service workers register on disjoint scopes (more-specific scope
+// wins per the browser's SW dispatch rules); the
+// `navigateFallbackDenylist` adds a defensive regex against the
+// other slot in case a stale registration ever surprised us.
+//
+// Update strategy: `autoUpdate` (skipWaiting + clientsClaim on every
+// new SW) plus the soft toast in `src/components/UpdateToast.tsx`
+// — the toast surfaces a non-blocking "reload to apply" prompt so we
+// never refresh mid-edit. The SW activates immediately and controls
+// the cache, but the open tab keeps running its old JS until the
+// user clicks Reload (or navigates away and back).
+function pwaPlugin(): Plugin[] {
+  const id = BASE_PATH; // "/" or "/preview/" — W3C app identity
+  const name = IS_PREVIEW ? "Budget (preview)" : "Budget";
+  const shortName = IS_PREVIEW ? "Budget pre" : "Budget";
+  const cacheId = IS_PREVIEW ? "budget-preview" : "budget";
+
+  return VitePWA({
+    registerType: "autoUpdate",
+    // The React `useRegisterSW` hook handles registration; no auto
+    // `<script>` injection.
+    injectRegister: null,
+    includeAssets: [
+      "favicon.svg",
+      "favicon.ico",
+      "apple-touch-icon-180x180.png",
+      "og-default.png",
+      "robots.txt",
+    ],
+    manifest: {
+      id,
+      scope: BASE_PATH,
+      start_url: BASE_PATH,
+      name,
+      short_name: shortName,
+      description:
+        "A local-first budget app that keeps your data in your browser.",
+      display: "standalone",
+      orientation: "any",
+      theme_color: "#1d2027",
+      background_color: "#1d2027",
+      lang: "en",
+      categories: ["finance", "productivity"],
+      icons: [
+        { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },
+        { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
+        { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
+        {
+          src: "maskable-icon-512x512.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "maskable",
+        },
+      ],
+    },
+    workbox: {
+      // Precache JS, CSS, fonts, icons, and the prerendered SEO
+      // alias HTMLs (`/privacy/`, `/changelog/`, `/system/`,
+      // `/404.html`). `globIgnores` keeps source maps and the
+      // discovery files out of precache (they're served from the
+      // network just fine, and don't need to be available offline).
+      globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff2}"],
+      globIgnores: ["**/*.map", "robots.txt", "sitemap.xml", "llms.txt"],
+      navigateFallback: `${BASE_PATH}index.html`,
+      navigateFallbackDenylist: [
+        // Defensive: never claim the *other* slot under any
+        // circumstance, even if a stale registration somehow had a
+        // broader scope. The more-specific-scope-wins rule already
+        // handles this; the regex is belt-and-braces.
+        IS_PREVIEW ? /^\/(?!preview\/).+/ : /^\/preview\//,
+      ],
+      cleanupOutdatedCaches: true,
+      skipWaiting: true,
+      clientsClaim: true,
+      cacheId,
+    },
+    // Dev-mode SW interferes with HMR. Opt in with VITE_PWA_DEV=1
+    // when iterating on the toast / registration flow.
+    devOptions: {
+      enabled: process.env.VITE_PWA_DEV === "1",
+      type: "module",
+      navigateFallback: `${BASE_PATH}index.html`,
+    },
+  });
+}
+
 // The site is served from the custom domain budget.niclaslindstedt.se
 // (see public/CNAME), which is rooted at "/". Production builds set
 // `VITE_BASE_PATH=/` (the default); the preview build CI step sets
@@ -206,6 +319,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     emitChangelogData(),
+    patchAppleTitle(),
+    pwaPlugin(),
     emitPathAliasWithSeo([PRIVACY_ROUTE, CHANGELOG_ROUTE, SYSTEM_ROUTE], {
       noindex: IS_PREVIEW,
     }),
