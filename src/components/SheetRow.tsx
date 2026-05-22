@@ -486,6 +486,20 @@ function SheetRowImpl({
               <Trash2 size={16} aria-hidden focusable={false} />
             </button>
           )}
+          {!isTransaction && isHistory && (
+            <span
+              aria-hidden
+              title={tr("cell.cannotDeleteHistory")}
+              className="action-btn action-btn-delete-disabled inline-flex h-full flex-1 cursor-not-allowed items-center justify-center border-0 bg-transparent p-2 text-muted opacity-40"
+            >
+              <span className="relative inline-flex">
+                <Trash2 size={16} aria-hidden focusable={false} />
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <span className="block h-px w-5 rotate-45 bg-current" />
+                </span>
+              </span>
+            </span>
+          )}
           {!isTransaction && (
             <RowActionsMenu
               row={row}

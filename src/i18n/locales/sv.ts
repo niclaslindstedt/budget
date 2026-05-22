@@ -729,6 +729,7 @@ export const sv: Catalog = {
     clearValue: "Rensa värde",
     editRow: "Redigera rad",
     deleteRow: "Ta bort rad",
+    cannotDeleteHistory: "Historikposter kan inte tas bort",
     rowActions: "Radåtgärder",
     moreActions: "Fler åtgärder",
     recurring: "Återkommande post",

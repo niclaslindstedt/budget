@@ -735,6 +735,7 @@ export const en = {
     clearValue: "Clear value",
     editRow: "Edit row",
     deleteRow: "Delete row",
+    cannotDeleteHistory: "History entries can't be deleted",
     rowActions: "Row actions",
     moreActions: "More actions",
     recurring: "Recurring entry",
