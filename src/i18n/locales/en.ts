@@ -459,8 +459,7 @@ export const en = {
       numberPreview: "Preview",
       decimalSeparator: "Decimal separator",
       thousandsSeparator: "Thousands separator",
-      currencyTitle: "Currency",
-      currencyPreset: "Preset",
+      currencyPreset: "Currency",
       currencyCustom: "Custom…",
       currencyName: {
         nordicKr: "Nordic krona / krone / króna",
@@ -474,7 +473,6 @@ export const en = {
       currencyBefore: "Before amount",
       currencyAfter: "After amount",
       currencySpace: "Space between amount and token",
-      displayToggles: "Display",
       formatNumbers: "Group thousands when displaying numbers",
       showCurrency: "Show currency next to amounts",
       showDecimals: "Show decimal places",
