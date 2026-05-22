@@ -193,7 +193,7 @@ export function Modal({
       aria-labelledby={labelledBy}
       data-active-portal
       className={overlayClass}
-      onClick={(e) => {
+      onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
