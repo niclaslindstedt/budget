@@ -231,7 +231,9 @@ export function ComplexEntryModal({
           {/* Not a <label>: the fx toggle button is labelable, so wrapping
               the formula input in a <label> makes a tap on the formula
               field activate the fx button instead and toggle the mode off. */}
-          <div className="flex flex-col gap-1 sm:col-span-2">
+          <div
+            className={`flex flex-col gap-1${formulaMode ? " sm:col-span-2" : ""}`}
+          >
             <span className="flex items-center justify-between text-xs text-muted">
               <span>{t("complex.amount")}</span>
               <button
