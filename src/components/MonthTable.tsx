@@ -25,7 +25,6 @@ type Props = {
   balances: Map<string, number>;
   types: readonly EntryType[];
   categories: readonly Category[];
-  typeUsageById: ReadonlyMap<string, number>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   settings: Settings;
@@ -103,7 +102,6 @@ function MonthTableImpl({
   balances,
   types,
   categories,
-  typeUsageById,
   onCreateType,
   onCreateCategory,
   settings,
@@ -344,7 +342,6 @@ function MonthTableImpl({
                           balances={balances}
                           types={types}
                           categories={categories}
-                          typeUsageById={typeUsageById}
                           onCreateType={onCreateType}
                           onCreateCategory={onCreateCategory}
                           settings={settings}
@@ -372,7 +369,6 @@ function MonthTableImpl({
                       balances={balances}
                       types={types}
                       categories={categories}
-                      typeUsageById={typeUsageById}
                       onCreateType={onCreateType}
                       onCreateCategory={onCreateCategory}
                       settings={settings}

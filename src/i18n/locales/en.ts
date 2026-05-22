@@ -1474,9 +1474,9 @@ export const en = {
     clearType: "Clear type",
     newType: "New type",
     noTypesYet: "No types yet.",
+    noTypesInCategory: "No types in this category yet.",
     create: "Create",
-    mostUsed: "Most used",
-    unused: "Unused",
+    backToCategories: "All categories",
   },
 
   glyph: {

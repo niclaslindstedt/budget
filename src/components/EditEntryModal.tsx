@@ -29,10 +29,6 @@ type Props = {
   columns: Column[];
   categories: Category[];
   types: readonly EntryType[];
-  // Per-type usage counts so the picker can float popular labels to the
-  // top of its dropdown. Optional — the picker falls back to insertion
-  // order without it.
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.
@@ -111,7 +107,6 @@ export function EditEntryModal({
   columns,
   categories,
   types,
-  typeUsageById,
   settings,
   lastSeriesDate,
   historyHintPrefill,
@@ -332,7 +327,6 @@ export function EditEntryModal({
                   onSelect={setTypeId}
                   onCreate={onCreateType}
                   onCreateCategory={onCreateCategory}
-                  usageById={typeUsageById}
                 />
               </div>
               <label className="flex min-w-0 flex-col gap-1">
@@ -433,7 +427,6 @@ export function EditEntryModal({
                   onSelect={setTypeId}
                   onCreate={onCreateType}
                   onCreateCategory={onCreateCategory}
-                  usageById={typeUsageById}
                 />
               </div>
             </div>
@@ -504,7 +497,6 @@ export function EditEntryModal({
                 onSelect={setTypeId}
                 onCreate={onCreateType}
                 onCreateCategory={onCreateCategory}
-                usageById={typeUsageById}
               />
             </div>
             <RecurrenceForm

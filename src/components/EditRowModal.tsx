@@ -33,7 +33,6 @@ type Props = {
   columns: Column[];
   categories: readonly Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   // Last ISO date in the same series — defaults the "until" picker
   // when the user picks the future scope. `null` for one-off rows.
@@ -64,7 +63,6 @@ export function EditRowModal({
   columns,
   categories,
   types,
-  typeUsageById,
   settings,
   lastSeriesDate,
   onClose,
@@ -253,7 +251,6 @@ export function EditRowModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
-              usageById={typeUsageById}
               amountSign={pickerSign}
             />
           </div>

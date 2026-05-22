@@ -28,7 +28,6 @@ type Props = {
   entry: HistoryEntry | null;
   categories: readonly Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   onClose: () => void;
   onSubmit: (patch: {
@@ -44,7 +43,6 @@ export function HistoryEntryEditModal({
   entry,
   categories,
   types,
-  typeUsageById,
   settings,
   onClose,
   onSubmit,
@@ -136,7 +134,6 @@ export function HistoryEntryEditModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
-              usageById={typeUsageById}
             />
           </div>
         </div>

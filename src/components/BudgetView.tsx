@@ -506,20 +506,6 @@ export function BudgetView({
   const allCategoriesMerged = useMemo(() => allCategories(data), [data]);
   const allTypesMerged = useMemo(() => allTypes(data), [data]);
 
-  const typeUsageById = useMemo<ReadonlyMap<string, number>>(() => {
-    const map = new Map<string, number>();
-    for (const sheet of data.sheets) {
-      for (const item of sheet.items) {
-        if (item.type !== "accountBudget") continue;
-        for (const row of item.rows) {
-          if (typeof row.typeId !== "string") continue;
-          map.set(row.typeId, (map.get(row.typeId) ?? 0) + 1);
-        }
-      }
-    }
-    return map;
-  }, [data.sheets]);
-
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
   // browser shows its own generic confirmation prompt; we just have
@@ -2414,7 +2400,6 @@ export function BudgetView({
                 data={data}
                 types={allTypesMerged}
                 categories={allCategoriesMerged}
-                typeUsageById={typeUsageById}
                 onCreateType={onCreateType}
                 onCreateCategory={onCreateCategory}
                 accounts={data.accounts}
@@ -2613,7 +2598,6 @@ export function BudgetView({
         accounts={data.accounts}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setTransactionRequest(null)}
         onPromote={onPromoteTransaction}
@@ -2628,7 +2612,6 @@ export function BudgetView({
         initialDate={complexSeedDate}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         sheets={data.sheets}
         currentSheetId={activeSheet.id}
@@ -2654,7 +2637,6 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         lastSeriesDate={editLastSeriesDate}
         historyHintPrefill={editHistoryHintPrefill}
@@ -2672,7 +2654,6 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         lastSeriesDate={editRowLastSeriesDate}
         onClose={() => setEditRowPrompt(null)}
@@ -2686,7 +2667,6 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         initialSplits={splitInitialSplits}
         authoritativeAmount={splitAuthoritativeAmount}
@@ -2704,7 +2684,6 @@ export function BudgetView({
         existing={null}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
@@ -2716,7 +2695,6 @@ export function BudgetView({
         entry={historyEditEntry}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setHistoryEditPrompt(null)}
         onSubmit={onSubmitHistoryEdit}
@@ -2737,7 +2715,6 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        typeUsageById={typeUsageById}
         settings={data.settings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}

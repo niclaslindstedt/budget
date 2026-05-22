@@ -1,15 +1,14 @@
-import { useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronLeft, Plus, Tag, X } from "lucide-react";
 
 import { DEFAULT_CATEGORY_ID, TYPE_GLYPH_NAMES } from "../data/constants";
 import type { Category, EntryType } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
-import { displayTypeName } from "../i18n/preset-names";
+import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
 import { CategoryChip, CategoryCreator } from "./CategoryPicker";
 import { EntityChip } from "./EntityChip";
 import { EntityCreatorForm } from "./EntityCreatorForm";
-import { EntityPickerShell } from "./EntityPickerShell";
 import { FloatingPanel } from "./FloatingPanel";
 import { CategoryIconGlyph } from "./icons";
 
@@ -29,9 +28,10 @@ type Props = {
   // without firing whatever was clicked. Modals leave it undefined.
   rowId?: string;
   types: readonly EntryType[];
-  // Full set of selectable categories — used to group the dropdown
-  // listing and to populate the category picker inside the inline
-  // type creator. Required because every type belongs to a category.
+  // Full set of selectable categories — used to drive the first tier
+  // of the picker (the category list) and to populate the category
+  // dropdown inside the inline type creator. Required because every
+  // type belongs to a category.
   categories: readonly Category[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -41,11 +41,6 @@ type Props = {
   // creation flow. Optional — call sites that don't provide it leave
   // the category dropdown without a "Create category" footer row.
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
-  // Usage map (typeId → count) used to sort the dropdown so the most-
-  // used entries float to the top, like a country picker's "common"
-  // section. Optional — pickers without a known usage map fall back
-  // to insertion order.
-  usageById?: ReadonlyMap<string, number>;
   // Sign of the row's amount: "positive" hides expense-only types,
   // "negative" hides income-only types, "any"/undefined shows
   // everything. The currently selected type is always shown — once
@@ -67,6 +62,13 @@ type Props = {
   placeholder?: string;
 };
 
+// Two-tier picker: category list first, then a sliding type list per
+// category. The shell is bespoke rather than the shared
+// `EntityPickerShell` because the latter is built around a single flat
+// listbox; bending it to host an animated track with internal
+// navigation state would leak picker-specific concerns into a generic
+// component. The pattern below mirrors `CategorySelector` further down
+// this file — a button + `FloatingPanel` + plain `<ul role="listbox">`.
 export function TypePicker({
   rowId,
   types,
@@ -75,7 +77,6 @@ export function TypePicker({
   onSelect,
   onCreate,
   onCreateCategory,
-  usageById,
   amountSign,
   rowDate,
   rowDateColor,
@@ -92,129 +93,389 @@ export function TypePicker({
     (rowDescription && rowDescription.length > 0)
   );
 
-  // Pre-sort the list: most-used first (descending count), then
-  // alphabetical by display name as a stable tiebreaker. Sorting by
-  // the translated name keeps the order natural for the active
-  // language (preset "Bolån" sorts under B, not M from "Mortgage").
-  // When `usageById` is absent we fall back to insertion order so
-  // callers without usage data still render predictably.
-  //
-  // Filter pass before sort: when the row's amount sign is known
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [tier, setTier] = useState<"category" | "type">("category");
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const selected = useMemo(
+    () => types.find((ty) => ty.id === selectedId) ?? null,
+    [types, selectedId],
+  );
+
+  // Filter pass before grouping: when the row's amount sign is known
   // (positive → income context, negative → expense context), drop
   // types whose `kind` points the wrong way. The currently-selected
   // type bypasses the filter so an already-labelled row keeps its
   // chip visible while the user reconsiders.
-  const sortedTypes = useMemo(() => {
-    const filtered =
-      amountSign === "positive"
-        ? types.filter((tt) => tt.id === selectedId || tt.kind !== "expense")
-        : amountSign === "negative"
-          ? types.filter((tt) => tt.id === selectedId || tt.kind !== "income")
-          : types;
-    if (!usageById) return [...filtered];
-    return [...filtered].sort((a, b) => {
-      const ua = usageById.get(a.id) ?? 0;
-      const ub = usageById.get(b.id) ?? 0;
-      if (ua !== ub) return ub - ua;
-      return displayTypeName(a, t).localeCompare(displayTypeName(b, t));
-    });
-  }, [types, usageById, amountSign, selectedId, t]);
+  const availableTypes = useMemo(() => {
+    if (amountSign === "positive") {
+      return types.filter(
+        (ty) => ty.id === selectedId || ty.kind !== "expense",
+      );
+    }
+    if (amountSign === "negative") {
+      return types.filter((ty) => ty.id === selectedId || ty.kind !== "income");
+    }
+    return types;
+  }, [types, amountSign, selectedId]);
 
-  // Compute the boundary index where unused types start, so the
-  // shell can drop "Most used" / "Unused" dividers around the split.
-  // Only meaningful when usage data is present AND both groups have
-  // members — otherwise the dropdown is uniform and dividers would
-  // just be visual noise.
-  const splitIndex = useMemo(() => {
-    if (!usageById) return -1;
-    const firstUnused = sortedTypes.findIndex(
-      (ty) => (usageById.get(ty.id) ?? 0) === 0,
-    );
-    if (firstUnused <= 0 || firstUnused >= sortedTypes.length) return -1;
-    return firstUnused;
-  }, [sortedTypes, usageById]);
+  // Categories that have at least one available type. The selected
+  // type's category is always kept so the back-tap target never
+  // disappears under the user.
+  const visibleCategories = useMemo(() => {
+    const present = new Set<string>();
+    for (const ty of availableTypes) present.add(ty.categoryId);
+    if (selected) present.add(selected.categoryId);
+    return [...categories]
+      .filter((c) => present.has(c.id))
+      .sort((a, b) =>
+        displayCategoryName(a, t).localeCompare(displayCategoryName(b, t)),
+      );
+  }, [availableTypes, categories, selected, t]);
+
+  // Types inside the active category, alphabetical by translated name.
+  const typesInActiveCategory = useMemo(() => {
+    if (!activeCategoryId) return [];
+    return availableTypes
+      .filter((ty) => ty.categoryId === activeCategoryId)
+      .sort((a, b) =>
+        displayTypeName(a, t).localeCompare(displayTypeName(b, t)),
+      );
+  }, [availableTypes, activeCategoryId, t]);
+
+  const activeCategory = useMemo(
+    () => categories.find((c) => c.id === activeCategoryId) ?? null,
+    [categories, activeCategoryId],
+  );
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setCreating(false);
+  }, []);
+
+  const handleOpen = useCallback(() => {
+    if (open) {
+      close();
+      return;
+    }
+    // Re-entering the picker on a labelled row drops straight into
+    // that type's category with the existing selection checkmarked,
+    // so swapping within the same category stays one tap.
+    if (selected) {
+      setActiveCategoryId(selected.categoryId);
+      setTier("type");
+    } else {
+      setActiveCategoryId(null);
+      setTier("category");
+    }
+    setOpen(true);
+  }, [open, close, selected]);
+
+  const handlePickType = useCallback(
+    (id: string | null) => {
+      onSelect(id);
+      close();
+    },
+    [onSelect, close],
+  );
+
+  const handlePickCategory = useCallback((id: string) => {
+    setActiveCategoryId(id);
+    setTier("type");
+  }, []);
+
+  const handleBackToCategories = useCallback(() => {
+    setTier("category");
+  }, []);
+
+  const beginCreating = useCallback(() => {
+    setOpen(false);
+    setCreating(true);
+  }, []);
+
+  const isChip = variant === "chip";
+  const showChevron = !isChip;
 
   return (
-    <EntityPickerShell
-      items={sortedTypes}
-      selectedId={selectedId}
-      onSelect={onSelect}
-      placement={PLACEMENT}
-      variant={variant}
-      rowId={rowId}
-      labels={{
-        addAriaLabel: t("type.addType"),
-        fieldPlaceholder: placeholderText,
-        empty: t("type.noTypesYet"),
-        clear: t("type.clearType"),
-        create: t("type.newType"),
-      }}
-      renderTrigger={(selected, isChip) => {
-        if (!selected) return null;
-        if (!isChip) return <TypeChip type={selected} compact={false} />;
-        // Inside a sheet row, the column is narrow on mobile — show
-        // the glyph alone in the type's colour so it's legible at
-        // glance, and only promote to the full pill on desktop where
-        // there's room for the name. Mirrors ReadonlyTypeCell.
-        return (
-          <>
-            <span
-              className="inline-flex items-center justify-center md:hidden"
-              style={{ color: selected.color }}
-              aria-hidden
+    <div ref={rootRef} className="relative inline-block w-full">
+      <button
+        type="button"
+        className={
+          isChip
+            ? "flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2 py-1 text-left font-mono text-xs hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            : "field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
+        }
+        onClick={handleOpen}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={!selected && isChip ? t("type.addType") : undefined}
+      >
+        {selected ? (
+          isChip ? (
+            <>
+              <span
+                className="inline-flex items-center justify-center md:hidden"
+                style={{ color: selected.color }}
+                aria-hidden
+              >
+                <CategoryIconGlyph name={selected.glyph} size={18} />
+              </span>
+              <span className="hidden md:inline-flex">
+                <TypeChip type={selected} compact />
+              </span>
+            </>
+          ) : (
+            <TypeChip type={selected} compact={false} />
+          )
+        ) : isChip ? (
+          // Dashed-outlined pill mirrors the shape of a filled
+          // TypeChip, so the empty state reads as "a slot you can
+          // fill" instead of a stray + glyph.
+          <span
+            className="inline-flex items-center justify-center rounded-full border border-dashed border-muted px-1.5 py-0.5 text-muted"
+            aria-hidden
+          >
+            <Plus size={12} aria-hidden focusable={false} />
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2 text-muted">
+            <Tag size={14} aria-hidden focusable={false} />
+            <span>{placeholderText}</span>
+          </span>
+        )}
+        {showChevron && (
+          <ChevronDown
+            size={12}
+            className="ml-auto shrink-0 text-muted"
+            aria-hidden
+            focusable={false}
+          />
+        )}
+      </button>
+
+      <FloatingPanel
+        open={open}
+        onClose={close}
+        triggerRef={rootRef}
+        placement={PLACEMENT}
+        rowId={rowId}
+      >
+        {hasHeader && (
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line bg-surface-3 px-3 py-2 font-mono text-xs">
+            {rowDate ? (
+              <span
+                className="font-bold tabular-nums whitespace-nowrap"
+                style={rowDateColor ? { color: rowDateColor } : undefined}
+              >
+                {rowDate}
+              </span>
+            ) : null}
+            {rowDescription ? (
+              <span className="min-w-0 break-words text-fg">
+                {rowDescription}
+              </span>
+            ) : null}
+          </div>
+        )}
+        <div className="relative overflow-hidden">
+          <div
+            className="flex w-[200%] transition-transform duration-200 ease-out"
+            style={{
+              transform:
+                tier === "category" ? "translateX(0%)" : "translateX(-50%)",
+            }}
+          >
+            <div
+              className={
+                tier === "category"
+                  ? "w-1/2 shrink-0"
+                  : "pointer-events-none w-1/2 shrink-0"
+              }
+              aria-hidden={tier !== "category"}
             >
-              <CategoryIconGlyph name={selected.glyph} size={18} />
-            </span>
-            <span className="hidden md:inline-flex">
-              <TypeChip type={selected} compact />
-            </span>
-          </>
-        );
-      }}
-      renderOption={(ty) => <TypeChip type={ty} compact />}
-      renderSeparatorBefore={
-        splitIndex > 0
-          ? (_item, index) => {
-              if (index === 0) return t("type.mostUsed");
-              if (index === splitIndex) return t("type.unused");
-              return null;
-            }
-          : undefined
-      }
-      renderHeader={
-        hasHeader
-          ? () => (
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line bg-surface-3 px-3 py-2 font-mono text-xs">
-                {rowDate ? (
-                  <span
-                    className="font-bold tabular-nums whitespace-nowrap"
-                    style={rowDateColor ? { color: rowDateColor } : undefined}
-                  >
-                    {rowDate}
-                  </span>
-                ) : null}
-                {rowDescription ? (
-                  <span className="min-w-0 break-words text-fg">
-                    {rowDescription}
-                  </span>
-                ) : null}
-              </div>
-            )
-          : undefined
-      }
-      renderCreator={(done) => (
+              <CategoryPane
+                categories={visibleCategories}
+                selectedCategoryId={selected?.categoryId ?? null}
+                onPick={handlePickCategory}
+                emptyLabel={t("type.noTypesYet")}
+              />
+            </div>
+            <div
+              className={
+                tier === "type"
+                  ? "w-1/2 shrink-0"
+                  : "pointer-events-none w-1/2 shrink-0"
+              }
+              aria-hidden={tier !== "type"}
+            >
+              <TypePane
+                category={activeCategory}
+                types={typesInActiveCategory}
+                selectedId={selectedId}
+                onBack={handleBackToCategories}
+                onPick={handlePickType}
+                onClear={selected ? () => handlePickType(null) : undefined}
+                onCreate={beginCreating}
+                backLabel={t("type.backToCategories")}
+                clearLabel={t("type.clearType")}
+                createLabel={t("type.newType")}
+                emptyLabel={t("type.noTypesInCategory")}
+              />
+            </div>
+          </div>
+        </div>
+      </FloatingPanel>
+      {creating && (
         <TypeCreator
           categories={categories}
+          initialCategoryId={activeCategoryId}
           onCreateCategory={onCreateCategory}
-          onCancel={done}
+          onCancel={close}
           onSubmit={(draft) => {
             const created = onCreate(draft);
             onSelect(created.id);
-            done();
+            close();
           }}
         />
       )}
-    />
+    </div>
+  );
+}
+
+function CategoryPane({
+  categories,
+  selectedCategoryId,
+  onPick,
+  emptyLabel,
+}: {
+  categories: readonly Category[];
+  selectedCategoryId: string | null;
+  onPick: (id: string) => void;
+  emptyLabel: string;
+}) {
+  return (
+    <ul role="listbox" className="max-h-72 overflow-auto py-1">
+      {categories.length === 0 && (
+        <li className="px-3 py-2 text-xs text-muted">{emptyLabel}</li>
+      )}
+      {categories.map((cat) => (
+        <li key={cat.id}>
+          <button
+            type="button"
+            role="option"
+            aria-selected={cat.id === selectedCategoryId}
+            onClick={() => onPick(cat.id)}
+            className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            <CategoryChip category={cat} compact />
+            <ChevronDown
+              size={12}
+              className="ml-auto shrink-0 -rotate-90 text-muted"
+              aria-hidden
+              focusable={false}
+            />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TypePane({
+  category,
+  types,
+  selectedId,
+  onBack,
+  onPick,
+  onClear,
+  onCreate,
+  backLabel,
+  clearLabel,
+  createLabel,
+  emptyLabel,
+}: {
+  category: Category | null;
+  types: readonly EntryType[];
+  selectedId: string | null;
+  onBack: () => void;
+  onPick: (id: string) => void;
+  onClear?: () => void;
+  onCreate?: () => void;
+  backLabel: string;
+  clearLabel: string;
+  createLabel: string;
+  emptyLabel: string;
+}) {
+  return (
+    <ul role="listbox" className="max-h-72 overflow-auto py-1">
+      <li>
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label={backLabel}
+          className="flex w-full cursor-pointer items-center gap-2 border-0 border-b border-line bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        >
+          <ChevronLeft size={14} aria-hidden focusable={false} />
+          {category ? (
+            <CategoryChip category={category} compact />
+          ) : (
+            <span>{backLabel}</span>
+          )}
+        </button>
+      </li>
+      {types.length === 0 && (
+        <li className="px-3 py-2 text-xs text-muted">{emptyLabel}</li>
+      )}
+      {types.map((ty) => (
+        <Fragment key={ty.id}>
+          <li>
+            <button
+              type="button"
+              role="option"
+              aria-selected={ty.id === selectedId}
+              onClick={() => onPick(ty.id)}
+              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              <TypeChip type={ty} compact />
+              {ty.id === selectedId && (
+                <Check
+                  size={14}
+                  className="ml-auto text-accent"
+                  aria-hidden
+                  focusable={false}
+                />
+              )}
+            </button>
+          </li>
+        </Fragment>
+      ))}
+      {onClear && (
+        <li>
+          <button
+            type="button"
+            onClick={onClear}
+            className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            <X size={12} aria-hidden focusable={false} />
+            {clearLabel}
+          </button>
+        </li>
+      )}
+      {onCreate && (
+        <li className="mt-1 border-t border-line">
+          <button
+            type="button"
+            onClick={onCreate}
+            className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            <Plus size={14} aria-hidden focusable={false} />
+            {createLabel}
+          </button>
+        </li>
+      )}
+    </ul>
   );
 }
 
@@ -238,23 +499,28 @@ export function TypeChip({
 
 function TypeCreator({
   categories,
+  initialCategoryId,
   onCreateCategory,
   onCancel,
   onSubmit,
 }: {
   categories: readonly Category[];
+  initialCategoryId: string | null;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
   onCancel: () => void;
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
   const t = useT();
-  // Default to the catch-all "Other" preset so the create form always
-  // has a valid selection — the user can change it before submitting.
-  const [categoryId, setCategoryId] = useState<string>(
-    categories.some((c) => c.id === DEFAULT_CATEGORY_ID)
-      ? DEFAULT_CATEGORY_ID
-      : (categories[0]?.id ?? DEFAULT_CATEGORY_ID),
-  );
+  // Pre-fill with the category the user was browsing when they tapped
+  // "New type" so the form lines up with intent. Falls back to the
+  // catch-all "Other" preset when nothing was active.
+  const [categoryId, setCategoryId] = useState<string>(() => {
+    if (initialCategoryId && categories.some((c) => c.id === initialCategoryId))
+      return initialCategoryId;
+    if (categories.some((c) => c.id === DEFAULT_CATEGORY_ID))
+      return DEFAULT_CATEGORY_ID;
+    return categories[0]?.id ?? DEFAULT_CATEGORY_ID;
+  });
 
   return (
     <EntityCreatorForm

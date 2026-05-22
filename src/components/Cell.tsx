@@ -55,7 +55,6 @@ type Props = {
   // never reach the editable branch where they'd be consulted.
   types?: readonly EntryType[];
   categories?: readonly Category[];
-  typeUsageById?: ReadonlyMap<string, number>;
   onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
   // True when this row is a synthesized side of a Transaction. Disables
@@ -124,7 +123,6 @@ function CellImpl({
   entryType,
   types,
   categories,
-  typeUsageById,
   onCreateType,
   onCreateCategory,
   isTransaction,
@@ -213,7 +211,6 @@ function CellImpl({
               types={types ?? []}
               categories={categories ?? []}
               entryType={entryType ?? null}
-              typeUsageById={typeUsageById}
               rowDate={rowDate}
               rowDateColor={rowDateColor}
               rowDescription={rowDescription}
@@ -318,7 +315,6 @@ function CellImpl({
           types={types ?? []}
           categories={categories ?? []}
           entryType={entryType ?? null}
-          typeUsageById={typeUsageById}
           amountSign={amountSign}
           rowDate={rowDate}
           rowDateColor={rowDateColor}
@@ -1134,7 +1130,6 @@ function TypePickerCell({
   types,
   categories,
   entryType,
-  typeUsageById,
   amountSign,
   rowDate,
   rowDateColor,
@@ -1148,7 +1143,6 @@ function TypePickerCell({
   types: readonly EntryType[];
   categories: readonly Category[];
   entryType: EntryType | null;
-  typeUsageById?: ReadonlyMap<string, number>;
   amountSign?: "positive" | "negative" | "any";
   rowDate?: string;
   rowDateColor?: string;
@@ -1165,7 +1159,6 @@ function TypePickerCell({
         types={types}
         categories={categories}
         selectedId={entryType?.id ?? null}
-        usageById={typeUsageById}
         amountSign={amountSign}
         rowDate={rowDate}
         rowDateColor={rowDateColor}

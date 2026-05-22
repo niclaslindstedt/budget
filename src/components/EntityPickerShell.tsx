@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
 import type { FloatingPlacement } from "../hooks";
@@ -49,12 +49,6 @@ type Props<T extends { id: string }> = {
   // creator is open (the form replaces the listbox entirely).
   renderHeader?: () => ReactNode;
 
-  // Optional separator rendered before the item at `index`. Used to
-  // insert section dividers ("Most used" vs "Unused") between groups
-  // without forcing the caller to flatten its data into sections.
-  // Return `null` to skip a position.
-  renderSeparatorBefore?: (item: T, index: number) => ReactNode | null;
-
   labels: Labels;
   placement: FloatingPlacement;
   variant?: "chip" | "field";
@@ -74,7 +68,6 @@ export function EntityPickerShell<T extends { id: string }>({
   renderOption,
   renderCreator,
   renderHeader,
-  renderSeparatorBefore,
   labels,
   placement,
   variant = "chip",
@@ -165,40 +158,27 @@ export function EntityPickerShell<T extends { id: string }>({
           {items.length === 0 && (
             <li className="px-3 py-2 text-xs text-muted">{labels.empty}</li>
           )}
-          {items.map((item, index) => {
-            const separator = renderSeparatorBefore?.(item, index);
-            return (
-              <Fragment key={item.id}>
-                {separator ? (
-                  <li
-                    role="presentation"
-                    className="px-3 pt-2 pb-1 font-mono text-[0.65rem] tracking-wider text-muted uppercase select-none first:pt-1"
-                  >
-                    {separator}
-                  </li>
-                ) : null}
-                <li>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={item.id === selectedId}
-                    onClick={() => handlePick(item.id)}
-                    className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                  >
-                    {renderOption(item)}
-                    {item.id === selectedId && (
-                      <Check
-                        size={14}
-                        className="ml-auto text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                    )}
-                  </button>
-                </li>
-              </Fragment>
-            );
-          })}
+          {items.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={item.id === selectedId}
+                onClick={() => handlePick(item.id)}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                {renderOption(item)}
+                {item.id === selectedId && (
+                  <Check
+                    size={14}
+                    className="ml-auto text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                )}
+              </button>
+            </li>
+          ))}
           {selectedId && labels.clear && (
             <li>
               <button

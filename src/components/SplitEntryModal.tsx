@@ -37,7 +37,6 @@ type Props = {
   columns: Column[];
   categories: readonly Category[];
   types: readonly EntryType[];
-  typeUsageById?: ReadonlyMap<string, number>;
   settings: Settings;
   // Optional pre-fill for the splits list. Used when the row already
   // carries a saved split decomposition (e.g. a history entry whose
@@ -101,7 +100,6 @@ export function SplitEntryModal({
   columns,
   categories,
   types,
-  typeUsageById,
   settings,
   initialSplits,
   authoritativeAmount,
@@ -365,7 +363,6 @@ export function SplitEntryModal({
                       onSelect={(id) => updateSplit(s.uiId, { typeId: id })}
                       onCreate={onCreateType}
                       onCreateCategory={onCreateCategory}
-                      usageById={typeUsageById}
                     />
                   </div>
                 </div>
