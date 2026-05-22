@@ -53,6 +53,7 @@ const storageTabLog = createLogger("settings-storage");
 import { Button, Checkbox, ClearableTextInput, SelectPicker } from "../form";
 import { ImportExportControls } from "../ImportExportControls";
 import { LanguagePicker } from "../LanguagePicker";
+import { DeleteAccountForm } from "./DeleteAccountForm";
 import { CategoriesAndTypesAdmin } from "./admin";
 
 type CloudId = "dropbox" | "gdrive";
@@ -405,6 +406,7 @@ export function StorageTab({
   folderReconnectNeeded,
   encryption,
   isGuest,
+  username,
   data,
   onImport,
   backupsSupported,
@@ -424,6 +426,7 @@ export function StorageTab({
   onSetCloudReauthAutoOpen,
   cloudOfflineMode,
   onSetCloudOfflineMode,
+  onDeleteAccount,
 }: {
   draft: Settings;
   backend: BackendId;
@@ -434,6 +437,7 @@ export function StorageTab({
   folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
   isGuest: boolean;
+  username: string;
   data: UserData;
   onImport: (data: UserData) => void;
   backupsSupported: boolean;
@@ -453,6 +457,7 @@ export function StorageTab({
   onSetCloudReauthAutoOpen: (on: boolean) => void;
   cloudOfflineMode: boolean;
   onSetCloudOfflineMode: (on: boolean) => void;
+  onDeleteAccount: (password: string) => Promise<void>;
 }) {
   const t = useT();
   // OAuth errors from the Google Drive popup land here. The GIS
@@ -680,6 +685,14 @@ export function StorageTab({
             {t("settings.session.timeoutHint")}
           </p>
         </Field>
+      </Section>
+
+      <Section title={t("settings.storage.dangerZoneTitle")}>
+        <DeleteAccountForm
+          username={username}
+          isGuest={isGuest}
+          onConfirm={onDeleteAccount}
+        />
       </Section>
     </>
   );

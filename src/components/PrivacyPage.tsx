@@ -12,7 +12,7 @@ export function PrivacyPage() {
       <article className="mx-auto flex w-full max-w-2xl flex-col gap-6 text-sm leading-relaxed">
         <header className="flex flex-col gap-3">
           <a
-            href="/"
+            href={import.meta.env.BASE_URL}
             className="inline-flex items-center gap-1.5 self-start text-xs text-link hover:underline"
           >
             <ArrowLeft size={14} aria-hidden focusable={false} />
