@@ -9,10 +9,10 @@ import {
   SHEET_TYPES,
 } from "../data/constants";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
+import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
-import { DismissBackdrop } from "./DismissBackdrop";
+import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableTextInput } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
@@ -308,6 +308,16 @@ export function SheetModal({
   );
 }
 
+// Full-width dropdown anchored to the trigger's left edge. Routed
+// through `FloatingPanel` so the menu's portal lifts it out of the
+// SheetModal's z-50 stacking context, which would otherwise cap the
+// menu options against the dismiss backdrop and swallow every tap.
+const ACCOUNT_PICKER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 function AccountPicker({
   value,
   accounts,
@@ -323,17 +333,17 @@ function AccountPicker({
   onClose: () => void;
   onPick: (value: string) => void;
 }) {
+  const triggerRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
 
   return (
-    <div className="relative">
-      {open && <DismissBackdrop onDismiss={onClose} />}
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span className="text-muted">
           <Wallet size={16} aria-hidden focusable={false} />
@@ -348,11 +358,13 @@ function AccountPicker({
           focusable={false}
         />
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute left-0 right-0 z-[60] mt-1 max-h-64 overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={ACCOUNT_PICKER_PLACEMENT}
+      >
+        <ul role="listbox" className="max-h-64 overflow-auto py-1">
           <AccountOption
             label="No account"
             icon={<Wallet size={16} aria-hidden focusable={false} />}
@@ -379,7 +391,7 @@ function AccountPicker({
             </button>
           </li>
         </ul>
-      )}
+      </FloatingPanel>
     </div>
   );
 }
@@ -419,6 +431,16 @@ function AccountOption({
   );
 }
 
+// Same `FloatingPanel` rationale as `AccountPicker` above — the sheet
+// type picker lives inside the SheetModal's z-50 stacking context, so
+// rendering its option list inline would cap its z-index against the
+// dismiss backdrop.
+const SHEET_TYPE_PICKER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 function TypePicker({
   value,
   open,
@@ -434,17 +456,17 @@ function TypePicker({
   onClose: () => void;
   onPick: (next: SheetType) => void;
 }) {
+  const triggerRef = useRef<HTMLDivElement>(null);
   const selected = SHEET_TYPES.find((t) => t.id === value) ?? SHEET_TYPES[0];
 
   return (
-    <div className="relative">
-      {open && <DismissBackdrop onDismiss={onClose} />}
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span className="text-muted">
           <CategoryIconGlyph name={selected.glyph} size={16} />
@@ -457,11 +479,13 @@ function TypePicker({
           focusable={false}
         />
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute left-0 right-0 z-[60] mt-1 overflow-hidden rounded border border-line bg-surface-2 py-1 shadow-lg"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={SHEET_TYPE_PICKER_PLACEMENT}
+      >
+        <ul role="listbox" className="overflow-hidden py-1">
           {SHEET_TYPES.map((opt) => {
             const isSelected = opt.id === value;
             // Singleton enforcement: only one Accounts sheet can exist
@@ -503,7 +527,7 @@ function TypePicker({
             );
           })}
         </ul>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

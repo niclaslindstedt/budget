@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Download, Wallet } from "lucide-react";
 
+import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
-import { DismissBackdrop } from "./DismissBackdrop";
+import { FloatingPanel } from "./FloatingPanel";
 import type { Account } from "../data/types";
 import type {
   AccountsDownloadPrefs,
@@ -434,6 +435,15 @@ function AccountsDownloadModal({
   );
 }
 
+// Routed through `FloatingPanel` so the list lifts out of the
+// DownloadModal's z-50 stacking context — otherwise its options would
+// render underneath the dismiss backdrop.
+const FORMAT_PICKER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 180 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 function FormatPicker({
   value,
   open,
@@ -448,6 +458,7 @@ function FormatPicker({
   onPick: (next: BudgetDownloadFormat) => void;
 }) {
   const t = useT();
+  const triggerRef = useRef<HTMLDivElement>(null);
   const options: { id: BudgetDownloadFormat; label: string }[] = [
     { id: "csv", label: t("download.format.csv") },
     { id: "xlsx", label: t("download.format.xlsx") },
@@ -455,14 +466,13 @@ function FormatPicker({
   const selected = options.find((o) => o.id === value) ?? options[0];
 
   return (
-    <div className="relative">
-      {open && <DismissBackdrop onDismiss={onClose} />}
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={onToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
       >
         <span className="flex-1 truncate">{selected.label}</span>
         <ChevronDown
@@ -472,11 +482,13 @@ function FormatPicker({
           focusable={false}
         />
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute left-0 right-0 z-[60] mt-1 overflow-hidden rounded border border-line bg-surface-2 py-1 shadow-lg"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={FORMAT_PICKER_PLACEMENT}
+      >
+        <ul role="listbox" className="overflow-hidden py-1">
           {options.map((opt) => (
             <li key={opt.id}>
               <button
@@ -499,7 +511,7 @@ function FormatPicker({
             </li>
           ))}
         </ul>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

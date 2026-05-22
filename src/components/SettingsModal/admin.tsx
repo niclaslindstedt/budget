@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -31,12 +31,13 @@ import type {
   EntryType,
   EntryTypeKind,
 } from "../../data/types";
+import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { displayCategoryName } from "../../i18n/preset-names";
 import { CategoryChip } from "../CategoryPicker";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { DismissBackdrop } from "../DismissBackdrop";
+import { FloatingPanel } from "../FloatingPanel";
 import { ClearableTextInput } from "../form";
 import { GlyphGrid } from "../GlyphGrid";
 import { TypeChip } from "../TypePicker";
@@ -763,6 +764,17 @@ function KindToggle({
   );
 }
 
+// Same-width-as-trigger dropdown anchored to the left edge. Routed
+// through `FloatingPanel` (not an inline `absolute` div) because this
+// dropdown lives inside the SettingsModal, whose z-50 stacking context
+// would otherwise cap the menu's z-index against the dismiss backdrop
+// and swallow every tap on a category option.
+const CATEGORY_DROPDOWN_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 // Compact custom dropdown for picking a category inside the type
 // editor. Avoids the native `<select>` so the editor stays in the
 // project's monospaced look (see the "Always use custom dropdowns"
@@ -778,16 +790,16 @@ function CategoryDropdown({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
-    <div className="relative">
-      {open && <DismissBackdrop onDismiss={() => setOpen(false)} />}
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
       >
         {selected ? (
           <CategoryChip category={selected} compact />
@@ -803,11 +815,13 @@ function CategoryDropdown({
           focusable={false}
         />
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={CATEGORY_DROPDOWN_PLACEMENT}
+      >
+        <ul role="listbox" className="max-h-60 overflow-auto py-1">
           {categories.map((c) => (
             <li key={c.id}>
               <button
@@ -833,7 +847,7 @@ function CategoryDropdown({
             </li>
           ))}
         </ul>
-      )}
+      </FloatingPanel>
     </div>
   );
 }

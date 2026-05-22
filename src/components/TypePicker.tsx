@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 import { DEFAULT_CATEGORY_ID, TYPE_GLYPH_NAMES } from "../data/constants";
@@ -7,10 +7,10 @@ import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayTypeName } from "../i18n/preset-names";
 import { CategoryChip } from "./CategoryPicker";
-import { DismissBackdrop } from "./DismissBackdrop";
 import { EntityChip } from "./EntityChip";
 import { EntityCreatorForm } from "./EntityCreatorForm";
 import { EntityPickerShell } from "./EntityPickerShell";
+import { FloatingPanel } from "./FloatingPanel";
 import { CategoryIconGlyph } from "./icons";
 
 // Mirrors CategoryPicker: prefer aligning the dropdown's right edge
@@ -280,6 +280,17 @@ function TypeCreator({
 // own colour + glyph so the button surfaces a chip preview; the
 // listbox is a plain button + ul to stay consistent with the rest of
 // the project's custom dropdowns (no native `<select>`).
+// Same-width-as-trigger dropdown anchored to the left edge. Routed
+// through `FloatingPanel` (not an inline `absolute` div) because this
+// selector lives inside the `EntityCreatorForm` Modal, whose z-50
+// stacking context would otherwise cap the menu's z-index against the
+// dismiss backdrop and swallow every tap on a category option.
+const CATEGORY_SELECTOR_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 function CategorySelector({
   categories,
   value,
@@ -291,16 +302,16 @@ function CategorySelector({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const selected = categories.find((c) => c.id === value) ?? null;
   return (
-    <div className="relative">
-      {open && <DismissBackdrop onDismiss={() => setOpen(false)} />}
+    <div ref={triggerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="field-input relative z-[60] flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1 text-left text-sm hover:border-accent focus-visible:outline-none"
       >
         {selected ? (
           <CategoryChip category={selected} compact />
@@ -314,11 +325,13 @@ function CategorySelector({
           focusable={false}
         />
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface-2 py-1 shadow-lg"
-        >
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={CATEGORY_SELECTOR_PLACEMENT}
+      >
+        <ul role="listbox" className="max-h-60 overflow-auto py-1">
           {categories.map((c) => (
             <li key={c.id}>
               <button
@@ -344,7 +357,7 @@ function CategorySelector({
             </li>
           ))}
         </ul>
-      )}
+      </FloatingPanel>
     </div>
   );
 }
