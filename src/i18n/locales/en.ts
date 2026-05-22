@@ -702,6 +702,7 @@ export const en = {
     date: "Date",
     type: "Type",
     category: "Category",
+    actions: "Actions",
     column: "Column",
     addColumn: "Add column",
     removeColumn: "Remove column",
