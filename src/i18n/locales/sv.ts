@@ -451,8 +451,7 @@ export const sv: Catalog = {
       numberPreview: "Förhandsvisning",
       decimalSeparator: "Decimaltecken",
       thousandsSeparator: "Tusentalsavgränsare",
-      currencyTitle: "Valuta",
-      currencyPreset: "Förval",
+      currencyPreset: "Valuta",
       currencyCustom: "Anpassad…",
       currencyName: {
         nordicKr: "Nordisk krona / krone / króna",
@@ -466,7 +465,6 @@ export const sv: Catalog = {
       currencyBefore: "Före beloppet",
       currencyAfter: "Efter beloppet",
       currencySpace: "Mellanslag mellan belopp och tecken",
-      displayToggles: "Visning",
       formatNumbers: "Gruppera tusental vid visning",
       showCurrency: "Visa valuta intill belopp",
       showDecimals: "Visa decimaler",

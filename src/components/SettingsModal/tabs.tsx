@@ -42,7 +42,7 @@ import type {
   EncryptionMode,
 } from "../../storage/backend-preference";
 import { IS_PREVIEW } from "../../utils/build-env";
-import { formatNumber, withCurrency } from "../../utils/format";
+import { formatAmount } from "../../utils/format";
 import {
   clearLogs,
   createLogger,
@@ -239,7 +239,13 @@ export function FormatTab({
         </Field>
       </Section>
 
-      <Section title={t("settings.format.currencyTitle")}>
+      <Section title={t("settings.format.numberTitle")}>
+        <Field label={t("settings.format.numberPreview")}>
+          {numberPreviewSamples.map((sample) => (
+            <Preview key={sample}>{formatAmount(sample, draft)}</Preview>
+          ))}
+        </Field>
+
         <Field label={t("settings.format.currencyPreset")}>
           <SelectPicker
             value={currencyPresetId}
@@ -258,9 +264,6 @@ export function FormatTab({
             ariaLabel={t("settings.format.currencyPreset")}
             triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
           />
-          <Preview>
-            {withCurrency("1 234", { ...draft, showCurrency: true })}
-          </Preview>
         </Field>
 
         {showCustomCurrency && (
@@ -304,19 +307,6 @@ export function FormatTab({
             />
           </>
         )}
-        <ToggleRow
-          label={t("settings.format.showCurrency")}
-          checked={draft.showCurrency}
-          onChange={(v) => onUpdate("showCurrency", v)}
-        />
-      </Section>
-
-      <Section title={t("settings.format.numberTitle")}>
-        <Field label={t("settings.format.numberPreview")}>
-          {numberPreviewSamples.map((sample) => (
-            <Preview key={sample}>{formatNumber(sample, draft)}</Preview>
-          ))}
-        </Field>
 
         <Field label={t("settings.format.decimalSeparator")}>
           <div className="inline-flex overflow-hidden rounded border border-line">
@@ -377,6 +367,11 @@ export function FormatTab({
           label={t("settings.format.formatNumbers")}
           checked={draft.formatNumbers}
           onChange={(v) => onUpdate("formatNumbers", v)}
+        />
+        <ToggleRow
+          label={t("settings.format.showCurrency")}
+          checked={draft.showCurrency}
+          onChange={(v) => onUpdate("showCurrency", v)}
         />
         <ToggleRow
           label={t("settings.format.showDecimals")}
