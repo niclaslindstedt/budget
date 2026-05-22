@@ -854,6 +854,13 @@ export const sv: Catalog = {
       "Generera framtida poster för den här handlaren och etikettera tidigare poster från din importerade historik.",
     promoteHistoryFooter:
       "Tidigare historikposter som matchar denna handlare tar över beskrivningen och typen ovan. Bankens originaltext behålls — endast etiketten på skärmen ändras.",
+    applyToHistoricLabelOne:
+      "Tillämpa även etiketten och typen på {n} tidigare matchning",
+    applyToHistoricLabelOther:
+      "Tillämpa även etiketten och typen på {n} tidigare matchningar",
+    applyToHistoricDescription:
+      "Bankens originaltext behålls — endast etiketten på skärmen ändras.",
+    historicMatchesTitle: "Tidigare matchningar",
     promoteIntro:
       "Generera framtida poster från denna rad enligt en upprepningsregel. Den nuvarande raden behålls som den är och ingår i den nya serien.",
     promoteBackfillOne:

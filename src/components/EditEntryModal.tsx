@@ -6,7 +6,11 @@ import type { RecurrenceRule } from "../data/recurrence";
 import type { Category, Column, EntryType, Row, Settings } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
-import { formatAmountForInput, parseAmount } from "../utils/format";
+import {
+  formatAmount,
+  formatAmountForInput,
+  parseAmount,
+} from "../utils/format";
 import { Modal } from "./Modal";
 import {
   Button,
@@ -91,6 +95,10 @@ export type HistoryPromotion = {
   amount: number;
   typeId: string | null;
   dates: string[];
+  // When false, the merchant-hint stamp is skipped so past entries
+  // that share the merchant key keep their raw bank text. The future
+  // series is still minted either way.
+  applyToHistoric: boolean;
 };
 
 export type { EditPatch, EditScope } from "../data/action-payloads";
@@ -191,6 +199,10 @@ export function EditEntryModal({
 
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
+  // Default to applying the metadata overlay to historic matches so
+  // the legacy behaviour (always stamp the hint) is preserved when
+  // the user opens and submits without touching the checkbox.
+  const [applyToHistoric, setApplyToHistoric] = useState(true);
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
@@ -206,6 +218,7 @@ export function EditEntryModal({
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
     setRecurringDates([]);
     setRecurrenceResetKey((k) => k + 1);
+    setApplyToHistoric(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
 
@@ -267,6 +280,7 @@ export function EditEntryModal({
       amount: parsedAmount,
       typeId,
       dates: recurringDates,
+      applyToHistoric,
     });
   }
 
@@ -427,9 +441,49 @@ export function EditEntryModal({
                 onChange={handleRuleChange}
               />
             </div>
-            <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
-              {t("editEntry.promoteHistoryFooter")}
-            </p>
+            {historyMatches && historyMatches.length > 0 ? (
+              <fieldset className="mt-4 rounded border border-line bg-surface-3 p-3">
+                <legend className="px-1 text-xs text-muted">
+                  {t("editEntry.historicMatchesTitle")}
+                </legend>
+                <Checkbox
+                  checked={applyToHistoric}
+                  onChange={setApplyToHistoric}
+                  label={
+                    historyMatches.length === 1
+                      ? t("editEntry.applyToHistoricLabelOne", {
+                          n: historyMatches.length,
+                        })
+                      : t("editEntry.applyToHistoricLabelOther", {
+                          n: historyMatches.length,
+                        })
+                  }
+                  description={t("editEntry.applyToHistoricDescription")}
+                />
+                {applyToHistoric && (
+                  <ul className="mt-3 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border border-line bg-surface p-2 font-mono text-xs">
+                    {historyMatches.map((m) => (
+                      <li
+                        key={m.id}
+                        className="flex items-baseline gap-2 text-muted"
+                      >
+                        <span className="text-path tabular-nums">{m.date}</span>
+                        <span className="min-w-0 flex-1 truncate text-fg">
+                          {m.description}
+                        </span>
+                        <span className="tabular-nums text-meta">
+                          {formatAmount(m.amount, settings)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </fieldset>
+            ) : (
+              <p className="mt-3 rounded border border-line bg-surface-3 p-2 text-xs text-muted">
+                {t("editEntry.promoteHistoryFooter")}
+              </p>
+            )}
           </>
         ) : (
           <>

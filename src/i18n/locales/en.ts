@@ -859,6 +859,12 @@ export const en = {
       "Generate future entries for this merchant and label past entries from your imported history.",
     promoteHistoryFooter:
       "Past history entries that match this merchant will adopt the description and type above. The bank's original text is kept as-is — only the on-screen label changes.",
+    applyToHistoricLabelOne: "Also apply this label and type to {n} past match",
+    applyToHistoricLabelOther:
+      "Also apply this label and type to {n} past matches",
+    applyToHistoricDescription:
+      "The bank's original text is kept as-is — only the on-screen label changes.",
+    historicMatchesTitle: "Past matches",
     promoteIntro:
       "Generate future entries from this row using a recurrence rule. The current row stays as-is and joins the new series.",
     promoteBackfillOne:

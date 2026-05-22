@@ -1904,21 +1904,31 @@ export function BudgetView({
   // promote-target row's normalised description. Surfaced in the
   // EditEntryModal so the user sees which past entries will adopt
   // the typed label / type via the merchant-hint overlay. Skipped
-  // for history rows (their promote flow has its own backfill via
-  // the merchant-hint key the modal already writes) and for series
-  // rows (the modal is in edit-series mode, not promote).
+  // for series rows (the modal is in edit-series mode, not promote).
+  // For history-row promotions, the bucket key is derived from the
+  // source entry's raw bank text (the synthesized row's description
+  // cell may already carry a user override that doesn't normalise
+  // back to the bank text). For regular row promotions the bucket
+  // key comes from the description cell directly.
   const editHistoryMatches = useMemo<HistoryMatchPreview[] | null>(() => {
     const row = editPrompt?.row;
-    if (!row || row.historyEntryId || row.seriesId) return null;
+    if (!row || row.seriesId) return null;
     const accountId = activeItem.accountId;
     if (!accountId) return null;
-    const descId = findColumnByType(activeItem.columns, "description")?.id;
-    if (!descId) return null;
-    const rawDesc = row.cells[descId];
-    if (typeof rawDesc !== "string" || rawDesc.trim() === "") return null;
-    const targetKey = normaliseDescription(rawDesc);
-    if (targetKey.length < 3) return null;
     const entries = data.history[accountId] ?? [];
+    let targetKey: string;
+    if (row.historyEntryId) {
+      const entry = entries.find((e) => e.id === row.historyEntryId);
+      if (!entry) return null;
+      targetKey = normaliseDescription(entry.description);
+    } else {
+      const descId = findColumnByType(activeItem.columns, "description")?.id;
+      if (!descId) return null;
+      const rawDesc = row.cells[descId];
+      if (typeof rawDesc !== "string" || rawDesc.trim() === "") return null;
+      targetKey = normaliseDescription(rawDesc);
+    }
+    if (targetKey.length < 3) return null;
     const matches: HistoryMatchPreview[] = [];
     for (const e of entries) {
       if (e.hidden) continue;
@@ -2106,6 +2116,7 @@ export function BudgetView({
         amount: number;
         typeId: string | null;
         dates: string[];
+        applyToHistoric: boolean;
       },
     ) => {
       if (!activeBudget) return;
@@ -2119,6 +2130,7 @@ export function BudgetView({
         amount: promotion.amount,
         typeId: promotion.typeId,
         dates: promotion.dates,
+        applyToHistoric: promotion.applyToHistoric,
         now: Date.now(),
       });
       setEditPrompt(null);
