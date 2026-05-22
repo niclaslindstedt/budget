@@ -106,7 +106,7 @@ export function RowActionsMenu({
     });
   }
 
-  if (!isHistory && onToggleRowTransfer) {
+  if (onToggleRowTransfer) {
     items.push({
       key: "toggleTransfer",
       icon: row.isTransfer ? (

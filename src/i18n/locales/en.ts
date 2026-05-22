@@ -822,6 +822,11 @@ export const en = {
     makeEachRecurring: "Make each recurring",
     makeEachRecurringHint:
       "Replicate every selected row at the dates below; each becomes its own series.",
+    markAsTransfer: "Mark / unmark as transfer",
+    markAsTransferHint:
+      "When the hide-transfers setting is on, transfer rows are suppressed from the budget table. The amount still feeds the running balance.",
+    markAsTransferOn: "Mark every selected row as a transfer",
+    markAsTransferOff: "Unmark every selected row",
   },
 
   moveCopy: {
@@ -944,9 +949,6 @@ export const en = {
       "Renames just this one entry. The bank's record stays untouched " +
       "for reference. To relabel every entry with the same description, " +
       "use the pattern button instead.",
-    isTransfer: "This is a transfer between accounts",
-    isTransferHint:
-      "When the hide-transfers setting is on, this row is suppressed from the budget table. The amount still feeds the running balance.",
   },
 
   history: {

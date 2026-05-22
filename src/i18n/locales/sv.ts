@@ -817,6 +817,11 @@ export const sv: Catalog = {
     makeEachRecurring: "Gör var och en återkommande",
     makeEachRecurringHint:
       "Replikera varje markerad rad på datumen nedan; var och en blir en egen serie.",
+    markAsTransfer: "Markera / avmarkera som överföring",
+    markAsTransferHint:
+      "När inställningen ”Dölj överföringar” är på döljs överföringsrader från budgettabellen. Beloppet räknas fortfarande med i saldot.",
+    markAsTransferOn: "Markera varje vald rad som överföring",
+    markAsTransferOff: "Avmarkera varje vald rad",
   },
 
   moveCopy: {
@@ -941,9 +946,6 @@ export const sv: Catalog = {
       "Byter namn på bara denna post. Bankens text lämnas orörd så du " +
       "kan se vad som stod i kontoutdraget. För att etikettera alla " +
       "poster med samma beskrivning, använd mönsterknappen i stället.",
-    isTransfer: "Detta är en överföring mellan konton",
-    isTransferHint:
-      "När inställningen “Dölj överföringar” är på, döljs den här raden från budgettabellen. Beloppet räknas fortfarande med i saldot.",
   },
 
   history: {

@@ -29,6 +29,9 @@ export type BulkPatch = {
   typeId?: string | null;
   amount?: number;
   date?: string;
+  // `true` flags every row as an inter-account transfer; `false`
+  // clears the flag on every row; `undefined` leaves it alone.
+  isTransfer?: boolean;
 };
 
 export type EditPatch = {
