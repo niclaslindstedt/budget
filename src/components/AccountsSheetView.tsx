@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   Repeat,
+  Scissors,
   Upload,
   Wallet,
 } from "lucide-react";
@@ -41,6 +42,11 @@ type Props = {
   // Opens the read-only history viewer for the clicked account.
   // Only enabled when the account already has imported entries.
   onViewHistory: (accountId: string) => void;
+  // Opens the "cut history" modal scoped to the clicked account. Drops
+  // imported entries and cross-account transactions dated before a
+  // user-picked cutoff — useful when an account's purpose has changed
+  // and the old history is no longer relevant.
+  onCutHistory: (accountId: string) => void;
   // Opens the cross-account transfer-collapse modal. The link is
   // disabled when the detector finds nothing — no point sending the
   // user to an empty modal.
@@ -60,6 +66,7 @@ export function AccountsSheetView({
   onEditTransaction,
   onImportHistory,
   onViewHistory,
+  onCutHistory,
   onFindTransfers,
   onEditSheet,
   onDownloadSheet,
@@ -172,7 +179,7 @@ export function AccountsSheetView({
                 <th className="px-2 py-1.5 text-right">
                   {t("accountsSheet.balance")}
                 </th>
-                <th className="w-24 px-2 py-1.5"></th>
+                <th className="w-32 px-2 py-1.5"></th>
               </tr>
             </thead>
             <tbody>
@@ -192,6 +199,12 @@ export function AccountsSheetView({
                   ? { ...settings, currency: account.currency }
                   : settings;
                 const historyCount = data.history[account.id]?.length ?? 0;
+                const transactionsForAccount = data.transactions.filter(
+                  (tx) =>
+                    tx.fromAccountId === account.id ||
+                    tx.toAccountId === account.id,
+                ).length;
+                const canCut = historyCount > 0 || transactionsForAccount > 0;
                 return (
                   <tr
                     key={account.id}
@@ -273,7 +286,7 @@ export function AccountsSheetView({
                         </span>
                       )}
                     </td>
-                    <td className="w-24 px-2 py-2 text-right align-middle">
+                    <td className="w-32 px-2 py-2 text-right align-middle">
                       <div className="flex items-center justify-end gap-0.5">
                         <button
                           type="button"
@@ -303,6 +316,22 @@ export function AccountsSheetView({
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <History size={14} aria-hidden focusable={false} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canCut}
+                          onClick={() => onCutHistory(account.id)}
+                          aria-label={t("accountsSheet.cutHistoryAria", {
+                            name: account.name,
+                          })}
+                          title={
+                            canCut
+                              ? t("accountsSheet.cutHistoryTitle")
+                              : t("accountsSheet.nothingToCut")
+                          }
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Scissors size={14} aria-hidden focusable={false} />
                         </button>
                         <button
                           type="button"

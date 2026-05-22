@@ -4,6 +4,7 @@ import { AccountModal, type AccountDraft } from "./AccountModal";
 import { ActionHistoryModal } from "./ActionHistoryModal";
 import { UpdateBalanceModal } from "./UpdateBalanceModal";
 import { AccountsSheetView } from "./AccountsSheetView";
+import { CutAccountHistoryModal } from "./CutAccountHistoryModal";
 import { ApplySeriesEditDialog } from "./ApplySeriesEditDialog";
 import { BudgetLoading } from "./BudgetLoading";
 import { ChangelogModal } from "./ChangelogModal";
@@ -452,6 +453,10 @@ export function BudgetView({
     null,
   );
   const [viewHistoryForId, setViewHistoryForId] = useState<string | null>(null);
+  // Account id targeted by the cut-history modal, or null when closed.
+  // The modal drops imported entries and cross-account transactions
+  // dated before a user-chosen cutoff date.
+  const [cutHistoryForId, setCutHistoryForId] = useState<string | null>(null);
   // Post-import reconciliation modal state. Null = closed. Populated
   // when an import produces candidate merges or orphans the user
   // should triage; cleared on apply / cancel.
@@ -1284,6 +1289,28 @@ export function BudgetView({
   const onOpenViewHistory = useCallback((accountId: string) => {
     setViewHistoryForId(accountId);
   }, []);
+  const onOpenCutHistory = useCallback((accountId: string) => {
+    setCutHistoryForId(accountId);
+  }, []);
+  const cutHistoryAccount = useMemo(
+    () =>
+      cutHistoryForId
+        ? (data.accounts.find((a) => a.id === cutHistoryForId) ?? null)
+        : null,
+    [cutHistoryForId, data.accounts],
+  );
+  const onConfirmCutHistory = useCallback(
+    (cutoffDate: string) => {
+      if (!cutHistoryAccount) return;
+      dispatch({
+        type: "cutAccountHistory",
+        accountId: cutHistoryAccount.id,
+        cutoffDate,
+      });
+      setCutHistoryForId(null);
+    },
+    [cutHistoryAccount, dispatch],
+  );
   const importHistoryAccount = useMemo(
     () =>
       importHistoryForId
@@ -2407,6 +2434,7 @@ export function BudgetView({
               onEditTransaction={onOpenEditTransaction}
               onImportHistory={onOpenImportHistory}
               onViewHistory={onOpenViewHistory}
+              onCutHistory={onOpenCutHistory}
               onFindTransfers={onOpenTransferCollapse}
               onEditSheet={onOpenEditSheet}
               onDownloadSheet={onOpenDownloadSheet}
@@ -2601,6 +2629,16 @@ export function BudgetView({
         orphans={reconciliation?.orphans ?? []}
         paydayDay={reconciliation?.paydayDay ?? data.settings.startOfMonth}
         settings={data.settings}
+      />
+      <CutAccountHistoryModal
+        open={cutHistoryAccount !== null}
+        account={cutHistoryAccount}
+        history={
+          cutHistoryAccount ? (data.history[cutHistoryAccount.id] ?? []) : []
+        }
+        transactions={data.transactions}
+        onCancel={() => setCutHistoryForId(null)}
+        onConfirm={onConfirmCutHistory}
       />
       <HistoryModal
         open={viewHistoryAccount !== null}
