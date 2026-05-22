@@ -26,9 +26,9 @@ type Props = {
 
 // Single burger menu in the page header. Houses settings, account
 // actions, and the privacy / changelog / donate links. Undo, redo,
-// and select-mode live in the floating UndoRedoBar at the top of the
-// viewport; the danger-zone "Clear data" / "Delete account" action
-// lives in the Storage tab of Settings.
+// and select-mode live in the BottomBar at the foot of the viewport;
+// the danger-zone "Clear data" / "Delete account" action lives in
+// the Storage tab of Settings.
 // Right-anchored 16rem-wide panel that opens just below the burger.
 // The FloatingPanel hook clamps it into the viewport so it never
 // drops off-screen.

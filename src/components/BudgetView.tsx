@@ -7,7 +7,7 @@ import { AccountsSheetView } from "./AccountsSheetView";
 import { ApplySeriesEditDialog } from "./ApplySeriesEditDialog";
 import { BudgetLoading } from "./BudgetLoading";
 import { ChangelogModal } from "./ChangelogModal";
-import { BulkActionBar } from "./BulkActionBar";
+import { BottomBar } from "./BottomBar";
 import { BulkEditModal, type BulkPatch } from "./BulkEditModal";
 import { SheetModal, type SheetDraft } from "./SheetModal";
 import {
@@ -15,7 +15,6 @@ import {
   type TransactionDraft,
   type TransactionModalRequest,
 } from "./TransactionModal";
-import { SheetTabs } from "./SheetTabs";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
@@ -46,7 +45,6 @@ import {
 import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
 import { HeaderMenu } from "./HeaderMenu";
-import { UndoRedoBar } from "./UndoRedoBar";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal } from "./SettingsModal";
 import { SheetView } from "./SheetView";
@@ -2309,8 +2307,8 @@ export function BudgetView({
     // is translucent and samples page pixels for its tint, so the sheet
     // is allowed to extend behind it. `<main>` owns the bottom padding
     // — large enough that the AddRowButton at the foot of the last
-    // month clears both the safe-area band and the floating SheetTabs
-    // pill instead of ending its scroll under either.
+    // month clears both the safe-area band and the solid BottomBar
+    // instead of ending its scroll under either.
     <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 md:px-5">
       {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
@@ -2462,35 +2460,26 @@ export function BudgetView({
           )}
         </main>
         {status.kind === "loading" ? null : (
-          <>
-            <UndoRedoBar
-              canUndo={canUndo}
-              canRedo={canRedo}
-              selectMode={selectMode}
-              onUndo={undo}
-              onRedo={redo}
-              onOpenHistory={() => setActionHistoryOpen(true)}
-              onToggleSelectMode={onToggleSelectMode}
-            />
-            {selectMode ? (
-              <BulkActionBar
-                count={selectedIds.size}
-                onEdit={onBulkEdit}
-                onDelete={onBulkDelete}
-                onMove={onBulkMove}
-                onCopy={onBulkCopy}
-                onCancel={onCancelSelect}
-              />
-            ) : (
-              <SheetTabs
-                sheets={data.sheets}
-                activeSheetId={activeSheet.id}
-                onSelect={onSelectSheet}
-                onEdit={onOpenEditSheet}
-                onAdd={onOpenNewSheet}
-              />
-            )}
-          </>
+          <BottomBar
+            sheets={data.sheets}
+            activeSheetId={activeSheet.id}
+            onSelectSheet={onSelectSheet}
+            onEditSheet={onOpenEditSheet}
+            onAddSheet={onOpenNewSheet}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            selectMode={selectMode}
+            onUndo={undo}
+            onRedo={redo}
+            onOpenHistory={() => setActionHistoryOpen(true)}
+            onToggleSelectMode={onToggleSelectMode}
+            bulkSelectedCount={selectedIds.size}
+            onBulkEdit={onBulkEdit}
+            onBulkMove={onBulkMove}
+            onBulkCopy={onBulkCopy}
+            onBulkDelete={onBulkDelete}
+            onBulkCancel={onCancelSelect}
+          />
         )}
       </div>
       <SheetModal

@@ -136,10 +136,10 @@ function SheetRowImpl({
   const startY = useRef<number | null>(null);
   const moved = useRef(false);
   // Long-press → open the generic edit-row modal. Same coordinator
-  // pattern as `AddRowButton` / `SheetTabs`: the timer fires after
-  // LONG_PRESS_MS and `longPressTriggered` guards the trailing click
-  // so the tap that produced the long-press doesn't also fire a cell
-  // editor underneath the modal.
+  // pattern as `AddRowButton` / `BottomBar`'s sheet tabs: the timer
+  // fires after LONG_PRESS_MS and `longPressTriggered` guards the
+  // trailing click so the tap that produced the long-press doesn't
+  // also fire a cell editor underneath the modal.
   const longPressTimer = useRef<number | null>(null);
   const longPressTriggered = useRef(false);
   const longPressStartX = useRef(0);
