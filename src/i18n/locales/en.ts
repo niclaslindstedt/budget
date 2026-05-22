@@ -1201,6 +1201,8 @@ export const en = {
     everyMonthOn: "Every month on {day}",
     irregular: "Irregular",
     avgInterval: "~ every {days} days",
+    viewEntriesAria: "View entries for {description}",
+    entriesTitle: "Entries — {description}",
   },
 
   recurrenceForm: {
