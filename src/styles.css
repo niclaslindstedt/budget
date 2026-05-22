@@ -184,6 +184,125 @@
   --month-12: #985367;
 }
 
+/* Dracula — popular VS Code dark theme. Purple / pink / cyan
+   palette mirrored from the upstream theme, remapped to the budget
+   slot vocabulary (accent=green, meta=yellow/numbers, link=cyan,
+   path=purple/dates, flag=orange/amounts, pipe=pink/functions). */
+:root[data-theme="dracula"] {
+  --page-bg: #21222c;
+  --surface: #282a36;
+  --surface-2: #343746;
+  --surface-3: #191a21;
+  --fg: #f8f8f2;
+  --fg-bright: #ffffff;
+  --muted: #6272a4;
+  --accent: #50fa7b;
+  --meta: #f1fa8c;
+  --link: #8be9fd;
+  --path: #bd93f9;
+  --flag: #ffb86c;
+  --pipe: #ff79c6;
+  --danger: #ff5555;
+  --success: #50fa7b;
+  --positive: #a8ffb8;
+  --negative: #ffb3c5;
+  --line: #44475a;
+  /* Dracula's signature palette skews cool/violet, so the month wheel
+     leans into purples and pinks in autumn and winter, with the
+     accent-greens for spring and the lemon-yellow/orange family
+     covering summer. Pastel-saturated to read against the dark
+     surface. */
+  --month-1: #8be9fd;
+  --month-2: #bd93f9;
+  --month-3: #50fa7b;
+  --month-4: #a8ffb8;
+  --month-5: #ff79c6;
+  --month-6: #f1fa8c;
+  --month-7: #ffb86c;
+  --month-8: #ffa07a;
+  --month-9: #e8a0c8;
+  --month-10: #c891e0;
+  --month-11: #9d8cc9;
+  --month-12: #7e8bd0;
+}
+
+/* GitHub Dark Default — the editor-default GitHub theme adapted for
+   the budget. Lower-saturation than One Dark; deep near-black
+   backgrounds with the GitHub muted-blue-on-dark feel. */
+:root[data-theme="githubDark"] {
+  --page-bg: #010409;
+  --surface: #0d1117;
+  --surface-2: #161b22;
+  --surface-3: #010409;
+  --fg: #c9d1d9;
+  --fg-bright: #f0f6fc;
+  --muted: #8b949e;
+  --accent: #7ee787;
+  --meta: #d29922;
+  --link: #79c0ff;
+  --path: #56d4dd;
+  --flag: #ffa657;
+  --pipe: #d2a8ff;
+  --danger: #ff7b72;
+  --success: #7ee787;
+  --positive: #aff5b4;
+  --negative: #ffb8b3;
+  --line: #30363d;
+  /* GitHub Dark month wheel — closer to the One Dark wheel's
+     temperature progression but desaturated to match the theme's
+     calmer overall mood. */
+  --month-1: #79c0ff;
+  --month-2: #a5a3eb;
+  --month-3: #7ee787;
+  --month-4: #aff5b4;
+  --month-5: #f1828d;
+  --month-6: #f0d168;
+  --month-7: #ffa657;
+  --month-8: #ff966e;
+  --month-9: #e08572;
+  --month-10: #d97a6a;
+  --month-11: #b78fa5;
+  --month-12: #c285a5;
+}
+
+/* GitHub Light Default — the editor-default light GitHub theme. Pure
+   white surface, near-black foreground, the GitHub blues / greens /
+   reds we already know. */
+:root[data-theme="githubLight"] {
+  --page-bg: #f6f8fa;
+  --surface: #ffffff;
+  --surface-2: #eaeef2;
+  --surface-3: #d0d7de;
+  --fg: #1f2328;
+  --fg-bright: #0d1117;
+  --muted: #6e7781;
+  --accent: #1a7f37;
+  --meta: #9a6700;
+  --link: #0969da;
+  --path: #0550ae;
+  --flag: #bc4c00;
+  --pipe: #8250df;
+  --danger: #cf222e;
+  --success: #1a7f37;
+  --positive: #4ac26b;
+  --negative: #e5717f;
+  --line: #d0d7de;
+  /* GitHub Light needs deepened hues so the month dots read against
+     the bright surface, same trick the One Light wheel uses. */
+  --month-1: #0969da;
+  --month-2: #6e40c9;
+  --month-3: #1a7f37;
+  --month-4: #4ac26b;
+  --month-5: #cf222e;
+  --month-6: #9a6700;
+  --month-7: #bc4c00;
+  --month-8: #a04212;
+  --month-9: #8a3a1e;
+  --month-10: #953d20;
+  --month-11: #8250df;
+  --month-12: #8250a0;
+}
+
 /* System theme — follow the OS colour-scheme. Dark is the default
    (set in the unscoped `:root` above); only the light branch needs
    an explicit rule. */
