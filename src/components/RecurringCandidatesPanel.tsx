@@ -11,10 +11,11 @@ import type {
   MerchantHint,
   Settings,
 } from "../data/types";
-import { type TFunction, useT } from "../i18n";
+import { type TFunction, useLang, useT } from "../i18n";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Modal } from "./Modal";
 import { TypeChip } from "./TypePicker";
-import { formatNumber, withCurrency } from "../utils/format";
+import { formatDate, formatNumber, withCurrency } from "../utils/format";
 
 type Props = {
   // History entries for the budget's account. The panel runs detection
@@ -122,6 +123,7 @@ export function RecurringCandidatesPanel({
             <CandidateRow
               key={c.key}
               candidate={c}
+              history={history}
               suggestedType={suggestedType}
               settings={settings}
               onPromote={(rule, dates) =>
@@ -169,18 +171,21 @@ export function RecurringCandidatesPanel({
 
 function CandidateRow({
   candidate,
+  history,
   suggestedType,
   settings,
   onPromote,
   onDismiss,
 }: {
   candidate: RecurringCandidate;
+  history: readonly HistoryEntry[];
   suggestedType: EntryType | null;
   settings: Settings;
   onPromote: (rule: RecurrenceRule, dates: string[]) => void;
   onDismiss: () => void;
 }) {
   const t = useT();
+  const [entriesOpen, setEntriesOpen] = useState(false);
   const rule = useMemo<RecurrenceRule | null>(
     () => ruleFromCandidate(candidate),
     [candidate],
@@ -200,7 +205,14 @@ function CandidateRow({
 
   return (
     <li className="flex flex-col gap-2 rounded border border-line bg-surface px-3 py-2 sm:flex-row sm:items-center">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <button
+        type="button"
+        onClick={() => setEntriesOpen(true)}
+        aria-label={t("recurring.viewEntriesAria", {
+          description: candidate.description,
+        })}
+        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 rounded text-left hover:bg-surface-2"
+      >
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="truncate text-sm text-fg-bright">
             {candidate.description}
@@ -239,7 +251,7 @@ function CandidateRow({
             </>
           )}
         </div>
-      </div>
+      </button>
       <div className="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
@@ -263,7 +275,87 @@ function CandidateRow({
           <X size={12} aria-hidden focusable={false} />
         </button>
       </div>
+      <CandidateEntriesModal
+        open={entriesOpen}
+        candidate={candidate}
+        history={history}
+        settings={settings}
+        onClose={() => setEntriesOpen(false)}
+      />
     </li>
+  );
+}
+
+// Lookup + sort the bank entries that drove the detector. `sampleEntryIds`
+// is set at detection time; resolving against the current `history`
+// keeps the modal in sync with later edits (a row the user re-labelled
+// or hid still resolves the same id).
+function CandidateEntriesModal({
+  open,
+  candidate,
+  history,
+  settings,
+  onClose,
+}: {
+  open: boolean;
+  candidate: RecurringCandidate;
+  history: readonly HistoryEntry[];
+  settings: Settings;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const lang = useLang();
+  const entries = useMemo(() => {
+    const ids = new Set(candidate.sampleEntryIds);
+    return history
+      .filter((e) => ids.has(e.id))
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  }, [candidate.sampleEntryIds, history]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="recurring-entries-title"
+      size="max-w-md"
+      centered
+    >
+      <Modal.Header
+        title={
+          <span className="truncate">
+            {t("recurring.entriesTitle", {
+              description: candidate.description,
+            })}
+          </span>
+        }
+        onClose={onClose}
+      />
+      <Modal.Body>
+        <ul className="flex flex-col divide-y divide-line overflow-clip rounded border border-line">
+          {entries.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-baseline justify-between gap-3 bg-surface px-3 py-2"
+            >
+              <span className="font-mono text-xs tabular-nums text-path">
+                {formatDate(e.date, settings.dateFormat, lang)}
+              </span>
+              <span
+                className={`font-mono text-xs tabular-nums ${
+                  e.amount >= 0 ? "text-positive" : "text-negative"
+                }`}
+              >
+                {e.amount >= 0 ? "+" : "−"}
+                {withCurrency(
+                  formatNumber(Math.abs(e.amount), settings),
+                  settings,
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Modal.Body>
+    </Modal>
   );
 }
 

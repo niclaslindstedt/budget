@@ -1195,6 +1195,8 @@ export const sv: Catalog = {
     everyMonthOn: "Varje månad den {day}",
     irregular: "Oregelbunden",
     avgInterval: "~ var {days} dag",
+    viewEntriesAria: "Visa poster för {description}",
+    entriesTitle: "Poster — {description}",
   },
 
   recurrenceForm: {
