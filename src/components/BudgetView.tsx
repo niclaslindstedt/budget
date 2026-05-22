@@ -110,6 +110,7 @@ import { TransferCollapseModal } from "./TransferCollapseModal";
 import type { RecurringCandidate } from "../data/recurring-detection";
 import {
   detectTransferCandidates,
+  hasCollapsedHistory,
   type TransferCandidate,
 } from "../data/transfer-collapse";
 import {
@@ -471,6 +472,11 @@ export function BudgetView({
   // create / edit). The TransactionModal seeds itself from the request.
   const [transactionRequest, setTransactionRequest] =
     useState<TransactionModalRequest | null>(null);
+  // null = closed; otherwise the id of the imported-pair transaction
+  // the user has asked to demote back to two stand-alone history
+  // entries. Renders a ConfirmDialog so an accidental toggle doesn't
+  // silently delete the merged transfer.
+  const [uncollapsePrompt, setUncollapsePrompt] = useState<string | null>(null);
   // null = closed; otherwise the history entry the user invoked the
   // pattern-rule modal from. Looked up by id each render so a
   // concurrent re-import / delete can't leave a stale entry snapshot
@@ -1511,6 +1517,7 @@ export function BudgetView({
           toAccountId: tx.toAccountId,
           typeId: tx.typeId ?? null,
           completed: tx.completed ?? false,
+          isImportedPair: hasCollapsedHistory(data.history, tx.id),
         });
         return;
       }
@@ -1532,7 +1539,7 @@ export function BudgetView({
         seedTypeId: row.typeId ?? null,
       });
     },
-    [activeBudget, data.transactions],
+    [activeBudget, data.transactions, data.history],
   );
   const onOpenCreateTransaction = useCallback(() => {
     const today = (() => {
@@ -1560,9 +1567,10 @@ export function BudgetView({
         toAccountId: tx.toAccountId,
         typeId: tx.typeId ?? null,
         completed: tx.completed ?? false,
+        isImportedPair: hasCollapsedHistory(data.history, tx.id),
       });
     },
-    [data.transactions],
+    [data.transactions, data.history],
   );
   const onPromoteTransaction = useCallback(
     (draft: TransactionDraft) => {
@@ -1631,6 +1639,13 @@ export function BudgetView({
     },
     [dispatch],
   );
+  // Imported-pair demote: the user cleared the "is a transfer" toggle
+  // in the edit modal. The modal has already closed itself — we open
+  // a ConfirmDialog and dispatch `deleteTransaction` on accept (which
+  // restores the two underlying history entries via the reducer).
+  const onUncollapseTransaction = useCallback((transactionId: string) => {
+    setUncollapsePrompt(transactionId);
+  }, []);
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
       if (recurringPromoteContext) {
@@ -2091,6 +2106,21 @@ export function BudgetView({
       },
     ];
   }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect, t]);
+
+  const uncollapseActions: ConfirmAction[] = useMemo(() => {
+    if (uncollapsePrompt === null) return [];
+    const txId = uncollapsePrompt;
+    return [
+      {
+        label: t("transaction.uncollapseConfirm"),
+        tone: "danger",
+        onSelect: () => {
+          dispatch({ type: "deleteTransaction", transactionId: txId });
+          setUncollapsePrompt(null);
+        },
+      },
+    ];
+  }, [uncollapsePrompt, dispatch, t]);
 
   const correctionDeleteActions: ConfirmAction[] = useMemo(() => {
     if (!correctionDeletePrompt) return [];
@@ -2641,6 +2671,7 @@ export function BudgetView({
         onCreate={onCreateTransaction}
         onEdit={onEditTransactionSave}
         onDelete={onDeleteTransactionFromModal}
+        onUncollapse={onUncollapseTransaction}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
@@ -2818,6 +2849,13 @@ export function BudgetView({
         }
         actions={deleteAccountActions}
         onCancel={() => setDeleteAccountPrompt(null)}
+      />
+      <ConfirmDialog
+        open={uncollapsePrompt !== null}
+        title={t("transaction.uncollapseTitle")}
+        description={t("transaction.uncollapseHint")}
+        actions={uncollapseActions}
+        onCancel={() => setUncollapsePrompt(null)}
       />
       <ConfirmDialog
         open={correctionDeletePrompt !== null}

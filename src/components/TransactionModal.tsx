@@ -14,6 +14,7 @@ import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import {
   formatAmountForInput,
+  formatDate,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
@@ -82,6 +83,14 @@ export type TransactionModalRequest =
       toAccountId: string;
       typeId: string | null;
       completed: boolean;
+      // True when this transaction was minted by collapsing two
+      // imported bank-history entries (i.e. at least one HistoryEntry
+      // points at this tx via `collapsedIntoTransactionId`). The bank
+      // statement owns the date, amount, accounts, and completion
+      // status — only the user-supplied transfer metadata (description
+      // and type) stays editable. The modal also exposes an "is a
+      // transfer" toggle that uncollapses the pair when cleared.
+      isImportedPair: boolean;
     };
 
 type Props = {
@@ -96,6 +105,11 @@ type Props = {
   onCreate: (draft: TransactionDraft) => void;
   onEdit: (transactionId: string, draft: TransactionDraft) => void;
   onDelete: (transactionId: string) => void;
+  // Imported-pair-only: invoked when the user clears the "is a
+  // transfer" toggle on an edit-mode modal whose `isImportedPair` is
+  // true. The parent owns the confirmation prompt and the
+  // `deleteTransaction` dispatch that uncollapses the pair.
+  onUncollapse: (transactionId: string) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
@@ -112,6 +126,7 @@ export function TransactionModal({
   onCreate,
   onEdit,
   onDelete,
+  onUncollapse,
   onCreateType,
   onCreateCategory,
 }: Props) {
@@ -123,6 +138,7 @@ export function TransactionModal({
   const [toAccountId, setToAccountId] = useState<string>("");
   const [typeId, setTypeId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [isTransfer, setIsTransfer] = useState(true);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
@@ -159,6 +175,7 @@ export function TransactionModal({
       setToAccountId(request.toAccountId);
       setTypeId(request.typeId);
       setCompleted(request.completed);
+      setIsTransfer(true);
     } else {
       setDate(request.seedDate);
       setDescription("");
@@ -183,25 +200,41 @@ export function TransactionModal({
 
   const isPromote = request.kind === "promote";
   const isEdit = request.kind === "edit";
+  // Bank-imported transactions lock everything but description + type
+  // because the statement is the source of truth. The "is a transfer"
+  // toggle lets the user demote the pair back to two stand-alone
+  // history entries; while it's cleared, Save dispatches an uncollapse
+  // instead of a patch.
+  const isImported = isEdit && request.isImportedPair;
+  const willUncollapse = isImported && !isTransfer;
 
   // Promote-row mode locks the direction (driven by the row's amount
   // sign) so the user only needs to pick the OTHER account. The fixed
   // side renders as a read-only chip; the open side is a regular
-  // AccountPicker.
-  const lockedFromId =
-    isPromote && request.outgoing ? request.selfAccountId : null;
-  const lockedToId =
-    isPromote && !request.outgoing ? request.selfAccountId : null;
+  // AccountPicker. Imported pairs lock BOTH sides for the same reason.
+  const lockedFromId = isImported
+    ? request.fromAccountId
+    : isPromote && request.outgoing
+      ? request.selfAccountId
+      : null;
+  const lockedToId = isImported
+    ? request.toAccountId
+    : isPromote && !request.outgoing
+      ? request.selfAccountId
+      : null;
 
   const parsedAmount = parseAmount(amountText);
-  const canSave =
-    parsedAmount !== null &&
-    parsedAmount > 0 &&
-    description.trim().length > 0 &&
-    !!date &&
-    !!fromAccountId &&
-    !!toAccountId &&
-    fromAccountId !== toAccountId;
+  const canSave = willUncollapse
+    ? true
+    : isImported
+      ? description.trim().length > 0
+      : parsedAmount !== null &&
+        parsedAmount > 0 &&
+        description.trim().length > 0 &&
+        !!date &&
+        !!fromAccountId &&
+        !!toAccountId &&
+        fromAccountId !== toAccountId;
 
   function commitAmount(text: string) {
     const stripped = text.replace(/-/g, "");
@@ -214,7 +247,13 @@ export function TransactionModal({
   }
 
   function handleSave() {
-    if (!canSave || parsedAmount === null) return;
+    if (!canSave) return;
+    if (willUncollapse && request?.kind === "edit") {
+      onUncollapse(request.transactionId);
+      onClose();
+      return;
+    }
+    if (parsedAmount === null) return;
     const draft: TransactionDraft = {
       date,
       description: description.trim(),
@@ -243,36 +282,50 @@ export function TransactionModal({
     <Modal open={open} onClose={onClose} labelledBy="tx-modal-title">
       <Modal.Header
         title={
-          <>
+          <span className="inline-flex items-center gap-2">
             <ArrowLeftRight
               size={14}
               className="text-flag"
               aria-hidden
               focusable={false}
             />
-            {isEdit
-              ? t("transaction.titleEdit")
-              : isPromote
-                ? t("transaction.titlePromote")
-                : t("transaction.titleNew")}
-          </>
+            <span>
+              {isEdit
+                ? t("transaction.titleEdit")
+                : isPromote
+                  ? t("transaction.titlePromote")
+                  : t("transaction.titleNew")}
+            </span>
+          </span>
         }
         onClose={onClose}
       />
       <Modal.Body>
         <div className="flex flex-col gap-4">
+          {isImported && (
+            <p className="text-xs text-muted">
+              {t("transaction.importedLockedHint")}
+            </p>
+          )}
           <div className="grid grid-cols-[1fr_2fr] gap-2">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-muted">
                 {t("transaction.date")}
               </span>
-              <button
-                type="button"
-                onClick={() => setDatePickerOpen(true)}
-                className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm text-fg hover:border-accent"
-              >
-                {date || "—"}
-              </button>
+              {isImported ? (
+                <div className="field-input rounded border border-line bg-surface px-2 py-1.5 text-left font-mono text-sm text-fg-bright">
+                  {formatDate(date, settings.dateFormat, settings.language) ||
+                    "—"}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDatePickerOpen(true)}
+                  className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm text-fg hover:border-accent"
+                >
+                  {date || "—"}
+                </button>
+              )}
               <DatePickerModal
                 open={datePickerOpen}
                 value={date}
@@ -284,22 +337,38 @@ export function TransactionModal({
               <span className="text-xs text-muted">
                 {t("transaction.amount")}
               </span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={amountText}
-                onChange={(e) => commitAmount(e.target.value)}
-                placeholder="0"
-                className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums text-fg"
-              />
-              <span className="text-right text-xs text-muted">
-                {parsedAmount !== null
-                  ? withCurrency(
-                      formatAmountForInput(Math.abs(parsedAmount), settings),
-                      settings,
-                    )
-                  : "—"}
-              </span>
+              {isImported ? (
+                <div className="field-input rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm tabular-nums text-fg-bright">
+                  {parsedAmount !== null
+                    ? withCurrency(
+                        formatAmountForInput(Math.abs(parsedAmount), settings),
+                        settings,
+                      )
+                    : "—"}
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={amountText}
+                    onChange={(e) => commitAmount(e.target.value)}
+                    placeholder="0"
+                    className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums text-fg"
+                  />
+                  <span className="text-right text-xs text-muted">
+                    {parsedAmount !== null
+                      ? withCurrency(
+                          formatAmountForInput(
+                            Math.abs(parsedAmount),
+                            settings,
+                          ),
+                          settings,
+                        )
+                      : "—"}
+                  </span>
+                </>
+              )}
             </label>
           </div>
 
@@ -405,17 +474,30 @@ export function TransactionModal({
             />
           </div>
 
-          <Checkbox
-            checked={completed}
-            onChange={setCompleted}
-            label={t("transaction.markAsDone")}
-            className="items-center"
-          />
+          {/* The Mark-as-done checkbox is redundant for imported pairs:
+              the bank already records the movement, so the transfer is
+              by definition done. Hide it; show the "is a transfer"
+              toggle in its place. */}
+          {isImported ? (
+            <Checkbox
+              checked={isTransfer}
+              onChange={setIsTransfer}
+              label={t("transaction.isTransfer")}
+              className="items-center"
+            />
+          ) : (
+            <Checkbox
+              checked={completed}
+              onChange={setCompleted}
+              label={t("transaction.markAsDone")}
+              className="items-center"
+            />
+          )}
         </div>
       </Modal.Body>
       <Modal.Footer className="justify-between">
         <div>
-          {isEdit && (
+          {isEdit && !isImported && (
             <Button variant="danger" withIcon onClick={handleDelete}>
               <Trash2 size={14} aria-hidden focusable={false} />
               {t("common.delete")}
@@ -426,12 +508,18 @@ export function TransactionModal({
           <Button variant="secondary" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!canSave}>
-            {isEdit
-              ? t("common.save")
-              : isPromote
-                ? t("transaction.titlePromote")
-                : t("account.create")}
+          <Button
+            variant={willUncollapse ? "danger" : "primary"}
+            onClick={handleSave}
+            disabled={!canSave}
+          >
+            {willUncollapse
+              ? t("transaction.uncollapseConfirm")
+              : isEdit
+                ? t("common.save")
+                : isPromote
+                  ? t("transaction.titlePromote")
+                  : t("account.create")}
           </Button>
         </div>
       </Modal.Footer>

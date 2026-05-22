@@ -38,6 +38,23 @@ export type TransferCandidate = {
   confidence: number;
 };
 
+// True when at least one HistoryEntry across `history` is collapsed
+// into the given transaction id (i.e. the transaction was minted by
+// merging imported bank entries). The UI uses this to lock the
+// fields the bank statement owns and expose an "is a transfer"
+// toggle that demotes the pair back into stand-alone entries.
+export function hasCollapsedHistory(
+  history: Readonly<Record<string, readonly HistoryEntry[]>>,
+  transactionId: string,
+): boolean {
+  for (const entries of Object.values(history)) {
+    for (const entry of entries) {
+      if (entry.collapsedIntoTransactionId === transactionId) return true;
+    }
+  }
+  return false;
+}
+
 export type TransferDetectInput = {
   // Imported history keyed by account id, as carried on `UserData`.
   history: Readonly<Record<string, readonly HistoryEntry[]>>;
