@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 
@@ -6,8 +5,8 @@ import {
   type FloatingPlacement,
   useEscapeKey,
   useFloatingPosition,
-  useSwallowingPointerOutside,
 } from "../hooks";
+import { DismissBackdrop } from "./DismissBackdrop";
 import { useBlocksSheet } from "./useBlocksSheet";
 
 type Props = {
@@ -50,18 +49,9 @@ export function FloatingPanel({
   arrow,
   children,
 }: Props) {
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const position = useFloatingPosition(triggerRef, open, placement);
 
-  // Always swallow the dismissing tap, even inside the row that owns
-  // the panel: while a popover / dropdown is open it is the focal point
-  // and a tap anywhere else should only close it — never also focus the
-  // amount input, toggle a sign chip, or activate any other cell. (In
-  // sheet-row context the active-row coordinator also dismisses on
-  // outside-row taps via `useBlocksSheet`; the two swallows are
-  // idempotent at the capture phase.)
   useEscapeKey(open, onClose);
-  useSwallowingPointerOutside(open, [triggerRef, dropdownRef], onClose);
   useBlocksSheet(rowId, open, onClose);
 
   if (!open || !position) return null;
@@ -107,8 +97,8 @@ export function FloatingPanel({
   const arrowBorderClass = flipUp ? "border-b border-r" : "border-t border-l";
   return createPortal(
     <>
+      <DismissBackdrop onDismiss={onClose} />
       <div
-        ref={dropdownRef}
         data-active-portal
         className={`peer ${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg focus-within:border-accent ${className}`.trim()}
         style={{
