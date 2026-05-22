@@ -14,6 +14,8 @@ import type {
   SheetGlyph,
   SheetType,
   ShortDateFormat,
+  ThemeFamily,
+  ThemePreset,
 } from "./types";
 
 // Maximum visual width of a column before its content wraps. Used to cap
@@ -141,7 +143,49 @@ export const DEFAULT_USERNAME = "Guest";
 // Allowed theme presets, in the order the Appearance picker shows
 // them. Source of truth for the validator, the public JSON Schema,
 // and the picker UI so all three agree on which values are valid.
-export const THEMES = ["dark", "light", "system", "custom"] as const;
+// Dark variants are grouped together, then light variants, then the
+// two non-coloured presets (`system` follows the OS, `custom` reads
+// the user's overrides).
+export const THEMES = [
+  "dark",
+  "light",
+  "dracula",
+  "githubDark",
+  "githubLight",
+  "system",
+  "custom",
+] as const;
+
+// Theme presets that belong to the Dark family — listed in the order
+// the variant row renders them, with the One Dark original first. The
+// Appearance picker's mode row uses these arrays to derive its
+// selected family from the active preset, and the variant row reads
+// the matching array to render its buttons.
+export const DARK_THEMES = ["dark", "dracula", "githubDark"] as const;
+
+// Theme presets in the Light family — One Light first, then the
+// light VS Code variants.
+export const LIGHT_THEMES = ["light", "githubLight"] as const;
+
+// Resolve a preset to its broad family. Dark / Light variants fold
+// into their family bucket; `system` and `custom` are their own
+// families (no variants underneath).
+export function themeFamily(preset: ThemePreset): ThemeFamily {
+  if ((DARK_THEMES as readonly string[]).includes(preset)) return "dark";
+  if ((LIGHT_THEMES as readonly string[]).includes(preset)) return "light";
+  return preset as "system" | "custom";
+}
+
+// Default preset for each family — what the mode row jumps to when
+// the user picks a family they weren't already in (e.g. on Dracula,
+// clicks Light → jumps to One Light, which the variant row then
+// lets them swap to GitHub Light if desired).
+export const FAMILY_DEFAULT_THEME: Record<ThemeFamily, ThemePreset> = {
+  dark: "dark",
+  light: "light",
+  system: "system",
+  custom: "custom",
+};
 
 // Bundled webfont families. `stack` is the full CSS `font-family`
 // value written to `--app-font-family`; `label` is an i18n key path
@@ -238,6 +282,93 @@ export const DEFAULT_CUSTOM_THEME_COLORS_LIGHT: CustomThemeColors = {
   success: "#3f8c3e",
   positive: "#5fa057",
   negative: "#d77a82",
+};
+
+// Dracula Official palette, remapped from the upstream theme JSON to
+// the budget's slot vocabulary (accent=green, meta=yellow/numbers,
+// link=blue, path=cyan/dates, flag=orange/amounts, pipe=purple/
+// functions). Mirrored into `src/styles.css` under
+// `:root[data-theme="dracula"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_DRACULA: CustomThemeColors = {
+  pageBg: "#21222c",
+  surface: "#282a36",
+  surface2: "#343746",
+  surface3: "#191a21",
+  fg: "#f8f8f2",
+  fgBright: "#ffffff",
+  muted: "#6272a4",
+  line: "#44475a",
+  accent: "#50fa7b",
+  meta: "#f1fa8c",
+  link: "#8be9fd",
+  path: "#bd93f9",
+  flag: "#ffb86c",
+  pipe: "#ff79c6",
+  danger: "#ff5555",
+  success: "#50fa7b",
+  positive: "#a8ffb8",
+  negative: "#ffb3c5",
+};
+
+// GitHub Dark Default palette. Mirrored into `src/styles.css` under
+// `:root[data-theme="githubDark"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_GITHUB_DARK: CustomThemeColors = {
+  pageBg: "#010409",
+  surface: "#0d1117",
+  surface2: "#161b22",
+  surface3: "#010409",
+  fg: "#c9d1d9",
+  fgBright: "#f0f6fc",
+  muted: "#8b949e",
+  line: "#30363d",
+  accent: "#7ee787",
+  meta: "#d29922",
+  link: "#79c0ff",
+  path: "#56d4dd",
+  flag: "#ffa657",
+  pipe: "#d2a8ff",
+  danger: "#ff7b72",
+  success: "#7ee787",
+  positive: "#aff5b4",
+  negative: "#ffb8b3",
+};
+
+// GitHub Light Default palette. Mirrored into `src/styles.css` under
+// `:root[data-theme="githubLight"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_GITHUB_LIGHT: CustomThemeColors = {
+  pageBg: "#f6f8fa",
+  surface: "#ffffff",
+  surface2: "#eaeef2",
+  surface3: "#d0d7de",
+  fg: "#1f2328",
+  fgBright: "#0d1117",
+  muted: "#6e7781",
+  line: "#d0d7de",
+  accent: "#1a7f37",
+  meta: "#9a6700",
+  link: "#0969da",
+  path: "#0550ae",
+  flag: "#bc4c00",
+  pipe: "#8250df",
+  danger: "#cf222e",
+  success: "#1a7f37",
+  positive: "#4ac26b",
+  negative: "#e5717f",
+};
+
+// Per-preset palette lookup. The Appearance picker reads this both to
+// draw the variant-row swatches and to pre-fill the Custom-theme
+// editor when the user switches into Custom — the seed comes from
+// whichever preset was effective just before the switch.
+export const PRESET_PALETTES: Record<
+  Exclude<ThemePreset, "system" | "custom">,
+  CustomThemeColors
+> = {
+  dark: DEFAULT_CUSTOM_THEME_COLORS_DARK,
+  light: DEFAULT_CUSTOM_THEME_COLORS_LIGHT,
+  dracula: DEFAULT_CUSTOM_THEME_COLORS_DRACULA,
+  githubDark: DEFAULT_CUSTOM_THEME_COLORS_GITHUB_DARK,
+  githubLight: DEFAULT_CUSTOM_THEME_COLORS_GITHUB_LIGHT,
 };
 
 export const DEFAULT_CUSTOM_THEME: CustomTheme = {

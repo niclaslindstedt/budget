@@ -6,16 +6,19 @@ import {
   COLOR_GROUPS,
   COLOR_KEYS,
   CURRENCY_PRESETS,
+  DARK_THEMES,
   DATE_FORMATS,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,
-  DEFAULT_CUSTOM_THEME_COLORS_LIGHT,
   DENSITY_PRESETS,
+  FAMILY_DEFAULT_THEME,
   FONT_FAMILIES,
   FONT_SCALE_PRESETS,
+  LIGHT_THEMES,
+  PRESET_PALETTES,
   RADIUS_PRESETS,
   SESSION_TIMEOUT_PRESETS,
   SHORT_DATE_FORMATS,
-  THEMES,
+  themeFamily,
 } from "../../data/constants";
 import type {
   Category,
@@ -27,6 +30,7 @@ import type {
   FontFamilyId,
   Settings,
   ShortDateFormat,
+  ThemeFamily,
   ThemePreset,
   ThousandsSeparator,
   UserData,
@@ -820,19 +824,16 @@ export function AppearanceTab({
       // First switch into Custom: pre-fill the colours from whichever
       // preset is currently effective so the first edit feels like a
       // tweak. Only fires when the colours are still pristine (match
-      // one of the two preset palettes exactly) so repeated flips
+      // one of the bundled preset palettes exactly) so repeated flips
       // don't trample user tweaks.
       const cur = draft.customTheme.colors;
-      const isPristineDark = COLOR_KEYS.every(
-        (k) => cur[k] === DEFAULT_CUSTOM_THEME_COLORS_DARK[k],
+      const isPristine = Object.values(PRESET_PALETTES).some((palette) =>
+        COLOR_KEYS.every((k) => cur[k] === palette[k]),
       );
-      const isPristineLight = COLOR_KEYS.every(
-        (k) => cur[k] === DEFAULT_CUSTOM_THEME_COLORS_LIGHT[k],
-      );
-      if (isPristineDark || isPristineLight) {
+      if (isPristine) {
         const source =
-          draft.theme === "light"
-            ? DEFAULT_CUSTOM_THEME_COLORS_LIGHT
+          draft.theme !== "custom" && draft.theme !== "system"
+            ? PRESET_PALETTES[draft.theme]
             : DEFAULT_CUSTOM_THEME_COLORS_DARK;
         onUpdate("customTheme", { ...draft.customTheme, colors: source });
       }
@@ -857,14 +858,24 @@ export function AppearanceTab({
   return (
     <>
       <Section title={t("settings.appearance.themeSection")}>
-        <Field label={t("settings.appearance.themeSection")}>
-          <ThemeRadioRow value={draft.theme} onChange={handleThemeChange} />
+        <Field label={t("settings.appearance.modeLabel")}>
+          <ThemeModeRow
+            value={draft.theme}
+            onChange={handleThemeChange}
+            customColors={draft.customTheme.colors}
+          />
           {draft.theme === "system" && (
             <p className="text-xs text-muted">
               {t("settings.appearance.themeSystemHint")}
             </p>
           )}
         </Field>
+        {(themeFamily(draft.theme) === "dark" ||
+          themeFamily(draft.theme) === "light") && (
+          <Field label={t("settings.appearance.variantLabel")}>
+            <ThemeVariantRow value={draft.theme} onChange={handleThemeChange} />
+          </Field>
+        )}
       </Section>
 
       <Section title={t("settings.appearance.fontSection")}>
@@ -999,8 +1010,15 @@ function capitalise<S extends string>(s: S): Capitalize<S> {
 // from the same hex values the styles.css palette uses so a glance
 // at the swatch row tells the user what they're picking. `system`
 // renders the dark+light combo as a diagonal split so it reads as
-// "either" without copying one of the preset's swatches verbatim.
-function ThemeSwatches({ theme }: { theme: ThemePreset }) {
+// "either" without copying one of the preset's swatches verbatim;
+// `custom` reads the user's palette so the swatch tracks edits live.
+function ThemeSwatches({
+  theme,
+  customColors,
+}: {
+  theme: ThemePreset;
+  customColors?: CustomThemeColors;
+}) {
   if (theme === "system") {
     return (
       <span
@@ -1014,9 +1032,9 @@ function ThemeSwatches({ theme }: { theme: ThemePreset }) {
     );
   }
   const palette =
-    theme === "light"
-      ? DEFAULT_CUSTOM_THEME_COLORS_LIGHT
-      : DEFAULT_CUSTOM_THEME_COLORS_DARK;
+    theme === "custom"
+      ? (customColors ?? DEFAULT_CUSTOM_THEME_COLORS_DARK)
+      : PRESET_PALETTES[theme];
   const tones =
     theme === "custom"
       ? [palette.pageBg, palette.surface, palette.accent, palette.flag]
@@ -1037,7 +1055,86 @@ function ThemeSwatches({ theme }: { theme: ThemePreset }) {
   );
 }
 
-function ThemeRadioRow({
+// Family-level swatch used by the mode row. Dark / Light show the
+// family's default palette (One Dark / One Light); System keeps its
+// diagonal split; Custom samples the user's current palette.
+function ModeSwatches({
+  family,
+  customColors,
+}: {
+  family: ThemeFamily;
+  customColors?: CustomThemeColors;
+}) {
+  return (
+    <ThemeSwatches
+      theme={FAMILY_DEFAULT_THEME[family]}
+      customColors={customColors}
+    />
+  );
+}
+
+// Mode row — the broad family pick. Selecting a family the user is
+// already in is a no-op (keeps the active variant); selecting a new
+// family jumps to that family's default preset, which the variant
+// row then lets the user fine-tune.
+const MODE_ORDER: readonly ThemeFamily[] = [
+  "dark",
+  "light",
+  "system",
+  "custom",
+];
+
+function ThemeModeRow({
+  value,
+  onChange,
+  customColors,
+}: {
+  value: ThemePreset;
+  onChange: (next: ThemePreset) => void;
+  customColors: CustomThemeColors;
+}) {
+  const t = useT();
+  const activeFamily = themeFamily(value);
+  return (
+    <div role="radiogroup" className="flex flex-wrap gap-2">
+      {MODE_ORDER.map((family) => {
+        const active = activeFamily === family;
+        const base =
+          "flex items-center gap-2 rounded border px-2 py-1.5 text-sm transition-opacity focus-visible:outline-none";
+        const activeCls = "border-accent bg-surface-2 text-fg-bright";
+        const inactiveCls =
+          "border-line bg-transparent text-muted opacity-60 hover:opacity-100 hover:border-accent";
+        const label = t(
+          `settings.appearance.mode${capitalise(family)}` as Parameters<
+            typeof t
+          >[0],
+        );
+        return (
+          <button
+            key={family}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={label}
+            onClick={() => {
+              if (active) return;
+              onChange(FAMILY_DEFAULT_THEME[family]);
+            }}
+            className={`${base} ${active ? activeCls : inactiveCls}`}
+          >
+            <ModeSwatches family={family} customColors={customColors} />
+            <span>{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Variant row — appears only when the active family has more than one
+// theme to choose from (Dark or Light). Lists every preset in that
+// family using the same swatch + label pattern as the mode row.
+function ThemeVariantRow({
   value,
   onChange,
 }: {
@@ -1045,9 +1142,13 @@ function ThemeRadioRow({
   onChange: (next: ThemePreset) => void;
 }) {
   const t = useT();
+  const family = themeFamily(value);
+  const variants =
+    family === "dark" ? DARK_THEMES : family === "light" ? LIGHT_THEMES : null;
+  if (!variants) return null;
   return (
     <div role="radiogroup" className="flex flex-wrap gap-2">
-      {THEMES.map((theme) => {
+      {variants.map((theme) => {
         const active = value === theme;
         const base =
           "flex items-center gap-2 rounded border px-2 py-1.5 text-sm transition-opacity focus-visible:outline-none";

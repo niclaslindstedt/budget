@@ -464,11 +464,28 @@ export type DateFormat =
 // while keeping a long-form like "YYYY-MM-DD" elsewhere.
 export type ShortDateFormat = "DD/MM" | "MM/DD" | "DD.MM" | "MM-DD" | "D MMM";
 
-// Theme preset. `dark` / `light` lock to the One Dark / One Light
-// palettes; `system` follows `prefers-color-scheme`; `custom` applies
-// the colour and density overrides held under `customTheme`. The
-// runtime writes the active value to `data-theme` on `<html>`.
-export type ThemePreset = "dark" | "light" | "system" | "custom";
+// Theme preset. The two original variants — `dark` / `light` — lock
+// to the One Dark / One Light palettes; `dracula`, `githubDark`, and
+// `githubLight` are the popular VS Code themes adapted for the budget
+// slot vocabulary; `system` follows `prefers-color-scheme`; `custom`
+// applies the colour and density overrides held under `customTheme`.
+// The runtime writes the active value to `data-theme` on `<html>`.
+export type ThemePreset =
+  | "dark"
+  | "light"
+  | "dracula"
+  | "githubDark"
+  | "githubLight"
+  | "system"
+  | "custom";
+
+// Broad colour-scheme family a theme preset belongs to. The Appearance
+// picker uses this to drive its two-row UI — the mode row selects the
+// family (Dark / Light / System / Custom) and a variant row appears
+// underneath whenever the family is `dark` or `light`, listing the
+// specific theme presets within it. Derived from `theme`; not
+// persisted separately.
+export type ThemeFamily = "dark" | "light" | "system" | "custom";
 
 // Bundled webfont family the body reads through `--app-font-family`.
 // Three options — one mono, one sans, one serif — bundled via
