@@ -197,7 +197,7 @@ export function UpdateBalanceModal({
             type="button"
             onClick={handleConfirm}
             disabled={!hasDelta}
-            className="cursor-pointer rounded border border-accent/60 bg-accent/10 px-3 py-2 text-left text-sm font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted disabled:hover:bg-transparent"
+            className="cursor-pointer rounded border border-accent/60 bg-accent/10 px-3 py-2 text-sm font-medium text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted disabled:hover:bg-transparent"
           >
             {t("updateBalance.confirmUpdate")}
           </button>
