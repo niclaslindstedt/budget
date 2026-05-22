@@ -6,14 +6,41 @@
 // tools can consume the list without dealing with the budget app's
 // wider schema.
 
+import type { Lang } from "../i18n/locale";
+import { formatDate } from "../utils/format";
 import { findColumnByType } from "./sheet";
 import type {
   Account,
+  DateFormat,
   HistoryEntry,
   HistoryEntrySplit,
   Sheet,
   Transaction,
 } from "./types";
+
+// Numeric values land in the JSON via `JSON.stringify`, so any
+// floating-point drift in the source (251.92999999999998) leaks
+// straight into the file. The export is meant for human / tool
+// consumption, not round-tripping back into the app, so snap every
+// money figure to two decimals on the way out.
+function r2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// Millis-since-epoch → user's preferred date format. Local time so
+// the date matches what the user saw when they did the import.
+function formatImportedAt(
+  ms: number,
+  dateFormat: DateFormat,
+  lang: Lang | undefined,
+): string {
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return formatDate(`${y}-${m}-${day}`, dateFormat, lang);
+}
 
 export type AccountsExportPayload = {
   exportedAt: string;
@@ -55,7 +82,7 @@ export type TransactionExportEntry = {
   description: string;
   amount: number;
   balance?: number;
-  importedAt: number;
+  importedAt: string;
   isTransfer?: boolean;
   userDescription?: string;
   userTypeId?: string;
@@ -118,6 +145,10 @@ export type BuildAccountsExportArgs = {
   // When true, budget rows whose date is strictly after `today` are
   // included. Default (false) keeps the export to past + today.
   includeFuture: boolean;
+  // User's date format / language — applied to `importedAt` so the
+  // export reads as a human date instead of a millis timestamp.
+  dateFormat: DateFormat;
+  lang?: Lang;
 };
 
 function pickAccount(
@@ -128,7 +159,7 @@ function pickAccount(
   if (account.color) base.color = account.color;
   if (account.glyph) base.glyph = account.glyph;
   if (account.openingBalance !== undefined)
-    base.openingBalance = account.openingBalance;
+    base.openingBalance = r2(account.openingBalance);
   if (!withDetails) return base;
   if (account.description) base.description = account.description;
   if (account.bank) base.bank = account.bank;
@@ -140,15 +171,19 @@ function pickAccount(
   return base;
 }
 
-function pickTransaction(entry: HistoryEntry): TransactionExportEntry {
+function pickTransaction(
+  entry: HistoryEntry,
+  dateFormat: DateFormat,
+  lang: Lang | undefined,
+): TransactionExportEntry {
   const out: TransactionExportEntry = {
     id: entry.id,
     date: entry.date,
     description: entry.description,
-    amount: entry.amount,
-    importedAt: entry.importedAt,
+    amount: r2(entry.amount),
+    importedAt: formatImportedAt(entry.importedAt, dateFormat, lang),
   };
-  if (entry.balance !== undefined) out.balance = entry.balance;
+  if (entry.balance !== undefined) out.balance = r2(entry.balance);
   if (entry.isTransfer) out.isTransfer = true;
   if (entry.userDescription) out.userDescription = entry.userDescription;
   if (entry.userTypeId) out.userTypeId = entry.userTypeId;
@@ -185,7 +220,9 @@ export function buildAccountsExport(
       if (!allowed.has(id)) continue;
       const entries = args.transactions[id];
       if (!entries || entries.length === 0) continue;
-      transactions[id] = entries.map(pickTransaction);
+      transactions[id] = entries.map((e) =>
+        pickTransaction(e, args.dateFormat, args.lang),
+      );
     }
     if (Object.keys(transactions).length > 0)
       payload.transactions = transactions;
@@ -199,7 +236,7 @@ export function buildAccountsExport(
         id: tx.id,
         date: tx.date,
         description: tx.description,
-        amount: tx.amount,
+        amount: r2(tx.amount),
         fromAccountId: tx.fromAccountId,
         toAccountId: tx.toAccountId,
       };
@@ -244,7 +281,7 @@ export function buildAccountsExport(
           itemId: item.id,
           date,
           description,
-          amount,
+          amount: r2(amount),
         };
         if (completedCol) entry.completed = completed;
         if (row.typeId) entry.typeId = row.typeId;
