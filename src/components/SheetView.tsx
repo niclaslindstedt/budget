@@ -565,14 +565,39 @@ export function SheetView({
   const scrollTargetRef = useRef<HTMLDivElement | null>(null);
   const lastScrolledKey = useRef<string | null>(null);
   const scrollToToday = (behavior: ScrollBehavior) => {
-    requestAnimationFrame(() => {
+    const target = scrollTargetRef.current;
+    // First pass: today's row may already be mounted (the user is on
+    // or near the current month). Trust it only when its month is
+    // current or later — when the user is scrolled deep into history,
+    // MonthTable's near-viewport gate replaces the current-month row
+    // tree with a placeholder, so `findRowNearestToday` returns the
+    // latest *past* row (already on-screen) and scrolling to it would
+    // be a no-op. Fall through to the container scroll in that case.
+    const refine = (): boolean => {
       const section = sectionRef.current;
       const row = findRowNearestToday(section, today);
-      if (row) {
-        scrollRowToTop(row, behavior);
-        return;
-      }
-      scrollTargetRef.current?.scrollIntoView({ behavior, block: "start" });
+      if (!row) return false;
+      const rowMonthEl = row.closest<HTMLElement>("[data-month-key]");
+      const rowMonth = rowMonthEl?.getAttribute("data-month-key") ?? null;
+      if (rowMonth === "undated") return false;
+      if (rowMonth !== null && rowMonth < currentMonth) return false;
+      scrollRowToTop(row, behavior);
+      return true;
+    };
+    requestAnimationFrame(() => {
+      if (refine()) return;
+      // Today's row isn't in the DOM. Scroll to the current-month
+      // container (always rendered, even when its rows are lazy-
+      // unmounted) — that brings the section under the viewport so
+      // MonthTable's IntersectionObserver flips and the row tree
+      // mounts. Refine to today's row once the smooth-scroll tail
+      // and lazy-mount commit have landed.
+      if (!target) return;
+      target.scrollIntoView({ behavior, block: "start" });
+      window.setTimeout(
+        () => requestAnimationFrame(refine),
+        behavior === "smooth" ? 450 : 60,
+      );
     });
   };
   useEffect(() => {
