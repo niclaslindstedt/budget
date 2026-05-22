@@ -663,6 +663,11 @@ export const REGION_TO_CURRENCY_ID: Readonly<Record<string, string>> = {
 // Colorless swatches (black / white / gray) are deliberately excluded —
 // categories and types should always carry a hue so they stay
 // distinguishable in chips and pickers.
+//
+// Index stability: the first eight entries are the original Atom One
+// Dark accents and are referenced by index from `PRESET_CATEGORIES`,
+// `PRESET_ENTRY_TYPES`, and `createSeedEntryTypes()`. Never reorder
+// 0..7; append-only beyond that.
 export const CATEGORY_COLORS: readonly string[] = [
   "#e06c75",
   "#d19a66",
@@ -672,6 +677,14 @@ export const CATEGORY_COLORS: readonly string[] = [
   "#61afef",
   "#c678dd",
   "#be5046",
+  "#e88eb0",
+  "#d97757",
+  "#e8aa6c",
+  "#a3d775",
+  "#5cb39e",
+  "#7b8cd4",
+  "#b48ead",
+  "#a07555",
 ];
 
 // Sheets reuse the category palette. Keeping them aligned means a
