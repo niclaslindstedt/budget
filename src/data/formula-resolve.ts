@@ -18,6 +18,7 @@ import {
   getMonthKey,
   previousMonthKey,
   sortRowsByDate,
+  type RowSortContext,
 } from "./sheet";
 import { allTypes } from "./presets";
 import type { AccountBudget, EntryType, Row, Sheet, UserData } from "./types";
@@ -48,7 +49,15 @@ export function resolveEffectiveAmounts(
   };
   const amountCol = findColumnByType(item.columns, "amount");
   const dateCol = findColumnByType(item.columns, "date");
+  const descCol = findColumnByType(item.columns, "description");
   if (!amountCol || !dateCol) return result;
+  const sortContext: RowSortContext | undefined = descCol
+    ? {
+        descriptionColumnId: descCol.id,
+        amountColumnId: amountCol.id,
+        typesById,
+      }
+    : undefined;
 
   // Seed: every row contributes its literal amount cell if present.
   // Formula rows get 0 until their formula resolves; they're processed
@@ -112,6 +121,7 @@ export function resolveEffectiveAmounts(
       result.amounts,
       openingBalance,
       dateCol.id,
+      sortContext,
     );
     const endOfMonthBalance = thisMonth.openingBalance + thisMonth.net;
 
@@ -213,8 +223,9 @@ function runningBalanceBefore(
   amounts: ReadonlyMap<string, number>,
   openingBalance: number,
   dateColId: string,
+  sortContext?: RowSortContext,
 ): number {
-  const sorted = sortRowsByDate(item.rows, dateColId);
+  const sorted = sortRowsByDate(item.rows, dateColId, sortContext);
   let running = openingBalance;
   for (const row of sorted) {
     if (row.id === target.id) return running;

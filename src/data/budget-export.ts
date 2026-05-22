@@ -11,6 +11,7 @@ import {
   synthesizeHistoryRow,
   synthesizeTransactionRow,
   transactionsForAccount,
+  type RowSortContext,
 } from "./sheet";
 import type {
   AccountBudget,
@@ -135,13 +136,19 @@ export function buildBudgetExportRows(
     balanceOverrides.set(anchorId, e.balance);
   }
 
+  const sortContext: RowSortContext = {
+    descriptionColumnId: descCol.id,
+    amountColumnId: amountCol.id,
+    typesById,
+  };
   const balances = computeBalances(
     merged,
     openingBalance,
     undefined,
     balanceOverrides,
+    sortContext,
   );
-  const sorted = sortRowsByDate(merged.rows, dateCol.id);
+  const sorted = sortRowsByDate(merged.rows, dateCol.id, sortContext);
 
   const out: ExportRow[] = [];
   for (const row of sorted) {
