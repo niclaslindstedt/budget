@@ -78,7 +78,5 @@ export async function signInAsGuest(page: Page): Promise<void> {
   await page
     .getByRole("button", { name: /^Continue (without account|as guest)$/ })
     .click();
-  await expect(
-    page.getByRole("button", { name: /Scroll to today/ }),
-  ).toBeVisible();
+  await expect(page.getByText("budget", { exact: true })).toBeVisible();
 }
