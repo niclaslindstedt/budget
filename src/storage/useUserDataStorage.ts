@@ -80,6 +80,10 @@ const SHRINK_WARN_THRESHOLD = 0.05;
 // entry is a `UserData` reference; structural sharing in the reducer
 // means unchanged sub-trees are not duplicated across snapshots.
 const UNDO_HISTORY_LIMIT = 50;
+// Action type stamped on the seed entry created from a fresh load or
+// a remote replacement — there's no user action to label it with, so
+// the UI renders it as the timeline's start anchor.
+const INITIAL_ACTION_TYPE = "initial";
 // Reducer actions that are pure UI navigation — they change the
 // active tab/sheet but no user data. Excluded from the undo stack so
 // ⌘Z reverts the last edit, not a tab switch.
@@ -96,6 +100,20 @@ export type UserDataStorageOptions = {
   // `saveNow` deliberately bypasses this — a user clicking the save
   // button is asking for the in-memory state as-is.
   beforeSerialize?: (data: UserData) => UserData;
+};
+
+// Metadata view of one history entry surfaced to the UI. The full
+// `UserData` snapshot is kept inside the hook; consumers identify an
+// entry by its position in `historyEntries`.
+export type ActionHistoryEntry = {
+  // Reducer action type that produced the state at this position, or
+  // `"initial"` for the seed entry that anchors the timeline. The UI
+  // resolves this to a translated label.
+  actionType: string;
+  // Wall-clock milliseconds when the action was dispatched (or when
+  // the initial state was loaded). Used by the action history modal to
+  // tell the user when each action was taken.
+  timestamp: number;
 };
 
 export type UserDataStorage<Action> = {
@@ -129,13 +147,56 @@ export type UserDataStorage<Action> = {
   // when `canUndo` is false. The reverted state still flows through
   // the normal save path, so persistence stays consistent.
   undo: () => void;
-  // Step forward through the redo stack. No-op when `canRedo` is
-  // false. The redo stack is cleared whenever a new mutating action
-  // is dispatched.
+  // Step forward through the history of dispatched actions. No-op
+  // when `canRedo` is false. Entries past the cursor stay around (so
+  // the action history modal can show them greyed) until a new
+  // mutating action overwrites them.
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  // Read-only metadata snapshot of every state the hook knows about
+  // — the initial seed plus every mutating action dispatched since.
+  // Indexed oldest-first. Capped so the past portion never exceeds
+  // `UNDO_HISTORY_LIMIT` entries.
+  historyEntries: ActionHistoryEntry[];
+  // Index of the currently-active state in `historyEntries`. Entries
+  // before this index can be returned to via `undo` / `jumpToHistory`;
+  // entries after it are the "future" — restorable until a new action
+  // overwrites them.
+  historyIndex: number;
+  // Jump the timeline cursor to the given index, replacing the
+  // in-memory state with that entry's snapshot. The "future" entries
+  // past the new cursor are preserved (greyed in the UI) until the
+  // user dispatches a new action, which truncates them.
+  jumpToHistory: (index: number) => void;
 };
+
+// Combined entry + cursor state held inside the hook. Kept together
+// in one `useState` slot so dispatch / undo / redo can mutate both
+// atomically inside a single functional updater.
+type HistoryState = {
+  entries: HistoryEntryInternal[];
+  cursor: number;
+};
+
+type HistoryEntryInternal = {
+  state: UserData;
+  actionType: string;
+  timestamp: number;
+};
+
+function initialHistoryState(seed: UserData): HistoryState {
+  return {
+    entries: [
+      {
+        state: seed,
+        actionType: INITIAL_ACTION_TYPE,
+        timestamp: Date.now(),
+      },
+    ],
+    cursor: 0,
+  };
+}
 
 export function useUserDataStorage<Action extends { type: string }>(
   adapter: StorageAdapter,
@@ -205,13 +266,32 @@ export function useUserDataStorage<Action extends { type: string }>(
   // it before issuing its own immediate write.
   const pendingTimerRef = useRef<number | null>(null);
 
-  // Undo / redo stacks. Each entry is the `UserData` snapshot that
-  // was current *before* the action ran, so undo can restore it
-  // verbatim. Capped at UNDO_HISTORY_LIMIT — older entries fall off
-  // the bottom when the stack grows past the cap. Redo is cleared on
-  // any new mutating dispatch.
-  const [undoStack, setUndoStack] = useState<UserData[]>([]);
-  const [redoStack, setRedoStack] = useState<UserData[]>([]);
+  // Unified action history. `entries[cursor]` always matches the
+  // current `data`. Entries before the cursor are reachable via undo /
+  // jumpToHistory; entries after the cursor are "future" — kept around
+  // so the action history modal can render them greyed, and dropped
+  // only when the user dispatches a new mutating action while the
+  // cursor is somewhere in the middle.
+  //
+  // Cap: the past portion never grows past UNDO_HISTORY_LIMIT entries
+  // (i.e. cursor + 1 ≤ UNDO_HISTORY_LIMIT + 1). When the user is at
+  // the latest position and dispatches past the cap, the oldest entry
+  // falls off the bottom — the same behaviour the old two-stack
+  // implementation had.
+  const [historyState, setHistoryState] = useState<HistoryState>(() =>
+    initialHistoryState(initial[0].data),
+  );
+
+  // Replace the timeline with a fresh seed anchored at `seed`. Called
+  // whenever data arrives from outside the dispatch path — initial /
+  // async load, remote watch, conflict resolution choosing remote,
+  // discardShrinkSave reverting to last-saved bytes. In each of those
+  // cases the previous in-memory data is no longer the user's working
+  // state, so the old history would describe edits against a vanished
+  // base and "undo" past the load would jump to something stale.
+  const resetHistory = useCallback((seed: UserData) => {
+    setHistoryState(initialHistoryState(seed));
+  }, []);
 
   const dispatch: Dispatch<Action> = useCallback(
     (action) => {
@@ -219,15 +299,24 @@ export function useUserDataStorage<Action extends { type: string }>(
       setData((prev: UserData) => {
         const next = reducer(prev, action);
         if (recordHistory && next !== prev) {
-          setUndoStack((stack: UserData[]) => {
-            const appended = [...stack, prev];
-            return appended.length > UNDO_HISTORY_LIMIT
-              ? appended.slice(appended.length - UNDO_HISTORY_LIMIT)
-              : appended;
+          const timestamp = Date.now();
+          setHistoryState((state) => {
+            // Drop any "future" entries beyond the cursor — a fresh
+            // mutating action overwrites the redo timeline. Then
+            // append the new entry and trim from the front if the
+            // past portion would exceed UNDO_HISTORY_LIMIT.
+            const truncated = state.entries.slice(0, state.cursor + 1);
+            const appended = [
+              ...truncated,
+              { state: next, actionType: action.type, timestamp },
+            ];
+            const cap = UNDO_HISTORY_LIMIT + 1;
+            const dropped = Math.max(0, appended.length - cap);
+            return {
+              entries: dropped > 0 ? appended.slice(dropped) : appended,
+              cursor: appended.length - 1 - dropped,
+            };
           });
-          setRedoStack((stack: UserData[]) =>
-            stack.length === 0 ? stack : [],
-          );
         }
         return next;
       });
@@ -236,31 +325,35 @@ export function useUserDataStorage<Action extends { type: string }>(
   );
 
   const undo = useCallback(() => {
-    setUndoStack((stack: UserData[]) => {
-      if (stack.length === 0) return stack;
-      const previous = stack[stack.length - 1];
-      setData((current: UserData) => {
-        setRedoStack((redo: UserData[]) => [...redo, current]);
-        return previous;
-      });
-      return stack.slice(0, -1);
+    setHistoryState((state) => {
+      if (state.cursor === 0) return state;
+      const target = state.entries[state.cursor - 1];
+      setData(target.state);
+      return { entries: state.entries, cursor: state.cursor - 1 };
     });
   }, []);
 
   const redo = useCallback(() => {
-    setRedoStack((stack: UserData[]) => {
-      if (stack.length === 0) return stack;
-      const next = stack[stack.length - 1];
-      setData((current: UserData) => {
-        setUndoStack((undoStackInner: UserData[]) => {
-          const appended = [...undoStackInner, current];
-          return appended.length > UNDO_HISTORY_LIMIT
-            ? appended.slice(appended.length - UNDO_HISTORY_LIMIT)
-            : appended;
-        });
-        return next;
-      });
-      return stack.slice(0, -1);
+    setHistoryState((state) => {
+      if (state.cursor >= state.entries.length - 1) return state;
+      const target = state.entries[state.cursor + 1];
+      setData(target.state);
+      return { entries: state.entries, cursor: state.cursor + 1 };
+    });
+  }, []);
+
+  const jumpToHistory = useCallback((index: number) => {
+    setHistoryState((state) => {
+      if (
+        index < 0 ||
+        index >= state.entries.length ||
+        index === state.cursor
+      ) {
+        return state;
+      }
+      const target = state.entries[index];
+      setData(target.state);
+      return { entries: state.entries, cursor: index };
     });
   }, []);
 
@@ -403,6 +496,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           ? tryReadUserDataFromText(snap.text)
           : ({ data: freshUserData(), status: "fresh" } as const);
         setData(parsed.data);
+        resetHistory(parsed.data);
         setLastSavedText(snap?.text ?? null);
         if (parsed.status === "parse-failed") {
           setStatus({ kind: "parse-error", message: parsed.error });
@@ -440,6 +534,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           ? tryReadUserDataFromText(snap.text)
           : ({ data: freshUserData(), status: "fresh" } as const);
         setData(parsed.data);
+        resetHistory(parsed.data);
         setLastSavedText(snap?.text ?? null);
         if (parsed.status === "parse-failed") {
           // Real bytes came back from the adapter but this build
@@ -478,6 +573,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           hasLoadedRef.current = true;
           skipNextSave.current = true;
           setData(local);
+          resetHistory(local);
           setLastSavedText(localText ?? null);
           setStatus({ kind: "conflict", local, remote });
           return;
@@ -497,7 +593,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       cancelled = true;
       log.info(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
     };
-  }, [adapter]);
+  }, [adapter, resetHistory]);
 
   // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
@@ -625,6 +721,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       const parsed = tryReadUserDataFromText(snap.text);
       skipNextSave.current = true;
       setData(parsed.data);
+      resetHistory(parsed.data);
       setLastSavedText(snap.text);
       setStatus(
         parsed.status === "parse-failed"
@@ -634,7 +731,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     } else {
       setStatus({ kind: "idle" });
     }
-  }, [adapter.id, status]);
+  }, [adapter.id, resetHistory, status]);
 
   const resolveKeepRemote = useCallback(() => {
     if (status.kind !== "conflict") return;
@@ -648,6 +745,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       : { text: remoteText };
     skipNextSave.current = true;
     setData(remote);
+    resetHistory(remote);
     setLastSavedText(remoteText);
     setStatus({ kind: "idle" });
     // Tell the adapter chain that the bytes we're now showing are
@@ -655,7 +753,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     // would still hold the unsynced local edits and the next reload
     // would re-surface the conflict.
     adapter.markSynced?.(lastSnapshot.current);
-  }, [status, adapter]);
+  }, [status, adapter, resetHistory]);
 
   // Remote-change subscription. Cloud adapters call this when
   // another device pushes; local adapters typically don't supply it.
@@ -673,6 +771,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       hasLoadedRef.current = true;
       const parsed = tryReadUserDataFromText(snap.text);
       setData(parsed.data);
+      resetHistory(parsed.data);
       setLastSavedText(snap.text);
       if (parsed.status === "parse-failed") {
         setStatus({ kind: "parse-error", message: parsed.error });
@@ -686,10 +785,23 @@ export function useUserDataStorage<Action extends { type: string }>(
       log.info(`watch unsubscribe [${adapter.id}]`);
       unsubscribe();
     };
-  }, [adapter]);
+  }, [adapter, resetHistory]);
 
   const currentText = useMemo(() => serializeUserData(data), [data]);
   const dirty = lastSavedText !== null && currentText !== lastSavedText;
+
+  // Surface the timeline as metadata-only so consumers don't hold
+  // refs to internal `UserData` snapshots. Re-derived whenever
+  // `historyState.entries` changes, which is fine — the array is
+  // short (capped at UNDO_HISTORY_LIMIT + 1 entries).
+  const historyEntries = useMemo<ActionHistoryEntry[]>(
+    () =>
+      historyState.entries.map((entry) => ({
+        actionType: entry.actionType,
+        timestamp: entry.timestamp,
+      })),
+    [historyState.entries],
+  );
 
   return {
     data,
@@ -703,7 +815,10 @@ export function useUserDataStorage<Action extends { type: string }>(
     discardShrinkSave,
     undo,
     redo,
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
+    canUndo: historyState.cursor > 0,
+    canRedo: historyState.cursor < historyState.entries.length - 1,
+    historyEntries,
+    historyIndex: historyState.cursor,
+    jumpToHistory,
   };
 }

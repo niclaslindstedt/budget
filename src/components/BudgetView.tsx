@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AccountModal, type AccountDraft } from "./AccountModal";
+import { ActionHistoryModal } from "./ActionHistoryModal";
 import { UpdateBalanceModal } from "./UpdateBalanceModal";
 import { AccountsSheetView } from "./AccountsSheetView";
 import { ApplySeriesEditDialog } from "./ApplySeriesEditDialog";
@@ -281,6 +282,9 @@ export function BudgetView({
     redo,
     canUndo,
     canRedo,
+    historyEntries,
+    historyIndex,
+    jumpToHistory,
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
   });
@@ -333,6 +337,7 @@ export function BudgetView({
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
+  const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   // Auto-surface the sync-details modal for states the user can't
   // ignore: a paused shrink save (data-loss safeguard) and a parse
   // failure (build can't read the stored bytes). Both block
@@ -2464,6 +2469,7 @@ export function BudgetView({
               selectMode={selectMode}
               onUndo={undo}
               onRedo={redo}
+              onOpenHistory={() => setActionHistoryOpen(true)}
               onToggleSelectMode={onToggleSelectMode}
             />
             {selectMode ? (
@@ -2901,6 +2907,16 @@ export function BudgetView({
         open={changelogOpen}
         onClose={onCloseChangelog}
         since={lastSeenChangelogVersion}
+      />
+      <ActionHistoryModal
+        open={actionHistoryOpen}
+        onClose={() => setActionHistoryOpen(false)}
+        entries={historyEntries}
+        currentIndex={historyIndex}
+        onJump={(index) => {
+          jumpToHistory(index);
+          setActionHistoryOpen(false);
+        }}
       />
       <ConfirmDialog
         open={warningSecondsLeft !== null}
