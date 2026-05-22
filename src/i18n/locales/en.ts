@@ -1422,10 +1422,10 @@ export const en = {
     addAccount: "Add account",
     grandTotal: "Total",
     noAccounts: "No accounts yet. Add one with the button below.",
-    noTransactions:
-      "No transactions yet. Promote a budget row to a transaction, or use the button below.",
+    noTransfers:
+      "No transfers yet. Promote a budget row to a transfer, or use the button below.",
     glyphLabel: "{name} icon",
-    transactions: "Transactions",
+    transfers: "Transfers",
     findTransfers: "Find transfers",
     noTransferPairs: "No matching pairs in imported history",
     reviewTransferPairs: "Review {n} detected transfer pair",
@@ -1439,7 +1439,7 @@ export const en = {
     viewHistoryEntries: "View {n} history entries",
     editAccountAria: "Edit {name}",
     editAccountTitle: "Edit account",
-    newTransaction: "New transaction",
+    newTransfer: "New transfer",
     needTwoAccounts: "Add at least two accounts to record a transfer",
     unknown: "Unknown",
   },
@@ -1844,6 +1844,8 @@ export const en = {
     includeFuture: "Upcoming entries",
     noHistoryHint: "This sheet has no imported history",
     includeTransactionsAll: "Include transactions",
+    includeUnconfirmed: "Include unconfirmed entries",
+    includeFutureEntries: "Include future entries",
     noAccountsToExport: "No accounts to include yet.",
     submit: "Download",
     column: {

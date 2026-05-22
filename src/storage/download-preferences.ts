@@ -27,6 +27,13 @@ export type AccountsDownloadPrefs = {
   // Per-account "include this account at all" toggles. Default true.
   accountSelected: Record<string, boolean>;
   includeTransactions: boolean;
+  // Widen the budget-entries filter to include unconfirmed rows.
+  // Default off — the export is "confirmed past entries only" unless
+  // the user explicitly opts in.
+  includeUnconfirmed: boolean;
+  // Widen the budget-entries filter to include future-dated rows.
+  // Default off.
+  includeFutureEntries: boolean;
 };
 
 const BUDGET_PREFIX = "budget.download.budget.";
@@ -50,6 +57,8 @@ const DEFAULT_ACCOUNTS: AccountsDownloadPrefs = {
   accountTransactions: {},
   accountSelected: {},
   includeTransactions: true,
+  includeUnconfirmed: false,
+  includeFutureEntries: false,
 };
 
 export function getBudgetDownloadPrefs(userId: string): BudgetDownloadPrefs {
@@ -91,6 +100,14 @@ export function getAccountsDownloadPrefs(
         typeof parsed.includeTransactions === "boolean"
           ? parsed.includeTransactions
           : DEFAULT_ACCOUNTS.includeTransactions,
+      includeUnconfirmed:
+        typeof parsed.includeUnconfirmed === "boolean"
+          ? parsed.includeUnconfirmed
+          : DEFAULT_ACCOUNTS.includeUnconfirmed,
+      includeFutureEntries:
+        typeof parsed.includeFutureEntries === "boolean"
+          ? parsed.includeFutureEntries
+          : DEFAULT_ACCOUNTS.includeFutureEntries,
     };
   } catch {
     return cloneAccountsPrefs(DEFAULT_ACCOUNTS);
@@ -119,5 +136,7 @@ function cloneAccountsPrefs(p: AccountsDownloadPrefs): AccountsDownloadPrefs {
     accountTransactions: { ...p.accountTransactions },
     accountSelected: { ...p.accountSelected },
     includeTransactions: p.includeTransactions,
+    includeUnconfirmed: p.includeUnconfirmed,
+    includeFutureEntries: p.includeFutureEntries,
   };
 }
