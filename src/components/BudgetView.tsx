@@ -10,6 +10,7 @@ import { ChangelogModal } from "./ChangelogModal";
 import { BottomBar } from "./BottomBar";
 import { BulkEditModal, type BulkPatch } from "./BulkEditModal";
 import { SheetModal, type SheetDraft } from "./SheetModal";
+import { TransactionSearchModal } from "./TransactionSearchModal";
 import {
   TransactionModal,
   type TransactionDraft,
@@ -64,6 +65,7 @@ import {
   serializeAccountsExport,
 } from "../data/accounts-export";
 import { allCategories, allTypes } from "../data/presets";
+import { buildSearchIndex, type SearchEntry } from "../data/search";
 import {
   accountBalance,
   createDefaultSheet,
@@ -336,6 +338,32 @@ export function BudgetView({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
+  // Transaction-search modal state. `searchOpen` toggles visibility;
+  // `searchQuery` survives modal close so the user can reopen the
+  // search with their last query already filled in (session-only —
+  // never persisted to localStorage).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  // One-shot request from the search modal: "scroll to this row,
+  // pulse it briefly". The tick bumps on every pick so the effect
+  // re-fires even when the user picks the same row twice. `null` =
+  // idle. SheetView reads it via prop and ignores requests for other
+  // sheets (the parent dispatches `selectSheet` first; the new
+  // SheetView mounts with the request already set).
+  const [scrollToRowRequest, setScrollToRowRequest] = useState<{
+    sheetId: string;
+    rowId: string;
+    iso: string;
+    tick: number;
+  } | null>(null);
+  // Memoise the search index against the whole `data` reference so it
+  // rebuilds on every persisted edit but stays stable between renders
+  // when nothing changed. `runSearch` filters this on every keystroke
+  // inside the modal.
+  const searchIndex = useMemo<SearchEntry[]>(
+    () => buildSearchIndex(data),
+    [data],
+  );
   // Auto-surface the sync-details modal for states the user can't
   // ignore: a paused shrink save (data-loss safeguard) and a parse
   // failure (build can't read the stored bytes). Both block
@@ -2436,6 +2464,7 @@ export function BudgetView({
                 selectMode={selectMode}
                 selectedIds={selectedIds}
                 scrollToTodayTick={scrollToTodayTick}
+                scrollToRowRequest={scrollToRowRequest}
                 onUpdateCell={onUpdateCell}
                 onCommitCell={onCommitCell}
                 onAddRow={onAddRow}
@@ -2473,6 +2502,7 @@ export function BudgetView({
             onUndo={undo}
             onRedo={redo}
             onOpenHistory={() => setActionHistoryOpen(true)}
+            onOpenSearch={() => setSearchOpen(true)}
             onToggleSelectMode={onToggleSelectMode}
             bulkSelectedCount={selectedIds.size}
             onBulkEdit={onBulkEdit}
@@ -2914,6 +2944,26 @@ export function BudgetView({
         onJump={(index) => {
           jumpToHistory(index);
           setActionHistoryOpen(false);
+        }}
+      />
+      <TransactionSearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        index={searchIndex}
+        settings={data.settings}
+        onPick={(entry) => {
+          if (entry.sheetId !== data.activeSheetId) {
+            dispatch({ type: "selectSheet", sheetId: entry.sheetId });
+          }
+          setScrollToRowRequest((prev) => ({
+            sheetId: entry.sheetId,
+            rowId: entry.rowId,
+            iso: entry.iso,
+            tick: (prev?.tick ?? 0) + 1,
+          }));
+          setSearchOpen(false);
         }}
       />
       <ConfirmDialog

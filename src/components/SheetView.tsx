@@ -2,17 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eye, Pencil } from "lucide-react";
 
 import {
+  buildVisibleRows,
   computeBalances,
   currentFiscalMonthKey,
   findColumnByType,
   fiscalMonthSeedIso,
+  getMonthKey,
   groupRowsByMonth,
   previousMonthKey,
   sortMonthKeys,
   sortRowsByDate,
-  synthesizeHistoryRow,
-  synthesizeTransactionRow,
-  transactionsForAccount,
   type RowSortContext,
 } from "../data/sheet";
 import { coveredMonths } from "../data/coverage";
@@ -89,6 +88,22 @@ type Props = {
   // row falls on today). Initial value 0 is a no-op so the parent can
   // mount us without immediately overriding the first-mount auto-scroll.
   scrollToTodayTick: number;
+  // One-shot scroll-to-row request issued by the transaction-search
+  // modal when the user picks a result. The `tick` field is bumped on
+  // every new request so the effect re-fires even if the same row is
+  // picked twice in a row. `null` is the idle state. The view only
+  // acts when `request.sheetId === sheet.id` so requests for other
+  // sheets are ignored (the parent handles the sheet switch first;
+  // the new SheetView mounts and picks up the request via prop). `iso`
+  // is the target row's ISO date — used to expand `extraHistory` so the
+  // target row is included in `visibleMonths` even when it sits older
+  // than the default history window. Empty string for undated rows.
+  scrollToRowRequest: {
+    sheetId: string;
+    rowId: string;
+    iso: string;
+    tick: number;
+  } | null;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
@@ -202,6 +217,7 @@ export function SheetView({
   selectMode,
   selectedIds,
   scrollToTodayTick,
+  scrollToRowRequest,
   onUpdateCell,
   onCommitCell,
   onAddRow,
@@ -260,38 +276,19 @@ export function SheetView({
     for (const a of accounts) m.set(a.id, a.name);
     return m;
   }, [accounts]);
-  const transactionRows = useMemo(() => {
-    if (!item.accountId) return [] as Row[];
-    const accountTxs = transactionsForAccount(transactions, item.accountId);
-    return accountTxs.map((tx) =>
-      synthesizeTransactionRow(
-        tx,
-        item.accountId as string,
-        item.columns,
-        accountsById,
-      ),
-    );
-  }, [item.accountId, item.columns, transactions, accountsById]);
-
-  // Project imported bank-statement entries the same way transactions
-  // are projected: synthesized read-only rows the month grouping and
-  // running balance handle uniformly. Hidden entries (user-shelved
-  // noise) are filtered out so they don't clutter the budget view.
-  const historyRows = useMemo(() => {
-    if (!item.accountId) return [] as Row[];
-    return history
-      .filter((e) => !e.hidden)
-      .flatMap((e) =>
-        synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
-      );
-  }, [item.accountId, item.columns, history, merchantHints, matchRules]);
-
   const mergedItem = useMemo<AccountBudget>(
     () => ({
       ...item,
-      rows: [...item.rows, ...transactionRows, ...historyRows],
+      rows: buildVisibleRows(
+        item,
+        transactions,
+        history,
+        accountsById,
+        merchantHints,
+        matchRules,
+      ),
     }),
-    [item, transactionRows, historyRows],
+    [item, transactions, history, accountsById, merchantHints, matchRules],
   );
 
   // Each imported bank entry's stored balance is the truth: it pins
@@ -602,6 +599,59 @@ export function SheetView({
     scrollToToday("smooth");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollToTodayTick]);
+
+  // Honour a one-shot scroll-to-row request from the transaction-search
+  // modal. When the row's month falls outside the default history
+  // window, grow `extraHistory` enough to include it before scrolling —
+  // otherwise the row is filtered out of `visibleMonths` and the
+  // `[data-row-id]` query finds nothing. The pulse animation is driven
+  // by a CSS attribute on the row element: `[data-row-pulse]` flashes
+  // the row background once via `--accent` for ~1500ms, then the
+  // attribute is removed so the same row can pulse again on a future
+  // pick.
+  useEffect(() => {
+    if (!scrollToRowRequest) return;
+    if (scrollToRowRequest.sheetId !== sheet.id) return;
+    const { rowId, iso } = scrollToRowRequest;
+    if (iso) {
+      const targetKey = getMonthKey(iso, settings.startOfMonth);
+      if (/^\d{4}-\d{2}$/.test(targetKey) && targetKey < currentMonth) {
+        let cursor = currentMonth;
+        let stepsBack = 0;
+        while (cursor > targetKey) {
+          cursor = previousMonthKey(cursor);
+          stepsBack += 1;
+        }
+        const needed = stepsBack - DEFAULT_HISTORY_MONTHS;
+        if (needed > 0) {
+          setExtraHistory((n) => (n < needed ? needed : n));
+        }
+      }
+    }
+    let pulsedRow: HTMLElement | null = null;
+    const pulseHandle = window.setTimeout(() => {
+      const selector = `[data-row-id="${CSS.escape(rowId)}"]`;
+      const row = document.querySelector<HTMLElement>(selector);
+      if (!row) return;
+      const reduceMotion =
+        document.documentElement.dataset.reduceMotion === "true";
+      row.scrollIntoView({
+        block: "center",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+      row.setAttribute("data-row-pulse", "true");
+      pulsedRow = row;
+    }, 50);
+    const clearHandle = window.setTimeout(() => {
+      pulsedRow?.removeAttribute("data-row-pulse");
+    }, 1700);
+    return () => {
+      window.clearTimeout(pulseHandle);
+      window.clearTimeout(clearHandle);
+      pulsedRow?.removeAttribute("data-row-pulse");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollToRowRequest?.tick, sheet.id]);
 
   // Stable per-month closure bundles, keyed by monthKey. Without this
   // each visible MonthTable receives fresh `onAddRow` / `onAddComplex` /
