@@ -13,7 +13,7 @@ that output, they've usually already reproduced the bug and the
 trace is what's actionable. This skill is the playbook for turning
 that trace into a fix without losing time guessing.
 
-Two things distinguish this from generic "read the error and fix
+Three things distinguish this from generic "read the error and fix
 it":
 
 1. **Read the trace as a transaction.** Find the last successful
@@ -24,6 +24,12 @@ it":
    diagnose next time too. The final step of every run is to ask
    whether the trace contained enough to find the bug, and to ship
    the missing diagnostics in the same PR when it did not.
+3. **Confirm the bug with a Playwright spec before fixing it.** A
+   reproduction in `e2e/regression/` makes "is the bug fixed?" a
+   one-command answer (`make e2e`) instead of a manual click-around,
+   and the same spec becomes the permanent regression net once the
+   fix lands. Specs that run a dev server and screenshot the failing
+   surface also surface UI-only bugs the logs alone can't show.
 
 ## When to invoke
 
@@ -161,6 +167,61 @@ When you're confident the hypothesis holds, propose or apply the
 fix per the user's instructions and the standard `executing-actions-with-care`
 rules in `AGENTS.md`.
 
+### 6a. Confirm the bug with a Playwright regression spec
+
+Before writing the fix, write the regression test that proves the
+bug exists. Drop it under `e2e/regression/<slug>.spec.ts` with a
+short header comment describing the symptom (see
+`e2e/regression/README.md` for the conventions). The spec should:
+
+1. Drive the same user journey the trace describes — usually via
+   `signInAsGuest(page)` plus the buttons / inputs the reported
+   reproduction touches.
+2. Assert the broken surface as a `expect(...)`. The spec must
+   **fail** against current `main` before you touch the fix —
+   otherwise you don't have a real regression net, you have a
+   tautology. Run `make e2e -- e2e/regression/<slug>.spec.ts` to
+   prove the red state, then commit the spec alongside the fix so
+   the same spec lights green after.
+3. For UI-only bugs (rendering glitches, focus traps, missing
+   elements at a viewport size), screenshot the failing surface
+   inside the spec so the report carries a picture:
+
+   ```ts
+   await page.screenshot({
+     path: "test-results/<slug>-symptom.png",
+     fullPage: true,
+   });
+   ```
+
+   Playwright also writes a `test-failed-1.png` automatically when
+   the assertion fails — point the user at it in the report instead
+   of describing the misrender in prose.
+
+### 6b. Iterate against a running dev server when the bug is visual
+
+A spec is the right answer when the bug is reproducible from a
+clean state. When the bug needs a half-finished gesture (a hover,
+a focus, a half-swiped row) or shows up only against the dev
+server's HMR-fed bundle, run a dev server in the background and
+drive Chromium through Playwright's REPL / a throwaway spec
+instead:
+
+```sh
+# In one shell — leave it running for the duration of the debug.
+make dev   # http://localhost:5173
+
+# In another, use `npx playwright codegen http://localhost:5173`
+# to record selectors, or write a one-off spec with
+# `await page.pause()` so the inspector pops open mid-flow.
+```
+
+When the visual hypothesis is clear, port the throwaway spec into
+`e2e/regression/<slug>.spec.ts` and switch its base URL back to
+the preview build (Playwright's default `baseURL` in
+`playwright.config.ts`). The regression spec lives forever; the
+dev-server scratch pad does not.
+
 ### 7. Evaluate log sufficiency — and ship the missing logs
 
 This is the step the skill exists for. After the bug is identified,
@@ -204,11 +265,42 @@ Reply to the user with:
 
 1. The one-sentence root cause (from step 5).
 2. The proposed or applied fix.
-3. A short note about which logs you added and why, or "logs were
+3. The path to the new `e2e/regression/<slug>.spec.ts` spec, with
+   a one-line note that it was red before the fix and green after.
+   Drop the screenshot path here too if the bug was visual.
+4. A short note about which logs you added and why, or "logs were
    sufficient — no diagnostics added" if step 7 came up clean.
 
 Keep the report tight. The diff and the commit message hold the
 detail.
+
+## Working with this codebase's Playwright suite
+
+The end-to-end suite lives under `e2e/` and runs against the built
+`/preview/` slot (`playwright.config.ts`). Key facts for debug
+sessions:
+
+- `make e2e` builds + serves the preview, then runs every spec under
+  `e2e/specs/` and `e2e/regression/`. Add `-- e2e/regression/<slug>.spec.ts`
+  to scope to one spec, or `--headed` to see the browser.
+- `make e2e-ui` opens Playwright's interactive runner — best when
+  iterating on a flaky spec; you can see each step's snapshot and
+  re-run frames inline.
+- `signInAsGuest(page)` (`e2e/fixtures.ts`) drives the standard
+  no-password entry path. Use it rather than re-clicking the auth
+  screen in every spec.
+- The `clean` fixture in `e2e/fixtures.ts` wipes `localStorage`,
+  `sessionStorage`, and IndexedDB before every test. If a regression
+  reproduction depends on stale state, set it up explicitly inside
+  the test instead of leaking across files.
+- Playwright writes traces, screenshots, and videos to
+  `test-results/<spec>/` on failure. The HTML reporter dumps to
+  `playwright-report/index.html` — open it after a red run with
+  `npx playwright show-report`.
+- For "show me what the failure looks like" requests, run the
+  failing spec with `--retries=0 --reporter=null` so the
+  `test-failed-1.png` lands in `test-results/...` quickly, then
+  point the user at the path.
 
 ## Working with this codebase's logger
 
@@ -248,7 +340,11 @@ After a run:
 3. If you found yourself reaching for a grep pattern repeatedly
    (e.g. `git grep -n "failed (\d+ms)"` for hung ops), promote it
    into step 3's examples.
-4. Commit the skill edit alongside the bug fix and missing
-   diagnostics — the skill is documentation of what worked, and
-   drift on the skill itself is the same kind of error the skill
-   prevents.
+4. If you couldn't write the regression spec because the surface
+   was hard to reach from `signInAsGuest(page)` (the fixture's
+   default entry path), add a helper to `e2e/fixtures.ts` so the
+   next regression on the same surface starts from a known state.
+5. Commit the skill edit alongside the bug fix, the regression
+   spec, and any missing diagnostics — the skill is documentation
+   of what worked, and drift on the skill itself is the same kind
+   of error the skill prevents.

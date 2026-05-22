@@ -38,6 +38,7 @@ if (Array.isArray(labels) && labels.includes("no-changelog")) {
 
 const SKIP_PATTERNS = [
   /^tests\//,
+  /^e2e\//,
   /^\.github\//,
   /^\.agent\//,
   /^\.claude\//,
@@ -52,6 +53,7 @@ const SKIP_PATTERNS = [
   /^\.gitignore$/,
   /^\.gitattributes$/,
   /^eslint\.config\.js$/,
+  /^playwright\.config\.ts$/,
   /^tsconfig.*\.json$/,
   /^package-lock\.json$/,
 ];

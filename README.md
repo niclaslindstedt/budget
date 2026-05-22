@@ -1,6 +1,7 @@
 # budget
 
 [![CI](https://github.com/niclaslindstedt/budget/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/ci.yml)
+[![Preview](https://github.com/niclaslindstedt/budget/actions/workflows/preview.yml/badge.svg?branch=main)](https://github.com/niclaslindstedt/budget/actions/workflows/preview.yml)
 [![Pages](https://github.com/niclaslindstedt/budget/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/pages.yml)
 [![Release](https://github.com/niclaslindstedt/budget/actions/workflows/release.yml/badge.svg)](https://github.com/niclaslindstedt/budget/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](LICENSE)
@@ -60,18 +61,20 @@ make dev          # Vite dev server at http://localhost:5173
 
 Common `make` targets:
 
-| Command          | What it does                              |
-| ---------------- | ----------------------------------------- |
-| `make install`   | `npm ci`                                  |
-| `make dev`       | Start the Vite dev server                 |
-| `make build`     | Type-check and produce a production build |
-| `make preview`   | Preview the production build locally      |
-| `make lint`      | ESLint + TypeScript type-check            |
-| `make typecheck` | `tsc -b --noEmit` only                    |
-| `make fmt`       | Prettier rewrite in place                 |
-| `make fmt-check` | Prettier check without writing            |
-| `make test`      | Vitest suite                              |
-| `make clean`     | Remove `dist/` and Vite cache             |
+| Command            | What it does                                   |
+| ------------------ | ---------------------------------------------- |
+| `make install`     | `npm ci`                                       |
+| `make dev`         | Start the Vite dev server                      |
+| `make build`       | Type-check and produce a production build      |
+| `make preview`     | Preview the production build locally           |
+| `make lint`        | ESLint + TypeScript type-check                 |
+| `make typecheck`   | `tsc -b --noEmit` only                         |
+| `make fmt`         | Prettier rewrite in place                      |
+| `make fmt-check`   | Prettier check without writing                 |
+| `make test`        | Vitest suite                                   |
+| `make e2e`         | Playwright suite against the `/preview/` build |
+| `make e2e-install` | Install the Chromium browser Playwright drives |
+| `make clean`       | Remove `dist/` and Vite cache                  |
 
 ## Configuration
 

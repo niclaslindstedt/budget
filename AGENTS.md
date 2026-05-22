@@ -58,23 +58,32 @@ the design accommodate them.
 Prefer `make` targets over raw `npm run` commands so local and CI stay
 in sync:
 
-| Command          | What it does                              |
-| ---------------- | ----------------------------------------- |
-| `make install`   | `npm ci`                                  |
-| `make dev`       | Start the Vite dev server                 |
-| `make build`     | Type-check and produce a production build |
-| `make preview`   | Preview the production build locally      |
-| `make lint`      | ESLint + TypeScript type-check            |
-| `make typecheck` | `tsc -b --noEmit` only                    |
-| `make fmt`       | Prettier rewrite in place                 |
-| `make fmt-check` | Prettier check without writing            |
-| `make test`      | Vitest suite                              |
-| `make clean`     | Remove `dist/` and Vite cache             |
+| Command              | What it does                                                |
+| -------------------- | ----------------------------------------------------------- |
+| `make install`       | `npm ci`                                                    |
+| `make dev`           | Start the Vite dev server                                   |
+| `make build`         | Type-check and produce a production build                   |
+| `make preview`       | Preview the production build locally                        |
+| `make lint`          | ESLint + TypeScript type-check                              |
+| `make typecheck`     | `tsc -b --noEmit` only                                      |
+| `make fmt`           | Prettier rewrite in place                                   |
+| `make fmt-check`     | Prettier check without writing                              |
+| `make test`          | Vitest suite                                                |
+| `make e2e`           | Playwright suite against the `/preview/` build              |
+| `make e2e-install`   | Install the Chromium browser Playwright drives              |
+| `make preview-build` | Build `dist/` with `VITE_BASE_PATH=/preview/`               |
+| `make preview-serve` | `preview-build` + serve at `http://localhost:4173/preview/` |
+| `make clean`         | Remove `dist/` and Vite cache                               |
 
 CI runs on every push and pull request:
 
 - **CI** (`.github/workflows/ci.yml`) — `make fmt-check`, `make lint`,
   `make build`, `make test`.
+- **Preview** (`.github/workflows/preview.yml`) — runs the Playwright
+  end-to-end suite (`e2e/`) against a local `/preview/` build on
+  every push to `main`. The release workflow chains into it via
+  `workflow_call`, so a red preview run stops a tag before any
+  commit / GitHub Release lands.
 
 Deployment runs separately in **Pages**
 (`.github/workflows/pages.yml`) on every push to `main`.
@@ -166,6 +175,8 @@ that way.
 | Release / changelog tooling             | `scripts/release/*.mjs` (collator, extractor, PR check)                                                                                                                                                                            |
 | New user-facing string                  | `src/i18n/locales/en.ts` (canonical) + `src/i18n/locales/sv.ts` (Swedish). See "Translations" below.                                                                                                                               |
 | New language                            | `src/i18n/locale.ts` (`Lang` union, `bcp47`, `detectInitialLanguage`), `src/i18n/locales/<code>.ts`, `src/data/constants.ts` (`SUPPORTED_LANGUAGES`), `src/components/LanguagePicker.tsx` (flag button). See "Translations" below. |
+| New end-to-end test (common flow)       | `e2e/specs/<name>.spec.ts` — exercises a user journey through the `/preview/` build. See "End-to-end tests" below.                                                                                                                 |
+| Regression test for a shipped bug       | `e2e/regression/<slug>.spec.ts` — confirms the bug then locks in the fix. See `e2e/regression/README.md`.                                                                                                                          |
 
 ## Conventions
 
@@ -285,6 +296,40 @@ add coverage when meaningful tests exist.
 No tests exist yet — the skeleton has nothing to assert. Add them as
 real features land (start with `src/storage/` once data persistence is
 in).
+
+## End-to-end tests
+
+Playwright-driven specs live under `e2e/` and run against a built
+`/preview/` slot (same artifact `pages.yml` ships to the live
+`/preview/` URL):
+
+```
+e2e/
+├── fixtures.ts            # shared Playwright fixtures: storage wipe + signInAsGuest
+├── specs/                 # common-use-case journeys (auth, sheet, settings, …)
+└── regression/            # bugs that shipped once — see e2e/regression/README.md
+```
+
+The runner is `make e2e`; the config (`playwright.config.ts`) handles
+booting `make preview-serve` and tearing it down. `make e2e-install`
+fetches the Chromium build the suite needs — run it once on a fresh
+clone (CI installs automatically inside `preview.yml`).
+
+Conventions:
+
+- Each test gets a fresh browser context plus a cleared `localStorage`
+  / `sessionStorage` / IndexedDB (handled by the `clean` fixture).
+- Land users on the budget shell via `signInAsGuest(page)` rather than
+  re-clicking through the auth screen.
+- Prefer accessible-name selectors (`getByRole`, `getByLabel`) over
+  CSS classes or `data-testid` attributes — labels are already
+  in `src/i18n/locales/en.ts` and the suite stays in step with i18n
+  changes automatically.
+- File stems are `*.spec.ts` (Playwright convention), distinct from
+  `*_test.ts` (Vitest). Don't mix the two suites in one folder.
+- A new common-flow spec goes in `e2e/specs/<name>.spec.ts`; a fix
+  for a shipped bug goes in `e2e/regression/<slug>.spec.ts` with a
+  header comment summarising the symptom and linking the issue / PR.
 
 ## Documentation sync points
 

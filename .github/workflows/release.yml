@@ -26,8 +26,18 @@ permissions:
   id-token: write
 
 jobs:
+  # End-to-end Playwright suite against the same `/preview/` build the
+  # Pages workflow assembles. Runs first so a regression in the
+  # preview slot stops the release before any tag / commit lands.
+  e2e:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/preview.yml
+    permissions:
+      contents: read
+
   release:
     runs-on: ubuntu-latest
+    needs: e2e
     if: github.ref == 'refs/heads/main'
     outputs:
       version: ${{ steps.bump.outputs.version }}
