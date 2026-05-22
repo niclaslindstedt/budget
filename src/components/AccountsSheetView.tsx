@@ -342,7 +342,7 @@ export function AccountsSheetView({
       <section>
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className="text-xs font-bold tracking-wider uppercase text-fg-bright">
-            {t("accountsSheet.transactions")}
+            {t("accountsSheet.transfers")}
           </h3>
           <button
             type="button"
@@ -395,7 +395,7 @@ export function AccountsSheetView({
                     colSpan={4}
                     className="px-3 py-6 text-center text-xs text-muted"
                   >
-                    {t("accountsSheet.noTransactions")}
+                    {t("accountsSheet.noTransfers")}
                   </td>
                 </tr>
               )}
@@ -481,7 +481,7 @@ export function AccountsSheetView({
                     className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ArrowLeftRight size={14} aria-hidden focusable={false} />
-                    {t("accountsSheet.newTransaction")}
+                    {t("accountsSheet.newTransfer")}
                   </button>
                 </td>
               </tr>

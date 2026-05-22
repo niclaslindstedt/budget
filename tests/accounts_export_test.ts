@@ -4,7 +4,12 @@ import {
   buildAccountsExport,
   serializeAccountsExport,
 } from "../src/data/accounts-export";
-import type { Account, Transaction } from "../src/data/types";
+import type {
+  Account,
+  HistoryEntry,
+  Sheet,
+  Transaction,
+} from "../src/data/types";
 
 const ACC_A: Account = {
   id: "a",
@@ -23,7 +28,7 @@ const ACC_B: Account = {
   openingBalance: 500,
 };
 
-const TX_AB: Transaction = {
+const TRANSFER_AB: Transaction = {
   id: "tx1",
   date: "2026-05-01",
   description: "Transfer",
@@ -32,7 +37,7 @@ const TX_AB: Transaction = {
   toAccountId: "b",
 };
 
-const TX_AX: Transaction = {
+const TRANSFER_AX: Transaction = {
   id: "tx2",
   date: "2026-05-02",
   description: "External",
@@ -41,26 +46,58 @@ const TX_AX: Transaction = {
   toAccountId: "external",
 };
 
+const HIST_A1: HistoryEntry = {
+  id: "h1",
+  date: "2026-04-15",
+  description: "ICA Maxi",
+  amount: -120,
+  balance: 880,
+  importedAt: 1714000000000,
+};
+
+const HIST_B1: HistoryEntry = {
+  id: "h2",
+  date: "2026-04-20",
+  description: "Salary",
+  amount: 25000,
+  balance: 25500,
+  importedAt: 1714200000000,
+};
+
+const TODAY = "2026-05-15";
+
+const EMPTY_OPTS = {
+  sheets: [] as Sheet[],
+  transactions: {} as Record<string, HistoryEntry[]>,
+  transfers: [] as Transaction[],
+  today: TODAY,
+  includeUnconfirmed: false,
+  includeFuture: false,
+};
+
 describe("buildAccountsExport", () => {
   it("includes only selected accounts", () => {
     const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
       accounts: [ACC_A, ACC_B],
-      transactions: [],
       selectedAccountIds: ["a"],
       accountInfo: { a: true },
+      accountTransactions: { a: true },
       includeTransactions: false,
     });
     expect(payload.accounts.length).toBe(1);
     expect(payload.accounts[0].id).toBe("a");
     expect(payload.transactions).toBeUndefined();
+    expect(payload.transfers).toBeUndefined();
   });
 
   it("trims bank details when accountInfo is off", () => {
     const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
       accounts: [ACC_A],
-      transactions: [],
       selectedAccountIds: ["a"],
       accountInfo: { a: false },
+      accountTransactions: { a: true },
       includeTransactions: false,
     });
     const entry = payload.accounts[0];
@@ -68,7 +105,6 @@ describe("buildAccountsExport", () => {
     expect(entry.name).toBe("Lönekonto");
     expect(entry.color).toBe("#abc");
     expect(entry.openingBalance).toBe(1000);
-    // Bank, clearing, IBAN must be excluded when account info is off.
     expect(entry.bank).toBeUndefined();
     expect(entry.clearing).toBeUndefined();
     expect(entry.iban).toBeUndefined();
@@ -76,10 +112,11 @@ describe("buildAccountsExport", () => {
 
   it("includes bank details when accountInfo is on", () => {
     const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
       accounts: [ACC_A],
-      transactions: [],
       selectedAccountIds: ["a"],
       accountInfo: { a: true },
+      accountTransactions: { a: true },
       includeTransactions: false,
     });
     expect(payload.accounts[0].bank).toBe("Skandia");
@@ -87,39 +124,242 @@ describe("buildAccountsExport", () => {
     expect(payload.accounts[0].iban).toBe("SE001");
   });
 
-  it("filters transactions to those touching a selected account", () => {
+  it("emits per-account transactions from history", () => {
     const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
       accounts: [ACC_A, ACC_B],
-      transactions: [TX_AB, TX_AX],
+      transactions: { a: [HIST_A1], b: [HIST_B1] },
       selectedAccountIds: ["a", "b"],
       accountInfo: { a: true, b: true },
+      accountTransactions: { a: true, b: true },
       includeTransactions: true,
     });
-    expect(payload.transactions?.length).toBe(2);
-    expect(payload.transactions?.map((t) => t.id)).toEqual(["tx1", "tx2"]);
+    expect(payload.transactions).toBeDefined();
+    expect(payload.transactions?.a?.length).toBe(1);
+    expect(payload.transactions?.a?.[0].id).toBe("h1");
+    expect(payload.transactions?.b?.[0].description).toBe("Salary");
   });
 
-  it("emits an empty transactions array when none touch selected accounts", () => {
+  it("drops a per-account transactions entry when accountTransactions is off", () => {
     const payload = buildAccountsExport({
-      accounts: [ACC_A],
-      transactions: [TX_AB],
-      // Only b is selected — TX_AB still touches b.
-      selectedAccountIds: ["b"],
-      accountInfo: { b: true },
+      ...EMPTY_OPTS,
+      accounts: [ACC_A, ACC_B],
+      transactions: { a: [HIST_A1], b: [HIST_B1] },
+      selectedAccountIds: ["a", "b"],
+      accountInfo: { a: true, b: true },
+      accountTransactions: { a: false, b: true },
       includeTransactions: true,
     });
-    expect(payload.transactions?.length).toBe(1);
-    expect(payload.transactions?.[0].id).toBe("tx1");
+    expect(payload.transactions?.a).toBeUndefined();
+    expect(payload.transactions?.b?.[0].id).toBe("h2");
+  });
+
+  it("includes cross-account transfers touching an allowed account", () => {
+    const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A, ACC_B],
+      transfers: [TRANSFER_AB, TRANSFER_AX],
+      selectedAccountIds: ["a", "b"],
+      accountInfo: { a: true, b: true },
+      accountTransactions: { a: true, b: true },
+      includeTransactions: true,
+    });
+    expect(payload.transfers?.length).toBe(2);
+    expect(payload.transfers?.map((t) => t.id)).toEqual(["tx1", "tx2"]);
+  });
+
+  it("drops both transactions and transfers when includeTransactions is off", () => {
+    const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A, ACC_B],
+      transactions: { a: [HIST_A1] },
+      transfers: [TRANSFER_AB],
+      selectedAccountIds: ["a", "b"],
+      accountInfo: { a: true, b: true },
+      accountTransactions: { a: true, b: true },
+      includeTransactions: false,
+    });
+    expect(payload.transactions).toBeUndefined();
+    expect(payload.transfers).toBeUndefined();
+  });
+
+  it("emits confirmed past budget entries by default", () => {
+    const sheet: Sheet = {
+      id: "s1",
+      name: "Wallet",
+      type: "budget",
+      glyph: "wallet",
+      color: "#fff",
+      description: "",
+      items: [
+        {
+          id: "i1",
+          type: "accountBudget",
+          accountId: "a",
+          columns: [
+            { id: "c-date", type: "date", label: "Date" },
+            { id: "c-desc", type: "description", label: "Description" },
+            { id: "c-amt", type: "amount", label: "Amount" },
+            { id: "c-ok", type: "completed", label: "Done" },
+          ],
+          rows: [
+            {
+              id: "r-past-ok",
+              cells: {
+                "c-date": "2026-04-01",
+                "c-desc": "Confirmed past",
+                "c-amt": -50,
+                "c-ok": true,
+              },
+            },
+            {
+              id: "r-past-no",
+              cells: {
+                "c-date": "2026-04-02",
+                "c-desc": "Unconfirmed past",
+                "c-amt": -25,
+                "c-ok": false,
+              },
+            },
+            {
+              id: "r-future-ok",
+              cells: {
+                "c-date": "2026-06-01",
+                "c-desc": "Confirmed future",
+                "c-amt": -10,
+                "c-ok": true,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A],
+      sheets: [sheet],
+      selectedAccountIds: ["a"],
+      accountInfo: { a: true },
+      accountTransactions: { a: true },
+      includeTransactions: false,
+    });
+    expect(payload.budgetEntries?.a?.length).toBe(1);
+    expect(payload.budgetEntries?.a?.[0].id).toBe("r-past-ok");
+  });
+
+  it("widens the budget filter when unconfirmed + future toggles are on", () => {
+    const sheet: Sheet = {
+      id: "s1",
+      name: "Wallet",
+      type: "budget",
+      glyph: "wallet",
+      color: "#fff",
+      description: "",
+      items: [
+        {
+          id: "i1",
+          type: "accountBudget",
+          accountId: "a",
+          columns: [
+            { id: "c-date", type: "date", label: "Date" },
+            { id: "c-desc", type: "description", label: "Description" },
+            { id: "c-amt", type: "amount", label: "Amount" },
+            { id: "c-ok", type: "completed", label: "Done" },
+          ],
+          rows: [
+            {
+              id: "r-past-ok",
+              cells: {
+                "c-date": "2026-04-01",
+                "c-desc": "Confirmed past",
+                "c-amt": -50,
+                "c-ok": true,
+              },
+            },
+            {
+              id: "r-past-no",
+              cells: {
+                "c-date": "2026-04-02",
+                "c-desc": "Unconfirmed past",
+                "c-amt": -25,
+                "c-ok": false,
+              },
+            },
+            {
+              id: "r-future-ok",
+              cells: {
+                "c-date": "2026-06-01",
+                "c-desc": "Confirmed future",
+                "c-amt": -10,
+                "c-ok": true,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A],
+      sheets: [sheet],
+      selectedAccountIds: ["a"],
+      accountInfo: { a: true },
+      accountTransactions: { a: true },
+      includeTransactions: false,
+      includeUnconfirmed: true,
+      includeFuture: true,
+    });
+    expect(payload.budgetEntries?.a?.length).toBe(3);
+  });
+
+  it("skips budget entries for unselected accounts", () => {
+    const sheet: Sheet = {
+      id: "s1",
+      name: "Wallet",
+      type: "budget",
+      glyph: "wallet",
+      color: "#fff",
+      description: "",
+      items: [
+        {
+          id: "i1",
+          type: "accountBudget",
+          accountId: "b",
+          columns: [
+            { id: "c-date", type: "date", label: "Date" },
+            { id: "c-amt", type: "amount", label: "Amount" },
+            { id: "c-ok", type: "completed", label: "Done" },
+          ],
+          rows: [
+            {
+              id: "r",
+              cells: { "c-date": "2026-04-01", "c-amt": -50, "c-ok": true },
+            },
+          ],
+        },
+      ],
+    };
+    const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
+      accounts: [ACC_A, ACC_B],
+      sheets: [sheet],
+      selectedAccountIds: ["a"],
+      accountInfo: { a: true },
+      accountTransactions: { a: true },
+      includeTransactions: false,
+    });
+    expect(payload.budgetEntries).toBeUndefined();
   });
 });
 
 describe("serializeAccountsExport", () => {
   it("produces pretty-printed JSON with a trailing newline", () => {
     const payload = buildAccountsExport({
+      ...EMPTY_OPTS,
       accounts: [ACC_B],
-      transactions: [],
       selectedAccountIds: ["b"],
       accountInfo: { b: true },
+      accountTransactions: { b: true },
       includeTransactions: false,
     });
     const text = serializeAccountsExport(payload);

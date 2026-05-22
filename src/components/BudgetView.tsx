@@ -1052,10 +1052,16 @@ export function BudgetView({
       } else {
         const payload = buildAccountsExport({
           accounts: data.accounts,
-          transactions: data.transactions,
+          transfers: data.transactions,
+          transactions: data.history,
+          sheets: data.sheets,
           selectedAccountIds: config.selectedAccountIds,
           accountInfo: config.accountInfo,
+          accountTransactions: config.accountTransactions,
           includeTransactions: config.includeTransactions,
+          today: todayIso(),
+          includeUnconfirmed: config.includeUnconfirmed,
+          includeFuture: config.includeFutureEntries,
         });
         // The selected list only carries the accounts the user kept
         // ticked, but we still want to remember every account's per-
@@ -1065,20 +1071,6 @@ export function BudgetView({
         for (const a of data.accounts) {
           accountSelected[a.id] = config.selectedAccountIds.includes(a.id);
         }
-        // The TransactionsExportEntry list (when present) is
-        // gated per-account by `accountTransactions` — drop the
-        // entries whose endpoints are toggled off so a per-account
-        // exclude actually removes them from the JSON.
-        if (payload.transactions) {
-          const allowed = new Set<string>();
-          for (const id of config.selectedAccountIds) {
-            if (config.accountTransactions[id] ?? true) allowed.add(id);
-          }
-          payload.transactions = payload.transactions.filter(
-            (tx) =>
-              allowed.has(tx.fromAccountId) || allowed.has(tx.toAccountId),
-          );
-        }
         const text = serializeAccountsExport(payload);
         triggerDownload(text, `accounts-${stamp}.json`, JSON_MIME_TYPE);
         setAccountsDownloadPrefs(user.id, {
@@ -1086,6 +1078,8 @@ export function BudgetView({
           accountTransactions: config.accountTransactions,
           accountSelected,
           includeTransactions: config.includeTransactions,
+          includeUnconfirmed: config.includeUnconfirmed,
+          includeFutureEntries: config.includeFutureEntries,
         });
       }
       setDownloadPrompt(null);

@@ -31,6 +31,8 @@ export type DownloadConfig =
       accountInfo: Record<string, boolean>;
       accountTransactions: Record<string, boolean>;
       includeTransactions: boolean;
+      includeUnconfirmed: boolean;
+      includeFutureEntries: boolean;
     };
 
 type BudgetProps = {
@@ -192,6 +194,8 @@ function AccountsDownloadModal({
   const [info, setInfo] = useState<Record<string, boolean>>({});
   const [transactions, setTransactions] = useState<Record<string, boolean>>({});
   const [includeTransactions, setIncludeTransactions] = useState(true);
+  const [includeUnconfirmed, setIncludeUnconfirmed] = useState(false);
+  const [includeFutureEntries, setIncludeFutureEntries] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -207,6 +211,8 @@ function AccountsDownloadModal({
     setInfo(initInfo);
     setTransactions(initTx);
     setIncludeTransactions(initial.includeTransactions);
+    setIncludeUnconfirmed(initial.includeUnconfirmed);
+    setIncludeFutureEntries(initial.includeFutureEntries);
   }, [open, accounts, initial]);
 
   const allSelected = useMemo(
@@ -249,6 +255,8 @@ function AccountsDownloadModal({
       accountInfo: info,
       accountTransactions: transactions,
       includeTransactions,
+      includeUnconfirmed,
+      includeFutureEntries,
     });
   }
 
@@ -284,7 +292,7 @@ function AccountsDownloadModal({
                           checked={allSelected}
                           readOnly
                           tabIndex={-1}
-                          className="h-3.5 w-3.5 cursor-pointer"
+                          className="h-4 w-4 cursor-pointer"
                         />
                         {t("download.column.account")}
                       </button>
@@ -300,7 +308,7 @@ function AccountsDownloadModal({
                           checked={allInfo}
                           readOnly
                           tabIndex={-1}
-                          className="h-3.5 w-3.5 cursor-pointer"
+                          className="h-4 w-4 cursor-pointer"
                         />
                         {t("download.column.accountInfo")}
                       </button>
@@ -316,7 +324,7 @@ function AccountsDownloadModal({
                           checked={allTx}
                           readOnly
                           tabIndex={-1}
-                          className="h-3.5 w-3.5 cursor-pointer"
+                          className="h-4 w-4 cursor-pointer"
                         />
                         {t("download.column.transactions")}
                       </button>
@@ -368,36 +376,55 @@ function AccountsDownloadModal({
                         </label>
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
-                        <input
-                          type="checkbox"
-                          checked={info[account.id] ?? true}
-                          onChange={(e) =>
-                            setInfo((prev) => ({
-                              ...prev,
-                              [account.id]: e.target.checked,
-                            }))
-                          }
-                          aria-label={t("download.accountInfoFor", {
-                            name: account.name,
-                          })}
-                          className="h-4 w-4 cursor-pointer"
-                        />
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={info[account.id] ?? true}
+                            onChange={(e) =>
+                              setInfo((prev) => ({
+                                ...prev,
+                                [account.id]: e.target.checked,
+                              }))
+                            }
+                            aria-label={t("download.accountInfoFor", {
+                              name: account.name,
+                            })}
+                            className="h-4 w-4 cursor-pointer"
+                          />
+                          {/* Invisible mirror of the header label keeps the
+                              row checkbox aligned with the centered header
+                              button regardless of label length. */}
+                          <span
+                            aria-hidden
+                            className="invisible text-xs tracking-wider uppercase"
+                          >
+                            {t("download.column.accountInfo")}
+                          </span>
+                        </label>
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
-                        <input
-                          type="checkbox"
-                          checked={transactions[account.id] ?? true}
-                          onChange={(e) =>
-                            setTransactions((prev) => ({
-                              ...prev,
-                              [account.id]: e.target.checked,
-                            }))
-                          }
-                          aria-label={t("download.accountTransactionsFor", {
-                            name: account.name,
-                          })}
-                          className="h-4 w-4 cursor-pointer"
-                        />
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={transactions[account.id] ?? true}
+                            onChange={(e) =>
+                              setTransactions((prev) => ({
+                                ...prev,
+                                [account.id]: e.target.checked,
+                              }))
+                            }
+                            aria-label={t("download.accountTransactionsFor", {
+                              name: account.name,
+                            })}
+                            className="h-4 w-4 cursor-pointer"
+                          />
+                          <span
+                            aria-hidden
+                            className="invisible text-xs tracking-wider uppercase"
+                          >
+                            {t("download.column.transactions")}
+                          </span>
+                        </label>
                       </td>
                     </tr>
                   ))}
@@ -414,6 +441,24 @@ function AccountsDownloadModal({
               className="h-4 w-4 cursor-pointer"
             />
             {t("download.includeTransactionsAll")}
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-fg-bright">
+            <input
+              type="checkbox"
+              checked={includeUnconfirmed}
+              onChange={(e) => setIncludeUnconfirmed(e.target.checked)}
+              className="h-4 w-4 cursor-pointer"
+            />
+            {t("download.includeUnconfirmed")}
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-fg-bright">
+            <input
+              type="checkbox"
+              checked={includeFutureEntries}
+              onChange={(e) => setIncludeFutureEntries(e.target.checked)}
+              className="h-4 w-4 cursor-pointer"
+            />
+            {t("download.includeFutureEntries")}
           </label>
         </div>
       </Modal.Body>
