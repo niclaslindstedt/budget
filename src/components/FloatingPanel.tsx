@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 
@@ -6,7 +5,6 @@ import {
   type FloatingPlacement,
   useEscapeKey,
   useFloatingPosition,
-  useSwallowingPointerOutside,
 } from "../hooks";
 import { useBlocksSheet } from "./useBlocksSheet";
 
@@ -50,18 +48,9 @@ export function FloatingPanel({
   arrow,
   children,
 }: Props) {
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const position = useFloatingPosition(triggerRef, open, placement);
 
-  // Always swallow the dismissing tap, even inside the row that owns
-  // the panel: while a popover / dropdown is open it is the focal point
-  // and a tap anywhere else should only close it — never also focus the
-  // amount input, toggle a sign chip, or activate any other cell. (In
-  // sheet-row context the active-row coordinator also dismisses on
-  // outside-row taps via `useBlocksSheet`; the two swallows are
-  // idempotent at the capture phase.)
   useEscapeKey(open, onClose);
-  useSwallowingPointerOutside(open, [triggerRef, dropdownRef], onClose);
   useBlocksSheet(rowId, open, onClose);
 
   if (!open || !position) return null;
@@ -107,8 +96,31 @@ export function FloatingPanel({
   const arrowBorderClass = flipUp ? "border-b border-r" : "border-t border-l";
   return createPortal(
     <>
+      {/* Invisible backdrop that catches every tap outside the panel
+          itself. The only thing a tap on the page can hit while the
+          panel is open is either the panel (which handles its own
+          option / textarea clicks) or this backdrop (which only
+          dismisses). Solves the iOS Safari problem where focus on an
+          `<input>` fires before any document-level capture-phase
+          listener can preventDefault the mouse / touch sequence — the
+          input under the tap simply never receives the events.
+          `data-active-portal` keeps `ActiveRowProvider` from treating
+          the backdrop tap as "outside the active region" and stealing
+          the dismiss. The z-50 matches the panel and Modal layers; DOM
+          order keeps the panel above this backdrop, and keeps this
+          backdrop above any Modal contents that share the same z-50
+          tier (the FloatingPanel portal mounts after the Modal portal,
+          so later-rendered children win on equal z-index). */}
       <div
-        ref={dropdownRef}
+        data-active-portal
+        aria-hidden
+        className="fixed inset-0 z-50"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          onClose();
+        }}
+      />
+      <div
         data-active-portal
         className={`peer ${positionClass} z-50 flex flex-col overflow-y-auto rounded border border-line bg-surface-2 shadow-lg focus-within:border-accent ${className}`.trim()}
         style={{
