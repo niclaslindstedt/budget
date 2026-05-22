@@ -6,7 +6,6 @@ import {
   type FloatingPlacement,
   useEscapeKey,
   useFloatingPosition,
-  usePointerOutside,
   useSwallowingPointerOutside,
 } from "../hooks";
 import { useBlocksSheet } from "./useBlocksSheet";
@@ -54,22 +53,15 @@ export function FloatingPanel({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const position = useFloatingPosition(triggerRef, open, placement);
 
-  // In sheet-row context the outside-tap swallow is owned by
-  // `ActiveRowProvider` (registered via `useBlocksSheet`), and letting
-  // in-row taps reach the underlying cell is what makes cell-to-cell
-  // navigation feel snappy — so the panel only needs a plain dismiss
-  // listener there. In a modal / page-chrome context there's no row
-  // coordinator above us, so the dismissing tap would otherwise also
-  // focus / submit / toggle whatever sits beneath the panel; swap in
-  // the swallowing variant so the tap only closes the dropdown.
-  const inRowContext = rowId !== undefined;
+  // Always swallow the dismissing tap, even inside the row that owns
+  // the panel: while a popover / dropdown is open it is the focal point
+  // and a tap anywhere else should only close it — never also focus the
+  // amount input, toggle a sign chip, or activate any other cell. (In
+  // sheet-row context the active-row coordinator also dismisses on
+  // outside-row taps via `useBlocksSheet`; the two swallows are
+  // idempotent at the capture phase.)
   useEscapeKey(open, onClose);
-  usePointerOutside(open && inRowContext, [triggerRef, dropdownRef], onClose);
-  useSwallowingPointerOutside(
-    open && !inRowContext,
-    [triggerRef, dropdownRef],
-    onClose,
-  );
+  useSwallowingPointerOutside(open, [triggerRef, dropdownRef], onClose);
   useBlocksSheet(rowId, open, onClose);
 
   if (!open || !position) return null;
