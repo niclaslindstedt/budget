@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Hash,
   HardDrive,
@@ -22,7 +22,7 @@ import type {
   Settings,
   UserData,
 } from "../../data/types";
-import { useDevMode, useEscapeKey } from "../../hooks";
+import { useDevMode, type FloatingPlacement } from "../../hooks";
 import { useT, type TFunction } from "../../i18n";
 import type { StorageAdapter } from "../../storage/adapter";
 import type {
@@ -30,7 +30,7 @@ import type {
   EncryptionMode,
 } from "../../storage/backend-preference";
 import { CloudBackupModal } from "../CloudBackupModal";
-import { DismissBackdrop } from "../DismissBackdrop";
+import { FloatingPanel } from "../FloatingPanel";
 import { Button } from "../form";
 import { Modal } from "../Modal";
 import {
@@ -527,6 +527,17 @@ function TabSidebar({
   );
 }
 
+// Left-anchored 12rem-wide tab list that opens just below the burger.
+// Routed through `FloatingPanel` (instead of an inline `absolute` div)
+// because this header lives inside the Modal's z-50 stacking context,
+// which would otherwise cap the menu's z-index against the dismiss
+// backdrop. The panel's portal lifts it back to document.body level.
+const SETTINGS_TAB_MENU_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 192 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
 // Custom header so the mobile burger trigger can sit to the left of
 // the "Settings" title instead of taking its own row below the
 // header. The burger is hidden on `sm:` and up — the desktop sidebar
@@ -545,9 +556,8 @@ function SettingsHeader({
   const t = useT();
   const tabs = useTabDefs(t, tabIds);
   const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setMenuOpen(false), []);
-
-  useEscapeKey(menuOpen, close);
 
   return (
     <header
@@ -557,23 +567,24 @@ function SettingsHeader({
       }}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <div className="relative sm:hidden">
-          {menuOpen && <DismissBackdrop onDismiss={close} />}
+        <div ref={triggerRef} className="relative sm:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={t("settings.chooseSection")}
-            className="relative z-[60] -ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+            className="-ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
           >
             <Menu size={18} aria-hidden focusable={false} />
           </button>
-          {menuOpen && (
-            <div
-              role="menu"
-              className="absolute left-0 top-full z-[60] mt-1 flex w-48 flex-col gap-0.5 rounded border border-line bg-surface-3 p-2 shadow-lg"
-            >
+          <FloatingPanel
+            open={menuOpen}
+            onClose={close}
+            triggerRef={triggerRef}
+            placement={SETTINGS_TAB_MENU_PLACEMENT}
+          >
+            <div role="menu" className="flex w-full flex-col gap-0.5 p-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = tab.id === activeTab;
@@ -599,7 +610,7 @@ function SettingsHeader({
                 );
               })}
             </div>
-          )}
+          </FloatingPanel>
         </div>
         <h2
           id="settings-title"
