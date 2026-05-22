@@ -11,6 +11,9 @@
   requires JavaScript.
 - [Privacy policy](https://budget.niclaslindstedt.se/privacy/): how
   Budget handles your data. Local-first, no backend, no analytics.
+- [How to use Budget](https://budget.niclaslindstedt.se/system/): a
+  four-tier guided tour (Beginner → Intermediate → Pro → Expert) of
+  every feature in the app, ordered as you'd discover them.
 
 ## Source
 

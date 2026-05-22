@@ -150,32 +150,78 @@ to a curious friend explaining one feature at a time.
 
 - **Second person, present tense, active verbs.** "Click", "drop",
   "tick", "tap" — never "the user can" / "it is possible to".
-- **Open each entry with the user's situation, not the feature's
-  name.** "Made a mistake? ⌘Z walks back the last action." not
-  "**Undo** — pressing ⌘Z reverses an action."
-- **Bold the feature name inline** so the page is skimmable as a
-  list of bolded headwords with prose tails.
-- **Name the concrete trigger.** Menu path (`Settings → Storage →
-Encrypt`), gesture (long-press a sheet tab), or shortcut (⌘Z,
+- **Title is a complete fragment ending in a period**, rendered
+  inline before the summary: "Use it as a guest, or sign up.",
+  "Make a mistake — undo it.", "Open the formula reference." Keep
+  it short — it shares the row with the summary.
+- **Summary is exactly one sentence.** It must read coherently on
+  its own without expanding the row. State the trigger and the
+  mechanic. Don't make claims that depend on the expanded body.
+- **Learn-more body is one short paragraph** (two at most), in the
+  `children` slot. Explain the _why_, name adjacent settings or
+  follow-on features, or call out gotchas. Anything that would
+  bloat the summary row goes here. Leave `children` undefined when
+  the summary is genuinely complete — the chevron and "Learn more"
+  hint vanish automatically.
+- **Name the concrete trigger.** Menu path (Settings → Storage →
+  Encrypt), gesture (long-press a sheet tab), or shortcut (⌘Z,
   ⌘⇧Z). Pull menu labels verbatim from `src/i18n/locales/en.ts` so
   the page matches what the user is looking at.
-- **One or two sentences per feature.** First sentence states the
-  mechanic; second sentence (optional) explains _why a tidy
-  budgeter reaches for it_. Don't pad — the catalog is long and
-  every padded sentence taxes the next one.
-- **No code references in user-visible text.** Never mention file
-  names, types, hooks, reducer action names, or feature flags. The
-  system page is for users, not for agents reading the source.
+- **No code references in user-visible text** beyond user-typed
+  tokens (formula variable names like `salary` or
+  `endOfMonthBalance`, file extensions like `.xlsx`, the JSON file
+  name `budget.json`). Wrap those in `<code className="text-meta">`
+  so they read as input. Never mention component names, hooks,
+  reducer actions, or feature flags.
 - **No tier-leaks.** A Beginner entry must not assume the user has
-  done anything from Intermediate. If you need to mention a
-  higher-tier concept ("once you've imported a bank statement…"),
-  the entry belongs in the higher tier.
+  done anything from Intermediate. If you need to forward-reference
+  a higher-tier feature ("once you've imported a bank statement…"),
+  link it in the expanded body with the tier name spelled out
+  ("Intermediate → _Correct a drifted balance_") so the reader sees
+  the dependency clearly.
 - **No emojis** unless they were already in the codebase (e.g. the
   `+ / − / ◆` type-direction markers stay because the type picker
   shows them literally).
-- **Headings**: one `<h2>` per tier. Numbered list inside. The
-  per-tier graduation callout is a `<blockquote>` or a styled
-  `<aside>`, whichever the existing component shape supports.
+- **No numbered lists.** Each `<Feature>` is its own row; do not
+  wrap them in `<ol>`. Sequencing comes from list order alone,
+  glyphs handle the visual rhythm.
+
+## Page shape
+
+`src/components/SystemPage.tsx` exports three internal components
+that together render the page. New features slot in by adding more
+`<Feature>` rows; new tiers (don't add one without revisiting the
+rubric above) by adding more `<Tier>` blocks.
+
+- **`<Tier>`** — one per tier (Beginner / Intermediate / Pro /
+  Expert). Takes `icon`, `title`, `subtitle`, and children. The
+  icon renders inside a square bordered tile next to the heading;
+  the subtitle is a one-line framing of the tier ("You just opened
+  the app. What do you do?").
+- **`<Feature>`** — one per feature. Takes `icon`, `title`,
+  `summary`, and optional `children`. Renders as a `<details>` /
+  `<summary>` pair: the summary row is always visible (icon +
+  bolded title + one-sentence summary + a "Learn more" hint when
+  expandable); the children render below when expanded. Native
+  `<details>` semantics mean no JS state, keyboard support is free,
+  and the global "Reduce motion" rule in `src/styles.css` already
+  neutralises the chevron transition for users who opt out.
+- **`<Graduation>`** — the closing callout at the end of every
+  tier. Renders as a left-bordered blockquote with "You've
+  graduated when:" prefixed. Required on every tier.
+
+Per-tier and per-feature icons come from `lucide-react`. Import the
+type as `import type { LucideIcon } from "lucide-react"` — do not
+re-derive it locally from `ComponentType<SVGProps<…>>`, because
+lucide's `ForwardRefExoticComponent` shape won't match (typechecker
+will fail with "Type … is not assignable to type 'LucideIcon'").
+
+Pick icons semantically — each icon should give the reader a
+recognisable cue for the feature even before they read the title.
+Examples in current use: `Wallet` for accounts, `Repeat` for
+recurring, `Lock` for encryption, `Sigma` for formulas, `Brain`
+for merchant memory, `Sprout` / `Compass` / `Workflow` / `Wand2`
+for the four tier headers.
 
 ## Source → tier slotting cheatsheet
 

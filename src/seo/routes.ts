@@ -180,8 +180,60 @@ export const CHANGELOG_ROUTE: RouteSeo = {
   ],
 };
 
+export const SYSTEM_ROUTE: RouteSeo = {
+  path: "/system/",
+  title: "How to use Budget — Budget",
+  description:
+    "A guided tour of every feature in the Budget app, ordered as " +
+    "you'd discover them. Four tiers — Beginner, Intermediate, Pro, " +
+    "Expert — each item has a summary and a Learn-more expander so " +
+    "you can skip to your own level.",
+  ogType: "article",
+  jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "@id": `${absoluteUrl("/system/")}#article`,
+      url: absoluteUrl("/system/"),
+      headline: "How to use Budget",
+      description:
+        "A guided tour of every feature in the Budget app, ordered " +
+        "as you'd discover them. Four tiers: Beginner, Intermediate, " +
+        "Pro, Expert.",
+      inLanguage: SITE_LANGUAGE,
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#app` },
+      author: { "@id": `${SITE_URL}/#author` },
+      publisher: { "@id": `${SITE_URL}/#author` },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": absoluteUrl("/system/"),
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: `${SITE_URL}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "How to use Budget",
+          item: absoluteUrl("/system/"),
+        },
+      ],
+    },
+  ],
+};
+
 export const ROUTES: readonly RouteSeo[] = [
   HOME_ROUTE,
   PRIVACY_ROUTE,
   CHANGELOG_ROUTE,
+  SYSTEM_ROUTE,
 ];

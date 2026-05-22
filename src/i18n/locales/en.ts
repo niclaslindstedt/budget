@@ -654,6 +654,7 @@ export const en = {
     footer: {
       privacy: "Privacy policy",
       changelog: "What's new",
+      system: "How to use Budget",
       source: "Show source",
       version: "Version {version}",
     },
