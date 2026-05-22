@@ -2,7 +2,6 @@ import {
   Fragment,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -13,7 +12,6 @@ import {
   findColumnByType,
   groupRowsByMonth,
   isTransferRow,
-  previousMonthKey,
   sortMonthKeys,
   sortRowsByDate,
   type RowSortContext,
@@ -75,13 +73,6 @@ function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
-// Newest months render first; the user lands on current activity. The
-// initial window covers the current fiscal month plus this many past
-// months. The IntersectionObserver sentinel below loads `PAGE_SIZE`
-// more older months each time it scrolls into view.
-const INITIAL_VISIBLE_MONTHS = 3;
-const PAGE_SIZE = 6;
-
 const EMPTY_ROWS: Row[] = [];
 
 // Read-only viewer for a single sheet. Renders the same month-grouped
@@ -92,10 +83,9 @@ const EMPTY_ROWS: Row[] = [];
 // header's Eye button for cases where the user wants to read the
 // budget without risk of accidental edits.
 //
-// Older months are loaded lazily — sheets with years of history would
-// otherwise blow the DOM on every open. Future-dated months and the
-// `undated` bucket render up-front (they're rare and the user expects
-// them in view).
+// Every month renders up-front so the in-modal search filter sees the
+// entire history (matches HistoryModal). No interactive affordances
+// hang off the rows, so a years-deep ledger still renders fine.
 export function SheetViewerModal({
   open,
   onClose,
@@ -215,54 +205,14 @@ export function SheetViewerModal({
     [settings.startOfMonth],
   );
 
-  // How many additional past months past INITIAL_VISIBLE_MONTHS the
-  // sentinel has loaded. Reset every time the modal closes so re-opens
-  // start from the most-recent activity.
-  const [extra, setExtra] = useState(0);
-  useEffect(() => {
-    if (!open) setExtra(0);
-  }, [open]);
-
-  const oldestVisibleMonth = useMemo(() => {
-    let key = currentMonth;
-    for (let i = 0; i < INITIAL_VISIBLE_MONTHS + extra; i += 1) {
-      key = previousMonthKey(key);
-    }
-    return key;
-  }, [currentMonth, extra]);
-
-  // Past months in the window only appear when they contain rows
-  // (matches SheetView's pagination semantics). Future-dated months
-  // and the `undated` bucket always render so future entries don't
-  // require scrolling to a sentinel.
+  // Every month with rows, plus the current fiscal month even when it's
+  // empty so the user always lands on "today". Descending order so the
+  // modal opens on current activity.
   const visibleMonths = useMemo(() => {
-    const keys = new Set<string>();
+    const keys = new Set<string>(monthGroups.keys());
     keys.add(currentMonth);
-    let cursor = currentMonth;
-    for (let i = 0; i < INITIAL_VISIBLE_MONTHS + extra; i += 1) {
-      cursor = previousMonthKey(cursor);
-      const rows = monthGroups.get(cursor);
-      if (rows && rows.length > 0) keys.add(cursor);
-    }
-    for (const key of monthGroups.keys()) {
-      if (key === "undated") {
-        keys.add(key);
-        continue;
-      }
-      if (key >= cursor) keys.add(key);
-    }
-    // Descending sort: newest months first so the modal opens on
-    // current activity. `sortMonthKeys` returns ascending, so flip.
     return [...sortMonthKeys(keys)].reverse();
-  }, [monthGroups, currentMonth, extra]);
-
-  const hasMore = useMemo(() => {
-    for (const key of monthGroups.keys()) {
-      if (key === "undated") continue;
-      if (key < oldestVisibleMonth) return true;
-    }
-    return false;
-  }, [monthGroups, oldestVisibleMonth]);
+  }, [monthGroups, currentMonth]);
 
   // Column widths derived once from the loaded rows so amount /
   // balance stay narrow without truncating any value. Description
@@ -290,33 +240,6 @@ export function SheetViewerModal({
     return { amount: Math.max(amountW, 4), balance: Math.max(balanceW, 4) };
   }, [visibleRows, amountCol, balanceCol, balances, settings]);
 
-  // Load more older months when the bottom sentinel becomes visible.
-  // The scroll container is `Modal.Body`, so we use it as the
-  // IntersectionObserver root — `null` would observe against the
-  // viewport, which doesn't match the modal's overflow.
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const scrollRootRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    if (!hasMore) return;
-    const node = sentinelRef.current;
-    const root = scrollRootRef.current;
-    if (!node || !root) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setExtra((n) => n + PAGE_SIZE);
-            break;
-          }
-        }
-      },
-      { root, rootMargin: "200px 0px" },
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, [open, hasMore, visibleMonths.length]);
-
   const hasNoRows = item.rows.length === 0;
 
   return (
@@ -328,11 +251,7 @@ export function SheetViewerModal({
       fixedHeight
     >
       <Modal.Header title={sheet.name} onClose={onClose} />
-      <Modal.Body
-        noPadding
-        className="overflow-x-hidden"
-        scrollRef={scrollRootRef}
-      >
+      <Modal.Body noPadding className="overflow-x-hidden">
         {!hasNoRows && (
           <ModalSearchBar
             value={query}
@@ -466,17 +385,6 @@ export function SheetViewerModal({
                   </Fragment>
                 );
               })}
-              {hasMore && (
-                <tr>
-                  <td colSpan={5} className="p-0">
-                    <div
-                      ref={sentinelRef}
-                      className="h-10"
-                      aria-hidden="true"
-                    />
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         )}
