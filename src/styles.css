@@ -52,10 +52,10 @@
      post-login re-scale is the only transition. */
   --app-font-scale: 1;
 
-  /* Height of the sticky page header — pt-3 + h-9 button + pb-3 + 1px
+  /* Height of the sticky page header — pt-2 + h-9 button + pb-2 + 1px
      border. Month-name headers stick just below this. The md override
      accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
-  --app-header-h: 61px;
+  --app-header-h: 53px;
 
   /* Height of the sticky month-name h3 (text-xs line-height 1rem + pt-1
      + pb-2). The bottom padding intentionally absorbs what used to be a
