@@ -2,9 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
+import { AchievementsPage } from "./components/AchievementsPage";
 import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
-import { SystemPage } from "./components/SystemPage";
 import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
 // Bundled webfonts powering the Appearance → Font picker. Each
@@ -46,7 +46,8 @@ installSelectOnFocus();
 const path = window.location.pathname.replace(/\/$/, "");
 const isPrivacy = path.endsWith("/privacy") || path === "/privacy";
 const isChangelog = path.endsWith("/changelog") || path === "/changelog";
-const isSystem = path.endsWith("/system") || path === "/system";
+const isAchievements =
+  path.endsWith("/achievements") || path === "/achievements";
 
 createRoot(rootElement).render(
   <StrictMode>
@@ -55,8 +56,8 @@ createRoot(rootElement).render(
         <PrivacyPage />
       ) : isChangelog ? (
         <ChangelogPage />
-      ) : isSystem ? (
-        <SystemPage />
+      ) : isAchievements ? (
+        <AchievementsPage />
       ) : (
         <App />
       )}

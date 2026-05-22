@@ -476,6 +476,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   fontFamily: "mono",
   customTheme: DEFAULT_CUSTOM_THEME,
+  achievements: {},
+  unseenAchievements: [],
 };
 
 // Allowed UI languages, in the order the picker shows them. Used by

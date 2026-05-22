@@ -46,7 +46,9 @@ import {
 } from "./ReconciliationModal";
 import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
+import { AchievementUnlockModal } from "./AchievementUnlockModal";
 import { HeaderMenu } from "./HeaderMenu";
+import { HeaderStar } from "./HeaderStar";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal, type SettingsTabId } from "./SettingsModal";
 import { StorageSizeWarningModal } from "./StorageSizeWarningModal";
@@ -119,6 +121,10 @@ import {
   shiftRuleStartToFuture,
 } from "../data/recurrence";
 import { reducer } from "../data/reducer";
+import {
+  unlock as unlockAchievement,
+  useAchievementWatcher,
+} from "../data/achievements";
 import type { StorageAdapter } from "../storage/adapter";
 import {
   type BackendId,
@@ -296,6 +302,12 @@ export function BudgetView({
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
   });
+  // Watch for achievement unlocks. Runs derived predicates on each
+  // state delta and drains the manual-unlock bus; new unlocks land
+  // in `data.settings.unseenAchievements` via `recordAchievementUnlock`,
+  // which the HeaderStar below reads to decide whether to glow.
+  useAchievementWatcher(data, dispatch);
+  const [achievementsModalOpen, setAchievementsModalOpen] = useState(false);
   // Mirror in-memory data into the App-owned ref so the cloud-link
   // conflict path can upload the latest budget. Updated on every render
   // because both data changes and ref-identity changes (after a sign-
@@ -828,6 +840,7 @@ export function BudgetView({
     // on the underlying `HistoryEntry`, which the synthesizer fans out
     // into multiple rows on the next render.
     if (row.transactionId || row.isCorrection) return;
+    unlockAchievement("splitTheBill");
     setSplitPrompt({ kind: "split", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
@@ -1716,6 +1729,7 @@ export function BudgetView({
   );
   const onEditSeries = useCallback(
     (rowId: string, patch: EditPatch, scope: EditScope) => {
+      unlockAchievement("secondDraft");
       dispatch({ type: "editSeries", sheetId, itemId, rowId, patch, scope });
       setEditPrompt(null);
     },
@@ -2172,14 +2186,19 @@ export function BudgetView({
     ];
   }, [correctionDeletePrompt, dispatch, t]);
 
-  const onBulkEdit = useCallback(() => setBulkEditOpen(true), []);
+  const onBulkEdit = useCallback(() => {
+    unlockAchievement("bulkOps");
+    setBulkEditOpen(true);
+  }, []);
   const onBulkDelete = useCallback(() => {
     setBulkDeletePrompt({ kind: "bulk-delete", rowIds: [...selectedIds] });
   }, [selectedIds]);
   const onBulkMove = useCallback(() => {
+    unlockAchievement("moverShaker");
     setMoveCopyPrompt({ kind: "move", rows: selectedRows });
   }, [selectedRows]);
   const onBulkCopy = useCallback(() => {
+    unlockAchievement("moverShaker");
     setMoveCopyPrompt({ kind: "copy", rows: selectedRows });
   }, [selectedRows]);
   const onCopyRequest = useCallback((row: Row) => {
@@ -2425,6 +2444,13 @@ export function BudgetView({
             </span>
           </div>
           <div className="ml-auto inline-flex items-center gap-2">
+            <HeaderStar
+              unseenCount={data.settings.unseenAchievements.length}
+              onOpenList={() => {
+                window.location.href = `${import.meta.env.BASE_URL}achievements`;
+              }}
+              onOpenUnlockModal={() => setAchievementsModalOpen(true)}
+            />
             {backend === "dropbox" || backend === "gdrive" ? (
               <SyncStatus
                 providerName={
@@ -2549,10 +2575,16 @@ export function BudgetView({
             canUndo={canUndo}
             canRedo={canRedo}
             selectMode={selectMode}
-            onUndo={undo}
+            onUndo={() => {
+              unlockAchievement("secondThoughts");
+              undo();
+            }}
             onRedo={redo}
             onOpenHistory={() => setActionHistoryOpen(true)}
-            onOpenSearch={() => setSearchOpen(true)}
+            onOpenSearch={() => {
+              unlockAchievement("detective");
+              setSearchOpen(true);
+            }}
             onToggleSelectMode={onToggleSelectMode}
             bulkSelectedCount={selectedIds.size}
             onBulkEdit={onBulkEdit}
@@ -2926,6 +2958,14 @@ export function BudgetView({
         onDiscardShrink={discardShrinkSave}
         onClose={() => setSyncDetailsOpen(false)}
       />
+      <AchievementUnlockModal
+        open={achievementsModalOpen}
+        unseenIds={data.settings.unseenAchievements}
+        onClose={() => {
+          setAchievementsModalOpen(false);
+          dispatch({ type: "clearUnseenAchievements" });
+        }}
+      />
       <ReconnectCloudModal
         open={reconnectCloudOpen}
         backend={backend}
@@ -3016,6 +3056,7 @@ export function BudgetView({
         entries={historyEntries}
         currentIndex={historyIndex}
         onJump={(index) => {
+          unlockAchievement("timeMachine");
           jumpToHistory(index);
           setActionHistoryOpen(false);
         }}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { unlock } from "../data/achievements";
 import { cloudMirrorKey, userDataKey } from "../data/constants";
 import type { UserData } from "../data/types";
 import {
@@ -324,6 +325,7 @@ export function useStorageBackend({
       setBackend(userId, "dropbox");
       setDropboxTokenState(result.accessToken);
       setBackendState("dropbox");
+      unlock("cloudWalker");
     },
     [],
   );
@@ -334,6 +336,7 @@ export function useStorageBackend({
     setBackend(userId, "gdrive");
     setGdriveTokenState(token);
     setBackendState("gdrive");
+    unlock("cloudWalker");
   }, []);
 
   // Wrap a raw adapter with `withEncryption` when the active user has
@@ -823,6 +826,7 @@ export function useStorageBackend({
     if (auth.kind !== "signed-in") return;
     setBackend(auth.user.id, "browser");
     setBackendState("browser");
+    unlock("shapeShifter");
   }, [auth]);
 
   // Mirror the active cloud backend's current bytes back into the
@@ -968,6 +972,7 @@ export function useStorageBackend({
       setFolderHandleLoaded(true);
       setFolderReconnectNeeded(false);
       setBackendState("folder");
+      unlock("cloudWalker");
     },
     [],
   );
@@ -1166,6 +1171,7 @@ export function useStorageBackend({
       }
       setEncryption(userId, next);
       setEncryptionState(next);
+      if (next === "encrypted") unlock("paranoidMode");
     },
     [
       auth,

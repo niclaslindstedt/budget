@@ -416,6 +416,24 @@ export type Action =
         | { rowId: string; action: "delete" }
         | { rowId: string; action: "move"; toDate: string }
       >;
+    }
+  | {
+      // Achievement unlock. Idempotent: if `id` is already present in
+      // `settings.achievements`, the action is a no-op so timestamps
+      // never get overwritten. New unlocks land in `achievements` (with
+      // the timestamp) and `unseenAchievements` (the queue the
+      // HeaderStar reads to decide whether to glow).
+      type: "recordAchievementUnlock";
+      id: string;
+      timestamp: number;
+    }
+  | {
+      // Dispatched when the user dismisses the achievement-unlock
+      // modal — clears the unseen queue but leaves the unlocked map
+      // untouched. Empties to `[]`; if the queue is already empty the
+      // state object is returned unchanged so React doesn't re-render
+      // dependents pointlessly.
+      type: "clearUnseenAchievements";
     };
 
 // Walk an AccountBudget's before/after rows and collect the
@@ -1637,6 +1655,32 @@ export function reducer(state: UserData, action: Action): UserData {
         action.itemId,
         (item) => ({ ...item, accountId: action.accountId }),
       ),
+    };
+  }
+  if (action.type === "recordAchievementUnlock") {
+    // Idempotent: once an id is in `achievements`, a second call is a
+    // no-op so timestamps don't drift. New ids land in both the
+    // unlocked map (with the timestamp) and the unseen queue (so the
+    // HeaderStar lights up).
+    const existing = state.settings.achievements;
+    if (existing[action.id] !== undefined) return state;
+    const unseen = state.settings.unseenAchievements.includes(action.id)
+      ? state.settings.unseenAchievements
+      : [...state.settings.unseenAchievements, action.id];
+    return {
+      ...state,
+      settings: {
+        ...state.settings,
+        achievements: { ...existing, [action.id]: action.timestamp },
+        unseenAchievements: unseen,
+      },
+    };
+  }
+  if (action.type === "clearUnseenAchievements") {
+    if (state.settings.unseenAchievements.length === 0) return state;
+    return {
+      ...state,
+      settings: { ...state.settings, unseenAchievements: [] },
     };
   }
   // Snap date edits forward when the proposed value lands in a

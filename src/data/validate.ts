@@ -952,6 +952,30 @@ function validateSettings(raw: unknown): Settings {
       ? (raw.fontFamily as FontFamilyId)
       : DEFAULT_SETTINGS.fontFamily;
   const customTheme = validateCustomTheme(raw.customTheme);
+  const achievements: Record<string, number> = {};
+  if (isObject(raw.achievements)) {
+    for (const [id, ts] of Object.entries(raw.achievements)) {
+      if (
+        typeof id === "string" &&
+        id.length > 0 &&
+        typeof ts === "number" &&
+        Number.isFinite(ts) &&
+        ts > 0
+      ) {
+        achievements[id] = ts;
+      }
+    }
+  }
+  const unseenAchievements: string[] = [];
+  if (Array.isArray(raw.unseenAchievements)) {
+    const seen = new Set<string>();
+    for (const id of raw.unseenAchievements) {
+      if (typeof id === "string" && id.length > 0 && !seen.has(id)) {
+        seen.add(id);
+        unseenAchievements.push(id);
+      }
+    }
+  }
   return {
     startOfMonth,
     dateFormat,
@@ -974,6 +998,8 @@ function validateSettings(raw: unknown): Settings {
     theme,
     fontFamily,
     customTheme,
+    achievements,
+    unseenAchievements,
   };
 }
 

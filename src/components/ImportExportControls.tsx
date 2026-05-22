@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, EyeOff, Lock, Upload } from "lucide-react";
 
+import { unlock } from "../data/achievements";
 import type { UserData } from "../data/types";
 import { useDesktopAutoFocus } from "../hooks";
 import { useT } from "../i18n";
@@ -89,6 +90,7 @@ export function ImportExportControls({
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    unlock(encryption === "encrypted" ? "sealedEnvelope" : "preparedMind");
     setStatus({
       kind: "ok",
       message:
