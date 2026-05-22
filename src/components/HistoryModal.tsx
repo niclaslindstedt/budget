@@ -1,17 +1,29 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import { Eye, EyeOff } from "lucide-react";
 
+import { resolveEntryLabels } from "../data/sheet";
 import type {
   Account,
+  EntryType,
   HistoryEntry,
   HistoryImport,
+  MatchRule,
+  MerchantHint,
   Settings,
 } from "../data/types";
 import { useLang, useT } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
-import { formatBalance, formatDayOnly, formatShortDate } from "../utils/format";
+import { formatBalance, formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
+import { CategoryIconGlyph } from "./icons";
 import { Modal } from "./Modal";
+import { ModalSearchBar } from "./ModalSearchBar";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
@@ -33,37 +45,94 @@ function formatMonth(key: string, lang: Lang): string {
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
+type ResolvedEntry = {
+  entry: HistoryEntry;
+  description: string;
+  typeId: string | null;
+};
+
 type Props = {
   open: boolean;
   account: Account | null;
   entries: readonly HistoryEntry[];
   imports: readonly HistoryImport[];
+  // EntryType registry so resolved typeIds can render their icon and
+  // colour, matching the budget view's row chrome.
+  types: readonly EntryType[];
+  // Merchant-hint store + user match rules — fed through the same
+  // priority chain as `synthesizeHistoryRow` so the description and
+  // type icon shown here match what the budget view would render for
+  // the same bank entry.
+  merchantHints: Readonly<Record<string, MerchantHint>>;
+  matchRules: readonly MatchRule[];
   settings: Settings;
   onCancel: () => void;
 };
 
-// Read-only viewer for an account's imported history. Sorted
-// newest-first so the user lands on the most recent activity, the
-// way they think about their own bank statements. The imports audit
-// trail sits below the entries — a quiet log of what was pulled in
-// when, which a future "undo last import" affordance can hang off.
+// Read-only viewer for an account's imported history. Mirrors the
+// budget view's chrome: TYPE column with the resolved category icon,
+// month dividers tinted by the per-month pastel, sticky thead, and
+// the same date / amount / balance formatting. The search bar at the
+// top filters rows in place against description, type name, and the
+// amount text — and scrolls away with the content so the table claims
+// the full viewport once the user is reading.
 export function HistoryModal({
   open,
   account,
   entries,
   imports,
+  types,
+  merchantHints,
+  matchRules,
   settings,
   onCancel,
 }: Props) {
   const t = useT();
   const lang = useLang();
+
+  const typesById = useMemo(() => {
+    const m = new Map<string, EntryType>();
+    for (const ty of types) m.set(ty.id, ty);
+    return m;
+  }, [types]);
+
+  // Resolve once per (entries, hints, rules) so the search filter
+  // below can match against the labels users actually see rather
+  // than the raw bank text.
+  const resolved = useMemo<ResolvedEntry[]>(() => {
+    const arr: ResolvedEntry[] = [];
+    for (const entry of entries) {
+      // Split entries have no single typeId — leave it null so the
+      // icon column stays blank rather than picking an arbitrary
+      // split's type. Description still flows through the override
+      // chain so the user's label (if any) shows here.
+      if (entry.splits && entry.splits.length > 0) {
+        const { description } = resolveEntryLabels(
+          entry,
+          merchantHints,
+          matchRules,
+        );
+        arr.push({ entry, description, typeId: null });
+        continue;
+      }
+      const { description, typeId } = resolveEntryLabels(
+        entry,
+        merchantHints,
+        matchRules,
+      );
+      arr.push({ entry, description, typeId });
+    }
+    return arr;
+  }, [entries, merchantHints, matchRules]);
+
   const allSortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) =>
-      a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+    return [...resolved].sort((a, b) =>
+      a.entry.date < b.entry.date ? 1 : a.entry.date > b.entry.date ? -1 : 0,
     );
-  }, [entries]);
+  }, [resolved]);
+
   const hiddenCount = useMemo(
-    () => allSortedEntries.reduce((n, e) => (e.hidden ? n + 1 : n), 0),
+    () => allSortedEntries.reduce((n, e) => (e.entry.hidden ? n + 1 : n), 0),
     [allSortedEntries],
   );
 
@@ -75,11 +144,44 @@ export function HistoryModal({
     if (!open) setShowHidden(false);
   }, [open]);
 
-  const sortedEntries = useMemo(
+  const visibleEntries = useMemo(
     () =>
-      showHidden ? allSortedEntries : allSortedEntries.filter((e) => !e.hidden),
+      showHidden
+        ? allSortedEntries
+        : allSortedEntries.filter((e) => !e.entry.hidden),
     [allSortedEntries, showHidden],
   );
+
+  // In-place filter against description, resolved type name, and the
+  // formatted amount text so a search like "550" or "amazon" or "rent"
+  // narrows the table without leaving the modal.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+  const accountSettings = useMemo(
+    () =>
+      account?.currency
+        ? { ...settings, currency: account.currency }
+        : settings,
+    [account, settings],
+  );
+  const filteredEntries = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q === "") return visibleEntries;
+    return visibleEntries.filter((r) => {
+      if (r.description.toLowerCase().includes(q)) return true;
+      if (r.entry.description.toLowerCase().includes(q)) return true;
+      const type = r.typeId ? typesById.get(r.typeId) : null;
+      if (type && type.name.toLowerCase().includes(q)) return true;
+      if (
+        formatBalance(r.entry.amount, accountSettings).toLowerCase().includes(q)
+      )
+        return true;
+      if (r.entry.date.includes(q)) return true;
+      return false;
+    });
+  }, [visibleEntries, query, typesById, accountSettings]);
 
   // The description column wraps with break-words to fit narrow phone
   // screens, which can mangle a long memo into a tower of two- or
@@ -90,52 +192,51 @@ export function HistoryModal({
     if (!open) setSelectedEntry(null);
   }, [open]);
 
-  const accountSettings = useMemo(
-    () =>
-      account?.currency
-        ? { ...settings, currency: account.currency }
-        : settings,
-    [account, settings],
-  );
-
   // Walk the sorted (newest-first) entries and emit one group per
   // `YYYY-MM` so the table can drop a colored month-marker row between
   // groups. Sequential entries that share a month stay together.
   const groups = useMemo(() => {
-    const result: { monthKey: string; entries: HistoryEntry[] }[] = [];
-    for (const e of sortedEntries) {
-      const key = e.date.slice(0, 7);
+    const result: { monthKey: string; entries: ResolvedEntry[] }[] = [];
+    for (const e of filteredEntries) {
+      const key = e.entry.date.slice(0, 7);
       const last = result[result.length - 1];
       if (last && last.monthKey === key) last.entries.push(e);
       else result.push({ monthKey: key, entries: [e] });
     }
     return result;
-  }, [sortedEntries]);
+  }, [filteredEntries]);
 
-  // Size amount + balance columns from the longest formatted value in
-  // the data so they don't claim more space than they need (which is
-  // what was forcing the table off the right edge on narrow phones).
-  // Description picks up whatever is left.
   // Credit-card imports leave `balance` undefined on every row; if no
   // entry carries one, we collapse the Balance column to zero width so
   // the table doesn't leave a visible empty stripe.
   const hasAnyBalance = useMemo(
-    () => sortedEntries.some((e) => e.balance !== undefined),
-    [sortedEntries],
+    () => filteredEntries.some((e) => e.entry.balance !== undefined),
+    [filteredEntries],
   );
+  // Show the TYPE column only when at least one entry resolves to a
+  // known type — credit-card-only accounts that have never been
+  // categorised stay narrower without an empty icon column.
+  const hasAnyType = useMemo(
+    () => filteredEntries.some((e) => e.typeId !== null),
+    [filteredEntries],
+  );
+  // Size amount + balance columns from the longest formatted value in
+  // the data so they don't claim more space than they need (which is
+  // what was forcing the table off the right edge on narrow phones).
+  // Description picks up whatever is left.
   const colChars = useMemo(() => {
     let amount = 0;
     let balance = 0;
-    for (const e of sortedEntries) {
-      const a = formatBalance(e.amount, accountSettings).length;
+    for (const r of filteredEntries) {
+      const a = formatBalance(r.entry.amount, accountSettings).length;
       if (a > amount) amount = a;
-      if (e.balance !== undefined) {
-        const b = formatBalance(e.balance, accountSettings).length;
+      if (r.entry.balance !== undefined) {
+        const b = formatBalance(r.entry.balance, accountSettings).length;
         if (b > balance) balance = b;
       }
     }
     return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
-  }, [sortedEntries, accountSettings]);
+  }, [filteredEntries, accountSettings]);
 
   return (
     <Modal
@@ -149,6 +250,12 @@ export function HistoryModal({
         onClose={onCancel}
       />
       <Modal.Body noPadding className="overflow-x-hidden">
+        <ModalSearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder={t("history.searchPlaceholder")}
+          clearLabel={t("history.searchClear")}
+        />
         {hiddenCount > 0 && (
           <div className="flex items-center justify-end border-b border-line bg-surface-2 px-2 py-1">
             <button
@@ -176,14 +283,19 @@ export function HistoryModal({
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("history.noEntries")}
           </p>
-        ) : sortedEntries.length === 0 ? (
+        ) : visibleEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("history.allHidden", { n: hiddenCount })}
+          </p>
+        ) : filteredEntries.length === 0 ? (
+          <p className="px-4 py-6 text-center text-xs text-muted">
+            {t("history.searchNoResults")}
           </p>
         ) : (
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
-              <col className="w-9 md:w-14" />
+              <col className="w-12 md:w-20" />
+              {hasAnyType && <col className="w-9 md:w-10" />}
               <col />
               <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
               {hasAnyBalance && (
@@ -201,6 +313,11 @@ export function HistoryModal({
                 <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
                   {t("history.date")}
                 </th>
+                {hasAnyType && (
+                  <th className="px-1 py-1.5 text-center md:px-2">
+                    {t("history.type")}
+                  </th>
+                )}
                 <th className="px-2 py-1.5 text-left">
                   {t("history.description")}
                 </th>
@@ -209,7 +326,12 @@ export function HistoryModal({
                 </th>
                 {hasAnyBalance && (
                   <th className="px-1 py-1.5 text-right md:px-2">
-                    {t("history.balance")}
+                    <span className="md:hidden">
+                      {t("history.balanceShort")}
+                    </span>
+                    <span className="hidden md:inline">
+                      {t("history.balance")}
+                    </span>
                   </th>
                 )}
               </tr>
@@ -219,64 +341,89 @@ export function HistoryModal({
                 const monthNum = monthNumberFromKey(group.monthKey);
                 const monthColor =
                   monthNum !== null ? monthColorVar(monthNum) : undefined;
+                const colorStyle: CSSProperties | undefined = monthColor
+                  ? { color: monthColor }
+                  : undefined;
+                const colSpan =
+                  2 + (hasAnyType ? 1 : 0) + (hasAnyBalance ? 1 : 0);
                 return (
                   <Fragment key={group.monthKey}>
                     <tr className="border-b border-line bg-surface-2">
                       <td
-                        colSpan={hasAnyBalance ? 4 : 3}
+                        colSpan={colSpan}
                         className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
-                        style={monthColor ? { color: monthColor } : undefined}
+                        style={colorStyle}
                       >
                         {formatMonth(group.monthKey, lang)}
                       </td>
                     </tr>
-                    {group.entries.map((e) => (
-                      <tr
-                        key={e.id}
-                        className={`border-b border-line last:border-b-0 ${
-                          e.hidden ? "opacity-50" : ""
-                        }`}
-                      >
-                        <td
-                          className="px-1 py-1.5 text-center align-top font-mono text-xs font-bold whitespace-nowrap md:px-2 md:text-left md:font-normal"
-                          style={monthColor ? { color: monthColor } : undefined}
+                    {group.entries.map((r) => {
+                      const e = r.entry;
+                      const type = r.typeId
+                        ? (typesById.get(r.typeId) ?? null)
+                        : null;
+                      return (
+                        <tr
+                          key={e.id}
+                          className={`border-b border-line last:border-b-0 ${
+                            e.hidden ? "opacity-50" : ""
+                          }`}
                         >
-                          <span className="md:hidden">
-                            {formatDayOnly(e.date)}
-                          </span>
-                          <span className="hidden md:inline">
+                          <td
+                            className="px-1 py-1.5 align-top font-mono text-xs font-bold whitespace-nowrap md:px-2 md:font-normal"
+                            style={colorStyle}
+                          >
                             {formatShortDate(
                               e.date,
                               settings.shortDateFormat,
                               lang,
                             )}
-                          </span>
-                        </td>
-                        <td className="align-top text-fg">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedEntry(e)}
-                            className="block w-full cursor-pointer px-2 py-1.5 text-left break-words hover:text-fg-bright"
-                          >
-                            {e.description}
-                          </button>
-                        </td>
-                        <td
-                          className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
-                            e.amount < 0 ? "text-negative" : "text-positive"
-                          }`}
-                        >
-                          {formatBalance(e.amount, accountSettings)}
-                        </td>
-                        {hasAnyBalance && (
-                          <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
-                            {e.balance !== undefined
-                              ? formatBalance(e.balance, accountSettings)
-                              : ""}
                           </td>
-                        )}
-                      </tr>
-                    ))}
+                          {hasAnyType && (
+                            <td className="px-1 py-1.5 text-center align-top md:px-2">
+                              {type ? (
+                                <span
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded-full"
+                                  style={{
+                                    backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
+                                    color: type.color,
+                                  }}
+                                  title={type.name}
+                                >
+                                  <CategoryIconGlyph
+                                    name={type.glyph}
+                                    size={12}
+                                  />
+                                </span>
+                              ) : null}
+                            </td>
+                          )}
+                          <td className="align-top text-fg">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedEntry(e)}
+                              className="block w-full cursor-pointer px-2 py-1.5 text-left break-words hover:text-fg-bright"
+                            >
+                              {r.description}
+                            </button>
+                          </td>
+                          <td
+                            className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
+                              e.amount < 0 ? "text-negative" : "text-positive"
+                            }`}
+                          >
+                            {formatBalance(e.amount, accountSettings)}
+                          </td>
+                          {hasAnyBalance && (
+                            <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
+                              {e.balance !== undefined
+                                ? formatBalance(e.balance, accountSettings)
+                                : ""}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </Fragment>
                 );
               })}

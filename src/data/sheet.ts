@@ -600,17 +600,34 @@ export function synthesizeHistoryRow(
     });
   }
 
+  const { description, typeId } = resolveEntryLabels(entry, hints, rules);
+  const row: Row = {
+    id: `hist:${entry.id}`,
+    cells: buildCells(description, entry.amount),
+    historyEntryId: entry.id,
+  };
+  if (typeId) row.typeId = typeId;
+  if (entry.isTransfer) row.isTransfer = true;
+  return [row];
+}
+
+// Resolve the effective description and typeId for a non-split history
+// entry by walking the four-step priority chain shared by
+// `synthesizeHistoryRow` and the history-view modal:
+//   1. per-entry override on the HistoryEntry itself
+//   2. matching MatchRule
+//   3. matching MerchantHint
+//   4. raw bank text / no type
+// `null` on a rule field is distinct from "absent" in the validator
+// but the renderer reads null the same way as undefined here — both
+// mean "no override".
+export function resolveEntryLabels(
+  entry: HistoryEntry,
+  hints: Readonly<Record<string, MerchantHint>> = {},
+  rules: readonly MatchRule[] = [],
+): { description: string; typeId: string | null } {
   const rule = findMatchingRule(rules, entry);
   const hint = hints[normaliseDescription(entry.description)];
-  // Field-by-field merge with a four-step priority:
-  //   1. per-entry override on the HistoryEntry itself (set by the
-  //      pen-button modal and inline editors on a history row)
-  //   2. matching MatchRule
-  //   3. matching MerchantHint
-  //   4. raw bank text / no type
-  // `null` on a rule field is distinct from "absent" in the validator
-  // but the renderer reads null the same way as undefined here — both
-  // mean "no override".
   const description =
     (entry.userDescription && entry.userDescription.trim() !== ""
       ? entry.userDescription
@@ -627,14 +644,7 @@ export function synthesizeHistoryRow(
       : null) ??
     hint?.typeId ??
     null;
-  const row: Row = {
-    id: `hist:${entry.id}`,
-    cells: buildCells(description, entry.amount),
-    historyEntryId: entry.id,
-  };
-  if (typeId) row.typeId = typeId;
-  if (entry.isTransfer) row.isTransfer = true;
-  return [row];
+  return { description, typeId };
 }
 
 // True when this row should be treated as an inter-account transfer
