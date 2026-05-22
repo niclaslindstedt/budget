@@ -1,0 +1,63 @@
+name: Preview
+
+# End-to-end Playwright suite against the `/preview/` build of the
+# app — same artifact `pages.yml` ships to the live `/preview/` slot.
+# Runs on every push to `main` (the only branch that feeds the preview
+# slot) and is `workflow_call`-able so `release.yml` can gate a tag on
+# a green run before deploying.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      # The Playwright npm package and its browser binaries are
+      # versioned together; cache by package.json hash so a new
+      # Playwright bump invalidates the cache automatically.
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install system deps when cache hit
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # Playwright's `webServer` block (see `playwright.config.ts`)
+      # boots `make preview-serve` — which itself builds the preview
+      # slot with VITE_BASE_PATH=/preview/ — then runs the suite
+      # against http://localhost:4173/preview/.
+      - name: Run Playwright
+        run: make e2e
+        env:
+          CI: "1"
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 14

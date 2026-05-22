@@ -5,7 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules"] },
+  {
+    ignores: ["dist", "node_modules", "playwright-report", "test-results"],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -36,6 +38,17 @@ export default tseslint.config(
             "Native <select> is not allowed. Use <SelectPicker> from src/components/form instead.",
         },
       ],
+    },
+  },
+  {
+    // Playwright specs + config run under Node and use the
+    // `@playwright/test` runtime — they're not part of the React
+    // bundle, so the React-specific rules and browser-only globals
+    // don't apply. Node globals (`process`) and the playwright
+    // helpers (`expect`, `test`, `page`) come in via imports.
+    files: ["e2e/**/*.ts", "playwright.config.ts"],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
     },
   },
 );
