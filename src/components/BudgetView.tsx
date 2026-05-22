@@ -402,14 +402,6 @@ export function BudgetView({
       setReconnectCloudOpen(false);
     }
   }, [status.kind, reconnectCloudOpen]);
-  // Bumped each time the user clicks the budget icon/title in the
-  // header. SheetView watches this counter and re-scrolls to today's
-  // row (or the current fiscal month) on every increment, even when
-  // the active sheet and month haven't changed.
-  const [scrollToTodayTick, setScrollToTodayTick] = useState(0);
-  const onScrollToToday = useCallback(() => {
-    setScrollToTodayTick((tick) => tick + 1);
-  }, []);
   // null = closed; { sheet: null } = new-sheet modal; { sheet: <Sheet> } = edit.
   const [sheetModal, setSheetModal] = useState<{ sheet: Sheet | null } | null>(
     null,
@@ -2331,13 +2323,7 @@ export function BudgetView({
           keeps the flex column layout unchanged. */}
       <div className="contents" data-modal-background>
         <header className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-2 pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-4 md:pb-4">
-          <button
-            type="button"
-            onClick={onScrollToToday}
-            aria-label={t("app.scrollToToday")}
-            title={t("app.scrollToToday")}
-            className="inline-flex cursor-pointer items-center gap-2 rounded border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
+          <div className="inline-flex items-center gap-2">
             <img
               src="/icons/icon-64.png"
               srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
@@ -2358,7 +2344,7 @@ export function BudgetView({
                 {BUILD_LABEL}
               </span>
             </span>
-          </button>
+          </div>
           <div className="ml-auto inline-flex items-center gap-2">
             {backend === "dropbox" || backend === "gdrive" ? (
               <SyncStatus
@@ -2448,7 +2434,6 @@ export function BudgetView({
                 settings={data.settings}
                 selectMode={selectMode}
                 selectedIds={selectedIds}
-                scrollToTodayTick={scrollToTodayTick}
                 scrollToRowRequest={scrollToRowRequest}
                 onUpdateCell={onUpdateCell}
                 onCommitCell={onCommitCell}

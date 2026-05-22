@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eye, Pencil } from "lucide-react";
+import { ChevronDown, Download, Eye, Pencil } from "lucide-react";
 
 import {
   buildVisibleRows,
@@ -82,11 +82,6 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
-  // Monotonic counter from the parent. Each tick triggers a one-shot
-  // scroll to today's row (or the current fiscal month container if no
-  // row falls on today). Initial value 0 is a no-op so the parent can
-  // mount us without immediately overriding the first-mount auto-scroll.
-  scrollToTodayTick: number;
   // One-shot scroll-to-row request issued by the transaction-search
   // modal when the user picks a result. The `tick` field is bumped on
   // every new request so the effect re-fires even if the same row is
@@ -214,7 +209,6 @@ export function SheetView({
   settings,
   selectMode,
   selectedIds,
-  scrollToTodayTick,
   scrollToRowRequest,
   onUpdateCell,
   onCommitCell,
@@ -589,14 +583,59 @@ export function SheetView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id, currentMonth]);
 
-  // User-triggered scroll-to-today (parent bumps the tick when the
-  // budget icon/title is pressed). Initial 0 is skipped so the first
-  // mount only fires the auto-scroll above.
+  // Track which rendered month containers are currently intersecting
+  // the viewport so the floating "Today" button below can decide when
+  // the user has scrolled far enough back in history to surface it.
+  // Stable join key avoids re-creating the observer on every keystroke
+  // (visibleMonths is memoized against monthGroups, which changes on
+  // every cell edit — the array reference flips even when its
+  // contents don't). Sentinel month keys like "undated" are ignored.
+  const [newestVisibleMonth, setNewestVisibleMonth] = useState<string | null>(
+    null,
+  );
+  const visibleMonthsKey = visibleMonths.join(",");
   useEffect(() => {
-    if (scrollToTodayTick === 0) return;
-    scrollToToday("smooth");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollToTodayTick]);
+    const section = sectionRef.current;
+    if (!section) return;
+    const monthEls = section.querySelectorAll<HTMLElement>("[data-month-key]");
+    if (monthEls.length === 0) return;
+    const intersecting = new Set<string>();
+    const recompute = () => {
+      let newest: string | null = null;
+      for (const key of intersecting) {
+        if (key === "undated") continue;
+        if (!newest || key > newest) newest = key;
+      }
+      setNewestVisibleMonth(newest);
+    };
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const key = entry.target.getAttribute("data-month-key");
+        if (!key) continue;
+        if (entry.isIntersecting) intersecting.add(key);
+        else intersecting.delete(key);
+      }
+      recompute();
+    });
+    for (const el of monthEls) observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleMonthsKey]);
+
+  // Surface the floating "Today" button once the newest month
+  // intersecting the viewport sits more than three fiscal months
+  // before the current month. Three was picked to mirror
+  // HISTORY_PAGE_SIZE — once the user has scrolled past a full
+  // "Show earlier months" page, jumping back to today via a chrome
+  // affordance is meaningfully faster than scrolling.
+  const showTodayButton = useMemo(() => {
+    if (!newestVisibleMonth) return false;
+    if (newestVisibleMonth >= currentMonth) return false;
+    let cursor = currentMonth;
+    for (let i = 0; i < 3; i += 1) {
+      cursor = previousMonthKey(cursor);
+    }
+    return newestVisibleMonth < cursor;
+  }, [newestVisibleMonth, currentMonth]);
 
   // Honour a one-shot scroll-to-row request from the transaction-search
   // modal. When the row's month falls outside the default history
@@ -842,6 +881,28 @@ export function SheetView({
           settings={settings}
         />
       </section>
+      {showTodayButton && (
+        // Floating pill anchored above the BottomBar (z-30) — z-40 keeps
+        // it above the sheet content but below any modal backdrop
+        // (z-50+). `pointer-events-none` on the wrapper lets the rows
+        // underneath stay tappable in the gutter; the button itself
+        // re-enables them.
+        <div
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+          data-floating-chrome
+        >
+          <button
+            type="button"
+            onClick={() => scrollToToday("smooth")}
+            aria-label={t("app.scrollToToday")}
+            title={t("app.scrollToToday")}
+            className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
+            <ChevronDown size={14} aria-hidden focusable={false} />
+            {t("common.today")}
+          </button>
+        </div>
+      )}
     </ActiveRowProvider>
   );
 }
