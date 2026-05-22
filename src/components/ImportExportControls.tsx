@@ -172,6 +172,15 @@ export function ImportExportControls({
       )}
       <button
         type="button"
+        className={`${iconButton} text-link hover:border-link hover:text-link`}
+        onClick={() => inputRef.current?.click()}
+        aria-label={t("importExport.importAria")}
+        title={t("importExport.importLabel")}
+      >
+        <Download size={18} aria-hidden focusable={false} />
+      </button>
+      <button
+        type="button"
         className={`${iconButton} text-accent hover:border-accent hover:text-accent`}
         onClick={() => {
           void handleExport();
@@ -186,15 +195,6 @@ export function ImportExportControls({
             ? t("importExport.exportEncryptedLabel")
             : t("importExport.exportLabel")
         }
-      >
-        <Download size={18} aria-hidden focusable={false} />
-      </button>
-      <button
-        type="button"
-        className={`${iconButton} text-link hover:border-link hover:text-link`}
-        onClick={() => inputRef.current?.click()}
-        aria-label={t("importExport.importAria")}
-        title={t("importExport.importLabel")}
       >
         <Upload size={18} aria-hidden focusable={false} />
       </button>
