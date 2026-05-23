@@ -97,23 +97,23 @@ export function BottomBar({
     //
     // Standalone mode (installed PWA): the override block in
     // `src/styles.css` (`@media (display-mode: standalone)`)
-    // promotes the bar to `position: fixed; inset: auto 0 0 0`
-    // and translates it down by `var(--viewport-bottom-offset)`,
-    // a JS-measured value maintained by
-    // `src/hooks/useVisualViewportOffset.ts`. The flex-column-sticky
-    // trick doesn't survive iOS 26's `visualViewport` regression
-    // (WebKit #297779) — every viewport unit and every `bottom: 0`
-    // anchor (sticky OR fixed) tracks the OS-clipped
-    // `visualViewport.bottom` instead of the actual screen edge,
-    // leaving a 100–200 px gap that "snaps shut" the moment the
-    // user drags. Reading `innerHeight - visualViewport.height` in
-    // JS recovers the gap (iOS 26 still reports `innerHeight`
-    // correctly), so translating the fixed bar by that delta lands
-    // it at the physical screen bottom on first paint — no drag
-    // needed. The matching `<main data-budget-main>` padding
-    // reserve in the same media-query block keeps a scrolled
-    // budget's last row from disappearing behind the out-of-flow
-    // bar.
+    // anchors the bar via `position: fixed; top: var(--screen-h-px);
+    // translate: 0 -100%`. The flex-column-sticky trick and
+    // `bottom: 0` both fail on iOS 26's `visualViewport` regression
+    // (WebKit #297779) — every viewport unit and every `bottom`
+    // anchor tracks the OS-clipped `visualViewport.bottom` instead
+    // of the actual screen edge, leaving a 100–200 px gap that
+    // "snaps to place" the moment the user drags. Switching to
+    // `top: var(--screen-h-px)` (where `--screen-h-px` is the
+    // JS-measured `window.innerHeight`, written by
+    // `src/hooks/useVisualViewportOffset.ts` and seeded in
+    // `main.tsx` before React mounts) anchors the bar to the
+    // layout viewport — the one value iOS 26 still reports
+    // correctly — so the bar lands at the physical screen bottom
+    // on first paint, no drag needed. The matching
+    // `<main data-budget-main>` padding reserve in the same
+    // media-query block keeps a scrolled budget's last row from
+    // disappearing behind the out-of-flow bar.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the

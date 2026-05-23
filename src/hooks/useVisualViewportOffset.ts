@@ -2,29 +2,35 @@ import { useEffect } from "react";
 
 // iOS 26 ships a `visualViewport` regression (WebKit #297779, Apple
 // devforums #800125) where an installed PWA window's
-// `visualViewport.height` resolves persistently smaller than
-// `window.innerHeight`. Every viewport unit (`svh`/`dvh`/`lvh`) and
-// every `position: fixed; bottom: 0` anchor follows
-// `visualViewport`, so a bottom-pinned toolbar lands 100–200 px
-// above the physical screen edge on a first-launch empty install —
-// users see a visible gap that "snaps shut" the moment they
-// drag/scroll, because the drag triggers iOS to re-evaluate and
-// release the reserved strip.
+// `visualViewport.height` — and every viewport unit (`svh`, `dvh`,
+// `lvh`, `vh`) that follows it — resolves persistently smaller than
+// the physical screen. `position: fixed; bottom: 0` then anchors to
+// `visualViewport.bottom` (not the screen edge), so a bottom-pinned
+// toolbar lands 100–200 px above the screen on a first-launch empty
+// install. The bar visibly "snaps to place" the moment the user
+// drags — which is iOS finally recomputing — but until then the
+// rendered position is wrong.
 //
-// This hook measures the gap between the layout viewport
-// (`window.innerHeight`, which iOS 26 still reports correctly) and
-// the visual viewport (`visualViewport.height + offsetTop`, which it
-// doesn't), and writes the delta to `--viewport-bottom-offset` on
-// `<html>`. CSS in `src/styles.css` then translates the fixed
-// BottomBar down by that amount inside the standalone-mode block,
-// so the bar lands at the actual screen edge even before iOS gets
-// around to recomputing. Browser mode never sees a non-zero offset
-// (visualViewport stays accurate in a regular tab) so the same
-// translation collapses to 0 — but the hook gates itself on the
-// standalone-mode media query anyway so the CSS variable is only
-// ever set when the override block can read it.
+// `window.innerHeight` is the ONE viewport-related value iOS 26 still
+// reports correctly (the layout viewport, distinct from the visual
+// viewport). This module exposes:
+//
+//   - `syncViewportVars()` — write `--screen-h-px` (innerHeight in
+//     pixels) and `--viewport-bottom-offset` (the JS-measured gap
+//     between layout and visual viewport) to `<html>`. Pure DOM
+//     mutation, safe to call before React mounts so the very first
+//     paint is correct.
+//   - `useVisualViewportOffset()` — React hook that calls
+//     `syncViewportVars` on mount and re-runs it on every
+//     `visualViewport.resize` / `.scroll`, `window.resize`, and
+//     `orientationchange`. Mount it once near the root of the tree.
+//
+// CSS in `src/styles.css` then anchors the standalone-mode BottomBar
+// to `top: var(--screen-h-px)` with `translate: 0 -100%`, so the
+// bar's bottom edge lands at the layout-viewport bottom regardless
+// of how iOS lies about `visualViewport`.
 
-// Pulled out for unit testing — the hook wires this to
+// Pulled out for unit testing — the sync function wires this to
 // visualViewport's events.
 export function computeViewportBottomOffset(input: {
   innerHeight: number;
@@ -41,40 +47,49 @@ export function computeViewportBottomOffset(input: {
   );
 }
 
+export function syncViewportVars(): void {
+  if (typeof window === "undefined") return;
+  const root = document.documentElement;
+  // `--screen-h-px` is the anchor the standalone-mode bottom bar
+  // resolves its `top` against. Using `innerHeight` (correct on
+  // iOS 26) rather than `100vh` (clipped on iOS 26) is the whole
+  // point of the workaround.
+  root.style.setProperty("--screen-h-px", `${window.innerHeight}px`);
+  const vv = window.visualViewport;
+  if (vv) {
+    // `--viewport-bottom-offset` is kept around for diagnostics and
+    // for any future surface that needs to know the size of the
+    // clipped strip.
+    const offset = computeViewportBottomOffset({
+      innerHeight: window.innerHeight,
+      viewportHeight: vv.height,
+      viewportOffsetTop: vv.offsetTop,
+    });
+    root.style.setProperty(
+      "--viewport-bottom-offset",
+      `${Math.round(offset)}px`,
+    );
+  }
+}
+
 export function useVisualViewportOffset(): void {
   useEffect(() => {
     if (typeof window === "undefined") return;
+    syncViewportVars();
     const vv = window.visualViewport;
-    if (!vv) return;
-
-    const root = document.documentElement;
-
-    function update() {
-      if (!vv) return;
-      const offset = computeViewportBottomOffset({
-        innerHeight: window.innerHeight,
-        viewportHeight: vv.height,
-        viewportOffsetTop: vv.offsetTop,
-      });
-      // Round to avoid sub-pixel jitter from triggering a re-layout
-      // on every scroll event.
-      root.style.setProperty(
-        "--viewport-bottom-offset",
-        `${Math.round(offset)}px`,
-      );
+    if (vv) {
+      vv.addEventListener("resize", syncViewportVars);
+      vv.addEventListener("scroll", syncViewportVars);
     }
-
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
+    window.addEventListener("resize", syncViewportVars);
+    window.addEventListener("orientationchange", syncViewportVars);
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      root.style.removeProperty("--viewport-bottom-offset");
+      if (vv) {
+        vv.removeEventListener("resize", syncViewportVars);
+        vv.removeEventListener("scroll", syncViewportVars);
+      }
+      window.removeEventListener("resize", syncViewportVars);
+      window.removeEventListener("orientationchange", syncViewportVars);
     };
   }, []);
 }

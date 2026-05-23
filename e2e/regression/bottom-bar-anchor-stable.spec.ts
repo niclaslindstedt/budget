@@ -116,16 +116,22 @@ test.describe("BottomBar anchor stability", () => {
     // pins viewport units and `bottom: 0` anchors (sticky AND fixed)
     // to an OS-clipped height, leaving the chrome 100–200 px above
     // the physical screen edge in a home-screen-installed PWA — a
-    // gap that "snaps shut" the moment the user drags. The fix has
-    // two halves:
+    // gap that "snaps to place" the moment the user drags (which is
+    // when iOS finally recomputes). The fix has two halves:
+    //   - `src/hooks/useVisualViewportOffset.ts` writes
+    //     `window.innerHeight` (still correct on iOS 26) to a
+    //     `--screen-h-px` CSS variable on `<html>`. Seeded in
+    //     `main.tsx` before React mounts so the very first paint is
+    //     correct, then re-synced from `LanguageRoot` on viewport /
+    //     orientation events.
     //   - `src/styles.css` (`@media (display-mode: standalone)`)
-    //     promotes the bar to `position: fixed; inset: auto 0 0 0`
-    //     and translates it down by a CSS variable, and reserves
-    //     bottom padding on `<main>` so the AddRow clears it.
-    //   - `src/hooks/useVisualViewportOffset.ts` measures the gap
-    //     between `window.innerHeight` (still correct in iOS 26)
-    //     and `visualViewport.height` and writes it to
-    //     `--viewport-bottom-offset` on `<html>`.
+    //     anchors the BottomBar via
+    //     `top: var(--screen-h-px); translate: 0 -100%` so the bar's
+    //     bottom edge lands at the layout-viewport bottom regardless
+    //     of how clipped `visualViewport` is reporting. The same
+    //     block reserves bottom padding on `<main>` (via
+    //     `[data-budget-main]`) so a scrolled budget's last AddRow
+    //     clears the out-of-flow bar.
     //
     // Playwright doesn't have a first-class display-mode emulator,
     // so this regression asserts the CSS rules *exist* in the
@@ -173,20 +179,33 @@ test.describe("BottomBar anchor stability", () => {
           }
         }
       }
+      // Also assert that `--screen-h-px` is being maintained on
+      // `<html>` — the CSS rule above is useless without the JS
+      // value to resolve against.
+      const screenHPx =
+        document.documentElement.style.getPropertyValue("--screen-h-px");
       return {
         chromePosition,
         chromeInset,
         chromeTranslate,
         mainPaddingBottom,
+        screenHPx,
       };
     });
 
     expect(rules.chromePosition).toBe("fixed");
-    expect(rules.chromeInset).toBeTruthy();
-    // The translate must reference the JS-maintained
-    // `--viewport-bottom-offset` so the bar lands past iOS 26's
-    // clipped `visualViewport.bottom` on first paint.
-    expect(rules.chromeTranslate).toContain("--viewport-bottom-offset");
+    // The inset must anchor the bar's top edge at `var(--screen-h-px)`
+    // so a `bottom: 0` resolved against the clipped `visualViewport`
+    // can't pull the bar back up off the screen edge.
+    expect(rules.chromeInset).toContain("--screen-h-px");
+    // The translate must shift the bar up by its own height
+    // (`-100%`) so the anchored `top` edge becomes the bar's bottom
+    // edge at the layout-viewport floor.
+    expect(rules.chromeTranslate).toContain("-100%");
     expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
+    // The hook (`useVisualViewportOffset`) must keep `--screen-h-px`
+    // populated; otherwise the CSS fallback (`100vh`) reintroduces
+    // the iOS 26 clipping.
+    expect(rules.screenHPx).toMatch(/^\d+px$/);
   });
 });

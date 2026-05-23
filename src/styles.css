@@ -852,50 +852,40 @@ body {
 }
 
 /* Installed-PWA layout overrides. iOS 26 ships a regression where
-   the home-screen-installed window's `visualViewport.height` is
-   persistently smaller than `window.innerHeight` (originally tied to
-   keyboard interaction but reproducible after a cold reopen / SPA
-   navigation too — WebKit #297779, Apple devforums #800125). The
-   short value flows into every viewport unit, so `100svh` /
-   `100dvh` / `100lvh` all resolve to a clipped height that misses
-   roughly the home-indicator strip plus the new "Quick Actions"
-   accessory band. Sticky AND fixed positioning both anchor to that
-   short viewport — `fixed; bottom: 0` lands at
-   `visualViewport.bottom`, not the screen edge — so a bottom-pinned
-   toolbar sits 100–200 px above the screen on an empty page, and
-   "snaps shut" the moment the user drags or scrolls (which is when
-   iOS finally recomputes the visual viewport).
+   the home-screen-installed window's `visualViewport.height` — and
+   every viewport unit (`svh`, `dvh`, `lvh`, `vh`) that derives from
+   it — resolves persistently smaller than the physical screen
+   (WebKit #297779, Apple devforums #800125). `position: fixed;
+   bottom: 0` anchors to `visualViewport.bottom`, so a bottom-pinned
+   toolbar lands 100–200 px above the screen edge on a first-launch
+   empty install. The bar "snaps to place" the moment the user
+   drags, which is iOS finally recomputing the visual viewport —
+   but until then the rendered position is wrong.
 
-   The combined fix:
+   `window.innerHeight` (the layout viewport, distinct from the
+   visual viewport) is the one value iOS 26 still reports correctly.
+   `src/hooks/useVisualViewportOffset.ts` writes it to
+   `--screen-h-px` on `<html>` (seeded in `main.tsx` BEFORE React
+   mounts so the very first paint is correct, then re-synced from
+   `LanguageRoot` on every viewport / orientation event).
 
-   - Switch the page-level floor to `100dvh`. Across the iOS 26.x
-     patch revisions `dvh` tracks `visualViewport` more reliably
-     than `svh` (which in `Safari` is a separately-defined
-     "smallest stable" value that excludes the Liquid Glass chrome,
-     and in standalone mode is the wrong unit to reach for). In a
-     PWA window there is no dynamic chrome to make `dvh` jitter, so
-     using it costs nothing.
+   The standalone-mode rules then:
 
-   - Switch the BottomBar to `position: fixed; bottom: 0`. Sticky
-     positioning inherits the parent's clipped height — even after
-     the wrapper grows to `dvh`, a `sticky` bar inside it still
-     hugs the wrapper's bottom, which is the same clipped value.
-     Fixed positioning at least decouples from the wrapper.
+   - Anchor the BottomBar via `top: var(--screen-h-px)` with
+     `translate: 0 -100%`. The bar's top edge is positioned at
+     exactly `innerHeight` pixels from the viewport top — i.e. at
+     the layout-viewport bottom, which is the physical screen
+     bottom on iOS 26 PWAs regardless of how clipped `visualViewport`
+     is reporting. The transform shifts the bar up by its own
+     height so its bottom edge lands on that anchor.
 
-   - Translate the fixed bar down by
-     `var(--viewport-bottom-offset)`, a CSS variable maintained in
-     JavaScript (see `src/hooks/useVisualViewportOffset.ts`) as
-     `window.innerHeight - visualViewport.height -
-     visualViewport.offsetTop`. iOS 26 still reports the layout
-     viewport (`innerHeight`) correctly even when it lies about
-     `visualViewport`, so the delta IS the gap. Translating by it
-     puts the bar's bottom edge at the actual screen bottom even
-     on first paint, before any drag interaction prompts iOS to
-     recompute.
+   - Set the page-level floor to `100dvh`. With the bar already
+     anchored independently this is just to keep the BudgetView's
+     flex column tall enough that empty content fills the screen.
 
-   - Re-introduce bottom padding on `<main>` so the AddRow button
-     at the foot of the last month clears the now-out-of-flow
-     fixed bar instead of disappearing behind it.
+   - Re-introduce bottom padding on `<main>` (via the
+     `data-budget-main` hook) so a scrolled budget's last AddRow
+     button clears the now-out-of-flow fixed bar.
 
    - Cap `env(safe-area-inset-bottom)` with a `max(…, 0.25rem)`
      floor on the bar's inner padding. The same iOS 26 regression
@@ -922,8 +912,10 @@ body {
 
   [data-floating-chrome] {
     position: fixed;
-    inset: auto 0 0 0;
-    translate: 0 var(--viewport-bottom-offset, 0px);
+    /* top / right / bottom / left, with bottom forced to `auto` so
+       it doesn't fight the JS-anchored top. */
+    inset: var(--screen-h-px, 100vh) 0 auto 0;
+    translate: 0 -100%;
   }
 
   [data-budget-main] {
