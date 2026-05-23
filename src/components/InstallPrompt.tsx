@@ -158,8 +158,7 @@ export function InstallPrompt() {
       role="dialog"
       aria-live="polite"
       aria-label={t("pwa.installTitle")}
-      className="fixed inset-x-3 bottom-3 z-[60] mx-auto flex max-w-md items-start gap-3 rounded border border-line bg-surface px-3 py-2 text-fg shadow-md"
-      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md items-start gap-3 rounded border border-line bg-surface px-3 py-2 text-fg shadow-md sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
     >
       <div className="flex flex-1 flex-col gap-1">
         <span className="text-sm font-semibold">{t("pwa.installTitle")}</span>

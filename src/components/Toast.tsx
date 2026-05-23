@@ -18,8 +18,10 @@ import { useT } from "../i18n";
 // General-purpose toast notifications. Mounted by `LanguageRoot`
 // alongside `UpdateToast` / `InstallPrompt` so `useToast()` is
 // available on every route (pre-auth, post-auth, SEO aliases). The
-// viewport sits at `bottom-3 right-3 z-[70]` so the stack drifts
-// upward above the PWA prompts at `z-[60]`.
+// viewport anchors above the BottomBar (4rem mobile / 5rem sm,
+// plus `env(safe-area-inset-bottom)`) at `z-[70]` so the stack
+// drifts upward above the PWA prompts at `z-[60]` and never
+// overlaps the bottom menu.
 //
 // Visual shell mirrors `UpdateToast` and `InstallPrompt` so the three
 // stay visually coherent — `rounded border border-line bg-surface
@@ -98,8 +100,7 @@ function ToastViewport({
     <div
       role="region"
       aria-label={t("toast.region")}
-      className="pointer-events-none fixed right-3 bottom-3 z-[70] flex flex-col-reverse gap-2"
-      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+      className="pointer-events-none fixed right-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-[70] flex flex-col-reverse gap-2 sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
     >
       {toasts.map((toast) => (
         <ToastItemView key={toast.id} toast={toast} onDismiss={onDismiss} />
