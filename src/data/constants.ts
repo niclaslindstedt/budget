@@ -110,14 +110,16 @@ export const DEV_MODE_KEY = nsKey("budget.devMode");
 export const CAPTURE_LOGS_KEY = nsKey("budget.captureLogs");
 export const LOGS_KEY = nsKey("budget.logs");
 
-// Device-local sticky flag that hides the "Install on Home Screen"
-// hint after the user dismisses it once. Stored outside `Settings`
-// because the hint is per-device (a desktop browser should not get a
-// dismissal that the user made on their iPhone) and because it is
-// pure UI state, not budget data — it must not ride along in an
-// export / import cycle. Value semantics: "1" = dismissed; absent =
-// not dismissed yet.
-export const IOS_INSTALL_HINT_DISMISSED_KEY = nsKey(
+// Device-local sticky flag that hides the install hint after the user
+// dismisses (or completes) the install once. Stored outside `Settings`
+// because the hint is per-device (a desktop browser should not inherit
+// a dismissal the user made on their iPhone) and because it is pure
+// UI state, not budget data — it must not ride along in an export /
+// import cycle. Value semantics: "1" = dismissed; absent = not
+// dismissed yet. The storage string keeps its historical
+// "iosInstallHintDismissed" name — the hint shipped iOS-only first
+// and renaming the key would orphan early dismissals.
+export const INSTALL_HINT_DISMISSED_KEY = nsKey(
   "budget.iosInstallHintDismissed",
 );
 

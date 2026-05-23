@@ -135,10 +135,13 @@ export const en = {
     updateReady: "Updated to {version} — reload to apply",
     reload: "Reload",
     dismiss: "Dismiss update notice",
-    iosInstallTitle: "Install Budget",
+    installTitle: "Install Budget",
+    installBody:
+      "Install Budget on this device for one-tap access like a native app.",
     iosInstallBody:
       "Tap {share} in Safari, then choose Add to Home Screen to install Budget like a native app.",
-    iosInstallDismiss: "Dismiss install hint",
+    install: "Install",
+    installDismiss: "Dismiss install hint",
   },
 
   app: {
