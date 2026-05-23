@@ -872,6 +872,17 @@ body {
   border-width: 0;
 }
 
+/* Centered modals float in the middle of the viewport, so their
+   header is never pinned to the top edge — the `env(safe-area-inset-top)`
+   the default header padding (`pt-[calc(0.75rem+env(safe-area-inset-top))]`)
+   adds for status-bar clearance becomes dead space above the title.
+   Strip it back to the bottom-matching `0.75rem` so the header is a
+   tight band on every device. Unlayered so it beats the Tailwind
+   utility AND the standalone-mode override further down. */
+[data-modal-shell="centered"] [data-modal-header] {
+  padding-top: 0.75rem;
+}
+
 /* Installed-PWA layout override for the BottomBar.
    The browser-mode block (no `@media (display-mode: standalone)`
    wrap) keeps the svh + sticky + translate-y math from PR #354
