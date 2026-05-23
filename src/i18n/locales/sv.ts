@@ -2187,8 +2187,8 @@ export const sv: Catalog = {
   presetTypes: {
     rent: "Hyra",
     mortgage: "Bolån",
-    "hoa-fee": "Föreningsavgift",
     "home-insurance": "Hemförsäkring",
+    cleaning: "Städning",
     electricity: "El",
     heating: "Värme",
     water: "Vatten",
@@ -2205,6 +2205,7 @@ export const sv: Catalog = {
     "car-insurance": "Bilförsäkring",
     "vehicle-tax": "Fordonsskatt",
     "congestion-tax": "Trängselskatt",
+    leasing: "Leasing",
     pharmacy: "Apoteket",
     healthcare: "Sjukvård",
     dentist: "Tandläkare",
@@ -2230,6 +2231,7 @@ export const sv: Catalog = {
     gift: "Present",
     hobby: "Hobby",
     travel: "Resa",
+    hotel: "Hotell",
   },
 
   download: {
