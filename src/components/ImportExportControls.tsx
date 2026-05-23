@@ -3,7 +3,7 @@ import { Download, Eye, EyeOff, Lock, Upload } from "lucide-react";
 
 import { unlock } from "../data/achievements";
 import type { UserData } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
+import { useDesktopAutoFocus, useToast } from "../hooks";
 import { useT } from "../i18n";
 import type { EncryptionMode } from "../storage/backend-preference";
 import { Button } from "./form";
@@ -48,6 +48,7 @@ export function ImportExportControls({
   getEncryptionPassword,
 }: Props) {
   const t = useT();
+  const toast = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [pendingEnvelope, setPendingEnvelope] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export function ImportExportControls({
           ? t("importExport.exportedEncrypted")
           : t("importExport.exported"),
     });
+    toast.push({ kind: "success", message: t("toast.exported") });
   }
 
   function finishImport(text: string) {
@@ -119,6 +121,13 @@ export function ImportExportControls({
     setStatus({
       kind: "ok",
       message: baseMessage.replace(/\.$/, "") + suffix + ".",
+    });
+    toast.push({
+      kind: "success",
+      message:
+        sheetCount === 1
+          ? t("toast.importedOne")
+          : t("toast.imported", { n: sheetCount }),
     });
   }
 

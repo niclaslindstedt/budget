@@ -8,6 +8,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { InstallPrompt } from "../components/InstallPrompt";
+import { ToastProvider } from "../components/Toast";
 import { UpdateToast } from "../components/UpdateToast";
 
 import { LanguageProvider, type Lang } from "./index";
@@ -25,9 +26,11 @@ export function LanguageRoot({ children }: { children: ReactNode }) {
   }, []);
   return (
     <LanguageProvider value={lang}>
-      {children}
-      <UpdateToast />
-      <InstallPrompt />
+      <ToastProvider>
+        {children}
+        <UpdateToast />
+        <InstallPrompt />
+      </ToastProvider>
     </LanguageProvider>
   );
 }
