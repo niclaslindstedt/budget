@@ -155,9 +155,17 @@ export function Modal({
   // inset of 0 (the layout viewport already shrunk for us). `centered`
   // modals must not contain keyboard-opening inputs (see prop docs),
   // so the inset stays at 0 and the math is skipped.
+  //
+  // `--screen-h-px` is `window.innerHeight` (seeded in main.tsx, kept
+  // in sync by `useVisualViewportOffset`). On iOS 26 standalone PWAs
+  // `100svh` is clipped by the visualViewport regression, so deriving
+  // from `--screen-h-px` keeps the shell's bottom on the real screen
+  // edge instead of the clipped viewport bottom — same workaround the
+  // BottomBar uses (`[data-floating-chrome]` in `styles.css`). The
+  // fallback to `100svh` keeps browser mode unchanged.
   const shellStyle: React.CSSProperties | undefined =
     !centered && isMobile && keyboardInset > 0
-      ? { height: `calc(100svh - ${keyboardInset}px)` }
+      ? { height: `calc(var(--screen-h-px, 100svh) - ${keyboardInset}px)` }
       : undefined;
 
   // Portal to document.body so the modal escapes any `inert` ancestor —
@@ -186,18 +194,32 @@ export function Modal({
     ? "bg-surface rounded-lg shadow-2xl"
     : "bg-surface sm:rounded-lg sm:shadow-2xl";
 
+  // `data-modal-overlay` / `data-modal-shell` mark the standalone-mode
+  // workaround targets in `styles.css`. iOS 26 PWAs clip both `fixed;
+  // inset: 0` and `100svh` to a too-short visualViewport, so the
+  // standalone-mode rules repin them to `var(--screen-h-px)` (the
+  // correct `window.innerHeight`). `"fullscreen"` is the variant that
+  // takes the workaround — `"centered"` cards float in the middle and
+  // are unaffected by the bottom clip.
+  const overlayVariant = centered ? "centered" : "fullscreen";
+
   return createPortal(
     <div
       role={role}
       aria-modal="true"
       aria-labelledby={labelledBy}
       data-active-portal
+      data-modal-overlay={overlayVariant}
       className={overlayClass}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className={`${shellLayout} ${shellChrome}`} style={shellStyle}>
+      <div
+        data-modal-shell={overlayVariant}
+        className={`${shellLayout} ${shellChrome}`}
+        style={shellStyle}
+      >
         <ModalLabelContext.Provider value={{ id: labelledBy }}>
           {children}
         </ModalLabelContext.Provider>
@@ -221,12 +243,17 @@ type HeaderProps = {
 function Header({ title, icon, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
   const t = useT();
+  // The padding-top is expressed as a Tailwind utility (not an inline
+  // style) so the `@media (display-mode: standalone)` block in
+  // `styles.css` can win the cascade and trim the extra `0.75rem` —
+  // an inline style would beat any external CSS without `!important`.
+  // Matches the `[data-app-header]` pattern: the gap above the title
+  // collapses to just `env(safe-area-inset-top)` in standalone PWAs so
+  // it lines up with the gap the Dynamic Island leaves above itself.
   return (
     <header
-      className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 py-3"
-      style={{
-        paddingTop: `calc(0.75rem + env(safe-area-inset-top))`,
-      }}
+      data-modal-header
+      className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]"
     >
       <h2
         id={ctx?.id}
@@ -296,12 +323,15 @@ type FooterProps = {
 };
 
 function Footer({ children, className = "" }: FooterProps) {
+  // Padding-bottom is a Tailwind utility (not inline) for the same
+  // cascade reason as Header — keeps the standalone-mode override path
+  // open if we ever need to tune the footer's footprint per display
+  // mode. `env(safe-area-inset-bottom)` keeps the buttons above the
+  // iOS home indicator on every viewport.
   return (
     <footer
-      className={`flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 pt-3 ${className}`.trim()}
-      style={{
-        paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
-      }}
+      data-modal-footer
+      className={`flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] ${className}`.trim()}
     >
       {children}
     </footer>

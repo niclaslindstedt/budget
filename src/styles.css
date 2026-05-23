@@ -945,4 +945,44 @@ body {
       padding-top: calc(0.25rem + env(safe-area-inset-top));
     }
   }
+
+  /* Fullscreen-on-mobile modals: pin the overlay AND the shell to the
+     real screen height. The same iOS 26 visualViewport regression that
+     breaks the BottomBar (anchoring `fixed; inset: 0` and `100svh` to
+     the clipped visualViewport bottom instead of the layout-viewport
+     bottom) leaves a band of `--page-bg` visible below the modal's
+     footer on first launch. `--screen-h-px` is `window.innerHeight`
+     (seeded in main.tsx, kept in sync by useVisualViewportOffset) —
+     the one viewport value iOS 26 reports correctly — so the modal
+     can extend through the full screen and the footer can land on
+     the home-indicator strip with its safe-area padding intact.
+     Centered modals float in the middle and aren't affected, so they
+     opt out via the `="fullscreen"` qualifier. Desktop modals (≥
+     640px) drop the fullscreen layout entirely and don't need this. */
+  @media (max-width: 639.98px) {
+    [data-modal-overlay="fullscreen"] {
+      /* `bottom: auto` keeps the explicit `height` authoritative;
+         without it the still-set `bottom: 0` from `inset-0` would
+         compete on devices where it happens to resolve differently. */
+      inset: 0 0 auto 0;
+      height: var(--screen-h-px, 100svh);
+    }
+
+    [data-modal-shell="fullscreen"] {
+      height: var(--screen-h-px, 100svh);
+    }
+  }
+
+  /* Match the `[data-app-header]` trim — the default
+     `0.75rem + env(safe-area-inset-top)` leaves more breathing room
+     above the modal title than the Dynamic Island leaves above itself.
+     Collapse the top to `env(safe-area-inset-top)` and trim the bottom
+     in step so the header is a tight bar of chrome, not a tall band.
+     `[data-app-header]` keeps its own (larger) bottom padding because
+     it's a persistent surface; the modal header is short-lived and
+     wants every pixel for content. */
+  [data-modal-header] {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 0.375rem;
+  }
 }
