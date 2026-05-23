@@ -82,36 +82,26 @@ export function BottomBar({
   return (
     // Two-mode positioning:
     //
-    // Browser mode (Safari / Chrome / Firefox tab): the bar is
-    // `position: sticky; bottom: 0` and rides inside the flex
-    // column's flow. The `translate-y-[calc(100dvh-100svh)]`
-    // transform offsets the bar visually by exactly the floating
-    // Liquid Glass chrome's footprint so it lands flush against
-    // the screen edge instead of floating above the translucent
-    // address bar on a first-load empty budget — first impressions
-    // matter, and svh-only positioning left a visible gap.
-    // Transform is render-only, so it doesn't inflate the
-    // scrollable area; older iOS / non-Liquid-Glass browsers
-    // report `dvh ≈ svh` so the offset collapses to 0 and the
-    // bar stays exactly where `bottom: 0` puts it.
+    // Browser mode (Safari / Chrome / Firefox tab): `position:
+    // sticky; bottom: 0` inside the flex column. The
+    // `translate-y-[calc(100dvh-100svh)]` transform pushes the bar
+    // down by exactly the floating Liquid Glass chrome's footprint
+    // so it lands flush with the screen edge instead of floating
+    // above the translucent address bar on an empty budget. The
+    // transform is render-only so it doesn't inflate the
+    // scrollable area, and on non-Liquid-Glass browsers `dvh ≈ svh`
+    // so it collapses to 0.
     //
-    // Standalone mode (installed PWA): `src/styles.css` switches
-    // the bar to `position: fixed; inset: auto 0 0 0` (same pattern
-    // the Modal component's fullscreen footer uses) AND applies a
-    // JS-measured `translate: 0 var(--bar-offset)` to compensate
-    // for iOS 26's clipped `visualViewport.bottom`. On cold launch
-    // `fixed; bottom: 0` lands ~20–30 px above the actual screen
-    // edge until the first drag bounces the viewport into sync;
-    // `--bar-offset = innerHeight - visualViewport.height` (set by
-    // `useVisualViewportOffset` in `LanguageRoot`) is exactly the
-    // gap to close. Once iOS reconciles the gap goes to 0 and the
-    // translate becomes a no-op. The standalone block also
-    // reserves a `padding-bottom` on `<main data-budget-main>` so
-    // the AddRow at the foot of the last month clears the
-    // out-of-flow bar. See the long history block in
-    // `src/styles.css` for the ten previous attempts (#357 / #360
-    // / #361 / #362 / #367 / #374 / #377 / #380 / #383 / #386)
-    // and the corner cases that took them down.
+    // Standalone mode (installed PWA): `src/styles.css` promotes
+    // the bar to `position: fixed; inset: auto 0 0 0` — same
+    // pattern the Modal's fullscreen footer uses — and reserves a
+    // matching `padding-bottom` on `<main data-budget-main>` so the
+    // last AddRow clears the out-of-flow bar. iOS 26 PWAs have a
+    // known cold-launch quirk where `fixed; bottom: 0` anchors
+    // ~20–30 px above the actual screen edge until the first
+    // overscroll-bounce reconciles the visual viewport — the long
+    // comment in `styles.css` explains why we accepted that as an
+    // iOS bug instead of chasing more workarounds.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the

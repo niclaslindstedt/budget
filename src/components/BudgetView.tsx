@@ -2569,22 +2569,14 @@ export function BudgetView({
   );
 
   return (
-    // The BottomBar at the foot of this flex column is
-    // `position: sticky; bottom: 0` in BROWSER mode — it sits in
-    // the flow, and the AddRowButton at the foot of the last month
-    // ends its scroll just above the bar instead of disappearing
-    // behind it, so no dedicated `<main>` padding is needed.
-    //
-    // In standalone (PWA) mode the standalone-block in
-    // `src/styles.css` promotes the bar to `position: fixed; inset:
-    // auto 0 0 0` so it anchors to the actual screen bottom (same
-    // pattern the Modal component uses for its fullscreen footer).
-    // The `data-budget-shell` attribute pins the wrapper to
-    // `min-height: 100dvh` and the `data-budget-main` attribute is
-    // the hook for the reserve `padding-bottom` that keeps the
-    // AddRow clear of the now-out-of-flow bar. See the long comment
-    // block above the override for the history of attempts that
-    // landed here.
+    // The BottomBar is `position: sticky; bottom: 0` in browser
+    // mode (so the AddRow at the foot of the last month ends its
+    // scroll just above the bar) and `position: fixed; inset: auto
+    // 0 0 0` in installed-PWA mode (see `src/styles.css`). The
+    // `data-budget-shell` and `data-budget-main` attributes are the
+    // hooks the standalone-mode rules target — wrapper pinned to
+    // `min-height: 100dvh`, main given a `padding-bottom` reserve
+    // so the AddRow clears the now-out-of-flow bar.
     <div
       data-budget-shell
       className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
