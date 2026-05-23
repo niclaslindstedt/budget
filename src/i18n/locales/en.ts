@@ -1800,7 +1800,7 @@ export const en = {
       title: "Achievements",
       counter: "{unlocked} of {total} unlocked · {earned} / {max} pts",
       intro:
-        "Every feature in the app is an achievement. Do the thing once and it unlocks — forward-going only, your past usage doesn't pre-fill the list. Four tiers, from just opened the app to bending it to your situation. Pick whichever tier is next for you.",
+        "Every feature in the app is an achievement. Do the thing once and it unlocks. Four tiers, from just opened the app to bending it to your situation. Pick whichever tier is next for you.",
       tierPoints: "· {earned} / {max} pts",
       tierMasteredWhen: "Tier mastered when:",
       learnMore: "Learn more",

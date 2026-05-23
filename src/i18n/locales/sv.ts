@@ -1795,7 +1795,7 @@ export const sv: Catalog = {
       title: "Bedrifter",
       counter: "{unlocked} av {total} upplåsta · {earned} / {max} p",
       intro:
-        "Varje funktion i appen är en bedrift. Gör grejen en gång så låses den upp — bara framåt, det du redan gjort fyller inte listan i förväg. Fyra nivåer, från precis öppnat appen till böjer den efter dig. Välj den nivå som passar nu.",
+        "Varje funktion i appen är en bedrift. Gör grejen en gång så låses den upp. Fyra nivåer, från precis öppnat appen till böjer den efter dig. Välj den nivå som passar nu.",
       tierPoints: "· {earned} / {max} p",
       tierMasteredWhen: "Nivån klar när:",
       learnMore: "Läs mer",
