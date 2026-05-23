@@ -2196,8 +2196,8 @@ export const en = {
   presetTypes: {
     rent: "Rent",
     mortgage: "Mortgage",
-    "hoa-fee": "HOA fee",
     "home-insurance": "Home insurance",
+    cleaning: "Cleaning",
     electricity: "Electricity",
     heating: "Heating",
     water: "Water",
@@ -2214,6 +2214,7 @@ export const en = {
     "car-insurance": "Car insurance",
     "vehicle-tax": "Vehicle tax",
     "congestion-tax": "Congestion tax",
+    leasing: "Leasing",
     pharmacy: "Pharmacy",
     healthcare: "Healthcare",
     dentist: "Dentist",
@@ -2239,6 +2240,7 @@ export const en = {
     gift: "Gift",
     hobby: "Hobby",
     travel: "Travel",
+    hotel: "Hotel",
   },
 
   download: {
