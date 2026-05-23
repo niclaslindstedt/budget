@@ -1,29 +1,38 @@
 ---
 name: update-achievements-page
-description: "Use when src/data/achievements/catalog.ts is stale relative to a newly-shipped user-facing feature — or when a fresh achievement needs to be added, a trigger predicate rewritten, or the rebranded /achievements page chrome touched. The achievements page (src/components/AchievementsPage.tsx) is a four-tier (Beginner → Intermediate → Pro → Expert) guided tour where every feature is also an unlockable trophy. This skill describes how to add a new achievement, how to slot it into the right tier, how to phrase it, and how to wire its trigger so the unlock fires when the user does the thing."
+description: "Use when src/data/achievements/catalog.ts is stale relative to a newly-shipped user-facing feature — or when a fresh achievement needs to be added, a trigger predicate rewritten, or the AchievementsModal chrome touched. The achievements modal (src/components/AchievementsModal.tsx) is a fullscreen four-tier (Beginner → Intermediate → Pro → Expert) guided tour where every feature is also an unlockable trophy. This skill describes how to add a new achievement, how to slot it into the right tier, how to phrase it (in English AND Swedish), and how to wire its trigger so the unlock fires when the user does the thing."
 ---
 
-# Updating the achievements catalog and page
+# Updating the achievements catalog and modal
 
-The achievements system is the rebranded /system page. The page lives
-at `src/components/AchievementsPage.tsx` and is a thin renderer over
-`src/data/achievements/catalog.ts` — the catalog is the source of
-truth, the page picks tier headers, glyphs, and per-row state out of
-it at render time. When a user-facing feature ships and the catalog
-isn't updated, the achievements list silently lies about what the app
-can do.
+The achievements system lives in three places that must stay in
+lockstep:
 
-This skill brings the catalog (and any chrome that depends on it)
-back into sync with the feature surface. It also covers the
-"adding a fresh achievement" case: dropping a new entry into the
-catalog and wiring its trigger.
+- **The catalog** at `src/data/achievements/catalog.ts` — `id`,
+  `tier`, `glyph`, optional `hasLearnMore` flag, and the unlock
+  `trigger`. No display strings here.
+- **The i18n keys** under `achievements.catalog.<id>.{name,
+condition, learnMore?}` in both `src/i18n/locales/en.ts` and
+  `src/i18n/locales/sv.ts`. The renderer composes the lookup at
+  render time as `t(\`achievements.catalog.${id}.name\` as
+  MessageKey)`.
+- **The modal** at `src/components/AchievementsModal.tsx` (and the
+  short toast at `AchievementUnlockModal.tsx`) — both reach into
+  the catalog by `id` and pull display strings via `t()`. New
+  catalog entries appear automatically without touching either
+  component.
 
-The page body / catalog text is **intentionally not translated**
-(same treatment as `PrivacyPage.tsx` / the legacy SystemPage per
-`AGENTS.md` → "What's intentionally not translated"). Only chrome
-(page heading, star tooltip, unlock-modal title and button) goes
-through `t()` and lives in both `en.ts` + `sv.ts`. The catalog
-itself is English-only TypeScript.
+When a user-facing feature ships and the catalog isn't updated, the
+achievements list silently lies about what the app can do.
+
+This skill brings the catalog and its i18n shadow back into sync
+with the feature surface, and covers the "adding a fresh
+achievement" case end to end.
+
+Every catalog entry is fully translated. The Swedish catalog at
+`src/i18n/locales/sv.ts` mirrors `en.ts` key-for-key; the runtime
+catalog-parity test (`tests/i18n_catalog_test.ts`) fails the build
+when an `en.ts` key is missing or empty in Swedish.
 
 ## Tracking mechanism
 
@@ -149,9 +158,27 @@ catalog, follow these four steps:
 1. **Author the entry** in `src/data/achievements/catalog.ts`. Pick
    a stable `id` (camelCase, never reused once shipped), drop it
    into the right tier section (Beginner/Intermediate/Pro/Expert),
-   import the lucide glyph at the top of the file, and write the
-   `name` + `condition` + optional `learnMore` per the voice rules
-   above.
+   import the lucide glyph at the top of the file, and — if you
+   want an expanded body — set `hasLearnMore: true`. The catalog
+   entry holds no display strings; just the structural fields.
+
+   Then add the matching i18n keys in **both** locales:
+
+   ```ts
+   // src/i18n/locales/en.ts under `achievements.catalog`
+   newAchievementId: {
+     name: "Pithy Name",
+     condition: "Imperative one-liner answering 'how do I unlock?'",
+     learnMore: "Optional expanded body (omit the key entirely when
+       hasLearnMore is false on the catalog entry).",
+   },
+   ```
+
+   Mirror the same three keys in `src/i18n/locales/sv.ts` with the
+   Swedish translation. The `Catalog` type widens `en.ts`, so a
+   missing Swedish key is a compile error (`make typecheck`); the
+   runtime catalog test (`tests/i18n_catalog_test.ts`) catches any
+   empty placeholder strings on top of that.
 
 2. **Pick the trigger kind:**
    - `derived` — the achievement unlocks when a predicate over
@@ -192,39 +219,43 @@ catalog, follow these four steps:
      gives high confidence without a per-id test.
    - Run `make typecheck && make test`.
 
-## Page shape
+## Modal shape
 
-`src/components/AchievementsPage.tsx` exports the page and three
-internal components — `<TierSection>`, `<AchievementRow>`, and the
-header — that render the catalog. New entries appear automatically
-without touching the page itself.
+`src/components/AchievementsModal.tsx` exports the modal and two
+internal components — `<TierSection>` and `<AchievementRow>` — that
+render the catalog. New entries appear automatically without
+touching the modal itself.
 
 - **`<TierSection>`** — one per tier (Beginner / Intermediate /
-  Pro / Expert). Reads `TIER_META` (defined in the page) for the
-  tier glyph, title, subtitle, and the "Tier mastered when:"
-  graduation line. The header also shows running
-  `tierEarned / tierMax pts` so users see their tier progress at
-  a glance.
-- **`<AchievementRow>`** — one per catalog entry. Renders as a
-  `<details>` element with two visual states:
+  Pro / Expert). Reads the tier glyph from `TIER_GLYPH` inside the
+  file (`Sprout` / `Compass` / `Workflow` / `Wand2`) and pulls the
+  title, subtitle, and "Tier mastered when:" graduation line via
+  `t(\`achievements.modal.tier.${tier}.{title,subtitle,
+  graduation}\`)`. The header also shows running
+`tierEarned / tierMax pts` so users see their tier progress at a
+  glance.
+- **`<AchievementRow>`** — one per catalog entry. Pulls `name`,
+  `condition`, and (when `hasLearnMore`) `learnMore` from the i18n
+  catalog. Renders as a `<details>` element with two visual states:
   - **Locked** — greyed-out border + lock icon, muted text,
     points pill still visible so the user knows what's on offer.
   - **Unlocked** — colored border + tier glyph, bright text,
-    points pill, checkmark, and the unlock timestamp.
-  - If the entry has `learnMore`, the row shows a "Learn more"
+    points pill, and a checkmark.
+  - If `hasLearnMore` is true, the row shows a "Learn more"
     chevron in the summary; clicking expands the body.
-- **`<HeaderStar>`** lives in the BudgetView header, not on the
-  page itself. Empty (outline) star → click navigates to
-  `/achievements`. Filled (yellow) star → click opens
-  `AchievementUnlockModal`. The star reads
+- **`<HeaderStar>`** lives in the BudgetView header. Empty
+  (outline) star → opens `AchievementsModal`. Filled (yellow)
+  star → opens `AchievementUnlockModal`. The star reads
   `data.settings.unseenAchievements.length` to decide its mode.
+  Both modals live in the BudgetView subtree so they read straight
+  from React state — no localStorage scraping.
 - **`<AchievementUnlockModal>`** — short `centered` modal that
-  lists the unseen unlocks. On close, dispatches
-  `clearUnseenAchievements`; the star then empties.
+  lists the unseen unlocks (also pulls names + conditions from
+  i18n). On close, dispatches `clearUnseenAchievements`; the star
+  then empties.
 
-Per-tier glyphs (`Sprout` / `Compass` / `Workflow` / `Wand2`) and
-the `LucideIcon` type rule (`import type { LucideIcon } from
-"lucide-react"`) carry over unchanged from the SystemPage shape.
+The `LucideIcon` type rule (`import type { LucideIcon } from
+"lucide-react"`) is shared across the catalog and the modal.
 
 ## Source → tier slotting cheatsheet
 
@@ -256,11 +287,11 @@ tier rubric and add a row.
 - Walk the changed paths. For each one, ask: _does this introduce a
   feature worth an achievement?_ If yes, follow the four-step add
   process above. If a shipped feature no longer exists, remove its
-  catalog entry (stable ids are write-once, so removal is the right
-  move — never repurpose).
-- Cross-check page chrome strings against `src/i18n/locales/en.ts`
-  — the literal label in the catalog beats whatever the previous
-  draft said.
+  catalog entry AND drop the matching `achievements.catalog.<id>.*`
+  block from both `en.ts` and `sv.ts` (stable ids are write-once,
+  so removal is the right move — never repurpose).
+- Cross-check chrome strings against `src/i18n/locales/en.ts` /
+  `sv.ts` — every visible label in the modal flows through `t()`.
 - Run `make fmt`, `make lint`, `make typecheck`, and `make test`.
 - Rewrite the tracking file:
 
@@ -279,9 +310,9 @@ tier rubric and add a row.
    reachable from the user gesture.
 3. `make fmt-check`, `make lint`, `make typecheck`, and `make test`
    pass.
-4. `make build` emits `dist/achievements/index.html`; the route
-   loads in `make preview-serve`; the burger-menu link resolves;
-   adding a row in the preview fills the star yellow.
+4. `make build` succeeds; the modal opens in `make preview-serve`
+   from the outline header star; adding a row in the preview fills
+   the star yellow and the unlock toast lists the new entry.
 5. `.agent/skills/update-achievements-page/.last-updated` contains
    the current `HEAD`.
 

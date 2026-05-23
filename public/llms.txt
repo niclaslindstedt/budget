@@ -11,10 +11,6 @@
   requires JavaScript.
 - [Privacy policy](https://budget.niclaslindstedt.se/privacy/): how
   Budget handles your data. Local-first, no backend, no analytics.
-- [Achievements](https://budget.niclaslindstedt.se/achievements/):
-  every feature in the app is an achievement. Four tiers (Beginner →
-  Intermediate → Pro → Expert), points per tier, unlocked
-  forward-going as the user does the thing.
 
 ## Source
 

@@ -180,60 +180,8 @@ export const CHANGELOG_ROUTE: RouteSeo = {
   ],
 };
 
-export const ACHIEVEMENTS_ROUTE: RouteSeo = {
-  path: "/achievements/",
-  title: "Achievements — Budget",
-  description:
-    "Every feature in the Budget app is an achievement. Unlock them " +
-    "by using the app — forward-going only, four tiers (Beginner, " +
-    "Intermediate, Pro, Expert), points for each tier. The page " +
-    "doubles as a guided tour of what the app can do.",
-  ogType: "article",
-  jsonLd: [
-    {
-      "@context": "https://schema.org",
-      "@type": "TechArticle",
-      "@id": `${absoluteUrl("/achievements/")}#article`,
-      url: absoluteUrl("/achievements/"),
-      headline: "Achievements",
-      description:
-        "Every feature in the Budget app is an achievement. Unlock " +
-        "them by using the app. Four tiers: Beginner, Intermediate, " +
-        "Pro, Expert.",
-      inLanguage: SITE_LANGUAGE,
-      isPartOf: { "@id": `${SITE_URL}/#website` },
-      about: { "@id": `${SITE_URL}/#app` },
-      author: { "@id": `${SITE_URL}/#author` },
-      publisher: { "@id": `${SITE_URL}/#author` },
-      mainEntityOfPage: {
-        "@type": "WebPage",
-        "@id": absoluteUrl("/achievements/"),
-      },
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: `${SITE_URL}/`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "Achievements",
-          item: absoluteUrl("/achievements/"),
-        },
-      ],
-    },
-  ],
-};
-
 export const ROUTES: readonly RouteSeo[] = [
   HOME_ROUTE,
   PRIVACY_ROUTE,
   CHANGELOG_ROUTE,
-  ACHIEVEMENTS_ROUTE,
 ];
