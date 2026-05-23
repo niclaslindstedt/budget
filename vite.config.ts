@@ -325,12 +325,16 @@ function patchAppleTitle(): Plugin {
 // `navigateFallbackDenylist` adds a defensive regex against the
 // other slot in case a stale registration ever surprised us.
 //
-// Update strategy: `autoUpdate` (skipWaiting + clientsClaim on every
-// new SW) plus the soft toast in `src/components/UpdateToast.tsx`
-// — the toast surfaces a non-blocking "reload to apply" prompt so we
-// never refresh mid-edit. The SW activates immediately and controls
-// the cache, but the open tab keeps running its old JS until the
-// user clicks Reload (or navigates away and back).
+// Update strategy: `prompt` — a new SW installs and sits in the
+// `waiting` state until the user opts in via the soft toast in
+// `src/components/UpdateToast.tsx`. The toast's Reload button calls
+// `updateServiceWorker(true)`, which posts `SKIP_WAITING` to the
+// waiting SW and reloads the page once it activates. We deliberately
+// do NOT set `skipWaiting` / `clientsClaim` in the workbox config:
+// with those flags the new SW activates immediately, the `waiting`
+// state is never observed, `useRegisterSW`'s `needRefresh` never
+// flips to `true`, and the toast never renders — the page would
+// silently run old JS until the next full navigation.
 function pwaPlugin(): Plugin[] {
   const id = BASE_PATH; // "/" or "/preview/" — W3C app identity
   const name = IS_PREVIEW ? "Budget (preview)" : "Budget";
@@ -338,7 +342,7 @@ function pwaPlugin(): Plugin[] {
   const cacheId = IS_PREVIEW ? "budget-preview" : "budget";
 
   return VitePWA({
-    registerType: "autoUpdate",
+    registerType: "prompt",
     // The React `useRegisterSW` hook handles registration; no auto
     // `<script>` injection.
     injectRegister: null,
@@ -392,8 +396,6 @@ function pwaPlugin(): Plugin[] {
         IS_PREVIEW ? /^\/(?!preview\/).+/ : /^\/preview\//,
       ],
       cleanupOutdatedCaches: true,
-      skipWaiting: true,
-      clientsClaim: true,
       cacheId,
     },
     // Dev-mode SW interferes with HMR. Opt in with VITE_PWA_DEV=1

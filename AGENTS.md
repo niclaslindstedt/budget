@@ -476,14 +476,23 @@ branches on `IS_PREVIEW` inside `pwaPlugin()` in `vite.config.ts`:
   for the preview build via the `patchAppleTitle` Vite plugin so iOS
   home-screen tiles are visually distinguishable.
 
-**Update strategy.** `registerType: "autoUpdate"` with
-`skipWaiting` + `clientsClaim`. New service workers activate
-immediately and claim the open tab, but the JS bundle running in
-the tab is the old one until the user reloads. The
-`UpdateToast` component (mounted from `LanguageRoot`) surfaces a
-non-blocking "reload to apply" prompt — never refresh mid-edit.
+**Update strategy.** `registerType: "prompt"` — no `skipWaiting`,
+no `clientsClaim`. A new service worker installs and sits in the
+`waiting` state; `useRegisterSW` flips `needRefresh` to `true` and
+the `UpdateToast` component (mounted from `LanguageRoot`) surfaces
+a non-blocking "reload to apply" prompt. Clicking Reload calls
+`updateServiceWorker(true)`, which posts `SKIP_WAITING` to the
+waiting SW and reloads the page once it takes control — the
+reload happens at a moment the user controls, never mid-edit.
 Visibility-gated polling (`reg.update()` every 60 min) catches new
 builds on tabs left open all day.
+
+Do not re-enable `workbox.skipWaiting` / `clientsClaim` (or switch
+back to `registerType: "autoUpdate"`) without replacing the toast
+flow. With those flags the new SW activates immediately, the
+`waiting` state is never observed, `needRefresh` never flips, and
+the toast silently disappears — leaving users on stale JS until the
+next full navigation.
 
 **Rollback.** If a SW ever ships broken (precaches a bad build,
 infinite refresh loop, anything), ship a "kill" SW via a hotfix:

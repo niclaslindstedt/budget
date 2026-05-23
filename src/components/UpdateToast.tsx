@@ -9,14 +9,15 @@ import { BUILD_LABEL } from "../utils/build-env";
 // prerendered SEO alias (`/privacy/`, `/system/`).
 //
 // Service worker registration is handled by the `useRegisterSW`
-// virtual module from vite-plugin-pwa. With `registerType:
-// "autoUpdate"`, `skipWaiting`, and `clientsClaim` (configured in
-// `vite.config.ts`), the new SW activates and claims the open tab
-// immediately — but the tab's JS bundle is still the old one until
-// the user reloads. This toast surfaces a non-blocking prompt so
-// the reload happens at a moment the user controls (we never want
-// to refresh mid-edit). Dismissing the toast hides it until the
-// next polling cycle finds another new build.
+// virtual module from vite-plugin-pwa. With `registerType: "prompt"`
+// (configured in `vite.config.ts`), a new SW installs and sits in
+// the `waiting` state; `useRegisterSW` flips `needRefresh` to `true`
+// and we render this toast. Clicking Reload calls
+// `updateServiceWorker(true)`, which posts `SKIP_WAITING` to the
+// waiting SW and reloads the page once it takes control. The reload
+// happens at a moment the user controls — we never want to refresh
+// mid-edit. Dismissing the toast hides it until the next polling
+// cycle finds another new build.
 //
 // Polling cadence: every 60 minutes while the tab is visible. Many
 // builds per day means a tab left open without polling would never
