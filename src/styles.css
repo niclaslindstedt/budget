@@ -853,52 +853,52 @@ body {
   border-width: 0;
 }
 
-/* Installed-PWA layout overrides. iOS 26 ships a viewport-coherence
-   regression (WebKit #297779 / #301994, Apple devforums #800125):
-   in a home-screen-installed PWA, `100dvh` / `100svh` / `100lvh`
-   and `window.innerHeight` and even `visualViewport.height` all
-   resolve from a stale compositor rectangle that's 100–200 px
-   taller than the actually-rendered viewport on a cold launch.
-   Earlier iterations of this fix tried to compensate from JS
-   (PRs #357 / #360 / #361 / #362 / #367) by reading
-   `visualViewport` and translating a `position: fixed` bar by
-   the measured delta — but the user reported the bar still loaded
-   in the wrong place on cold launch AND, worse, walked off the
-   bottom of an EMPTY page when iOS's `visualViewport.offsetTop`
-   tracked the rubber-band overscroll (with no real scroll to
-   undo, the bar got stuck off-screen).
+/* Installed-PWA layout override. The browser-mode block (no
+   `@media (display-mode: standalone)` wrap) keeps the svh + sticky
+   + translate-y math from PR #354 that iOS 26 Safari's Liquid Glass
+   address bar needs to look right; this override below is for the
+   home-screen-installed PWA where there's no Liquid Glass chrome to
+   compensate for.
 
-   Per the fozzedout iPhone PWA gist (the community-shipped
-   reference fix), `100vh` is the ONE viewport-related signal iOS
-   26 standalone still reports correctly from cold start. So:
+   Earlier attempts (PRs #357 / #360 / #361 / #362 / #367) tried
+   JS-driven workarounds for iOS 26's viewport-coherence regression
+   (WebKit #297779 / #301994) — measuring `visualViewport.height`
+   and translating a `position: fixed` bar by the measured delta.
+   The user reported every attempt either left the bar floating
+   above the screen edge on cold launch or, worse, let the bar
+   walk off the bottom of an EMPTY page when `vv.offsetTop` tracked
+   the rubber-band overscroll (with no scroll to undo, the bar got
+   stuck off-screen). PR #374 dropped the JS scaffold and switched
+   the wrapper to `min-height: 100vh`, which fixed the cold-launch
+   position but introduced its own bug: `100vh` in iOS 26 PWA
+   overshoots the visible viewport (apparently includes the home
+   indicator gesture area), making the page scrollable on an empty
+   budget and, on overscroll, hiding the bar below the visible
+   bottom.
 
-   - The page-level floor switches to `100vh` (NOT `100dvh` /
-     `100svh`). With the wrapper now correctly sized, a sticky
-     `bottom: 0` bar inside it lands at the wrapper's actual
-     bottom — i.e. at the screen edge — on the very first paint.
-
-   - The standalone-mode block DOESN'T override the BottomBar's
-     position. The default `sticky bottom-0` from the className
-     (the same value used in browser mode) is what we want here.
-     `sticky` always lands at its containing block's bottom edge
-     and, on an empty page that doesn't scroll, stays there — so
-     a new user without any rows still sees the bar pinned to the
-     bottom of the screen instead of "stuck off-screen" the way
-     the earlier translate-based approach left it.
-
-   The browser-mode block (no `@media (display-mode: standalone)`
-   wrap) keeps the existing svh + sticky + translate-y math from
-   PR #354, which is what iOS 26 Safari's Liquid Glass address bar
-   needs to look right. */
+   `100dvh` is the right unit here. In a PWA window there is no
+   dynamic chrome to make `dvh` jitter, and unlike `100vh` it
+   matches the visible viewport instead of the layout viewport, so
+   the wrapper fits inside the screen exactly and the default
+   `sticky bottom-0` BottomBar lands at the screen edge without
+   making the page scrollable. The standalone block deliberately
+   does NOT override the bar's position — the default sticky from
+   the className (the same value used in browser mode) is what
+   pins it. On an empty (non-scrolling) page the bar therefore
+   stays at the bottom forever; the user can never get it into a
+   "stuck off-screen" state where they have to drag to recover.
+   `sticky` is also computed against the wrapper's `dvh` height,
+   not the iOS-clipped `visualViewport`, so the cold-launch
+   "shifted upward" bug from before #374 doesn't return either. */
 @media (display-mode: standalone) {
   html,
   body,
   #root {
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 
   [data-budget-shell] {
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 
   /* The default header padding (`0.5rem + env(safe-area-inset-top)`)

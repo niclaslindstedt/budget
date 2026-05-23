@@ -2566,9 +2566,9 @@ export function BudgetView({
     // instead of disappearing behind it, so no dedicated reserve
     // padding on `<main>` is needed. The `data-budget-shell`
     // attribute is the hook the standalone-mode CSS targets to
-    // override `min-h-svh` → `min-h-[100vh]` (the only viewport
-    // unit iOS 26 standalone gets right from cold start — see the
-    // comment block above the override in `src/styles.css`).
+    // override `min-h-svh` → `min-h-[100dvh]` (matches the visible
+    // viewport in iOS 26 PWA; see the comment block above the
+    // override in `src/styles.css` for the why).
     <div
       data-budget-shell
       className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
