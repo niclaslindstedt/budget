@@ -281,7 +281,7 @@ function Body({
   return (
     <div
       ref={scrollRef}
-      className={`flex-1 overflow-y-auto overflow-x-hidden ${paddingClass} ${className}`
+      className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${paddingClass} ${className}`
         .replace(/\s+/g, " ")
         .trim()}
     >

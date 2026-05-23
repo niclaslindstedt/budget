@@ -349,6 +349,7 @@ export const sv: Catalog = {
 
   settings: {
     title: "Inställningar",
+    buildAriaLabel: "Build {label}",
     chooseSection: "Välj inställningssektion",
     tabs: {
       general: "Allmänt",

@@ -357,6 +357,7 @@ export const en = {
 
   settings: {
     title: "Settings",
+    buildAriaLabel: "Build {label}",
     chooseSection: "Choose settings section",
     tabs: {
       general: "General",
