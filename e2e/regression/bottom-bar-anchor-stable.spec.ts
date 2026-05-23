@@ -109,37 +109,36 @@ test.describe("BottomBar anchor stability", () => {
     expect(result.barBottom).toBeLessThanOrEqual(svhPx);
   });
 
-  test("standalone PWA uses 100dvh on the wrapper so sticky bottom lands at the screen edge", async ({
+  test("standalone PWA disables overscroll-bounce so the sticky bar stays put", async ({
     page,
   }) => {
-    // iOS 26 ships a viewport-coherence regression (WebKit #297779
-    // / #301994). Five JS-driven workarounds (PRs #357 / #360 /
-    // #361 / #362 / #367) all failed for various reasons, and PR
-    // #374 then switched the standalone-mode wrapper to
-    // `min-height: 100vh` based on third-party reports that `vh`
-    // was the only correct unit on iOS 26 cold launch. The user
-    // reported that change overshot the visible viewport — `100vh`
-    // includes the home-indicator gesture area, so the page became
-    // scrollable on an empty budget and the sticky bar slipped
-    // below the visible bottom during overscroll.
+    // Seven previous iterations all tried to anchor a bottom-pinned
+    // toolbar against various viewport flavors on iOS 26 PWAs
+    // (JS-translated fixed bar in PRs #357 / #360 / #361 / #362 /
+    // #367; `100vh` wrapper with sticky bar in #374; `100dvh`
+    // wrapper with sticky bar in #377). Every one left the bar
+    // partially clipped on some scroll state, because iOS 26's
+    // overscroll-bounce shifts `position: sticky` (and `position:
+    // fixed`) anchors during the rubber-band — and on a
+    // non-scrolling empty page the user can't drag to undo a bad
+    // bounce.
     //
-    // The current shape uses `100dvh` instead. In a PWA window
-    // there is no dynamic chrome to make `dvh` jitter (so the
-    // "value walks during scroll" objection from the browser-mode
-    // discussion in PR #348 doesn't apply), and unlike `100vh`
-    // it matches the visible viewport, so the wrapper fits
-    // exactly. The BottomBar keeps its default `sticky bottom-0`
-    // from the className — no override needed. Sticky inside a
-    // correctly-sized parent lands at the parent's bottom edge,
-    // which IS the screen edge.
+    // The current shape kills the bounce instead of trying to
+    // compensate for it:
+    //   - `min-height: 100dvh` on the wrapper + page-level floor
+    //     (matches the visible viewport on iOS 26 PWAs).
+    //   - `overscroll-behavior-y: none` on `html` / `body` /
+    //     `[data-budget-shell]` cancels the rubber-band entirely.
+    //   - The BottomBar keeps its default `sticky bottom-0` from
+    //     the className — with no bounce, it stays at the visible
+    //     viewport bottom forever.
     //
     // Playwright doesn't have a first-class display-mode emulator,
     // so this regression asserts the CSS rules *exist* in the
     // stylesheet rather than trying to make the media query match.
-    // If a future refactor reintroduces `100vh` / `100svh` on the
-    // wrapper, or moves the bar back to `position: fixed` /
-    // `transform`-driven positioning, the test fails before iOS
-    // users feel it again.
+    // If a future refactor regresses either piece (the `100dvh`
+    // sizing or the overscroll-bounce kill), iOS users feel the bar
+    // walking around again.
     await signInAsGuest(page);
     await page.waitForTimeout(200);
 
@@ -158,7 +157,9 @@ test.describe("BottomBar anchor stability", () => {
         return null;
       };
       let shellMinHeight: string | null = null;
+      let shellOverscroll: string | null = null;
       let rootMinHeight: string | null = null;
+      let rootOverscroll: string | null = null;
       let chromeOverride: {
         position: string;
         transform: string;
@@ -176,11 +177,13 @@ test.describe("BottomBar anchor stability", () => {
           if (!(r instanceof CSSStyleRule)) continue;
           if (r.selectorText.includes("[data-budget-shell]")) {
             shellMinHeight = r.style.minHeight || shellMinHeight;
+            shellOverscroll = r.style.overscrollBehaviorY || shellOverscroll;
           }
           // `html, body, #root` rule — match on `body` since the
           // selector is a comma-separated list.
           if (/(^|,)\s*body\s*(,|$)/.test(r.selectorText)) {
             rootMinHeight = r.style.minHeight || rootMinHeight;
+            rootOverscroll = r.style.overscrollBehaviorY || rootOverscroll;
           }
           if (r.selectorText.includes("[data-floating-chrome]")) {
             chromeOverride = {
@@ -191,22 +194,30 @@ test.describe("BottomBar anchor stability", () => {
           }
         }
       }
-      return { shellMinHeight, rootMinHeight, chromeOverride };
+      return {
+        shellMinHeight,
+        shellOverscroll,
+        rootMinHeight,
+        rootOverscroll,
+        chromeOverride,
+      };
     });
 
     // The wrapper and page floor MUST use `100dvh` — the unit that
-    // matches the visible viewport in iOS 26 standalone. `100vh`
-    // overshoots (includes the home-indicator strip), making the
-    // page scrollable on empty budgets; `100svh` undershoots on
-    // some iOS 26.x patches, leaving the bar floating above the
-    // screen edge.
+    // matches the visible viewport in iOS 26 standalone.
     expect(rules.shellMinHeight).toBe("100dvh");
     expect(rules.rootMinHeight).toBe("100dvh");
+    // `overscroll-behavior-y: none` MUST be set on the wrapper AND
+    // the page-level scroll surfaces — without it the iOS 26
+    // rubber-band shifts the sticky bar off the bottom of an
+    // empty (non-scrolling) page and the user has no way to drag
+    // it back.
+    expect(rules.shellOverscroll).toBe("none");
+    expect(rules.rootOverscroll).toBe("none");
     // The bar MUST NOT be re-positioned in standalone mode — the
     // default `sticky bottom-0` from the className is what lands
-    // it at the screen edge AND keeps it there on an empty,
-    // non-scrolling page (where the user would otherwise have no
-    // way to drag the bar back into view).
+    // it at the wrapper's bottom edge AND keeps it there on an
+    // empty, non-scrolling page.
     expect(rules.chromeOverride).toBeNull();
   });
 });
