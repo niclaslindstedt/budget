@@ -13,30 +13,20 @@ in flow rather than floating above it, so it lands at the same
 on-screen position whether the sheet is empty or scrolls past the
 screen edge — and the page can no longer be pulled up by the
 chrome's footprint on an empty budget. The installed-PWA window
-gets its own layout path that works around iOS 26's
-viewport-coherence regression (WebKit #297779 / #301994): the
-compositor pins fixed elements to a stale rectangle 100–200 px
-taller than the actually-rendered viewport, and `bottom: 0` /
-`100dvh` / `innerHeight` / `env(safe-area-inset-bottom)` all read
-from the same poisoned numbers on a cold launch — which is why
-the bar visibly floated above the screen edge and only "snapped
-to place" when the user dragged the page. The fix has three
-coordinated parts: `main.tsx` calls a one-shot
-`bootViewportWorkaround()` BEFORE React mounts that toggles the
-`<meta name="viewport">` `viewport-fit` token from `cover` to
-`auto` and back across two animation frames, then does a no-op
-`scrollBy(0, 1)` / `scrollBy(0, -1)` round-trip — that combination
-is the documented community-shipped way to force iOS to reconcile
-the compositor without a real user scroll. A `useVisualViewportOffset`
-hook then keeps `--vv-bottom` (= `visualViewport.height +
-visualViewport.offsetTop`, the only honest signal iOS 26 PWAs
-expose) in sync with viewport / orientation / pageshow events.
-And the CSS drives the bar's position with `transform:
-translateY(calc(var(--vv-bottom) - 100%))` instead of `bottom: 0`,
-so the bar's bottom edge lands at the real visible viewport floor
-regardless of how the compositor's stale rectangle reports. The
-same block reserves bottom padding on `<main>` so the AddRow
-button stays clear of the now-out-of-flow bar and floors
-`env(safe-area-inset-bottom)` so the icons keep a visible gap
-from the home indicator even when iOS reports the inset as `0px`
-after a cold reopen.
+gets its own minimal layout override that works around iOS 26's
+viewport-coherence regression (WebKit #297779 / #301994): every
+viewport-related signal — `100dvh` / `100svh` / `100lvh` /
+`window.innerHeight` / `visualViewport.height` /
+`env(safe-area-inset-bottom)` — reads from a stale compositor
+rectangle 100–200 px taller than the actually-rendered viewport
+on a cold launch, which is why the bar visibly floated above the
+screen edge on a first install. Per the fozzedout iPhone PWA gist
+(the community-shipped reference fix), `100vh` is the ONE
+viewport-related signal iOS 26 standalone gets right from cold
+start, so the standalone-mode CSS switches the wrapper and the
+page-level floor from `100svh` / `100dvh` to `100vh`. The
+BottomBar keeps its default `position: sticky; bottom: 0`, which
+inside the now-correctly-sized parent lands at the screen edge on
+the first paint AND stays there on an empty (non-scrolling) page
+— important because new users without any rows can't drag to
+"snap" the bar back if it walks off.

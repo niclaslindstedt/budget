@@ -109,41 +109,39 @@ test.describe("BottomBar anchor stability", () => {
     expect(result.barBottom).toBeLessThanOrEqual(svhPx);
   });
 
-  test("standalone PWA promotes the bar to fixed positioning", async ({
+  test("standalone PWA uses 100vh on the wrapper so sticky bottom lands at the screen edge", async ({
     page,
   }) => {
     // iOS 26 ships a viewport-coherence regression (WebKit #297779
-    // / #301994) where, in a home-screen-installed PWA, the
-    // compositor pins fixed elements to a stale rectangle that's
-    // 100–200 px taller than the actually-rendered visual viewport.
-    // `bottom: 0`, `100dvh`, `innerHeight`, even
-    // `env(safe-area-inset-bottom)` all read from that poisoned
-    // rectangle on a cold launch — earlier attempts using any of
-    // them as the anchor left the chrome 100–200 px above the
-    // physical screen edge, with the user having to drag the page
-    // before iOS reconciled.
+    // / #301994) where, in a home-screen-installed PWA, every
+    // viewport-related signal — `100dvh`, `100svh`, `100lvh`,
+    // `window.innerHeight`, `visualViewport.height`,
+    // `env(safe-area-inset-bottom)` — reads from a stale
+    // compositor rectangle 100–200 px taller than the actually-
+    // rendered visual viewport. Five JS-driven workarounds (PRs
+    // #361 / #362 / #367 / #371) all failed because their inputs
+    // were themselves wrong.
     //
-    // The fix has three parts, all asserted below:
-    //   - `src/main.tsx` calls `bootViewportWorkaround()` BEFORE
-    //     React mounts to "wake" the compositor (toggle
-    //     viewport-fit + a no-op scrollBy round-trip).
-    //   - `src/hooks/useVisualViewportOffset.ts` writes `--vv-bottom`
-    //     (= `visualViewport.height + .offsetTop`, the only honest
-    //     signal iOS 26 PWAs expose) to `<html>`, seeded from
-    //     `main.tsx` and re-synced from `LanguageRoot` on viewport
-    //     / orientation / pageshow events.
+    // Per the fozzedout iPhone PWA gist (the community-shipped
+    // reference fix), `100vh` is the ONE viewport-related signal
+    // iOS 26 standalone gets right from cold start. The current
+    // fix is CSS-only:
     //   - `src/styles.css` (`@media (display-mode: standalone)`)
-    //     anchors the BottomBar via `position: fixed; transform:
-    //     translateY(calc(var(--vv-bottom) - 100%))`. The same
-    //     block reserves bottom padding on `<main>` (via
-    //     `[data-budget-main]`) so a scrolled budget's last AddRow
-    //     clears the out-of-flow bar.
+    //     overrides the wrapper (`[data-budget-shell]`) and the
+    //     page-level floor (html / body / #root) from
+    //     `min-height: 100svh` / `100dvh` to `100vh`.
+    //   - The BottomBar keeps its default `position: sticky;
+    //     bottom: 0` from the className — no override needed.
+    //     Sticky inside a correctly-sized parent lands at the
+    //     parent's bottom edge, which is the screen edge.
     //
     // Playwright doesn't have a first-class display-mode emulator,
     // so this regression asserts the CSS rules *exist* in the
     // stylesheet rather than trying to make the media query match.
-    // The selector / property values are the contract; if a future
-    // refactor drops them the test fails before iOS users feel it.
+    // If a future refactor reintroduces `100dvh` / `100svh` on the
+    // wrapper, or moves the bar back to `position: fixed` /
+    // `transform`-driven positioning, the test fails before iOS
+    // users feel it again.
     await signInAsGuest(page);
     await page.waitForTimeout(200);
 
@@ -161,10 +159,13 @@ test.describe("BottomBar anchor stability", () => {
         }
         return null;
       };
-      let chromePosition: string | null = null;
-      let chromeTransform: string | null = null;
-      let chromeInset: string | null = null;
-      let mainPaddingBottom: string | null = null;
+      let shellMinHeight: string | null = null;
+      let rootMinHeight: string | null = null;
+      let chromeOverride: {
+        position: string;
+        transform: string;
+        inset: string;
+      } | null = null;
       for (const sheet of Array.from(document.styleSheets)) {
         let block: CSSMediaRule | null = null;
         try {
@@ -175,47 +176,36 @@ test.describe("BottomBar anchor stability", () => {
         if (!block) continue;
         for (const r of Array.from(block.cssRules)) {
           if (!(r instanceof CSSStyleRule)) continue;
-          if (r.selectorText.includes("[data-floating-chrome]")) {
-            chromePosition = r.style.position || chromePosition;
-            chromeTransform = r.style.transform || chromeTransform;
-            chromeInset = r.style.inset || chromeInset;
+          if (r.selectorText.includes("[data-budget-shell]")) {
+            shellMinHeight = r.style.minHeight || shellMinHeight;
           }
-          if (r.selectorText.includes("[data-budget-main]")) {
-            mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
+          // `html, body, #root` rule — match on `body` since the
+          // selector is a comma-separated list.
+          if (/(^|,)\s*body\s*(,|$)/.test(r.selectorText)) {
+            rootMinHeight = r.style.minHeight || rootMinHeight;
+          }
+          if (r.selectorText.includes("[data-floating-chrome]")) {
+            chromeOverride = {
+              position: r.style.position,
+              transform: r.style.transform,
+              inset: r.style.inset,
+            };
           }
         }
       }
-      // Also assert that `--vv-bottom` is being maintained on
-      // `<html>` — the CSS rule above is useless without the JS
-      // value to resolve against.
-      const vvBottom =
-        document.documentElement.style.getPropertyValue("--vv-bottom");
-      return {
-        chromePosition,
-        chromeTransform,
-        chromeInset,
-        mainPaddingBottom,
-        vvBottom,
-      };
+      return { shellMinHeight, rootMinHeight, chromeOverride };
     });
 
-    expect(rules.chromePosition).toBe("fixed");
-    // The transform MUST reference `--vv-bottom` and the bar's own
-    // height (`100%`) — that combination is what places the bar's
-    // bottom edge at the real visible viewport's bottom on iOS 26
-    // PWAs, sidestepping the stale compositor rectangle that
-    // `bottom: 0` / viewport units all resolve against.
-    expect(rules.chromeTransform).toContain("--vv-bottom");
-    expect(rules.chromeTransform).toContain("100%");
-    // `bottom: 0` (or `bottom: <anything>`) must NOT be set — it
-    // would silently fight the transform by anchoring the bar to
-    // the poisoned rectangle. The `inset` shorthand pins
-    // `bottom: auto` explicitly.
-    expect(rules.chromeInset).toMatch(/\bauto\b/);
-    expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
-    // The hook (`useVisualViewportOffset`) must keep `--vv-bottom`
-    // populated; otherwise the CSS fallback (`100vh`) reintroduces
-    // the iOS 26 clipping.
-    expect(rules.vvBottom).toMatch(/^\d+px$/);
+    // The wrapper and page floor MUST use `100vh` — the unit that
+    // iOS 26 standalone reports correctly from cold start. `100dvh`
+    // / `100svh` / `100lvh` all reintroduce the cold-launch clip.
+    expect(rules.shellMinHeight).toBe("100vh");
+    expect(rules.rootMinHeight).toBe("100vh");
+    // The bar MUST NOT be re-positioned in standalone mode — the
+    // default `sticky bottom-0` from the className is what lands
+    // it at the screen edge AND keeps it there on an empty,
+    // non-scrolling page (where the user would otherwise have no
+    // way to drag the bar back into view).
+    expect(rules.chromeOverride).toBeNull();
   });
 });

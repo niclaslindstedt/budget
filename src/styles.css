@@ -855,39 +855,36 @@ body {
 
 /* Installed-PWA layout overrides. iOS 26 ships a viewport-coherence
    regression (WebKit #297779 / #301994, Apple devforums #800125):
-   in a home-screen-installed PWA the compositor pins fixed elements
-   to a stale pre-Liquid-Glass rectangle that's 100–200 px taller
-   than the actually-rendered visual viewport. EVERY signal we'd
-   normally measure against — `window.innerHeight`, `100vh` /
-   `100dvh` / `100svh`, `env(safe-area-inset-bottom)`, even the
-   `visualViewport.height` reading at the moment of first paint —
-   reads from the same poisoned rectangle on a cold launch. The
-   compositor only reconciles when "woken" by a real scroll, an
-   orientation change, or a mutation of the `<meta name="viewport">`
-   `viewport-fit` token; that wake is what produces the "snap to
-   place" the user otherwise has to trigger by dragging the page.
+   in a home-screen-installed PWA, `100dvh` / `100svh` / `100lvh`
+   and `window.innerHeight` and even `visualViewport.height` all
+   resolve from a stale compositor rectangle that's 100–200 px
+   taller than the actually-rendered viewport on a cold launch.
+   Earlier iterations of this fix tried to compensate from JS
+   (PRs #357 / #360 / #361 / #362 / #367) by reading
+   `visualViewport` and translating a `position: fixed` bar by
+   the measured delta — but the user reported the bar still loaded
+   in the wrong place on cold launch AND, worse, walked off the
+   bottom of an EMPTY page when iOS's `visualViewport.offsetTop`
+   tracked the rubber-band overscroll (with no real scroll to
+   undo, the bar got stuck off-screen).
 
-   The fix in this app has three coordinated parts:
+   Per the fozzedout iPhone PWA gist (the community-shipped
+   reference fix), `100vh` is the ONE viewport-related signal iOS
+   26 standalone still reports correctly from cold start. So:
 
-   1. `src/main.tsx` calls `bootViewportWorkaround()` BEFORE React
-      mounts, which toggles `viewport-fit=cover → auto → cover`
-      across two animation frames AND does a `scrollBy(0, 1)/(0,
-      -1)` no-op round-trip. Either nudge alone is sometimes
-      enough; the combination is what the community-shipped iOS 26
-      PWA fixes converge on as the most-reliable wake.
+   - The page-level floor switches to `100vh` (NOT `100dvh` /
+     `100svh`). With the wrapper now correctly sized, a sticky
+     `bottom: 0` bar inside it lands at the wrapper's actual
+     bottom — i.e. at the screen edge — on the very first paint.
 
-   2. `src/hooks/useVisualViewportOffset.ts` writes `--vv-bottom`
-      (= `visualViewport.height + visualViewport.offsetTop`) to
-      `<html>` — the y-coordinate in layout-viewport pixels of
-      the actually-rendered visible area's bottom edge. Seeded
-      from `main.tsx` so the first paint is correct, then
-      re-synced from `LanguageRoot` on every viewport /
-      orientation / pageshow event.
-
-   3. The rules below drive the standalone-mode BottomBar from
-      `--vv-bottom` via `transform: translateY(...)` instead of
-      `position: fixed; bottom: 0`. `bottom: 0` resolves against
-      the stale rectangle; the transform doesn't.
+   - The standalone-mode block DOESN'T override the BottomBar's
+     position. The default `sticky bottom-0` from the className
+     (the same value used in browser mode) is what we want here.
+     `sticky` always lands at its containing block's bottom edge
+     and, on an empty page that doesn't scroll, stays there — so
+     a new user without any rows still sees the bar pinned to the
+     bottom of the screen instead of "stuck off-screen" the way
+     the earlier translate-based approach left it.
 
    The browser-mode block (no `@media (display-mode: standalone)`
    wrap) keeps the existing svh + sticky + translate-y math from
@@ -897,53 +894,11 @@ body {
   html,
   body,
   #root {
-    min-height: 100dvh;
+    min-height: 100vh;
   }
 
   [data-budget-shell] {
-    min-height: 100dvh;
-  }
-
-  [data-floating-chrome] {
-    position: fixed;
-    /* Anchor the bar's top edge at the layout viewport's top
-       (`top: 0`) and translate it down to (the actual visible
-       viewport's bottom) minus (the bar's own height). The bar's
-       bottom edge lands at `--vv-bottom`; its inner padding
-       (`pb: max(env(safe-area-inset-bottom), 0.25rem)`, set on
-       the inner div in `BottomBar.tsx`) then floats the icons up
-       above the home indicator — we don't subtract the safe inset
-       in the transform too, or the bar would float above its own
-       padded reservation.
-
-       `--vv-bottom` is JS-set from `visualViewport.height +
-       visualViewport.offsetTop` (the only honest signal iOS 26
-       PWAs expose). Mixing this with `bottom: 0` would silently
-       fight us — `bottom: 0` resolves against the stale
-       compositor rectangle the rest of the fix is trying to
-       escape — so we force `bottom: auto`. The `100vh` fallback
-       keeps the rule sane in browser mode and on pre-iOS-26
-       standalone WebKit where the variable may not yet be
-       populated. `transform: translateY(...)` is used (rather
-       than the newer `translate:` shorthand) so it coexists with
-       Tailwind's `translate-y-[calc(100dvh-100svh)]` utility on
-       the className: those are two separate CSS properties that
-       compose, and in standalone mode the Tailwind calc evaluates
-       to 0 anyway (both `dvh` and `svh` resolve from the same
-       rectangle when there's no chrome), so they don't fight. */
-    inset: 0 0 auto 0;
-    transform: translateY(calc(var(--vv-bottom, 100vh) - 100%));
-    will-change: transform;
-  }
-
-  [data-budget-main] {
-    padding-bottom: calc(4rem + max(env(safe-area-inset-bottom), 0.25rem));
-  }
-
-  @media (min-width: 640px) {
-    [data-budget-main] {
-      padding-bottom: calc(5rem + max(env(safe-area-inset-bottom), 0.25rem));
-    }
+    min-height: 100vh;
   }
 
   /* The default header padding (`0.5rem + env(safe-area-inset-top)`)

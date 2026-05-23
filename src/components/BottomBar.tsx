@@ -95,30 +95,21 @@ export function BottomBar({
     // report `dvh ≈ svh` so the offset collapses to 0 and the
     // bar stays exactly where `bottom: 0` puts it.
     //
-    // Standalone mode (installed PWA): the override block in
-    // `src/styles.css` (`@media (display-mode: standalone)`)
-    // anchors the bar via `position: fixed; transform:
-    // translateY(calc(var(--vv-bottom) - 100%))`. iOS 26 ships a
-    // viewport-coherence regression (WebKit #297779) where the
-    // compositor pins fixed elements to a stale rectangle that's
-    // 100–200 px taller than the actually-rendered visual
-    // viewport — every signal except `visualViewport.height +
-    // .offsetTop` reads from that poisoned rectangle on a cold
-    // launch, which is why earlier attempts using `innerHeight` /
-    // `100dvh` / `bottom: 0` all left the bar floating up, with
-    // the user having to drag the page to "snap" it down.
-    //
-    // The fix has three coordinated parts: `main.tsx` calls
-    // `bootViewportWorkaround()` BEFORE React mounts to "wake"
-    // the compositor (toggle viewport-fit + a no-op scrollBy
-    // round-trip — see the file for the references);
-    // `useVisualViewportOffset` in `LanguageRoot` keeps
-    // `--vv-bottom` in sync; and the CSS rule reads that variable
-    // via `transform: translateY` instead of `bottom: 0`.
-    //
-    // The matching `<main data-budget-main>` padding reserve in
-    // the same media-query block keeps a scrolled budget's last
-    // row from disappearing behind the out-of-flow bar.
+    // Standalone mode (installed PWA): `src/styles.css` switches
+    // the page-level floor (html / body / #root and the BudgetView
+    // wrapper) from `100dvh` to `100vh`. Per the fozzedout iPhone
+    // PWA gist, `100vh` is the ONE viewport-related signal iOS 26
+    // standalone gets right from cold start — `100dvh` / `100svh`
+    // / `100lvh` / `window.innerHeight` / `visualViewport.height`
+    // all read from a stale compositor rectangle ~100–200 px
+    // taller than the actually-rendered viewport, and earlier JS
+    // workarounds (PRs #361 / #362 / #367 / #371) all failed
+    // because they tried to compensate from values that were
+    // themselves wrong. With the wrapper now correctly sized, the
+    // default `sticky bottom-0` (above) lands at the screen edge
+    // on the first paint AND stays there on an EMPTY page that
+    // doesn't scroll — important because new users without any
+    // rows can't drag to "snap" the bar back if it walks off.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the
