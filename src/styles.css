@@ -599,12 +599,12 @@ body {
          tighter buffer relies on the chars count including the currency
          token to make up the difference, which works for longer tokens
          like " kr" (3ch ≈ 1.5rem) but leaves short ones like "$ " (2ch
-         ≈ 1rem) painfully close to the right edge. The type and
-         completed tracks are kept narrow (icon-only on mobile, both
-         carry a single glyph) so the description column gets as much
-         of the row as possible. */
+         ≈ 1rem) painfully close to the right edge. The date, type and
+         completed tracks are kept narrow (40px, icon or 2-digit day on
+         mobile) so the description column gets as much of the row as
+         possible. */
       grid-template-columns:
-        46px minmax(0, 1fr) 40px
+        40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
         minmax(64px, calc(var(--balance-col-ch, 8) * 1ch + 3rem))
         40px;
@@ -616,7 +616,7 @@ body {
     .sheet-table.is-selecting > thead > tr,
     .sheet-table.is-selecting > tbody > tr {
       grid-template-columns:
-        30px 46px minmax(0, 1fr) 40px
+        30px 40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
         minmax(64px, calc(var(--balance-col-ch, 8) * 1ch + 3rem))
         40px;
