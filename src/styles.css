@@ -605,7 +605,7 @@ body {
       grid-template-columns:
         40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
-        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem))
+        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + var(--balance-col-buffer, 1.5rem)))
         40px;
       position: relative;
       overflow: hidden;
@@ -617,7 +617,7 @@ body {
       grid-template-columns:
         30px 40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
-        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem))
+        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + var(--balance-col-buffer, 1.5rem)))
         40px;
     }
     /* Highlight the row in select mode and tint the selected ones. */

@@ -387,7 +387,7 @@ function BalanceCell({
           )}
         </span>
         <span
-          className={`flex w-full items-center justify-end gap-1.5 px-2.5 py-2 font-mono tabular-nums whitespace-pre md:pl-6 ${
+          className={`flex w-full flex-col items-end justify-center gap-0 px-2.5 py-2 font-mono tabular-nums whitespace-pre md:flex-row md:items-center md:justify-end md:gap-1.5 md:pl-6 ${
             settings.showCurrency && settings.currencyPosition === "after"
               ? "pr-8"
               : ""
@@ -412,6 +412,11 @@ function BalanceCell({
                   : t("sheet.expandHiddenTransfers")
               }
               aria-expanded={transferExpanded}
+              // Stacks above the balance on mobile via the parent's
+              // flex-col / md:flex-row swap — the column is too narrow
+              // for an inline button + number, so the reveal-affordance
+              // hops to its own line above to keep horizontal space for
+              // the number itself.
               className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded border-0 bg-transparent p-0.5 text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
               <ArrowLeftRight size={12} aria-hidden focusable={false} />
