@@ -124,7 +124,7 @@ Commits exactly:
 ```
 
 - `<type>` ∈ `feat | fix | chore | docs | refactor | perf | test |
-  build | ci | style | revert`. Match the type to the user-facing
+build | ci | style | revert`. Match the type to the user-facing
   framing — a refactor that ships no behaviour change is `refactor`
   even if the diff touches a `feat`-shaped file.
 - `<scope>` is optional but encouraged; pick a short tag that
@@ -311,6 +311,7 @@ Before posting:
    ```
 
    Any hit → rewrite that line.
+
 3. **Walk the Test plan boxes.** Every `- [x]` should correspond
    to a command you actually ran in this branch; every `- [ ]`
    should be a real action a reviewer can perform.
@@ -357,8 +358,7 @@ parameters; passing only the changed fields is fine.
   test plan. List the targets, the specs, the manual flows.
 
 - **Linking sessions.** `https://claude.ai/code/session_…` URLs
-  resolve only for the original author; for everyone else they
-  404. The harness-appended footer is fine because GitHub
+  resolve only for the original author; for everyone else they 404. The harness-appended footer is fine because GitHub
   collapses it; do not duplicate it in the body prose.
 
 - **Forgetting the PR template.** If `.github/pull_request_template.md`
