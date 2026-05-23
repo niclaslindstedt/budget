@@ -991,16 +991,29 @@ body {
     }
   }
 
-  /* Match the `[data-app-header]` trim — the default
-     `0.75rem + env(safe-area-inset-top)` leaves more breathing room
-     above the modal title than the Dynamic Island leaves above itself.
-     Collapse the top to `env(safe-area-inset-top)` and trim the bottom
-     in step so the header is a tight bar of chrome, not a tall band.
-     `[data-app-header]` keeps its own (larger) bottom padding because
-     it's a persistent surface; the modal header is short-lived and
-     wants every pixel for content. */
+  /* Pull the modal title up so it sits in the same horizontal band as
+     the Dynamic Island — the title and close button hug the left and
+     right edges, so they stay clear of the Island in the centre. The
+     default `0.75rem + env(safe-area-inset-top)` (~71pt on a Dynamic
+     Island iPhone) combined with the 40pt-tall close button pushed
+     the title bar to ~111pt, leaving a visible band of empty header
+     below the Island. Collapsing the top to a flat `0.75rem` — the
+     same gap the Island has to the top of the screen — lets the
+     Island visually sit inside the header bar instead of above it.
+     The footer mirrors the same rationale: the buttons want to ride
+     close to the home-indicator strip, not float ~12pt above it. */
   [data-modal-header] {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: 0.375rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  [data-modal-footer] {
+    padding-top: 0.5rem;
+    /* `env(safe-area-inset-bottom)` alone — no extra `0.75rem` on top
+       of it — so the buttons land right at the safe-area edge. The
+       `0.5rem` floor protects against the iOS 26 regression where the
+       inset returns 0 after a PWA cold-launch (same `max(…, …)`
+       guard `[data-floating-chrome]` uses for its own bottom). */
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
   }
 }
