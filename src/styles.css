@@ -591,22 +591,21 @@ body {
       /* Amount and balance widths are driven by --amount-col-ch /
          --balance-col-ch, set per-sheet from the longest formatted value
          across every month so each month aligns on the same column
-         widths instead of sizing independently. The 3rem buffer covers
-         the +/- glyph (w-6 = 1.5rem) plus the right-side padding the
-         body span reserves for the currency overlay (pr-8 = 2rem when
-         currency-after) — currency-before only needs pl-10 (2.5rem)
-         on the input, so 3rem fits both modes without truncation. A
-         tighter buffer relies on the chars count including the currency
-         token to make up the difference, which works for longer tokens
-         like " kr" (3ch ≈ 1.5rem) but leaves short ones like "$ " (2ch
-         ≈ 1rem) painfully close to the right edge. The date, type and
-         completed tracks are kept narrow (40px, icon or 2-digit day on
-         mobile) so the description column gets as much of the row as
-         possible. */
+         widths instead of sizing independently. The amount column needs
+         a 3rem buffer to cover the +/- tap-toggle glyph (w-6 = 1.5rem)
+         plus the body's right-side padding for the currency overlay
+         (pr-8 = 2rem when currency-after). The balance column has no
+         +/- glyph on mobile (sign is conveyed by colour) and no
+         tap-toggle, so its buffer drops to 1.5rem — just enough for
+         pr-8 net of the currency token already counted in the chars
+         tally — and its minmax floor drops to 40px to match the date /
+         type / completed tracks. The date, type and completed tracks
+         are kept narrow (40px, icon or 2-digit day on mobile) so the
+         description column gets as much of the row as possible. */
       grid-template-columns:
         40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
-        minmax(64px, calc(var(--balance-col-ch, 8) * 1ch + 3rem))
+        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem))
         40px;
       position: relative;
       overflow: hidden;
@@ -618,7 +617,7 @@ body {
       grid-template-columns:
         30px 40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
-        minmax(64px, calc(var(--balance-col-ch, 8) * 1ch + 3rem))
+        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem))
         40px;
     }
     /* Highlight the row in select mode and tint the selected ones. */
