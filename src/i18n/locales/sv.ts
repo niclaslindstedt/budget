@@ -926,6 +926,9 @@ export const sv: Catalog = {
       "{n} tidigare poster i kontots bankhistorik matchar denna beskrivning och kommer att överta typen och etiketten ovan. Bankens originaltext behålls.",
     addFutureEntries: "Lägg till {n} framtida post",
     addFutureEntriesPlural: "Lägg till {n} framtida poster",
+    shiftDaysBy: "Förskjut datum med",
+    shiftDaysByHint:
+      "Justera datumet på alla poster i den valda omfattningen. Ange ett negativt tal för att flytta tidigare.",
   },
 
   editRow: {

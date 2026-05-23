@@ -930,6 +930,9 @@ export const en = {
       "{n} past entries in this account's bank history match this description and will adopt the type and label above. The bank's original text is kept as-is.",
     addFutureEntries: "Add {n} future entry",
     addFutureEntriesPlural: "Add {n} future entries",
+    shiftDaysBy: "Shift days by",
+    shiftDaysByHint:
+      "Nudge the date of every entry in the chosen scope. Use negative numbers to shift earlier.",
   },
 
   editRow: {

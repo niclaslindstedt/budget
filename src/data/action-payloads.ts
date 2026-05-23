@@ -41,6 +41,11 @@ export type EditPatch = {
   // row falls back to its description as the primary label); a string
   // sets the typeId.
   typeId?: string | null;
+  // Signed day-offset applied to every row in the edit scope; lets the
+  // user nudge a series whose original anchor day was off by a few
+  // days (e.g. recurring landed on day 24 instead of 25). Omitted or
+  // 0 leaves dates untouched.
+  dateShiftDays?: number;
 };
 
 export type EditScope =
