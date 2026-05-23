@@ -7,7 +7,6 @@ import {
   Settings as SettingsIcon,
   Shield,
   Sparkles,
-  Trophy,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -172,11 +171,6 @@ function MainView({
 
       <MenuSection>
         <MenuLink
-          icon={<Trophy size={16} aria-hidden focusable={false} />}
-          label={t("settings.footer.achievements")}
-          href={`${import.meta.env.BASE_URL}achievements`}
-        />
-        <MenuLink
           icon={<Shield size={16} aria-hidden focusable={false} />}
           label={t("settings.footer.privacy")}
           href={`${import.meta.env.BASE_URL}privacy`}
@@ -235,7 +229,7 @@ function MenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-fg hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
     >
       <span className="text-muted">{icon}</span>
       <span>{label}</span>
@@ -262,7 +256,7 @@ function MenuLink({
       href={href}
       target="_blank"
       rel={external ? "noreferrer noopener" : "noreferrer"}
-      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-fg hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
     >
       <span className="text-muted">{icon}</span>
       <span>{label}</span>
