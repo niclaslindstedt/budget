@@ -1,7 +1,7 @@
 import { Trophy, X } from "lucide-react";
 
 import { ACHIEVEMENT_BY_ID, TIER_POINTS } from "../data/achievements";
-import { useT } from "../i18n";
+import { useT, type MessageKey } from "../i18n";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -62,6 +62,10 @@ export function AchievementUnlockModal({ open, unseenIds, onClose }: Props) {
       <div className="flex max-h-[60svh] flex-col gap-2 overflow-y-auto px-4 py-3">
         {items.map((ach) => {
           const Icon = ach.glyph;
+          const name = t(`achievements.catalog.${ach.id}.name` as MessageKey);
+          const condition = t(
+            `achievements.catalog.${ach.id}.condition` as MessageKey,
+          );
           return (
             <article
               key={ach.id}
@@ -73,13 +77,13 @@ export function AchievementUnlockModal({ open, unseenIds, onClose }: Props) {
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-sm font-bold text-fg-bright">
-                    {ach.name}
+                    {name}
                   </span>
                   <span className="text-xs text-meta">
                     +{TIER_POINTS[ach.tier]}
                   </span>
                 </div>
-                <p className="text-xs text-muted">{ach.condition}</p>
+                <p className="text-xs text-muted">{condition}</p>
               </div>
             </article>
           );

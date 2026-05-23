@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
-import { AchievementsPage } from "./components/AchievementsPage";
 import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { LanguageRoot } from "./i18n/LanguageRoot";
@@ -46,21 +45,11 @@ installSelectOnFocus();
 const path = window.location.pathname.replace(/\/$/, "");
 const isPrivacy = path.endsWith("/privacy") || path === "/privacy";
 const isChangelog = path.endsWith("/changelog") || path === "/changelog";
-const isAchievements =
-  path.endsWith("/achievements") || path === "/achievements";
 
 createRoot(rootElement).render(
   <StrictMode>
     <LanguageRoot>
-      {isPrivacy ? (
-        <PrivacyPage />
-      ) : isChangelog ? (
-        <ChangelogPage />
-      ) : isAchievements ? (
-        <AchievementsPage />
-      ) : (
-        <App />
-      )}
+      {isPrivacy ? <PrivacyPage /> : isChangelog ? <ChangelogPage /> : <App />}
     </LanguageRoot>
   </StrictMode>,
 );

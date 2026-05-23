@@ -66,7 +66,7 @@ import type { Achievement } from "./types";
 // derive as `!hasX(prev) && hasX(next)` in their trigger predicate
 // below. Kept inline so the catalog is the single file an agent
 // reads when adding a new entry — same source of truth as the
-// achievements page itself.
+// achievements modal itself.
 
 function eachAccountBudget(
   state: UserData,
@@ -158,10 +158,12 @@ const hasMultipartItem = (s: UserData) =>
     return corrections > 0;
   });
 
-// Settings-flip predicates. Each derives a "first time the user
-// changed X" by comparing prev.settings to next.settings inside the
-// trigger predicate, so they're defined on the achievement entry
-// itself rather than here.
+// Display strings (name / condition / optional learnMore) live in
+// `src/i18n/locales/{en,sv}.ts` under `achievements.catalog.<id>.*`.
+// Each entry below references the keys by `id` — the renderer
+// composes the lookup at the call site. `hasLearnMore: true` flags
+// entries that carry an expanded body (the renderer reads it via
+// `achievements.catalog.<id>.learnMore` only when this is set).
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ────────────────────────────────────────────────────────────
@@ -171,10 +173,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "firstSteps",
     tier: "beginner",
     glyph: Plus,
-    name: "First Steps",
-    condition: "Add your first row.",
-    learnMore:
-      "Click the bottom row of the sheet, type a description, tab through to amount and date. That's a budget entry — the core loop.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasAnyUserRow(prev) && hasAnyUserRow(next),
@@ -184,20 +183,14 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "localHero",
     tier: "beginner",
     glyph: UserPlus,
-    name: "Local Hero",
-    condition: "Use the app as a guest, or create an account.",
-    learnMore:
-      "Guest mode keeps your data in this browser only, unencrypted. An account adds a password that encrypts the data on this device — it never leaves your machine.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "label",
     tier: "beginner",
     glyph: Tag,
-    name: "Label It",
-    condition: "Assign a type to a row.",
-    learnMore:
-      "The type chip groups rows for analysis. Browse by category — the starter set covers Swedish-flavoured basics.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasTypedRow(prev) && hasTypedRow(next),
@@ -207,10 +200,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "checkPlease",
     tier: "beginner",
     glyph: Check,
-    name: "Check, Please",
-    condition: "Tick a row's completed checkbox.",
-    learnMore:
-      "Unticked = forecast, ticked = real. The app uses this when reconciling against bank imports later.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -221,28 +211,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "timeTraveller",
     tier: "beginner",
     glyph: Calendar,
-    name: "Time Traveller",
-    condition: "Discover the Today pill by scrolling away from this month.",
     trigger: { kind: "manual" },
   },
   {
     id: "secondThoughts",
     tier: "beginner",
     glyph: Undo2,
-    name: "Second Thoughts",
-    condition: "Undo an action.",
-    learnMore:
-      "⌘Z walks back the last action. Every cell edit, every row delete, every settings change is reversible — undo is the safety net.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "houseKeeper",
     tier: "beginner",
     glyph: EyeOff,
-    name: "House Keeper",
-    condition: "Hide a preset category or type you'll never use.",
-    learnMore:
-      "Hiding is safer than deleting until you know what you want. Anything hidden can be brought back from the same screen.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -253,20 +235,14 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "preparedMind",
     tier: "beginner",
     glyph: Download,
-    name: "Prepared Mind",
-    condition: "Export your budget to a JSON file.",
-    learnMore:
-      "A snapshot you can drop back in later via Import. Do this once early so you know how.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "interiorDesigner",
     tier: "beginner",
     glyph: Palette,
-    name: "Interior Designer",
-    condition: "Switch the theme to something other than the default.",
-    learnMore:
-      "Themes include One Dark, One Light, Dracula, GitHub Dark, and GitHub Light. The Custom-theme tokens in Expert tier stack on top.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -277,18 +253,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "watchful",
     tier: "beginner",
     glyph: Calculator,
-    name: "Watchful",
-    condition: "Watch the balance build itself for the first time.",
-    learnMore:
-      "The Balance column is the running total of every row above it. You never type into it — it computes from the rows.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "trustButVerify",
     tier: "beginner",
     glyph: Save,
-    name: "Trust, But Verify",
-    condition: "Notice the save-state indicator confirming a save.",
     trigger: { kind: "manual" },
   },
 
@@ -299,10 +270,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "bookKeeper",
     tier: "intermediate",
     glyph: Wallet,
-    name: "Book Keeper",
-    condition: "Create your first real account.",
-    learnMore:
-      "Optionally attach bank details (clearing, account number, IBAN). The next tier — bank import — uses them to pair rows automatically.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasAccount(prev) && hasAccount(next),
@@ -312,10 +280,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "tieTheKnot",
     tier: "intermediate",
     glyph: LinkIcon,
-    name: "Tie the Knot",
-    condition: "Link a sheet to an account.",
-    learnMore:
-      "Once linked, the sheet's running balance mirrors the real balance and bank imports land in the right place.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasLinkedSheet(prev) && hasLinkedSheet(next),
@@ -325,10 +290,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "payDay",
     tier: "intermediate",
     glyph: CalendarClock,
-    name: "Pay Day",
-    condition: "Change Start of month from the default.",
-    learnMore:
-      "If salary lands on the 25th, set 25 — every month then runs 25th-to-24th instead of calendar-first.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -339,10 +301,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "spreadOut",
     tier: "intermediate",
     glyph: LayoutDashboard,
-    name: "Spread Out",
-    condition: "Add more than one sheet.",
-    learnMore:
-      "One sheet per account, one per goal. Tabs at the top switch between them.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -353,18 +312,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "birdsEye",
     tier: "intermediate",
     glyph: LayoutGrid,
-    name: "Bird's Eye",
-    condition: "Visit the Accounts overview.",
     trigger: { kind: "manual" },
   },
   {
     id: "shuffler",
     tier: "intermediate",
     glyph: ArrowRightLeft,
-    name: "Shuffler",
-    condition: "Record an inter-account transaction.",
-    learnMore:
-      "One row, two effects: debits one account and credits the other on the same date. No need to type the two halves.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasTransaction(prev) && hasTransaction(next),
@@ -374,10 +328,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "quietMover",
     tier: "intermediate",
     glyph: Eye,
-    name: "Quiet Mover",
-    condition: "Flag a row as a transfer.",
-    learnMore:
-      "Combined with Hide transfers, internal moves still affect balances but disappear from the expense totals.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasTransferRow(prev) && hasTransferRow(next),
@@ -387,10 +338,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "groundhogDay",
     tier: "intermediate",
     glyph: Repeat,
-    name: "Groundhog Day",
-    condition: "Make a row recurring.",
-    learnMore:
-      "Salary, rent, Spotify, gym. The preview shows the next ten occurrences before you save so you can sanity-check the pattern.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -401,18 +349,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "secondDraft",
     tier: "intermediate",
     glyph: Pencil,
-    name: "Second Draft",
-    condition: "Edit a recurring series.",
     trigger: { kind: "manual" },
   },
   {
     id: "taxonomist",
     tier: "intermediate",
     glyph: FolderTree,
-    name: "Taxonomist",
-    condition: "Create your own category.",
-    learnMore:
-      "Categories group expenses for analysis. Give each a glyph and a color — the shared 16-hue palette is consistent across the app.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -423,10 +366,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "labelMaker",
     tier: "intermediate",
     glyph: ArrowUpDown,
-    name: "Label Maker",
-    condition: "Create your own entry type.",
-    learnMore:
-      "Types are the labels you assign to rows. Each has a glyph, color, and direction (+, −, ◆) so the picker stays clean.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasUserType(prev) && hasUserType(next),
@@ -436,36 +376,26 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "moverShaker",
     tier: "intermediate",
     glyph: Move,
-    name: "Mover & Shaker",
-    condition: "Move or copy rows across months.",
     trigger: { kind: "manual" },
   },
   {
     id: "splitTheBill",
     tier: "intermediate",
     glyph: Split,
-    name: "Split the Bill",
-    condition: "Split a row into multiple parts.",
-    learnMore:
-      "When a single bank charge bundles different categories (groceries + household + gift), split so each part gets its own type.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "bulkOps",
     tier: "intermediate",
     glyph: ListChecks,
-    name: "Bulk Ops",
-    condition: "Bulk-edit two or more rows in one action.",
     trigger: { kind: "manual" },
   },
   {
     id: "reckoner",
     tier: "intermediate",
     glyph: Scale,
-    name: "Reckoner",
-    condition: "Record a balance correction.",
-    learnMore:
-      "When the running total drifts from what the bank shows, Set balance writes a single correction row dated today. Honest fix; don't rewrite old history.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasCorrection(prev) && hasCorrection(next),
@@ -475,16 +405,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "detective",
     tier: "intermediate",
     glyph: Search,
-    name: "Detective",
-    condition: "Search across every sheet.",
     trigger: { kind: "manual" },
   },
   {
     id: "numberWhisperer",
     tier: "intermediate",
     glyph: Hash,
-    name: "Number Whisperer",
-    condition: "Customise the number or currency format.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -499,8 +425,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "rearranger",
     tier: "intermediate",
     glyph: Columns3,
-    name: "Rearranger",
-    condition: "Reorder the columns in a sheet.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -511,8 +435,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "polyglot",
     tier: "intermediate",
     glyph: BookOpen,
-    name: "Polyglot",
-    condition: "Switch the app language.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -523,8 +445,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "tidyAndQuiet",
     tier: "intermediate",
     glyph: EyeOff,
-    name: "Tidy & Quiet",
-    condition: "Turn on Hide transfers.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -539,10 +459,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "importExport",
     tier: "pro",
     glyph: FileUp,
-    name: "Import / Export",
-    condition: "Import your first bank statement.",
-    learnMore:
-      "The app auto-detects Skandiabanken, Swedbank, Bank Norwegian, or ICA Banken. Drop the .xlsx or .csv from your bank and pick the account.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -553,18 +470,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "dedupe",
     tier: "pro",
     glyph: CopyCheck,
-    name: "Dedupe",
-    condition: "Re-import a statement; the importer skips the duplicates.",
     trigger: { kind: "manual" },
   },
   {
     id: "archaeologist",
     tier: "pro",
     glyph: History,
-    name: "Archaeologist",
-    condition: "Override an imported history entry's description or type.",
-    learnMore:
-      "Open the history view, click a row, change its label. Useful when a noisy merchant has a useful name buried in the bank text.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -575,10 +487,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "patternRecognition",
     tier: "pro",
     glyph: Wand2,
-    name: "Pattern Recognition",
-    condition: "Write your first match rule.",
-    learnMore:
-      "*App Store* → type 'App'. Every past and future App Store charge labels itself. Rules can also filter by amount range or transfer flag.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasMatchRule(prev) && hasMatchRule(next),
@@ -588,8 +497,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "elephantsRemember",
     tier: "pro",
     glyph: Brain,
-    name: "Elephants Remember",
-    condition: "Promote a merchant — the type sticks for next time.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -600,8 +507,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "matchmaker",
     tier: "pro",
     glyph: GitMerge,
-    name: "Matchmaker",
-    condition: "Reconcile a series — the rule sticks for next month.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -612,8 +517,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "twoSidedCoin",
     tier: "pro",
     glyph: Merge,
-    name: "Two-Sided Coin",
-    condition: "Collapse a mirror pair into a single transfer.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -624,8 +527,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "cleanSplit",
     tier: "pro",
     glyph: Split,
-    name: "Clean Split",
-    condition: "Split a bank-history entry across multiple types.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -636,52 +537,38 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "cloudWalker",
     tier: "pro",
     glyph: Cloud,
-    name: "Cloud Walker",
-    condition: "Connect a cloud backend (Dropbox, Google Drive, or Folder).",
-    learnMore:
-      "Browser-only data lives on this device. Connect a cloud and your budget rides with you across devices.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "paranoidMode",
     tier: "pro",
     glyph: Lock,
-    name: "Paranoid Mode",
-    condition: "Turn on end-to-end encryption.",
-    learnMore:
-      "AES-GCM, 256-bit key, 600 000 PBKDF2 iterations. The cloud sees ciphertext only.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "snapshotter",
     tier: "pro",
     glyph: Archive,
-    name: "Snapshotter",
-    condition: "Restore a cloud backup.",
     trigger: { kind: "manual" },
   },
   {
     id: "airplaneMode",
     tier: "pro",
     glyph: WifiOff,
-    name: "Airplane Mode",
-    condition: "Edit offline; the app reconnects gracefully.",
     trigger: { kind: "manual" },
   },
   {
     id: "rekindled",
     tier: "pro",
     glyph: RefreshCw,
-    name: "Rekindled",
-    condition: "Re-authorize a cloud backend.",
     trigger: { kind: "manual" },
   },
   {
     id: "lockUp",
     tier: "pro",
     glyph: LockKeyhole,
-    name: "Lock Up",
-    condition: "Change the idle sign-out timeout.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -693,24 +580,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "spreadsheetSensei",
     tier: "pro",
     glyph: FileSpreadsheet,
-    name: "Spreadsheet Sensei",
-    condition: "Export a sheet to CSV or Excel.",
     trigger: { kind: "manual" },
   },
   {
     id: "sealedEnvelope",
     tier: "pro",
     glyph: FileLock2,
-    name: "Sealed Envelope",
-    condition: "Export your budget as encrypted JSON.",
     trigger: { kind: "manual" },
   },
   {
     id: "timeMachine",
     tier: "pro",
     glyph: History,
-    name: "Time Machine",
-    condition: "Jump to a point in the action history.",
     trigger: { kind: "manual" },
   },
 
@@ -721,10 +602,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "spellbinder",
     tier: "expert",
     glyph: Sigma,
-    name: "Spellbinder",
-    condition: "Write your first amount formula.",
-    learnMore:
-      "Type = and write an expression. salary * 0.05 saves 5% of income; min(rent, 12000) caps a transfer. The formula recomputes when inputs change.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => !hasFormulaRow(prev) && hasFormulaRow(next),
@@ -734,56 +612,42 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "variablesUnleashed",
     tier: "expert",
     glyph: FunctionSquare,
-    name: "Variables Unleashed",
-    condition: "Insert a variable pill from the formula helper.",
     trigger: { kind: "manual" },
   },
   {
     id: "crossWired",
     tier: "expert",
     glyph: Network,
-    name: "Cross-Wired",
-    condition: "Reference another sheet inside a formula.",
     trigger: { kind: "manual" },
   },
   {
     id: "compoundInterest",
     tier: "expert",
     glyph: Sigma,
-    name: "Compound Interest",
-    condition: "Build a compound entry with multiple parts.",
     trigger: { kind: "manual" },
   },
   {
     id: "calendarBender",
     tier: "expert",
     glyph: CalendarCog,
-    name: "Calendar Bender",
-    condition: "Use last-day-of-month or a custom recurrence interval.",
     trigger: { kind: "manual" },
   },
   {
     id: "auditor",
     tier: "expert",
     glyph: BarChart3,
-    name: "Auditor",
-    condition: "Read the coverage report.",
     trigger: { kind: "manual" },
   },
   {
     id: "fineSieve",
     tier: "expert",
     glyph: Filter,
-    name: "Fine Sieve",
-    condition: "Write a match rule with amount or transfer filters.",
     trigger: { kind: "manual" },
   },
   {
     id: "themeWizard",
     tier: "expert",
     glyph: Palette,
-    name: "Theme Wizard",
-    condition: "Switch to the Custom theme.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -794,8 +658,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "fontFanatic",
     tier: "expert",
     glyph: TypeIcon,
-    name: "Font Fanatic",
-    condition: "Swap the font family.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -806,8 +668,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "stillness",
     tier: "expert",
     glyph: Accessibility,
-    name: "Stillness",
-    condition: "Turn on Reduce motion.",
     trigger: {
       kind: "derived",
       predicate: (prev, next) =>
@@ -819,44 +679,32 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "household",
     tier: "expert",
     glyph: Users,
-    name: "Household",
-    condition: "Add another user account on this device.",
     trigger: { kind: "manual" },
   },
   {
     id: "shapeShifter",
     tier: "expert",
     glyph: ArrowLeftRight,
-    name: "Shape Shifter",
-    condition: "Switch storage backends.",
     trigger: { kind: "manual" },
   },
   {
     id: "underTheHood",
     tier: "expert",
     glyph: Code2,
-    name: "Under the Hood",
-    condition: "Turn on Developer mode.",
     trigger: { kind: "manual" },
   },
   {
     id: "cleanSlate",
     tier: "expert",
     glyph: Trash2,
-    name: "Clean Slate",
-    condition: "Reset your achievements.",
-    learnMore:
-      "An Easter egg: clear your unlocks from the achievements page to start the journey again. The data stays, only the trophies reset.",
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
     id: "completionist",
     tier: "expert",
     glyph: Wand2,
-    name: "Completionist",
-    condition: "Unlock every other achievement.",
-    learnMore:
-      "The hardest one to earn — your trophy room is full when this one lights up.",
+    hasLearnMore: true,
     trigger: {
       kind: "derived",
       predicate: (prev, next) => {

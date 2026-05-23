@@ -1769,6 +1769,354 @@ export const en = {
       titleOther: "{n} achievements unlocked!",
       dismiss: "Awesome!",
     },
+    modal: {
+      title: "Achievements",
+      counter: "{unlocked} of {total} unlocked · {earned} / {max} pts",
+      intro:
+        "Every feature in the app is an achievement. Do the thing once and it unlocks — forward-going only, your past usage doesn't pre-fill the list. Four tiers, from just opened the app to bending it to your situation. Pick whichever tier is next for you.",
+      tierPoints: "· {earned} / {max} pts",
+      tierMasteredWhen: "Tier mastered when:",
+      learnMore: "Learn more",
+      locked: "Locked",
+      close: "Close",
+      tier: {
+        beginner: {
+          title: "Beginner",
+          subtitle: "You just opened the app. What do you do?",
+          graduation:
+            "Rows go in, they're labelled, you trust they're saved, and you can find your way around without thinking.",
+        },
+        intermediate: {
+          title: "Intermediate",
+          subtitle: "You want this to reflect your real finances.",
+          graduation:
+            "Every sheet maps to a real account, recurring entries cover your fixed costs, and your categories match how you actually think about spending.",
+        },
+        pro: {
+          title: "Pro",
+          subtitle: "Stop typing things the bank already knows.",
+          graduation:
+            "New bank exports import in seconds and label themselves, your data is encrypted on a cloud you control, and you've stopped keeping a separate manual copy on the side.",
+        },
+        expert: {
+          title: "Expert",
+          subtitle: "Bend the app to your exact situation.",
+          graduation:
+            "The app does what you want, not what its defaults assumed.",
+        },
+      },
+    },
+    catalog: {
+      firstSteps: {
+        name: "First Steps",
+        condition: "Add your first row.",
+        learnMore:
+          "Click the bottom row of the sheet, type a description, tab through to amount and date. That's a budget entry — the core loop.",
+      },
+      localHero: {
+        name: "Local Hero",
+        condition: "Use the app as a guest, or create an account.",
+        learnMore:
+          "Guest mode keeps your data in this browser only, unencrypted. An account adds a password that encrypts the data on this device — it never leaves your machine.",
+      },
+      label: {
+        name: "Label It",
+        condition: "Assign a type to a row.",
+        learnMore:
+          "The type chip groups rows for analysis. Browse by category — the starter set covers Swedish-flavoured basics.",
+      },
+      checkPlease: {
+        name: "Check, Please",
+        condition: "Tick a row's completed checkbox.",
+        learnMore:
+          "Unticked = forecast, ticked = real. The app uses this when reconciling against bank imports later.",
+      },
+      timeTraveller: {
+        name: "Time Traveller",
+        condition: "Discover the Today pill by scrolling away from this month.",
+      },
+      secondThoughts: {
+        name: "Second Thoughts",
+        condition: "Undo an action.",
+        learnMore:
+          "⌘Z walks back the last action. Every cell edit, every row delete, every settings change is reversible — undo is the safety net.",
+      },
+      houseKeeper: {
+        name: "House Keeper",
+        condition: "Hide a preset category or type you'll never use.",
+        learnMore:
+          "Hiding is safer than deleting until you know what you want. Anything hidden can be brought back from the same screen.",
+      },
+      preparedMind: {
+        name: "Prepared Mind",
+        condition: "Export your budget to a JSON file.",
+        learnMore:
+          "A snapshot you can drop back in later via Import. Do this once early so you know how.",
+      },
+      interiorDesigner: {
+        name: "Interior Designer",
+        condition: "Switch the theme to something other than the default.",
+        learnMore:
+          "Themes include One Dark, One Light, Dracula, GitHub Dark, and GitHub Light. The Custom-theme tokens in Expert tier stack on top.",
+      },
+      watchful: {
+        name: "Watchful",
+        condition: "Watch the balance build itself for the first time.",
+        learnMore:
+          "The Balance column is the running total of every row above it. You never type into it — it computes from the rows.",
+      },
+      trustButVerify: {
+        name: "Trust, But Verify",
+        condition: "Notice the save-state indicator confirming a save.",
+      },
+      bookKeeper: {
+        name: "Book Keeper",
+        condition: "Create your first real account.",
+        learnMore:
+          "Optionally attach bank details (clearing, account number, IBAN). The next tier — bank import — uses them to pair rows automatically.",
+      },
+      tieTheKnot: {
+        name: "Tie the Knot",
+        condition: "Link a sheet to an account.",
+        learnMore:
+          "Once linked, the sheet's running balance mirrors the real balance and bank imports land in the right place.",
+      },
+      payDay: {
+        name: "Pay Day",
+        condition: "Change Start of month from the default.",
+        learnMore:
+          "If salary lands on the 25th, set 25 — every month then runs 25th-to-24th instead of calendar-first.",
+      },
+      spreadOut: {
+        name: "Spread Out",
+        condition: "Add more than one sheet.",
+        learnMore:
+          "One sheet per account, one per goal. Tabs at the top switch between them.",
+      },
+      birdsEye: {
+        name: "Bird's Eye",
+        condition: "Visit the Accounts overview.",
+      },
+      shuffler: {
+        name: "Shuffler",
+        condition: "Record an inter-account transaction.",
+        learnMore:
+          "One row, two effects: debits one account and credits the other on the same date. No need to type the two halves.",
+      },
+      quietMover: {
+        name: "Quiet Mover",
+        condition: "Flag a row as a transfer.",
+        learnMore:
+          "Combined with Hide transfers, internal moves still affect balances but disappear from the expense totals.",
+      },
+      groundhogDay: {
+        name: "Groundhog Day",
+        condition: "Make a row recurring.",
+        learnMore:
+          "Salary, rent, Spotify, gym. The preview shows the next ten occurrences before you save so you can sanity-check the pattern.",
+      },
+      secondDraft: {
+        name: "Second Draft",
+        condition: "Edit a recurring series.",
+      },
+      taxonomist: {
+        name: "Taxonomist",
+        condition: "Create your own category.",
+        learnMore:
+          "Categories group expenses for analysis. Give each a glyph and a color — the shared 16-hue palette is consistent across the app.",
+      },
+      labelMaker: {
+        name: "Label Maker",
+        condition: "Create your own entry type.",
+        learnMore:
+          "Types are the labels you assign to rows. Each has a glyph, color, and direction (+, −, ◆) so the picker stays clean.",
+      },
+      moverShaker: {
+        name: "Mover & Shaker",
+        condition: "Move or copy rows across months.",
+      },
+      splitTheBill: {
+        name: "Split the Bill",
+        condition: "Split a row into multiple parts.",
+        learnMore:
+          "When a single bank charge bundles different categories (groceries + household + gift), split so each part gets its own type.",
+      },
+      bulkOps: {
+        name: "Bulk Ops",
+        condition: "Bulk-edit two or more rows in one action.",
+      },
+      reckoner: {
+        name: "Reckoner",
+        condition: "Record a balance correction.",
+        learnMore:
+          "When the running total drifts from what the bank shows, Set balance writes a single correction row dated today. Honest fix; don't rewrite old history.",
+      },
+      detective: {
+        name: "Detective",
+        condition: "Search across every sheet.",
+      },
+      numberWhisperer: {
+        name: "Number Whisperer",
+        condition: "Customise the number or currency format.",
+      },
+      rearranger: {
+        name: "Rearranger",
+        condition: "Reorder the columns in a sheet.",
+      },
+      polyglot: {
+        name: "Polyglot",
+        condition: "Switch the app language.",
+      },
+      tidyAndQuiet: {
+        name: "Tidy & Quiet",
+        condition: "Turn on Hide transfers.",
+      },
+      importExport: {
+        name: "Import / Export",
+        condition: "Import your first bank statement.",
+        learnMore:
+          "The app auto-detects Skandiabanken, Swedbank, Bank Norwegian, or ICA Banken. Drop the .xlsx or .csv from your bank and pick the account.",
+      },
+      dedupe: {
+        name: "Dedupe",
+        condition: "Re-import a statement; the importer skips the duplicates.",
+      },
+      archaeologist: {
+        name: "Archaeologist",
+        condition: "Override an imported history entry's description or type.",
+        learnMore:
+          "Open the history view, click a row, change its label. Useful when a noisy merchant has a useful name buried in the bank text.",
+      },
+      patternRecognition: {
+        name: "Pattern Recognition",
+        condition: "Write your first match rule.",
+        learnMore:
+          "*App Store* → type 'App'. Every past and future App Store charge labels itself. Rules can also filter by amount range or transfer flag.",
+      },
+      elephantsRemember: {
+        name: "Elephants Remember",
+        condition: "Promote a merchant — the type sticks for next time.",
+      },
+      matchmaker: {
+        name: "Matchmaker",
+        condition: "Reconcile a series — the rule sticks for next month.",
+      },
+      twoSidedCoin: {
+        name: "Two-Sided Coin",
+        condition: "Collapse a mirror pair into a single transfer.",
+      },
+      cleanSplit: {
+        name: "Clean Split",
+        condition: "Split a bank-history entry across multiple types.",
+      },
+      cloudWalker: {
+        name: "Cloud Walker",
+        condition:
+          "Connect a cloud backend (Dropbox, Google Drive, or Folder).",
+        learnMore:
+          "Browser-only data lives on this device. Connect a cloud and your budget rides with you across devices.",
+      },
+      paranoidMode: {
+        name: "Paranoid Mode",
+        condition: "Turn on end-to-end encryption.",
+        learnMore:
+          "AES-GCM, 256-bit key, 600 000 PBKDF2 iterations. The cloud sees ciphertext only.",
+      },
+      snapshotter: {
+        name: "Snapshotter",
+        condition: "Restore a cloud backup.",
+      },
+      airplaneMode: {
+        name: "Airplane Mode",
+        condition: "Edit offline; the app reconnects gracefully.",
+      },
+      rekindled: {
+        name: "Rekindled",
+        condition: "Re-authorize a cloud backend.",
+      },
+      lockUp: {
+        name: "Lock Up",
+        condition: "Change the idle sign-out timeout.",
+      },
+      spreadsheetSensei: {
+        name: "Spreadsheet Sensei",
+        condition: "Export a sheet to CSV or Excel.",
+      },
+      sealedEnvelope: {
+        name: "Sealed Envelope",
+        condition: "Export your budget as encrypted JSON.",
+      },
+      timeMachine: {
+        name: "Time Machine",
+        condition: "Jump to a point in the action history.",
+      },
+      spellbinder: {
+        name: "Spellbinder",
+        condition: "Write your first amount formula.",
+        learnMore:
+          "Type = and write an expression. salary * 0.05 saves 5% of income; min(rent, 12000) caps a transfer. The formula recomputes when inputs change.",
+      },
+      variablesUnleashed: {
+        name: "Variables Unleashed",
+        condition: "Insert a variable pill from the formula helper.",
+      },
+      crossWired: {
+        name: "Cross-Wired",
+        condition: "Reference another sheet inside a formula.",
+      },
+      compoundInterest: {
+        name: "Compound Interest",
+        condition: "Build a compound entry with multiple parts.",
+      },
+      calendarBender: {
+        name: "Calendar Bender",
+        condition: "Use last-day-of-month or a custom recurrence interval.",
+      },
+      auditor: {
+        name: "Auditor",
+        condition: "Read the coverage report.",
+      },
+      fineSieve: {
+        name: "Fine Sieve",
+        condition: "Write a match rule with amount or transfer filters.",
+      },
+      themeWizard: {
+        name: "Theme Wizard",
+        condition: "Switch to the Custom theme.",
+      },
+      fontFanatic: {
+        name: "Font Fanatic",
+        condition: "Swap the font family.",
+      },
+      stillness: {
+        name: "Stillness",
+        condition: "Turn on Reduce motion.",
+      },
+      household: {
+        name: "Household",
+        condition: "Add another user account on this device.",
+      },
+      shapeShifter: {
+        name: "Shape Shifter",
+        condition: "Switch storage backends.",
+      },
+      underTheHood: {
+        name: "Under the Hood",
+        condition: "Turn on Developer mode.",
+      },
+      cleanSlate: {
+        name: "Clean Slate",
+        condition: "Reset your achievements.",
+        learnMore:
+          "An Easter egg: clear your unlocks from the achievements modal to start the journey again. The data stays, only the trophies reset.",
+      },
+      completionist: {
+        name: "Completionist",
+        condition: "Unlock every other achievement.",
+        learnMore:
+          "The hardest one to earn — your trophy room is full when this one lights up.",
+      },
+    },
   },
 
   changelog: {

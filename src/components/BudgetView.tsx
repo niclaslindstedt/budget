@@ -47,6 +47,7 @@ import {
 import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
 import { AchievementUnlockModal } from "./AchievementUnlockModal";
+import { AchievementsModal } from "./AchievementsModal";
 import { HeaderMenu } from "./HeaderMenu";
 import { HeaderStar } from "./HeaderStar";
 import { SaveStateButton } from "./SaveStateButton";
@@ -308,6 +309,7 @@ export function BudgetView({
   // which the HeaderStar below reads to decide whether to glow.
   useAchievementWatcher(data, dispatch);
   const [achievementsModalOpen, setAchievementsModalOpen] = useState(false);
+  const [achievementsListOpen, setAchievementsListOpen] = useState(false);
   // Mirror in-memory data into the App-owned ref so the cloud-link
   // conflict path can upload the latest budget. Updated on every render
   // because both data changes and ref-identity changes (after a sign-
@@ -2446,9 +2448,7 @@ export function BudgetView({
           <div className="ml-auto inline-flex items-center gap-2">
             <HeaderStar
               unseenCount={data.settings.unseenAchievements.length}
-              onOpenList={() => {
-                window.location.href = `${import.meta.env.BASE_URL}achievements`;
-              }}
+              onOpenList={() => setAchievementsListOpen(true)}
               onOpenUnlockModal={() => setAchievementsModalOpen(true)}
             />
             {backend === "dropbox" || backend === "gdrive" ? (
@@ -2965,6 +2965,11 @@ export function BudgetView({
           setAchievementsModalOpen(false);
           dispatch({ type: "clearUnseenAchievements" });
         }}
+      />
+      <AchievementsModal
+        open={achievementsListOpen}
+        onClose={() => setAchievementsListOpen(false)}
+        unlocked={data.settings.achievements}
       />
       <ReconnectCloudModal
         open={reconnectCloudOpen}

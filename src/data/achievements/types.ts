@@ -36,20 +36,17 @@ export type Trigger =
 export type Achievement = {
   // Stable string id — once shipped, never renamed. Used as the
   // key inside `Settings.achievements` and the bus's pending queue,
-  // and as the React key in catalog renders.
+  // as the React key in catalog renders, and as the path segment in
+  // the i18n catalog (`achievements.catalog.<id>.{name,condition,
+  // learnMore}`).
   id: string;
   tier: AchievementTier;
   glyph: LucideIcon;
-  // Playful, game-style name. Bolded on the achievements page and
-  // shown verbatim in the unlock modal.
-  name: string;
-  // Descriptive condition, in the user's voice. Reads as the answer
-  // to "how do I unlock this?".
-  condition: string;
-  // Optional expanded body shown inside the per-achievement
-  // `<details>` on the achievements page — same shape as the
-  // SystemPage's Learn-more pattern, but optional here because not
-  // every achievement needs depth beyond the condition.
-  learnMore?: string;
+  // Whether the i18n catalog carries a `learnMore` key for this id.
+  // The expanded body is shown inside a per-achievement `<details>`;
+  // not every achievement needs depth beyond the condition, so each
+  // entry declares the presence here and the renderer reads through
+  // it instead of probing the catalog at runtime.
+  hasLearnMore?: boolean;
   trigger: Trigger;
 };
