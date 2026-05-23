@@ -190,7 +190,7 @@ export function useStorageBackend({
   // effect swaps the adapter to the real cloud one — which races a
   // queued auto-save of the stale bytes against the in-flight cloud
   // load. On mobile this surfaces as the real budget flashing in for a
-  // moment ("blink") and then collapsing back to a fresh "Sheet 1" with
+  // moment ("blink") and then collapsing back to a fresh "Budget" with
   // the save button lit up dirty (the empty in-memory state vs. the
   // bytes the racing save wrote into `lastSavedText`).
   const [backend, setBackendState] = useState<BackendId>(() =>

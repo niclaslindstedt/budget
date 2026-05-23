@@ -2,8 +2,8 @@ import { Loader } from "lucide-react";
 
 // Shown in the main area while the active backend's initial load is in
 // flight. Without this, the reducer's `freshUserData()` seed renders as
-// an empty "Sheet 1" with the current month — which looks like the
-// user's data was lost when it's actually still being fetched.
+// an empty "Budget" sheet with the current month — which looks like
+// the user's data was lost when it's actually still being fetched.
 
 export function BudgetLoading() {
   return (

@@ -101,9 +101,22 @@ export function BottomBar({
     // scrollable area; older iOS / non-Liquid-Glass browsers report
     // `dvh ≈ svh` so the offset collapses to 0 and the bar stays
     // exactly where `bottom: 0` puts it.
+    //
+    // The standalone-mode override (`[@media(display-mode:standalone)]:translate-y-0`)
+    // zeroes the transform inside an installed PWA window, where
+    // there is no floating browser chrome to compensate for. On
+    // iOS 26 the home-screen-installed PWA reports `dvh < svh`
+    // (apparently because `dvh` resolves against the visual
+    // viewport that excludes the home-indicator strip while `svh`
+    // includes it) so the unconditional transform was pulling the
+    // bar UP off the screen edge by ~100px on an empty budget —
+    // i.e. exactly the wrong direction. Clamping it to zero in
+    // standalone mode keeps the Safari fix intact while landing the
+    // bar at the screen edge in the PWA, which is the first thing a
+    // new install sees.
     <div
       data-floating-chrome
-      className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2"
+      className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 [@media(display-mode:standalone)]:translate-y-0"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

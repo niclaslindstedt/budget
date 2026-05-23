@@ -1,15 +1,15 @@
 import { expect, signInAsGuest, test } from "../fixtures";
 
 // Core budget-sheet flows. After landing in guest mode the user gets
-// a single "Sheet 1" with the current fiscal month already in view.
-// The specs below exercise the most common manipulations: adding rows,
-// editing a description, and persisting across a reload.
+// a single "Budget" sheet with the current fiscal month already in
+// view. The specs below exercise the most common manipulations:
+// adding rows, editing a description, and persisting across a reload.
 
 test.describe("Budget sheet", () => {
   test("renders the default sheet for a fresh guest", async ({ page }) => {
     await signInAsGuest(page);
 
-    await expect(page.getByRole("heading", { name: "Sheet 1" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Budget" })).toBeVisible();
     await expect(
       page.getByRole("button", { name: /^Add row/ }).first(),
     ).toBeVisible();
