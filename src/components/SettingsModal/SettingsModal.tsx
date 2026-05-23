@@ -567,6 +567,9 @@ function SettingsHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setMenuOpen(false), []);
+  const activeTabDef = tabs.find((tab) => tab.id === activeTab);
+  const ActiveTabIcon = activeTabDef?.icon ?? SettingsIcon;
+  const activeTabLabel = activeTabDef?.label ?? t("settings.title");
 
   return (
     <header
@@ -576,6 +579,10 @@ function SettingsHeader({
       }}
     >
       <div className="flex min-w-0 items-center gap-2">
+        {/* Mobile: the burger icon and the active tab label share a
+            single click target that toggles the section menu. The h2
+            below stays mounted (sr-only on mobile) so the dialog's
+            aria-labelledby still resolves to a heading. */}
         <div ref={triggerRef} className="relative sm:hidden">
           <button
             type="button"
@@ -583,9 +590,22 @@ function SettingsHeader({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={t("settings.chooseSection")}
-            className="-ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+            className={`-ml-1 inline-flex cursor-pointer items-center gap-2 rounded border px-2 py-1 text-sm font-bold tracking-wide text-fg-bright ${
+              menuOpen
+                ? "border-pipe bg-pipe/15"
+                : "border-transparent hover:border-line hover:bg-surface-2"
+            }`}
           >
-            <Menu size={18} aria-hidden focusable={false} />
+            <Menu
+              size={18}
+              aria-hidden
+              focusable={false}
+              className="text-muted"
+            />
+            <span className="inline-flex shrink-0 text-flag">
+              <ActiveTabIcon size={14} aria-hidden focusable={false} />
+            </span>
+            <span className="min-w-0">{activeTabLabel}</span>
           </button>
           <FloatingPanel
             open={menuOpen}
@@ -623,7 +643,7 @@ function SettingsHeader({
         </div>
         <h2
           id="settings-title"
-          className="text-sm font-bold tracking-wide text-fg-bright"
+          className="text-sm font-bold tracking-wide text-fg-bright sr-only sm:not-sr-only"
         >
           <span className="inline-flex items-center gap-2">
             <span className="inline-flex shrink-0 text-flag">
