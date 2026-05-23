@@ -96,17 +96,16 @@ export function BottomBar({
     // bar stays exactly where `bottom: 0` puts it.
     //
     // Standalone mode (installed PWA): `src/styles.css` pins the
-    // wrapper to `min-height: 100dvh` (the unit that matches the
-    // visible viewport in iOS 26 PWAs) AND sets
-    // `overscroll-behavior-y: none` on html / body / wrapper so
-    // the rubber-band overscroll-bounce can't trigger. Without the
-    // bounce, the default `sticky bottom-0` (above) stays pinned
-    // at the visible viewport bottom — no JS, no `position: fixed`
-    // override, no translate. Previous iterations (#357 / #360 /
-    // #361 / #362 / #367 / #374 / #377) all eventually lost
-    // because they tried to compensate for the overscroll-bounce
-    // by chasing visualViewport values that iOS itself was lying
-    // about; killing the bounce sidesteps the whole problem.
+    // wrapper to `min-height: calc(100dvh + env(safe-area-inset-bottom))`
+    // — iOS 26 PWAs resolve `100dvh` to roughly
+    // `visible_viewport - home_indicator_strip`, so adding the
+    // inset back puts the wrapper's bottom edge at the actual
+    // visible bottom. The default `sticky bottom-0` (above) then
+    // lands at the wrapper's bottom = the screen edge. On
+    // non-iOS-26 / no-home-indicator devices the inset is `0`,
+    // so the rule reduces to `min-h-[100dvh]` and behaves the
+    // same as the rest of the world. Native overscroll-bounce
+    // stays enabled so scrolling still feels right.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the
