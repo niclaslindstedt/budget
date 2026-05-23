@@ -59,17 +59,25 @@ export function syncViewportVars(): void {
   if (typeof window === "undefined") return;
   const root = document.documentElement;
   const vv = window.visualViewport;
-  // `vv.height + vv.offsetTop` is the y-coordinate (in layout
-  // viewport pixels) of the rendered visible area's bottom edge.
-  // When iOS lies about innerHeight, this pair is still the truth.
-  // Fall back to innerHeight when the API isn't available (old
-  // browsers, SSR-rendered HTML before hydration).
-  const height = vv ? vv.height : window.innerHeight;
-  const offsetTop = vv ? vv.offsetTop : 0;
-  const bottom = Math.round(height + offsetTop);
+  // Use ONLY `vv.height` — not `vv.height + vv.offsetTop`. On iOS 26
+  // PWAs, `vv.offsetTop` tracks page scroll (the spec says it
+  // shouldn't, but it does in practice — adding it makes the bar
+  // walk down the screen on every drag). `vv.height` alone is the
+  // visible viewport's height, which is what we want for a
+  // bottom-anchored toolbar regardless of scroll position.
+  //
+  // Also clamp against `window.innerHeight` so iOS can't over-report
+  // the visible viewport (the same regression family includes cases
+  // where the compositor wakes to a value LARGER than the actual
+  // screen, pushing the bar off the bottom edge).
+  const rawHeight = vv ? vv.height : window.innerHeight;
+  const height = Math.min(rawHeight, window.innerHeight || rawHeight);
   root.style.setProperty("--vv-height", `${Math.round(height)}px`);
-  root.style.setProperty("--vv-top", `${Math.round(offsetTop)}px`);
-  root.style.setProperty("--vv-bottom", `${bottom}px`);
+  root.style.setProperty("--vv-bottom", `${Math.round(height)}px`);
+  // Keep `--vv-top` populated for symmetry / future use, but the
+  // CSS no longer reads it.
+  const offsetTop = vv ? vv.offsetTop : 0;
+  root.style.setProperty("--vv-top", `${Math.round(Math.max(0, offsetTop))}px`);
 }
 
 function wakeViewportCompositor(): void {
@@ -121,9 +129,15 @@ export function useVisualViewportOffset(): void {
     if (typeof window === "undefined") return;
     syncViewportVars();
     const vv = window.visualViewport;
+    // Listen to `vv.resize` ONLY, not `vv.scroll`. iOS 26 PWAs fire
+    // `vv.scroll` on every layout-viewport scroll (not just visual
+    // viewport pan), and we don't want a bottom-anchored toolbar
+    // walking around as the user drags the page. `vv.resize` fires
+    // when the visible viewport size genuinely changes — keyboard
+    // open/close, pinch-zoom — which is what should re-position
+    // the bar.
     if (vv) {
       vv.addEventListener("resize", syncViewportVars);
-      vv.addEventListener("scroll", syncViewportVars);
     }
     window.addEventListener("resize", syncViewportVars);
     window.addEventListener("orientationchange", () => {
@@ -138,7 +152,6 @@ export function useVisualViewportOffset(): void {
     return () => {
       if (vv) {
         vv.removeEventListener("resize", syncViewportVars);
-        vv.removeEventListener("scroll", syncViewportVars);
       }
       window.removeEventListener("resize", syncViewportVars);
       window.removeEventListener("pageshow", syncViewportVars);
