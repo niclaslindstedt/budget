@@ -2148,27 +2148,9 @@ export const sv: Catalog = {
   changelog: {
     title: "Nyheter",
     pageTitleHeading: "Ändringslogg",
-    pageIntro: "Versionsanteckningar för Budget-appen. Nyaste först.",
-    backToBudget: "Tillbaka till budgeten",
     noReleasesYet: "Inga utgåvor än.",
-    nothingYet: "Inga ändringar registrerade än.",
-    versionHeading: "Version {version}",
-    dismiss: "Avfärda",
     gotIt: "OK",
-    fullHistoryAt: "Se hela historiken på",
     showAll: "Visa alla ändringar",
-    pageTitle: "Ändringslogg",
-    pageDescription: "Märkbara ändringar i Budget-appen, nyaste först.",
-    introMaintained:
-      "Den här sidan listar märkbara ändringar i Budget-appen, nyaste först.",
-    unreleasedNote:
-      "(Posterna under ”Unreleased” är vad som är köat till nästa version; de viks in i en numrerad utgåva nästa gång underhållaren släpper en.)",
-    sectionAdded: "Tillagt",
-    sectionChanged: "Ändrat",
-    sectionFixed: "Fixat",
-    sectionRemoved: "Borttaget",
-    sectionSecurity: "Säkerhet",
-    sectionDeprecated: "Föråldrat",
   },
 
   privacy: {

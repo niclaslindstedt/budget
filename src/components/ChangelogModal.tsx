@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import {
@@ -10,9 +11,7 @@ import { APP_VERSION } from "../utils/build-env";
 import { cmpSemver } from "../utils/semver";
 import { Modal } from "./Modal";
 
-// Mirror ChangelogPage's accent palette so a user who opens the
-// settings-footer link recognises the same colouring inside this
-// popup.
+// One Dark / One Light section accent per Keep-a-Changelog kind.
 const TYPE_COLOR: Record<ChangelogEntryType, string> = {
   Added: "text-positive",
   Changed: "text-accent",
@@ -25,82 +24,100 @@ const TYPE_COLOR: Record<ChangelogEntryType, string> = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  // Versions newer than this (exclusive) are shown. Null means we have
-  // nothing to compare against — App.tsx only opens the modal when
-  // `since` is a real version string strictly older than APP_VERSION,
-  // so the null case here is just defensive.
+  // When a version string, the modal opens in "what's new" mode and
+  // only lists releases strictly newer than this. When null, opens
+  // in "full history" mode (no filter) — the manual open path from
+  // the header menu uses this.
   since: string | null;
 };
 
-function visibleReleases(since: string | null): ChangelogRelease[] {
+function allShippedReleases(): ChangelogRelease[] {
   return CHANGELOG.filter((r) => {
     if (r.version === "Unreleased") return false;
     if (cmpSemver(r.version, APP_VERSION) > 0) return false;
-    if (since == null) return false;
-    return cmpSemver(r.version, since) > 0;
+    return true;
   });
+}
+
+function newerThan(since: string): ChangelogRelease[] {
+  return allShippedReleases().filter((r) => cmpSemver(r.version, since) > 0);
 }
 
 export function ChangelogModal({ open, onClose, since }: Props) {
   const t = useT();
-  const releases = visibleReleases(since);
-  // App.tsx avoids opening the modal in the empty case, but the safety
-  // net keeps an empty popup from rendering if the user somehow lands
-  // here with nothing to show.
-  if (releases.length === 0) return null;
+  const [showAll, setShowAll] = useState(since == null);
+
+  // Reset the expand state whenever the modal reopens so a later
+  // auto-open after an upgrade starts in compact "what's new" mode
+  // again instead of inheriting the previous manual session.
+  useEffect(() => {
+    if (open) setShowAll(since == null);
+  }, [open, since]);
+
+  const compactMode = since != null && !showAll;
+  const releases = compactMode ? newerThan(since) : allShippedReleases();
+  const title = compactMode
+    ? t("changelog.title")
+    : t("changelog.pageTitleHeading");
+
+  // App.tsx avoids triggering the auto-open in the empty case, but
+  // the header-menu path always opens — render the empty state then
+  // instead of nothing.
+  if (!open) return null;
   return (
     <Modal
       open={open}
       onClose={onClose}
       labelledBy="changelog-modal-title"
-      centered
+      size="max-w-2xl"
     >
       <Modal.Header
         icon={<Sparkles size={14} aria-hidden focusable={false} />}
-        title={t("changelog.title")}
+        title={title}
         onClose={onClose}
       />
       <Modal.Body className="flex flex-col gap-4 text-sm">
-        {releases.map((release) => (
-          <section key={release.version} className="flex flex-col gap-2">
-            <h3 className="flex items-baseline gap-3 text-sm font-bold tracking-wide text-fg-bright">
-              <span className="text-flag">v{release.version}</span>
-              {release.date ? (
-                <span className="text-xs font-normal text-muted">
-                  {release.date}
-                </span>
-              ) : null}
-            </h3>
-            {release.sections.map((section) => (
-              <div key={section.type} className="flex flex-col gap-1">
-                <h4
-                  className={`text-xs font-bold tracking-wide ${
-                    TYPE_COLOR[section.type]
-                  }`}
-                >
-                  {section.type}
-                </h4>
-                <ul className="ml-5 list-disc space-y-1">
-                  {section.items.map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
-        ))}
-        <p className="mt-2 text-xs text-muted">
-          {t("changelog.fullHistoryAt")}{" "}
-          <a
-            href="/changelog"
-            target="_blank"
-            rel="noreferrer"
-            className="text-link hover:underline"
+        {releases.length === 0 ? (
+          <p className="text-muted">{t("changelog.noReleasesYet")}</p>
+        ) : (
+          releases.map((release) => (
+            <section key={release.version} className="flex flex-col gap-2">
+              <h3 className="flex items-baseline gap-3 text-sm font-bold tracking-wide text-fg-bright">
+                <span className="text-flag">v{release.version}</span>
+                {release.date ? (
+                  <span className="text-xs font-normal text-muted">
+                    {release.date}
+                  </span>
+                ) : null}
+              </h3>
+              {release.sections.map((section) => (
+                <div key={section.type} className="flex flex-col gap-1">
+                  <h4
+                    className={`text-xs font-bold tracking-wide ${
+                      TYPE_COLOR[section.type]
+                    }`}
+                  >
+                    {section.type}
+                  </h4>
+                  <ul className="ml-5 list-disc space-y-1">
+                    {section.items.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          ))
+        )}
+        {compactMode && (
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="mt-2 self-start cursor-pointer text-xs text-link hover:underline"
           >
-            /changelog
-          </a>
-          .
-        </p>
+            {t("changelog.showAll")}
+          </button>
+        )}
       </Modal.Body>
       <Modal.Footer>
         <button

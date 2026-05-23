@@ -4,7 +4,7 @@
 // Mirrors what `vite/changelog-plugin.ts` does at `buildStart`, but as a
 // plain `node` invocation so the Makefile can run it BEFORE `tsc -b
 // --noEmit` (typecheck). Without this, CI's `make lint` step trips on
-// ChangelogPage / ChangelogModal importing from `../generated/changelog`
+// ChangelogModal importing from `../generated/changelog`
 // — that file doesn't exist on a fresh checkout because the directory
 // is gitignored.
 //

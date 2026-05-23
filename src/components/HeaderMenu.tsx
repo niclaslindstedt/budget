@@ -21,6 +21,7 @@ type Props = {
   user: StoredUser;
   hasOtherUsers: boolean;
   onOpenSettings: () => void;
+  onOpenChangelog: () => void;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
@@ -44,6 +45,7 @@ export function HeaderMenu({
   user,
   hasOtherUsers,
   onOpenSettings,
+  onOpenChangelog,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
@@ -91,6 +93,7 @@ export function HeaderMenu({
             hasOtherUsers={hasOtherUsers}
             donateUrl={donateUrl}
             onOpenSettings={() => pick(onOpenSettings)}
+            onOpenChangelog={() => pick(onOpenChangelog)}
             onSignOut={() => pick(onSignOut)}
             onSwitchUser={() => pick(onSwitchUser)}
             onCreateAccount={() => pick(onCreateAccount)}
@@ -107,6 +110,7 @@ function MainView({
   hasOtherUsers,
   donateUrl,
   onOpenSettings,
+  onOpenChangelog,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
@@ -116,6 +120,7 @@ function MainView({
   hasOtherUsers: boolean;
   donateUrl: string | undefined;
   onOpenSettings: () => void;
+  onOpenChangelog: () => void;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
@@ -175,10 +180,10 @@ function MainView({
           label={t("settings.footer.privacy")}
           href={`${import.meta.env.BASE_URL}privacy`}
         />
-        <MenuLink
+        <MenuItem
           icon={<Sparkles size={16} aria-hidden focusable={false} />}
           label={t("settings.footer.changelog")}
-          href={`${import.meta.env.BASE_URL}changelog`}
+          onClick={onOpenChangelog}
         />
         <MenuLink
           icon={<Code2 size={16} aria-hidden focusable={false} />}

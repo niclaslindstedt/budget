@@ -2149,27 +2149,9 @@ export const en = {
   changelog: {
     title: "What's new",
     pageTitleHeading: "Changelog",
-    pageIntro: "Release notes for the Budget app. Newest version first.",
-    backToBudget: "Back to budget",
     noReleasesYet: "No releases yet.",
-    nothingYet: "No changes recorded yet.",
-    versionHeading: "Version {version}",
-    dismiss: "Dismiss",
     gotIt: "Got it",
-    fullHistoryAt: "See the full history at",
     showAll: "Show all changes",
-    pageTitle: "Changelog",
-    pageDescription: "Notable changes to the Budget app, newest first.",
-    introMaintained:
-      "This page lists notable changes to the Budget app, newest first.",
-    unreleasedNote:
-      "(\"Unreleased\" entries collect what's queued for the next version; they're folded into a numbered release the next time the maintainer cuts one.)",
-    sectionAdded: "Added",
-    sectionChanged: "Changed",
-    sectionFixed: "Fixed",
-    sectionRemoved: "Removed",
-    sectionSecurity: "Security",
-    sectionDeprecated: "Deprecated",
   },
 
   privacy: {

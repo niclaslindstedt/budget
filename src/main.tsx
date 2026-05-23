@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
-import { ChangelogPage } from "./components/ChangelogPage";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
@@ -37,19 +36,16 @@ document.title = `${document.title} (${BUILD_LABEL})`;
 installFocusDiagnostic();
 installSelectOnFocus();
 
-// Trivial path-based switch. The build emits `dist/<alias>/index.html`
-// aliases (see `vite.config.ts`) so GitHub Pages serves the same SPA
-// at `/privacy/` and `/changelog/`, and this check decides which view
-// to mount. The preview build's pages live one segment deeper (e.g.
-// `/preview/privacy/`); the suffix check below matches both.
+// Trivial path-based switch. The build emits `dist/privacy/index.html`
+// (see `vite.config.ts`) so GitHub Pages serves the same SPA at
+// `/privacy/`, and this check decides which view to mount. The preview
+// build's page lives one segment deeper (`/preview/privacy/`); the
+// suffix check below matches both.
 const path = window.location.pathname.replace(/\/$/, "");
 const isPrivacy = path.endsWith("/privacy") || path === "/privacy";
-const isChangelog = path.endsWith("/changelog") || path === "/changelog";
 
 createRoot(rootElement).render(
   <StrictMode>
-    <LanguageRoot>
-      {isPrivacy ? <PrivacyPage /> : isChangelog ? <ChangelogPage /> : <App />}
-    </LanguageRoot>
+    <LanguageRoot>{isPrivacy ? <PrivacyPage /> : <App />}</LanguageRoot>
   </StrictMode>,
 );
