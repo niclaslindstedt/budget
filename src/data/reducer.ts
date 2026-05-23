@@ -1010,7 +1010,23 @@ export function reducer(state: UserData, action: Action): UserData {
     return { ...state, presetTypeKindOverrides: next };
   }
   if (action.type === "updateSettings") {
-    return { ...state, settings: action.settings };
+    // Achievements and the unseen queue have their own dispatch path
+    // (`recordAchievementUnlock` / `clearUnseenAchievements`). Preserve
+    // them across a settings replacement so a concurrent unlock that
+    // landed in the reducer between the caller capturing `settings`
+    // and the dispatch firing isn't silently overwritten. This applies
+    // to the SettingsModal save (whose draft was seeded from `settings`
+    // on open) and to `useChangelogAutoOpen`, which captures
+    // `settingsRef.current` on mount before the achievement-watcher
+    // gets a chance to drain its bus.
+    return {
+      ...state,
+      settings: {
+        ...action.settings,
+        achievements: state.settings.achievements,
+        unseenAchievements: state.settings.unseenAchievements,
+      },
+    };
   }
   if (action.type === "createAccount") {
     return { ...state, accounts: [...state.accounts, action.account] };

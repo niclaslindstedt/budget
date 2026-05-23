@@ -86,6 +86,33 @@ describe("recordAchievementUnlock", () => {
   });
 });
 
+describe("updateSettings preserves achievement fields", () => {
+  // Regression: `updateSettings` used to do a full settings replacement,
+  // so a caller dispatching with a stale `settings` blob (e.g.
+  // `useChangelogAutoOpen`'s settingsRef captured on mount) wiped any
+  // achievement unlocks that landed in the reducer between the capture
+  // and the dispatch.
+  it("does not overwrite achievements with a stale settings payload", () => {
+    const unlocked = reducer(baseState(), {
+      type: "recordAchievementUnlock",
+      id: "localHero",
+      timestamp: 42,
+    });
+    expect(unlocked.settings.achievements).toEqual({ localHero: 42 });
+
+    const stale = reducer(unlocked, {
+      type: "updateSettings",
+      // Caller captured `settings` before the unlock landed — uses
+      // the default (empty) achievement maps as its payload.
+      settings: { ...DEFAULT_SETTINGS, lastSeenChangelogVersion: "0.1.0" },
+    });
+    expect(stale.settings.achievements).toEqual({ localHero: 42 });
+    expect(stale.settings.unseenAchievements).toEqual(["localHero"]);
+    // The non-achievement fields still flow through.
+    expect(stale.settings.lastSeenChangelogVersion).toBe("0.1.0");
+  });
+});
+
 describe("clearUnseenAchievements", () => {
   it("empties the queue but keeps the unlocked map", () => {
     const a = reducer(baseState(), {
