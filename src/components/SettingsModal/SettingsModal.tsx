@@ -521,11 +521,7 @@ function TabSidebar({
             type="button"
             onClick={() => onSelect(tab.id)}
             aria-current={isActive ? "page" : undefined}
-            className={`flex w-full cursor-pointer items-center gap-2 rounded border px-2 py-1.5 text-left text-sm ${
-              isActive
-                ? "border-accent bg-accent/10 text-accent"
-                : "border-transparent text-fg hover:border-line hover:bg-surface-2"
-            }`}
+            className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-fg hover:bg-surface-2"
           >
             <Icon size={14} aria-hidden />
             <span>{tab.label}</span>
@@ -627,11 +623,7 @@ function SettingsHeader({
                       setMenuOpen(false);
                     }}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex w-full cursor-pointer items-center gap-2 rounded border px-2 py-2 text-left text-sm ${
-                      isActive
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-transparent text-fg hover:border-line hover:bg-surface-2"
-                    }`}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm text-fg hover:bg-surface"
                   >
                     <Icon size={14} aria-hidden />
                     <span>{tab.label}</span>
