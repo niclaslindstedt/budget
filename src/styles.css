@@ -909,6 +909,29 @@ body {
     min-height: 100dvh;
   }
 
+  /* The app header's padding-top swaps from `0.5rem + env(top)` (mobile)
+     / `1rem + env(top)` (desktop) in browser mode to `env(top)` /
+     `0.25rem + env(top)` in standalone (see the `[data-app-header]`
+     rule below). On notched iOS devices `env(safe-area-inset-top)`
+     is ~47px in PWA mode but ~0 in browser Safari (where the URL bar
+     reserves the status-bar band), so the header's rendered height
+     grows from the browser-mode 53/69px to roughly 92/108px — but
+     `--app-header-h` stayed pinned to the browser value. That left
+     the sticky month-name h3 (top: --app-header-h, z-20) and the
+     column-header thead (z-15) anchored INSIDE the app header
+     (z-30, opaque), where they sat hidden until the next month
+     scrolled through. Rebase the variable on the standalone padding
+     so the two sticky bands land just below the actual header. */
+  :root {
+    --app-header-h: calc(45px + env(safe-area-inset-top));
+  }
+
+  @media (min-width: 720px) {
+    :root {
+      --app-header-h: calc(57px + env(safe-area-inset-top));
+    }
+  }
+
   [data-bottom-bar] {
     /* `inset: auto 0 0 0` = top: auto, right: 0, bottom: 0, left: 0.
        Anchors the bar to the layout viewport's bottom edge —
