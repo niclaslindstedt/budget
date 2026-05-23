@@ -112,7 +112,7 @@ export function ConfirmDialog({
                 onClick={() => runAction(i, action.onSelect)}
                 disabled={isPending}
                 aria-busy={buttonPending || undefined}
-                className={`flex items-center justify-between gap-2 rounded border px-3 py-2 text-left text-sm font-medium disabled:cursor-not-allowed ${
+                className={`flex items-center justify-center gap-2 rounded border px-3 py-2 text-center text-sm font-medium disabled:cursor-not-allowed ${
                   isPending && !buttonPending ? "opacity-50" : ""
                 } ${isPending ? "" : "cursor-pointer"} ${
                   action.tone === "danger"
@@ -120,7 +120,7 @@ export function ConfirmDialog({
                     : "border-line bg-surface-2 text-fg hover:border-accent hover:text-fg-bright"
                 }`}
               >
-                <span className="flex-1">{action.label}</span>
+                <span>{action.label}</span>
                 {buttonPending && (
                   <Loader
                     size={14}
