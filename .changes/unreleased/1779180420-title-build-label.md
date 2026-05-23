@@ -2,7 +2,7 @@
 type: Added
 ---
 
-The running build is now shown at the top of the Settings modal and
+The running build is now shown at the top of the burger menu and
 suffixed onto the browser-tab title, so you can tell at a glance which
 build is running. Shape: `<version>[.<run>][-pre]` — e.g. `0.1.0`
 for a local release build, `0.1.0.89` for a CI release build, and
