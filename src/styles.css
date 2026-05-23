@@ -851,49 +851,41 @@ body {
   border-width: 0;
 }
 
-/* Installed-PWA layout overrides. iOS 26 ships a regression where
-   the home-screen-installed window's `visualViewport.height` — and
-   every viewport unit (`svh`, `dvh`, `lvh`, `vh`) that derives from
-   it — resolves persistently smaller than the physical screen
-   (WebKit #297779, Apple devforums #800125). `position: fixed;
-   bottom: 0` anchors to `visualViewport.bottom`, so a bottom-pinned
-   toolbar lands 100–200 px above the screen edge on a first-launch
-   empty install. The bar "snaps to place" the moment the user
-   drags, which is iOS finally recomputing the visual viewport —
-   but until then the rendered position is wrong.
+/* Installed-PWA layout overrides. iOS 26 ships a viewport-coherence
+   regression (WebKit #297779 / #301994, Apple devforums #800125):
+   in a home-screen-installed PWA the compositor pins fixed elements
+   to a stale pre-Liquid-Glass rectangle that's 100–200 px taller
+   than the actually-rendered visual viewport. EVERY signal we'd
+   normally measure against — `window.innerHeight`, `100vh` /
+   `100dvh` / `100svh`, `env(safe-area-inset-bottom)`, even the
+   `visualViewport.height` reading at the moment of first paint —
+   reads from the same poisoned rectangle on a cold launch. The
+   compositor only reconciles when "woken" by a real scroll, an
+   orientation change, or a mutation of the `<meta name="viewport">`
+   `viewport-fit` token; that wake is what produces the "snap to
+   place" the user otherwise has to trigger by dragging the page.
 
-   `window.innerHeight` (the layout viewport, distinct from the
-   visual viewport) is the one value iOS 26 still reports correctly.
-   `src/hooks/useVisualViewportOffset.ts` writes it to
-   `--screen-h-px` on `<html>` (seeded in `main.tsx` BEFORE React
-   mounts so the very first paint is correct, then re-synced from
-   `LanguageRoot` on every viewport / orientation event).
+   The fix in this app has three coordinated parts:
 
-   The standalone-mode rules then:
+   1. `src/main.tsx` calls `bootViewportWorkaround()` BEFORE React
+      mounts, which toggles `viewport-fit=cover → auto → cover`
+      across two animation frames AND does a `scrollBy(0, 1)/(0,
+      -1)` no-op round-trip. Either nudge alone is sometimes
+      enough; the combination is what the community-shipped iOS 26
+      PWA fixes converge on as the most-reliable wake.
 
-   - Anchor the BottomBar via `top: var(--screen-h-px)` with
-     `translate: 0 -100%`. The bar's top edge is positioned at
-     exactly `innerHeight` pixels from the viewport top — i.e. at
-     the layout-viewport bottom, which is the physical screen
-     bottom on iOS 26 PWAs regardless of how clipped `visualViewport`
-     is reporting. The transform shifts the bar up by its own
-     height so its bottom edge lands on that anchor.
+   2. `src/hooks/useVisualViewportOffset.ts` writes `--vv-bottom`
+      (= `visualViewport.height + visualViewport.offsetTop`) to
+      `<html>` — the y-coordinate in layout-viewport pixels of
+      the actually-rendered visible area's bottom edge. Seeded
+      from `main.tsx` so the first paint is correct, then
+      re-synced from `LanguageRoot` on every viewport /
+      orientation / pageshow event.
 
-   - Set the page-level floor to `100dvh`. With the bar already
-     anchored independently this is just to keep the BudgetView's
-     flex column tall enough that empty content fills the screen.
-
-   - Re-introduce bottom padding on `<main>` (via the
-     `data-budget-main` hook) so a scrolled budget's last AddRow
-     button clears the now-out-of-flow fixed bar.
-
-   - Cap `env(safe-area-inset-bottom)` with a `max(…, 0.25rem)`
-     floor on the bar's inner padding. The same iOS 26 regression
-     family includes a separate bug where the inset returns `0`
-     after the PWA is reopened from the home screen
-     (vercel/next.js#81264, ionic-team/ionic-framework#29621), and
-     a `0` inset would let the icons sit flush against the home
-     indicator. The `max()` floor keeps the visual gap stable.
+   3. The rules below drive the standalone-mode BottomBar from
+      `--vv-bottom` via `transform: translateY(...)` instead of
+      `position: fixed; bottom: 0`. `bottom: 0` resolves against
+      the stale rectangle; the transform doesn't.
 
    The browser-mode block (no `@media (display-mode: standalone)`
    wrap) keeps the existing svh + sticky + translate-y math from
@@ -912,10 +904,34 @@ body {
 
   [data-floating-chrome] {
     position: fixed;
-    /* top / right / bottom / left, with bottom forced to `auto` so
-       it doesn't fight the JS-anchored top. */
-    inset: var(--screen-h-px, 100vh) 0 auto 0;
-    translate: 0 -100%;
+    /* Anchor the bar's top edge at the layout viewport's top
+       (`top: 0`) and translate it down to (the actual visible
+       viewport's bottom) minus (the bar's own height). The bar's
+       bottom edge lands at `--vv-bottom`; its inner padding
+       (`pb: max(env(safe-area-inset-bottom), 0.25rem)`, set on
+       the inner div in `BottomBar.tsx`) then floats the icons up
+       above the home indicator — we don't subtract the safe inset
+       in the transform too, or the bar would float above its own
+       padded reservation.
+
+       `--vv-bottom` is JS-set from `visualViewport.height +
+       visualViewport.offsetTop` (the only honest signal iOS 26
+       PWAs expose). Mixing this with `bottom: 0` would silently
+       fight us — `bottom: 0` resolves against the stale
+       compositor rectangle the rest of the fix is trying to
+       escape — so we force `bottom: auto`. The `100vh` fallback
+       keeps the rule sane in browser mode and on pre-iOS-26
+       standalone WebKit where the variable may not yet be
+       populated. `transform: translateY(...)` is used (rather
+       than the newer `translate:` shorthand) so it coexists with
+       Tailwind's `translate-y-[calc(100dvh-100svh)]` utility on
+       the className: those are two separate CSS properties that
+       compose, and in standalone mode the Tailwind calc evaluates
+       to 0 anyway (both `dvh` and `svh` resolve from the same
+       rectangle when there's no chrome), so they don't fight. */
+    inset: 0 0 auto 0;
+    transform: translateY(calc(var(--vv-bottom, 100vh) - 100%));
+    will-change: transform;
   }
 
   [data-budget-main] {

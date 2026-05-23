@@ -112,23 +112,29 @@ test.describe("BottomBar anchor stability", () => {
   test("standalone PWA promotes the bar to fixed positioning", async ({
     page,
   }) => {
-    // iOS 26 ships a `visualViewport` regression (WebKit #297779) that
-    // pins viewport units and `bottom: 0` anchors (sticky AND fixed)
-    // to an OS-clipped height, leaving the chrome 100–200 px above
-    // the physical screen edge in a home-screen-installed PWA — a
-    // gap that "snaps to place" the moment the user drags (which is
-    // when iOS finally recomputes). The fix has two halves:
-    //   - `src/hooks/useVisualViewportOffset.ts` writes
-    //     `window.innerHeight` (still correct on iOS 26) to a
-    //     `--screen-h-px` CSS variable on `<html>`. Seeded in
-    //     `main.tsx` before React mounts so the very first paint is
-    //     correct, then re-synced from `LanguageRoot` on viewport /
-    //     orientation events.
+    // iOS 26 ships a viewport-coherence regression (WebKit #297779
+    // / #301994) where, in a home-screen-installed PWA, the
+    // compositor pins fixed elements to a stale rectangle that's
+    // 100–200 px taller than the actually-rendered visual viewport.
+    // `bottom: 0`, `100dvh`, `innerHeight`, even
+    // `env(safe-area-inset-bottom)` all read from that poisoned
+    // rectangle on a cold launch — earlier attempts using any of
+    // them as the anchor left the chrome 100–200 px above the
+    // physical screen edge, with the user having to drag the page
+    // before iOS reconciled.
+    //
+    // The fix has three parts, all asserted below:
+    //   - `src/main.tsx` calls `bootViewportWorkaround()` BEFORE
+    //     React mounts to "wake" the compositor (toggle
+    //     viewport-fit + a no-op scrollBy round-trip).
+    //   - `src/hooks/useVisualViewportOffset.ts` writes `--vv-bottom`
+    //     (= `visualViewport.height + .offsetTop`, the only honest
+    //     signal iOS 26 PWAs expose) to `<html>`, seeded from
+    //     `main.tsx` and re-synced from `LanguageRoot` on viewport
+    //     / orientation / pageshow events.
     //   - `src/styles.css` (`@media (display-mode: standalone)`)
-    //     anchors the BottomBar via
-    //     `top: var(--screen-h-px); translate: 0 -100%` so the bar's
-    //     bottom edge lands at the layout-viewport bottom regardless
-    //     of how clipped `visualViewport` is reporting. The same
+    //     anchors the BottomBar via `position: fixed; transform:
+    //     translateY(calc(var(--vv-bottom) - 100%))`. The same
     //     block reserves bottom padding on `<main>` (via
     //     `[data-budget-main]`) so a scrolled budget's last AddRow
     //     clears the out-of-flow bar.
@@ -156,8 +162,8 @@ test.describe("BottomBar anchor stability", () => {
         return null;
       };
       let chromePosition: string | null = null;
+      let chromeTransform: string | null = null;
       let chromeInset: string | null = null;
-      let chromeTranslate: string | null = null;
       let mainPaddingBottom: string | null = null;
       for (const sheet of Array.from(document.styleSheets)) {
         let block: CSSMediaRule | null = null;
@@ -171,41 +177,45 @@ test.describe("BottomBar anchor stability", () => {
           if (!(r instanceof CSSStyleRule)) continue;
           if (r.selectorText.includes("[data-floating-chrome]")) {
             chromePosition = r.style.position || chromePosition;
+            chromeTransform = r.style.transform || chromeTransform;
             chromeInset = r.style.inset || chromeInset;
-            chromeTranslate = r.style.translate || chromeTranslate;
           }
           if (r.selectorText.includes("[data-budget-main]")) {
             mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
           }
         }
       }
-      // Also assert that `--screen-h-px` is being maintained on
+      // Also assert that `--vv-bottom` is being maintained on
       // `<html>` — the CSS rule above is useless without the JS
       // value to resolve against.
-      const screenHPx =
-        document.documentElement.style.getPropertyValue("--screen-h-px");
+      const vvBottom =
+        document.documentElement.style.getPropertyValue("--vv-bottom");
       return {
         chromePosition,
+        chromeTransform,
         chromeInset,
-        chromeTranslate,
         mainPaddingBottom,
-        screenHPx,
+        vvBottom,
       };
     });
 
     expect(rules.chromePosition).toBe("fixed");
-    // The inset must anchor the bar's top edge at `var(--screen-h-px)`
-    // so a `bottom: 0` resolved against the clipped `visualViewport`
-    // can't pull the bar back up off the screen edge.
-    expect(rules.chromeInset).toContain("--screen-h-px");
-    // The translate must shift the bar up by its own height
-    // (`-100%`) so the anchored `top` edge becomes the bar's bottom
-    // edge at the layout-viewport floor.
-    expect(rules.chromeTranslate).toContain("-100%");
+    // The transform MUST reference `--vv-bottom` and the bar's own
+    // height (`100%`) — that combination is what places the bar's
+    // bottom edge at the real visible viewport's bottom on iOS 26
+    // PWAs, sidestepping the stale compositor rectangle that
+    // `bottom: 0` / viewport units all resolve against.
+    expect(rules.chromeTransform).toContain("--vv-bottom");
+    expect(rules.chromeTransform).toContain("100%");
+    // `bottom: 0` (or `bottom: <anything>`) must NOT be set — it
+    // would silently fight the transform by anchoring the bar to
+    // the poisoned rectangle. The `inset` shorthand pins
+    // `bottom: auto` explicitly.
+    expect(rules.chromeInset).toMatch(/\bauto\b/);
     expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
-    // The hook (`useVisualViewportOffset`) must keep `--screen-h-px`
+    // The hook (`useVisualViewportOffset`) must keep `--vv-bottom`
     // populated; otherwise the CSS fallback (`100vh`) reintroduces
     // the iOS 26 clipping.
-    expect(rules.screenHPx).toMatch(/^\d+px$/);
+    expect(rules.vvBottom).toMatch(/^\d+px$/);
   });
 });
