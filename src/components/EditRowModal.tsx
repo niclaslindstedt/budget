@@ -52,6 +52,11 @@ export type EditRowPatch = {
   date: string;
   typeId: string | null;
   completed: boolean;
+  // Signed day-offset applied to every row in the chosen series
+  // scope. Lets the user nudge a recurring series whose anchor day
+  // was off (e.g. landed on day 24 but should be day 25). 0 means
+  // "leave dates alone".
+  dateShiftDays: number;
 };
 
 export type EditRowScope =
@@ -130,6 +135,11 @@ export function EditRowModal({
   const [untilDate, setUntilDate] = useState(
     lastSeriesDate ?? initialDate ?? "",
   );
+  // Signed day-offset applied to every row in the chosen scope so the
+  // user can nudge a recurring series whose anchor day was off (e.g.
+  // landed on day 24 but should be day 25). Stored as a string so the
+  // input can hold transient state (lone `-`, empty) without snapping.
+  const [shiftDaysText, setShiftDaysText] = useState("0");
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
@@ -145,6 +155,7 @@ export function EditRowModal({
     setScopeKind("just-this");
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
+    setShiftDaysText("0");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
 
@@ -175,6 +186,9 @@ export function EditRowModal({
     setNegative((s) => !s);
   }
 
+  const parsedShiftDays = Number.parseInt(shiftDaysText, 10);
+  const shiftDays = Number.isFinite(parsedShiftDays) ? parsedShiftDays : 0;
+
   function handleSave() {
     if (!row) return;
     onSave(
@@ -185,6 +199,7 @@ export function EditRowModal({
         date,
         typeId,
         completed,
+        dateShiftDays: shiftDays,
       },
       scopeKind === "just-this"
         ? { kind: "just-this" }
@@ -307,6 +322,23 @@ export function EditRowModal({
             <p className="mt-2 text-xs text-muted">
               {t("editRow.scopeAlwaysJustThis")}
             </p>
+            <label className="mt-3 flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("editEntry.shiftDaysBy")}
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                step={1}
+                value={shiftDaysText}
+                onChange={(e) => setShiftDaysText(e.target.value)}
+                aria-label={t("editEntry.shiftDaysBy")}
+                className="field-input min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              />
+              <span className="text-xs text-muted">
+                {t("editEntry.shiftDaysByHint")}
+              </span>
+            </label>
           </fieldset>
         )}
       </Modal.Body>

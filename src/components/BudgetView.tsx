@@ -1962,9 +1962,10 @@ export function BudgetView({
       // Description / amount / category / type are series-wide fields —
       // `editSeries` with a `just-this` scope is the same as a single-
       // row write, so the same dispatch covers both the one-off and
-      // recurring cases uniformly. Date and completed are inherently
-      // per-occurrence, so they always land on the anchor row via
-      // `updateCell` regardless of scope.
+      // recurring cases uniformly. `dateShiftDays` also rides this
+      // dispatch so a series-wide nudge lands on every row in scope.
+      // Completed is inherently per-occurrence and always lands on the
+      // anchor via `updateCell` regardless of scope.
       dispatch({
         type: "editSeries",
         sheetId,
@@ -1974,11 +1975,21 @@ export function BudgetView({
           description: patch.description,
           amount: patch.amount,
           typeId: patch.typeId,
+          dateShiftDays:
+            patch.dateShiftDays !== 0 ? patch.dateShiftDays : undefined,
         },
         scope,
       });
       const dateCol = findColumnByType(activeItem.columns, "date");
-      if (dateCol) {
+      const row = activeItem.rows.find((r) => r.id === rowId);
+      const currentDate =
+        dateCol && row && typeof row.cells[dateCol.id] === "string"
+          ? (row.cells[dateCol.id] as string)
+          : "";
+      // Only stamp the date when the user actually typed a new one — a
+      // redundant write here would overwrite (and undo) the shift the
+      // editSeries dispatch just applied to the anchor row.
+      if (dateCol && patch.date !== currentDate) {
         dispatch({
           type: "updateCell",
           sheetId,
@@ -2001,7 +2012,7 @@ export function BudgetView({
       }
       setEditRowPrompt(null);
     },
-    [activeItem.columns, dispatch, sheetId, itemId],
+    [activeItem.columns, activeItem.rows, dispatch, sheetId, itemId],
   );
 
   const onToggleSelect = useCallback((rowId: string) => {
