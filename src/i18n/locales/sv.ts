@@ -125,10 +125,13 @@ export const sv: Catalog = {
     updateReady: "Uppdaterad till {version} — ladda om för att tillämpa",
     reload: "Ladda om",
     dismiss: "Avfärda uppdateringsmeddelande",
-    iosInstallTitle: "Installera Budget",
+    installTitle: "Installera Budget",
+    installBody:
+      "Installera Budget på den här enheten för åtkomst med ett tryck, precis som en vanlig app.",
     iosInstallBody:
       "Tryck på {share} i Safari och välj Lägg till på hemskärmen för att installera Budget som en vanlig app.",
-    iosInstallDismiss: "Avfärda installationstipset",
+    install: "Installera",
+    installDismiss: "Avfärda installationstipset",
   },
 
   app: {
