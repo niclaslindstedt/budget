@@ -363,7 +363,7 @@ function TypesSection({
       : null;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-line bg-surface-3 p-2 pl-8">
+    <div className="flex flex-col gap-2 border-t border-line bg-surface-3 p-2 sm:pl-8">
       {types.length === 0 ? (
         <p className="text-xs text-muted">
           {t("settings.categoriesTab.noTypesYet")}
