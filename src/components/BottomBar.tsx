@@ -110,6 +110,7 @@ export function BottomBar({
     // `vercel/next.js#81264`, `ionic-team/ionic-framework#29621`).
     <div
       data-floating-chrome
+      data-bottom-bar
       className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
