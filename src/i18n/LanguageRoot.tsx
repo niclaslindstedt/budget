@@ -7,6 +7,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { IosInstallPrompt } from "../components/IosInstallPrompt";
 import { UpdateToast } from "../components/UpdateToast";
 
 import { LanguageProvider, type Lang } from "./index";
@@ -26,6 +27,7 @@ export function LanguageRoot({ children }: { children: ReactNode }) {
     <LanguageProvider value={lang}>
       {children}
       <UpdateToast />
+      <IosInstallPrompt />
     </LanguageProvider>
   );
 }
