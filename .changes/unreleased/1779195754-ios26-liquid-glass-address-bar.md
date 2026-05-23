@@ -13,11 +13,11 @@ in flow rather than floating above it, so it lands at the same
 on-screen position whether the sheet is empty or scrolls past the
 screen edge — and the page can no longer be pulled up by the
 chrome's footprint on an empty budget. The installed-PWA window
-gets its own layout override that works around iOS 26's
-overscroll-bounce: `min-height: 100dvh` on the wrapper plus the
-page-level scroll surfaces, and `overscroll-behavior-y: none` to
-cancel the rubber-band entirely. Without the bounce, the
-BottomBar's default `position: sticky; bottom: 0` stays at the
-visible viewport bottom forever — including on an empty
-(non-scrolling) page where the user previously had no way to
-drag the bar back into view after a bounce had shifted it.
+adds a small layout override: the wrapper and page-level floor
+use `min-height: calc(100dvh + env(safe-area-inset-bottom))`,
+because iOS 26 PWAs resolve `100dvh` to roughly the visible
+viewport minus the home-indicator strip — adding the inset back
+in puts the wrapper's bottom edge at the actual visible bottom,
+so the default `sticky bottom-0` BottomBar lands at the screen
+edge on the very first paint. On non-iOS-26 / no-home-indicator
+devices the inset is `0` and the rule reduces to `100dvh`.

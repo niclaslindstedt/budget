@@ -860,44 +860,37 @@ body {
    home-screen-installed PWA where there's no Liquid Glass chrome to
    compensate for.
 
-   Seven previous iterations (#357 / #360 / #361 / #362 / #367 /
-   #374 / #377) all tried to find the right viewport anchor for a
-   bottom-pinned toolbar on iOS 26 PWAs — JS-translated fixed bars,
-   `100vh` wrappers, `100dvh` wrappers, etc. The root cause they
-   were all chasing was simpler than any of them assumed: iOS 26's
-   overscroll-bounce shifts `position: sticky` (and `position:
-   fixed`) anchors during the rubber-band, and on a non-scrolling
-   empty page the user can't drag to undo a bad bounce.
+   Eight previous iterations (#357 / #360 / #361 / #362 / #367 /
+   #374 / #377 / #380) all tried various viewport anchors for a
+   bottom-pinned toolbar on iOS 26 PWAs. The most-recent #380
+   attempt (`overscroll-behavior-y: none`) killed iOS's
+   rubber-band entirely, which fixed the "bar walks on drag" bug
+   but also killed the native smooth-scroll feel — the user
+   reported it made everything feel "dull" with a flaky-feeling
+   bar.
 
-   The fix is just to kill the bounce. `overscroll-behavior-y: none`
-   on html / body / wrapper cancels the rubber-band entirely — the
-   page just stops at the edges instead of bouncing. With no bounce,
-   `min-height: 100dvh` + the default `sticky bottom-0` from the
-   BottomBar's className keeps the bar pinned at the visible viewport
-   bottom forever. No JS, no `position: fixed` override, no
-   transform. The browser-mode block keeps Safari's native bounce
-   so a regular tab still feels native. */
+   The current shape restores the native bounce and compensates
+   for iOS 26's `dvh` shortfall with `env(safe-area-inset-bottom)`.
+   On iOS 26 PWAs `100dvh` resolves to roughly
+   `visible_viewport - home_indicator_strip`, so a sticky
+   `bottom: 0` bar inside a `min-height: 100dvh` wrapper lands a
+   `safe-area-inset-bottom` above the screen edge ("hovering a bit
+   into the screen", per the user). Adding that inset back into
+   the wrapper's `min-height` puts the wrapper's bottom edge at
+   the actual visible bottom, and sticky tracks correctly with it.
+   On browsers / iOS versions where `100dvh` already matches the
+   visible viewport, the extra inset just makes the page slightly
+   scrollable — `env(safe-area-inset-bottom)` returns `0` on
+   devices without a home indicator, so this is a no-op there. */
 @media (display-mode: standalone) {
   html,
   body,
   #root {
-    min-height: 100dvh;
-    /* Kill the rubber-band overscroll on iOS 26 PWAs. Without this,
-       dragging on an empty (non-scrolling) page triggers the bounce
-       and the sticky BottomBar visibly moves with it (partially
-       hiding below the screen edge with no way for the user to
-       drag it back, because the page has nothing to actually
-       scroll). `none` cancels the bounce entirely; `contain` lets
-       the wrapper bounce internally but the user said the visible
-       walking is the problem, so `none` is the right ask. The
-       browser-mode block keeps Safari's pull-to-refresh behavior
-       (a non-PWA tab can scroll to navigate). */
-    overscroll-behavior-y: none;
+    min-height: calc(100dvh + env(safe-area-inset-bottom));
   }
 
   [data-budget-shell] {
-    min-height: 100dvh;
-    overscroll-behavior-y: none;
+    min-height: calc(100dvh + env(safe-area-inset-bottom));
   }
 
   /* The default header padding (`0.5rem + env(safe-area-inset-top)`)
