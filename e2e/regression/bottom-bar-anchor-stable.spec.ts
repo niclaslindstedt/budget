@@ -109,33 +109,33 @@ test.describe("BottomBar anchor stability", () => {
     expect(result.barBottom).toBeLessThanOrEqual(svhPx);
   });
 
-  test("standalone PWA compensates for iOS 26's dvh shortfall via safe-area-inset-bottom", async ({
+  test("standalone PWA promotes the bar to fixed + reserves main padding", async ({
     page,
   }) => {
-    // Eight previous iterations all tried various viewport anchors
-    // for a bottom-pinned toolbar on iOS 26 PWAs (JS-translated fixed
-    // bar in PRs #357 / #360 / #361 / #362 / #367; `100vh` wrapper
-    // with sticky bar in #374; `100dvh` wrapper with sticky bar in
-    // #377; `overscroll-behavior-y: none` in #380). The most recent
-    // one disabled iOS's rubber-band entirely, which the user
-    // reported made everything feel "dull" and "flaky" with the bar
-    // still hovering a bit into the screen on cold launch.
+    // Nine previous iterations (#357 / #360 / #361 / #362 / #367 /
+    // #374 / #377 / #380 / #383) all tried to anchor the BottomBar
+    // by sizing the WRAPPER and letting `position: sticky; bottom: 0`
+    // inherit the size. Each one missed a corner case on iOS 26
+    // PWAs (cold-launch shift, scroll-walk, overscroll-bounce,
+    // dvh undershoot, vh overshoot, calc overshoot).
     //
-    // The current shape restores the native bounce and compensates
-    // for `100dvh`'s shortfall on iOS 26 PWAs (where it resolves to
-    // roughly `visible_viewport - home_indicator_strip`) by adding
-    // `env(safe-area-inset-bottom)` back into the wrapper's
-    // min-height. On non-iOS-26 / no-home-indicator devices the
-    // inset is `0` and the rule reduces to a plain `100dvh`. The
-    // BottomBar keeps its default `sticky bottom-0` from the
-    // className.
+    // The current shape borrows the Modal component's fullscreen
+    // footer pattern: `position: fixed; inset: auto 0 0 0` for the
+    // bar, plus a reserve `padding-bottom` on `<main>` so the AddRow
+    // clears it. Fixed positioning anchors to the layout viewport's
+    // bottom edge (the actual screen bottom in PWA mode), and the
+    // bar's inner `pb-[…safe-area-inset-bottom…]` lifts the icons
+    // above the home indicator. The wrapper goes back to a clean
+    // `min-height: 100dvh` so the page doesn't become scrollable
+    // on an empty budget.
     //
     // Playwright doesn't have a first-class display-mode emulator,
     // so this regression asserts the CSS rules *exist* in the
     // stylesheet rather than trying to make the media query match.
-    // If a future refactor drops the `env(safe-area-inset-bottom)`
-    // compensation, iOS users see the "hovering into the screen"
-    // bug again.
+    // If a future refactor drops any of the three contract pieces
+    // (wrapper at `100dvh`, bar at `fixed` anchored to `auto 0 0 0`,
+    // main padding referencing `env(safe-area-inset-bottom)`), iOS
+    // users feel the bar walking again.
     await signInAsGuest(page);
     await page.waitForTimeout(200);
 
@@ -155,11 +155,9 @@ test.describe("BottomBar anchor stability", () => {
       };
       let shellMinHeight: string | null = null;
       let rootMinHeight: string | null = null;
-      let chromeOverride: {
-        position: string;
-        transform: string;
-        inset: string;
-      } | null = null;
+      let chromePosition: string | null = null;
+      let chromeInset: string | null = null;
+      let mainPaddingBottom: string | null = null;
       for (const sheet of Array.from(document.styleSheets)) {
         let block: CSSMediaRule | null = null;
         try {
@@ -179,32 +177,38 @@ test.describe("BottomBar anchor stability", () => {
             rootMinHeight = r.style.minHeight || rootMinHeight;
           }
           if (r.selectorText.includes("[data-floating-chrome]")) {
-            chromeOverride = {
-              position: r.style.position,
-              transform: r.style.transform,
-              inset: r.style.inset,
-            };
+            chromePosition = r.style.position || chromePosition;
+            chromeInset = r.style.inset || chromeInset;
+          }
+          if (r.selectorText.includes("[data-budget-main]")) {
+            mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
           }
         }
       }
       return {
         shellMinHeight,
         rootMinHeight,
-        chromeOverride,
+        chromePosition,
+        chromeInset,
+        mainPaddingBottom,
       };
     });
 
-    // The wrapper and page floor MUST add `env(safe-area-inset-bottom)`
-    // to `100dvh` — compensating for iOS 26's `dvh` shortfall on
-    // PWAs. On non-iOS-26 / no-home-indicator devices the inset is
-    // `0` so the rule reduces to `100dvh`.
-    expect(rules.shellMinHeight).toContain("100dvh");
-    expect(rules.shellMinHeight).toContain("env(safe-area-inset-bottom)");
-    expect(rules.rootMinHeight).toContain("100dvh");
-    expect(rules.rootMinHeight).toContain("env(safe-area-inset-bottom)");
-    // The bar MUST NOT be re-positioned in standalone mode — the
-    // default `sticky bottom-0` from the className is what lands
-    // it at the wrapper's bottom edge.
-    expect(rules.chromeOverride).toBeNull();
+    // Wrapper sized to the visible viewport so an empty budget
+    // doesn't become scrollable. `100dvh` is what every browser
+    // gets right; iOS 26 PWA's shortfall is invisible here because
+    // the bar isn't sized against the wrapper anymore.
+    expect(rules.shellMinHeight).toBe("100dvh");
+    expect(rules.rootMinHeight).toBe("100dvh");
+    // The bar MUST be `position: fixed` and anchored bottom-0 via
+    // the `inset: auto 0 0 0` shorthand — the same Modal footer
+    // pattern that already works for the fullscreen modal variant.
+    expect(rules.chromePosition).toBe("fixed");
+    // Browser may normalize `inset: auto 0 0 0` to `auto 0px 0px`
+    // (collapsing the trailing repeat). Match either form.
+    expect(rules.chromeInset).toMatch(/\bauto\s+0(?:px)?\s+0(?:px)?/);
+    // Main must reserve room for the now out-of-flow fixed bar,
+    // and the reserve must include the home-indicator inset.
+    expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
   });
 });

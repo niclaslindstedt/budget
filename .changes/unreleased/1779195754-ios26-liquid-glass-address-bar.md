@@ -13,11 +13,13 @@ in flow rather than floating above it, so it lands at the same
 on-screen position whether the sheet is empty or scrolls past the
 screen edge — and the page can no longer be pulled up by the
 chrome's footprint on an empty budget. The installed-PWA window
-adds a small layout override: the wrapper and page-level floor
-use `min-height: calc(100dvh + env(safe-area-inset-bottom))`,
-because iOS 26 PWAs resolve `100dvh` to roughly the visible
-viewport minus the home-indicator strip — adding the inset back
-in puts the wrapper's bottom edge at the actual visible bottom,
-so the default `sticky bottom-0` BottomBar lands at the screen
-edge on the very first paint. On non-iOS-26 / no-home-indicator
-devices the inset is `0` and the rule reduces to `100dvh`.
+takes a page from the Modal component's fullscreen-footer
+playbook: the BottomBar is promoted to `position: fixed; inset:
+auto 0 0 0` so it anchors to the actual screen bottom (the layout
+viewport edge, which is correct in PWA mode even when every
+viewport unit isn't), and `<main>` reserves a `padding-bottom` so
+the AddRow at the foot of the last month clears the now
+out-of-flow bar. The wrapper goes back to a clean
+`min-height: 100dvh` so an empty budget doesn't become scrollable.
+The bar's existing inner `padding-bottom: env(safe-area-inset-bottom)`
+lifts the icons above the home-indicator strip.

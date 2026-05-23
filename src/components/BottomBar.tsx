@@ -95,17 +95,20 @@ export function BottomBar({
     // report `dvh ≈ svh` so the offset collapses to 0 and the
     // bar stays exactly where `bottom: 0` puts it.
     //
-    // Standalone mode (installed PWA): `src/styles.css` pins the
-    // wrapper to `min-height: calc(100dvh + env(safe-area-inset-bottom))`
-    // — iOS 26 PWAs resolve `100dvh` to roughly
-    // `visible_viewport - home_indicator_strip`, so adding the
-    // inset back puts the wrapper's bottom edge at the actual
-    // visible bottom. The default `sticky bottom-0` (above) then
-    // lands at the wrapper's bottom = the screen edge. On
-    // non-iOS-26 / no-home-indicator devices the inset is `0`,
-    // so the rule reduces to `min-h-[100dvh]` and behaves the
-    // same as the rest of the world. Native overscroll-bounce
-    // stays enabled so scrolling still feels right.
+    // Standalone mode (installed PWA): `src/styles.css` switches
+    // the bar to `position: fixed; inset: auto 0 0 0`, the same
+    // pattern the Modal component's fullscreen footer uses. Fixed
+    // anchors to the layout viewport's bottom edge (the actual
+    // screen bottom in PWA mode), and the bar's inner padding
+    // (`pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))]`)
+    // lifts the icons above the home indicator strip. The
+    // standalone block also reserves a `padding-bottom` on
+    // `<main data-budget-main>` so the AddRow at the foot of the
+    // last month clears the out-of-flow bar. See the long history
+    // block in `src/styles.css` for the nine previous attempts
+    // (#357 / #360 / #361 / #362 / #367 / #374 / #377 / #380 / #383)
+    // that all tried to size the wrapper instead of fixing the
+    // bar, and the corner cases that took them down.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the
