@@ -919,47 +919,44 @@ body {
     }
   }
 
-  /* Fullscreen-on-mobile modals: pin the overlay AND the shell to the
-     real screen height. The same iOS 26 visualViewport regression that
-     breaks the BottomBar (anchoring `fixed; inset: 0` and `100svh` to
-     the clipped visualViewport bottom instead of the layout-viewport
-     bottom) leaves a band of `--page-bg` visible below the modal's
-     footer on first launch. `--screen-h-px` is `window.innerHeight`
-     (seeded in main.tsx, kept in sync by useVisualViewportOffset) —
-     the one viewport value iOS 26 reports correctly — so the modal
-     can extend through the full screen and the footer can land on
-     the home-indicator strip with its safe-area padding intact.
-     Centered modals float in the middle and aren't affected, so they
-     opt out via the `="fullscreen"` qualifier. Desktop modals (≥
-     640px) drop the fullscreen layout entirely and don't need this. */
+  /* Fullscreen-on-mobile modals: pin the overlay AND the shell to
+     `100vh`. iOS 26 PWAs clip every `svh` / `dvh` / `lvh` viewport
+     unit AND the default `fixed; inset: 0` anchor to the regressed
+     visualViewport bottom (WebKit #297779) — leaving a band of
+     `--page-bg` visible below the modal's footer on first launch.
+     `100vh` is the ONE viewport unit iOS 26 standalone still gets
+     right at cold start (the same workaround `[data-budget-shell]`
+     above uses for the page wrapper), so the modal can extend
+     through the full screen and the footer can land on the
+     home-indicator strip with its safe-area padding intact. Centered
+     modals float in the middle and aren't affected, so they opt out
+     via the `="fullscreen"` qualifier. Desktop modals (≥ 640px) drop
+     the fullscreen layout entirely and don't need this. */
   @media (max-width: 639.98px) {
     [data-modal-overlay="fullscreen"] {
       /* `bottom: auto` keeps the explicit `height` authoritative;
          without it the still-set `bottom: 0` from `inset-0` would
          compete on devices where it happens to resolve differently. */
       inset: 0 0 auto 0;
-      height: var(--screen-h-px, 100svh);
+      height: 100vh;
     }
 
     [data-modal-shell="fullscreen"] {
-      height: var(--screen-h-px, 100svh);
+      height: 100vh;
     }
   }
 
-  /* Pull the modal title up so it sits in the same horizontal band as
-     the Dynamic Island — the title and close button hug the left and
-     right edges, so they stay clear of the Island in the centre. The
-     default `0.75rem + env(safe-area-inset-top)` (~71pt on a Dynamic
-     Island iPhone) combined with the 40pt-tall close button pushed
-     the title bar to ~111pt, leaving a visible band of empty header
-     below the Island. Collapsing the top to a flat `0.75rem` — the
-     same gap the Island has to the top of the screen — lets the
-     Island visually sit inside the header bar instead of above it.
-     The footer mirrors the same rationale: the buttons want to ride
-     close to the home-indicator strip, not float ~12pt above it. */
+  /* Modal header: keep `env(safe-area-inset-top)` so the title and
+     close button stay clear of the iOS status bar text — the clock
+     lives in the LEFT corner of the safe area and the signal /
+     battery indicators in the RIGHT corner, so they DO collide with
+     the title and the X if we trim below the safe inset. Trim the
+     extra `0.75rem` the default Tailwind utility adds on top of the
+     inset, and shave the bottom in step so the bar is a tight band
+     instead of a tall card. Matches the `[data-app-header]` trim. */
   [data-modal-header] {
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 0.5rem;
   }
 
   [data-modal-footer] {
@@ -967,8 +964,7 @@ body {
     /* `env(safe-area-inset-bottom)` alone — no extra `0.75rem` on top
        of it — so the buttons land right at the safe-area edge. The
        `0.5rem` floor protects against the iOS 26 regression where the
-       inset returns 0 after a PWA cold-launch (same `max(…, …)`
-       guard `[data-floating-chrome]` uses for its own bottom). */
+       inset returns 0 after a PWA cold-launch. */
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
   }
 }
