@@ -2566,9 +2566,12 @@ export function BudgetView({
     // instead of disappearing behind it, so no dedicated reserve
     // padding on `<main>` is needed. The `data-budget-shell`
     // attribute is the hook the standalone-mode CSS targets to
-    // override `min-h-svh` → `min-h-[100dvh]` (matches the visible
-    // viewport in iOS 26 PWA; see the comment block above the
-    // override in `src/styles.css` for the why).
+    // pin `min-height` to `100dvh` (matches the visible viewport
+    // on iOS 26 PWAs) AND set `overscroll-behavior-y: none` so
+    // the rubber-band bounce can't shift the sticky BottomBar
+    // off the screen edge — see the comment block above the
+    // override in `src/styles.css` for the history of attempts
+    // that all eventually came back to this combination.
     <div
       data-budget-shell
       className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"

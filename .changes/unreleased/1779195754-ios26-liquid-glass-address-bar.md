@@ -13,15 +13,11 @@ in flow rather than floating above it, so it lands at the same
 on-screen position whether the sheet is empty or scrolls past the
 screen edge — and the page can no longer be pulled up by the
 chrome's footprint on an empty budget. The installed-PWA window
-gets its own minimal layout override that works around iOS 26's
-viewport-coherence regression (WebKit #297779 / #301994): the
-standalone-mode CSS switches the wrapper and the page-level
-floor from the browser-mode `100svh` to `100dvh`. In a PWA window
-there's no dynamic chrome to make `dvh` jitter, and unlike `100vh`
-(which overshoots the visible viewport by the home-indicator
-strip on iOS 26 PWAs) `dvh` matches the visible area exactly. The
-BottomBar keeps its default `position: sticky; bottom: 0` from
-both modes, which inside the now-correctly-sized parent lands at
-the screen edge on the first paint AND stays there on an empty
-(non-scrolling) page — important because new users without any
-rows can't drag to "snap" the bar back if it walks off.
+gets its own layout override that works around iOS 26's
+overscroll-bounce: `min-height: 100dvh` on the wrapper plus the
+page-level scroll surfaces, and `overscroll-behavior-y: none` to
+cancel the rubber-band entirely. Without the bounce, the
+BottomBar's default `position: sticky; bottom: 0` stays at the
+visible viewport bottom forever — including on an empty
+(non-scrolling) page where the user previously had no way to
+drag the bar back into view after a bounce had shifted it.
