@@ -156,16 +156,14 @@ export function Modal({
   // modals must not contain keyboard-opening inputs (see prop docs),
   // so the inset stays at 0 and the math is skipped.
   //
-  // `--screen-h-px` is `window.innerHeight` (seeded in main.tsx, kept
-  // in sync by `useVisualViewportOffset`). On iOS 26 standalone PWAs
-  // `100svh` is clipped by the visualViewport regression, so deriving
-  // from `--screen-h-px` keeps the shell's bottom on the real screen
-  // edge instead of the clipped viewport bottom — same workaround the
-  // BottomBar uses (`[data-floating-chrome]` in `styles.css`). The
-  // fallback to `100svh` keeps browser mode unchanged.
+  // `100vh` is the one viewport unit iOS 26 standalone PWAs report
+  // correctly (every other `svh` / `dvh` / `lvh` is clipped by the
+  // visualViewport regression, WebKit #297779). The standalone-mode
+  // CSS for `[data-modal-shell="fullscreen"]` uses the same value;
+  // this keeps the keyboard-open branch on the same baseline.
   const shellStyle: React.CSSProperties | undefined =
     !centered && isMobile && keyboardInset > 0
-      ? { height: `calc(var(--screen-h-px, 100svh) - ${keyboardInset}px)` }
+      ? { height: `calc(100vh - ${keyboardInset}px)` }
       : undefined;
 
   // Portal to document.body so the modal escapes any `inert` ancestor —
