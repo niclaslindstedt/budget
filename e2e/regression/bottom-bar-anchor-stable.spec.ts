@@ -113,17 +113,23 @@ test.describe("BottomBar anchor stability", () => {
     page,
   }) => {
     // iOS 26 ships a `visualViewport` regression (WebKit #297779) that
-    // pins viewport units and sticky positioning to an OS-clipped
-    // height, leaving sticky-anchored chrome 100–200 px above the
-    // screen edge in a home-screen-installed PWA. The fix is in
-    // `src/styles.css`: an `@media (display-mode: standalone)` block
-    // promotes the bar to `position: fixed; inset: auto 0 0 0`, drops
-    // the chrome-compensating transform, and re-introduces bottom
-    // padding on `<main>` so a scrolled budget's last row clears it.
+    // pins viewport units and `bottom: 0` anchors (sticky AND fixed)
+    // to an OS-clipped height, leaving the chrome 100–200 px above
+    // the physical screen edge in a home-screen-installed PWA — a
+    // gap that "snaps shut" the moment the user drags. The fix has
+    // two halves:
+    //   - `src/styles.css` (`@media (display-mode: standalone)`)
+    //     promotes the bar to `position: fixed; inset: auto 0 0 0`
+    //     and translates it down by a CSS variable, and reserves
+    //     bottom padding on `<main>` so the AddRow clears it.
+    //   - `src/hooks/useVisualViewportOffset.ts` measures the gap
+    //     between `window.innerHeight` (still correct in iOS 26)
+    //     and `visualViewport.height` and writes it to
+    //     `--viewport-bottom-offset` on `<html>`.
     //
-    // Playwright doesn't have a first-class display-mode emulator, so
-    // this regression asserts the rules *exist* in the stylesheet
-    // rather than trying to make the media query match at runtime.
+    // Playwright doesn't have a first-class display-mode emulator,
+    // so this regression asserts the CSS rules *exist* in the
+    // stylesheet rather than trying to make the media query match.
     // The selector / property values are the contract; if a future
     // refactor drops them the test fails before iOS users feel it.
     await signInAsGuest(page);
@@ -145,6 +151,7 @@ test.describe("BottomBar anchor stability", () => {
       };
       let chromePosition: string | null = null;
       let chromeInset: string | null = null;
+      let chromeTranslate: string | null = null;
       let mainPaddingBottom: string | null = null;
       for (const sheet of Array.from(document.styleSheets)) {
         let block: CSSMediaRule | null = null;
@@ -159,17 +166,27 @@ test.describe("BottomBar anchor stability", () => {
           if (r.selectorText.includes("[data-floating-chrome]")) {
             chromePosition = r.style.position || chromePosition;
             chromeInset = r.style.inset || chromeInset;
+            chromeTranslate = r.style.translate || chromeTranslate;
           }
           if (r.selectorText.includes("[data-budget-main]")) {
             mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
           }
         }
       }
-      return { chromePosition, chromeInset, mainPaddingBottom };
+      return {
+        chromePosition,
+        chromeInset,
+        chromeTranslate,
+        mainPaddingBottom,
+      };
     });
 
     expect(rules.chromePosition).toBe("fixed");
     expect(rules.chromeInset).toBeTruthy();
+    // The translate must reference the JS-maintained
+    // `--viewport-bottom-offset` so the bar lands past iOS 26's
+    // clipped `visualViewport.bottom` on first paint.
+    expect(rules.chromeTranslate).toContain("--viewport-bottom-offset");
     expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
   });
 });

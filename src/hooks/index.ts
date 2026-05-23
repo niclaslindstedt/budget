@@ -16,3 +16,4 @@ export { useStorageSizeWarning } from "./useStorageSizeWarning";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";
 export { useVirtualKeyboardInset } from "./useVirtualKeyboardInset";
+export { useVisualViewportOffset } from "./useVisualViewportOffset";

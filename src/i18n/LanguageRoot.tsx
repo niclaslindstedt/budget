@@ -10,12 +10,20 @@ import { useEffect, useState, type ReactNode } from "react";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { ToastProvider } from "../components/Toast";
 import { UpdateToast } from "../components/UpdateToast";
+import { useVisualViewportOffset } from "../hooks/useVisualViewportOffset";
 
 import { LanguageProvider, type Lang } from "./index";
 import { readLanguagePreference } from "./language-preference";
 
 export function LanguageRoot({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => readLanguagePreference());
+  // Maintain `--viewport-bottom-offset` on `<html>` so the
+  // standalone-mode CSS in styles.css can translate the fixed
+  // BottomBar down past iOS 26's clipped `visualViewport`. Mounted
+  // here (rather than in BudgetView) so it runs on every route,
+  // including the pre-auth screen — the bar position bug is visible
+  // before the user signs in too.
+  useVisualViewportOffset();
   useEffect(() => {
     const onChange = (e: Event) => {
       const detail = (e as CustomEvent<Lang>).detail;
