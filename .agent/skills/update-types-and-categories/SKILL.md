@@ -24,14 +24,14 @@ and walks the cascading edits so nothing falls out of sync.
 Every category / type touches up to six files. Skipping one breaks
 typecheck, the validator, the i18n parity test, or the picker UI.
 
-| Concern               | File                                                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Preset definitions    | `src/data/constants.ts` — `PRESET_CATEGORIES`, `PRESET_ENTRY_TYPES`                                           |
-| Glyph type union      | `src/data/types.ts` — `CategoryIcon`                                                                          |
-| Glyph render map      | `src/components/icons.tsx` — `CATEGORY_ICONS` + lucide imports                                                |
-| Glyph allowlist       | `src/data/constants.ts` — `CATEGORY_ICON_NAMES`                                                               |
+| Concern               | File                                                                                                             |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Preset definitions    | `src/data/constants.ts` — `PRESET_CATEGORIES`, `PRESET_ENTRY_TYPES`                                              |
+| Glyph type union      | `src/data/types.ts` — `CategoryIcon`                                                                             |
+| Glyph render map      | `src/components/icons.tsx` — `CATEGORY_ICONS` + lucide imports                                                   |
+| Glyph allowlist       | `src/data/constants.ts` — `CATEGORY_ICON_NAMES`                                                                  |
 | Glyph picker palettes | `src/data/constants.ts` — `TYPE_GLYPH_NAMES`, `CATEGORY_GLYPH_NAMES`, `SHEET_GLYPH_NAMES`, `ACCOUNT_GLYPH_NAMES` |
-| Display names         | `src/i18n/locales/en.ts` and `src/i18n/locales/sv.ts` — `presetTypes`, `presetCategories`                     |
+| Display names         | `src/i18n/locales/en.ts` and `src/i18n/locales/sv.ts` — `presetTypes`, `presetCategories`                        |
 
 Tests that fail loudly when these drift:
 
@@ -183,7 +183,7 @@ the new icon.
    the palettes where it should be offered:
    - `TYPE_GLYPH_NAMES` for the type-creator picker. Slot under the
      right `// Food & drink` / `// Transport` / `// Home &
-     utilities` / `// Lifestyle` / `// Health` / `// Money` / …
+utilities` / `// Lifestyle` / `// Health` / `// Money` / …
      section header.
    - `CATEGORY_GLYPH_NAMES` for the category-creator picker (only
      when the icon is broad enough to label a whole bucket).
