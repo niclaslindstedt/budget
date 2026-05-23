@@ -98,15 +98,22 @@ export function BottomBar({
     // Standalone mode (installed PWA): the override block in
     // `src/styles.css` (`@media (display-mode: standalone)`)
     // promotes the bar to `position: fixed; inset: auto 0 0 0`
-    // and zeroes the transform. The flex-column-sticky trick
-    // doesn't survive iOS 26's `visualViewport` regression
-    // (WebKit #297779) — every viewport unit and every sticky
-    // anchor inherits the OS-clipped height, leaving a 100–200 px
-    // gap below an in-flow bar on an empty page. A fixed bar
-    // anchored straight to the visual viewport bottom is more
-    // reliable here, and the matching `<main data-budget-main>`
-    // padding reserve in the same media-query block keeps a
-    // scrolled budget's last row from disappearing behind it.
+    // and translates it down by `var(--viewport-bottom-offset)`,
+    // a JS-measured value maintained by
+    // `src/hooks/useVisualViewportOffset.ts`. The flex-column-sticky
+    // trick doesn't survive iOS 26's `visualViewport` regression
+    // (WebKit #297779) — every viewport unit and every `bottom: 0`
+    // anchor (sticky OR fixed) tracks the OS-clipped
+    // `visualViewport.bottom` instead of the actual screen edge,
+    // leaving a 100–200 px gap that "snaps shut" the moment the
+    // user drags. Reading `innerHeight - visualViewport.height` in
+    // JS recovers the gap (iOS 26 still reports `innerHeight`
+    // correctly), so translating the fixed bar by that delta lands
+    // it at the physical screen bottom on first paint — no drag
+    // needed. The matching `<main data-budget-main>` padding
+    // reserve in the same media-query block keeps a scrolled
+    // budget's last row from disappearing behind the out-of-flow
+    // bar.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the
@@ -115,7 +122,7 @@ export function BottomBar({
     // `vercel/next.js#81264`, `ionic-team/ionic-framework#29621`).
     <div
       data-floating-chrome
-      className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 [@media(display-mode:standalone)]:translate-y-0"
+      className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

@@ -859,10 +859,12 @@ body {
    short value flows into every viewport unit, so `100svh` /
    `100dvh` / `100lvh` all resolve to a clipped height that misses
    roughly the home-indicator strip plus the new "Quick Actions"
-   accessory band. Sticky and fixed positioning both anchor to that
-   short viewport, so a sticky-`bottom: 0` toolbar lands ~100–200 px
-   above the screen edge on an empty page — exactly the symptom
-   users report on the production install.
+   accessory band. Sticky AND fixed positioning both anchor to that
+   short viewport — `fixed; bottom: 0` lands at
+   `visualViewport.bottom`, not the screen edge — so a bottom-pinned
+   toolbar sits 100–200 px above the screen on an empty page, and
+   "snaps shut" the moment the user drags or scrolls (which is when
+   iOS finally recomputes the visual viewport).
 
    The combined fix:
 
@@ -878,11 +880,18 @@ body {
      positioning inherits the parent's clipped height — even after
      the wrapper grows to `dvh`, a `sticky` bar inside it still
      hugs the wrapper's bottom, which is the same clipped value.
-     Fixed positioning anchors to the visual viewport directly. It
-     is still imperfect on iOS 26 (Apple devforums #800125 reports
-     fixed elements can drift too), but it lands at the screen
-     edge more often than not — and crucially it doesn't tunnel
-     down through `min-height` to the clipped value.
+     Fixed positioning at least decouples from the wrapper.
+
+   - Translate the fixed bar down by
+     `var(--viewport-bottom-offset)`, a CSS variable maintained in
+     JavaScript (see `src/hooks/useVisualViewportOffset.ts`) as
+     `window.innerHeight - visualViewport.height -
+     visualViewport.offsetTop`. iOS 26 still reports the layout
+     viewport (`innerHeight`) correctly even when it lies about
+     `visualViewport`, so the delta IS the gap. Translating by it
+     puts the bar's bottom edge at the actual screen bottom even
+     on first paint, before any drag interaction prompts iOS to
+     recompute.
 
    - Re-introduce bottom padding on `<main>` so the AddRow button
      at the foot of the last month clears the now-out-of-flow
@@ -914,7 +923,7 @@ body {
   [data-floating-chrome] {
     position: fixed;
     inset: auto 0 0 0;
-    translate: none;
+    translate: 0 var(--viewport-bottom-offset, 0px);
   }
 
   [data-budget-main] {
