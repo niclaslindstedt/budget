@@ -1,4 +1,4 @@
-import { Fragment, memo, useMemo, useRef } from "react";
+import { Fragment, memo, useLayoutEffect, useMemo, useRef } from "react";
 import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
 
 import { findColumnByType, isTransferRow } from "../data/sheet";
@@ -104,12 +104,14 @@ function formatMonth(key: string, lang: Lang, t: TFunction): string {
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
-// Roughly how tall a single row renders in the table; used to size the
-// height-preserving placeholder for far-from-viewport months so the
-// scroll offset doesn't jump when their rows mount/unmount. Slightly
-// larger than the typical line-height row to leave headroom for
-// multi-line descriptions — under-shooting causes a visible scroll
-// shift when the placeholder gets swapped for the real rows.
+// Cold-start fallback for the placeholder height when a month has
+// never been mounted (so we have no measured value yet). Roughly the
+// typical line-height of a single row plus its cell padding. Used
+// only on the very first placeholder render for any given section;
+// once the rows mount once, `MonthTableImpl` caches the real tbody
+// height and uses that instead — so a wrong estimate here can shift
+// the layout exactly once per session-per-month, not on every
+// IntersectionObserver toggle as it used to.
 const ESTIMATED_ROW_HEIGHT_PX = 40;
 
 // How far above and below the viewport the row tree should stay
@@ -166,6 +168,14 @@ function MonthTableImpl({
   // instead of the full row tree — that keeps the DOM small even after
   // a search jump pulls 60+ months of history into view.
   const sectionRef = useRef<HTMLElement | null>(null);
+  const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
+  // Cached actual height of the tbody while rows are mounted. Used as
+  // the placeholder height when the section next unmounts, so the
+  // toggle is pixel-stable — without this, the placeholder fell back
+  // on a 40px-per-row estimate that mismatched real row heights and
+  // produced a 20-30px vertical scroll jump every time the viewport-
+  // proximity gate flipped (#339).
+  const measuredHeightRef = useRef<number | null>(null);
   const nearViewport = useNearViewport(sectionRef, MONTH_VIEWPORT_MARGIN_PX);
   // When the hide-transfers setting is on, partition the month's
   // chronologically-sorted rows into the visible set (rendered as
@@ -247,27 +257,47 @@ function MonthTableImpl({
         0,
       )
     : rows.length;
-  const placeholderHeight = renderedRowCount * ESTIMATED_ROW_HEIGHT_PX;
+  // Prefer the cached measured height — every previous mount of this
+  // section has stamped its actual tbody height into the ref, so the
+  // placeholder size matches the rows it replaces to the pixel. Fall
+  // back to the row-count × per-row estimate only on the very first
+  // unmount, before the section has had a chance to be measured.
+  const placeholderHeight =
+    measuredHeightRef.current ?? renderedRowCount * ESTIMATED_ROW_HEIGHT_PX;
   // Skip building the row tree when the month is collapsed (the
   // existing optimization) OR when the month is far from viewport
   // and no force-mount override is in play. `forceMount` wins so a
   // scroll-to-row request always materializes its target.
-  //
-  // TEMPORARY (scroll-flicker investigation): the trailing `|| true`
-  // bypasses the lazy-mount gate so every uncollapsed month renders
-  // its full row tree. If the deployed preview is flicker-free, the
-  // 40px-per-row placeholder vs. real row height mismatch was the
-  // cause and we'll land a permanent fix (mount-once latch or a
-  // measured-height placeholder). Revert is one keystroke: drop the
-  // `|| true`. `forceMount` / `nearViewport` are kept on the line so
-  // they remain referenced (TS strict) and the diff stays a single
-  // logical change.
-  const renderRows = !collapsed && (forceMount || nearViewport || true);
+  const renderRows = !collapsed && (forceMount || nearViewport);
   // Total cell count across the data row plus the action cell, plus
   // the optional select cell. Used as the placeholder <tr>'s colSpan
   // so the lazy stand-in spans the full table width like the rows it
   // replaces.
   const placeholderColSpan = columns.length + 1 + (selectMode ? 1 : 0);
+  // Observe the tbody only while real rows are mounted, and stamp its
+  // latest height into `measuredHeightRef`. The observer fires once
+  // on attach (initial size) and again whenever a content edit, a
+  // density / font-scale change, or a hide-transfers toggle changes
+  // the layout — so the cache stays fresh for whatever the next
+  // unmount needs to substitute. useLayoutEffect (not useEffect): the
+  // cleanup must disconnect the observer between commit and layout
+  // when `renderRows` flips false; otherwise the observer would fire
+  // once more for the placeholder's own height — overwriting the
+  // cached real-row height with the placeholder's (and breaking the
+  // pixel-stable swap on the next toggle).
+  useLayoutEffect(() => {
+    if (!renderRows) return;
+    const el = tbodyRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const h = e.contentRect.height;
+        if (h > 0) measuredHeightRef.current = h;
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [renderRows]);
   return (
     <section ref={sectionRef}>
       <h3
@@ -372,7 +402,7 @@ function MonthTableImpl({
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={tbodyRef}>
             {/* Skip building the row tree entirely when the month is
                collapsed, OR when it sits far enough from the viewport
                that the user can't see it. The container above is
