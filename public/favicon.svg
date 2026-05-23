@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#1d2027" />
   <text
-    x="50%"
-    y="50%"
+    x="32"
+    y="48"
     text-anchor="middle"
-    dominant-baseline="central"
     font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
     font-weight="700"
-    font-size="56"
+    font-size="50"
     fill="#e5c07b"
   >$</text>
 </svg>
