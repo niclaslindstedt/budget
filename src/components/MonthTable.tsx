@@ -334,6 +334,17 @@ function MonthTableImpl({
           {
             "--amount-col-ch": amountChars,
             "--balance-col-ch": balanceChars,
+            // Mobile balance column buffer. Currency-before renders the
+            // symbol absolute-positioned at the cell's left edge while
+            // the number stays right-aligned, so a tight column collapses
+            // the visual gap between the two. Widen the buffer in that
+            // mode to keep the symbol and the number from hugging each
+            // other; currency-after (and no-currency) keep the tighter
+            // 1.5rem default sized in styles.css.
+            "--balance-col-buffer":
+              settings.showCurrency && settings.currencyPosition === "before"
+                ? "3rem"
+                : undefined,
           } as React.CSSProperties
         }
       >
