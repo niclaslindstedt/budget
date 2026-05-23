@@ -80,45 +80,44 @@ export function BottomBar({
   const bulkDisabled = bulkSelectedCount === 0;
 
   return (
-    // `position: sticky; bottom: 0` instead of `position: fixed`.
-    // The bar is the last child of the BudgetView flex column
-    // (which has `min-h-svh`), so on an empty budget it naturally
-    // sits at the column's bottom edge — i.e. the visible-viewport
-    // floor — and on a budget tall enough to scroll, sticky keeps
-    // it pinned to the viewport bottom while the rows scroll
-    // underneath. Sticky leaves the element inside the document
-    // flow, so iOS Safari with the floating Liquid Glass address
-    // bar can't treat it as extending the scrollable area past
-    // `svh` (the way a `fixed; top: 100dvh` anchor did, which let
-    // the user pull the page up by the chrome's footprint).
+    // Two-mode positioning:
     //
-    // The `translate-y-[calc(100dvh-100svh)]` then offsets the bar
-    // visually by exactly the chrome's footprint so it lands flush
-    // against the screen edge instead of floating above the
-    // translucent address bar on a first-load empty budget — first
-    // impressions matter, and svh-only positioning left a visible
-    // gap. Transform is render-only, so it doesn't inflate the
-    // scrollable area; older iOS / non-Liquid-Glass browsers report
-    // `dvh ≈ svh` so the offset collapses to 0 and the bar stays
-    // exactly where `bottom: 0` puts it.
+    // Browser mode (Safari / Chrome / Firefox tab): the bar is
+    // `position: sticky; bottom: 0` and rides inside the flex
+    // column's flow. The `translate-y-[calc(100dvh-100svh)]`
+    // transform offsets the bar visually by exactly the floating
+    // Liquid Glass chrome's footprint so it lands flush against
+    // the screen edge instead of floating above the translucent
+    // address bar on a first-load empty budget — first impressions
+    // matter, and svh-only positioning left a visible gap.
+    // Transform is render-only, so it doesn't inflate the
+    // scrollable area; older iOS / non-Liquid-Glass browsers
+    // report `dvh ≈ svh` so the offset collapses to 0 and the
+    // bar stays exactly where `bottom: 0` puts it.
     //
-    // The standalone-mode override (`[@media(display-mode:standalone)]:translate-y-0`)
-    // zeroes the transform inside an installed PWA window, where
-    // there is no floating browser chrome to compensate for. On
-    // iOS 26 the home-screen-installed PWA reports `dvh < svh`
-    // (apparently because `dvh` resolves against the visual
-    // viewport that excludes the home-indicator strip while `svh`
-    // includes it) so the unconditional transform was pulling the
-    // bar UP off the screen edge by ~100px on an empty budget —
-    // i.e. exactly the wrong direction. Clamping it to zero in
-    // standalone mode keeps the Safari fix intact while landing the
-    // bar at the screen edge in the PWA, which is the first thing a
-    // new install sees.
+    // Standalone mode (installed PWA): the override block in
+    // `src/styles.css` (`@media (display-mode: standalone)`)
+    // promotes the bar to `position: fixed; inset: auto 0 0 0`
+    // and zeroes the transform. The flex-column-sticky trick
+    // doesn't survive iOS 26's `visualViewport` regression
+    // (WebKit #297779) — every viewport unit and every sticky
+    // anchor inherits the OS-clipped height, leaving a 100–200 px
+    // gap below an in-flow bar on an empty page. A fixed bar
+    // anchored straight to the visual viewport bottom is more
+    // reliable here, and the matching `<main data-budget-main>`
+    // padding reserve in the same media-query block keeps a
+    // scrolled budget's last row from disappearing behind it.
+    //
+    // The inner padding floors `env(safe-area-inset-bottom)` with
+    // a 0.25 rem minimum so the bar keeps a visible gap from the
+    // home indicator even when the inset returns 0 (a separate
+    // iOS 26 bug seen after a cold reopen — see
+    // `vercel/next.js#81264`, `ionic-team/ionic-framework#29621`).
     <div
       data-floating-chrome
       className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 [@media(display-mode:standalone)]:translate-y-0"
     >
-      <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {selectMode ? (
             <>
