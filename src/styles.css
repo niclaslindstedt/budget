@@ -862,46 +862,32 @@ body {
   border-width: 0;
 }
 
-/* Installed-PWA layout override. The browser-mode block (no
-   `@media (display-mode: standalone)` wrap) keeps the svh + sticky
-   + translate-y math from PR #354 that iOS 26 Safari's Liquid Glass
-   address bar needs to look right; this override below is for the
-   home-screen-installed PWA where there's no Liquid Glass chrome to
-   compensate for.
+/* Installed-PWA layout override for the BottomBar.
+   The browser-mode block (no `@media (display-mode: standalone)`
+   wrap) keeps the svh + sticky + translate-y math from PR #354
+   that iOS 26 Safari's Liquid Glass address bar needs to look
+   right. This override is for the home-screen-installed PWA where
+   there's no Liquid Glass chrome to compensate for.
 
-   Nine previous iterations (#357 / #360 / #361 / #362 / #367 /
-   #374 / #377 / #380 / #383) all tried to anchor the BottomBar by
-   sizing the WRAPPER and letting `position: sticky; bottom: 0`
-   inherit the size. None landed cleanly:
-     - JS-translated fixed bars (multiple) — measurements from
-       `innerHeight` / `visualViewport.height` were themselves
-       poisoned on iOS 26 PWA cold launch, so the compensation
-       went the wrong direction.
-     - `min-h-[100vh]` (#374) — overshot, page scrolled, bar slipped
-       below the visible bottom.
-     - `min-h-[100dvh]` (#377) — undershot by the home-indicator
-       strip, bar hovered slightly above the screen edge.
-     - `overscroll-behavior-y: none` (#380) — killed iOS's smooth
-       scroll feel.
-     - `calc(100dvh + env(safe-area-inset-bottom))` on the wrapper
-       (#383) — pushed the wrapper past the visible bottom and the
-       sticky bar with it, so the bar's icons were partially hidden
-       below the screen edge.
+   In standalone mode the bar is `position: fixed; inset: auto 0 0 0`,
+   matching the Modal component's fullscreen-footer pattern. Fixed
+   anchors to the layout viewport's bottom edge; the bar's inner
+   `padding-bottom: env(safe-area-inset-bottom)` lifts the icons
+   above the home indicator. `<main>` reserves a `padding-bottom`
+   so the AddRow at the foot of the last month clears the
+   out-of-flow bar.
 
-   The Modal component already solved an isomorphic problem for its
-   fullscreen variant: footer pinned at the screen bottom, content
-   floating above the home indicator. It does it the obvious way
-   the wrapper-based attempts kept missing — `position: fixed` on
-   the footer with `padding-bottom: env(safe-area-inset-bottom)`.
-   Fixed positioning anchors to the layout viewport (the actual
-   screen edge in PWA mode), and the inner padding lifts the
-   visible content above the home indicator strip. We mirror that
-   here: in standalone mode the wrapper goes back to a clean
-   `min-height: 100dvh` (matches the visible viewport, no scroll
-   on empty), the BottomBar is `position: fixed; inset: auto 0 0 0`
-   so it lands at the actual screen bottom, and `<main>` gets a
-   reserve `padding-bottom` so the last AddRow clears the now
-   out-of-flow bar. Smooth scrolling stays untouched. */
+   Known iOS 26 quirk left as-is: on cold launch in installed PWAs,
+   `position: fixed; bottom: 0` actually anchors to a clipped
+   `visualViewport.bottom` instead of the layout viewport, leaving
+   the bar ~20–30 px above the screen edge (WebKit #297779). The
+   first overscroll-bounce reconciles the visual viewport and the
+   bar glides into place. PRs #357, #360, #361, #362, #367, #374,
+   #377, #380, #383, #388 all tried to compensate from CSS or JS;
+   every flavour either failed outright, broke iOS's native bounce
+   feel, or introduced new "bar walks during overscroll" bugs.
+   We're accepting the cold-launch shift as an iOS-side bug;
+   landing more code around it consistently made the app worse. */
 @media (display-mode: standalone) {
   html,
   body,
@@ -914,35 +900,16 @@ body {
   }
 
   [data-floating-chrome] {
-    /* `inset: auto 0 0 0` = top: auto; right: 0; bottom: 0; left: 0.
-       Anchors the bar to the layout viewport's bottom edge — the
+    /* `inset: auto 0 0 0` = top: auto, right: 0, bottom: 0, left: 0.
+       Anchors the bar to the layout viewport's bottom edge —
        same trick `[data-modal-shell="fullscreen"]`'s footer uses.
-       In a perfect world that's enough; in iOS 26 PWAs `position:
-       fixed; bottom: 0` actually anchors to a clipped
-       `visualViewport.bottom` that's ~20–30 px above the layout
-       viewport bottom on cold launch (WebKit #297779). The user
-       sees the bar hovering above the screen edge until the first
-       drag bounces the visual viewport into sync.
-
-       `--bar-offset` is the JS-measured gap between the layout
-       viewport (`innerHeight`, which iOS gets right) and the
-       visual viewport (`visualViewport.height`, the value the
-       compositor anchors the bar to). The hook in
-       `src/hooks/useVisualViewportOffset.ts` writes it on mount,
-       on every `visualViewport.resize` (iOS's reconcile signal),
-       and on `orientationchange` / `pageshow`. Translating the
-       bar by that gap lands it at the actual screen edge from the
-       very first paint — and once iOS reconciles the gap goes to
-       0 and the translate collapses to a no-op, so the bar stays
-       put.
-
-       The `translate` property override also cancels the
-       browser-mode `translate-y-[calc(100dvh-100svh)]` Tailwind
-       utility on the className (the calc is 0 in PWA mode anyway,
-       but the explicit value is belt-and-suspenders). */
+       `translate: none` cancels the browser-mode
+       `translate-y-[calc(100dvh-100svh)]` Tailwind utility on the
+       className (the calc is 0 in PWA mode anyway, but explicit
+       is safer). */
     position: fixed;
     inset: auto 0 0 0;
-    translate: 0 var(--bar-offset, 0px);
+    translate: none;
   }
 
   [data-budget-main] {

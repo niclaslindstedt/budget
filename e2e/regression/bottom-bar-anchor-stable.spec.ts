@@ -1,31 +1,34 @@
 import { expect, signInAsGuest, test } from "../fixtures";
 
-// Regression: on iOS 26 Safari with the floating Liquid Glass address
-// bar, the BottomBar visibly shifted up while the budget was empty
-// and dropped back down to the screen edge once the user had enough
-// rows to scroll. The first attempt at a fix (#351) re-anchored the
-// bar with `position: fixed; top: 100dvh` + `-translate-y-full`, but
-// iOS treated the `100dvh` top offset as extending the document's
-// scrollable area on Liquid Glass (where `dvh > svh`), so the user
-// could pull the page up by the chrome's footprint on an empty
-// budget. PR #354 switched the bar to `position: sticky; bottom: 0`
-// inside a `min-h-svh` flex column with a `translate-y` compensator,
-// which fixed Safari — but iOS 26's `visualViewport` regression
-// (WebKit #297779) clips every viewport unit *and* the sticky
-// anchor in installed PWAs, so the bar still landed 100–200 px
-// above the screen edge on a first-launch empty home-screen install.
+// Regression suite for the BottomBar's two positioning modes:
 //
-// The current shape:
-//   - Browser mode keeps PR #354's sticky + translate-y trick.
-//   - Installed PWA mode (matched via `@media (display-mode:
-//     standalone)` in `src/styles.css`) promotes the bar to fixed
-//     positioning anchored straight to the visual viewport, drops
-//     the transform, and reserves bottom padding on `<main>` so the
-//     AddRow button clears the out-of-flow bar.
+//   - Browser mode (Safari / Chrome / Firefox tab): `position:
+//     sticky; bottom: 0` inside a `min-h-svh` flex column, with
+//     `translate-y-[calc(100dvh-100svh)]` compensating for iOS 26
+//     Safari's floating Liquid Glass address bar (PR #354). The
+//     first two tests below lock this in: the bar must stay
+//     `sticky`, the empty page must not become scrollable, and
+//     the bar's bottom edge must land at or above the svh floor
+//     even when dvh > svh.
 //
-// The first two tests below lock in the browser-mode shape; the
-// third locks in the standalone-mode CSS contract. PR for the fix
-// is the one this spec lives in.
+//   - Installed PWA mode (`@media (display-mode: standalone)` in
+//     `src/styles.css`): bar promoted to `position: fixed; inset:
+//     auto 0 0 0`, wrapper at `min-height: 100dvh`, main padded
+//     to clear the out-of-flow bar (PR #386). The third test
+//     locks the standalone CSS contract.
+//
+// iOS 26 PWAs ship a cold-launch quirk (WebKit #297779) where
+// `position: fixed; bottom: 0` anchors to a clipped
+// `visualViewport.bottom` until the first overscroll-bounce
+// reconciles it. The intentionally-uncompensated symptom is the
+// bar sitting ~20–30 px above the screen edge on cold launch.
+// PRs #357 / #360 / #361 / #362 / #367 / #374 / #377 / #380 /
+// #383 / #388 all tried to fix that from CSS or JS; each
+// introduced its own regression (page scrolls, bar walks during
+// drag, smooth-scroll feel killed). The current shape accepts
+// the cold-launch shift as an iOS bug and tracks no compensation
+// — see the long comment above the standalone block in
+// `styles.css` for the full reasoning.
 
 test.describe("BottomBar anchor stability", () => {
   test("the bar is in flow and does not extend the page past svh", async ({
@@ -112,30 +115,16 @@ test.describe("BottomBar anchor stability", () => {
   test("standalone PWA promotes the bar to fixed + reserves main padding", async ({
     page,
   }) => {
-    // Nine previous iterations (#357 / #360 / #361 / #362 / #367 /
-    // #374 / #377 / #380 / #383) all tried to anchor the BottomBar
-    // by sizing the WRAPPER and letting `position: sticky; bottom: 0`
-    // inherit the size. Each one missed a corner case on iOS 26
-    // PWAs (cold-launch shift, scroll-walk, overscroll-bounce,
-    // dvh undershoot, vh overshoot, calc overshoot).
-    //
-    // The current shape borrows the Modal component's fullscreen
-    // footer pattern: `position: fixed; inset: auto 0 0 0` for the
-    // bar, plus a reserve `padding-bottom` on `<main>` so the AddRow
-    // clears it. Fixed positioning anchors to the layout viewport's
-    // bottom edge (the actual screen bottom in PWA mode), and the
-    // bar's inner `pb-[…safe-area-inset-bottom…]` lifts the icons
-    // above the home indicator. The wrapper goes back to a clean
-    // `min-height: 100dvh` so the page doesn't become scrollable
-    // on an empty budget.
+    // Standalone-mode contract: wrapper at `min-height: 100dvh`,
+    // bar at `position: fixed; inset: auto 0 0 0` (same pattern as
+    // the Modal's fullscreen footer), main given a `padding-bottom`
+    // reserve so the AddRow clears the out-of-flow bar.
     //
     // Playwright doesn't have a first-class display-mode emulator,
-    // so this regression asserts the CSS rules *exist* in the
-    // stylesheet rather than trying to make the media query match.
-    // If a future refactor drops any of the three contract pieces
-    // (wrapper at `100dvh`, bar at `fixed` anchored to `auto 0 0 0`,
-    // main padding referencing `env(safe-area-inset-bottom)`), iOS
-    // users feel the bar walking again.
+    // so this test asserts the CSS rules *exist* in the stylesheet
+    // rather than trying to make the media query match. If a future
+    // refactor drops any of the three contract pieces, iOS PWA
+    // users feel the bar misbehaving again.
     await signInAsGuest(page);
     await page.waitForTimeout(200);
 
@@ -157,7 +146,6 @@ test.describe("BottomBar anchor stability", () => {
       let rootMinHeight: string | null = null;
       let chromePosition: string | null = null;
       let chromeInset: string | null = null;
-      let chromeTranslate: string | null = null;
       let mainPaddingBottom: string | null = null;
       for (const sheet of Array.from(document.styleSheets)) {
         let block: CSSMediaRule | null = null;
@@ -180,7 +168,6 @@ test.describe("BottomBar anchor stability", () => {
           if (r.selectorText.includes("[data-floating-chrome]")) {
             chromePosition = r.style.position || chromePosition;
             chromeInset = r.style.inset || chromeInset;
-            chromeTranslate = r.style.translate || chromeTranslate;
           }
           if (r.selectorText.includes("[data-budget-main]")) {
             mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
@@ -192,7 +179,6 @@ test.describe("BottomBar anchor stability", () => {
         rootMinHeight,
         chromePosition,
         chromeInset,
-        chromeTranslate,
         mainPaddingBottom,
       };
     });
@@ -210,13 +196,6 @@ test.describe("BottomBar anchor stability", () => {
     // Browser may normalize `inset: auto 0 0 0` to `auto 0px 0px`
     // (collapsing the trailing repeat). Match either form.
     expect(rules.chromeInset).toMatch(/\bauto\s+0(?:px)?\s+0(?:px)?/);
-    // The bar's `translate` MUST reference `--bar-offset` so
-    // iOS 26 PWA's clipped `visualViewport.bottom` can be
-    // compensated by the JS hook in `useVisualViewportOffset`.
-    // Without it, cold-launch users see the bar hovering ~25 px
-    // above the actual screen edge until a drag bounces the
-    // viewport into sync.
-    expect(rules.chromeTranslate).toContain("--bar-offset");
     // Main must reserve room for the now out-of-flow fixed bar,
     // and the reserve must include the home-indicator inset.
     expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
