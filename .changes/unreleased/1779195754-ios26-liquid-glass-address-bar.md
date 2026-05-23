@@ -3,7 +3,9 @@ type: Fixed
 ---
 
 iOS 26 Safari's translucent Liquid Glass address bar now lets the
-budget show through it — the page sizes to `dvh` (the visual viewport
-including the chrome footprint) instead of `svh` (which stopped at
-the chrome edge and left the bar reading as a flat slab of the page
-background).
+budget show through it when there's something to show — the page
+sits at the chrome-excluded inner box (`svh`) by default and grows
+past it once a sheet has enough rows to scroll, so tall budgets
+tint the bar with the rows behind it while an empty sheet no longer
+leaves a scrollable band of blank page background below the AddRow
+button.

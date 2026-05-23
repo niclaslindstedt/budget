@@ -2415,7 +2415,7 @@ export function BudgetView({
     // — large enough that the AddRowButton at the foot of the last
     // month clears both the safe-area band and the solid BottomBar
     // instead of ending its scroll under either.
-    <div className="mx-auto flex min-h-dvh max-w-full flex-col px-1 md:px-5">
+    <div className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5">
       {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
           flips `inert` on every match, freezing focus and pointer

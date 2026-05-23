@@ -419,16 +419,16 @@ body,
   padding: 0;
   background: var(--page-bg);
   color: var(--fg);
-  /* `dvh` follows the visual viewport including the area covered by
-     iOS 26 Safari's floating Liquid Glass chrome — so the page (and
-     anything scrolled into its lower band) is composited behind the
-     translucent address bar and the bar can sample real pixels for
-     its tint instead of falling back to the canvas colour. `svh`
-     here would size the document to the chrome-excluded inner box,
-     leaving the address-bar footprint to show the propagated
-     html-canvas background as a flat slab. Older iOS without a
+  /* `svh` is the chrome-excluded inner box on iOS 26 Safari with the
+     floating Liquid Glass address bar. Using it as the page-level
+     floor means a short page (e.g. an empty budget with one month and
+     no rows) is exactly the visible viewport — no extra dvh-svh band
+     the user can scroll into to find empty page background. Pages
+     whose content is taller than svh still grow the body to fit, so
+     scrolling real content behind the translucent bar (and letting it
+     tint with that content) keeps working. Older iOS without a
      floating bar reports dvh ≈ svh ≈ lvh so this stays inert. */
-  min-height: 100dvh;
+  min-height: 100svh;
 }
 
 body {
