@@ -341,7 +341,6 @@ export const en = {
 
   headerMenu: {
     openMenu: "Open menu",
-    buildAriaLabel: "Build {label}",
   },
 
   backend: {
