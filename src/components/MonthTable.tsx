@@ -252,7 +252,17 @@ function MonthTableImpl({
   // existing optimization) OR when the month is far from viewport
   // and no force-mount override is in play. `forceMount` wins so a
   // scroll-to-row request always materializes its target.
-  const renderRows = !collapsed && (forceMount || nearViewport);
+  //
+  // TEMPORARY (scroll-flicker investigation): the trailing `|| true`
+  // bypasses the lazy-mount gate so every uncollapsed month renders
+  // its full row tree. If the deployed preview is flicker-free, the
+  // 40px-per-row placeholder vs. real row height mismatch was the
+  // cause and we'll land a permanent fix (mount-once latch or a
+  // measured-height placeholder). Revert is one keystroke: drop the
+  // `|| true`. `forceMount` / `nearViewport` are kept on the line so
+  // they remain referenced (TS strict) and the diff stays a single
+  // logical change.
+  const renderRows = !collapsed && (forceMount || nearViewport || true);
   // Total cell count across the data row plus the action cell, plus
   // the optional select cell. Used as the placeholder <tr>'s colSpan
   // so the lazy stand-in spans the full table width like the rows it
