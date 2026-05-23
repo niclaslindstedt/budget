@@ -9,6 +9,7 @@ import {
   Repeat,
   Scissors,
   Wallet,
+  Wrench,
 } from "lucide-react";
 
 import { allCategories, allTypes } from "../data/presets";
@@ -218,7 +219,22 @@ export function AccountsSheetView({
                 <th className="px-2 py-1.5 text-right">
                   {t("accountsSheet.balance")}
                 </th>
-                <th className="w-36 px-2 py-1.5"></th>
+                <th
+                  className="w-44 px-2 py-1.5"
+                  aria-label={t("sheet.rowActions")}
+                >
+                  <span className="inline-flex items-center justify-center gap-1.5 md:gap-2">
+                    <Wrench
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("sheet.actions")}
+                    </span>
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -325,7 +341,7 @@ export function AccountsSheetView({
                         </span>
                       )}
                     </td>
-                    <td className="w-36 px-2 py-2 text-right align-middle">
+                    <td className="w-44 px-2 py-2 text-right align-middle">
                       <div className="flex items-center justify-end gap-0.5">
                         <button
                           type="button"
@@ -352,7 +368,7 @@ export function AccountsSheetView({
                                   n: historyCount,
                                 })
                           }
-                          className="inline-flex h-7 min-w-7 cursor-pointer items-center justify-center gap-1 rounded px-1 text-muted hover:bg-surface-2 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex h-7 w-14 cursor-pointer items-center justify-center gap-1 rounded px-1 text-muted hover:bg-surface-2 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Eye size={14} aria-hidden focusable={false} />
                           {historyCount > 0 && (
