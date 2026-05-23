@@ -124,14 +124,6 @@ function MainView({
   const t = useT();
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-end border-b border-line bg-surface-3 px-3 py-2">
-        <span
-          className="text-xs text-muted tabular-nums"
-          aria-label={t("headerMenu.buildAriaLabel", { label: BUILD_LABEL })}
-        >
-          {BUILD_LABEL}
-        </span>
-      </div>
       <div className="border-b border-line bg-surface-3 px-3 py-3">
         <p className="text-xs text-muted">
           {isGuest ? t("userMenu.guestMode") : t("userMenu.signedInAs")}
@@ -199,6 +191,7 @@ function MainView({
           label={t("settings.footer.source")}
           href="https://github.com/niclaslindstedt/budget"
           external
+          meta={BUILD_LABEL}
         />
         {donateUrl && (
           <MenuLink
@@ -255,11 +248,13 @@ function MenuLink({
   label,
   href,
   external,
+  meta,
 }: {
   icon: React.ReactNode;
   label: string;
   href: string;
   external?: boolean;
+  meta?: string;
 }) {
   return (
     <a
@@ -271,6 +266,9 @@ function MenuLink({
     >
       <span className="text-muted">{icon}</span>
       <span>{label}</span>
+      {meta && (
+        <span className="ml-auto text-xs text-muted tabular-nums">{meta}</span>
+      )}
     </a>
   );
 }
