@@ -151,7 +151,6 @@ import {
   useTheme,
 } from "../hooks";
 import { writeLanguagePreference } from "../i18n/language-preference";
-import { BUILD_LABEL } from "../utils/build-env";
 import { todayIso } from "../utils/date";
 import {
   slugifyFilename,
@@ -2426,8 +2425,8 @@ export function BudgetView({
             clears the iOS status bar / Dynamic Island when running as
             an installed PWA (where `apple-mobile-web-app-status-bar-style`
             is `black-translucent` and the page extends edge-to-edge under
-            the system chrome). Without it, the title and version overlap
-            the clock and battery indicators. */}
+            the system chrome). Without it, the title overlaps the clock
+            and battery indicators. */}
         <header className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-[calc(1rem+env(safe-area-inset-top))] md:pb-4">
           <div className="inline-flex items-center gap-2">
             <img
@@ -2439,16 +2438,8 @@ export function BudgetView({
               height={24}
               className="h-6 w-6 rounded-sm"
             />
-            <span className="flex items-baseline gap-2">
-              <span className="text-base font-bold tracking-wide text-fg-bright">
-                budget
-              </span>
-              <span
-                className="text-xs font-normal text-muted tabular-nums"
-                aria-label={`Build ${BUILD_LABEL}`}
-              >
-                {BUILD_LABEL}
-              </span>
+            <span className="text-base font-bold tracking-wide text-fg-bright">
+              budget
             </span>
           </div>
           <div className="ml-auto inline-flex items-center gap-2">

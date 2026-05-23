@@ -29,6 +29,7 @@ import type {
   BackendId,
   EncryptionMode,
 } from "../../storage/backend-preference";
+import { BUILD_LABEL } from "../../utils/build-env";
 import { CloudBackupModal } from "../CloudBackupModal";
 import { FloatingPanel } from "../FloatingPanel";
 import { Button } from "../form";
@@ -389,7 +390,7 @@ export function SettingsModal({
           onSelect={setActiveTab}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3 sm:px-4 sm:py-4">
             {activeTab === "general" && (
               <GeneralTab
                 draft={draft}
@@ -510,7 +511,7 @@ function TabSidebar({
   return (
     <nav
       aria-label={t("settings.chooseSection")}
-      className="hidden w-40 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-surface-3 p-2 sm:flex"
+      className="hidden w-40 shrink-0 flex-col gap-0.5 overflow-y-auto overscroll-contain border-r border-line bg-surface-3 p-2 sm:flex"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -625,11 +626,17 @@ function SettingsHeader({
           id="settings-title"
           className="text-sm font-bold tracking-wide text-fg-bright"
         >
-          <span className="inline-flex items-center gap-2">
-            <span className="inline-flex shrink-0 text-flag">
+          <span className="inline-flex items-baseline gap-2">
+            <span className="inline-flex shrink-0 translate-y-px text-flag">
               <SettingsIcon size={14} aria-hidden focusable={false} />
             </span>
             <span className="min-w-0">{t("settings.title")}</span>
+            <span
+              className="text-xs font-normal text-muted tabular-nums"
+              aria-label={t("settings.buildAriaLabel", { label: BUILD_LABEL })}
+            >
+              {BUILD_LABEL}
+            </span>
           </span>
         </h2>
       </div>
