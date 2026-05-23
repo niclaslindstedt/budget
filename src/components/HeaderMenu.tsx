@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  BookOpen,
   Code2,
   Heart,
   LogOut,
@@ -8,6 +7,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   Sparkles,
+  Trophy,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -171,9 +171,9 @@ function MainView({
 
       <MenuSection>
         <MenuLink
-          icon={<BookOpen size={16} aria-hidden focusable={false} />}
-          label={t("settings.footer.system")}
-          href={`${import.meta.env.BASE_URL}system`}
+          icon={<Trophy size={16} aria-hidden focusable={false} />}
+          label={t("settings.footer.achievements")}
+          href={`${import.meta.env.BASE_URL}achievements`}
         />
         <MenuLink
           icon={<Shield size={16} aria-hidden focusable={false} />}

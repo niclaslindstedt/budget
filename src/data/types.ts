@@ -645,6 +645,19 @@ export type Settings = {
   // Dark palette) and flipping `theme` between `"custom"` and a
   // preset is a no-op for the colour bytes.
   customTheme: CustomTheme;
+  // Map of achievement id → unix-ms unlock timestamp. Each id is a
+  // stable string from the achievement catalog (see
+  // `src/data/achievements/catalog.ts`). Writes go through
+  // `recordAchievementUnlock`; the reducer guards against re-unlocking
+  // an id that's already present so timestamps stay stable. Synced to
+  // the cloud backend along with the rest of UserData so the trophy
+  // room follows the user across devices.
+  achievements: Record<string, number>;
+  // Achievement ids the user has unlocked but not yet seen the modal
+  // for. Drains to `[]` when the user dismisses the unlock modal via
+  // `clearUnseenAchievements`. The HeaderStar shows a filled yellow
+  // star whenever this array is non-empty; clicking opens the modal.
+  unseenAchievements: string[];
 };
 
 // Persistent memory of which type the user assigned to which
@@ -747,7 +760,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 32;
+  version: 33;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

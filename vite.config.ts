@@ -8,9 +8,9 @@ import { VitePWA } from "vite-plugin-pwa";
 
 import pkg from "./package.json" with { type: "json" };
 import {
+  ACHIEVEMENTS_ROUTE,
   CHANGELOG_ROUTE,
   PRIVACY_ROUTE,
-  SYSTEM_ROUTE,
   type RouteSeo,
 } from "./src/seo/routes";
 import {
@@ -321,7 +321,7 @@ export default defineConfig({
     emitChangelogData(),
     patchAppleTitle(),
     pwaPlugin(),
-    emitPathAliasWithSeo([PRIVACY_ROUTE, CHANGELOG_ROUTE, SYSTEM_ROUTE], {
+    emitPathAliasWithSeo([PRIVACY_ROUTE, CHANGELOG_ROUTE, ACHIEVEMENTS_ROUTE], {
       noindex: IS_PREVIEW,
     }),
   ],

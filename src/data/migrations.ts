@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 32 as const;
+export const LATEST_VERSION = 33 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -491,6 +491,29 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
   // overrides map when missing, so this is a bare version bump for
   // the payload.
   31: (v31) => ({ ...v31, version: 32, presetTypeKindOverrides: {} }),
+
+  // v32 → v33: add the achievements system. `Settings.achievements`
+  // holds the user's unlocked-id → timestamp map; the parallel
+  // `unseenAchievements` queue drives the filled-star "you've got new
+  // unlocks" state. Both default to empty for existing buckets — the
+  // catalog is forward-going only, so prior usage doesn't pre-unlock
+  // anything; the user earns each achievement by doing the thing once
+  // more after upgrade.
+  32: (v32) => {
+    const settings =
+      typeof v32.settings === "object" && v32.settings !== null
+        ? (v32.settings as Record<string, unknown>)
+        : {};
+    return {
+      ...v32,
+      version: 33,
+      settings: {
+        ...settings,
+        achievements: {},
+        unseenAchievements: [],
+      },
+    };
+  },
 };
 
 // Build-time lookup of preset-type-name → preset-category-id, used by

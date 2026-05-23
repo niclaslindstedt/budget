@@ -6,6 +6,7 @@ import {
   CloudLinkDialog,
   FolderLinkDialog,
 } from "./components/CloudLinkDialog";
+import { unlock } from "./data/achievements";
 import { STORAGE_KEY, cloudMirrorKey, userDataKey } from "./data/constants";
 import type { StoredUser, UserData } from "./data/types";
 import { type AuthState, readBootAuth } from "./storage/boot-auth";
@@ -112,6 +113,7 @@ export function App() {
 
   const handleCreateAccount = useCallback(
     async (username: string, password: string, importLegacy: boolean) => {
+      unlock("localHero");
       const user = await createUser(username, password);
       const existingDefault = findDefaultUser(users);
       const realUsers = users.filter((u) => !u.isDefault);
@@ -141,6 +143,7 @@ export function App() {
           clearRawStorage(STORAGE_KEY);
         }
       }
+      if (realUsers.length > 0) unlock("household");
       const nextUsers = [...realUsers, user];
       setUsers(nextUsers);
       persistRegistry(nextUsers, user.id);
@@ -159,6 +162,7 @@ export function App() {
   );
 
   const handleContinueWithoutAccount = useCallback(async () => {
+    unlock("localHero");
     // Re-use an existing guest account if one is already in the
     // registry (e.g. user signed out then changed their mind). Only
     // mint a new one when there isn't one — keeps the data intact

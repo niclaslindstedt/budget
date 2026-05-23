@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Download, Wallet } from "lucide-react";
 
+import { unlock } from "../data/achievements";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
@@ -89,6 +90,7 @@ function BudgetDownloadModal({
   }, [open, initial, hasHistory]);
 
   function handleSubmit() {
+    unlock("spreadsheetSensei");
     onSubmit({
       kind: "budget",
       format,

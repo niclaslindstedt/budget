@@ -652,7 +652,7 @@ export const sv: Catalog = {
     footer: {
       privacy: "Integritetspolicy",
       changelog: "Nyheter",
-      system: "Så använder du Budget",
+      achievements: "Bedrifter",
       source: "Visa källkod",
       version: "Version {version}",
     },
@@ -1751,6 +1751,19 @@ export const sv: Catalog = {
     failed: "Spara misslyckades",
     allSaved: "Alla ändringar sparade",
     saveUnsaved: "Spara osparade ändringar",
+  },
+
+  achievements: {
+    star: {
+      openList: "Bedrifter",
+      unseenOne: "1 ny bedrift",
+      unseenOther: "{n} nya bedrifter",
+    },
+    unlockModal: {
+      titleOne: "Bedrift upplåst!",
+      titleOther: "{n} bedrifter upplåsta!",
+      dismiss: "Grymt!",
+    },
   },
 
   changelog: {

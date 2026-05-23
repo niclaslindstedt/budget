@@ -660,7 +660,7 @@ export const en = {
     footer: {
       privacy: "Privacy policy",
       changelog: "What's new",
-      system: "How to use Budget",
+      achievements: "Achievements",
       source: "Show source",
       version: "Version {version}",
     },
@@ -1756,6 +1756,19 @@ export const en = {
     failed: "Save failed",
     allSaved: "All changes saved",
     saveUnsaved: "Save unsaved changes",
+  },
+
+  achievements: {
+    star: {
+      openList: "Achievements",
+      unseenOne: "1 new achievement",
+      unseenOther: "{n} new achievements",
+    },
+    unlockModal: {
+      titleOne: "Achievement unlocked!",
+      titleOther: "{n} achievements unlocked!",
+      dismiss: "Awesome!",
+    },
   },
 
   changelog: {

@@ -180,25 +180,25 @@ export const CHANGELOG_ROUTE: RouteSeo = {
   ],
 };
 
-export const SYSTEM_ROUTE: RouteSeo = {
-  path: "/system/",
-  title: "How to use Budget — Budget",
+export const ACHIEVEMENTS_ROUTE: RouteSeo = {
+  path: "/achievements/",
+  title: "Achievements — Budget",
   description:
-    "A guided tour of every feature in the Budget app, ordered as " +
-    "you'd discover them. Four tiers — Beginner, Intermediate, Pro, " +
-    "Expert — each item has a summary and a Learn-more expander so " +
-    "you can skip to your own level.",
+    "Every feature in the Budget app is an achievement. Unlock them " +
+    "by using the app — forward-going only, four tiers (Beginner, " +
+    "Intermediate, Pro, Expert), points for each tier. The page " +
+    "doubles as a guided tour of what the app can do.",
   ogType: "article",
   jsonLd: [
     {
       "@context": "https://schema.org",
       "@type": "TechArticle",
-      "@id": `${absoluteUrl("/system/")}#article`,
-      url: absoluteUrl("/system/"),
-      headline: "How to use Budget",
+      "@id": `${absoluteUrl("/achievements/")}#article`,
+      url: absoluteUrl("/achievements/"),
+      headline: "Achievements",
       description:
-        "A guided tour of every feature in the Budget app, ordered " +
-        "as you'd discover them. Four tiers: Beginner, Intermediate, " +
+        "Every feature in the Budget app is an achievement. Unlock " +
+        "them by using the app. Four tiers: Beginner, Intermediate, " +
         "Pro, Expert.",
       inLanguage: SITE_LANGUAGE,
       isPartOf: { "@id": `${SITE_URL}/#website` },
@@ -207,7 +207,7 @@ export const SYSTEM_ROUTE: RouteSeo = {
       publisher: { "@id": `${SITE_URL}/#author` },
       mainEntityOfPage: {
         "@type": "WebPage",
-        "@id": absoluteUrl("/system/"),
+        "@id": absoluteUrl("/achievements/"),
       },
     },
     {
@@ -223,8 +223,8 @@ export const SYSTEM_ROUTE: RouteSeo = {
         {
           "@type": "ListItem",
           position: 2,
-          name: "How to use Budget",
-          item: absoluteUrl("/system/"),
+          name: "Achievements",
+          item: absoluteUrl("/achievements/"),
         },
       ],
     },
@@ -235,5 +235,5 @@ export const ROUTES: readonly RouteSeo[] = [
   HOME_ROUTE,
   PRIVACY_ROUTE,
   CHANGELOG_ROUTE,
-  SYSTEM_ROUTE,
+  ACHIEVEMENTS_ROUTE,
 ];
