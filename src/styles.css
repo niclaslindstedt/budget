@@ -859,37 +859,78 @@ body {
    home-screen-installed PWA where there's no Liquid Glass chrome to
    compensate for.
 
-   Eight previous iterations (#357 / #360 / #361 / #362 / #367 /
-   #374 / #377 / #380) all tried various viewport anchors for a
-   bottom-pinned toolbar on iOS 26 PWAs. The most-recent #380
-   attempt (`overscroll-behavior-y: none`) killed iOS's
-   rubber-band entirely, which fixed the "bar walks on drag" bug
-   but also killed the native smooth-scroll feel — the user
-   reported it made everything feel "dull" with a flaky-feeling
-   bar.
+   Nine previous iterations (#357 / #360 / #361 / #362 / #367 /
+   #374 / #377 / #380 / #383) all tried to anchor the BottomBar by
+   sizing the WRAPPER and letting `position: sticky; bottom: 0`
+   inherit the size. None landed cleanly:
+     - JS-translated fixed bars (multiple) — measurements from
+       `innerHeight` / `visualViewport.height` were themselves
+       poisoned on iOS 26 PWA cold launch, so the compensation
+       went the wrong direction.
+     - `min-h-[100vh]` (#374) — overshot, page scrolled, bar slipped
+       below the visible bottom.
+     - `min-h-[100dvh]` (#377) — undershot by the home-indicator
+       strip, bar hovered slightly above the screen edge.
+     - `overscroll-behavior-y: none` (#380) — killed iOS's smooth
+       scroll feel.
+     - `calc(100dvh + env(safe-area-inset-bottom))` on the wrapper
+       (#383) — pushed the wrapper past the visible bottom and the
+       sticky bar with it, so the bar's icons were partially hidden
+       below the screen edge.
 
-   The current shape restores the native bounce and compensates
-   for iOS 26's `dvh` shortfall with `env(safe-area-inset-bottom)`.
-   On iOS 26 PWAs `100dvh` resolves to roughly
-   `visible_viewport - home_indicator_strip`, so a sticky
-   `bottom: 0` bar inside a `min-height: 100dvh` wrapper lands a
-   `safe-area-inset-bottom` above the screen edge ("hovering a bit
-   into the screen", per the user). Adding that inset back into
-   the wrapper's `min-height` puts the wrapper's bottom edge at
-   the actual visible bottom, and sticky tracks correctly with it.
-   On browsers / iOS versions where `100dvh` already matches the
-   visible viewport, the extra inset just makes the page slightly
-   scrollable — `env(safe-area-inset-bottom)` returns `0` on
-   devices without a home indicator, so this is a no-op there. */
+   The Modal component already solved an isomorphic problem for its
+   fullscreen variant: footer pinned at the screen bottom, content
+   floating above the home indicator. It does it the obvious way
+   the wrapper-based attempts kept missing — `position: fixed` on
+   the footer with `padding-bottom: env(safe-area-inset-bottom)`.
+   Fixed positioning anchors to the layout viewport (the actual
+   screen edge in PWA mode), and the inner padding lifts the
+   visible content above the home indicator strip. We mirror that
+   here: in standalone mode the wrapper goes back to a clean
+   `min-height: 100dvh` (matches the visible viewport, no scroll
+   on empty), the BottomBar is `position: fixed; inset: auto 0 0 0`
+   so it lands at the actual screen bottom, and `<main>` gets a
+   reserve `padding-bottom` so the last AddRow clears the now
+   out-of-flow bar. Smooth scrolling stays untouched. */
 @media (display-mode: standalone) {
   html,
   body,
   #root {
-    min-height: calc(100dvh + env(safe-area-inset-bottom));
+    min-height: 100dvh;
   }
 
   [data-budget-shell] {
-    min-height: calc(100dvh + env(safe-area-inset-bottom));
+    min-height: 100dvh;
+  }
+
+  [data-floating-chrome] {
+    /* `inset: auto 0 0 0` = top: auto; right: 0; bottom: 0; left: 0.
+       Anchors the bar to the layout viewport's bottom edge — the
+       same trick `[data-modal-shell="fullscreen"]`'s footer uses.
+       `translate: none` cancels the browser-mode
+       `translate-y-[calc(100dvh-100svh)]` Tailwind utility on the
+       className, which would otherwise compose into a non-zero
+       offset on iOS 26 PWAs (dvh and svh both resolve from the
+       same viewport in PWA mode so the calc is usually 0, but the
+       explicit `none` is belt-and-suspenders). */
+    position: fixed;
+    inset: auto 0 0 0;
+    translate: none;
+  }
+
+  [data-budget-main] {
+    /* Reserve enough room for the fixed bar so the AddRow at the
+       foot of the last month clears it. Bar height ≈ icon (h-8 =
+       2rem) + vertical padding (~0.5rem) + border (1px); pad ~2x
+       that plus `env(safe-area-inset-bottom)` for the home
+       indicator. Desktop bar is slightly taller. */
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    [data-budget-main] {
+      padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
   }
 
   /* The default header padding (`0.5rem + env(safe-area-inset-top)`)

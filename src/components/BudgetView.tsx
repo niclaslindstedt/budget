@@ -2570,18 +2570,21 @@ export function BudgetView({
 
   return (
     // The BottomBar at the foot of this flex column is
-    // `position: sticky; bottom: 0` in both browser and installed
-    // PWA modes — it sits in the flow, and the AddRowButton at the
-    // foot of the last month ends its scroll just above the bar
-    // instead of disappearing behind it, so no dedicated reserve
-    // padding on `<main>` is needed. The `data-budget-shell`
-    // attribute is the hook the standalone-mode CSS targets to
-    // pin `min-height` to `calc(100dvh + env(safe-area-inset-bottom))`
-    // — iOS 26 PWAs report `100dvh` short by roughly the
-    // home-indicator strip, so the inset compensation puts the
-    // wrapper's bottom edge at the actual visible bottom. See the
-    // long comment block above the override in `src/styles.css`
-    // for the history of attempts that landed here.
+    // `position: sticky; bottom: 0` in BROWSER mode — it sits in
+    // the flow, and the AddRowButton at the foot of the last month
+    // ends its scroll just above the bar instead of disappearing
+    // behind it, so no dedicated `<main>` padding is needed.
+    //
+    // In standalone (PWA) mode the standalone-block in
+    // `src/styles.css` promotes the bar to `position: fixed; inset:
+    // auto 0 0 0` so it anchors to the actual screen bottom (same
+    // pattern the Modal component uses for its fullscreen footer).
+    // The `data-budget-shell` attribute pins the wrapper to
+    // `min-height: 100dvh` and the `data-budget-main` attribute is
+    // the hook for the reserve `padding-bottom` that keeps the
+    // AddRow clear of the now-out-of-flow bar. See the long comment
+    // block above the override for the history of attempts that
+    // landed here.
     <div
       data-budget-shell
       className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
@@ -2653,7 +2656,7 @@ export function BudgetView({
             />
           </div>
         </header>
-        <main className="flex-1">
+        <main data-budget-main className="flex-1">
           {status.kind === "loading" ? (
             <BudgetLoading />
           ) : activeSheet.type === "accounts" ? (
