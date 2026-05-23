@@ -332,6 +332,7 @@ export const sv: Catalog = {
 
   headerMenu: {
     openMenu: "Öppna meny",
+    buildAriaLabel: "Build {label}",
   },
 
   backend: {
@@ -349,7 +350,6 @@ export const sv: Catalog = {
 
   settings: {
     title: "Inställningar",
-    buildAriaLabel: "Build {label}",
     chooseSection: "Välj inställningssektion",
     tabs: {
       general: "Allmänt",

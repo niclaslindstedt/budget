@@ -341,6 +341,7 @@ export const en = {
 
   headerMenu: {
     openMenu: "Open menu",
+    buildAriaLabel: "Build {label}",
   },
 
   backend: {
@@ -357,7 +358,6 @@ export const en = {
 
   settings: {
     title: "Settings",
-    buildAriaLabel: "Build {label}",
     chooseSection: "Choose settings section",
     tabs: {
       general: "General",

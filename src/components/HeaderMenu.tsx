@@ -15,6 +15,7 @@ import {
 import type { StoredUser } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { BUILD_LABEL } from "../utils/build-env";
 import { FloatingPanel } from "./FloatingPanel";
 
 type Props = {
@@ -123,6 +124,17 @@ function MainView({
   const t = useT();
   return (
     <div className="flex flex-col">
+      <div className="flex items-center justify-between border-b border-line bg-surface-3 px-3 py-2">
+        <span className="text-xs font-bold tracking-wide text-fg-bright">
+          budget
+        </span>
+        <span
+          className="text-xs text-muted tabular-nums"
+          aria-label={t("headerMenu.buildAriaLabel", { label: BUILD_LABEL })}
+        >
+          {BUILD_LABEL}
+        </span>
+      </div>
       <div className="border-b border-line bg-surface-3 px-3 py-3">
         <p className="text-xs text-muted">
           {isGuest ? t("userMenu.guestMode") : t("userMenu.signedInAs")}

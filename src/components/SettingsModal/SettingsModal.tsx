@@ -29,7 +29,6 @@ import type {
   BackendId,
   EncryptionMode,
 } from "../../storage/backend-preference";
-import { BUILD_LABEL } from "../../utils/build-env";
 import { CloudBackupModal } from "../CloudBackupModal";
 import { FloatingPanel } from "../FloatingPanel";
 import { Button } from "../form";
@@ -626,17 +625,11 @@ function SettingsHeader({
           id="settings-title"
           className="text-sm font-bold tracking-wide text-fg-bright"
         >
-          <span className="inline-flex items-baseline gap-2">
-            <span className="inline-flex shrink-0 translate-y-px text-flag">
+          <span className="inline-flex items-center gap-2">
+            <span className="inline-flex shrink-0 text-flag">
               <SettingsIcon size={14} aria-hidden focusable={false} />
             </span>
             <span className="min-w-0">{t("settings.title")}</span>
-            <span
-              className="text-xs font-normal text-muted tabular-nums"
-              aria-label={t("settings.buildAriaLabel", { label: BUILD_LABEL })}
-            >
-              {BUILD_LABEL}
-            </span>
           </span>
         </h2>
       </div>
