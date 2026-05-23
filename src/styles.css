@@ -850,3 +850,80 @@ body {
 .border-0 {
   border-width: 0;
 }
+
+/* Installed-PWA layout overrides. iOS 26 ships a regression where
+   the home-screen-installed window's `visualViewport.height` is
+   persistently smaller than `window.innerHeight` (originally tied to
+   keyboard interaction but reproducible after a cold reopen / SPA
+   navigation too — WebKit #297779, Apple devforums #800125). The
+   short value flows into every viewport unit, so `100svh` /
+   `100dvh` / `100lvh` all resolve to a clipped height that misses
+   roughly the home-indicator strip plus the new "Quick Actions"
+   accessory band. Sticky and fixed positioning both anchor to that
+   short viewport, so a sticky-`bottom: 0` toolbar lands ~100–200 px
+   above the screen edge on an empty page — exactly the symptom
+   users report on the production install.
+
+   The combined fix:
+
+   - Switch the page-level floor to `100dvh`. Across the iOS 26.x
+     patch revisions `dvh` tracks `visualViewport` more reliably
+     than `svh` (which in `Safari` is a separately-defined
+     "smallest stable" value that excludes the Liquid Glass chrome,
+     and in standalone mode is the wrong unit to reach for). In a
+     PWA window there is no dynamic chrome to make `dvh` jitter, so
+     using it costs nothing.
+
+   - Switch the BottomBar to `position: fixed; bottom: 0`. Sticky
+     positioning inherits the parent's clipped height — even after
+     the wrapper grows to `dvh`, a `sticky` bar inside it still
+     hugs the wrapper's bottom, which is the same clipped value.
+     Fixed positioning anchors to the visual viewport directly. It
+     is still imperfect on iOS 26 (Apple devforums #800125 reports
+     fixed elements can drift too), but it lands at the screen
+     edge more often than not — and crucially it doesn't tunnel
+     down through `min-height` to the clipped value.
+
+   - Re-introduce bottom padding on `<main>` so the AddRow button
+     at the foot of the last month clears the now-out-of-flow
+     fixed bar instead of disappearing behind it.
+
+   - Cap `env(safe-area-inset-bottom)` with a `max(…, 0.25rem)`
+     floor on the bar's inner padding. The same iOS 26 regression
+     family includes a separate bug where the inset returns `0`
+     after the PWA is reopened from the home screen
+     (vercel/next.js#81264, ionic-team/ionic-framework#29621), and
+     a `0` inset would let the icons sit flush against the home
+     indicator. The `max()` floor keeps the visual gap stable.
+
+   The browser-mode block (no `@media (display-mode: standalone)`
+   wrap) keeps the existing svh + sticky + translate-y math from
+   PR #354, which is what iOS 26 Safari's Liquid Glass address bar
+   needs to look right. */
+@media (display-mode: standalone) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+
+  [data-budget-shell] {
+    min-height: 100dvh;
+  }
+
+  [data-floating-chrome] {
+    position: fixed;
+    inset: auto 0 0 0;
+    translate: none;
+  }
+
+  [data-budget-main] {
+    padding-bottom: calc(4rem + max(env(safe-area-inset-bottom), 0.25rem));
+  }
+
+  @media (min-width: 640px) {
+    [data-budget-main] {
+      padding-bottom: calc(5rem + max(env(safe-area-inset-bottom), 0.25rem));
+    }
+  }
+}

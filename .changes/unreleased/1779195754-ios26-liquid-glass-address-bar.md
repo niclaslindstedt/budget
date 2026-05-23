@@ -12,4 +12,12 @@ button. The bottom action bar sticks to the visible-viewport floor
 in flow rather than floating above it, so it lands at the same
 on-screen position whether the sheet is empty or scrolls past the
 screen edge — and the page can no longer be pulled up by the
-chrome's footprint on an empty budget.
+chrome's footprint on an empty budget. The installed-PWA window
+gets its own layout path: fixed-position chrome anchored straight
+to the visual viewport, a reserve band on `<main>` so the AddRow
+button stays clear of the bar, and a floor on `env(safe-area-inset-bottom)`
+so the bar keeps a visible gap from the home indicator even when
+iOS 26 reports the inset as `0px` after a cold reopen. Together
+these work around iOS 26's `visualViewport` regression that was
+pinning the bar 100–200 px above the screen edge on a first-launch
+empty install.

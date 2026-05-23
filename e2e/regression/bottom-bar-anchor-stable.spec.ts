@@ -8,14 +8,24 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // iOS treated the `100dvh` top offset as extending the document's
 // scrollable area on Liquid Glass (where `dvh > svh`), so the user
 // could pull the page up by the chrome's footprint on an empty
-// budget. This iteration switches the bar to `position: sticky;
-// bottom: 0` — the bar is the last child of the BudgetView flex
-// column (`min-h-svh`), so on an empty budget it naturally sits at
-// the column's bottom edge (= visible-viewport floor) and on a tall
-// budget sticky keeps it pinned while content scrolls underneath.
-// Sticky stays inside the document flow, so it can't inflate the
-// scrollable area past `svh`. PR for the fix is the one this spec
-// lives in.
+// budget. PR #354 switched the bar to `position: sticky; bottom: 0`
+// inside a `min-h-svh` flex column with a `translate-y` compensator,
+// which fixed Safari — but iOS 26's `visualViewport` regression
+// (WebKit #297779) clips every viewport unit *and* the sticky
+// anchor in installed PWAs, so the bar still landed 100–200 px
+// above the screen edge on a first-launch empty home-screen install.
+//
+// The current shape:
+//   - Browser mode keeps PR #354's sticky + translate-y trick.
+//   - Installed PWA mode (matched via `@media (display-mode:
+//     standalone)` in `src/styles.css`) promotes the bar to fixed
+//     positioning anchored straight to the visual viewport, drops
+//     the transform, and reserves bottom padding on `<main>` so the
+//     AddRow button clears the out-of-flow bar.
+//
+// The first two tests below lock in the browser-mode shape; the
+// third locks in the standalone-mode CSS contract. PR for the fix
+// is the one this spec lives in.
 
 test.describe("BottomBar anchor stability", () => {
   test("the bar is in flow and does not extend the page past svh", async ({
@@ -97,5 +107,69 @@ test.describe("BottomBar anchor stability", () => {
     expect(result.hasScroll).toBe(false);
     expect(result.barBottom).not.toBeNull();
     expect(result.barBottom).toBeLessThanOrEqual(svhPx);
+  });
+
+  test("standalone PWA promotes the bar to fixed positioning", async ({
+    page,
+  }) => {
+    // iOS 26 ships a `visualViewport` regression (WebKit #297779) that
+    // pins viewport units and sticky positioning to an OS-clipped
+    // height, leaving sticky-anchored chrome 100–200 px above the
+    // screen edge in a home-screen-installed PWA. The fix is in
+    // `src/styles.css`: an `@media (display-mode: standalone)` block
+    // promotes the bar to `position: fixed; inset: auto 0 0 0`, drops
+    // the chrome-compensating transform, and re-introduces bottom
+    // padding on `<main>` so a scrolled budget's last row clears it.
+    //
+    // Playwright doesn't have a first-class display-mode emulator, so
+    // this regression asserts the rules *exist* in the stylesheet
+    // rather than trying to make the media query match at runtime.
+    // The selector / property values are the contract; if a future
+    // refactor drops them the test fails before iOS users feel it.
+    await signInAsGuest(page);
+    await page.waitForTimeout(200);
+
+    const rules = await page.evaluate(() => {
+      const findStandaloneBlock = (
+        sheet: CSSStyleSheet,
+      ): CSSMediaRule | null => {
+        for (const rule of Array.from(sheet.cssRules ?? [])) {
+          if (
+            rule instanceof CSSMediaRule &&
+            /display-mode\s*:\s*standalone/.test(rule.conditionText)
+          ) {
+            return rule;
+          }
+        }
+        return null;
+      };
+      let chromePosition: string | null = null;
+      let chromeInset: string | null = null;
+      let mainPaddingBottom: string | null = null;
+      for (const sheet of Array.from(document.styleSheets)) {
+        let block: CSSMediaRule | null = null;
+        try {
+          block = findStandaloneBlock(sheet);
+        } catch {
+          continue;
+        }
+        if (!block) continue;
+        for (const r of Array.from(block.cssRules)) {
+          if (!(r instanceof CSSStyleRule)) continue;
+          if (r.selectorText.includes("[data-floating-chrome]")) {
+            chromePosition = r.style.position || chromePosition;
+            chromeInset = r.style.inset || chromeInset;
+          }
+          if (r.selectorText.includes("[data-budget-main]")) {
+            mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
+          }
+        }
+      }
+      return { chromePosition, chromeInset, mainPaddingBottom };
+    });
+
+    expect(rules.chromePosition).toBe("fixed");
+    expect(rules.chromeInset).toBeTruthy();
+    expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
   });
 });
