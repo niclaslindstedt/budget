@@ -52,7 +52,7 @@ export function createDefaultAccountsView(): AccountsView {
 }
 
 export function createDefaultSheet(
-  name = "Sheet 1",
+  name = "Budget",
   accountId: string | null = null,
   overrides: {
     type?: SheetType;

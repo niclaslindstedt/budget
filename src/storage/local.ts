@@ -15,7 +15,7 @@ export function freshUserData(): UserData {
   // the built-in `PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES` on top of
   // these arrays, so the user sees a full picker without any seeded
   // data living in their export.
-  const sheet = createDefaultSheet("Sheet 1");
+  const sheet = createDefaultSheet("Budget");
   return {
     version: 33,
     sheets: [sheet],
