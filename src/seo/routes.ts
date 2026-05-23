@@ -9,6 +9,7 @@
 import {
   AUTHOR,
   AUTHOR_SAME_AS,
+  DEFAULT_OG_IMAGE,
   SITE_DESCRIPTION,
   SITE_LANGUAGE,
   SITE_NAME,
@@ -17,6 +18,21 @@ import {
 } from "./siteConfig";
 
 export type OgType = "website" | "article";
+
+export type ChangeFreq =
+  | "always"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "yearly"
+  | "never";
+
+export interface SitemapEntry {
+  changefreq: ChangeFreq;
+  // 0.0 - 1.0; rendered to one decimal place in sitemap.xml.
+  priority: number;
+}
 
 export interface RouteSeo {
   // URL path the route is served at, with trailing slash. Used as the
@@ -30,6 +46,35 @@ export interface RouteSeo {
   // `${SITE_URL}/#author` @id for the author Person so Google
   // deduplicates the entity across pages.
   jsonLd: object[];
+  // sitemap.xml row for this route. Omit to keep the route out of the
+  // generated sitemap (e.g. the 404 page).
+  sitemap?: SitemapEntry;
+  // Per-route <noscript> body. Pure HTML string spliced into the
+  // alias HTML between the <!-- NOSCRIPT_START --> markers so non-JS
+  // crawlers and link unfurlers see route-specific content instead of
+  // the home-page fallback. Omit to inherit the home-page noscript.
+  noscriptBody?: string;
+}
+
+// Pre-baked <noscript> fragments. Kept inside the routes module so
+// the splicer in `vite.config.ts` reads them from the same source of
+// truth as <title>, description, and JSON-LD.
+// Inline single quotes around 'Liberation Mono' (rather than the
+// double quotes the homepage `index.html` uses with `&quot;`) so the
+// style fragment stays valid HTML when embedded verbatim inside a
+// double-quoted attribute by the route splicer.
+const NOSCRIPT_STYLE_MAIN = `font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem; color: #c8c8c8; background: #1d2027; line-height: 1.55;`;
+const NOSCRIPT_STYLE_H1 = `font-size: 1.5rem; color: #e5c07b; margin: 0 0 1rem;`;
+
+function noscript(h1: string, paragraphs: string[]): string {
+  const body = paragraphs.map((p) => `<p>${p}</p>`).join("\n          ");
+  return [
+    `<main style="${NOSCRIPT_STYLE_MAIN}">`,
+    `  <h1 style="${NOSCRIPT_STYLE_H1}">${h1}</h1>`,
+    `  ${body}`,
+    `  <p><a href="/">Back to ${SITE_NAME}</a></p>`,
+    `</main>`,
+  ].join("\n        ");
 }
 
 const AUTHOR_PERSON = {
@@ -56,6 +101,7 @@ export const HOME_ROUTE: RouteSeo = {
   title: "Budget — local-first budget app",
   description: SITE_DESCRIPTION,
   ogType: "website",
+  sitemap: { changefreq: "weekly", priority: 1.0 },
   jsonLd: [
     { "@context": "https://schema.org", ...AUTHOR_PERSON },
     WEBSITE,
@@ -78,6 +124,9 @@ export const HOME_ROUTE: RouteSeo = {
       },
       author: { "@id": `${SITE_URL}/#author` },
       publisher: { "@id": `${SITE_URL}/#author` },
+      screenshot: absoluteUrl(DEFAULT_OG_IMAGE),
+      keywords:
+        "local-first, budget, finance, spreadsheet, no account, no backend, privacy, offline, pwa",
       featureList: [
         "Local-first storage — data lives in your browser",
         "Spreadsheet-style monthly sheets",
@@ -97,6 +146,11 @@ export const PRIVACY_ROUTE: RouteSeo = {
     "storage and, if you opt in, in your own Dropbox app folder. " +
     "No server, no account on a backend, no analytics SDK.",
   ogType: "article",
+  sitemap: { changefreq: "monthly", priority: 0.5 },
+  noscriptBody: noscript("Privacy policy — Budget", [
+    "Budget is a local-first budget app. Your ledger lives in your browser's local storage. There is no backend, no account on a server, and no analytics SDK. You can optionally sync the same JSON to your own Dropbox app folder.",
+    "The full privacy policy needs JavaScript to render. Enable JavaScript and reload, or read the source on GitHub.",
+  ]),
   jsonLd: [
     {
       "@context": "https://schema.org",
@@ -139,6 +193,11 @@ export const CHANGELOG_ROUTE: RouteSeo = {
     "visible additions, changes, and fixes shipped in that release, " +
     "following Keep a Changelog conventions and semantic versioning.",
   ogType: "article",
+  sitemap: { changefreq: "weekly", priority: 0.6 },
+  noscriptBody: noscript("Changelog — Budget", [
+    "Release notes for the Budget app, by version, following Keep a Changelog conventions and semantic versioning.",
+    "The rendered changelog needs JavaScript. Enable JavaScript and reload, or read CHANGELOG.md on GitHub.",
+  ]),
   jsonLd: [
     {
       "@context": "https://schema.org",

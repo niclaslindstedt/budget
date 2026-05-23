@@ -9,6 +9,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import pkg from "./package.json" with { type: "json" };
 import {
   CHANGELOG_ROUTE,
+  HOME_ROUTE,
   PRIVACY_ROUTE,
   type RouteSeo,
 } from "./src/seo/routes";
@@ -17,6 +18,9 @@ import {
   OG_IMAGE_ALT,
   OG_IMAGE_HEIGHT,
   OG_IMAGE_WIDTH,
+  REPO_URL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
   absoluteUrl,
 } from "./src/seo/siteConfig";
 import { emitChangelogData } from "./vite/changelog-plugin";
@@ -108,6 +112,8 @@ function renderRouteSeo(route: RouteSeo): string {
 
 const HEAD_SEO_RE =
   /<!-- HEAD_SEO_START[\s\S]*?-->[\s\S]*?<!-- HEAD_SEO_END -->/;
+const NOSCRIPT_RE =
+  /<!-- NOSCRIPT_START[\s\S]*?-->[\s\S]*?<!-- NOSCRIPT_END -->/;
 
 function spliceRouteSeo(html: string, route: RouteSeo): string {
   if (!HEAD_SEO_RE.test(html)) {
@@ -121,7 +127,83 @@ function spliceRouteSeo(html: string, route: RouteSeo): string {
     `<!-- HEAD_SEO_START (${route.path}) -->\n    ` +
     renderRouteSeo(route) +
     `\n    <!-- HEAD_SEO_END -->`;
-  return html.replace(HEAD_SEO_RE, block);
+  let next = html.replace(HEAD_SEO_RE, block);
+
+  if (route.noscriptBody) {
+    if (!NOSCRIPT_RE.test(next)) {
+      throw new Error(
+        "emit-path-alias-with-seo: NOSCRIPT markers missing in " +
+          "dist/index.html — cannot splice per-route noscript body. " +
+          "Did `index.html` drop the <!-- NOSCRIPT_START --> / " +
+          "<!-- NOSCRIPT_END --> pair?",
+      );
+    }
+    const noscript =
+      `<!-- NOSCRIPT_START (${route.path}) -->\n        ` +
+      route.noscriptBody +
+      `\n        <!-- NOSCRIPT_END -->`;
+    next = next.replace(NOSCRIPT_RE, noscript);
+  }
+
+  return next;
+}
+
+function buildDateIso(): string {
+  // YYYY-MM-DD in UTC — `lastmod` only needs day-level precision and
+  // the sitemap spec allows the date-only ISO 8601 form.
+  return new Date().toISOString().slice(0, 10);
+}
+
+function renderSitemap(routes: readonly RouteSeo[]): string {
+  const lastmod = buildDateIso();
+  const entries = routes
+    .filter(
+      (r): r is RouteSeo & { sitemap: NonNullable<RouteSeo["sitemap"]> } =>
+        Boolean(r.sitemap),
+    )
+    .map((r) => {
+      const loc = escapeHtmlText(absoluteUrl(r.path));
+      const priority = r.sitemap.priority.toFixed(1);
+      return [
+        `  <url>`,
+        `    <loc>${loc}</loc>`,
+        `    <lastmod>${lastmod}</lastmod>`,
+        `    <changefreq>${r.sitemap.changefreq}</changefreq>`,
+        `    <priority>${priority}</priority>`,
+        `  </url>`,
+      ].join("\n");
+    })
+    .join("\n");
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    entries,
+    `</urlset>`,
+    ``,
+  ].join("\n");
+}
+
+function renderLlmsTxt(routes: readonly RouteSeo[]): string {
+  // Wrap to roughly the same column the existing public/llms.txt
+  // used (~72 chars). The description blurb stays one line; bullet
+  // bodies are short enough that we leave them unwrapped.
+  const lines: string[] = [];
+  lines.push(`# ${SITE_NAME}`);
+  lines.push("");
+  lines.push(`> ${SITE_DESCRIPTION}`);
+  lines.push("");
+  lines.push("## Pages");
+  lines.push("");
+  for (const r of routes) {
+    const url = absoluteUrl(r.path);
+    lines.push(`- [${r.title}](${url}): ${r.description}`);
+  }
+  lines.push("");
+  lines.push("## Source");
+  lines.push("");
+  lines.push(`- [GitHub repository](${REPO_URL}): source, issues, releases.`);
+  lines.push("");
+  return lines.join("\n");
 }
 
 type EmitOptions = {
@@ -142,7 +224,13 @@ const NOINDEX_ROBOTS_META = `<meta name="robots" content="noindex,nofollow" />`;
 // `src/seo/routes.ts`. Also emits `dist/404.html` — same shell, marked
 // noindex — so GitHub Pages' SPA fallback returns a real 404 page
 // without leaking soft-404 signals when crawlers guess URLs.
+//
+// `routes` are the non-home aliases that get their own
+// `dist/<alias>/index.html`. The home route is handled in-place on
+// `dist/index.html` (vite emits it from `index.html`) and only
+// participates in sitemap / llms.txt generation.
 function emitPathAliasWithSeo(
+  home: RouteSeo,
   routes: readonly RouteSeo[],
   opts: EmitOptions = {},
 ): Plugin {
@@ -188,6 +276,25 @@ function emitPathAliasWithSeo(
         `<meta name="robots" content="noindex,follow" />`,
       );
       writeFileSync(resolve(outRoot, "404.html"), notFoundHtml, "utf8");
+
+      // Sitemap + llms.txt are discovery surfaces aimed at production
+      // crawlers only. The preview build's `noindex,nofollow` already
+      // keeps it out of the index, and there's no value in advertising
+      // staging URLs to LLMs either — skip both files when the slot is
+      // the preview build.
+      if (!opts.noindex) {
+        const allRoutes = [home, ...routes];
+        writeFileSync(
+          resolve(outRoot, "sitemap.xml"),
+          renderSitemap(allRoutes),
+          "utf8",
+        );
+        writeFileSync(
+          resolve(outRoot, "llms.txt"),
+          renderLlmsTxt(allRoutes),
+          "utf8",
+        );
+      }
     },
   };
 }
@@ -320,7 +427,7 @@ export default defineConfig({
     emitChangelogData(),
     patchAppleTitle(),
     pwaPlugin(),
-    emitPathAliasWithSeo([PRIVACY_ROUTE, CHANGELOG_ROUTE], {
+    emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE, CHANGELOG_ROUTE], {
       noindex: IS_PREVIEW,
     }),
   ],

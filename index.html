@@ -134,6 +134,8 @@
         },
         "author": { "@id": "https://budget.niclaslindstedt.se/#author" },
         "publisher": { "@id": "https://budget.niclaslindstedt.se/#author" },
+        "screenshot": "https://budget.niclaslindstedt.se/og-default.png",
+        "keywords": "local-first, budget, finance, spreadsheet, no account, no backend, privacy, offline, pwa",
         "featureList": [
           "Local-first storage — data lives in your browser",
           "Spreadsheet-style monthly sheets",
@@ -157,6 +159,15 @@
         meta description and decide they disagree.
       -->
       <noscript>
+        <!-- NOSCRIPT_START
+             Everything between these markers is the homepage's
+             pre-hydration fallback. The build-time route splicer in
+             `vite.config.ts` swaps this block for the per-route body
+             from `RouteSeo.noscriptBody` (see `src/seo/routes.ts`)
+             when emitting `dist/<route>/index.html`. Keep the
+             markers verbatim or the splicer falls back to this
+             home-page copy on every alias.
+        -->
         <main
           style="
             font-family:
@@ -186,6 +197,7 @@
           </p>
           <ul>
             <li><a href="/privacy/">Privacy policy</a></li>
+            <li><a href="/changelog/">Changelog</a></li>
             <li>
               <a href="https://github.com/niclaslindstedt/budget"
                 >Source on GitHub</a
@@ -193,6 +205,7 @@
             </li>
           </ul>
         </main>
+        <!-- NOSCRIPT_END -->
       </noscript>
     </div>
     <script type="module" src="/src/main.tsx"></script>

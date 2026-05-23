@@ -28,6 +28,8 @@ export const AUTHOR_SAME_AS: readonly string[] = [
   AUTHOR.linkedin,
 ];
 
+export const REPO_URL = "https://github.com/niclaslindstedt/budget";
+
 export const DEFAULT_OG_IMAGE = "/og-default.png";
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
