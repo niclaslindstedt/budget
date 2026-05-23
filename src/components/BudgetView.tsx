@@ -2548,20 +2548,16 @@ export function BudgetView({
   );
 
   return (
-    // No outer bottom padding in browser mode: iOS 26 Safari's Liquid
-    // Glass address bar is translucent and samples page pixels for its
-    // tint, so the sheet is allowed to extend behind it. The BottomBar
-    // at the foot of this flex column is `position: sticky` in browser
-    // mode, so it sits in the flow and the AddRowButton at the foot of
-    // the last month ends its scroll just above the bar instead of
-    // disappearing behind it — no dedicated reserve padding on
-    // `<main>` is needed there.
-    //
-    // In an installed PWA window, the layout switches to fixed-position
-    // chrome with a reserve band on `<main>` (see the
-    // `@media (display-mode: standalone)` block in `src/styles.css`).
-    // The `data-budget-shell` and `data-budget-main` attributes are the
-    // hooks the override targets; they have no effect in browser mode.
+    // The BottomBar at the foot of this flex column is
+    // `position: sticky; bottom: 0` in both browser and installed
+    // PWA modes — it sits in the flow, and the AddRowButton at the
+    // foot of the last month ends its scroll just above the bar
+    // instead of disappearing behind it, so no dedicated reserve
+    // padding on `<main>` is needed. The `data-budget-shell`
+    // attribute is the hook the standalone-mode CSS targets to
+    // override `min-h-svh` → `min-h-[100vh]` (the only viewport
+    // unit iOS 26 standalone gets right from cold start — see the
+    // comment block above the override in `src/styles.css`).
     <div
       data-budget-shell
       className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
@@ -2632,7 +2628,7 @@ export function BudgetView({
             />
           </div>
         </header>
-        <main data-budget-main className="flex-1">
+        <main className="flex-1">
           {status.kind === "loading" ? (
             <BudgetLoading />
           ) : activeSheet.type === "accounts" ? (
