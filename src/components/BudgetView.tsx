@@ -2550,10 +2550,11 @@ export function BudgetView({
   return (
     // No outer bottom padding: iOS 26 Safari's Liquid Glass address bar
     // is translucent and samples page pixels for its tint, so the sheet
-    // is allowed to extend behind it. `<main>` owns the bottom padding
-    // — large enough that the AddRowButton at the foot of the last
-    // month clears both the safe-area band and the solid BottomBar
-    // instead of ending its scroll under either.
+    // is allowed to extend behind it. The BottomBar at the foot of this
+    // flex column is `position: sticky` (not fixed), so it sits in the
+    // flow and the AddRowButton at the foot of the last month ends its
+    // scroll just above the bar instead of disappearing behind it — no
+    // dedicated reserve padding on `<main>` is needed.
     <div className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5">
       {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
@@ -2615,7 +2616,7 @@ export function BudgetView({
             />
           </div>
         </header>
-        <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <main className="flex-1">
           {status.kind === "loading" ? (
             <BudgetLoading />
           ) : activeSheet.type === "accounts" ? (
