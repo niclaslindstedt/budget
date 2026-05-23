@@ -195,6 +195,13 @@ export function EditEntryModal({
     lastSeriesDate ?? initialDate ?? "",
   );
 
+  // Signed day-offset applied to every row in the scope. Lets the
+  // user nudge a series whose anchor day was off (e.g. landed on day
+  // 24 but should be day 25). Stored as a string so the user can
+  // type a leading `-`, an empty input, or transient state without
+  // the field snapping back to a parsed number.
+  const [shiftDaysText, setShiftDaysText] = useState("0");
+
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
   const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
   // Default to applying the metadata overlay to historic matches so
@@ -214,6 +221,7 @@ export function EditEntryModal({
     setScopeKind("just-this");
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
+    setShiftDaysText("0");
     setRecurringDates([]);
     setRecurrenceResetKey((k) => k + 1);
     setApplyToHistoric(true);
@@ -245,6 +253,12 @@ export function EditEntryModal({
 
   const typeTouched = typeId !== initialTypeId;
 
+  const parsedShiftDays = Number.parseInt(shiftDaysText, 10);
+  const shiftDays =
+    Number.isFinite(parsedShiftDays) && parsedShiftDays !== 0
+      ? parsedShiftDays
+      : 0;
+
   function handleSaveEdit() {
     if (!row) return;
     onEditSeries(
@@ -253,6 +267,7 @@ export function EditEntryModal({
         description: description.trim(),
         amount: amountTouched ? parsedAmount : null,
         typeId: typeTouched ? typeId : undefined,
+        dateShiftDays: shiftDays !== 0 ? shiftDays : undefined,
       },
       scopeKind === "just-this"
         ? { kind: "just-this" }
@@ -343,6 +358,23 @@ export function EditEntryModal({
                   settings={settings}
                   ariaLabel={t("editEntry.amount")}
                 />
+              </label>
+              <label className="flex min-w-0 flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("editEntry.shiftDaysBy")}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  value={shiftDaysText}
+                  onChange={(e) => setShiftDaysText(e.target.value)}
+                  aria-label={t("editEntry.shiftDaysBy")}
+                  className="field-input min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                />
+                <span className="text-xs text-muted">
+                  {t("editEntry.shiftDaysByHint")}
+                </span>
               </label>
             </div>
 

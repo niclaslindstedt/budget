@@ -51,6 +51,7 @@ import {
   mergeHistory,
   type ParsedBankEntry,
 } from "../storage/bank-parsers";
+import { addDaysIso } from "../utils/date";
 
 // Every item-level action carries both `sheetId` (so the dispatcher can
 // find the right sheet quickly) and `itemId` (so a sheet that grows to
@@ -474,6 +475,7 @@ function applyPatch(
   cols: {
     descId?: string;
     amountId?: string;
+    dateId?: string;
   },
 ): Row {
   const next: Row = { ...row, cells: { ...row.cells } };
@@ -493,6 +495,12 @@ function applyPatch(
   if (patch.typeId !== undefined) {
     if (patch.typeId === null) delete next.typeId;
     else next.typeId = patch.typeId;
+  }
+  if (cols.dateId && patch.dateShiftDays && patch.dateShiftDays !== 0) {
+    const cur = next.cells[cols.dateId];
+    if (typeof cur === "string" && cur !== "") {
+      next.cells[cols.dateId] = addDaysIso(cur, patch.dateShiftDays);
+    }
   }
   return next;
 }
@@ -666,6 +674,7 @@ function reduceAccountBudget(
       const cols = {
         descId: findColumnByType(item.columns, "description")?.id,
         amountId: findColumnByType(item.columns, "amount")?.id,
+        dateId: dateCol.id,
       };
       let targets: ReadonlySet<string>;
       if (action.scope.kind === "just-this") {
