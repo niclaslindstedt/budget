@@ -157,6 +157,7 @@ test.describe("BottomBar anchor stability", () => {
       let rootMinHeight: string | null = null;
       let chromePosition: string | null = null;
       let chromeInset: string | null = null;
+      let chromeTranslate: string | null = null;
       let mainPaddingBottom: string | null = null;
       for (const sheet of Array.from(document.styleSheets)) {
         let block: CSSMediaRule | null = null;
@@ -179,6 +180,7 @@ test.describe("BottomBar anchor stability", () => {
           if (r.selectorText.includes("[data-floating-chrome]")) {
             chromePosition = r.style.position || chromePosition;
             chromeInset = r.style.inset || chromeInset;
+            chromeTranslate = r.style.translate || chromeTranslate;
           }
           if (r.selectorText.includes("[data-budget-main]")) {
             mainPaddingBottom = r.style.paddingBottom || mainPaddingBottom;
@@ -190,6 +192,7 @@ test.describe("BottomBar anchor stability", () => {
         rootMinHeight,
         chromePosition,
         chromeInset,
+        chromeTranslate,
         mainPaddingBottom,
       };
     });
@@ -207,6 +210,13 @@ test.describe("BottomBar anchor stability", () => {
     // Browser may normalize `inset: auto 0 0 0` to `auto 0px 0px`
     // (collapsing the trailing repeat). Match either form.
     expect(rules.chromeInset).toMatch(/\bauto\s+0(?:px)?\s+0(?:px)?/);
+    // The bar's `translate` MUST reference `--bar-offset` so
+    // iOS 26 PWA's clipped `visualViewport.bottom` can be
+    // compensated by the JS hook in `useVisualViewportOffset`.
+    // Without it, cold-launch users see the bar hovering ~25 px
+    // above the actual screen edge until a drag bounces the
+    // viewport into sync.
+    expect(rules.chromeTranslate).toContain("--bar-offset");
     // Main must reserve room for the now out-of-flow fixed bar,
     // and the reserve must include the home-indicator inset.
     expect(rules.mainPaddingBottom).toContain("env(safe-area-inset-bottom)");
