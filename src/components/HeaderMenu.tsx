@@ -124,10 +124,7 @@ function MainView({
   const t = useT();
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between border-b border-line bg-surface-3 px-3 py-2">
-        <span className="text-xs font-bold tracking-wide text-fg-bright">
-          budget
-        </span>
+      <div className="flex items-center justify-end border-b border-line bg-surface-3 px-3 py-2">
         <span
           className="text-xs text-muted tabular-nums"
           aria-label={t("headerMenu.buildAriaLabel", { label: BUILD_LABEL })}
