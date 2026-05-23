@@ -8,7 +8,7 @@ const LAST_UPDATED = "2026-05-18";
 
 export function PrivacyPage() {
   return (
-    <div className="min-h-dvh bg-page-bg px-4 py-10 text-fg">
+    <div className="min-h-dvh bg-page-bg px-4 pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))] text-fg">
       <article className="mx-auto flex w-full max-w-2xl flex-col gap-6 text-sm leading-relaxed">
         <header className="flex flex-col gap-3">
           <a
