@@ -9,5 +9,3 @@ glows yellow when you've earned something new — click to see what,
 click the empty star to browse the full catalog in a fullscreen
 modal. The whole catalog (chrome, tier descriptions, every
 achievement name and condition) is available in English and Swedish.
-Forward-going only: existing usage doesn't pre-fill the list, you
-earn each one by doing the thing.
