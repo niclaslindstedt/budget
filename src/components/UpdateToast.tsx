@@ -6,7 +6,7 @@ import { BUILD_LABEL } from "../utils/build-env";
 
 // Soft "a new build is ready, click to reload" prompt. Mounted by
 // `LanguageRoot` so it renders pre-auth, post-auth, and on every
-// prerendered SEO alias (`/privacy/`, `/changelog/`, `/system/`).
+// prerendered SEO alias (`/privacy/`, `/system/`).
 //
 // Service worker registration is handled by the `useRegisterSW`
 // virtual module from vite-plugin-pwa. With `registerType:

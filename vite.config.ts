@@ -7,12 +7,7 @@ import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 import pkg from "./package.json" with { type: "json" };
-import {
-  CHANGELOG_ROUTE,
-  HOME_ROUTE,
-  PRIVACY_ROUTE,
-  type RouteSeo,
-} from "./src/seo/routes";
+import { HOME_ROUTE, PRIVACY_ROUTE, type RouteSeo } from "./src/seo/routes";
 import {
   DEFAULT_OG_IMAGE,
   OG_IMAGE_ALT,
@@ -382,10 +377,10 @@ function pwaPlugin(): Plugin[] {
     },
     workbox: {
       // Precache JS, CSS, fonts, icons, and the prerendered SEO
-      // alias HTMLs (`/privacy/`, `/changelog/`, `/system/`,
-      // `/404.html`). `globIgnores` keeps source maps and the
-      // discovery files out of precache (they're served from the
-      // network just fine, and don't need to be available offline).
+      // alias HTMLs (`/privacy/`, `/system/`, `/404.html`).
+      // `globIgnores` keeps source maps and the discovery files out
+      // of precache (they're served from the network just fine, and
+      // don't need to be available offline).
       globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff2}"],
       globIgnores: ["**/*.map", "robots.txt", "sitemap.xml", "llms.txt"],
       navigateFallback: `${BASE_PATH}index.html`,
@@ -427,7 +422,7 @@ export default defineConfig({
     emitChangelogData(),
     patchAppleTitle(),
     pwaPlugin(),
-    emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE, CHANGELOG_ROUTE], {
+    emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE], {
       noindex: IS_PREVIEW,
     }),
   ],

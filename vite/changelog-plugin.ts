@@ -1,6 +1,6 @@
 // Build-time parser: reads /CHANGELOG.md, emits
 // src/generated/changelog.ts as the typed `CHANGELOG` constant the app
-// renders on /changelog/ and inside the "What's new" modal. Runs on
+// renders inside the changelog / "What's new" modal. Runs on
 // `buildStart` so a malformed CHANGELOG fails the build fast; the dev
 // server watches the source so edits surface without a restart.
 //

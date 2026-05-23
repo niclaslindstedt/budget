@@ -1088,12 +1088,22 @@ export function BudgetView({
   );
 
   const lastSeenChangelogVersion = data.settings.lastSeenChangelogVersion;
-  const { isOpen: changelogOpen, onClose: onCloseChangelog } =
+  const { isOpen: changelogAutoOpen, onClose: onCloseChangelogAuto } =
     useChangelogAutoOpen({
       settings: data.settings,
       lastSeenChangelogVersion,
       dispatch,
     });
+  const [changelogManualOpen, setChangelogManualOpen] = useState(false);
+  // Combined open state. The auto-open path filters by
+  // `lastSeenChangelogVersion`; the manual path (header menu) opens
+  // in "full history" mode by passing `since=null`.
+  const changelogOpen = changelogAutoOpen || changelogManualOpen;
+  const changelogSince = changelogManualOpen ? null : lastSeenChangelogVersion;
+  const onCloseChangelog = useCallback(() => {
+    if (changelogAutoOpen) onCloseChangelogAuto();
+    setChangelogManualOpen(false);
+  }, [changelogAutoOpen, onCloseChangelogAuto]);
 
   const {
     isOpen: storageWarningOpen,
@@ -2633,6 +2643,7 @@ export function BudgetView({
               user={user}
               hasOtherUsers={hasOtherUsers}
               onOpenSettings={() => setSettingsOpen(true)}
+              onOpenChangelog={() => setChangelogManualOpen(true)}
               onSignOut={onSignOut}
               onSwitchUser={onSwitchUser}
               onCreateAccount={onCreateAccount}
@@ -3207,7 +3218,7 @@ export function BudgetView({
       <ChangelogModal
         open={changelogOpen}
         onClose={onCloseChangelog}
-        since={lastSeenChangelogVersion}
+        since={changelogSince}
       />
       <StorageSizeWarningModal
         open={storageWarningOpen}

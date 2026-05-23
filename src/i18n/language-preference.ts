@@ -1,8 +1,8 @@
 // Plaintext mirror of `Settings.language` in localStorage. The
 // canonical setting still lives inside the (possibly encrypted)
 // budget bucket, but mirroring the language in plaintext lets the
-// auth screen, the standalone routes (`/privacy`, `/changelog`),
-// and the loading shell render in the right language without
+// auth screen, the standalone `/privacy` route, and the loading
+// shell render in the right language without
 // first decrypting the bucket. Language preference is not PII —
 // leaking it is no worse than leaking the browser's
 // `Accept-Language` header.
