@@ -143,12 +143,13 @@ import {
   setAccountsDownloadPrefs,
   setBudgetDownloadPrefs,
 } from "../storage/download-preferences";
-import { bcp47, type Lang, useT } from "../i18n";
+import { bcp47, type Lang, type MessageKey, useT } from "../i18n";
 import {
   useChangelogAutoOpen,
   useIdleSignOut,
   useStorageSizeWarning,
   useTheme,
+  useToast,
 } from "../hooks";
 import { writeLanguagePreference } from "../i18n/language-preference";
 import { todayIso } from "../utils/date";
@@ -282,6 +283,7 @@ export function BudgetView({
   onSetCloudOfflineMode,
 }: BudgetViewProps) {
   const t = useT();
+  const toast = useToast();
   const {
     data,
     dispatch,
@@ -430,6 +432,71 @@ export function BudgetView({
       setReconnectCloudOpen(false);
     }
   }, [status.kind, reconnectCloudOpen]);
+
+  // Surface cloud connect / disconnect transitions as toasts. The
+  // initial mount value seeds `prevCloudConnected` so an already-
+  // connected user doesn't get a misleading "Connected to ..." pop on
+  // refresh; only genuine flips fire the toast.
+  const prevCloudConnected = useRef({
+    dropbox: dropboxConnected,
+    gdrive: gdriveConnected,
+    folder: folderConnected,
+  });
+  useEffect(() => {
+    const prev = prevCloudConnected.current;
+    if (prev.dropbox !== dropboxConnected) {
+      toast.push({
+        kind: dropboxConnected ? "success" : "warning",
+        message: t(
+          dropboxConnected ? "toast.cloudConnected" : "toast.cloudDisconnected",
+          { provider: "Dropbox" },
+        ),
+      });
+    }
+    if (prev.gdrive !== gdriveConnected) {
+      toast.push({
+        kind: gdriveConnected ? "success" : "warning",
+        message: t(
+          gdriveConnected ? "toast.cloudConnected" : "toast.cloudDisconnected",
+          { provider: "Google Drive" },
+        ),
+      });
+    }
+    if (prev.folder !== folderConnected) {
+      toast.push({
+        kind: folderConnected ? "success" : "warning",
+        message: t(
+          folderConnected
+            ? "toast.folderConnected"
+            : "toast.folderDisconnected",
+        ),
+      });
+    }
+    prevCloudConnected.current = {
+      dropbox: dropboxConnected,
+      gdrive: gdriveConnected,
+      folder: folderConnected,
+    };
+  }, [dropboxConnected, gdriveConnected, folderConnected, toast, t]);
+
+  // Surface transient save failures as a toast. The conflict and
+  // shrink-warning kinds already drive their own modals; the plain
+  // `error` kind has nowhere else to land, so without this the user
+  // sees the storage pill blink red and miss the cause. Anchored on
+  // `status.kind` so it fires once per error edge rather than every
+  // render while the state sits there.
+  useEffect(() => {
+    if (status.kind === "error") {
+      toast.push({
+        kind: "error",
+        message: t("toast.saveError", { reason: status.message }),
+      });
+    }
+    // The intent is "fire on transition into `error`"; relying on
+    // `status.kind` alone is enough since the message changes only
+    // when the kind cycles back through a non-error state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status.kind]);
   // null = closed; { sheet: null } = new-sheet modal; { sheet: <Sheet> } = edit.
   const [sheetModal, setSheetModal] = useState<{ sheet: Sheet | null } | null>(
     null,
@@ -577,6 +644,71 @@ export function BudgetView({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
+  // Resolve a reducer action type to its translated label, mirroring
+  // the lookup `ActionHistoryModal` uses. Lets undo/redo toasts share
+  // the same 60+ already-translated strings instead of duplicating
+  // them under a separate i18n surface.
+  const resolveActionLabel = useCallback(
+    (actionType: string): string => {
+      const key = `actionHistory.action.${actionType}` as MessageKey;
+      const label = t(key);
+      // `t()` returns the path itself when the key is missing — fall
+      // back to the generic `unknown` label so a freshly-added action
+      // type still renders something readable.
+      if (label === key) return t("actionHistory.action.unknown");
+      return label;
+    },
+    [t],
+  );
+
+  const handleUndo = useCallback(() => {
+    if (!canUndo) return;
+    // The entry at `historyIndex` is the action being reverted; the
+    // cursor moves to the previous one after `undo()`.
+    const entry = historyEntries[historyIndex];
+    undo();
+    if (entry) {
+      toast.push({
+        kind: "info",
+        message: t("toast.undid", {
+          action: resolveActionLabel(entry.actionType),
+        }),
+      });
+    }
+  }, [
+    canUndo,
+    historyEntries,
+    historyIndex,
+    undo,
+    toast,
+    t,
+    resolveActionLabel,
+  ]);
+
+  const handleRedo = useCallback(() => {
+    if (!canRedo) return;
+    // The entry one slot past the cursor is the action being
+    // re-applied; the cursor advances to it after `redo()`.
+    const entry = historyEntries[historyIndex + 1];
+    redo();
+    if (entry) {
+      toast.push({
+        kind: "info",
+        message: t("toast.redid", {
+          action: resolveActionLabel(entry.actionType),
+        }),
+      });
+    }
+  }, [
+    canRedo,
+    historyEntries,
+    historyIndex,
+    redo,
+    toast,
+    t,
+    resolveActionLabel,
+  ]);
+
   // Global Cmd/Ctrl+Z (and Cmd/Ctrl+Shift+Z / Ctrl+Y for redo) handler.
   // Bails out when the focus is inside an editable element so the
   // browser's native field-level undo keeps working while typing.
@@ -601,15 +733,15 @@ export function BudgetView({
       }
       if (isUndo && canUndo) {
         e.preventDefault();
-        undo();
+        handleUndo();
       } else if (isRedo && canRedo) {
         e.preventDefault();
-        redo();
+        handleRedo();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, canUndo, canRedo]);
+  }, [handleUndo, handleRedo, canUndo, canRedo]);
 
   // Project the user's "Text size" preference onto the document root so
   // the body's `font-size: calc(... * var(--app-font-scale))` rule (and
@@ -1217,10 +1349,14 @@ export function BudgetView({
           dispatch({ type: "deleteSheet", sheetId: target.sheetId });
           setDeleteSheetPrompt(null);
           setSheetModal(null);
+          toast.push({
+            kind: "success",
+            message: t("toast.sheetDeleted", { name: target.name }),
+          });
         },
       },
     ];
-  }, [deleteSheetPrompt, dispatch, t]);
+  }, [deleteSheetPrompt, dispatch, t, toast]);
 
   // Account / transaction modal handlers. Kept on the BudgetView so
   // they share the same dispatch and Account state as the rest of the
@@ -1296,10 +1432,14 @@ export function BudgetView({
           dispatch({ type: "deleteAccount", accountId: target.accountId });
           setDeleteAccountPrompt(null);
           setAccountModal(null);
+          toast.push({
+            kind: "success",
+            message: t("toast.accountDeleted", { name: target.name }),
+          });
         },
       },
     ];
-  }, [deleteAccountPrompt, dispatch, t]);
+  }, [deleteAccountPrompt, dispatch, t, toast]);
 
   // Bank-history import / viewer flows. The Accounts page surfaces a
   // per-row Upload button (always enabled) and a History viewer
@@ -2574,9 +2714,9 @@ export function BudgetView({
             selectMode={selectMode}
             onUndo={() => {
               unlockAchievement("secondThoughts");
-              undo();
+              handleUndo();
             }}
-            onRedo={redo}
+            onRedo={handleRedo}
             onOpenHistory={() => setActionHistoryOpen(true)}
             onOpenSearch={() => {
               unlockAchievement("detective");
