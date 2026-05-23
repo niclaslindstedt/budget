@@ -96,19 +96,22 @@ export function BottomBar({
     // bar stays exactly where `bottom: 0` puts it.
     //
     // Standalone mode (installed PWA): `src/styles.css` switches
-    // the bar to `position: fixed; inset: auto 0 0 0`, the same
-    // pattern the Modal component's fullscreen footer uses. Fixed
-    // anchors to the layout viewport's bottom edge (the actual
-    // screen bottom in PWA mode), and the bar's inner padding
-    // (`pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))]`)
-    // lifts the icons above the home indicator strip. The
-    // standalone block also reserves a `padding-bottom` on
-    // `<main data-budget-main>` so the AddRow at the foot of the
-    // last month clears the out-of-flow bar. See the long history
-    // block in `src/styles.css` for the nine previous attempts
-    // (#357 / #360 / #361 / #362 / #367 / #374 / #377 / #380 / #383)
-    // that all tried to size the wrapper instead of fixing the
-    // bar, and the corner cases that took them down.
+    // the bar to `position: fixed; inset: auto 0 0 0` (same pattern
+    // the Modal component's fullscreen footer uses) AND applies a
+    // JS-measured `translate: 0 var(--bar-offset)` to compensate
+    // for iOS 26's clipped `visualViewport.bottom`. On cold launch
+    // `fixed; bottom: 0` lands ~20–30 px above the actual screen
+    // edge until the first drag bounces the viewport into sync;
+    // `--bar-offset = innerHeight - visualViewport.height` (set by
+    // `useVisualViewportOffset` in `LanguageRoot`) is exactly the
+    // gap to close. Once iOS reconciles the gap goes to 0 and the
+    // translate becomes a no-op. The standalone block also
+    // reserves a `padding-bottom` on `<main data-budget-main>` so
+    // the AddRow at the foot of the last month clears the
+    // out-of-flow bar. See the long history block in
+    // `src/styles.css` for the ten previous attempts (#357 / #360
+    // / #361 / #362 / #367 / #374 / #377 / #380 / #383 / #386)
+    // and the corner cases that took them down.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the

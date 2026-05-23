@@ -917,15 +917,32 @@ body {
     /* `inset: auto 0 0 0` = top: auto; right: 0; bottom: 0; left: 0.
        Anchors the bar to the layout viewport's bottom edge — the
        same trick `[data-modal-shell="fullscreen"]`'s footer uses.
-       `translate: none` cancels the browser-mode
-       `translate-y-[calc(100dvh-100svh)]` Tailwind utility on the
-       className, which would otherwise compose into a non-zero
-       offset on iOS 26 PWAs (dvh and svh both resolve from the
-       same viewport in PWA mode so the calc is usually 0, but the
-       explicit `none` is belt-and-suspenders). */
+       In a perfect world that's enough; in iOS 26 PWAs `position:
+       fixed; bottom: 0` actually anchors to a clipped
+       `visualViewport.bottom` that's ~20–30 px above the layout
+       viewport bottom on cold launch (WebKit #297779). The user
+       sees the bar hovering above the screen edge until the first
+       drag bounces the visual viewport into sync.
+
+       `--bar-offset` is the JS-measured gap between the layout
+       viewport (`innerHeight`, which iOS gets right) and the
+       visual viewport (`visualViewport.height`, the value the
+       compositor anchors the bar to). The hook in
+       `src/hooks/useVisualViewportOffset.ts` writes it on mount,
+       on every `visualViewport.resize` (iOS's reconcile signal),
+       and on `orientationchange` / `pageshow`. Translating the
+       bar by that gap lands it at the actual screen edge from the
+       very first paint — and once iOS reconciles the gap goes to
+       0 and the translate collapses to a no-op, so the bar stays
+       put.
+
+       The `translate` property override also cancels the
+       browser-mode `translate-y-[calc(100dvh-100svh)]` Tailwind
+       utility on the className (the calc is 0 in PWA mode anyway,
+       but the explicit value is belt-and-suspenders). */
     position: fixed;
     inset: auto 0 0 0;
-    translate: none;
+    translate: 0 var(--bar-offset, 0px);
   }
 
   [data-budget-main] {

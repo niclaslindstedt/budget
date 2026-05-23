@@ -10,12 +10,18 @@ import { useEffect, useState, type ReactNode } from "react";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { ToastProvider } from "../components/Toast";
 import { UpdateToast } from "../components/UpdateToast";
+import { useVisualViewportOffset } from "../hooks/useVisualViewportOffset";
 
 import { LanguageProvider, type Lang } from "./index";
 import { readLanguagePreference } from "./language-preference";
 
 export function LanguageRoot({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => readLanguagePreference());
+  // Maintain `--bar-offset` on `<html>` so the standalone-mode CSS
+  // in styles.css can translate the fixed BottomBar down by the
+  // gap between iOS 26's clipped `visualViewport.bottom` and the
+  // actual layout-viewport bottom. See the hook for the why.
+  useVisualViewportOffset();
   useEffect(() => {
     const onChange = (e: Event) => {
       const detail = (e as CustomEvent<Lang>).detail;
