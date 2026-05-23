@@ -372,9 +372,12 @@ function BalanceCell({
            sign is conveyed by the glyph rather than baked into the text.
            Muted on purpose — a colour-matched sign would read as a
            tappable sign-toggle button (which it is on the editable
-           AmountCell). The number itself keeps its sign colour. */}
+           AmountCell). The number itself keeps its sign colour. Hidden
+           on mobile to claw back column width — the number's sign colour
+           still conveys direction, and balance has no tap-to-toggle
+           affordance so the glyph carries no interactive meaning. */}
         <span
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-6 items-center justify-center text-muted opacity-60"
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-6 items-center justify-center text-muted opacity-60 md:flex"
           aria-hidden
         >
           {negative ? (
@@ -384,7 +387,7 @@ function BalanceCell({
           )}
         </span>
         <span
-          className={`flex w-full items-center justify-end gap-1.5 px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre ${
+          className={`flex w-full items-center justify-end gap-1.5 px-2.5 py-2 font-mono tabular-nums whitespace-pre md:pl-6 ${
             settings.showCurrency && settings.currencyPosition === "after"
               ? "pr-8"
               : ""
@@ -425,7 +428,9 @@ function BalanceCell({
           <span
             aria-hidden
             className={`pointer-events-none absolute inset-y-0 ${
-              settings.currencyPosition === "before" ? "left-6" : "right-2"
+              settings.currencyPosition === "before"
+                ? "left-0 md:left-6"
+                : "right-2"
             } flex items-center font-mono text-xs text-muted`}
           >
             {settings.currency}
