@@ -927,4 +927,22 @@ body {
       padding-bottom: calc(5rem + max(env(safe-area-inset-bottom), 0.25rem));
     }
   }
+
+  /* The default header padding (`0.5rem + env(safe-area-inset-top)`)
+     leaves more breathing room above "$ budget" than the Dynamic
+     Island leaves above itself — visually the chrome looks pushed
+     down. Trim the extra 0.5rem (and the desktop 1rem) in standalone
+     mode so the gap from status bar to header roughly matches the
+     gap from the top edge to the top of the island. The browser
+     build keeps the original padding because the URL bar already
+     reserves that visual room. */
+  [data-app-header] {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  @media (min-width: 720px) {
+    [data-app-header] {
+      padding-top: calc(0.25rem + env(safe-area-inset-top));
+    }
+  }
 }

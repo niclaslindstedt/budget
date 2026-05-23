@@ -2577,8 +2577,14 @@ export function BudgetView({
             an installed PWA (where `apple-mobile-web-app-status-bar-style`
             is `black-translucent` and the page extends edge-to-edge under
             the system chrome). Without it, the title overlaps the clock
-            and battery indicators. */}
-        <header className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-[calc(1rem+env(safe-area-inset-top))] md:pb-4">
+            and battery indicators. The `data-app-header` hook lets the
+            standalone-mode block in `styles.css` shave the extra
+            breathing room so the gap above the header matches the
+            Dynamic Island's tiny margin to the top edge. */}
+        <header
+          data-app-header
+          className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-[calc(1rem+env(safe-area-inset-top))] md:pb-4"
+        >
           <div className="inline-flex items-center gap-2">
             <img
               src="/icons/icon-64.png"
