@@ -80,9 +80,24 @@ export function BottomBar({
   const bulkDisabled = bulkSelectedCount === 0;
 
   return (
+    // Anchor via `top: 100dvh` + `-translate-y-full` instead of
+    // `bottom: 0`. On iOS 26 Safari with the floating Liquid Glass
+    // address bar, `dvh` resolves to the full layout viewport
+    // (including the chrome footprint) while `svh` is the chrome-
+    // excluded inner box. The page-level floor sits at `svh` so an
+    // empty budget doesn't expose a scrollable strip below the
+    // AddRow button (see `empty-budget-no-overscroll.spec.ts`), but
+    // that means `position: fixed; bottom: 0` ends up at the body's
+    // `svh` bottom (above the chrome) on empty pages and at the
+    // `lvh` / `dvh` bottom on pages tall enough to scroll — so the
+    // bar visibly shifts up as soon as the budget has no rows.
+    // Anchoring to `100dvh` instead pins the bar's bottom edge at
+    // the dynamic viewport bottom (= chrome area / screen edge)
+    // regardless of body height, so the bar lands at the same y in
+    // both states.
     <div
       data-floating-chrome
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface-2"
+      className="fixed inset-x-0 top-[100dvh] z-30 -translate-y-full border-t border-line bg-surface-2"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
