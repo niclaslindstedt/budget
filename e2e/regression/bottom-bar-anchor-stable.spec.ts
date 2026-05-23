@@ -109,36 +109,34 @@ test.describe("BottomBar anchor stability", () => {
     expect(result.barBottom).toBeLessThanOrEqual(svhPx);
   });
 
-  test("standalone PWA uses 100vh on the wrapper so sticky bottom lands at the screen edge", async ({
+  test("standalone PWA uses 100dvh on the wrapper so sticky bottom lands at the screen edge", async ({
     page,
   }) => {
     // iOS 26 ships a viewport-coherence regression (WebKit #297779
-    // / #301994) where, in a home-screen-installed PWA, every
-    // viewport-related signal — `100dvh`, `100svh`, `100lvh`,
-    // `window.innerHeight`, `visualViewport.height`,
-    // `env(safe-area-inset-bottom)` — reads from a stale
-    // compositor rectangle 100–200 px taller than the actually-
-    // rendered visual viewport. Five JS-driven workarounds (PRs
-    // #361 / #362 / #367 / #371) all failed because their inputs
-    // were themselves wrong.
+    // / #301994). Five JS-driven workarounds (PRs #357 / #360 /
+    // #361 / #362 / #367) all failed for various reasons, and PR
+    // #374 then switched the standalone-mode wrapper to
+    // `min-height: 100vh` based on third-party reports that `vh`
+    // was the only correct unit on iOS 26 cold launch. The user
+    // reported that change overshot the visible viewport — `100vh`
+    // includes the home-indicator gesture area, so the page became
+    // scrollable on an empty budget and the sticky bar slipped
+    // below the visible bottom during overscroll.
     //
-    // Per the fozzedout iPhone PWA gist (the community-shipped
-    // reference fix), `100vh` is the ONE viewport-related signal
-    // iOS 26 standalone gets right from cold start. The current
-    // fix is CSS-only:
-    //   - `src/styles.css` (`@media (display-mode: standalone)`)
-    //     overrides the wrapper (`[data-budget-shell]`) and the
-    //     page-level floor (html / body / #root) from
-    //     `min-height: 100svh` / `100dvh` to `100vh`.
-    //   - The BottomBar keeps its default `position: sticky;
-    //     bottom: 0` from the className — no override needed.
-    //     Sticky inside a correctly-sized parent lands at the
-    //     parent's bottom edge, which is the screen edge.
+    // The current shape uses `100dvh` instead. In a PWA window
+    // there is no dynamic chrome to make `dvh` jitter (so the
+    // "value walks during scroll" objection from the browser-mode
+    // discussion in PR #348 doesn't apply), and unlike `100vh`
+    // it matches the visible viewport, so the wrapper fits
+    // exactly. The BottomBar keeps its default `sticky bottom-0`
+    // from the className — no override needed. Sticky inside a
+    // correctly-sized parent lands at the parent's bottom edge,
+    // which IS the screen edge.
     //
     // Playwright doesn't have a first-class display-mode emulator,
     // so this regression asserts the CSS rules *exist* in the
     // stylesheet rather than trying to make the media query match.
-    // If a future refactor reintroduces `100dvh` / `100svh` on the
+    // If a future refactor reintroduces `100vh` / `100svh` on the
     // wrapper, or moves the bar back to `position: fixed` /
     // `transform`-driven positioning, the test fails before iOS
     // users feel it again.
@@ -196,11 +194,14 @@ test.describe("BottomBar anchor stability", () => {
       return { shellMinHeight, rootMinHeight, chromeOverride };
     });
 
-    // The wrapper and page floor MUST use `100vh` — the unit that
-    // iOS 26 standalone reports correctly from cold start. `100dvh`
-    // / `100svh` / `100lvh` all reintroduce the cold-launch clip.
-    expect(rules.shellMinHeight).toBe("100vh");
-    expect(rules.rootMinHeight).toBe("100vh");
+    // The wrapper and page floor MUST use `100dvh` — the unit that
+    // matches the visible viewport in iOS 26 standalone. `100vh`
+    // overshoots (includes the home-indicator strip), making the
+    // page scrollable on empty budgets; `100svh` undershoots on
+    // some iOS 26.x patches, leaving the bar floating above the
+    // screen edge.
+    expect(rules.shellMinHeight).toBe("100dvh");
+    expect(rules.rootMinHeight).toBe("100dvh");
     // The bar MUST NOT be re-positioned in standalone mode — the
     // default `sticky bottom-0` from the className is what lands
     // it at the screen edge AND keeps it there on an empty,

@@ -97,19 +97,19 @@ export function BottomBar({
     //
     // Standalone mode (installed PWA): `src/styles.css` switches
     // the page-level floor (html / body / #root and the BudgetView
-    // wrapper) from `100dvh` to `100vh`. Per the fozzedout iPhone
-    // PWA gist, `100vh` is the ONE viewport-related signal iOS 26
-    // standalone gets right from cold start — `100dvh` / `100svh`
-    // / `100lvh` / `window.innerHeight` / `visualViewport.height`
-    // all read from a stale compositor rectangle ~100–200 px
-    // taller than the actually-rendered viewport, and earlier JS
-    // workarounds (PRs #361 / #362 / #367 / #371) all failed
-    // because they tried to compensate from values that were
-    // themselves wrong. With the wrapper now correctly sized, the
-    // default `sticky bottom-0` (above) lands at the screen edge
-    // on the first paint AND stays there on an EMPTY page that
-    // doesn't scroll — important because new users without any
-    // rows can't drag to "snap" the bar back if it walks off.
+    // wrapper) from the browser-mode `100svh` to `100dvh`. In a
+    // PWA window there's no dynamic chrome to make `dvh` jitter,
+    // and unlike `100vh` (which overshoots the visible viewport
+    // on iOS 26 PWAs by the home-indicator strip) `dvh` matches
+    // the visible area exactly. The wrapper therefore fits the
+    // screen, the default `sticky bottom-0` (above) lands at the
+    // screen edge on the first paint, and an empty (non-scrolling)
+    // page can't get into a "bar stuck off-screen" state — there's
+    // no scroll-to-undo on an empty budget, so the bar has to stay
+    // pinned. See the long comment block in `src/styles.css` for
+    // the full why behind picking `dvh` over `vh` / `svh` / `lvh`
+    // after five JS-driven attempts (#357 / #360 / #361 / #362 /
+    // #367) and one `100vh` attempt (#374) all missed.
     //
     // The inner padding floors `env(safe-area-inset-bottom)` with
     // a 0.25 rem minimum so the bar keeps a visible gap from the

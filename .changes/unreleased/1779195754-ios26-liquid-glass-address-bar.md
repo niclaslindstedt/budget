@@ -14,19 +14,14 @@ on-screen position whether the sheet is empty or scrolls past the
 screen edge — and the page can no longer be pulled up by the
 chrome's footprint on an empty budget. The installed-PWA window
 gets its own minimal layout override that works around iOS 26's
-viewport-coherence regression (WebKit #297779 / #301994): every
-viewport-related signal — `100dvh` / `100svh` / `100lvh` /
-`window.innerHeight` / `visualViewport.height` /
-`env(safe-area-inset-bottom)` — reads from a stale compositor
-rectangle 100–200 px taller than the actually-rendered viewport
-on a cold launch, which is why the bar visibly floated above the
-screen edge on a first install. Per the fozzedout iPhone PWA gist
-(the community-shipped reference fix), `100vh` is the ONE
-viewport-related signal iOS 26 standalone gets right from cold
-start, so the standalone-mode CSS switches the wrapper and the
-page-level floor from `100svh` / `100dvh` to `100vh`. The
-BottomBar keeps its default `position: sticky; bottom: 0`, which
-inside the now-correctly-sized parent lands at the screen edge on
-the first paint AND stays there on an empty (non-scrolling) page
-— important because new users without any rows can't drag to
-"snap" the bar back if it walks off.
+viewport-coherence regression (WebKit #297779 / #301994): the
+standalone-mode CSS switches the wrapper and the page-level
+floor from the browser-mode `100svh` to `100dvh`. In a PWA window
+there's no dynamic chrome to make `dvh` jitter, and unlike `100vh`
+(which overshoots the visible viewport by the home-indicator
+strip on iOS 26 PWAs) `dvh` matches the visible area exactly. The
+BottomBar keeps its default `position: sticky; bottom: 0` from
+both modes, which inside the now-correctly-sized parent lands at
+the screen edge on the first paint AND stays there on an empty
+(non-scrolling) page — important because new users without any
+rows can't drag to "snap" the bar back if it walks off.
