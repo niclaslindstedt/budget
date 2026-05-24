@@ -3,9 +3,10 @@ type: Changed
 ---
 
 The Accounts page's account-history modal now matches the budget view's
-design: a TYPE column with the same category icons the budget rows show,
-month dividers tinted by the per-month pastel, and full-date cells in
-place of the day-only mobile shorthand. The resolved description and
+design: a TYPE column whose pills carry both the category icon and its
+name on desktop (glyph-only on mobile to save space), month dividers
+tinted by the per-month pastel, and full-date cells in place of the
+day-only mobile shorthand. The resolved description and
 type are pulled through the same priority chain
 (`userDescription`/`userTypeId` → match rule → merchant hint → raw bank
 text) the budget view already uses, so a relabelled bank entry now
