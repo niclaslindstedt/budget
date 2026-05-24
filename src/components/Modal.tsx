@@ -348,7 +348,7 @@ function Header({ title, icon, onClose }: HeaderProps) {
   return (
     <header
       data-modal-header
-      className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]"
+      className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]"
     >
       <h2
         id={ctx?.id}

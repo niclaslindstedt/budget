@@ -393,7 +393,7 @@ export function AccountsSheetView({
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
             <table className="w-full border-collapse text-sm">
-              <thead>
+              <thead className="sticky top-[var(--app-header-h)] z-[15] bg-surface-3">
                 <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
                   <th
                     scope="col"
@@ -485,10 +485,10 @@ export function AccountsSheetView({
                     : undefined;
                   return (
                     <Fragment key={group.monthKey}>
-                      <tr className="border-b border-line bg-surface-2">
+                      <tr>
                         <td
                           colSpan={4}
-                          className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                          className="sticky top-[calc(var(--app-header-h)+28px)] z-[14] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
                           style={colorStyle}
                         >
                           {formatMonth(group.monthKey, lang)}
