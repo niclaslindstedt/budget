@@ -1,13 +1,18 @@
 import { Fragment, useMemo, type CSSProperties } from "react";
 import {
+  AlignLeft,
   ArrowLeftRight,
   ArrowRight,
+  Calendar,
+  DollarSign,
   Download,
   Eye,
+  Landmark,
   Pencil,
   Plus,
   Repeat,
   Scissors,
+  Tag,
   Wallet,
   Wrench,
 } from "lucide-react";
@@ -210,17 +215,56 @@ export function AccountsSheetView({
             <thead>
               <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
                 <th scope="col" className="w-10 px-2 py-1.5"></th>
-                <th scope="col" className="px-2 py-1.5 text-left">
-                  {t("accountsSheet.name")}
+                <th
+                  scope="col"
+                  className="px-2 py-1.5 text-left"
+                  aria-label={t("accountsSheet.name")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <Tag
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.name")}
+                    </span>
+                  </span>
                 </th>
                 <th
                   scope="col"
                   className="hidden px-2 py-1.5 text-left md:table-cell"
+                  aria-label={t("accountsSheet.bank")}
                 >
-                  {t("accountsSheet.bank")}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <Landmark
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.bank")}
+                    </span>
+                  </span>
                 </th>
-                <th scope="col" className="px-2 py-1.5 text-right">
-                  {t("accountsSheet.balance")}
+                <th
+                  scope="col"
+                  className="px-2 py-1.5 text-right"
+                  aria-label={t("accountsSheet.balance")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <Wallet
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.balance")}
+                    </span>
+                  </span>
                 </th>
                 <th
                   scope="col"
@@ -467,20 +511,73 @@ export function AccountsSheetView({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
-                <th scope="col" className="w-20 px-2 py-1.5 text-left">
-                  {t("accountsSheet.date")}
+                <th
+                  scope="col"
+                  className="w-20 px-2 py-1.5 text-left"
+                  aria-label={t("accountsSheet.date")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <Calendar
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.date")}
+                    </span>
+                  </span>
                 </th>
-                <th scope="col" className="px-2 py-1.5 text-left">
-                  {t("accountsSheet.description")}
+                <th
+                  scope="col"
+                  className="px-2 py-1.5 text-left"
+                  aria-label={t("accountsSheet.description")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <AlignLeft
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.description")}
+                    </span>
+                  </span>
                 </th>
                 <th
                   scope="col"
                   className="hidden px-2 py-1.5 text-left md:table-cell"
+                  aria-label={t("accountsSheet.transfer")}
                 >
-                  {t("accountsSheet.transfer")}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <ArrowLeftRight
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.transfer")}
+                    </span>
+                  </span>
                 </th>
-                <th scope="col" className="px-2 py-1.5 text-right">
-                  {t("accountsSheet.amount")}
+                <th
+                  scope="col"
+                  className="px-2 py-1.5 text-right"
+                  aria-label={t("accountsSheet.amount")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <DollarSign
+                      size={14}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.amount")}
+                    </span>
+                  </span>
                 </th>
               </tr>
             </thead>
@@ -556,16 +653,27 @@ export function AccountsSheetView({
                             {/* On mobile the dedicated transfer column is
                                 hidden — fold the from/to summary into the
                                 description cell instead so the row still
-                                shows the direction at a glance. */}
-                            <span className="mt-0.5 flex items-center gap-1 text-xs text-muted md:hidden">
-                              <span>{from?.name ?? "?"}</span>
+                                shows the direction at a glance. Names go
+                                into sr-only spans so the row still reads
+                                "Extrakonto → Lönekonto" for screen
+                                readers; the visible chips are
+                                color + glyph only to keep the layout
+                                tight at phone widths. */}
+                            <span className="mt-0.5 flex items-center gap-1 md:hidden">
+                              <AccountGlyph account={from ?? null} />
+                              <span className="sr-only">
+                                {from?.name ?? t("accountsSheet.unknown")}
+                              </span>
                               <ArrowRight
                                 size={10}
                                 aria-hidden
                                 focusable={false}
-                                className="shrink-0"
+                                className="shrink-0 text-flag"
                               />
-                              <span>{to?.name ?? "?"}</span>
+                              <AccountGlyph account={to ?? null} />
+                              <span className="sr-only">
+                                {to?.name ?? t("accountsSheet.unknown")}
+                              </span>
                             </span>
                           </td>
                           <td className="hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
@@ -621,25 +729,46 @@ function AccountChip({ account }: { account: Account | null }) {
   const t = useT();
   return (
     <span className="inline-flex items-center gap-1 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-xs text-fg-bright">
-      <span
-        aria-hidden
-        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-        style={{
-          color: account?.color,
-          backgroundColor: account?.color
-            ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-            : undefined,
-        }}
-      >
-        {account?.glyph ? (
-          <CategoryIconGlyph name={account.glyph} size={10} />
-        ) : (
-          <Wallet size={10} aria-hidden focusable={false} />
-        )}
-      </span>
+      <AccountGlyph account={account} size={10} />
       <span className="truncate">
         {account?.name ?? t("accountsSheet.unknown")}
       </span>
+    </span>
+  );
+}
+
+// Colored circle + glyph for an account, with no surrounding chip
+// chrome. Used directly on mobile inside the transfer row's
+// description cell where the dedicated transfer column is hidden —
+// callers wrap it in an sr-only label so the account is still
+// announced. Falls back to a wallet glyph when the account has no
+// custom icon, matching the ACCOUNTS table row.
+function AccountGlyph({
+  account,
+  size = 12,
+}: {
+  account: Account | null;
+  size?: number;
+}) {
+  const circleSize = size + 6;
+  return (
+    <span
+      aria-hidden
+      className="inline-flex shrink-0 items-center justify-center rounded-full"
+      style={{
+        width: circleSize,
+        height: circleSize,
+        color: account?.color,
+        backgroundColor: account?.color
+          ? `color-mix(in srgb, ${account.color} 18%, transparent)`
+          : undefined,
+      }}
+    >
+      {account?.glyph ? (
+        <CategoryIconGlyph name={account.glyph} size={size} />
+      ) : (
+        <Wallet size={size} aria-hidden focusable={false} />
+      )}
     </span>
   );
 }
