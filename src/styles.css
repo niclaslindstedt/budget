@@ -1266,6 +1266,23 @@ body {
     position: fixed;
     inset: auto 0 0 0;
     translate: none;
+    /* `useScrollHide` flips `data-bottom-bar-hidden` based on
+       window scroll direction; the rule below slides the bar off
+       the bottom edge when that's set. The transition lets the
+       slide animate smoothly; the reduce-motion guard at the top
+       of this file zeroes the duration when the user opts in. */
+    transition: translate 200ms ease;
+  }
+
+  /* PWA-only hide-on-scroll. Browser mode gets the same visual
+     for free via the URL-bar collapse — the bar's
+     `translate-y-[calc(100dvh-100svh)]` rides that. Standalone
+     mode has no URL bar, so the `useScrollHide` hook drives the
+     attribute directly. Translates by the bar's own height plus
+     the home-indicator inset so it clears the screen edge on
+     notched devices instead of leaving a sliver visible. */
+  [data-bottom-bar][data-bottom-bar-hidden="true"] {
+    translate: 0 calc(100% + env(safe-area-inset-bottom));
   }
 
   [data-budget-main] {

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import type { Sheet } from "../data/types";
+import { useIsStandalone, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
 import { CategoryIconGlyph } from "./icons";
 
@@ -79,6 +80,21 @@ export function BottomBar({
     : t("app.selectRows");
   const bulkDisabled = bulkSelectedCount === 0;
 
+  // Browser mode already gets a "hide on scroll" feel for free —
+  // mobile Safari / Chrome's URL bar collapses on scroll down and
+  // the bar's `translate-y-[calc(100dvh-100svh)]` rides that
+  // collapse off-screen. In installed-PWA mode there's no URL bar,
+  // so drive the same behaviour from JS: collapse the bar when the
+  // user scrolls down past a threshold and bring it back on any
+  // upward scroll. CSS in `styles.css` (inside the
+  // `@media (display-mode: standalone)` block) does the actual
+  // translate so the transition + reduce-motion guard stay in CSS.
+  // The hook is gated on `useIsStandalone()` so the listener doesn't
+  // even mount in browser mode where the CSS path already handles
+  // it.
+  const isStandalone = useIsStandalone();
+  const hideOnScroll = useScrollHide({ enabled: isStandalone });
+
   // Arrow-Left / Right / Home / End cycle the active sheet when focus
   // sits on a tab. WAI-ARIA tabs in "automatic" mode — focus = select —
   // matches the rest of the chrome's switch-on-tap UX and avoids a
@@ -127,11 +143,19 @@ export function BottomBar({
     // home indicator even when the inset returns 0 (a separate
     // iOS 26 bug seen after a cold reopen — see
     // `vercel/next.js#81264`, `ionic-team/ionic-framework#29621`).
+    //
+    // The `-mx-1 md:-mx-5` cancels `data-budget-shell`'s
+    // `px-1 md:px-5` so the bar's background and top border bleed
+    // edge-to-edge in browser mode (where the bar is `sticky` and
+    // inherits the wrapper's content width). In standalone mode the
+    // bar is promoted to `position: fixed; inset: auto 0 0 0` so
+    // the margin is inert — `left/right: 0` is authoritative.
     <div
       data-floating-chrome
       data-bottom-bar
       data-swipe-handled
-      className="sticky bottom-0 z-30 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2"
+      data-bottom-bar-hidden={hideOnScroll ? "true" : undefined}
+      className="sticky bottom-0 z-30 -mx-1 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 md:-mx-5"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
