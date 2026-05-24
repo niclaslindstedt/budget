@@ -10,7 +10,6 @@ import {
   Landmark,
   Pencil,
   Plus,
-  Repeat,
   Scissors,
   Tag,
   Wallet,
@@ -19,7 +18,6 @@ import {
 
 import { allCategories, allTypes } from "../data/presets";
 import { accountBalance } from "../data/sheet";
-import { detectTransferCandidates } from "../data/transfer-collapse";
 import type {
   Account,
   Category,
@@ -74,10 +72,6 @@ type Props = {
   // user-picked cutoff — useful when an account's purpose has changed
   // and the old history is no longer relevant.
   onCutHistory: (accountId: string) => void;
-  // Opens the cross-account transfer-collapse modal. The link is
-  // disabled when the detector finds nothing — no point sending the
-  // user to an empty modal.
-  onFindTransfers: () => void;
   onEditSheet: (sheetId: string) => void;
   onDownloadSheet: (sheetId: string) => void;
 };
@@ -94,7 +88,6 @@ export function AccountsSheetView({
   onImportHistory,
   onViewHistory,
   onCutHistory,
-  onFindTransfers,
   onEditSheet,
   onDownloadSheet,
 }: Props) {
@@ -170,17 +163,6 @@ export function AccountsSheetView({
     }
     return result;
   }, [sortedTransactions]);
-
-  // How many transfer pairs the detector currently sees. Drives the
-  // badge on the "Find transfers" link and whether the link is
-  // enabled at all — clicking through to an empty modal would be a
-  // dead end.
-  const transferCandidateCount = useMemo(() => {
-    return detectTransferCandidates({
-      history: data.history,
-      dismissedPairKeys: new Set(data.transferCollapseDismissals),
-    }).length;
-  }, [data.history, data.transferCollapseDismissals]);
 
   return (
     <section>
@@ -477,36 +459,9 @@ export function AccountsSheetView({
       </section>
 
       <section>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-xs font-bold tracking-wider uppercase text-fg-bright">
-            {t("accountsSheet.transfers")}
-          </h3>
-          <button
-            type="button"
-            onClick={onFindTransfers}
-            disabled={transferCandidateCount === 0}
-            title={
-              transferCandidateCount === 0
-                ? t("accountsSheet.noTransferPairs")
-                : transferCandidateCount === 1
-                  ? t("accountsSheet.reviewTransferPairs", {
-                      n: transferCandidateCount,
-                    })
-                  : t("accountsSheet.reviewTransferPairsPlural", {
-                      n: transferCandidateCount,
-                    })
-            }
-            className="inline-flex cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Repeat size={11} aria-hidden focusable={false} />
-            {t("accountsSheet.findTransfers")}
-            {transferCandidateCount > 0 && (
-              <span className="rounded bg-accent/15 px-1 text-accent">
-                {transferCandidateCount}
-              </span>
-            )}
-          </button>
-        </div>
+        <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
+          {t("accountsSheet.transfers")}
+        </h3>
         <div className="overflow-clip rounded border border-line bg-surface">
           <table className="w-full border-collapse text-sm">
             <thead>

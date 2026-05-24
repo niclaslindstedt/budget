@@ -32,10 +32,8 @@ type Props = {
 // this session), Never (persist a dismissal). A bulk "Collapse all"
 // at the bottom runs Collapse on every pair the user hasn't skipped.
 //
-// The modal is also rendered when the Accounts page asks for it (an
-// on-demand "Find transfers" button), and after a multi-account
-// import auto-opens it if any new pairs were detected — driven by the
-// host App component.
+// Auto-opened after a multi-account import if any new pairs were
+// detected — driven by the host App component.
 export function TransferCollapseModal({
   open,
   history,
