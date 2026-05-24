@@ -70,7 +70,7 @@ describe("preset-names", () => {
     const housing = PRESET_CATEGORIES.find(
       (c) => c.id === "preset-cat-housing",
     )!;
-    expect(displayTypeName(mortgage, sv)).toBe("Bolån");
+    expect(displayTypeName(mortgage, sv)).toBe("Amortering");
     expect(displayCategoryName(housing, sv)).toBe("Boende");
   });
 });
