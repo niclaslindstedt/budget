@@ -2245,7 +2245,7 @@ export const en = {
   // (`preset-type-<slug>`). Swedish institutions (Systembolaget,
   // A-kassa, CSN, ISK) keep their proper names in every language.
   presetTypes: {
-    rent: "Rent",
+    rent: "Rent / Fee",
     mortgage: "Mortgage principal",
     "mortgage-interest": "Mortgage interest",
     "home-insurance": "Home insurance",
