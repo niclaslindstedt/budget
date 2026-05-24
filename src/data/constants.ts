@@ -1342,7 +1342,7 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     // Housing
     {
       slug: "rent",
-      name: "Rent",
+      name: "Rent / Fee",
       color: C[1],
       glyph: "home",
       category: "housing",

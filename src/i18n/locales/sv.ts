@@ -2238,7 +2238,7 @@ export const sv: Catalog = {
   },
 
   presetTypes: {
-    rent: "Hyra",
+    rent: "Hyra / Avgift",
     mortgage: "Amortering",
     "mortgage-interest": "Bolåneränta",
     "home-insurance": "Hemförsäkring",
