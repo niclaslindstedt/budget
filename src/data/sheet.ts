@@ -616,7 +616,7 @@ export function synthesizeHistoryRow(
 // `synthesizeHistoryRow` and the history-view modal:
 //   1. per-entry override on the HistoryEntry itself
 //   2. matching MatchRule
-//   3. matching MerchantHint
+//   3. matching MerchantHint (skipped when `entry.hintIgnored`)
 //   4. raw bank text / no type
 // `null` on a rule field is distinct from "absent" in the validator
 // but the renderer reads null the same way as undefined here — both
@@ -627,7 +627,9 @@ export function resolveEntryLabels(
   rules: readonly MatchRule[] = [],
 ): { description: string; typeId: string | null } {
   const rule = findMatchingRule(rules, entry);
-  const hint = hints[normaliseDescription(entry.description)];
+  const hint = entry.hintIgnored
+    ? undefined
+    : hints[normaliseDescription(entry.description)];
   const description =
     (entry.userDescription && entry.userDescription.trim() !== ""
       ? entry.userDescription

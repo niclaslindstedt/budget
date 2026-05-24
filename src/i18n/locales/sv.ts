@@ -933,6 +933,9 @@ export const sv: Catalog = {
     applyToHistoricDescription:
       "Bankens originaltext behålls — endast etiketten på skärmen ändras.",
     historicMatchesTitle: "Tidigare matchningar",
+    excludeHistoricHint:
+      "Avmarkera en tidigare post för att hoppa över ometiketteringen.",
+    excludeHistoricAria: "Inkludera {date} {description}",
     promoteIntro:
       "Generera framtida poster från denna rad enligt en upprepningsregel. Den nuvarande raden behålls som den är och ingår i den nya serien.",
     promoteBackfillOne:

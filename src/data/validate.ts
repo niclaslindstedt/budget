@@ -523,6 +523,11 @@ function validateHistoryEntry(
       return fail(`${path}.isTransfer`, "expected a boolean");
     if (raw.isTransfer) entry.isTransfer = true;
   }
+  if (raw.hintIgnored !== undefined) {
+    if (typeof raw.hintIgnored !== "boolean")
+      return fail(`${path}.hintIgnored`, "expected a boolean");
+    if (raw.hintIgnored) entry.hintIgnored = true;
+  }
   if (raw.splits !== undefined) {
     if (!Array.isArray(raw.splits))
       return fail(`${path}.splits`, "expected an array");

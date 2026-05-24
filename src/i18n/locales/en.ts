@@ -937,6 +937,8 @@ export const en = {
     applyToHistoricDescription:
       "The bank's original text is kept as-is — only the on-screen label changes.",
     historicMatchesTitle: "Past matches",
+    excludeHistoricHint: "Uncheck any past entry to skip relabelling it.",
+    excludeHistoricAria: "Include {date} {description}",
     promoteIntro:
       "Generate future entries from this row using a recurrence rule. The current row stays as-is and joins the new series.",
     promoteBackfillOne:
