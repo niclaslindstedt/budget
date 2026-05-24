@@ -1,10 +1,5 @@
-import {
-  Fragment,
-  useEffect,
-  useMemo,
-  useState,
-  type CSSProperties,
-} from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { FileText, History } from "lucide-react";
 
 import { compareDateStrings, resolveEntryLabels } from "../data/sheet";
@@ -25,15 +20,6 @@ import { Modal } from "./Modal";
 import { ModalSearchBar } from "./ModalSearchBar";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
-
-// Desktop column-width floors for amount / balance so the column-header
-// text ("Amount" / "Belopp", "Balance" / "Saldo") doesn't get clipped
-// by a content-sized col. Each value covers the glyph (16px), the
-// `md:gap-2` between glyph and text (8px), the `md:px-2` cell padding
-// (16px total), and the upper-cased header text at `text-xs` — with a
-// little slack so future i18n strings don't fall off the right edge.
-// Paired with `--desktop-w` in src/styles.css.
-const HEADER_FLOOR_CH = { amount: 10, balance: 11 } as const;
 
 function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
   let f = monthFormatCache.get(lang);
@@ -206,35 +192,6 @@ export function HistoryModal({
     () => filteredEntries.some((e) => e.typeId !== null),
     [filteredEntries],
   );
-  // Size amount + balance columns from the longest formatted value in
-  // the data so they don't claim more space than they need (which is
-  // what was forcing the table off the right edge on narrow phones).
-  // Type col is sized from the longest visible type name so the pill
-  // (glyph + label on desktop) gets the room it needs. Description
-  // picks up whatever is left.
-  const colChars = useMemo(() => {
-    let amount = 0;
-    let balance = 0;
-    let type = 0;
-    for (const r of filteredEntries) {
-      const a = formatBalance(r.entry.amount, accountSettings).length;
-      if (a > amount) amount = a;
-      if (r.entry.balance !== undefined) {
-        const b = formatBalance(r.entry.balance, accountSettings).length;
-        if (b > balance) balance = b;
-      }
-      if (r.typeId) {
-        const t = typesById.get(r.typeId);
-        if (t && t.name.length > type) type = t.name.length;
-      }
-    }
-    return {
-      amount: Math.max(amount, 4),
-      balance: Math.max(balance, 4),
-      type: Math.max(type, 4),
-    };
-  }, [filteredEntries, accountSettings, typesById]);
-
   return (
     <Modal
       open={open && account !== null}
@@ -264,42 +221,7 @@ export function HistoryModal({
             {t("history.searchNoResults")}
           </p>
         ) : (
-          <table className="w-full table-fixed border-collapse text-sm">
-            <colgroup>
-              <col className="w-12 md:w-24" />
-              {hasAnyType && (
-                <col
-                  data-history-col="type"
-                  style={
-                    {
-                      "--mobile-w": "2.25rem",
-                      "--desktop-w": `calc(${colChars.type}ch + 2rem)`,
-                    } as CSSProperties
-                  }
-                />
-              )}
-              <col />
-              <col
-                data-history-col="amount"
-                style={
-                  {
-                    "--mobile-w": `calc(${colChars.amount}ch + 1rem)`,
-                    "--desktop-w": `calc(${colChars.amount}ch + 1rem)`,
-                  } as CSSProperties
-                }
-              />
-              {hasAnyBalance && (
-                <col
-                  data-history-col="balance"
-                  style={
-                    {
-                      "--mobile-w": `calc(${colChars.balance}ch + 1.5rem)`,
-                      "--desktop-w": `max(calc(${colChars.balance}ch + 1.5rem), calc(${HEADER_FLOOR_CH.balance}ch + 1.5rem))`,
-                    } as CSSProperties
-                  }
-                />
-              )}
-            </colgroup>
+          <table className="w-full border-collapse text-sm">
             {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
                 where scrolled rows would otherwise bleed through above the
                 sticky band. Mirrors the `.sheet-table > thead` trick. */}
@@ -308,7 +230,7 @@ export function HistoryModal({
               style={{ top: "-1px" }}
             >
               <tr className="border-b border-line">
-                <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2 md:text-left">
+                <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-2 md:text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon type="date" className="shrink-0 text-accent" />
                     <span className="hidden md:inline">
@@ -317,7 +239,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyType && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-1 md:text-left">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-1 md:text-left">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="type"
@@ -329,7 +251,7 @@ export function HistoryModal({
                     </span>
                   </th>
                 )}
-                <th className="px-2 pt-2.5 pb-1.5 text-left md:pl-4">
+                <th className="px-2 pt-2.5 pb-1.5 text-left md:w-full md:pl-4">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
@@ -340,7 +262,7 @@ export function HistoryModal({
                     </span>
                   </span>
                 </th>
-                <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
+                <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:px-2">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="amount"
@@ -352,7 +274,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyBalance && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-right md:pr-2 md:pl-4">
+                  <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:pr-2 md:pl-4">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
