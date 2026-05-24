@@ -912,6 +912,7 @@ function clonePersistedDefaults(): PersistedSettings {
     transactionSortOrder: DEFAULT_SETTINGS.transactionSortOrder,
     showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
     futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
+    columnBorders: DEFAULT_SETTINGS.columnBorders,
     device: {
       mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
       desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
@@ -1036,6 +1037,10 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     raw.futureEntryMonths <= 24
       ? raw.futureEntryMonths
       : DEFAULT_SETTINGS.futureEntryMonths;
+  const columnBorders =
+    typeof raw.columnBorders === "boolean"
+      ? raw.columnBorders
+      : DEFAULT_SETTINGS.columnBorders;
   return {
     startOfMonth,
     dateFormat,
@@ -1058,6 +1063,7 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     transactionSortOrder,
     showFutureEntries,
     futureEntryMonths,
+    columnBorders,
   };
 }
 
