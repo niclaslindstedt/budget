@@ -483,8 +483,11 @@ export type ThemePreset =
   | "dark"
   | "light"
   | "dracula"
+  | "monokai"
   | "githubDark"
   | "githubLight"
+  | "solarizedLight"
+  | "quietLight"
   | "system"
   | "custom";
 
@@ -497,10 +500,11 @@ export type ThemePreset =
 export type ThemeFamily = "dark" | "light" | "system" | "custom";
 
 // Bundled webfont family the body reads through `--app-font-family`.
-// Three options — one mono, one sans, one serif — bundled via
-// `@fontsource/*` so they ship with the build instead of being fetched
-// from a CDN at runtime. Applies across every theme preset.
-export type FontFamilyId = "mono" | "sans" | "serif";
+// Four options — one mono, one sans, one serif, plus OpenDyslexic for
+// readers with dyslexia — bundled via `@fontsource/*` so they ship
+// with the build instead of being fetched from a CDN at runtime.
+// Applies across every theme preset.
+export type FontFamilyId = "mono" | "sans" | "serif" | "dyslexic";
 
 // Corner-radius preset consumed by the Custom theme. Only a handful
 // of "big-impact" surfaces (modal/picker/input chrome via

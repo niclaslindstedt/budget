@@ -17,6 +17,8 @@ import "@fontsource/inter/400.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/source-serif-4/400.css";
 import "@fontsource/source-serif-4/700.css";
+import "@fontsource/opendyslexic/400.css";
+import "@fontsource/opendyslexic/700.css";
 import { BUILD_LABEL } from "./utils/build-env";
 import { installFocusDiagnostic } from "./utils/focus-diagnostic";
 import { installSelectOnFocus } from "./utils/select-on-focus";
