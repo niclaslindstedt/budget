@@ -36,61 +36,114 @@ when an `en.ts` key is missing or empty in Swedish.
 
 ## Tracking mechanism
 
-`.agent/skills/update-achievements-page/.last-updated` holds the git
-commit hash of the last successful run. Empty means "never run" —
-fall back to the repository's initial commit:
+`.agent/skills/update-achievements-page/.last_updated` holds a single
+line: the unix timestamp (seconds) of the latest user-facing change
+already covered by the catalog. Empty or missing means "never run" —
+fall back to the timestamp of the commit that introduced the
+catalog modal (`8dba547`, `2026-05-23 09:57:50 +0200`,
+`1779523070`):
 
 ```sh
-BASELINE=$(cat .agent/skills/update-achievements-page/.last-updated)
-[ -z "$BASELINE" ] && BASELINE=$(git rev-list --max-parents=0 HEAD)
+SKILL_DIR=.agent/skills/update-achievements-page
+BASELINE=$(cat "$SKILL_DIR/.last_updated" 2>/dev/null | tr -d '[:space:]')
+[ -z "$BASELINE" ] && BASELINE=1779523070
+echo "Baseline timestamp: $BASELINE (= $(date -u -d "@$BASELINE"))"
 ```
+
+After a successful run, rewrite the file with the timestamp of the
+newest fragment / CHANGELOG entry the catalog now reflects (NOT the
+current HEAD — that risks marking future commits as "covered" if the
+local clock drifts):
+
+```sh
+LATEST=$(ls .changes/unreleased/*.md 2>/dev/null |
+  xargs -n1 basename | cut -d- -f1 | sort -n | tail -n1)
+# If a release has been cut since the last run, also walk CHANGELOG.md
+# for the date of the most recent section and convert to a timestamp.
+echo "$LATEST" > "$SKILL_DIR/.last_updated"
+```
+
+Why a timestamp instead of a commit hash? Fragment filenames already
+carry unix timestamps, so a timestamp aligns the two clocks: walking
+fragments newer than `$BASELINE` is a single numeric comparison, no
+git introspection required.
 
 ## Discovery process
 
-The single best feature map remains `src/i18n/locales/en.ts`. Every
-visible string flows through it, so reading it top-to-bottom is the
-fastest way to enumerate the user-facing surface. Components, data
-modules, and storage adapters fill in the _mechanics_ behind each
-string.
+The achievements catalog tracks **user-visible** features. The
+project's changeset workflow already classifies every PR by that
+criterion: a PR that ships a user-visible change drops a fragment in
+`.changes/unreleased/<unix-ts>-<slug>.md`; the release pipeline
+collates fragments into `CHANGELOG.md` and deletes them. Use that
+trail — it filters out refactors, build tweaks, and dependency bumps
+before you ever see them.
 
-1. Compute the diff range since the baseline and list which
-   feature-carrying paths moved:
+1. **Walk fragments since the baseline.** Each filename is the
+   unix-ts of when the fragment landed:
 
    ```sh
-   git log --oneline "$BASELINE"..HEAD -- \
-       src/i18n/locales/ src/components/ src/data/ src/storage/ \
-       src/hooks/ CHANGELOG.md
-   git diff --name-only "$BASELINE"..HEAD -- \
-       src/i18n/locales/ src/components/ src/data/ src/storage/ \
-       src/hooks/
+   for f in .changes/unreleased/*.md; do
+     ts=$(basename "$f" | cut -d- -f1)
+     [ "$ts" -gt "$BASELINE" ] && echo "$ts $(basename "$f")"
+   done | sort -n
    ```
 
-2. For each changed path, decide whether it introduced, removed, or
-   reshaped a user-facing feature. Use the mining order below to
-   classify and slot it.
+2. **Walk the released CHANGELOG.** Fragments get deleted on
+   release, so the trail after the last release lives only in
+   `CHANGELOG.md`. If `BASELINE` predates the most recent `## [X.Y.Z]
+   - YYYY-MM-DD` header, scan everything between that header and the
+     last release the baseline already covered:
 
-### Mining order
+   ```sh
+   awk '/^## \[/{print}' CHANGELOG.md   # find the section headers
+   ```
 
-Work the sources in this order — each layer answers a different
-question:
+3. **Fall back to `git log` for completeness.** Some user-visible
+   changes ship without a fragment (`no-changelog` label,
+   maintenance miss). Cross-check by listing commits in the same
+   range and reading the subjects:
 
-| Source                                                                                                                                                                                                                                                         | Answers                                                              |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `src/i18n/locales/en.ts`                                                                                                                                                                                                                                       | What is the feature called in the UI? What are the exact menu paths? |
-| `src/components/*.tsx` (modal / picker / page filenames)                                                                                                                                                                                                       | Where does the user trigger it? What does the surface look like?     |
-| `src/components/SettingsModal/` tabs                                                                                                                                                                                                                           | Which behaviours are user-configurable, and under which tab?         |
-| `src/data/reducer.ts` actions                                                                                                                                                                                                                                  | What can actually change state? Each action is a potential trigger.  |
-| `src/data/types.ts`                                                                                                                                                                                                                                            | What concepts (Sheet, Account, Entry, Rule, …) exist?                |
-| `src/data/recurrence.ts`, `recurring-detection.ts`, `formula.ts`, `formula-resolve.ts`, `match-rules.ts`, `transfer-collapse.ts`, `reconciliation.ts`, `payday.ts`, `merchant-hints.ts`, `description-normaliser.ts`, `presets.ts`, `search.ts`, `coverage.ts` | The clever bits — what does the app _figure out_ on its own?         |
-| `src/storage/bank-parsers.ts` + `bank-*.ts`                                                                                                                                                                                                                    | Which bank file formats are supported.                               |
-| `src/storage/{local,folder,dropbox,gdrive}-adapter.ts`, `encrypting-adapter.ts`, `cloud-mirror.ts`, `backup-index.ts`                                                                                                                                          | What storage / sync / encryption / backup options exist.             |
-| `src/hooks/useIdleSignOut.ts`, `useTheme.ts`, `useChangelogAutoOpen.ts`, `useDevMode.ts`, `useVirtualKeyboardInset.ts`                                                                                                                                         | Cross-cutting behaviours that aren't tied to one component.          |
-| `CHANGELOG.md` + recent `git log`                                                                                                                                                                                                                              | The newest features — what landed since the last sweep.              |
+   ```sh
+   git log --oneline --since="@$BASELINE" -- \
+       src/components/ src/data/ src/storage/ src/hooks/
+   ```
+
+4. **Classify each candidate.** For each fragment / commit, decide:
+   - **Add a new achievement** when a brand-new user-facing
+     surface lands (a new gesture, modal, setting, picker).
+   - **Edit an existing achievement** when a shipped achievement's
+     condition or learn-more body is now wrong (renamed setting,
+     reshuffled menu path).
+   - **Remove a catalog entry + i18n keys** when the underlying
+     feature is gone — stable ids are write-once, so deletion is
+     the right move, never repurposing.
+   - **Skip** for bug fixes, layout polish, internal refactors,
+     accessibility / a11y improvements that aren't a discoverable
+     surface, analytics, build tweaks, dependency bumps.
+
+### Source layout (where each feature lives)
+
+Once a fragment names a feature, find the source so you can wire the
+trigger or write the predicate. The mining order below maps from
+"what is the feature called" to "where is its chokepoint":
+
+| Source                                                                                                                                                                                                                                                         | Answers                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/i18n/locales/en.ts`                                                                                                                                                                                                                                       | What is the feature called in the UI? What are the exact menu paths?              |
+| `src/components/*.tsx` (modal / picker / page filenames)                                                                                                                                                                                                       | Where does the user trigger it? What does the surface look like?                  |
+| `src/components/SettingsModal/` tabs                                                                                                                                                                                                                           | Which behaviours are user-configurable, and under which tab?                      |
+| `src/data/reducer.ts` actions                                                                                                                                                                                                                                  | What can actually change state? Each action is a potential trigger.               |
+| `src/data/types.ts`                                                                                                                                                                                                                                            | What concepts (Sheet, Account, Entry, Rule, …) exist?                             |
+| `src/data/recurrence.ts`, `recurring-detection.ts`, `formula.ts`, `formula-resolve.ts`, `match-rules.ts`, `transfer-collapse.ts`, `reconciliation.ts`, `payday.ts`, `merchant-hints.ts`, `description-normaliser.ts`, `presets.ts`, `search.ts`, `coverage.ts` | The clever bits — what does the app _figure out_ on its own?                      |
+| `src/storage/bank-parsers.ts` + `bank-*.ts`                                                                                                                                                                                                                    | Which bank file formats are supported.                                            |
+| `src/storage/{local,folder,dropbox,gdrive}-adapter.ts`, `encrypting-adapter.ts`, `cloud-mirror.ts`, `backup-index.ts`                                                                                                                                          | What storage / sync / encryption / backup options exist.                          |
+| `src/hooks/useIdleSignOut.ts`, `useTheme.ts`, `useChangelogAutoOpen.ts`, `useDevMode.ts`, `useVirtualKeyboardInset.ts`, `usePullToRefresh.ts`, `useSheetSwipe.ts`                                                                                              | Cross-cutting behaviours that aren't tied to one component.                       |
+| `src/components/InstallPrompt.tsx`                                                                                                                                                                                                                             | The PWA install flow (Chromium `beforeinstallprompt` + iOS standalone detection). |
 
 Anything purely internal (validators, adapter interfaces, the
-reducer plumbing itself, build-time plugins) does **not** get an
-achievement. The rule is: if a user can't see it, name it, or
-trigger it, leave it out.
+reducer plumbing itself, build-time plugins, accessibility sweeps,
+visual layout fixes) does **not** get an achievement. The rule is:
+if a user can't see it, name it, or trigger it, leave it out.
 
 ## The tier rubric
 
@@ -191,12 +244,15 @@ catalog, follow these four steps:
      picks it up automatically.
    - `manual` — the trigger is an imperative event outside the
      reducer (cloud connect, encryption toggle, button click,
-     modal submit). The achievement won't fire by itself; you
-     must add a call to `unlock("<id>")` at the chokepoint that
-     fires the user's gesture. See examples in
+     modal submit, gesture). The achievement won't fire by itself;
+     you must add a call to `unlock("<id>")` at the chokepoint
+     that fires the user's gesture. See examples in
      `src/components/BudgetView.tsx` (search, undo, history
      jump), `src/storage/useStorageBackend.ts` (cloud connects,
-     encryption), and `src/App.tsx` (account creation).
+     encryption), `src/App.tsx` (account creation),
+     `src/components/InstallPrompt.tsx` (PWA install),
+     `src/hooks/usePullToRefresh.ts` (pull gesture),
+     `src/hooks/useSheetSwipe.ts` (swipe gesture).
 
 3. **Wire the trigger:**
    - For `derived` triggers: write the predicate inside the
@@ -208,7 +264,10 @@ catalog, follow these four steps:
    - For `manual` triggers: add `import { unlock } from
 "../data/achievements";` (or relative equivalent) and call
      `unlock("<id>")` at the chokepoint. The bus dedupes, so
-     accidental double-fires are safe.
+     accidental double-fires are safe. The bus is mounted at the
+     `LanguageRoot` level — any component / hook in the tree can
+     fire, including pre-auth surfaces like `InstallPrompt` that
+     render outside `BudgetView`.
 
 4. **Test:**
    - Add a case to `tests/achievements_derive_test.ts` for derived
@@ -218,6 +277,29 @@ catalog, follow these four steps:
      `tests/achievements_reducer_test.ts`; a tested chokepoint
      gives high confidence without a per-id test.
    - Run `make typecheck && make test`.
+
+### Pitfall: declared-but-unwired manual triggers
+
+Manual achievements declared in the catalog with no matching
+`unlock("<id>")` call site silently never fire. The reducer test
+won't catch this — it tests that the dispatch path works once
+something calls `unlock`. The catalog parity test won't catch it
+either — it only checks the i18n shape.
+
+When adding a `kind: "manual"` entry, verify the call site exists
+**in the same change**:
+
+```sh
+grep -rn 'unlock("<id>")' src/ --include="*.ts" --include="*.tsx"
+```
+
+When auditing an existing catalog, this command lists every wired id
+(intersect with the catalog list to find orphans):
+
+```sh
+grep -rhoE 'unlock\("[a-zA-Z0-9_]+"\)' src/ --include="*.ts" \
+    --include="*.tsx" | sort -u
+```
 
 ## Modal shape
 
@@ -263,45 +345,54 @@ A starting map for the most common code surfaces. Use this as a
 default; override it when the achievement is genuinely closer to
 the tier above or below.
 
-| Source area                                                                                                                                                 | Default tier |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| `App.tsx` (auth screen, guest mode, switch user), `SheetView.tsx` row / cell editing, `SheetRow.tsx` completed checkbox, `MonthTable.tsx` today pill        | Beginner     |
-| `TypePicker.tsx`, `CategoryPicker.tsx`, `GlyphPicker.tsx`, `ColorPalette.tsx` (basic uses — assigning a type to a row)                                      | Beginner     |
-| `ImportExportControls.tsx` JSON export / import, theme + language settings, changelog modal, privacy page link                                              | Beginner     |
-| `AccountModal.tsx`, `AccountsSheetView.tsx`, `SheetModal.tsx`, `TransactionModal.tsx`, `UpdateBalanceModal.tsx`                                             | Intermediate |
-| `BulkEditModal.tsx`, `MoveCopyModal.tsx`, `SplitEntryModal.tsx`, `EditEntryModal.tsx`, `ApplySeriesEditDialog.tsx`, `RecurrenceForm.tsx`                    | Intermediate |
-| `EntityCreatorForm.tsx`, Settings Numbers tab, column picker, hide-transfers, `TransactionSearchModal.tsx`, `SheetViewerModal.tsx`                          | Intermediate |
-| `ImportHistoryModal.tsx`, `bank-*.ts` parsers, `MatchRuleModal.tsx`, `HistoryModal.tsx`, `RecurringCandidatesPanel.tsx`, `ReconciliationModal.tsx`          | Pro          |
-| `ActionHistoryModal.tsx`, `DownloadModal.tsx` (CSV / Excel), encrypted JSON export                                                                          | Pro          |
-| `BackendPicker.tsx`, cloud adapters, `encrypting-adapter.ts`, `cloud-mirror.ts`, `CloudBackupModal.tsx`, `ConflictResolutionModal.tsx`, `useIdleSignOut.ts` | Pro          |
-| `FormulaInput.tsx`, `FormulaHelpButton.tsx`, `FormulaVariableHelper.tsx`, `data/formula.ts`, `formula-resolve.ts`, `ComplexEntryModal.tsx`                  | Expert       |
-| Recurrence edge cases (last-day, custom interval), `coverage.ts`, match-rule amount/transfer filters                                                        | Expert       |
-| Custom theme tokens, font family, reduce motion, multi-user, `useDevMode.ts`, logs viewer, backend switcher version-preview, account deletion               | Expert       |
+| Source area                                                                                                                                                                        | Default tier |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `App.tsx` (auth screen, guest mode, switch user), `SheetView.tsx` row / cell editing, `SheetRow.tsx` completed checkbox, `MonthTable.tsx` today pill                               | Beginner     |
+| `TypePicker.tsx`, `CategoryPicker.tsx`, `GlyphPicker.tsx`, `ColorPalette.tsx` (basic uses — assigning a type to a row)                                                             | Beginner     |
+| `ImportExportControls.tsx` JSON export / import, theme + language settings, changelog modal, privacy page link                                                                     | Beginner     |
+| `InstallPrompt.tsx` PWA install flow, configurable header-title action under Settings → General                                                                                    | Beginner     |
+| `AccountModal.tsx`, `AccountsSheetView.tsx`, `SheetModal.tsx`, `TransactionModal.tsx`, `UpdateBalanceModal.tsx`                                                                    | Intermediate |
+| `BulkEditModal.tsx`, `MoveCopyModal.tsx`, `SplitEntryModal.tsx`, `EditEntryModal.tsx`, `ApplySeriesEditDialog.tsx`, `RecurrenceForm.tsx`                                           | Intermediate |
+| `EntityCreatorForm.tsx`, Settings Numbers tab, column picker, hide-transfers, `TransactionSearchModal.tsx`, `SheetViewerModal.tsx`                                                 | Intermediate |
+| `useSheetSwipe.ts` (swipe to switch sheets), bottom-bar tap-active-tab-to-scroll-top                                                                                               | Intermediate |
+| `ImportHistoryModal.tsx`, `bank-*.ts` parsers, `MatchRuleModal.tsx`, `HistoryModal.tsx`, `RecurringCandidatesPanel.tsx`, `ReconciliationModal.tsx`                                 | Pro          |
+| `ActionHistoryModal.tsx`, `DownloadModal.tsx` (CSV / Excel), encrypted JSON export                                                                                                 | Pro          |
+| `BackendPicker.tsx`, cloud adapters, `encrypting-adapter.ts`, `cloud-mirror.ts`, `CloudBackupModal.tsx`, `ConflictResolutionModal.tsx`, `useIdleSignOut.ts`, `usePullToRefresh.ts` | Pro          |
+| `FormulaInput.tsx`, `FormulaHelpButton.tsx`, `FormulaVariableHelper.tsx`, `data/formula.ts`, `formula-resolve.ts`, `ComplexEntryModal.tsx`                                         | Expert       |
+| Recurrence edge cases (last-day, custom interval, shift-days-by), `coverage.ts`, match-rule amount/transfer filters                                                                | Expert       |
+| Custom theme tokens, font family, reduce motion, multi-user, `useDevMode.ts`, logs viewer, backend switcher version-preview, account deletion                                      | Expert       |
 
 When a new feature lands that doesn't fit any row, decide using the
 tier rubric and add a row.
 
 ## Update checklist
 
-- Read `BASELINE` and run the discovery commands above.
-- Walk the changed paths. For each one, ask: _does this introduce a
-  feature worth an achievement?_ If yes, follow the four-step add
+- Read `BASELINE` from `.last_updated` and run the discovery
+  commands above.
+- Walk the fragment list (and the CHANGELOG.md sections released
+  since the baseline). For each candidate, ask: _does this introduce
+  a feature worth an achievement?_ If yes, follow the four-step add
   process above. If a shipped feature no longer exists, remove its
   catalog entry AND drop the matching `achievements.catalog.<id>.*`
   block from both `en.ts` and `sv.ts` (stable ids are write-once,
   so removal is the right move — never repurpose).
 - Cross-check chrome strings against `src/i18n/locales/en.ts` /
   `sv.ts` — every visible label in the modal flows through `t()`.
+- Verify every new manual id has a wired `unlock("<id>")` call
+  (see the grep recipe in "Pitfall" above).
 - Run `make fmt`, `make lint`, `make typecheck`, and `make test`.
-- Rewrite the tracking file:
+- Rewrite the tracking file with the latest fragment timestamp the
+  catalog now covers:
 
   ```sh
-  git rev-parse HEAD > .agent/skills/update-achievements-page/.last-updated
+  LATEST=$(ls .changes/unreleased/*.md 2>/dev/null |
+    xargs -n1 basename | cut -d- -f1 | sort -n | tail -n1)
+  echo "$LATEST" > .agent/skills/update-achievements-page/.last_updated
   ```
 
 ## Verification
 
-1. Every changed source path from the discovery run is reflected in
+1. Every candidate fragment from the discovery run is reflected in
    the catalog, or has been intentionally skipped because it isn't
    user-facing.
 2. Every catalog entry's `trigger` is wired: derived predicates
@@ -313,16 +404,17 @@ tier rubric and add a row.
 4. `make build` succeeds; the modal opens in `make preview-serve`
    from the outline header star; adding a row in the preview fills
    the star yellow and the unlock toast lists the new entry.
-5. `.agent/skills/update-achievements-page/.last-updated` contains
-   the current `HEAD`.
+5. `.agent/skills/update-achievements-page/.last_updated` contains
+   the unix timestamp of the latest fragment / CHANGELOG entry the
+   catalog covers.
 
 ## Skill self-improvement
 
 After a run:
 
 1. **Grow the slotting cheatsheet** whenever a new component / data
-   module lands that doesn't fit an existing row. The cheatsheet is
-   the institutional memory.
+   module / hook lands that doesn't fit an existing row. The
+   cheatsheet is the institutional memory.
 2. **Grow the predicate helpers** in `catalog.ts` whenever a new
    "first time" detection needs a state inspector that doesn't yet
    exist. Helpers are pure functions, easy to add, and reused

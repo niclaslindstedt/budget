@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
+import { unlock } from "../data/achievements";
 import { findColumnByType } from "../data/sheet";
 import { nextOccurrenceWithSameDom } from "../data/recurrence";
 import type { RecurrenceRule } from "../data/recurrence";
@@ -261,6 +262,7 @@ export function EditEntryModal({
 
   function handleSaveEdit() {
     if (!row) return;
+    if (shiftDays !== 0) unlock("dateShifter");
     onEditSeries(
       row.id,
       {

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { unlock } from "../data/achievements";
+
 // Touch-driven pull-to-refresh. Listens at the document level for a
 // downward drag that starts while the page is scrolled to the top,
 // applies rubber-band damping, and fires `onRefresh` once the user
@@ -157,6 +159,7 @@ export function usePullToRefresh(
         // is in flight so it doesn't snap back before the user sees
         // the spinner.
         setPullBoth(TRIGGER_DISTANCE);
+        unlock("freshPull");
         void Promise.resolve(onRefreshRef.current()).finally(() => {
           resetIdle();
         });

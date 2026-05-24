@@ -1915,6 +1915,16 @@ export const en = {
         name: "Trust, But Verify",
         condition: "Notice the save-state indicator confirming a save.",
       },
+      homeScreen: {
+        name: "Home Screen",
+        condition: "Install Budget on your device.",
+        learnMore:
+          "On iPhone and iPad in Safari, share-sheet → Add to Home Screen. On Android and desktop Chromium, tap the Install button in the banner — or your browser's address-bar install hint. Once installed, Budget runs in its own window with no browser chrome.",
+      },
+      shortcut: {
+        name: "Shortcut",
+        condition: "Change what the header title does when tapped.",
+      },
       bookKeeper: {
         name: "Book Keeper",
         condition: "Create your first real account.",
@@ -2017,6 +2027,10 @@ export const en = {
         name: "Tidy & Quiet",
         condition: "Turn on Hide transfers.",
       },
+      swiper: {
+        name: "Swiper",
+        condition: "Swipe left or right to switch sheets.",
+      },
       importExport: {
         name: "Import / Export",
         condition: "Import your first bank statement.",
@@ -2096,6 +2110,12 @@ export const en = {
         name: "Time Machine",
         condition: "Jump to a point in the action history.",
       },
+      freshPull: {
+        name: "Fresh Pull",
+        condition: "Pull down from the top of the page to refresh.",
+        learnMore:
+          "When you pull, Budget flushes any unsaved local edits to your cloud backend first, then reads the latest copy back — so updates from another device or another tab show up without a reload.",
+      },
       spellbinder: {
         name: "Spellbinder",
         condition: "Write your first amount formula.",
@@ -2117,6 +2137,10 @@ export const en = {
       calendarBender: {
         name: "Calendar Bender",
         condition: "Use last-day-of-month or a custom recurrence interval.",
+      },
+      dateShifter: {
+        name: "Date Shifter",
+        condition: "Nudge a recurring series with the Shift days by input.",
       },
       auditor: {
         name: "Auditor",
