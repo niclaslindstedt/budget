@@ -2606,9 +2606,6 @@ export function BudgetView({
     },
     [dispatch],
   );
-  const onOpenTransferCollapse = useCallback(() => {
-    setTransferModalOpen(true);
-  }, []);
 
   // Settings clear-all handlers for the merchant-hint memory and the
   // two dismissal allowlists. Each dispatches a single action; the
@@ -2774,7 +2771,6 @@ export function BudgetView({
                 onImportHistory={onOpenImportHistory}
                 onViewHistory={onOpenViewHistory}
                 onCutHistory={onOpenCutHistory}
-                onFindTransfers={onOpenTransferCollapse}
                 onEditSheet={onOpenEditSheet}
                 onDownloadSheet={onOpenDownloadSheet}
               />
