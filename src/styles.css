@@ -99,6 +99,32 @@
   --app-font-family:
     "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
+
+  /* Bottom offset for the floating prompt stack mounted by
+     `LanguageRoot` (Toast viewport, UpdateToast, InstallPrompt).
+     Defaults to a small safe-area-only inset so the stack sits flush
+     near the screen edge on routes that don't render a BottomBar
+     (pre-auth landing, `/privacy/`, `/system/`) and on mobile
+     viewports where an open modal `display: none`'s the bar. The
+     `body:has([data-bottom-bar])` rules below promote it to sit
+     above the bar (4rem mobile / 5rem sm+) when the budget shell is
+     mounted and the bar is visible. */
+  --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+/* Promote the toast-stack offset when the BottomBar is in the DOM
+   so the floating prompts clear it. The mobile modal-open clause
+   further down drops the offset back to the default because
+   `body.modal-open [data-floating-chrome]` hides the bar on that
+   breakpoint. */
+body:has([data-bottom-bar]) {
+  --toast-stack-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  body:has([data-bottom-bar]) {
+    --toast-stack-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* One Dark — applied when `data-theme="dark"` AND when no
@@ -741,6 +767,15 @@ body {
   @media (max-width: 639.98px), (max-height: 500px) {
     body.modal-open [data-floating-chrome] {
       display: none;
+    }
+    /* The chrome above is `display: none`'d on this breakpoint, so
+       the floating prompt stack (Toast viewport, UpdateToast,
+       InstallPrompt) would otherwise sit 4rem above the screen edge
+       with empty space below. Drop it back to the default safe-area
+       inset so the prompts hug the bottom edge like they do on
+       routes without a BottomBar. */
+    body.modal-open {
+      --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
     }
   }
 
