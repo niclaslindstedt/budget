@@ -5,7 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { Eye, EyeOff, FileText, History } from "lucide-react";
+import { FileText, History } from "lucide-react";
 
 import { resolveEntryLabels } from "../data/sheet";
 import type {
@@ -128,27 +128,6 @@ export function HistoryModal({
     );
   }, [resolved]);
 
-  const hiddenCount = useMemo(
-    () => allSortedEntries.reduce((n, e) => (e.entry.hidden ? n + 1 : n), 0),
-    [allSortedEntries],
-  );
-
-  // Default to suppressing entries the user (or the transfer-collapse
-  // flow) has shelved. The eye toggle in the table header reveals them
-  // again when needed — usually to inspect a collapsed pair.
-  const [showHidden, setShowHidden] = useState(false);
-  useEffect(() => {
-    if (!open) setShowHidden(false);
-  }, [open]);
-
-  const visibleEntries = useMemo(
-    () =>
-      showHidden
-        ? allSortedEntries
-        : allSortedEntries.filter((e) => !e.entry.hidden),
-    [allSortedEntries, showHidden],
-  );
-
   // In-place filter against description, resolved type name, and the
   // formatted amount text so a search like "550" or "amazon" or "rent"
   // narrows the table without leaving the modal.
@@ -165,8 +144,8 @@ export function HistoryModal({
   );
   const filteredEntries = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q === "") return visibleEntries;
-    return visibleEntries.filter((r) => {
+    if (q === "") return allSortedEntries;
+    return allSortedEntries.filter((r) => {
       if (r.description.toLowerCase().includes(q)) return true;
       if (r.entry.description.toLowerCase().includes(q)) return true;
       const type = r.typeId ? typesById.get(r.typeId) : null;
@@ -178,7 +157,7 @@ export function HistoryModal({
       if (r.entry.date.includes(q)) return true;
       return false;
     });
-  }, [visibleEntries, query, typesById, accountSettings]);
+  }, [allSortedEntries, query, typesById, accountSettings]);
 
   // The description column wraps with break-words to fit narrow phone
   // screens, which can mangle a long memo into a tower of two- or
@@ -255,36 +234,9 @@ export function HistoryModal({
           placeholder={t("history.searchPlaceholder")}
           clearLabel={t("history.searchClear")}
         />
-        {hiddenCount > 0 && (
-          <div className="flex items-center justify-end border-b border-line bg-surface-2 px-2 py-1">
-            <button
-              type="button"
-              onClick={() => setShowHidden((v) => !v)}
-              aria-pressed={showHidden}
-              aria-label={
-                showHidden ? t("history.hideHidden") : t("history.showHidden")
-              }
-              title={
-                showHidden ? t("history.hideHidden") : t("history.showHidden")
-              }
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded px-2 text-xs text-muted hover:bg-surface-3 hover:text-fg aria-pressed:text-accent"
-            >
-              {showHidden ? (
-                <Eye size={16} aria-hidden focusable={false} />
-              ) : (
-                <EyeOff size={16} aria-hidden focusable={false} />
-              )}
-              <span className="font-mono tabular-nums">{hiddenCount}</span>
-            </button>
-          </div>
-        )}
         {allSortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("history.noEntries")}
-          </p>
-        ) : visibleEntries.length === 0 ? (
-          <p className="px-4 py-6 text-center text-xs text-muted">
-            {t("history.allHidden", { n: hiddenCount })}
           </p>
         ) : filteredEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
