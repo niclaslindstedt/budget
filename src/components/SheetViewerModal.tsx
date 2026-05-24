@@ -290,7 +290,15 @@ export function SheetViewerModal({
       balance: Math.max(balanceW, 4),
       type: Math.max(typeW, 4),
     };
-  }, [visibleRows, amountCol, balanceCol, typeCol, balances, settings, typesById]);
+  }, [
+    visibleRows,
+    amountCol,
+    balanceCol,
+    typeCol,
+    balances,
+    settings,
+    typesById,
+  ]);
 
   const hasNoRows = item.rows.length === 0;
 
@@ -381,7 +389,9 @@ export function SheetViewerModal({
                         type="type"
                         className="shrink-0 text-accent"
                       />
-                      <span className="hidden md:inline">{t("sheet.type")}</span>
+                      <span className="hidden md:inline">
+                        {t("sheet.type")}
+                      </span>
                     </span>
                   </th>
                 )}
