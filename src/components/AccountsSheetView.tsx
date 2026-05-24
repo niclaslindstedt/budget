@@ -1,6 +1,7 @@
 import {
   Fragment,
   memo,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -166,6 +167,17 @@ export function AccountsSheetView({
     for (const t of allTypes(data)) m.set(t.id, t);
     return m;
   }, [data]);
+  // Switching to the accounts overview from another sheet should land
+  // the user at the top of the page — the accounts table is the
+  // headline content here, not the transfer log that scrolls in below.
+  // Without this, the document keeps the previous sheet's scrollY and
+  // the user lands mid-transfers when arriving from a long budget
+  // sheet. Keyed on `sheet.id` so it only fires on the actual switch,
+  // never on a row edit that re-renders the component.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [sheet.id]);
+
   // Transactions sorted with the newest first so the log reads as a
   // recency-first ledger, mirroring how the user thinks about
   // transfers ("the dinner cover was last week").
@@ -248,7 +260,7 @@ export function AccountsSheetView({
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-2 py-1.5 text-left md:table-cell"
+                    className="account-bank-cell hidden px-2 py-1.5 text-left md:table-cell"
                     aria-label={t("accountsSheet.bank")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -677,6 +689,12 @@ function AccountRowImpl({
     <tr
       className={rowClass}
       data-row-id={account.id}
+      // Without this marker, the document-level `useSheetSwipe` hook
+      // treats a left-swipe on the row as a sheet-switch gesture and
+      // navigates away before `setSwiped(true)` ever paints — see the
+      // opt-out selector in `src/hooks/useSheetSwipe.ts`. Mirrors the
+      // equivalent attribute on `SheetRow`.
+      data-swipe-handled
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -727,7 +745,7 @@ function AccountRowImpl({
           )}
         </button>
       </td>
-      <td className="hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
+      <td className="account-bank-cell hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
         {account.bank ? <span className="block">{account.bank}</span> : null}
         {account.clearing || account.accountNumber ? (
           <span className="block font-mono text-flag">

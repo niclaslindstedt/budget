@@ -941,16 +941,56 @@ body {
   }
 
   /* Accounts table — mirrors the budget sheet's swipe affordance for
-     the per-account action strip, but keeps the desktop table layout
-     intact (only the action cell goes absolute on mobile). The
-     desktop layout shows the action strip inline so the icons stay
-     discoverable; the mobile layout hides it offscreen and slides it
-     in when `.is-swiped` is toggled, exposing pen / trash / more in
-     the same visual order as the budget row's swipe. */
+     the per-account action strip. Desktop keeps the inline action
+     strip so the icons stay discoverable; mobile converts the table
+     to a block / per-row grid (same approach as `.sheet-table`) so
+     `position: relative` on `<tr>` establishes a containing block
+     the absolutely-positioned action cell can anchor to. Without the
+     grid conversion the browser keeps the rows as `display: table-row`
+     and the absolute child anchors to the wrong ancestor — leaving
+     the swipe strip floating somewhere outside the row and the
+     wrench column wastefully reserving 128 px of header width. */
   @media (max-width: 720px), (max-height: 500px) {
+    .accounts-table,
+    .accounts-table > thead,
+    .accounts-table > tbody,
+    .accounts-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .accounts-table > thead > tr,
     .accounts-table > tbody > tr {
+      /* 40 px icon · flex name · balance (sized to its content with a
+         comfortable floor) · 64 px history count. The action cell sits
+         outside the grid as an absolute overlay — the wrench column
+         doesn't reserve a track on mobile, mirroring how the budget
+         sheet's action-cell stays out of the row template. */
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(60px, max-content) 64px;
       position: relative;
       overflow: hidden;
+    }
+    /* The bank cell is hidden on mobile by Tailwind's `hidden` class
+       at portrait widths. Landscape phones (height ≤ 500 px, width
+       ≥ 768 px) need a stronger override because Tailwind's
+       `md:table-cell` reappears in the utilities layer and beats
+       this layered rule — that override lives unlayered at the
+       bottom of this file. The four-column grid template above has
+       no track for the bank cell, so an undropped one wraps to a
+       second grid row and breaks the layout. */
+    .accounts-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .accounts-table th,
+    .accounts-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .accounts-table th > *,
+    .accounts-table td > * {
+      width: 100%;
     }
     .accounts-table > tbody > tr > td {
       transition: transform 200ms ease;
@@ -959,6 +999,7 @@ body {
       transform: translateX(-128px);
       background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
+    .accounts-table > thead > tr > .account-action-cell,
     .accounts-table > tbody > tr > .account-action-cell {
       position: absolute;
       top: 0;
@@ -974,7 +1015,6 @@ body {
       border: 0;
       z-index: 2;
       padding: 0;
-      display: flex;
       align-items: stretch;
       justify-content: stretch;
     }
@@ -1028,6 +1068,20 @@ body {
   }
   .sheet-table .hidden.md\:inline,
   .sheet-table .hidden.md\:inline-flex {
+    display: none;
+  }
+  /* Accounts table: drop the bank column on landscape phones so the
+     four-column mobile grid (icon · name · balance · history) stays
+     intact. Tailwind's `md:table-cell` re-shows the cell at width
+     ≥ 768 px — landscape iPhone 12+ reports 844 × 390 — and would
+     otherwise auto-place into a second grid row. Layered rules lose
+     to Tailwind's utilities, so this override is unlayered. The
+     column header labels lean on the same hidden / md:inline pair
+     fixed for the budget sheet above. */
+  .accounts-table .account-bank-cell {
+    display: none;
+  }
+  .accounts-table .hidden.md\:inline {
     display: none;
   }
 }
