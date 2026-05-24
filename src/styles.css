@@ -1422,24 +1422,4 @@ body {
        inset returns 0 after a PWA cold-launch. */
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
   }
-
-  /* HistoryModal / SheetViewerModal column widths: on mobile we hide
-     the column-header text (`hidden md:inline`) and size amount /
-     balance from the longest formatted cell value so the description
-     keeps as much room as possible. On desktop the header text comes
-     back ("Amount" / "Balance"), and the same content-sized columns
-     can clip the header. Cols carry both a `--mobile-w` (content) and
-     a `--desktop-w` (floored for the glyph + header text) custom
-     property; this rule picks the right one per viewport. The width
-     lives on the CSS rule rather than the `<col>`'s inline `style`
-     because an inline `width` would otherwise win over the desktop
-     swap and leave the floor permanently inactive. */
-  col[data-history-col] {
-    width: var(--mobile-w);
-  }
-  @media (min-width: 720px) {
-    col[data-history-col] {
-      width: var(--desktop-w);
-    }
-  }
 }
