@@ -1118,8 +1118,14 @@ export function BudgetView({
   }, [onCloseStorageWarning]);
 
   const onSelectSheet = useCallback(
-    (id: string) => dispatch({ type: "selectSheet", sheetId: id }),
-    [dispatch],
+    (id: string) => {
+      if (id === data.activeSheetId) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      dispatch({ type: "selectSheet", sheetId: id });
+    },
+    [dispatch, data.activeSheetId],
   );
   const onOpenNewSheet = useCallback(() => {
     setSheetModal({ sheet: null });
