@@ -75,6 +75,32 @@ function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
 
 const EMPTY_ROWS: Row[] = [];
 
+// Flip the order at date boundaries so the latest day sits at the top
+// of each month, matching the descending month order. Within-date
+// ordering (incomes first, largest category first, etc.) is left
+// untouched so the secondary sort the editable view applies still
+// reads the same way inside a given day.
+function reverseByDay(rows: Row[], dateColumnId: string): Row[] {
+  if (rows.length === 0) return rows;
+  const groups: Row[][] = [];
+  let currentDate: string | null = null;
+  for (const row of rows) {
+    const v = row.cells[dateColumnId];
+    const dateStr = typeof v === "string" ? v : "";
+    if (currentDate === null || dateStr !== currentDate) {
+      groups.push([row]);
+      currentDate = dateStr;
+    } else {
+      groups[groups.length - 1].push(row);
+    }
+  }
+  const out: Row[] = [];
+  for (let i = groups.length - 1; i >= 0; i--) {
+    for (const row of groups[i]) out.push(row);
+  }
+  return out;
+}
+
 // Read-only viewer for a single sheet. Renders the same month-grouped
 // data the editable SheetView shows — same rows (including synthesized
 // transaction / history rows) and same running balances — but stripped
@@ -195,7 +221,8 @@ export function SheetViewerModal({
     if (!dateCol) return monthGroups;
     const out = new Map<string, Row[]>();
     for (const [key, rows] of monthGroups) {
-      out.set(key, sortRowsByDate(rows, dateCol.id, sortContext));
+      const sorted = sortRowsByDate(rows, dateCol.id, sortContext);
+      out.set(key, reverseByDay(sorted, dateCol.id));
     }
     return out;
   }, [monthGroups, dateCol, sortContext]);
