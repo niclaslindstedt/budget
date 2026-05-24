@@ -153,6 +153,7 @@ export const en = {
     scrollToToday: "Scroll to today",
     openSettings: "Open settings",
     settings: "Settings",
+    headerToolbar: "Budget actions",
     selectRows: "Select rows",
     exitSelectMode: "Exit select mode",
     selectShort: "Select",
@@ -680,6 +681,7 @@ export const en = {
     pickActive: "Pick active sheet",
     newSheet: "New sheet",
     tabAriaLabel: "{name} (long-press to edit)",
+    tablistLabel: "Sheets",
   },
 
   sheet: {

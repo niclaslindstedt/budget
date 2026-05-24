@@ -2614,7 +2614,11 @@ export function BudgetView({
               budget
             </h1>
           </div>
-          <div className="ml-auto inline-flex items-center gap-2">
+          <div
+            role="toolbar"
+            aria-label={t("app.headerToolbar")}
+            className="ml-auto inline-flex items-center gap-2"
+          >
             <HeaderStar
               unseenCount={data.settings.unseenAchievements.length}
               onOpenList={() => setAchievementsListOpen(true)}
@@ -2648,7 +2652,20 @@ export function BudgetView({
             />
           </div>
         </header>
+        {/* `<main>` stays as the page-level landmark; the inner wrapper
+            carries `role="tabpanel"` so the tablist in `BottomBar`
+            has a target to bind to via `aria-labelledby`. `tabIndex={-1}`
+            on the inner wrapper lets `Skip to content`-style jumps move
+            focus into the panel without it being part of the normal
+            keyboard tour. */}
         <main data-budget-main className="flex-1">
+          <div
+            role="tabpanel"
+            id={`sheet-tabpanel-${activeSheet.id}`}
+            aria-labelledby={`sheet-tab-${activeSheet.id}`}
+            tabIndex={-1}
+            className="h-full"
+          >
           {status.kind === "loading" ? (
             <BudgetLoading />
           ) : activeSheet.type === "accounts" ? (
@@ -2734,6 +2751,7 @@ export function BudgetView({
               />
             </>
           )}
+          </div>
         </main>
         {status.kind === "loading" ? null : (
           <BottomBar

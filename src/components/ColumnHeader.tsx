@@ -16,6 +16,12 @@ export function ColumnHeader({ column, onReorder }: Props) {
   return (
     <th
       scope="col"
+      // The label `<span>` below is `hidden` on mobile (display: none),
+      // which also removes it from the accessible name on small screens
+      // — leaving the column as just an icon. Pin the name as
+      // `aria-label` so VoiceOver / TalkBack hear "Date column" / etc.
+      // regardless of viewport.
+      aria-label={column.label}
       className={`cursor-grab border-r border-b border-line bg-surface-3 text-left text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
         column.type === "description" ? "md:w-full" : ""
       } ${

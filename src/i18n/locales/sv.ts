@@ -143,6 +143,7 @@ export const sv: Catalog = {
     scrollToToday: "Scrolla till idag",
     openSettings: "Öppna inställningar",
     settings: "Inställningar",
+    headerToolbar: "Budgetåtgärder",
     selectRows: "Markera rader",
     exitSelectMode: "Avsluta markeringsläge",
     selectShort: "Markera",
@@ -672,6 +673,7 @@ export const sv: Catalog = {
     pickActive: "Välj aktivt blad",
     newSheet: "Nytt blad",
     tabAriaLabel: "{name} (håll inne för att redigera)",
+    tablistLabel: "Blad",
   },
 
   sheet: {

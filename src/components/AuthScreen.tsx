@@ -179,7 +179,11 @@ function SignInForm({
         />
       </label>
 
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"
@@ -344,16 +348,26 @@ function SignUpForm({
         />
       )}
 
-      {taken && <p className="text-xs text-danger">{t("auth.accountTaken")}</p>}
+      {taken && (
+        <p role="alert" className="text-xs text-danger">
+          {t("auth.accountTaken")}
+        </p>
+      )}
       {tooShort && (
-        <p className="text-xs text-danger">
+        <p role="alert" className="text-xs text-danger">
           {t("auth.useAtLeast", { min: MIN_PASSWORD_LENGTH })}
         </p>
       )}
       {mismatch && (
-        <p className="text-xs text-danger">{t("auth.passwordsMismatch")}</p>
+        <p role="alert" className="text-xs text-danger">
+          {t("auth.passwordsMismatch")}
+        </p>
       )}
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"
@@ -380,7 +394,10 @@ function SignUpForm({
                 : t("auth.continueWithoutAccount")}
           </button>
           {guestError && (
-            <p className="-mt-2 text-center text-xs text-danger">
+            <p
+              role="alert"
+              className="-mt-2 text-center text-xs text-danger"
+            >
               {guestError}
             </p>
           )}
