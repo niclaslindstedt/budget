@@ -517,7 +517,10 @@ function TabSidebar({
   const tabs = useTabDefs(t, tabIds);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, idx: number) {
+  function handleKeyDown(
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    idx: number,
+  ) {
     if (
       e.key !== "ArrowUp" &&
       e.key !== "ArrowDown" &&

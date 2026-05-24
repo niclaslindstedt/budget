@@ -394,10 +394,7 @@ function SignUpForm({
                 : t("auth.continueWithoutAccount")}
           </button>
           {guestError && (
-            <p
-              role="alert"
-              className="-mt-2 text-center text-xs text-danger"
-            >
+            <p role="alert" className="-mt-2 text-center text-xs text-danger">
               {guestError}
             </p>
           )}

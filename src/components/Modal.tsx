@@ -164,9 +164,7 @@ export function Modal({
       // a dismiss control, not the user's likely first action. Prefer
       // the first focusable inside the modal body, falling back to
       // close-button → shell.
-      const body = shell.querySelector<HTMLElement>(
-        "[data-modal-body]",
-      );
+      const body = shell.querySelector<HTMLElement>("[data-modal-body]");
       const bodyFocusables = body ? getFocusables(body) : [];
       const target = bodyFocusables[0] ?? focusables[0] ?? shell;
       target.focus();
