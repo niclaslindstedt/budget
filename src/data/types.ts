@@ -339,6 +339,15 @@ export type HistoryEntry = {
   // alongside the override in the edit modal.
   userDescription?: string;
   userTypeId?: string;
+  // True when the user has explicitly opted this entry out of the
+  // merchant-hint overlay. Set per-entry from the "Past matches" list
+  // in the promote-to-recurring modal — checking off a row there
+  // stamps this flag so the synthesizer skips the hint step in
+  // `resolveEntryLabels` and falls back to rule / raw bank text.
+  // `userDescription` / `userTypeId` (per-entry overrides) still win
+  // when set; only the hint step is suppressed. Independent of
+  // `hidden` — the row still renders, it just keeps its bank text.
+  hintIgnored?: boolean;
   // User-defined split of this bank entry into multiple categorised
   // parts. When present and non-empty, the synthesizer emits one row
   // per split in place of the entry's single row; the splits' signed
@@ -868,7 +877,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 35;
+  version: 36;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

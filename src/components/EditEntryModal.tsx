@@ -84,6 +84,11 @@ export type HistoryMatchPreview = {
   date: string;
   description: string;
   amount: number;
+  // Pre-existing per-entry opt-out from the merchant-hint overlay.
+  // Set on prior submissions of this modal so the row renders
+  // unchecked (excluded) when the user re-opens the promote flow for
+  // the same merchant key.
+  hintIgnored?: boolean;
 };
 
 export type HistoryPromotion = {
@@ -98,6 +103,11 @@ export type HistoryPromotion = {
   // that share the merchant key keep their raw bank text. The future
   // series is still minted either way.
   applyToHistoric: boolean;
+  // HistoryEntry ids that the user opted out of in the "Past matches"
+  // list. The reducer stamps `hintIgnored: true` on each so the
+  // synthesizer keeps its raw bank text while the remaining matches
+  // adopt the new label. Ignored when `applyToHistoric` is false.
+  excludedHistoryEntryIds: readonly string[];
 };
 
 export type { EditPatch, EditScope } from "../data/action-payloads";
@@ -209,6 +219,12 @@ export function EditEntryModal({
   // the legacy behaviour (always stamp the hint) is preserved when
   // the user opens and submits without touching the checkbox.
   const [applyToHistoric, setApplyToHistoric] = useState(true);
+  // HistoryEntry ids the user opted out of in the "Past matches"
+  // list. Seeded from each match's existing `hintIgnored` flag on
+  // open so re-opening the modal preserves prior exclusions.
+  const [excludedHistoryIds, setExcludedHistoryIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
@@ -226,6 +242,11 @@ export function EditEntryModal({
     setRecurringDates([]);
     setRecurrenceResetKey((k) => k + 1);
     setApplyToHistoric(true);
+    setExcludedHistoryIds(
+      new Set(
+        (historyMatches ?? []).filter((m) => m.hintIgnored).map((m) => m.id),
+      ),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
 
@@ -296,6 +317,9 @@ export function EditEntryModal({
       typeId,
       dates: recurringDates,
       applyToHistoric,
+      excludedHistoryEntryIds: applyToHistoric
+        ? Array.from(excludedHistoryIds)
+        : [],
     });
   }
 
@@ -494,22 +518,59 @@ export function EditEntryModal({
                   description={t("editEntry.applyToHistoricDescription")}
                 />
                 {applyToHistoric && (
-                  <ul className="mt-3 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border border-line bg-surface p-2 font-mono text-xs">
-                    {historyMatches.map((m) => (
-                      <li
-                        key={m.id}
-                        className="flex items-baseline gap-2 text-muted"
-                      >
-                        <span className="text-path tabular-nums">{m.date}</span>
-                        <span className="min-w-0 flex-1 truncate text-fg">
-                          {m.description}
-                        </span>
-                        <span className="tabular-nums text-meta">
-                          {formatAmount(m.amount, settings)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <p className="mt-3 text-xs text-muted">
+                      {t("editEntry.excludeHistoricHint")}
+                    </p>
+                    <ul className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border border-line bg-surface p-2 font-mono text-xs">
+                      {historyMatches.map((m) => {
+                        const included = !excludedHistoryIds.has(m.id);
+                        return (
+                          <li key={m.id}>
+                            <Checkbox
+                              checked={included}
+                              onChange={(next) => {
+                                setExcludedHistoryIds((prev) => {
+                                  const out = new Set(prev);
+                                  if (next) out.delete(m.id);
+                                  else out.add(m.id);
+                                  return out;
+                                });
+                              }}
+                              className="w-full"
+                              ariaLabel={t("editEntry.excludeHistoricAria", {
+                                date: m.date,
+                                description: m.description,
+                              })}
+                              label={
+                                <span
+                                  className={`flex items-baseline gap-2 ${
+                                    included ? "" : "opacity-50"
+                                  }`}
+                                >
+                                  <span className="text-path tabular-nums">
+                                    {m.date}
+                                  </span>
+                                  <span
+                                    className={`min-w-0 flex-1 truncate ${
+                                      included
+                                        ? "text-fg"
+                                        : "text-muted line-through"
+                                    }`}
+                                  >
+                                    {m.description}
+                                  </span>
+                                  <span className="tabular-nums text-meta">
+                                    {formatAmount(m.amount, settings)}
+                                  </span>
+                                </span>
+                              }
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
                 )}
               </fieldset>
             ) : (

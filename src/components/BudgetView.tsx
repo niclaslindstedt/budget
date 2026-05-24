@@ -2461,12 +2461,14 @@ export function BudgetView({
       if (e.hidden) continue;
       if (e.collapsedIntoTransactionId) continue;
       if (normaliseDescription(e.description) !== targetKey) continue;
-      matches.push({
+      const preview: HistoryMatchPreview = {
         id: e.id,
         date: e.date,
         description: e.description,
         amount: e.amount,
-      });
+      };
+      if (e.hintIgnored) preview.hintIgnored = true;
+      matches.push(preview);
     }
     matches.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     return matches;
@@ -2674,6 +2676,7 @@ export function BudgetView({
         typeId: string | null;
         dates: string[];
         applyToHistoric: boolean;
+        excludedHistoryEntryIds: readonly string[];
       },
     ) => {
       if (!activeBudget) return;
@@ -2688,6 +2691,8 @@ export function BudgetView({
         typeId: promotion.typeId,
         dates: promotion.dates,
         applyToHistoric: promotion.applyToHistoric,
+        accountId: activeBudget.accountId,
+        excludedHistoryEntryIds: promotion.excludedHistoryEntryIds,
         now: Date.now(),
       });
       setEditPrompt(null);

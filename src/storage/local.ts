@@ -18,7 +18,7 @@ export function freshUserData(): UserData {
   // data living in their export.
   const sheet = createDefaultSheet("Budget");
   return {
-    version: 35,
+    version: 36,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],

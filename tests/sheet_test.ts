@@ -732,6 +732,47 @@ describe("synthesizeHistoryRow", () => {
     // Entry is -49, rule wants positive → no overlay.
     expect(row.cells[descId]).toBe("APP STORE APL*Z123");
   });
+
+  it("skips the merchant hint when the entry is flagged hintIgnored", () => {
+    const hint: MerchantHint = {
+      hitCount: 1,
+      lastUsedAt: 1,
+      typeId: "hint-type",
+      description: "Hint label",
+    };
+    const ignored: HistoryEntry = { ...baseEntry, hintIgnored: true };
+    const [row] = synthesizeHistoryRow(
+      ignored,
+      item.columns,
+      { "app store apl z123": hint },
+      [],
+    );
+    expect(row.cells[descId]).toBe("APP STORE APL*Z123");
+    expect(row.typeId).toBeUndefined();
+  });
+
+  it("still honours per-entry user overrides when hintIgnored is set", () => {
+    const hint: MerchantHint = {
+      hitCount: 1,
+      lastUsedAt: 1,
+      typeId: "hint-type",
+      description: "Hint label",
+    };
+    const ignored: HistoryEntry = {
+      ...baseEntry,
+      hintIgnored: true,
+      userDescription: "User override",
+      userTypeId: "user-type",
+    };
+    const [row] = synthesizeHistoryRow(
+      ignored,
+      item.columns,
+      { "app store apl z123": hint },
+      [],
+    );
+    expect(row.cells[descId]).toBe("User override");
+    expect(row.typeId).toBe("user-type");
+  });
 });
 
 describe("defaultCompletedForDate", () => {

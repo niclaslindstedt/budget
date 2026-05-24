@@ -337,6 +337,17 @@ export type Action =
       // sharing the merchant key keep their raw bank text. The future
       // series still gets minted.
       applyToHistoric: boolean;
+      // Account holding the source history entry. Used to locate the
+      // history list in `state.history` when `excludedHistoryEntryIds`
+      // is non-empty. `null` is a no-op for the exclusion stamp.
+      accountId: string | null;
+      // Per-entry opt-out from the merchant-hint overlay. Each id in
+      // the list refers to a `HistoryEntry` in `state.history[accountId]`
+      // and gets `hintIgnored: true` stamped on it so the synthesizer
+      // keeps its raw bank text. Only consulted when `applyToHistoric`
+      // is true — when the master toggle is off the hint isn't stamped
+      // in the first place, so the per-entry flags would be redundant.
+      excludedHistoryEntryIds: readonly string[];
       now: number;
     }
   | {
@@ -1455,7 +1466,7 @@ export function reducer(state: UserData, action: Action): UserData {
     // render. The source description (raw bank text) is what we feed
     // to `recordMerchantHints` so the normalised key matches future
     // imports too.
-    const next = {
+    let next = {
       ...state,
       sheets: appendSeriesRowsToBudget(state.sheets, action),
     };
@@ -1468,6 +1479,31 @@ export function reducer(state: UserData, action: Action): UserData {
     // when the user unchecked it, mint the future series but skip the
     // merchant-hint stamp so past entries keep their bank text.
     if (!action.applyToHistoric) return next;
+    // Stamp `hintIgnored: true` on each excluded entry so the
+    // synthesizer skips the merchant-hint step for them while the
+    // remaining matches inherit the overlay. The hint itself is still
+    // recorded (below) so future imports of matching entries get the
+    // label automatically — only the user-picked past entries opt out.
+    if (
+      action.accountId !== null &&
+      action.excludedHistoryEntryIds.length > 0
+    ) {
+      const excluded = new Set(action.excludedHistoryEntryIds);
+      const entries = next.history[action.accountId] ?? [];
+      let changed = false;
+      const updated = entries.map((e) => {
+        if (!excluded.has(e.id)) return e;
+        if (e.hintIgnored) return e;
+        changed = true;
+        return { ...e, hintIgnored: true };
+      });
+      if (changed) {
+        next = {
+          ...next,
+          history: { ...next.history, [action.accountId]: updated },
+        };
+      }
+    }
     return recordMerchantHints(
       next,
       [
