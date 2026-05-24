@@ -2610,9 +2610,9 @@ export function BudgetView({
               height={24}
               className="h-6 w-6 rounded-sm"
             />
-            <span className="text-base font-bold tracking-wide text-fg-bright">
+            <h1 className="m-0 text-base font-bold tracking-wide text-fg-bright">
               budget
-            </span>
+            </h1>
           </div>
           <div className="ml-auto inline-flex items-center gap-2">
             <HeaderStar

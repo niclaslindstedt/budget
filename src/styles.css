@@ -468,11 +468,55 @@ body {
     z-index: 15;
   }
 
-  /* Shared focus state for editable cell fields */
-  .field-input:focus {
+  /* Shared focus state for editable cell fields. `:focus-visible`
+     instead of `:focus` so the ring only appears for keyboard users —
+     a mouse / touch tap on a cell shouldn't paint a focus halo on top
+     of the value the user can already see. */
+  .field-input:focus-visible {
     background: var(--surface-2);
     box-shadow: inset 0 0 0 2px var(--accent);
     outline: none;
+  }
+
+  /* Invisible click-area expander. Pin to a button (or any focusable
+     surface) whose painted glyph is smaller than the WCAG 2.2 AA
+     target-size floor of 24×24 — the visible chrome stays the same
+     size, but the hit-test box grows to at least 24×24 via a
+     centered absolutely-positioned `::before`. Use sparingly: most
+     buttons should hit 24×24 with normal padding; this is the escape
+     hatch for the dense sheet UI (transfer-anchor toggle, swatch
+     grids, glyph grids, the UpdateToast dismiss) where the layout
+     can't absorb a bigger box. The parent must allow positioned
+     descendants — the rule sets `position: relative` for that. */
+  .hit-24 {
+    position: relative;
+  }
+  .hit-24::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    min-width: 24px;
+    min-height: 24px;
+  }
+
+  /* Default keyboard-focus ring for the interactive surface. Applied
+     through `:focus-visible` so mouse / touch taps don't paint a
+     ring over the chrome the user already sees. Per-component focus
+     styles still win the cascade — this is the floor for elements
+     that haven't opted into a custom ring. Skips elements with
+     `data-no-focus-ring` so a parent surface that owns its own focus
+     treatment (a custom `box-shadow` halo, say) can opt out. */
+  button:not([data-no-focus-ring]):focus-visible,
+  [role="button"]:not([data-no-focus-ring]):focus-visible,
+  [role="option"]:not([data-no-focus-ring]):focus-visible,
+  [role="tab"]:not([data-no-focus-ring]):focus-visible,
+  [role="menuitem"]:not([data-no-focus-ring]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
 
   /* Formula input — a contentEditable host that renders recognised

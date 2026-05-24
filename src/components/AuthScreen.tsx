@@ -152,6 +152,10 @@ function SignInForm({
           autoComplete="username"
           value={username}
           onValueChange={setUsername}
+          // Dedicated single-purpose sign-in form — landing focus on
+          // the first empty field is the expected UX. The same is
+          // assumed by every password manager.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={initialUsername === null}
           wrapperClassName="w-full"
           className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
@@ -167,6 +171,10 @@ function SignInForm({
           onChange={setPassword}
           show={show}
           onToggleShow={() => setShow((v) => !v)}
+          // When the username is pre-filled (returning user re-signing
+          // in after a session expiry) the password is the only field
+          // they need to touch — drop the cursor there directly.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={initialUsername !== null}
         />
       </label>
@@ -295,6 +303,9 @@ function SignUpForm({
           autoComplete="username"
           value={username}
           onValueChange={setUsername}
+          // Dedicated single-purpose create-account form — see note on
+          // the sign-in field for the rationale.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           wrapperClassName="w-full"
           className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
@@ -420,6 +431,9 @@ function PasswordInput({
         autoComplete={autoComplete}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        // The caller decides whether autoFocus is appropriate (see the
+        // sign-in / create-account forms in this file).
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus={autoFocus}
         className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 pr-9 text-sm text-fg"
       />

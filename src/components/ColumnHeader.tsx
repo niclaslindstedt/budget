@@ -15,6 +15,7 @@ export function ColumnHeader({ column, onReorder }: Props) {
 
   return (
     <th
+      scope="col"
       className={`cursor-grab border-r border-b border-line bg-surface-3 text-left text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap select-none active:cursor-grabbing last:border-r-0 ${
         column.type === "description" ? "md:w-full" : ""
       } ${

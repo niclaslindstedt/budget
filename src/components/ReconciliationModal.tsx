@@ -272,6 +272,12 @@ export function ReconciliationModal({
         key={key}
         className="flex flex-col gap-1 border-b border-line px-3 py-2 text-sm last:border-b-0"
       >
+        {/* Native checkbox nested inside the <label> — clicking the
+            row toggles it. The label's accessible name is the row's
+            date + description + amount (the <span> below); the linter
+            can't statically resolve the runtime text, so the warning
+            is disabled with this rationale. */}
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
         <label className="flex cursor-pointer items-start gap-2">
           <input
             type="checkbox"

@@ -357,6 +357,7 @@ function MonthTableImpl({
             <tr>
               {selectMode && (
                 <th
+                  scope="col"
                   className="select-cell bg-surface-3 text-center"
                   aria-label={t("sheet.selectAllInMonth")}
                 >
@@ -396,6 +397,7 @@ function MonthTableImpl({
                 />
               ))}
               <th
+                scope="col"
                 className="action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
                 aria-label={t("sheet.rowActions")}
               >

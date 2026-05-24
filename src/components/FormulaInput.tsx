@@ -444,6 +444,11 @@ export const FormulaInput = forwardRef<FormulaInputHandle, Props>(
         ref={elRef}
         contentEditable
         suppressContentEditableWarning
+        // `contentEditable` is implicitly focusable in every browser,
+        // but jsx-a11y can't see that — declare the tabbability
+        // explicitly so the `role="textbox"` contract is satisfied
+        // for the linter and is plain to readers.
+        tabIndex={0}
         role="textbox"
         aria-label={ariaLabel}
         aria-multiline="false"
