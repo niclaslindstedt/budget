@@ -145,26 +145,40 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// When no row falls on today, prefer the first row dated on or after
+// When no row falls on today, prefer the earliest row dated on or after
 // today — that keeps today's position at the top of the viewport with
 // upcoming entries below it. When every dated row is in the past (today
 // sits beyond the latest entry), fall back to the most recent past row
 // so the user lands at the end of their data instead of at the start of
-// the current fiscal month, which can be weeks behind today.
+// the current fiscal month, which can be weeks behind today. Pick by
+// date rather than DOM order so the result stays correct under both
+// oldest-first and newest-first transaction sort orders.
 function findRowNearestToday(
   section: HTMLElement | null,
   today: string,
 ): HTMLElement | null {
   if (!section) return null;
   const candidates = section.querySelectorAll<HTMLElement>("[data-row-date]");
-  let lastPast: HTMLElement | null = null;
+  let earliestFuture: HTMLElement | null = null;
+  let earliestFutureDate: string | null = null;
+  let latestPast: HTMLElement | null = null;
+  let latestPastDate: string | null = null;
   for (const el of candidates) {
     const d = el.getAttribute("data-row-date");
     if (!d) continue;
-    if (d >= today) return el;
-    lastPast = el;
+    if (d >= today) {
+      if (earliestFutureDate === null || d < earliestFutureDate) {
+        earliestFuture = el;
+        earliestFutureDate = d;
+      }
+    } else {
+      if (latestPastDate === null || d > latestPastDate) {
+        latestPast = el;
+        latestPastDate = d;
+      }
+    }
   }
-  return lastPast;
+  return earliestFuture ?? latestPast;
 }
 
 // Scroll a row to the top of the viewport, accounting for the three
