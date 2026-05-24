@@ -375,6 +375,15 @@ export const sv: Catalog = {
       hideTransfersHint:
         "Dölj överföringsrader från budgettabellen. Saldot räknar fortfarande med dem — en liten ↔-ikon på saldot visar var de ligger, och ett klick visar dem inbäddat.",
     },
+    headerAction: {
+      title: "Klick på rubriken",
+      label: "När jag klickar på rubriken",
+      hint: "Ett klick på ordet ”budget” i sidhuvudet kör den här genvägen. Som Action-knappen på nyare iPhones — ett tryck, en uppgift.",
+      top: "Rulla till toppen",
+      currentMonth: "Hoppa till aktuell månad",
+      refresh: "Uppdatera sidan",
+      sheet: "Öppna {name}",
+    },
     languageSection: {
       title: "Språk",
       hint: "Översätt gränssnittet mellan svenska och engelska. Datum- och talformat styrs separat under Format.",

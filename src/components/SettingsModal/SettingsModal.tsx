@@ -431,6 +431,7 @@ export function SettingsModal({
                 draft={draft}
                 onUpdate={update}
                 detectedPayday={detectedPayday}
+                sheets={data.sheets}
               />
             )}
             {activeTab === "appearance" && (

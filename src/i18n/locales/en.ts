@@ -383,6 +383,15 @@ export const en = {
       hideTransfersHint:
         "Suppress transfer rows from the budget table. The running balance still accounts for them — a small ↔ icon on the balance shows where they sit, and clicking it reveals them inline.",
     },
+    headerAction: {
+      title: "Title click",
+      label: "When I click the title",
+      hint: "Clicking the “budget” wordmark in the page header runs this shortcut. Like the Action Button on newer iPhones — one tap, one job.",
+      top: "Scroll to top",
+      currentMonth: "Jump to current month",
+      refresh: "Refresh the page",
+      sheet: "Open {name}",
+    },
     languageSection: {
       title: "Language",
       hint: "Translate the UI between English and Swedish. Date and number formats are controlled separately under Format.",

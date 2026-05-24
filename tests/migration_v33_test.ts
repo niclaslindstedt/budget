@@ -17,7 +17,10 @@ describe("migration v32 → v33", () => {
       version: number;
       settings: { achievements: unknown; unseenAchievements: unknown };
     };
-    expect(data.version).toBe(33);
+    // `migrate` runs the full chain, so the final version reflects
+    // the latest step; this test still pins the v32 → v33 step's
+    // effects (achievements and unseenAchievements seeded).
+    expect(data.version).toBeGreaterThanOrEqual(33);
     expect(data.settings.achievements).toEqual({});
     expect(data.settings.unseenAchievements).toEqual([]);
   });

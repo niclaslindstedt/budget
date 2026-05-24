@@ -19,7 +19,7 @@ import { newId } from "./sheet";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 33 as const;
+export const LATEST_VERSION = 34 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -511,6 +511,28 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
         ...settings,
         achievements: {},
         unseenAchievements: [],
+      },
+    };
+  },
+
+  // v33 → v34: add `Settings.headerAction`, the configurable target
+  // for clicking the "budget" wordmark in the page header. Defaults
+  // to "go to top" — the web convention for a clickable wordmark and
+  // a safe choice on a fresh install where the user has nowhere
+  // else to be. The validator coerces unknown / malformed shapes to
+  // the same default so a hand-edited file can't put the click
+  // handler in an unreachable state.
+  33: (v33) => {
+    const settings =
+      typeof v33.settings === "object" && v33.settings !== null
+        ? (v33.settings as Record<string, unknown>)
+        : {};
+    return {
+      ...v33,
+      version: 34,
+      settings: {
+        ...settings,
+        headerAction: { kind: "top" },
       },
     };
   },

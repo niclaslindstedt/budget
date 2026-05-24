@@ -34,7 +34,7 @@ function withItem(rows: Row[]): UserData {
     items: [item],
   };
   return {
-    version: 33,
+    version: 34,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],

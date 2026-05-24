@@ -491,6 +491,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customTheme: DEFAULT_CUSTOM_THEME,
   achievements: {},
   unseenAchievements: [],
+  headerAction: { kind: "top" },
 };
 
 // Allowed UI languages, in the order the picker shows them. Used by

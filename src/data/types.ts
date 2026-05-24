@@ -667,7 +667,24 @@ export type Settings = {
   // `clearUnseenAchievements`. The HeaderStar shows a filled yellow
   // star whenever this array is non-empty; clicking opens the modal.
   unseenAchievements: string[];
+  // What clicking the "budget" wordmark in the page header does.
+  // Inspired by the iPhone Action Button: the user picks a single
+  // navigation shortcut they want one tap away. Default scrolls to
+  // the top of the page (the web convention for a clickable
+  // wordmark). The `sheet` variant carries the target sheet id; if
+  // that sheet is later deleted the click handler falls back to
+  // scrolling to the top so a dangling reference stays harmless.
+  headerAction: HeaderAction;
 };
+
+// Discriminated union — `kind` selects the action and the only
+// parameterised variant (`sheet`) carries its target id. Scales to
+// future kinds that need parameters without another schema bump.
+export type HeaderAction =
+  | { kind: "top" }
+  | { kind: "currentMonth" }
+  | { kind: "refresh" }
+  | { kind: "sheet"; sheetId: string };
 
 // Persistent memory of which type the user assigned to which
 // merchant. Keyed by the normalised description so cosmetic
@@ -769,7 +786,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 33;
+  version: 34;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
