@@ -165,7 +165,15 @@ test.describe("BottomBar anchor stability", () => {
           if (/(^|,)\s*body\s*(,|$)/.test(r.selectorText)) {
             rootMinHeight = r.style.minHeight || rootMinHeight;
           }
-          if (r.selectorText.includes("[data-floating-chrome]")) {
+          // PR #391 scoped the bottom-anchoring half of the standalone
+          // rule from `[data-floating-chrome]` (which also matched the
+          // floating Today pill and was dragging it underneath the bar)
+          // to a dedicated `[data-bottom-bar]` marker on the bar itself.
+          // The shared `[data-floating-chrome]` selector still carries
+          // the `--bar-offset` translate so the pill keeps a constant
+          // gap above the bar, but `position: fixed; inset: auto 0 0 0`
+          // now lives under `[data-bottom-bar]` only.
+          if (r.selectorText.includes("[data-bottom-bar]")) {
             chromePosition = r.style.position || chromePosition;
             chromeInset = r.style.inset || chromeInset;
           }
