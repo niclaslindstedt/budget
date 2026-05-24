@@ -522,11 +522,8 @@ function SheetRowImpl({
               row={row}
               isHistory={isHistory}
               isSeries={isSeries}
-              canTransfer={canTransfer}
-              transferEnabled={transferEnabled}
               onEditRequest={onEditRequest}
               onMatchRuleRequest={onMatchRuleRequest}
-              onTransactionRequest={onTransactionRequest}
               onToggleRowTransfer={onToggleRowTransfer}
               onSplitRequest={onSplitRequest}
               onCopyRequest={onCopyRequest}

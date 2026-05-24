@@ -791,10 +791,6 @@ export const sv: Catalog = {
       "Etikettera alla historikposter som matchar ett wildcard-mönster",
     editHistoryEntry: "Redigera denna historikpost",
     editTransaction: "Redigera transaktion",
-    makeTransaction: "Skapa transaktion",
-    needAccountForTransfer:
-      "Koppla denna budget till ett konto för att möjliggöra överföringar",
-    needDescAndAmount: "Ange beskrivning och belopp först",
     markAsTransfer: "Markera som överföring",
     unmarkAsTransfer: "Avmarkera överföring",
     markAsTransferTitle:

@@ -797,10 +797,6 @@ export const en = {
       "Label every history entry matching a wildcard pattern",
     editHistoryEntry: "Edit this history entry",
     editTransaction: "Edit transaction",
-    makeTransaction: "Make transaction",
-    needAccountForTransfer:
-      "Attach this budget to an account to enable transfers",
-    needDescAndAmount: "Set a description and amount first",
     markAsTransfer: "Mark as transfer",
     unmarkAsTransfer: "Unmark as transfer",
     markAsTransferTitle:
