@@ -145,40 +145,67 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// When no row falls on today, prefer the earliest row dated on or after
-// today — that keeps today's position at the top of the viewport with
-// upcoming entries below it. When every dated row is in the past (today
-// sits beyond the latest entry), fall back to the most recent past row
-// so the user lands at the end of their data instead of at the start of
-// the current fiscal month, which can be weeks behind today. Pick by
-// date rather than DOM order so the result stays correct under both
-// oldest-first and newest-first transaction sort orders.
+// Pick the row that should anchor a "scroll to today" jump.
+//
+// The Today button asks the sheet to return the user to the current
+// fiscal month, so rows IN the current month win over rows in adjacent
+// months even when an adjacent-month row is closer to today by date —
+// otherwise a recurring bill dated a day or two into next month yanks
+// the viewport into that next month instead of showing the user's
+// in-progress current month. Within the chosen month (or, as a last
+// resort, across all mounted months) prefer the earliest row dated on
+// or after today so today's position sits at the top of the viewport
+// with upcoming entries below; fall back to the most recent past row
+// when everything is behind today.
+//
+// Pick by date and month, not DOM order, so the result stays correct
+// under both oldest-first and newest-first transaction sort orders.
 function findRowNearestToday(
   section: HTMLElement | null,
   today: string,
+  currentMonth: string,
 ): HTMLElement | null {
   if (!section) return null;
   const candidates = section.querySelectorAll<HTMLElement>("[data-row-date]");
-  let earliestFuture: HTMLElement | null = null;
-  let earliestFutureDate: string | null = null;
-  let latestPast: HTMLElement | null = null;
-  let latestPastDate: string | null = null;
+  let inCurrentFuture: HTMLElement | null = null;
+  let inCurrentFutureDate: string | null = null;
+  let inCurrentPast: HTMLElement | null = null;
+  let inCurrentPastDate: string | null = null;
+  let anyFuture: HTMLElement | null = null;
+  let anyFutureDate: string | null = null;
+  let anyPast: HTMLElement | null = null;
+  let anyPastDate: string | null = null;
   for (const el of candidates) {
     const d = el.getAttribute("data-row-date");
     if (!d) continue;
+    const monthEl = el.closest<HTMLElement>("[data-month-key]");
+    const monthKey = monthEl?.getAttribute("data-month-key") ?? null;
+    if (monthKey === "undated") continue;
+    const inCurrent = monthKey === currentMonth;
     if (d >= today) {
-      if (earliestFutureDate === null || d < earliestFutureDate) {
-        earliestFuture = el;
-        earliestFutureDate = d;
+      if (anyFutureDate === null || d < anyFutureDate) {
+        anyFuture = el;
+        anyFutureDate = d;
+      }
+      if (
+        inCurrent &&
+        (inCurrentFutureDate === null || d < inCurrentFutureDate)
+      ) {
+        inCurrentFuture = el;
+        inCurrentFutureDate = d;
       }
     } else {
-      if (latestPastDate === null || d > latestPastDate) {
-        latestPast = el;
-        latestPastDate = d;
+      if (anyPastDate === null || d > anyPastDate) {
+        anyPast = el;
+        anyPastDate = d;
+      }
+      if (inCurrent && (inCurrentPastDate === null || d > inCurrentPastDate)) {
+        inCurrentPast = el;
+        inCurrentPastDate = d;
       }
     }
   }
-  return earliestFuture ?? latestPast;
+  return inCurrentFuture ?? inCurrentPast ?? anyFuture ?? anyPast;
 }
 
 // Scroll a row to the top of the viewport, accounting for the three
@@ -661,7 +688,7 @@ export function SheetView({
     // refine find the true target on the second pass.
     const refine = (): boolean => {
       const section = sectionRef.current;
-      const row = findRowNearestToday(section, today);
+      const row = findRowNearestToday(section, today, currentMonth);
       if (!row) return false;
       const rowMonthEl = row.closest<HTMLElement>("[data-month-key]");
       const rowMonth = rowMonthEl?.getAttribute("data-month-key") ?? null;
@@ -748,16 +775,29 @@ export function SheetView({
   // the current fiscal month (not today's calendar date) keeps the
   // button hidden while the user is editing the active budget, even
   // late in the month when today's row sits near the bottom of the
-  // current month. When the user is scrolled into the past the pill
-  // sits above the BottomBar pointing down; when scrolled into the
-  // future it sits below the header pointing up.
+  // current month. The pill's direction tracks the scroll the user
+  // needs to make to reach current, which depends on where current
+  // sits in the DOM relative to the visible range — and that flips
+  // with `transactionSortOrder`. Oldest-first stacks past above
+  // current and future below; newest-first inverts both.
   const todayButtonDirection = useMemo<"down" | "up" | null>(() => {
     const { newest, oldest } = visibleMonthRange;
     if (!newest || !oldest) return null;
-    if (newest < currentMonth) return "down";
-    if (oldest > currentMonth) return "up";
+    const newestFirst = settings.transactionSortOrder === "newestFirst";
+    if (newest < currentMonth) {
+      // Visible range is entirely in the past. Past sits above
+      // current in oldest-first (scroll down) and below current in
+      // newest-first (scroll up).
+      return newestFirst ? "up" : "down";
+    }
+    if (oldest > currentMonth) {
+      // Visible range is entirely in the future. Future sits below
+      // current in oldest-first (scroll up) and above current in
+      // newest-first (scroll down).
+      return newestFirst ? "down" : "up";
+    }
     return null;
-  }, [visibleMonthRange, currentMonth]);
+  }, [visibleMonthRange, currentMonth, settings.transactionSortOrder]);
   const showTodayButton = todayButtonDirection !== null;
 
   // Honour a one-shot scroll-to-row request from the transaction-search
