@@ -961,12 +961,15 @@ body {
     .accounts-table > thead > tr,
     .accounts-table > tbody > tr {
       /* 40 px icon · flex name · balance (sized to its content with a
-         comfortable floor) · 64 px history count. The action cell sits
-         outside the grid as an absolute overlay — the wrench column
-         doesn't reserve a track on mobile, mirroring how the budget
-         sheet's action-cell stays out of the row template. */
+         comfortable floor) · 80 px history count (matches the cell's
+         `w-20` so a four- or five-digit transaction count isn't
+         clipped on the right by the row's `overflow: hidden`). The
+         action cell sits outside the grid as an absolute overlay —
+         the wrench column doesn't reserve a track on mobile,
+         mirroring how the budget sheet's action-cell stays out of
+         the row template. */
       display: grid;
-      grid-template-columns: 40px minmax(0, 1fr) minmax(60px, max-content) 64px;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(60px, max-content) 80px;
       position: relative;
       overflow: hidden;
     }
