@@ -740,6 +740,8 @@ export const en = {
     editSheet: "Edit sheet",
     viewMode: "View {name}",
     viewModeTitle: "View sheet",
+    moreActions: "Sheet actions",
+    moreActionsAria: "Sheet actions for {name}",
     viewerEmpty: "No entries to display.",
     viewerSearchPlaceholder: "Search this sheet",
     viewerSearchClear: "Clear search",

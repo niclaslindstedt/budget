@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Calendar,
   DollarSign,
-  Download,
   Eye,
   Landmark,
   Pencil,
@@ -43,6 +42,7 @@ import { formatBalance, formatCount, formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AccountActionsMenu } from "./AccountActionsMenu";
 import { ActiveRowProvider } from "./ActiveRowProvider";
+import { SheetTitleMenu } from "./SheetTitleMenu";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { CategoryIconGlyph } from "./icons";
 
@@ -214,24 +214,11 @@ export function AccountsSheetView({
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>
-          <button
-            type="button"
-            onClick={() => onEditSheet(sheet.id)}
-            aria-label={t("accountsSheet.edit", { name: sheet.name })}
-            title={t("accountsSheet.editSheet")}
-            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
-            <Pencil size={14} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDownloadSheet(sheet.id)}
-            aria-label={t("download.downloadSheet")}
-            title={t("download.downloadSheetTitle")}
-            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
-            <Download size={14} aria-hidden focusable={false} />
-          </button>
+          <SheetTitleMenu
+            sheetName={sheet.name}
+            onEdit={() => onEditSheet(sheet.id)}
+            onDownload={() => onDownloadSheet(sheet.id)}
+          />
         </header>
 
         <section className="mb-6" data-sheet-content>
