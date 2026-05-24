@@ -14,7 +14,9 @@ rather than just the recently-loaded months. Months dated after today
 are tucked behind a clickable **Show future entries** line above the
 current fiscal month so the modal opens anchored on today instead of
 deep in next year's planning, and the line stays out of the way while
-a search is active so a query reveals every match. The done column is
+a search is active so a query reveals every match. Days inside each
+month run newest-first to match the descending month order, so the
+most recent activity sits at the top of every section. The done column is
 shown inline as a small check next to the date and uncompleted rows
 fade slightly, so the table reads as one tight stack instead of
 spending a whole column on a checkmark.
