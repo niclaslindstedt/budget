@@ -1198,6 +1198,35 @@ body {
   padding-bottom: var(--density-row-py);
 }
 
+/* Column-border toggle. The Appearance "Show column borders" setting
+   writes `data-column-borders` on `<html>` (see `useTheme`); when set
+   to `"true"`, paint a vertical divider between every cell in the
+   budget sheet (`.sheet-table`) and the accounts transfer log
+   (`.accounts-transfers-table`). Off (default), neither surface shows
+   column dividers and the budget reads as one continuous canvas,
+   matching the accounts log. Excludes the rightmost cell in every row
+   and the colSpan'd section / footer rows (`[data-month-header]`,
+   `[data-month-footer]`) so the divider doesn't bleed past the table
+   edge or split the month-header pill.
+
+   Unlayered so it wins over the Tailwind `utilities` layer the cells
+   live in. `border-right-color` reads the user's `--line` token so
+   Custom themes keep their divider colour in sync. */
+:root[data-column-borders="true"] .sheet-table > * > tr > *:not(:last-child),
+:root[data-column-borders="true"]
+  .accounts-transfers-table
+  > *
+  > tr
+  > *:not(:last-child) {
+  border-right-width: var(--border-width);
+  border-right-style: solid;
+  border-right-color: var(--line);
+}
+:root[data-column-borders="true"] .sheet-table > * > tr[data-month-header] > *,
+:root[data-column-borders="true"] .sheet-table > * > tr[data-month-footer] > * {
+  border-right-width: 0;
+}
+
 /* One-shot highlight applied to a sheet row after the transaction-
    search modal navigates to it. The attribute is added by SheetView's
    scroll-to-row effect and removed ~1500ms later, so the same row can

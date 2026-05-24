@@ -60,7 +60,7 @@ const BORDER_WIDTH_PX: Record<BorderWidthPreset, string> = {
 };
 
 export function useTheme(settings: Settings): void {
-  const { theme, fontFamily, customTheme } = settings;
+  const { theme, fontFamily, customTheme, columnBorders } = settings;
 
   // (1) Theme preset attribute. Cleared on unmount so the auth screen
   // (which mounts a different React tree) doesn't inherit a lingering
@@ -71,6 +71,21 @@ export function useTheme(settings: Settings): void {
       document.documentElement.removeAttribute("data-theme");
     };
   }, [theme]);
+
+  // Column-border toggle. Read by the unlayered rule in styles.css
+  // that paints vertical dividers between cells inside `.sheet-table`
+  // and the accounts transfer table. Always written (independent of
+  // the active theme) so the choice survives flipping between presets
+  // and Custom.
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-column-borders",
+      columnBorders ? "true" : "false",
+    );
+    return () => {
+      document.documentElement.removeAttribute("data-column-borders");
+    };
+  }, [columnBorders]);
 
   // (2) Font family stack.
   useEffect(() => {

@@ -623,6 +623,7 @@ export const DEFAULT_SETTINGS: Settings = {
   transactionSortOrder: "newestFirst",
   showFutureEntries: false,
   futureEntryMonths: 1,
+  columnBorders: false,
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -678,6 +679,7 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   transactionSortOrder: DEFAULT_SETTINGS.transactionSortOrder,
   showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
   futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
+  columnBorders: DEFAULT_SETTINGS.columnBorders,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,
