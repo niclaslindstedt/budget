@@ -179,7 +179,16 @@ export type CategoryIcon =
   | "calendar-days"
   | "globe"
   | "arrow-down-circle"
-  | "arrow-up-circle";
+  | "arrow-up-circle"
+  | "percent"
+  // Print, media & arts
+  | "newspaper"
+  | "book-marked"
+  | "clapperboard"
+  | "palette"
+  | "lamp"
+  | "bath"
+  | "compass";
 
 // Broad bucket used for cross-row analysis: Food, Housing, Transport,
 // Entertainment. A category owns a set of `EntryType`s (its concrete
