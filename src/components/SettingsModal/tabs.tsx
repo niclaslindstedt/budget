@@ -28,7 +28,9 @@ import type {
   DecimalSeparator,
   EntryType,
   FontFamilyId,
+  HeaderAction,
   Settings,
+  Sheet,
   ShortDateFormat,
   ThemeFamily,
   ThemePreset,
@@ -52,9 +54,16 @@ import {
   subscribeToLogs,
 } from "../../utils/logger";
 import { BackendPicker } from "../BackendPicker";
+import { CategoryIconGlyph } from "../icons";
 
 const storageTabLog = createLogger("settings-storage");
-import { Button, Checkbox, ClearableTextInput, SelectPicker } from "../form";
+import {
+  Button,
+  Checkbox,
+  ClearableTextInput,
+  type SelectOption,
+  SelectPicker,
+} from "../form";
 import { ImportExportControls } from "../ImportExportControls";
 import { LanguagePicker } from "../LanguagePicker";
 import { DeleteAccountForm } from "./DeleteAccountForm";
@@ -89,6 +98,7 @@ export function GeneralTab({
   draft,
   onUpdate,
   detectedPayday,
+  sheets,
 }: {
   draft: Settings;
   onUpdate: Update;
@@ -97,6 +107,11 @@ export function GeneralTab({
   // one-click "Use detected" suggestion under the picker — never
   // applied automatically so the user keeps control.
   detectedPayday: number | null;
+  // The user's sheets, in order, used to populate the per-sheet
+  // entries of the header-action picker. Each sheet renders with
+  // its own glyph + colour so the dropdown reads like the bottom
+  // tab bar.
+  sheets: readonly Sheet[];
 }) {
   const t = useT();
   const { devMode, setDevMode } = useDevMode();
@@ -157,6 +172,19 @@ export function GeneralTab({
         />
       </Section>
 
+      <Section title={t("settings.headerAction.title")}>
+        <Field label={t("settings.headerAction.label")}>
+          <HeaderActionPicker
+            value={draft.headerAction}
+            sheets={sheets}
+            onChange={(v) => onUpdate("headerAction", v)}
+          />
+          <p className="text-xs text-muted">
+            {t("settings.headerAction.hint")}
+          </p>
+        </Field>
+      </Section>
+
       {IS_PREVIEW && (
         <Section title={t("settings.developer.section")}>
           <ToggleRow
@@ -168,6 +196,75 @@ export function GeneralTab({
         </Section>
       )}
     </>
+  );
+}
+
+// Sheets are encoded as `sheet:<id>` in the picker's flat string
+// surface so SelectPicker's generic stays `string` (it doesn't
+// support arbitrary keys). The encoding is local to this component:
+// on commit we decode back into the discriminated `HeaderAction`
+// union before persisting.
+type BuiltinHeaderActionKind = Exclude<HeaderAction, { kind: "sheet" }>["kind"];
+type HeaderActionKey = BuiltinHeaderActionKind | `sheet:${string}`;
+
+function encodeHeaderAction(action: HeaderAction): HeaderActionKey {
+  return action.kind === "sheet" ? `sheet:${action.sheetId}` : action.kind;
+}
+
+function decodeHeaderAction(key: HeaderActionKey): HeaderAction {
+  if (key.startsWith("sheet:")) {
+    return { kind: "sheet", sheetId: key.slice("sheet:".length) };
+  }
+  return { kind: key as BuiltinHeaderActionKind };
+}
+
+function HeaderActionPicker({
+  value,
+  sheets,
+  onChange,
+}: {
+  value: HeaderAction;
+  sheets: readonly Sheet[];
+  onChange: (next: HeaderAction) => void;
+}) {
+  const t = useT();
+  // Stable order: built-ins first, then one entry per sheet.
+  // Sheet-target whose sheet no longer exists falls back to the
+  // "Scroll to top" entry in the picker so the dropdown never shows
+  // a blank selection — the BudgetView click handler applies the
+  // same fallback at runtime.
+  const sheetExists = sheets.some(
+    (s) => value.kind === "sheet" && s.id === value.sheetId,
+  );
+  const selectedKey: HeaderActionKey =
+    value.kind === "sheet" && !sheetExists ? "top" : encodeHeaderAction(value);
+  const options: SelectOption<HeaderActionKey>[] = [
+    { value: "top", label: t("settings.headerAction.top") },
+    { value: "currentMonth", label: t("settings.headerAction.currentMonth") },
+    { value: "refresh", label: t("settings.headerAction.refresh") },
+    ...sheets.map((s) => ({
+      value: `sheet:${s.id}` as const,
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          <CategoryIconGlyph
+            name={s.glyph}
+            size={14}
+            style={{ color: s.color }}
+          />
+          <span>{t("settings.headerAction.sheet", { name: s.name })}</span>
+        </span>
+      ),
+    })),
+  ];
+  return (
+    <SelectPicker<HeaderActionKey>
+      value={selectedKey}
+      options={options}
+      onChange={(v) => onChange(decodeHeaderAction(v))}
+      ariaLabel={t("settings.headerAction.label")}
+      triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+      panelClassName="max-h-64 overflow-y-auto"
+    />
   );
 }
 

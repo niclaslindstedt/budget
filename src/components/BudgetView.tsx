@@ -98,6 +98,7 @@ import type {
   CellValue,
   Column,
   EntryType,
+  HeaderAction,
   HistoryEntry,
   HistoryEntrySplit,
   MatchRule,
@@ -250,6 +251,21 @@ type BudgetViewProps = {
   onSetEncryption: (mode: EncryptionMode) => void;
   onSetCloudOfflineMode: (on: boolean) => void;
 };
+
+function headerActionDescription(
+  action: HeaderAction,
+  sheets: readonly Sheet[],
+  t: ReturnType<typeof useT>,
+): string {
+  if (action.kind === "sheet") {
+    const target = sheets.find((s) => s.id === action.sheetId);
+    // Dangling reference falls back to the default action's label
+    // so the tooltip matches what the click will actually do.
+    if (!target) return t("settings.headerAction.top");
+    return t("settings.headerAction.sheet", { name: target.name });
+  }
+  return t(`settings.headerAction.${action.kind}`);
+}
 
 export function BudgetView({
   adapter,
@@ -1121,6 +1137,49 @@ export function BudgetView({
     (id: string) => dispatch({ type: "selectSheet", sheetId: id }),
     [dispatch],
   );
+  const onClickHeaderTitle = useCallback(() => {
+    const action = data.settings.headerAction;
+    const reduceMotion =
+      document.documentElement.dataset.reduceMotion === "true";
+    const scrollBehavior: ScrollBehavior = reduceMotion ? "auto" : "smooth";
+    if (action.kind === "refresh") {
+      window.location.reload();
+      return;
+    }
+    if (action.kind === "currentMonth") {
+      // Look up the month-group wrapper SheetView stamps with
+      // `data-month-key`. All visible months are always rendered, so
+      // the lookup either finds an element to scroll to or — when
+      // the active sheet has no month layout (accounts page) or the
+      // current month is collapsed under "Show more" — falls through
+      // to the same scroll-to-top behaviour as the default action.
+      const key = getMonthKey(todayIso(), data.settings.startOfMonth);
+      const target = document.querySelector<HTMLElement>(
+        `[data-month-key="${CSS.escape(key)}"]`,
+      );
+      if (target) {
+        target.scrollIntoView({ block: "start", behavior: scrollBehavior });
+        return;
+      }
+    } else if (action.kind === "sheet") {
+      // Dangling sheet id (sheet deleted since the action was set):
+      // skip the dispatch and fall through to scrolling to the top
+      // — matches the picker's own fallback so the dropdown and the
+      // click handler agree.
+      if (data.sheets.some((s) => s.id === action.sheetId)) {
+        if (action.sheetId !== data.activeSheetId) {
+          dispatch({ type: "selectSheet", sheetId: action.sheetId });
+        }
+      }
+    }
+    window.scrollTo({ top: 0, behavior: scrollBehavior });
+  }, [
+    data.settings.headerAction,
+    data.settings.startOfMonth,
+    data.sheets,
+    data.activeSheetId,
+    dispatch,
+  ]);
   const onOpenNewSheet = useCallback(() => {
     setSheetModal({ sheet: null });
   }, []);
@@ -2607,7 +2666,16 @@ export function BudgetView({
           data-app-header
           className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-[calc(1rem+env(safe-area-inset-top))] md:pb-4"
         >
-          <div className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClickHeaderTitle}
+            title={headerActionDescription(
+              data.settings.headerAction,
+              data.sheets,
+              t,
+            )}
+            className="inline-flex cursor-pointer items-center gap-2 rounded border border-transparent bg-transparent p-0 text-left hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          >
             <img
               src="/icons/icon-64.png"
               srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
@@ -2620,7 +2688,7 @@ export function BudgetView({
             <h1 className="m-0 text-base font-bold tracking-wide text-fg-bright">
               budget
             </h1>
-          </div>
+          </button>
           <div
             role="toolbar"
             aria-label={t("app.headerToolbar")}

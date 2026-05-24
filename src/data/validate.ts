@@ -976,6 +976,7 @@ function validateSettings(raw: unknown): Settings {
       }
     }
   }
+  const headerAction = validateHeaderAction(raw.headerAction);
   return {
     startOfMonth,
     dateFormat,
@@ -1000,7 +1001,25 @@ function validateSettings(raw: unknown): Settings {
     customTheme,
     achievements,
     unseenAchievements,
+    headerAction,
   };
+}
+
+// Coerce any malformed / unknown shape back to the default. The
+// `sheet` variant keeps whatever id the user picked even when the
+// sheet has since been deleted — the click handler in BudgetView
+// falls back to "go to top" at runtime, which keeps re-creating the
+// same sheet id from a restore harmless.
+function validateHeaderAction(raw: unknown): Settings["headerAction"] {
+  if (!isObject(raw)) return DEFAULT_SETTINGS.headerAction;
+  const kind = raw.kind;
+  if (kind === "top" || kind === "currentMonth" || kind === "refresh") {
+    return { kind };
+  }
+  if (kind === "sheet" && typeof raw.sheetId === "string" && raw.sheetId) {
+    return { kind: "sheet", sheetId: raw.sheetId };
+  }
+  return DEFAULT_SETTINGS.headerAction;
 }
 
 export function validateUserData(raw: unknown): Result<UserData> {
