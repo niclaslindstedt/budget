@@ -142,6 +142,9 @@ export const en = {
       "Tap {share} in Safari, then choose Add to Home Screen to install Budget like a native app.",
     install: "Install",
     installDismiss: "Dismiss install hint",
+    pullToRefresh: "Pull to refresh",
+    releaseToRefresh: "Release to refresh",
+    refreshing: "Refreshing…",
   },
 
   app: {

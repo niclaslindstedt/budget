@@ -169,6 +169,16 @@ export type UserDataStorage<Action> = {
   // past the new cursor are preserved (greyed in the UI) until the
   // user dispatches a new action, which truncates them.
   jumpToHistory: (index: number) => void;
+  // Pull a fresh snapshot from the adapter and replace in-memory
+  // state with it. Used by pull-to-refresh so the user can pick up
+  // edits another device pushed to the cloud (or another tab wrote
+  // to localStorage). If the in-memory state is dirty, flushes the
+  // pending save first so local edits aren't dropped — a conflict
+  // surfaced by that save halts the reload and lets the existing
+  // resolution UI take over. Resolves when state has been replaced
+  // (or the path bailed); rejections are caught internally and
+  // surfaced via `status`.
+  reload: () => Promise<void>;
 };
 
 // Combined entry + cursor state held inside the hook. Kept together
@@ -805,6 +815,105 @@ export function useUserDataStorage<Action extends { type: string }>(
     adapter.markSynced?.(lastSnapshot.current);
   }, [status, adapter, resetHistory]);
 
+  // Manual refresh from the adapter — pull-to-refresh, "reload" button.
+  // Two phases: (1) flush any pending debounced save so the reload
+  // doesn't quietly drop unsynced local edits; (2) re-issue
+  // `adapter.load()` and replace in-memory state. Mirrors the initial-
+  // load body (lines 558-639) and the watch callback (lines 813-833)
+  // — same lastSnapshot / skipNextSave / hasLoadedRef bookkeeping so
+  // the autosave effect doesn't immediately push the freshly-loaded
+  // bytes back out. Skips the `setStatus({kind:"loading"})` flip the
+  // initial load does — that triggers the full-screen `BudgetLoading`
+  // splash, which is wrong for a manual refresh on top of an already-
+  // populated app. The pull-to-refresh indicator owns its own
+  // "refreshing…" pip instead.
+  const reload = useCallback(async (): Promise<void> => {
+    log.info(
+      `reload requested [${adapter.id}] status=${statusRef.current.kind}`,
+    );
+    if (pendingTimerRef.current !== null) {
+      window.clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
+    }
+    // If the in-memory state differs from the last bytes we read or
+    // wrote, push them through the adapter first so a fresh remote
+    // read doesn't clobber them. The save can surface a conflict /
+    // auth error / parse error; in those cases the existing
+    // resolution UI owns the flow and we bail before reloading.
+    const transform = beforeSerializeRef.current;
+    const currentText = serializeUserData(transform ? transform(data) : data);
+    const lastText = lastSnapshot.current?.text ?? null;
+    const isDirty = lastText !== null && currentText !== lastText;
+    if (
+      isDirty &&
+      hasLoadedRef.current &&
+      !isBailStatus(statusRef.current) &&
+      statusRef.current.kind !== "saving"
+    ) {
+      log.info(`reload: flushing dirty state before pull [${adapter.id}]`);
+      await performSave(currentText, () => false);
+      if (isBailStatus(statusRef.current)) {
+        log.info(
+          `reload aborted — status=${statusRef.current.kind} after pre-flush save`,
+        );
+        return;
+      }
+    }
+    log.info(`reload start [${adapter.id}]`);
+    const start = performance.now();
+    try {
+      const snap = await adapter.load();
+      const ms = (performance.now() - start).toFixed(0);
+      log.info(
+        `reload ok (${ms}ms) [${adapter.id}] ${
+          snap
+            ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"} offline=${Boolean(snap.offline)}`
+            : "<empty>"
+        }`,
+      );
+      lastSnapshot.current = snap;
+      skipNextSave.current = true;
+      hasLoadedRef.current = true;
+      const parsed = snap
+        ? tryReadUserDataFromText(snap.text)
+        : ({ data: freshUserData(), status: "fresh" } as const);
+      setData(parsed.data);
+      resetHistory(parsed.data);
+      setLastSavedText(snap?.text ?? null);
+      if (parsed.status === "parse-failed") {
+        setStatus({ kind: "parse-error", message: parsed.error });
+      } else if (snap?.offline) {
+        setStatus({ kind: "offline", since: Date.now() });
+      } else {
+        setStatus({ kind: "idle" });
+      }
+    } catch (err) {
+      const ms = (performance.now() - start).toFixed(0);
+      if (err instanceof ConflictError) {
+        log.warn(
+          `reload conflict (${ms}ms) [${adapter.id}] remoteRev=${
+            err.remote.revision ?? "<none>"
+          } hasLocal=${Boolean(err.local)}`,
+        );
+        const remote = readUserDataFromText(err.remote.text);
+        const local = err.local ? readUserDataFromText(err.local.text) : data;
+        lastSnapshot.current = err.remote;
+        setStatus({ kind: "conflict", local, remote });
+        return;
+      }
+      if (err instanceof AuthError) {
+        log.warn(`reload auth failed (${ms}ms) [${adapter.id}]`, err);
+        setStatus({ kind: "auth-error", message: err.message });
+        return;
+      }
+      log.error(`reload failed (${ms}ms) [${adapter.id}]`, err);
+      setStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }, [adapter, data, performSave, resetHistory]);
+
   // Remote-change subscription. Cloud adapters call this when
   // another device pushes; local adapters typically don't supply it.
   useEffect(() => {
@@ -870,5 +979,6 @@ export function useUserDataStorage<Action extends { type: string }>(
     historyEntries,
     historyIndex: historyState.cursor,
     jumpToHistory,
+    reload,
   };
 }

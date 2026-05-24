@@ -50,6 +50,7 @@ import { AchievementUnlockModal } from "./AchievementUnlockModal";
 import { AchievementsModal } from "./AchievementsModal";
 import { HeaderMenu } from "./HeaderMenu";
 import { HeaderStar } from "./HeaderStar";
+import { PullToRefreshIndicator } from "./PullToRefreshIndicator";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal, type SettingsTabId } from "./SettingsModal";
 import { StorageSizeWarningModal } from "./StorageSizeWarningModal";
@@ -147,6 +148,7 @@ import { bcp47, type Lang, type MessageKey, useT } from "../i18n";
 import {
   useChangelogAutoOpen,
   useIdleSignOut,
+  usePullToRefresh,
   useStorageSizeWarning,
   useTheme,
   useToast,
@@ -301,9 +303,22 @@ export function BudgetView({
     historyEntries,
     historyIndex,
     jumpToHistory,
+    reload,
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
   });
+  // Pull-to-refresh wiring. Listens for a downward drag from the top
+  // of the page; on release past the trigger distance, re-runs
+  // `adapter.load()` via `reload()` so the user can pick up edits
+  // pushed by another device. Gated off during the initial load, an
+  // open conflict modal, or a paused shrink save — those states
+  // already own the screen and a quietly-replaced in-memory state
+  // would race with their resolution.
+  const ptrEnabled =
+    status.kind !== "loading" &&
+    status.kind !== "conflict" &&
+    status.kind !== "shrink-warning";
+  const ptr = usePullToRefresh(reload, { enabled: ptrEnabled });
   // Watch for achievement unlocks. Runs derived predicates on each
   // state delta and drains the manual-unlock bus; new unlocks land
   // in `data.settings.unseenAchievements` via `recordAchievementUnlock`,
@@ -2588,6 +2603,16 @@ export function BudgetView({
       data-budget-shell
       className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
     >
+      {/* Pull-to-refresh pip lives outside the `data-modal-background`
+          wrapper so an open modal's `inert` doesn't disable its
+          fixed-position rendering. The hook itself gates on
+          `[aria-modal="true"]` so the gesture is suppressed while a
+          modal is up — this is purely so the pip can finish its
+          slide-out animation if a modal opens mid-pull. */}
+      <PullToRefreshIndicator
+        state={ptr.state}
+        pullDistance={ptr.pullDistance}
+      />
       {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
           flips `inert` on every match, freezing focus and pointer
