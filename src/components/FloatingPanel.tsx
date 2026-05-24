@@ -6,6 +6,7 @@ import {
   useEscapeKey,
   useFloatingPosition,
 } from "../hooks";
+import { useBodyScrollLock } from "../utils/scroll-lock";
 import { DismissBackdrop } from "./DismissBackdrop";
 import { useBlocksSheet } from "./useBlocksSheet";
 
@@ -53,6 +54,13 @@ export function FloatingPanel({
 
   useEscapeKey(open, onClose);
   useBlocksSheet(rowId, open, onClose);
+  // Lock body scroll while the panel is open. Without this, a touch
+  // drag inside the panel chains to the page on iOS — most visibly on
+  // the burger menu, whose short list never reaches its own scroll
+  // boundary so `overflow-y-auto` alone doesn't suppress the chain.
+  // The hook is ref-counted, so pickers opened inside an already-
+  // modal context (Modal also locks) compose as no-ops.
+  useBodyScrollLock(open);
 
   // When the panel closes after having held keyboard focus (the
   // listbox cursor lives inside the portal), return focus to the
