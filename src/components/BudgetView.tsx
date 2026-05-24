@@ -1256,7 +1256,25 @@ export function BudgetView({
         `[data-month-key="${CSS.escape(key)}"]`,
       );
       if (target) {
-        target.scrollIntoView({ block: "start", behavior: scrollBehavior });
+        // `scrollIntoView({ block: "start" })` would land the
+        // section's top at viewport 0 — behind the sticky app
+        // header — so the month-name H3 (sticky at `var(--app-header-h)`)
+        // and the column-headers thead stick on top of the first
+        // row, hiding the first days of the month. Offset by the
+        // live app-header height so the section's top lands right
+        // below it; the H3 and thead then sit at their natural
+        // positions instead of overlapping the table body. Measure
+        // the app header off the live element — in standalone mode
+        // `--app-header-h` resolves to a `calc(... + env(safe-area-inset-top))`
+        // string parseFloat can't decode.
+        const appHeader =
+          document.querySelector<HTMLElement>("[data-app-header]");
+        const appH = appHeader?.getBoundingClientRect().height ?? 0;
+        const top = target.getBoundingClientRect().top + window.scrollY - appH;
+        window.scrollTo({
+          top: Math.max(0, top),
+          behavior: scrollBehavior,
+        });
         return;
       }
     } else if (action.kind === "sheet") {
