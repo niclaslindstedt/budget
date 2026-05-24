@@ -1409,6 +1409,9 @@ export function BudgetView({
                   { kind: "currency" },
                   { kind: "currency", alwaysTwoDecimals: true },
                 ],
+                // Long descriptions wrap inside the cell; the other
+                // columns hold short tokens that auto-fit on one line.
+                columnWraps: [false, true, false, false, false, false],
                 formats: budgetExportFormats(effectiveSettings),
                 asTable: true,
               },

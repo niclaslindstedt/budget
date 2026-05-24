@@ -50,6 +50,12 @@ export type SheetData = {
   // match the row width — extras are ignored, missing entries fall
   // back to `general`.
   columnFormats?: readonly ColumnFormat[];
+  // Per-column word-wrap toggle. When `true`, data cells in that
+  // column render with `wrapText` so long strings flow to a second
+  // line instead of being clipped or spilling into the next cell.
+  // Pairs with a smaller width cap during auto-fit so the wrap
+  // actually takes effect. Header cells are never wrapped.
+  columnWraps?: readonly boolean[];
   // Format codes used when any column in this sheet is `date` /
   // `currency`. Required if `columnFormats` references those kinds.
   formats?: SheetFormats;
@@ -92,14 +98,15 @@ function sanitizeSheetName(name: string): string {
 }
 
 // Resolved style indices baked into `xl/styles.xml`. The first two
-// are always present; the last three only appear when at least one
-// sheet opts into a `date` / `currency` column.
+// are always present; the rest only appear when at least one sheet
+// opts into a `date` / `currency` column or a wrapped column.
 type StyleIndices = {
   default: number;
   header: number;
   date: number | null;
   amount: number | null;
   balance: number | null;
+  generalWrap: number | null;
 };
 
 // Decide which styles each sheet needs and emit the shared styles
@@ -112,7 +119,9 @@ function buildStylesXml(sheets: readonly SheetData[]): {
   let dateFmt: string | null = null;
   let amountFmt: string | null = null;
   let balanceFmt: string | null = null;
+  let needsGeneralWrap = false;
   for (const sheet of sheets) {
+    if (sheet.columnWraps?.some(Boolean)) needsGeneralWrap = true;
     if (!sheet.columnFormats || !sheet.formats) continue;
     for (const col of sheet.columnFormats) {
       if (col.kind === "date") dateFmt = sheet.formats.date;
@@ -154,6 +163,7 @@ function buildStylesXml(sheets: readonly SheetData[]): {
     date: null,
     amount: null,
     balance: null,
+    generalWrap: null,
   };
   if (dateNumFmtId !== null) {
     indices.date = cellXfs.length;
@@ -171,6 +181,12 @@ function buildStylesXml(sheets: readonly SheetData[]): {
     indices.balance = cellXfs.length;
     cellXfs.push(
       `<xf numFmtId="${balanceNumFmtId}" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`,
+    );
+  }
+  if (needsGeneralWrap) {
+    indices.generalWrap = cellXfs.length;
+    cellXfs.push(
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>',
     );
   }
 
@@ -208,14 +224,21 @@ function buildStylesXml(sheets: readonly SheetData[]): {
 // the header style; otherwise the column format (when supplied) picks
 // the matching xf, with a fall-through to default when a format kind
 // was requested but its xf wasn't registered (defensive — shouldn't
-// happen in practice).
+// happen in practice). A wrap-enabled general cell routes to the
+// dedicated wrap xf so `wrapText` applies; wrap on a date / currency
+// column falls through to the format xf (those columns hold short
+// values that don't need wrapping in practice).
 function styleForCell(
   isHeader: boolean,
   columnFormat: ColumnFormat | undefined,
+  isWrap: boolean,
   indices: StyleIndices,
 ): number {
   if (isHeader) return indices.header;
-  if (!columnFormat || columnFormat.kind === "general") return indices.default;
+  if (!columnFormat || columnFormat.kind === "general") {
+    if (isWrap && indices.generalWrap !== null) return indices.generalWrap;
+    return indices.default;
+  }
   if (columnFormat.kind === "date") {
     return indices.date ?? indices.default;
   }
@@ -226,6 +249,65 @@ function styleForCell(
   return indices.amount ?? indices.default;
 }
 
+// Auto-fit column widths from the sheet's cell contents. The unit is
+// Excel's column-width unit — roughly "number of `0` characters in the
+// default font that fit in the column". We approximate with the
+// longest stringified cell value per column, padded by ~2 chars to
+// match Excel's own auto-fit padding, then capped so a single very
+// long string doesn't blow the whole column out. Wrap columns get a
+// tighter cap so the wrap actually engages on long descriptions.
+function computeColumnWidths(sheet: SheetData): number[] {
+  const rows = sheet.rows;
+  if (rows.length === 0) return [];
+  let cols = 0;
+  for (const row of rows) if (row.length > cols) cols = row.length;
+  if (cols === 0) return [];
+  const formats = sheet.columnFormats ?? [];
+  const wraps = sheet.columnWraps ?? [];
+  const widths: number[] = [];
+  for (let c = 0; c < cols; c += 1) {
+    let max = 0;
+    for (let r = 0; r < rows.length; r += 1) {
+      const cell = rows[r][c];
+      if (cell === null || cell === undefined || cell === "") continue;
+      const len = estimateCellWidth(cell, r === 0 ? undefined : formats[c]);
+      if (len > max) max = len;
+    }
+    // Empty column: keep a minimal default width.
+    if (max === 0) {
+      widths.push(8);
+      continue;
+    }
+    const padded = max + 2;
+    const cap = wraps[c] ? 40 : 60;
+    widths.push(Math.max(8, Math.min(cap, padded)));
+  }
+  return widths;
+}
+
+// Approximate the display width (in characters) of a single cell so
+// auto-fit can pick a sensible column width. Date columns render as
+// a fixed-width date format; currency columns add overhead for the
+// thousands separators, decimals, and currency symbol. General cells
+// fall through to the stringified value's length.
+function estimateCellWidth(
+  cell: CellValue,
+  format: ColumnFormat | undefined,
+): number {
+  if (cell === null || cell === undefined || cell === "") return 0;
+  if (format?.kind === "date") return 10;
+  if (format?.kind === "currency") {
+    const raw =
+      typeof cell === "number"
+        ? String(Math.trunc(Math.abs(cell)))
+        : String(cell);
+    // +5: sign, decimal point + two decimals, currency symbol +
+    // separator space. Thousands separators add ~1 per three digits.
+    return raw.length + Math.floor(raw.length / 3) + 5;
+  }
+  return String(cell).length;
+}
+
 function buildSheetXml(
   sheet: SheetData,
   indices: StyleIndices,
@@ -233,11 +315,23 @@ function buildSheetXml(
 ): string {
   const rows = sheet.rows;
   const columnFormats = sheet.columnFormats ?? [];
+  const columnWraps = sheet.columnWraps ?? [];
+  const widths = computeColumnWidths(sheet);
   const parts: string[] = [];
   parts.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
   parts.push(
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
   );
+  if (widths.length > 0) {
+    parts.push("<cols>");
+    for (let c = 0; c < widths.length; c += 1) {
+      const w = widths[c].toFixed(2);
+      parts.push(
+        `<col min="${c + 1}" max="${c + 1}" width="${w}" customWidth="1"/>`,
+      );
+    }
+    parts.push("</cols>");
+  }
   if (rows.length > 0) {
     parts.push("<sheetData>");
     for (let r = 0; r < rows.length; r += 1) {
@@ -250,7 +344,8 @@ function buildSheetXml(
         if (cell === null || cell === undefined || cell === "") continue;
         const ref = `${columnLetter(c)}${rowNum}`;
         const colFmt = columnFormats[c];
-        const styleIdx = styleForCell(isHeader, colFmt, indices);
+        const isWrap = !!columnWraps[c];
+        const styleIdx = styleForCell(isHeader, colFmt, isWrap, indices);
         const style = styleIdx === 0 ? "" : ` s="${styleIdx}"`;
 
         // Date column on a data row: convert ISO string → Excel serial.

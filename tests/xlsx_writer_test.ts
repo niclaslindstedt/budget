@@ -219,6 +219,71 @@ describe("buildXlsx", () => {
     expect(sheetXml).toContain('r:id="rId1"');
   });
 
+  it("emits a <cols> block sized to the widest cell per column", async () => {
+    const bytes = buildXlsx([
+      {
+        name: "Widths",
+        rows: [
+          ["Date", "Description", "Amount"],
+          ["2026-05-18", "Short", -1],
+          ["2026-05-19", "A noticeably longer description string", 25000],
+        ],
+        columnFormats: [
+          { kind: "date" },
+          { kind: "general" },
+          { kind: "currency" },
+        ],
+        formats: {
+          date: "yyyy-mm-dd",
+          amount: "#,##0.00",
+          balance: "#,##0.00",
+        },
+      },
+    ]);
+    const arrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    );
+    const sheetXml = await readPart(arrayBuffer, "xl/worksheets/sheet1.xml");
+    expect(sheetXml).not.toBeNull();
+    expect(sheetXml).toContain("<cols>");
+    // Date column: fixed ~10 chars + padding -> 12.
+    expect(sheetXml).toMatch(/<col min="1" max="1" width="12\.00"/);
+    // Description: 38 chars + padding -> 40.
+    expect(sheetXml).toMatch(/<col min="2" max="2" width="40\.00"/);
+    // Currency: 5-digit number plus currency overhead.
+    expect(sheetXml).toMatch(/<col min="3" max="3" width="[1-9][0-9]?\.\d{2}"/);
+  });
+
+  it("registers a wrap-text style for columnWraps and tightens the auto-fit cap", async () => {
+    const longText = "x".repeat(120);
+    const bytes = buildXlsx([
+      {
+        name: "Wrapped",
+        rows: [
+          ["Date", "Description"],
+          ["2026-05-18", longText],
+        ],
+        columnFormats: [{ kind: "general" }, { kind: "general" }],
+        columnWraps: [false, true],
+      },
+    ]);
+    const arrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    );
+    const styles = await readPart(arrayBuffer, "xl/styles.xml");
+    expect(styles).toContain('wrapText="1"');
+    const sheetXml = await readPart(arrayBuffer, "xl/worksheets/sheet1.xml");
+    expect(sheetXml).not.toBeNull();
+    // Wrap column capped at 40 even though the cell is 120 chars wide.
+    expect(sheetXml).toMatch(/<col min="2" max="2" width="40\.00"/);
+    // Data cell in the wrapped column gets the wrap xf, not the
+    // default. The exact index depends on registration order, but it
+    // must be a non-zero s="N".
+    expect(sheetXml).toMatch(/<c r="B2" s="\d+"/);
+  });
+
   it("skips the table part for a header-only sheet", async () => {
     const bytes = buildXlsx([
       {
