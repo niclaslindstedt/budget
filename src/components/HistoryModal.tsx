@@ -266,14 +266,14 @@ export function HistoryModal({
         ) : (
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
-              <col className="w-12 md:w-20" />
+              <col className="w-12 md:w-24" />
               {hasAnyType && (
                 <col
                   data-history-col="type"
                   style={
                     {
                       "--mobile-w": "2.25rem",
-                      "--desktop-w": `calc(${colChars.type}ch + 3rem)`,
+                      "--desktop-w": `calc(${colChars.type}ch + 2rem)`,
                     } as CSSProperties
                   }
                 />
@@ -284,7 +284,7 @@ export function HistoryModal({
                 style={
                   {
                     "--mobile-w": `calc(${colChars.amount}ch + 1rem)`,
-                    "--desktop-w": `max(calc(${colChars.amount}ch + 1rem), calc(${HEADER_FLOOR_CH.amount}ch + 1rem))`,
+                    "--desktop-w": `calc(${colChars.amount}ch + 1rem)`,
                   } as CSSProperties
                 }
               />
@@ -317,7 +317,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyType && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2 md:text-left">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-1 md:text-left">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="type"
@@ -419,10 +419,10 @@ export function HistoryModal({
                             )}
                           </td>
                           {hasAnyType && (
-                            <td className="px-1 py-1.5 text-center align-top md:px-2 md:text-left">
+                            <td className="px-1 py-1.5 text-center align-top md:px-1 md:text-left">
                               {type ? (
                                 <span
-                                  className="inline-flex max-w-full items-center gap-1.5 rounded-full px-1.5 py-0.5 text-xs md:px-2 md:py-1"
+                                  className="inline-flex max-w-full items-center gap-1.5 rounded-full px-1.5 py-0.5 text-xs"
                                   style={{
                                     backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
                                     color: type.color,
