@@ -783,7 +783,7 @@ function AccountRowImpl({
               name: account.name,
             })}
             title={t("accountsSheet.updateBalanceTitle")}
-            className="cursor-pointer border-0 bg-transparent p-0 font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            className="cursor-pointer border-0 bg-transparent p-0 text-right font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
           >
             {formatBalance(balance, accountSettings)}
           </button>
