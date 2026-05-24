@@ -163,8 +163,11 @@ export const THEMES = [
   "dark",
   "light",
   "dracula",
+  "monokai",
   "githubDark",
   "githubLight",
+  "solarizedLight",
+  "quietLight",
   "system",
   "custom",
 ] as const;
@@ -174,11 +177,21 @@ export const THEMES = [
 // Appearance picker's mode row uses these arrays to derive its
 // selected family from the active preset, and the variant row reads
 // the matching array to render its buttons.
-export const DARK_THEMES = ["dark", "dracula", "githubDark"] as const;
+export const DARK_THEMES = [
+  "dark",
+  "dracula",
+  "monokai",
+  "githubDark",
+] as const;
 
 // Theme presets in the Light family — One Light first, then the
 // light VS Code variants.
-export const LIGHT_THEMES = ["light", "githubLight"] as const;
+export const LIGHT_THEMES = [
+  "light",
+  "githubLight",
+  "solarizedLight",
+  "quietLight",
+] as const;
 
 // Resolve a preset to its broad family. Dark / Light variants fold
 // into their family bucket; `system` and `custom` are their own
@@ -227,6 +240,12 @@ export const FONT_FAMILIES: readonly {
     id: "serif",
     label: "settings.appearance.font.serif",
     stack: '"Source Serif 4", ui-serif, Georgia, "Times New Roman", serif',
+  },
+  {
+    id: "dyslexic",
+    label: "settings.appearance.font.dyslexic",
+    stack:
+      '"OpenDyslexic", "Comic Sans MS", ui-sans-serif, system-ui, sans-serif',
   },
 ];
 
@@ -369,6 +388,81 @@ export const DEFAULT_CUSTOM_THEME_COLORS_GITHUB_LIGHT: CustomThemeColors = {
   negative: "#e5717f",
 };
 
+// Monokai palette — the classic TextMate / Sublime / VS Code dark
+// theme. Strong yellow-green / pink / orange / purple syntax against
+// the warm brown-black background. Mirrored into `src/styles.css`
+// under `:root[data-theme="monokai"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_MONOKAI: CustomThemeColors = {
+  pageBg: "#1e1f1c",
+  surface: "#272822",
+  surface2: "#3e3d32",
+  surface3: "#1b1c18",
+  fg: "#f8f8f2",
+  fgBright: "#ffffff",
+  muted: "#75715e",
+  line: "#49483e",
+  accent: "#a6e22e",
+  meta: "#e6db74",
+  link: "#66d9ef",
+  path: "#66d9ef",
+  flag: "#fd971f",
+  pipe: "#ae81ff",
+  danger: "#f92672",
+  success: "#a6e22e",
+  positive: "#b6e354",
+  negative: "#f49ab1",
+};
+
+// Solarized Light palette — Ethan Schoonover's iconic warm light
+// theme. Cream paper background with carefully balanced syntax hues
+// designed for low-contrast readability. Mirrored into
+// `src/styles.css` under `:root[data-theme="solarizedLight"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_SOLARIZED_LIGHT: CustomThemeColors = {
+  pageBg: "#eee8d5",
+  surface: "#fdf6e3",
+  surface2: "#f5efdc",
+  surface3: "#e3ddc9",
+  fg: "#586e75",
+  fgBright: "#073642",
+  muted: "#93a1a1",
+  line: "#d6cfb8",
+  accent: "#859900",
+  meta: "#b58900",
+  link: "#268bd2",
+  path: "#2aa198",
+  flag: "#cb4b16",
+  pipe: "#6c71c4",
+  danger: "#dc322f",
+  success: "#859900",
+  positive: "#719e00",
+  negative: "#d33682",
+};
+
+// Quiet Light palette — a calm, low-contrast VS Code light theme
+// with muted blue keywords, sage-green strings, and gentle plum
+// functions. Mirrored into `src/styles.css` under
+// `:root[data-theme="quietLight"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_QUIET_LIGHT: CustomThemeColors = {
+  pageBg: "#f5f5f5",
+  surface: "#ffffff",
+  surface2: "#ebebeb",
+  surface3: "#e0e0e0",
+  fg: "#333333",
+  fgBright: "#1a1a1a",
+  muted: "#aaaaaa",
+  line: "#d4d4d4",
+  accent: "#4f894c",
+  meta: "#ae6e29",
+  link: "#4b83cd",
+  path: "#1d8696",
+  flag: "#aa6624",
+  pipe: "#7e54a5",
+  danger: "#b73525",
+  success: "#4f894c",
+  positive: "#6c9d56",
+  negative: "#cf6e6a",
+};
+
 // Per-preset palette lookup. The Appearance picker reads this both to
 // draw the variant-row swatches and to pre-fill the Custom-theme
 // editor when the user switches into Custom — the seed comes from
@@ -380,8 +474,11 @@ export const PRESET_PALETTES: Record<
   dark: DEFAULT_CUSTOM_THEME_COLORS_DARK,
   light: DEFAULT_CUSTOM_THEME_COLORS_LIGHT,
   dracula: DEFAULT_CUSTOM_THEME_COLORS_DRACULA,
+  monokai: DEFAULT_CUSTOM_THEME_COLORS_MONOKAI,
   githubDark: DEFAULT_CUSTOM_THEME_COLORS_GITHUB_DARK,
   githubLight: DEFAULT_CUSTOM_THEME_COLORS_GITHUB_LIGHT,
+  solarizedLight: DEFAULT_CUSTOM_THEME_COLORS_SOLARIZED_LIGHT,
+  quietLight: DEFAULT_CUSTOM_THEME_COLORS_QUIET_LIGHT,
 };
 
 export const DEFAULT_CUSTOM_THEME: CustomTheme = {

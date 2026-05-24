@@ -226,6 +226,48 @@
   --month-12: #7e8bd0;
 }
 
+/* Monokai — the classic TextMate / Sublime / VS Code dark theme.
+   Warm brown-black surface with the iconic pink / yellow-green /
+   orange / cyan / purple syntax palette. Slot remap:
+   accent=green (functions), meta=yellow (strings), link=cyan,
+   path=cyan (dates), flag=orange (numbers), pipe=purple (constants),
+   danger=pink (keywords). */
+:root[data-theme="monokai"] {
+  --page-bg: #1e1f1c;
+  --surface: #272822;
+  --surface-2: #3e3d32;
+  --surface-3: #1b1c18;
+  --fg: #f8f8f2;
+  --fg-bright: #ffffff;
+  --muted: #75715e;
+  --accent: #a6e22e;
+  --meta: #e6db74;
+  --link: #66d9ef;
+  --path: #66d9ef;
+  --flag: #fd971f;
+  --pipe: #ae81ff;
+  --danger: #f92672;
+  --success: #a6e22e;
+  --positive: #b6e354;
+  --negative: #f49ab1;
+  --line: #49483e;
+  /* Monokai month wheel — leans on the theme's signature pink /
+     orange / yellow / green / cyan / purple set so the cells still
+     read as a coherent seasonal arc on the warm brown-black surface. */
+  --month-1: #66d9ef;
+  --month-2: #ae81ff;
+  --month-3: #a6e22e;
+  --month-4: #b6e354;
+  --month-5: #f92672;
+  --month-6: #e6db74;
+  --month-7: #fd971f;
+  --month-8: #f08a3a;
+  --month-9: #e07b58;
+  --month-10: #d96a78;
+  --month-11: #c47ca8;
+  --month-12: #9b85d8;
+}
+
 /* GitHub Dark Default — the editor-default GitHub theme adapted for
    the budget. Lower-saturation than One Dark; deep near-black
    backgrounds with the GitHub muted-blue-on-dark feel. */
@@ -301,6 +343,89 @@
   --month-10: #953d20;
   --month-11: #8250df;
   --month-12: #8250a0;
+}
+
+/* Solarized Light — Ethan Schoonover's iconic warm light theme.
+   Cream paper background, carefully balanced syntax palette designed
+   for low-contrast comfort. Slot remap follows the upstream Solarized
+   colour names (accent=green, meta=yellow, link=blue, path=cyan,
+   flag=orange, pipe=violet, danger=red, negative=magenta). */
+:root[data-theme="solarizedLight"] {
+  --page-bg: #eee8d5;
+  --surface: #fdf6e3;
+  --surface-2: #f5efdc;
+  --surface-3: #e3ddc9;
+  --fg: #586e75;
+  --fg-bright: #073642;
+  --muted: #93a1a1;
+  --accent: #859900;
+  --meta: #b58900;
+  --link: #268bd2;
+  --path: #2aa198;
+  --flag: #cb4b16;
+  --pipe: #6c71c4;
+  --danger: #dc322f;
+  --success: #859900;
+  --positive: #719e00;
+  --negative: #d33682;
+  --line: #d6cfb8;
+  /* Solarized's full eight-colour accent set drives the wheel
+     directly — blue / violet / green run cool through spring, then
+     yellow / orange / red carry summer into autumn, and magenta /
+     cyan close the year back at the cool end. Deepened where needed
+     to read against the cream surface. */
+  --month-1: #268bd2;
+  --month-2: #6c71c4;
+  --month-3: #2aa198;
+  --month-4: #859900;
+  --month-5: #d33682;
+  --month-6: #b58900;
+  --month-7: #cb4b16;
+  --month-8: #b04318;
+  --month-9: #9b3e1a;
+  --month-10: #8c3a1c;
+  --month-11: #7a4596;
+  --month-12: #2f6f9f;
+}
+
+/* Quiet Light — a calm low-contrast VS Code light theme. Soft grey
+   chrome with muted blue keywords, sage-green strings, dusty plum
+   functions. Slot remap: accent=green, meta=ochre, link=blue,
+   path=teal, flag=orange, pipe=plum, danger=brick. */
+:root[data-theme="quietLight"] {
+  --page-bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface-2: #ebebeb;
+  --surface-3: #e0e0e0;
+  --fg: #333333;
+  --fg-bright: #1a1a1a;
+  --muted: #aaaaaa;
+  --accent: #4f894c;
+  --meta: #ae6e29;
+  --link: #4b83cd;
+  --path: #1d8696;
+  --flag: #aa6624;
+  --pipe: #7e54a5;
+  --danger: #b73525;
+  --success: #4f894c;
+  --positive: #6c9d56;
+  --negative: #cf6e6a;
+  --line: #d4d4d4;
+  /* Quiet Light month wheel — desaturated set in the same temperature
+     order as One Light so the cells stay readable against the very
+     bright surface without shouting. */
+  --month-1: #4b83cd;
+  --month-2: #7e54a5;
+  --month-3: #4f894c;
+  --month-4: #6c9d56;
+  --month-5: #b73525;
+  --month-6: #ae6e29;
+  --month-7: #aa6624;
+  --month-8: #94591f;
+  --month-9: #804e1d;
+  --month-10: #8a4520;
+  --month-11: #6e498a;
+  --month-12: #8a4575;
 }
 
 /* System theme — follow the OS colour-scheme. Dark is the default
