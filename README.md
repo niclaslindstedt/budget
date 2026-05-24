@@ -129,7 +129,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 The deployed site ships a privacy policy at
 [budget.niclaslindstedt.se/privacy](https://budget.niclaslindstedt.se/privacy)
 covering what the app stores locally, the optional Dropbox integration,
-and the absence of in-app analytics.
+and the privacy-friendly page-view counter (GoatCounter) loaded on the
+production slot.
 
 ## License
 

@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 // the wording is edited — the value renders verbatim at the top of
 // the page and is the only line readers have to look at to see how
 // fresh the policy is.
-const LAST_UPDATED = "2026-05-18";
+const LAST_UPDATED = "2026-05-24";
 
 export function PrivacyPage() {
   return (
@@ -28,11 +28,13 @@ export function PrivacyPage() {
             app served as a static site at{" "}
             <span className="text-path">budget.niclaslindstedt.se</span>. It has
             no backend, no user accounts on a server, no sync service, and no
-            analytics SDK in the bundle. Your budget lives in your
-            browser&apos;s storage on your device. If you point it at a folder
-            on your disk, or connect a cloud storage backend (Dropbox or Google
-            Drive), a copy of the same bytes also lives there. We never receive
-            your data.
+            behavioural-tracking SDK. The production site does load a
+            privacy-friendly page-view counter (GoatCounter) that records
+            aggregated hits only — see <em>Web analytics</em> below. Your budget
+            lives in your browser&apos;s storage on your device. If you point it
+            at a folder on your disk, or connect a cloud storage backend
+            (Dropbox or Google Drive), a copy of the same bytes also lives
+            there. We never receive your data.
           </p>
         </Section>
 
@@ -249,18 +251,22 @@ export function PrivacyPage() {
             .
           </p>
           <p>
-            A privacy-friendly traffic counter (for example{" "}
+            The deployed production site also loads{" "}
             <a
               href="https://www.goatcounter.com/"
               className="text-link hover:underline"
             >
               GoatCounter
             </a>
-            ) may be added in the future to count page views. If it is, it will
-            be cookie-less, will not collect personally identifying information,
-            will not track users across sites, and will store only
-            hashed/anonymised IP addresses for short-term deduplication. No
-            third-party advertising or behavioural analytics services are used.
+            , a privacy-friendly, open-source page-view counter, via an{" "}
+            <code className="text-meta">async</code> script tag. It records
+            aggregated page views (which URL was visited, referrer, language,
+            screen size, and country) and stores a hashed/salted IP address for
+            short-term deduplication only. It sets no cookies, does not collect
+            personally identifying information, and does not track users across
+            sites. The <code className="text-meta">/preview/</code> staging slot
+            does not load the counter. No third-party advertising or behavioural
+            analytics services are used.
           </p>
         </Section>
 

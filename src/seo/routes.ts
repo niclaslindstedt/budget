@@ -132,7 +132,7 @@ export const HOME_ROUTE: RouteSeo = {
         "Spreadsheet-style monthly sheets",
         "JSON export / import for portability",
         "Optional Dropbox sync to your own app folder",
-        "No account, no backend, no analytics",
+        "No account, no backend, no behavioural tracking",
       ],
     },
   ],
@@ -144,11 +144,11 @@ export const PRIVACY_ROUTE: RouteSeo = {
   description:
     "How Budget handles your data: it lives in your browser's local " +
     "storage and, if you opt in, in your own Dropbox app folder. " +
-    "No server, no account on a backend, no analytics SDK.",
+    "No server, no account on a backend, no behavioural tracking SDK.",
   ogType: "article",
   sitemap: { changefreq: "monthly", priority: 0.5 },
   noscriptBody: noscript("Privacy policy — Budget", [
-    "Budget is a local-first budget app. Your ledger lives in your browser's local storage. There is no backend, no account on a server, and no analytics SDK. You can optionally sync the same JSON to your own Dropbox app folder.",
+    "Budget is a local-first budget app. Your ledger lives in your browser's local storage. There is no backend, no account on a server, and no behavioural tracking SDK. The production site loads a privacy-friendly page-view counter (GoatCounter) that records aggregated hits only. You can optionally sync the same JSON to your own Dropbox app folder.",
     "The full privacy policy needs JavaScript to render. Enable JavaScript and reload, or read the source on GitHub.",
   ]),
   jsonLd: [
@@ -159,7 +159,7 @@ export const PRIVACY_ROUTE: RouteSeo = {
       url: absoluteUrl("/privacy/"),
       name: "Privacy policy — Budget",
       description:
-        "How Budget handles your data: local-first, no backend, no analytics.",
+        "How Budget handles your data: local-first, no backend, no behavioural tracking.",
       inLanguage: SITE_LANGUAGE,
       isPartOf: { "@id": `${SITE_URL}/#website` },
       about: { "@id": `${SITE_URL}/#app` },
