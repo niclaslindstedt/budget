@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
 
 import {
@@ -725,6 +732,33 @@ export function SheetView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id, currentMonth]);
 
+  // Preserve the user's visual position when "Show future entries" flips
+  // on. In newestFirst sort the revealed months get inserted above the
+  // viewport; browser scroll anchoring can't shift past scrollY=0, so
+  // the user ends up looking at the latest future month instead of the
+  // current month they were editing. Capture the current-month anchor's
+  // top before the state change and scroll by the delta after layout so
+  // the view stays put — clicking the toggle just expands the list.
+  const futureRevealAnchorRef = useRef<number | null>(null);
+  const onShowAllFutureClick = useCallback(() => {
+    const anchor = scrollTargetRef.current;
+    futureRevealAnchorRef.current = anchor
+      ? anchor.getBoundingClientRect().top
+      : null;
+    setShowAllFuture(true);
+  }, []);
+  useLayoutEffect(() => {
+    const before = futureRevealAnchorRef.current;
+    if (before === null) return;
+    futureRevealAnchorRef.current = null;
+    const anchor = scrollTargetRef.current;
+    if (!anchor) return;
+    const delta = anchor.getBoundingClientRect().top - before;
+    if (Math.abs(delta) > 0.5) {
+      window.scrollBy({ top: delta, behavior: "auto" });
+    }
+  }, [showAllFuture]);
+
   // Track which rendered month containers are currently intersecting
   // the viewport so the floating "Today" button below can decide when
   // the current fiscal month is no longer on screen.
@@ -957,7 +991,7 @@ export function SheetView({
             settings.transactionSortOrder === "newestFirst" && (
               <SheetSectionToggle
                 label={t("sheet.viewerShowFutureEntries")}
-                onClick={() => setShowAllFuture(true)}
+                onClick={onShowAllFutureClick}
               />
             )}
           {visibleMonths.map((monthKey) => {
@@ -1033,7 +1067,7 @@ export function SheetView({
             settings.transactionSortOrder === "oldestFirst" && (
               <SheetSectionToggle
                 label={t("sheet.viewerShowFutureEntries")}
-                onClick={() => setShowAllFuture(true)}
+                onClick={onShowAllFutureClick}
               />
             )}
           {hasMoreHistory &&
