@@ -285,11 +285,6 @@ that way.
   unsubmittable, so don't switch a text-input modal to `centered`
   without also reworking the soft-keyboard handling. When adding a
   modal, decide which mode applies and use it from day one.
-- **PR conventions**: PR titles must follow Conventional Commits
-  because the title becomes the squash-merge commit on `main`.
-  Squash-merge is the only permitted merge strategy. **Rebase on
-  latest `main` before opening a PR**:
-  `git fetch origin main && git rebase origin/main`.
 
 ## Test conventions
 
@@ -334,6 +329,22 @@ Conventions:
 - A new common-flow spec goes in `e2e/specs/<name>.spec.ts`; a fix
   for a shipped bug goes in `e2e/regression/<slug>.spec.ts` with a
   header comment summarising the symptom and linking the issue / PR.
+
+## Creating pull requests
+
+`.github/PULL_REQUEST_TEMPLATE.md` is the contract for the body —
+use the headings it provides, don't invent new ones. A few rules
+that aren't in the template comments:
+
+- **Squash-merge only.** The PR title becomes the commit on `main`,
+  so it must follow Conventional Commits (`<type>(<scope>): <subject>`
+  in the imperative, ≤70 chars, lower-case, no trailing period).
+- **Rebase before opening.** Run `git fetch origin main && git rebase origin/main`.
+  PRs open ready for review, not as drafts.
+- **No chat artefacts in the body.** Everything must be derivable
+  from the repo state (diff, `git log`, source tree). No "as you
+  asked", no "I first tried X", no `Claude` / `session_…` references
+  in prose — the harness appends a footer, don't restate it.
 
 ## Documentation sync points
 
@@ -715,31 +726,29 @@ Agent-driven maintenance playbooks live under
 discovery paths (`.claude/skills/`) are symlinks to `.agent/skills/`
 so every tool sees the same canonical set.
 
-| Skill                  | Run when                                                                                                                                                                                                                                                                                                                                                                                                            | Run order |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `update-docs`          | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                                                                                                                                                      | 1         |
-| `update-readme`        | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                                                                                                                                                                  | 2         |
-| `sync-oss-spec`        | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                                                                                                                                                                 | last      |
-| `maintenance`          | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                                                                                                                                                            | umbrella  |
-| `release`              | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe.                                                                                                                                       | manual    |
-| `write-changeset`      | Decide whether the current change needs a `.changes/unreleased/<unix-ts>-<slug>.md` fragment. Resolves the latest `v*` tag, lists commits and existing fragments since, classifies the change, and either writes a new fragment, edits a parent fragment in place, or labels the PR `no-changelog`. Run per-PR, before opening the PR.                                                                              | manual    |
-| `debug-from-logs`      | The user pasted captured log output (in-app Logs tab, console transcript, CI snippet, anything timestamped or scoped). Walks the trace from last-known-good to the failure, traces each suspicious line back to its source by greping the logged string, forms and verifies a root-cause hypothesis, and ends by evaluating log sufficiency — adding the missing diagnostics in the same change when they were not. | manual    |
-| `tune-pwa-icons`       | The home-screen / launcher / browser-tab icon looks wrong on a real device (too small, off-centre, transparent, clipped by iOS rounding, eaten by an Android mask). Walks an edit / regenerate / inspect loop that reads the rasterised PNGs after every change, scored against Apple HIG and the W3C maskable-icon spec.                                                                                           | manual    |
-| `design`               | Iterating on the look or layout of a screen — tuning a CSS rule, building a new modal, redesigning a table, hunting a mobile-only regression. Walks an edit / reload / screenshot / inspect loop that uses the Read tool to view PNGs inline at every viewport. The harness (`.agent/skills/design/screenshot.mjs`) drives the app through reusable flows so each iteration only changes the bit being designed.    | manual    |
-| `write-pr-description` | About to open a PR (or revise one already pushed). Derives the title and body from the diff, commit log, and source tree — never from the chat that produced the change — and yields a Conventional-Commits title and a `## Summary` + `## Test plan` body that describe the problem and the fix in the voice of someone reading the PR cold.                                                                       | manual    |
+| Skill             | Run when                                                                                                                                                                                                                                                                                                                                                                                                            | Run order |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `update-docs`     | `docs/` may be stale relative to `src/` layout, the persisted-data shape, or the `Makefile` target table — or `src/components/PrivacyPage.tsx` may be stale relative to the storage / encryption / Dropbox claims it restates.                                                                                                                                                                                      | 1         |
+| `update-readme`   | `README.md` may be stale relative to `package.json` scripts, `Makefile` targets, `.nvmrc`, or the user-visible UI.                                                                                                                                                                                                                                                                                                  | 2         |
+| `sync-oss-spec`   | This repo may have drifted out of conformance with `OSS_SPEC.md` — runs the upstream bash validator and walks the violations until it reports zero.                                                                                                                                                                                                                                                                 | last      |
+| `maintenance`     | Bring the whole repository back into sync without first diagnosing which artifact is stale — dispatches every `update-*` above in order.                                                                                                                                                                                                                                                                            | umbrella  |
+| `release`         | Maintainer (or agent on their behalf) wants to cut a new release. Walks the pre-flight checklist (clean tree, on `main`, fragments parse, OAuth redirect URIs already registered for `/preview`), dispatches the workflow, verifies the deploy, links to the rollback recipe.                                                                                                                                       | manual    |
+| `write-changeset` | Decide whether the current change needs a `.changes/unreleased/<unix-ts>-<slug>.md` fragment. Resolves the latest `v*` tag, lists commits and existing fragments since, classifies the change, and either writes a new fragment, edits a parent fragment in place, or labels the PR `no-changelog`. Run per-PR, before opening the PR.                                                                              | manual    |
+| `debug-from-logs` | The user pasted captured log output (in-app Logs tab, console transcript, CI snippet, anything timestamped or scoped). Walks the trace from last-known-good to the failure, traces each suspicious line back to its source by greping the logged string, forms and verifies a root-cause hypothesis, and ends by evaluating log sufficiency — adding the missing diagnostics in the same change when they were not. | manual    |
+| `tune-pwa-icons`  | The home-screen / launcher / browser-tab icon looks wrong on a real device (too small, off-centre, transparent, clipped by iOS rounding, eaten by an Android mask). Walks an edit / regenerate / inspect loop that reads the rasterised PNGs after every change, scored against Apple HIG and the W3C maskable-icon spec.                                                                                           | manual    |
+| `design`          | Iterating on the look or layout of a screen — tuning a CSS rule, building a new modal, redesigning a table, hunting a mobile-only regression. Walks an edit / reload / screenshot / inspect loop that uses the Read tool to view PNGs inline at every viewport. The harness (`.agent/skills/design/screenshot.mjs`) drives the app through reusable flows so each iteration only changes the bit being designed.    | manual    |
 
 `update-manpages` and `update-website` are listed in `OSS_SPEC.md`
 §21.5 but are intentionally omitted here — see the "OSS_SPEC.md
 exceptions" section above. The `release`, `write-changeset`,
-`debug-from-logs`, `tune-pwa-icons`, `design`, and
-`write-pr-description` skills are manual playbooks (a maintainer
-dispatches the release workflow; the contributor decides per-PR
-whether a fragment is warranted; the agent runs the debug playbook
-whenever the user pastes logs; the icon set is tuned when a real
-device shows it looking wrong; the design loop runs whenever an
-agent is tuning visual layout; the PR body is drafted right before
-opening the PR), so none of them are part of the `maintenance`
-umbrella — that umbrella only runs automatic sync skills. New automatic-sync skills go in this table in the order
+`debug-from-logs`, `tune-pwa-icons`, and `design` skills are manual
+playbooks (a maintainer dispatches the release workflow; the
+contributor decides per-PR whether a fragment is warranted; the
+agent runs the debug playbook whenever the user pastes logs; the
+icon set is tuned when a real device shows it looking wrong; the
+design loop runs whenever an agent is tuning visual layout), so
+none of them are part of the `maintenance` umbrella — that umbrella
+only runs automatic sync skills. New automatic-sync skills go in this table in the order
 they should run — upstream fixes first, downstream mirrors last;
 `sync-oss-spec` always runs last to catch residual violations,
 and the `maintenance` umbrella reflects the same order in its own
