@@ -31,7 +31,7 @@ export function ColorPalette({
           aria-label={`${ariaLabelPrefix} ${c}`}
           aria-pressed={c === value}
           onClick={() => onChange(c)}
-          className={`${dim} cursor-pointer rounded-full border-2 ${
+          className={`${dim} hit-24 cursor-pointer rounded-full border-2 ${
             c === value ? "border-fg-bright" : "border-transparent"
           }`}
           style={{ backgroundColor: c }}

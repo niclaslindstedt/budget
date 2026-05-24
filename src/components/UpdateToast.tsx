@@ -78,7 +78,7 @@ export function UpdateToast() {
       <button
         type="button"
         aria-label={t("pwa.dismiss")}
-        className="text-muted hover:text-fg"
+        className="hit-24 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded text-muted hover:text-fg"
         onClick={() => setNeedRefresh(false)}
       >
         ×
