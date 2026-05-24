@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
 
 import {
@@ -1088,7 +1089,7 @@ export function SheetView({
           settings={settings}
         />
       </section>
-      {showTodayButton && (
+      {showTodayButton &&
         // Floating pill anchored above the BottomBar (z-30) when the
         // user has scrolled into the past, or below the sticky page
         // header when they've scrolled into the future — z-40 keeps it
@@ -1096,30 +1097,43 @@ export function SheetView({
         // (z-50+). `pointer-events-none` on the wrapper lets the rows
         // underneath stay tappable in the gutter; the button itself
         // re-enables them.
-        <div
-          className={
-            todayButtonDirection === "up"
-              ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+0.5rem)]"
-              : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
-          }
-          data-floating-chrome
-        >
-          <button
-            type="button"
-            onClick={() => scrollToToday("smooth")}
-            aria-label={t("app.scrollToToday")}
-            title={t("app.scrollToToday")}
-            className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+        //
+        // Portalled to `document.body` so `position: fixed` resolves
+        // against the layout viewport. The sheet-panel wrapper in
+        // BudgetView carries `will-change: transform` (for the
+        // swipe-between-sheets perf hint), and the CSS spec says any
+        // element with `will-change` set to a property that creates a
+        // stacking context — `transform` included — also creates a
+        // containing block for fixed-position descendants. Without
+        // the portal, the pill rendered at `top: 61px` relative to
+        // that wrapper and slid out of view as soon as the user
+        // scrolled.
+        createPortal(
+          <div
+            className={
+              todayButtonDirection === "up"
+                ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+0.5rem)]"
+                : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+            }
+            data-floating-chrome
           >
-            {todayButtonDirection === "up" ? (
-              <ChevronUp size={14} aria-hidden focusable={false} />
-            ) : (
-              <ChevronDown size={14} aria-hidden focusable={false} />
-            )}
-            {t("common.today")}
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => scrollToToday("smooth")}
+              aria-label={t("app.scrollToToday")}
+              title={t("app.scrollToToday")}
+              className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+            >
+              {todayButtonDirection === "up" ? (
+                <ChevronUp size={14} aria-hidden focusable={false} />
+              ) : (
+                <ChevronDown size={14} aria-hidden focusable={false} />
+              )}
+              {t("common.today")}
+            </button>
+          </div>,
+          document.body,
+        )}
     </ActiveRowProvider>
   );
 }
