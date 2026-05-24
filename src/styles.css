@@ -781,6 +781,23 @@ body {
     justify-content: center;
     gap: 0.375rem;
   }
+  /* Same width-vs-height mismatch on the cells themselves: the date
+     and type columns are pinned to a 40px floor in landscape (line
+     580 grid), but inside that 40px track the cells render their
+     desktop variants — short-date "DD/MM" and the full-text type
+     chip — because Tailwind's md:* utilities only check width. Flip
+     the visibility back to the mobile variant (day-only date,
+     icon-only type) so the cell content fits its column. The mobile
+     spans are kept as `inline-flex` to match the type-cell icon
+     wrappers (the date span is text-only — `inline-flex` is harmless
+     here). */
+  .sheet-table .md\:hidden {
+    display: inline-flex;
+  }
+  .sheet-table .hidden.md\:inline,
+  .sheet-table .hidden.md\:inline-flex {
+    display: none;
+  }
 }
 
 /* Custom-theme reach for the shape vars (radius, border width,
