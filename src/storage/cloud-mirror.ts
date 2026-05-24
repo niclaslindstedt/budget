@@ -5,20 +5,20 @@ import {
   type Snapshot,
   type StorageAdapter,
 } from "./adapter";
-import {
-  clearRawStorage,
-  readRawStorage,
-  writeRawStorage,
-} from "./local-adapter";
 
 const log = createLogger("cloud-mirror");
 
-// Higher-order adapter that keeps a copy of the cloud bytes in
-// localStorage so a session opened with no network can still load
-// the last-known state, edit it locally, and push when the cloud
-// comes back. Sits *under* `withEncryption` so the mirror holds the
-// same envelope bytes the cloud holds — encryption-on installs keep
-// their on-disk threat model end-to-end.
+// Higher-order adapter that keeps a copy of the cloud bytes locally
+// so a session opened with no network can still load the last-known
+// state, edit it locally, and push when the cloud comes back. Sits
+// *under* `withEncryption` so the mirror holds the same envelope
+// bytes the cloud holds — encryption-on installs keep their on-disk
+// threat model end-to-end.
+//
+// The wrapper is storage-agnostic: it takes a `CloudMirrorStorage`
+// implementation (async read / write / clear) so the bytes can land
+// anywhere — production uses `createIdbCloudMirrorStorage(userId)`
+// from `idb-adapter.ts`, tests inject an in-memory store.
 //
 // State transitions the wrapper drives:
 //
@@ -41,22 +41,20 @@ const log = createLogger("cloud-mirror");
 //    return a snapshot tagged `offline: true` so the hook doesn't
 //    treat it as a hard error.
 
-// On-disk shape of the mirror. Kept under `cloudMirrorKey(userId)`
-// in `localStorage`. `text` is the bytes the inner adapter would
-// have returned — ciphertext when encryption is on, plaintext
-// otherwise. `cloudRevision` is the revision token the cloud
-// returned the last time we successfully synced (Dropbox `rev`,
-// Drive `ETag`, …). `localRevision` is a monotonic counter that
-// bumps every time `save` was called while offline; 0 means the
-// mirror matches the cloud at `cloudRevision`. `updatedAt` is the
-// wall-clock ms the mirror was last written, surfaced in the
-// "offline since {when}" copy. `backendId` records which inner
-// adapter wrote the cache (e.g. "dropbox", "gdrive") — the mirror
-// key is per-user only, so without this tag a switch from one
-// cloud to another would re-use the previous provider's pending
-// edits against the new provider and either overwrite the new
-// cloud with stale bytes or trip a bogus conflict on cross-
-// provider revisions.
+// `text` is the bytes the inner adapter would have returned —
+// ciphertext when encryption is on, plaintext otherwise.
+// `cloudRevision` is the revision token the cloud returned the last
+// time we successfully synced (Dropbox `rev`, Drive `ETag`, …).
+// `localRevision` is a monotonic counter that bumps every time
+// `save` was called while offline; 0 means the mirror matches the
+// cloud at `cloudRevision`. `updatedAt` is the wall-clock ms the
+// mirror was last written, surfaced in the "offline since {when}"
+// copy. `backendId` records which inner adapter wrote the cache —
+// the mirror is per-user only, so without this tag a switch from
+// one cloud to another would re-use the previous provider's pending
+// edits against the new provider and either overwrite the new cloud
+// with stale bytes or trip a bogus conflict on cross-provider
+// revisions.
 export type CloudMirrorState = {
   text: string;
   cloudRevision: string | null;
@@ -65,59 +63,14 @@ export type CloudMirrorState = {
   backendId: string;
 };
 
-const SCHEMA_VERSION = 2;
-
-type SerializedMirror = {
-  v: typeof SCHEMA_VERSION;
-  text: string;
-  cloudRevision: string | null;
-  localRevision: number;
-  updatedAt: number;
-  backendId: string;
+// Pluggable backing store for the mirror. Production hooks this up
+// to IndexedDB (`createIdbCloudMirrorStorage` in `idb-adapter.ts`);
+// tests pass an in-memory implementation.
+export type CloudMirrorStorage = {
+  read(): Promise<CloudMirrorState | null>;
+  write(state: CloudMirrorState): Promise<void>;
+  clear(): Promise<void>;
 };
-
-export function readCloudMirror(key: string): CloudMirrorState | null {
-  const raw = readRawStorage(key);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as SerializedMirror;
-    // Drop any pre-v2 cache — it doesn't know which backend wrote
-    // it, so we can't trust it after a backend switch. The next
-    // load will re-stamp the mirror from the cloud.
-    if (parsed.v !== SCHEMA_VERSION) return null;
-    if (typeof parsed.text !== "string") return null;
-    if (typeof parsed.backendId !== "string") return null;
-    return {
-      text: parsed.text,
-      cloudRevision:
-        typeof parsed.cloudRevision === "string" ? parsed.cloudRevision : null,
-      localRevision:
-        typeof parsed.localRevision === "number" ? parsed.localRevision : 0,
-      updatedAt:
-        typeof parsed.updatedAt === "number" ? parsed.updatedAt : Date.now(),
-      backendId: parsed.backendId,
-    };
-  } catch (err) {
-    log.warn(`mirror parse failed key=${key}`, err);
-    return null;
-  }
-}
-
-export function writeCloudMirror(key: string, state: CloudMirrorState): void {
-  const payload: SerializedMirror = {
-    v: SCHEMA_VERSION,
-    text: state.text,
-    cloudRevision: state.cloudRevision,
-    localRevision: state.localRevision,
-    updatedAt: state.updatedAt,
-    backendId: state.backendId,
-  };
-  writeRawStorage(JSON.stringify(payload), key);
-}
-
-export function clearCloudMirror(key: string): void {
-  clearRawStorage(key);
-}
 
 // Fetch failures bubble out of the cloud adapters as native errors
 // (TypeError from `fetch`, AbortError, "Failed to fetch", …). HTTP
@@ -144,17 +97,16 @@ function isOfflineError(err: unknown): boolean {
 }
 
 export type CloudMirrorOptions = {
-  // Where to persist the mirror. Pass the per-user key from
-  // `cloudMirrorKey(userId)` so each account on a shared device gets
-  // its own cache.
-  storageKey: string;
+  // Backing store for the mirror state. Per-user in production
+  // (`createIdbCloudMirrorStorage(userId)`).
+  storage: CloudMirrorStorage;
 };
 
 export function withCloudMirror(
   inner: StorageAdapter,
   options: CloudMirrorOptions,
 ): StorageAdapter {
-  const { storageKey } = options;
+  const { storage } = options;
   const backendId = inner.id;
 
   // Read the cache, but only honour it if it was written by the
@@ -163,21 +115,23 @@ export function withCloudMirror(
   // edits and a cloudRevision token that mean nothing to the new
   // provider; treating them as authoritative is how blank-budget
   // wipes happen after a switch.
-  function mirror(): CloudMirrorState | null {
-    const cached = readCloudMirror(storageKey);
+  async function mirror(): Promise<CloudMirrorState | null> {
+    const cached = await storage.read();
     if (!cached) return null;
     if (cached.backendId !== backendId) {
       log.warn(
         `mirror: dropping stale cache from backend=${cached.backendId} (now wrapping ${backendId})`,
       );
-      clearCloudMirror(storageKey);
+      await storage.clear();
       return null;
     }
     return cached;
   }
 
-  function persist(state: Omit<CloudMirrorState, "backendId">): void {
-    writeCloudMirror(storageKey, { ...state, backendId });
+  async function persist(
+    state: Omit<CloudMirrorState, "backendId">,
+  ): Promise<void> {
+    await storage.write({ ...state, backendId });
   }
 
   // Helper to compare an inner-adapter snapshot against the mirror's
@@ -207,7 +161,7 @@ export function withCloudMirror(
         cached.text,
         cached.cloudRevision ?? undefined,
       );
-      persist({
+      await persist({
         text: pushed.text,
         cloudRevision: pushed.revision ?? null,
         localRevision: 0,
@@ -253,7 +207,10 @@ export function withCloudMirror(
       log.info(
         `markSynced: stamping mirror bytes=${snapshot.text.length} rev=${snapshot.revision ?? "<none>"}`,
       );
-      persist({
+      // Fire-and-forget — the caller's contract is sync. Matches the
+      // existing pattern in `withEncryption` which already returns
+      // before its own async encrypt step finishes.
+      void persist({
         text: snapshot.text,
         cloudRevision: snapshot.revision ?? null,
         localRevision: 0,
@@ -261,12 +218,12 @@ export function withCloudMirror(
       });
     },
 
-    // No `loadSync` even when the inner has one: the mirror is a
-    // localStorage round-trip, and a cloud adapter never offers
-    // sync loads anyway. Callers fall back to async `load()`.
+    // No `loadSync` even when the inner has one: the mirror is an
+    // async round-trip, and a cloud adapter never offers sync loads
+    // anyway. Callers fall back to async `load()`.
 
     async load(): Promise<Snapshot | null> {
-      const cached = mirror();
+      const cached = await mirror();
       log.info(
         `load: start cached=${cached ? `bytes=${cached.text.length} localRev=${cached.localRevision} cloudRev=${cached.cloudRevision ?? "<none>"}` : "<none>"}`,
       );
@@ -293,7 +250,7 @@ export function withCloudMirror(
           return tryPushPending(cached);
         }
         if (fresh) {
-          persist({
+          await persist({
             text: fresh.text,
             cloudRevision: fresh.revision ?? null,
             localRevision: 0,
@@ -309,7 +266,7 @@ export function withCloudMirror(
           // wrong default. Clear the mirror and return null so the
           // hook seeds a fresh budget.
           log.warn("load: remote empty but cache exists — clearing mirror");
-          clearCloudMirror(storageKey);
+          await storage.clear();
         }
         return fresh;
       } catch (err) {
@@ -340,7 +297,7 @@ export function withCloudMirror(
       );
       try {
         const pushed = await inner.save(text, baseRevision);
-        persist({
+        await persist({
           text: pushed.text,
           cloudRevision: pushed.revision ?? null,
           localRevision: 0,
@@ -352,7 +309,7 @@ export function withCloudMirror(
         return pushed;
       } catch (err) {
         if (err instanceof ConflictError) {
-          const cached = mirror();
+          const cached = await mirror();
           // Attach the local bytes so the resolution modal can show
           // both sides without a second adapter call. Prefer the
           // bytes the user just tried to save — they're the freshest
@@ -366,7 +323,7 @@ export function withCloudMirror(
           // conflict instead of silently discarding the unsynced
           // edit. Don't bump `cloudRevision` — the cloud's `rev`
           // didn't change for our copy.
-          persist({
+          await persist({
             text,
             cloudRevision: cached?.cloudRevision ?? null,
             localRevision: (cached?.localRevision ?? 0) + 1,
@@ -379,14 +336,14 @@ export function withCloudMirror(
         }
         if (err instanceof AuthError) throw err;
         if (isOfflineError(err)) {
-          const cached = mirror();
+          const cached = await mirror();
           const nextState: Omit<CloudMirrorState, "backendId"> = {
             text,
             cloudRevision: cached?.cloudRevision ?? baseRevision ?? null,
             localRevision: (cached?.localRevision ?? 0) + 1,
             updatedAt: Date.now(),
           };
-          persist(nextState);
+          await persist(nextState);
           log.info(
             `save: offline — mirrored bytes=${text.length} localRev=${nextState.localRevision}`,
           );
@@ -409,20 +366,22 @@ export function withCloudMirror(
             // copy or we wouldn't be in this branch, so silently
             // replacing it is wrong. Bail and let the next `load`
             // surface the divergence.
-            const cached = mirror();
-            if (cached && cached.localRevision > 0) {
-              log.warn(
-                `watch: remote moved but local has ${cached.localRevision} pending edits — ignoring push, divergence will surface on next load/save`,
-              );
-              return;
-            }
-            persist({
-              text: snap.text,
-              cloudRevision: snap.revision ?? null,
-              localRevision: 0,
-              updatedAt: Date.now(),
-            });
-            onRemoteChange(snap);
+            void (async () => {
+              const cached = await mirror();
+              if (cached && cached.localRevision > 0) {
+                log.warn(
+                  `watch: remote moved but local has ${cached.localRevision} pending edits — ignoring push, divergence will surface on next load/save`,
+                );
+                return;
+              }
+              await persist({
+                text: snap.text,
+                cloudRevision: snap.revision ?? null,
+                localRevision: 0,
+                updatedAt: Date.now(),
+              });
+              onRemoteChange(snap);
+            })();
           })
       : undefined,
   };

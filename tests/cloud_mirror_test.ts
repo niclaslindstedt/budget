@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   AuthError,
@@ -8,33 +8,34 @@ import {
 } from "../src/storage/adapter";
 import {
   type CloudMirrorState,
-  readCloudMirror,
+  type CloudMirrorStorage,
   withCloudMirror,
-  writeCloudMirror,
 } from "../src/storage/cloud-mirror";
 
-// Drop-in localStorage shim — mirrors the one used in
-// `storage_adapter_test.ts`. Vitest runs under Node, so without it
-// the wrapper's `readRawStorage` / `writeRawStorage` calls would
-// silently no-op and the assertions would all pass for the wrong
-// reason.
-class MemoryStorage {
-  private store = new Map<string, string>();
-  getItem(key: string): string | null {
-    return this.store.has(key) ? (this.store.get(key) as string) : null;
-  }
-  setItem(key: string, value: string): void {
-    this.store.set(key, value);
-  }
-  removeItem(key: string): void {
-    this.store.delete(key);
-  }
-  clear(): void {
-    this.store.clear();
-  }
+// In-memory `CloudMirrorStorage` used by every test. Production wires
+// up `createIdbCloudMirrorStorage(userId)` from `idb-adapter.ts`; the
+// wrapper itself is storage-agnostic so the tests don't need an IDB
+// shim.
+function memoryStorage(initial: CloudMirrorState | null = null): {
+  storage: CloudMirrorStorage;
+  peek: () => CloudMirrorState | null;
+} {
+  let state: CloudMirrorState | null = initial ? { ...initial } : null;
+  return {
+    storage: {
+      async read() {
+        return state ? { ...state } : null;
+      },
+      async write(next) {
+        state = { ...next };
+      },
+      async clear() {
+        state = null;
+      },
+    },
+    peek: () => (state ? { ...state } : null),
+  };
 }
-
-const KEY = "budget.cloud-mirror.test";
 
 function makeInner(
   overrides: Partial<StorageAdapter> = {},
@@ -57,34 +58,25 @@ function makeInner(
 }
 
 describe("withCloudMirror", () => {
-  beforeEach(() => {
-    (globalThis as unknown as { localStorage: MemoryStorage }).localStorage =
-      new MemoryStorage();
-  });
-
-  afterEach(() => {
-    delete (globalThis as unknown as { localStorage?: MemoryStorage })
-      .localStorage;
-  });
-
-  it("mirrors a successful cloud load into localStorage", async () => {
+  it("mirrors a successful cloud load into the storage", async () => {
+    const { storage, peek } = memoryStorage();
     const inner = makeInner({
       async load() {
         return { text: "remote-bytes", revision: "rev-1" };
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.load();
     expect(snap).toEqual({ text: "remote-bytes", revision: "rev-1" });
-    const mirror = readCloudMirror(KEY);
+    const mirror = peek();
     expect(mirror?.text).toBe("remote-bytes");
     expect(mirror?.cloudRevision).toBe("rev-1");
     expect(mirror?.localRevision).toBe(0);
   });
 
   it("serves the mirror as `offline: true` when load throws a network error", async () => {
-    writeCloudMirror(KEY, {
+    const { storage } = memoryStorage({
       text: "cached-bytes",
       cloudRevision: "rev-7",
       localRevision: 0,
@@ -97,7 +89,7 @@ describe("withCloudMirror", () => {
         throw new TypeError("Failed to fetch");
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.load();
     expect(snap).toEqual({
@@ -108,7 +100,7 @@ describe("withCloudMirror", () => {
   });
 
   it("propagates AuthError without falling back to the mirror", async () => {
-    writeCloudMirror(KEY, {
+    const { storage } = memoryStorage({
       text: "cached",
       cloudRevision: "rev-3",
       localRevision: 0,
@@ -120,13 +112,13 @@ describe("withCloudMirror", () => {
         throw new AuthError("expired");
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     await expect(adapter.load()).rejects.toBeInstanceOf(AuthError);
   });
 
   it("captures offline saves to the mirror with bumped localRevision", async () => {
-    writeCloudMirror(KEY, {
+    const { storage, peek } = memoryStorage({
       text: "synced",
       cloudRevision: "rev-2",
       localRevision: 0,
@@ -138,7 +130,7 @@ describe("withCloudMirror", () => {
         throw new TypeError("Failed to fetch");
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.save("offline-bytes", "rev-2");
     expect(snap).toEqual({
@@ -146,14 +138,14 @@ describe("withCloudMirror", () => {
       revision: "rev-2",
       offline: true,
     });
-    const mirror = readCloudMirror(KEY);
+    const mirror = peek();
     expect(mirror?.text).toBe("offline-bytes");
     expect(mirror?.cloudRevision).toBe("rev-2");
     expect(mirror?.localRevision).toBe(1);
   });
 
   it("flushes pending local edits on next online save", async () => {
-    writeCloudMirror(KEY, {
+    const { storage, peek } = memoryStorage({
       text: "offline-bytes",
       cloudRevision: "rev-2",
       localRevision: 1,
@@ -167,18 +159,18 @@ describe("withCloudMirror", () => {
         return { text, revision: "rev-3" };
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.save("offline-bytes", "rev-2");
     expect(snap).toEqual({ text: "offline-bytes", revision: "rev-3" });
     expect(received).toEqual({ text: "offline-bytes", baseRev: "rev-2" });
-    const mirror = readCloudMirror(KEY);
+    const mirror = peek();
     expect(mirror?.localRevision).toBe(0);
     expect(mirror?.cloudRevision).toBe("rev-3");
   });
 
   it("surfaces divergence as a ConflictError carrying both sides", async () => {
-    writeCloudMirror(KEY, {
+    const { storage } = memoryStorage({
       text: "local-bytes",
       cloudRevision: "rev-2",
       localRevision: 1,
@@ -194,7 +186,7 @@ describe("withCloudMirror", () => {
         throw new ConflictError(remote);
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     await expect(adapter.load()).rejects.toMatchObject({
       name: "ConflictError",
@@ -204,7 +196,7 @@ describe("withCloudMirror", () => {
   });
 
   it("flushes pending edits inside load when the remote hasn't moved", async () => {
-    writeCloudMirror(KEY, {
+    const { storage, peek } = memoryStorage({
       text: "local-bytes",
       cloudRevision: "rev-2",
       localRevision: 1,
@@ -221,18 +213,18 @@ describe("withCloudMirror", () => {
         return { text, revision: "rev-3" };
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.load();
     expect(pushed).toEqual({ text: "local-bytes", baseRev: "rev-2" });
     expect(snap).toEqual({ text: "local-bytes", revision: "rev-3" });
-    const mirror = readCloudMirror(KEY);
+    const mirror = peek();
     expect(mirror?.localRevision).toBe(0);
     expect(mirror?.cloudRevision).toBe("rev-3");
   });
 
   it("attaches local bytes to a save-time ConflictError so the modal can show both", async () => {
-    writeCloudMirror(KEY, {
+    const { storage, peek } = memoryStorage({
       text: "stale-cache",
       cloudRevision: "rev-5",
       localRevision: 0,
@@ -245,7 +237,7 @@ describe("withCloudMirror", () => {
         throw new ConflictError(remote);
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const err = await adapter
       .save("loser", "rev-5")
@@ -255,13 +247,13 @@ describe("withCloudMirror", () => {
     expect(err.local).toEqual({ text: "loser", revision: "rev-5" });
     // The wrapper also persists the would-have-been bytes so a
     // reload re-surfaces the conflict.
-    const mirror = readCloudMirror(KEY) as CloudMirrorState;
+    const mirror = peek() as CloudMirrorState;
     expect(mirror.text).toBe("loser");
     expect(mirror.localRevision).toBe(1);
   });
 
-  it("markSynced stamps the mirror with caller-supplied bytes and resets localRevision", () => {
-    writeCloudMirror(KEY, {
+  it("markSynced stamps the mirror with caller-supplied bytes and resets localRevision", async () => {
+    const { storage, peek } = memoryStorage({
       text: "stale-local",
       cloudRevision: "rev-5",
       localRevision: 3,
@@ -269,23 +261,27 @@ describe("withCloudMirror", () => {
       backendId: "dropbox",
     });
     const inner = makeInner();
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     adapter.markSynced!({ text: "winner", revision: "rev-9" });
-    const mirror = readCloudMirror(KEY);
+    // markSynced is fire-and-forget — yield once so the queued write
+    // settles before we inspect.
+    await Promise.resolve();
+    await Promise.resolve();
+    const mirror = peek();
     expect(mirror?.text).toBe("winner");
     expect(mirror?.cloudRevision).toBe("rev-9");
     expect(mirror?.localRevision).toBe(0);
   });
 
   it("drops a cache written by a different backend instead of treating it as pending edits", async () => {
-    // Regression: the mirror key is per-user only, so a Google
-    // Drive ↔ Dropbox switch would re-use the previous provider's
-    // cache. With `localRevision > 0` the wrapper would either
-    // push the stale bytes through the new provider or trip a
-    // bogus conflict on revisions from a completely different
-    // service. Both end with a blank budget on the new cloud.
-    writeCloudMirror(KEY, {
+    // Regression: the mirror is per-user only, so a Google Drive ↔
+    // Dropbox switch would re-use the previous provider's cache.
+    // With `localRevision > 0` the wrapper would either push the
+    // stale bytes through the new provider or trip a bogus conflict
+    // on revisions from a completely different service. Both end
+    // with a blank budget on the new cloud.
+    const { storage, peek } = memoryStorage({
       text: "gdrive-pending",
       cloudRevision: "gdrive-rev",
       localRevision: 5,
@@ -303,7 +299,7 @@ describe("withCloudMirror", () => {
         return { text: "", revision: "" };
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.load();
     expect(snap).toEqual({
@@ -314,31 +310,14 @@ describe("withCloudMirror", () => {
     // overwrite Dropbox.
     expect(pushed).toBe(false);
     // The mirror is re-stamped with the new backend's bytes.
-    const mirror = readCloudMirror(KEY);
+    const mirror = peek();
     expect(mirror?.text).toBe("real-dropbox-bytes");
     expect(mirror?.backendId).toBe("dropbox");
     expect(mirror?.localRevision).toBe(0);
   });
 
-  it("ignores a v1 mirror (no backendId) instead of trusting it after the upgrade", () => {
-    // Simulate a pre-upgrade serialized mirror landing in
-    // localStorage. The reader must reject it so we don't apply
-    // pending edits from a cache we can't attribute to a backend.
-    const legacy = {
-      v: 1,
-      text: "legacy",
-      cloudRevision: "rev-old",
-      localRevision: 2,
-      updatedAt: 1,
-    };
-    (globalThis as unknown as { localStorage: MemoryStorage }).localStorage[
-      "setItem"
-    ](KEY, JSON.stringify(legacy));
-    expect(readCloudMirror(KEY)).toBeNull();
-  });
-
   it("clears the mirror when the remote returns null and a cache existed", async () => {
-    writeCloudMirror(KEY, {
+    const { storage, peek } = memoryStorage({
       text: "stale",
       cloudRevision: "rev-1",
       localRevision: 0,
@@ -350,10 +329,19 @@ describe("withCloudMirror", () => {
         return null;
       },
     });
-    const adapter = withCloudMirror(inner, { storageKey: KEY });
+    const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.load();
     expect(snap).toBeNull();
-    expect(readCloudMirror(KEY)).toBeNull();
+    expect(peek()).toBeNull();
+  });
+});
+
+describe("ConflictError", () => {
+  it("carries the remote snapshot", () => {
+    const err = new ConflictError({ text: "{}", revision: "rev-2" });
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe("ConflictError");
+    expect(err.remote).toEqual({ text: "{}", revision: "rev-2" });
   });
 });

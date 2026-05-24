@@ -560,13 +560,6 @@ export const en = {
       donate: "Donate",
       donateHint: "Find this useful? Support development.",
       dangerZoneTitle: "Danger zone",
-      warning: {
-        title: "Storage almost full",
-        body: "Your budget is using {size} MB of this browser's local storage (warning at {threshold} MB). Browsers cap local storage at around 5 MB per site, so writes may start to fail without notice as your budget grows.",
-        hint: "Switch to a local folder or a cloud backend (Dropbox, Google Drive) to keep your budget portable and lift the size limit.",
-        goToSettings: "Go to storage settings",
-        dismiss: "Dismiss",
-      },
     },
     categoriesTab: {
       title: "Categories and types",

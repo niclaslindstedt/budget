@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock } from "../data/achievements";
-import { cloudMirrorKey, userDataKey } from "../data/constants";
 import type { UserData } from "../data/types";
 import {
   type PendingCloudLink,
@@ -28,7 +27,7 @@ import {
   setEncryption,
   setGdriveToken,
 } from "./backend-preference";
-import { withCloudMirror, clearCloudMirror } from "./cloud-mirror";
+import { withCloudMirror } from "./cloud-mirror";
 import {
   type DropboxAuthResult,
   completeDropboxAuth,
@@ -46,7 +45,11 @@ import {
   saveDirectoryHandle,
 } from "./folder-handle-store";
 import { createGdriveAdapter, startGdriveAuth } from "./gdrive-adapter";
-import { createLocalAdapter } from "./local-adapter";
+import {
+  clearCloudMirrorBytes,
+  createIdbAdapter,
+  createIdbCloudMirrorStorage,
+} from "./idb-adapter";
 import type { StoredUser } from "../data/types";
 import { createLogger } from "../utils/logger";
 
@@ -109,7 +112,7 @@ function buildInnerAdapter(args: BuildInnerArgs): StorageAdapter {
       onPermissionLost: onFolderPermissionLost,
     });
   }
-  return createLocalAdapter(userDataKey(userId));
+  return createIdbAdapter({ userId });
 }
 
 // Wrap a raw adapter with `withEncryption` when the user keeps storage
@@ -384,7 +387,7 @@ export function useStorageBackend({
         if (!folderHandle) return null;
         return createFolderAdapter({ directoryHandle: folderHandle });
       }
-      return createLocalAdapter(userDataKey(userId));
+      return createIdbAdapter({ userId });
     },
     [folderHandle],
   );
@@ -590,8 +593,8 @@ export function useStorageBackend({
           );
         }
         // Drop any cloud-mirror cache the previous backend left
-        // behind. The mirror key is per-user only, so without this
-        // the new provider's load() would see the old provider's
+        // behind. The mirror is per-user only, so without this the
+        // new provider's load() would see the old provider's
         // pending edits and either push them into the new cloud or
         // surface a bogus cross-provider conflict — both of which
         // end with a blank budget on the freshly linked backend.
@@ -601,7 +604,7 @@ export function useStorageBackend({
         log.info(
           `cloud-link: clearing cloud-mirror before flipping backend to ${pending.provider}`,
         );
-        clearCloudMirror(cloudMirrorKey(userId));
+        await clearCloudMirrorBytes(userId);
         log.info(
           `cloud-link: committing — flipping backend to ${pending.provider}`,
         );
@@ -701,7 +704,7 @@ export function useStorageBackend({
     if (isCloud && cloudOfflineMode) {
       log.info(`adapter: wrapping ${inner.id} with cloud-mirror`);
       inner = withCloudMirror(inner, {
-        storageKey: cloudMirrorKey(userId),
+        storage: createIdbCloudMirrorStorage(userId),
       });
     }
     // Skip the encryption wrapper entirely when the user has opted
@@ -863,7 +866,7 @@ export function useStorageBackend({
           const cloud = wrapForActive(cloudInner, encryption, passwordRef);
           const snap = await cloud.load();
           if (snap) {
-            const localInner = createLocalAdapter(userDataKey(userId));
+            const localInner = createIdbAdapter({ userId });
             const local = wrapForActive(localInner, encryption, passwordRef);
             await local.save(snap.text);
           }
@@ -881,7 +884,7 @@ export function useStorageBackend({
       // Dropping the cloud connection invalidates the cached cloud
       // bytes — leaving them around would let a future reconnect
       // surface a stale conflict against the new remote.
-      clearCloudMirror(cloudMirrorKey(userId));
+      await clearCloudMirrorBytes(userId);
       if (provider === "dropbox") {
         setDropboxTokenState(null);
         dropboxRefreshTokenRef.current = null;
@@ -1107,7 +1110,7 @@ export function useStorageBackend({
         const folder = wrapForActive(folderInner, encryption, passwordRef);
         const snap = await folder.load();
         if (snap) {
-          const browserInner = createLocalAdapter(userDataKey(userId));
+          const browserInner = createIdbAdapter({ userId });
           const browserAdapter = wrapForActive(
             browserInner,
             encryption,
@@ -1198,7 +1201,9 @@ export function useStorageBackend({
       } else {
         log.info("cloud-offline: disabling for user — clearing mirror");
         clearCloudOfflineMode(userId);
-        clearCloudMirror(cloudMirrorKey(userId));
+        // Fire-and-forget — the UI flips state immediately and the
+        // IDB delete settles a moment later.
+        void clearCloudMirrorBytes(userId);
       }
       setCloudOfflineModeState(on);
     },

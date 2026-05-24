@@ -552,13 +552,6 @@ export const sv: Catalog = {
       donate: "Donera",
       donateHint: "Tycker du om appen? Stöd utvecklingen.",
       dangerZoneTitle: "Farozon",
-      warning: {
-        title: "Lagringen är nästan full",
-        body: "Din budget använder {size} MB av webbläsarens lokala lagring (varning vid {threshold} MB). Webbläsare brukar begränsa lokal lagring till cirka 5 MB per webbplats, så skrivningar kan börja misslyckas utan förvarning när din budget växer.",
-        hint: "Byt till en lokal mapp eller en molntjänst (Dropbox, Google Drive) för att hålla din budget portabel och slippa storleksgränsen.",
-        goToSettings: "Gå till lagringsinställningar",
-        dismiss: "Stäng",
-      },
     },
     categoriesTab: {
       title: "Kategorier och typer",
