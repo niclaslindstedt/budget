@@ -261,7 +261,7 @@ export function HistoryModal({
               style={{ top: "-1px" }}
             >
               <tr className="border-b border-line">
-                <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
+                <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2 md:text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon type="date" className="shrink-0 text-accent" />
                     <span className="hidden md:inline">
@@ -270,7 +270,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyType && (
-                  <th className="px-1 py-1.5 text-center md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="type"
@@ -282,7 +282,7 @@ export function HistoryModal({
                     </span>
                   </th>
                 )}
-                <th className="px-2 py-1.5 text-left">
+                <th className="px-2 pt-2.5 pb-1.5 text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
@@ -293,7 +293,7 @@ export function HistoryModal({
                     </span>
                   </span>
                 </th>
-                <th className="px-1 py-1.5 text-right md:px-2">
+                <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="amount"
@@ -305,7 +305,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyBalance && (
-                  <th className="px-1 py-1.5 text-right md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
@@ -331,10 +331,19 @@ export function HistoryModal({
                   3 + (hasAnyType ? 1 : 0) + (hasAnyBalance ? 1 : 0);
                 return (
                   <Fragment key={group.monthKey}>
-                    <tr className="border-b border-line bg-surface-2">
+                    <tr>
+                      {/* Sticky on the `<td>` (not the `<tr>` — Chrome
+                          ignores sticky on rows) so the month label
+                          pins below the column-header band until the
+                          next group's marker pushes it out. `top: 32px`
+                          matches the thead's measured height after the
+                          `pt-2.5 pb-1.5` padding; `z-[9]` sits one notch
+                          below the thead so the two bands paint cleanly
+                          when they overlap. Mirrors the same pattern
+                          used in SheetViewerModal. */}
                       <td
                         colSpan={colSpan}
-                        className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                        className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
                         style={colorStyle}
                       >
                         {formatMonth(group.monthKey, lang)}
