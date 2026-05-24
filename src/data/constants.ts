@@ -620,6 +620,9 @@ export const DEFAULT_SETTINGS: Settings = {
   downloadBudget: DEFAULT_DOWNLOAD_BUDGET,
   downloadAccounts: DEFAULT_DOWNLOAD_ACCOUNTS,
   cloudReauthAutoOpen: true,
+  transactionSortOrder: "newestFirst",
+  showFutureEntries: false,
+  futureEntryMonths: 1,
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -672,6 +675,9 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   achievements: DEFAULT_SETTINGS.achievements,
   unseenAchievements: DEFAULT_SETTINGS.unseenAchievements,
   cloudReauthAutoOpen: DEFAULT_SETTINGS.cloudReauthAutoOpen,
+  transactionSortOrder: DEFAULT_SETTINGS.transactionSortOrder,
+  showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
+  futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,

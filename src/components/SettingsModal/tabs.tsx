@@ -170,6 +170,56 @@ export function GeneralTab({
           checked={draft.hideTransfers}
           onChange={(v) => onUpdate("hideTransfers", v)}
         />
+        <Field label={t("settings.display.sortOrder")}>
+          <div className="inline-flex overflow-hidden rounded border border-line">
+            {(["newestFirst", "oldestFirst"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onUpdate("transactionSortOrder", p)}
+                aria-pressed={draft.transactionSortOrder === p}
+                className={`cursor-pointer border-0 px-3 py-1.5 font-mono text-sm ${
+                  draft.transactionSortOrder === p
+                    ? "bg-accent/15 text-accent"
+                    : "bg-surface-2 text-fg hover:bg-surface-3"
+                }`}
+              >
+                {p === "newestFirst"
+                  ? t("settings.display.sortNewestFirst")
+                  : t("settings.display.sortOldestFirst")}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted">
+            {t("settings.display.sortOrderHint")}
+          </p>
+        </Field>
+        <ToggleRow
+          label={t("settings.display.showFutureEntries")}
+          hint={t("settings.display.showFutureEntriesHint")}
+          checked={draft.showFutureEntries}
+          onChange={(v) => onUpdate("showFutureEntries", v)}
+        />
+        {draft.showFutureEntries && (
+          <Field label={t("settings.display.futureEntryMonths")}>
+            <div className="w-24">
+              <SelectPicker
+                value={draft.futureEntryMonths}
+                options={Array.from({ length: 12 }, (_, i) => ({
+                  value: i + 1,
+                  label: i + 1,
+                }))}
+                onChange={(v) => onUpdate("futureEntryMonths", v)}
+                ariaLabel={t("settings.display.futureEntryMonths")}
+                triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+                panelClassName="font-mono tabular-nums"
+              />
+            </div>
+            <p className="text-xs text-muted">
+              {t("settings.display.futureEntryMonthsHint")}
+            </p>
+          </Field>
+        )}
       </Section>
 
       <Section title={t("settings.headerAction.title")}>

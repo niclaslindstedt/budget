@@ -909,6 +909,9 @@ function clonePersistedDefaults(): PersistedSettings {
     achievements: { ...DEFAULT_SETTINGS.achievements },
     unseenAchievements: [...DEFAULT_SETTINGS.unseenAchievements],
     cloudReauthAutoOpen: DEFAULT_SETTINGS.cloudReauthAutoOpen,
+    transactionSortOrder: DEFAULT_SETTINGS.transactionSortOrder,
+    showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
+    futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
     device: {
       mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
       desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
@@ -1017,6 +1020,22 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     typeof raw.cloudReauthAutoOpen === "boolean"
       ? raw.cloudReauthAutoOpen
       : DEFAULT_SETTINGS.cloudReauthAutoOpen;
+  const transactionSortOrder =
+    raw.transactionSortOrder === "newestFirst" ||
+    raw.transactionSortOrder === "oldestFirst"
+      ? raw.transactionSortOrder
+      : DEFAULT_SETTINGS.transactionSortOrder;
+  const showFutureEntries =
+    typeof raw.showFutureEntries === "boolean"
+      ? raw.showFutureEntries
+      : DEFAULT_SETTINGS.showFutureEntries;
+  const futureEntryMonths =
+    typeof raw.futureEntryMonths === "number" &&
+    Number.isInteger(raw.futureEntryMonths) &&
+    raw.futureEntryMonths >= 1 &&
+    raw.futureEntryMonths <= 24
+      ? raw.futureEntryMonths
+      : DEFAULT_SETTINGS.futureEntryMonths;
   return {
     startOfMonth,
     dateFormat,
@@ -1036,6 +1055,9 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     achievements,
     unseenAchievements,
     cloudReauthAutoOpen,
+    transactionSortOrder,
+    showFutureEntries,
+    futureEntryMonths,
   };
 }
 

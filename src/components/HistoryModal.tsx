@@ -7,7 +7,7 @@ import {
 } from "react";
 import { FileText, History } from "lucide-react";
 
-import { resolveEntryLabels } from "../data/sheet";
+import { compareDateStrings, resolveEntryLabels } from "../data/sheet";
 import type {
   Account,
   EntryType,
@@ -123,10 +123,11 @@ export function HistoryModal({
   }, [entries, merchantHints, matchRules]);
 
   const allSortedEntries = useMemo(() => {
+    const order = settings.transactionSortOrder;
     return [...resolved].sort((a, b) =>
-      a.entry.date < b.entry.date ? 1 : a.entry.date > b.entry.date ? -1 : 0,
+      compareDateStrings(a.entry.date, b.entry.date, order),
     );
-  }, [resolved]);
+  }, [resolved, settings.transactionSortOrder]);
 
   // In-place filter against description, resolved type name, and the
   // formatted amount text so a search like "550" or "amazon" or "rent"

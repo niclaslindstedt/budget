@@ -754,7 +754,33 @@ export type CommonSettings = {
   // localStorage into the synced bucket in v35 so the choice follows
   // the user across devices.
   cloudReauthAutoOpen: boolean;
+  // Reading direction for transaction lists across the app: the
+  // editable sheet, the read-only sheet viewer, the account transfer
+  // log, and the account history modal. `"newestFirst"` puts today at
+  // the top and walks backwards; `"oldestFirst"` walks forward from
+  // the start of the ledger. Default is `"newestFirst"` since three of
+  // the four surfaces already shipped with that direction baked in;
+  // the editable sheet flips on first run for fresh installs. Affects
+  // display only — `computeBalances()` always accumulates
+  // chronologically so the running balance is independent of this
+  // choice.
+  transactionSortOrder: TransactionSortOrder;
+  // When true, the editable budget sheet exposes `futureEntryMonths`
+  // worth of upcoming fiscal months by default; when false, every
+  // future-dated entry is tucked behind a "Show future entries"
+  // toggle inside the sheet (matching the read-only viewer's
+  // long-standing behaviour). Default false — keeps the sheet
+  // anchored on today's month so a planner with rows scheduled
+  // months out doesn't push the current row off-screen.
+  showFutureEntries: boolean;
+  // Number of fiscal months past the current one to render by default
+  // when `showFutureEntries` is true. Bounded 1..24 so a typo can't
+  // force the sheet to render decades of empty placeholders. Anything
+  // beyond this cutoff remains hidden behind the in-sheet toggle.
+  futureEntryMonths: number;
 };
+
+export type TransactionSortOrder = "newestFirst" | "oldestFirst";
 
 // Persisted shape of `UserData.settings`. Common fields stay flat at
 // the top level so the rest of the codebase (which reads
