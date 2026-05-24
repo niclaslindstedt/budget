@@ -19,6 +19,12 @@ interface ImportMetaEnv {
   // through a GitHub Actions secret so forks don't inherit the
   // upstream maintainer's personal donate URL.
   readonly VITE_DONATE_URL?: string;
+  // Optional GoatCounter `/count` endpoint URL (e.g.
+  // `https://<slug>.goatcounter.com/count`). When set, a
+  // privacy-friendly page-view tracker is injected into the
+  // production build's HTML; the `/preview/` slot never includes it.
+  // See `injectGoatcounter()` in `vite.config.ts` and `.env.example`.
+  readonly VITE_GOATCOUNTER_ENDPOINT?: string;
 }
 
 interface ImportMeta {

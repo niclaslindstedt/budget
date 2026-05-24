@@ -316,6 +316,33 @@ function patchAppleTitle(): Plugin {
   };
 }
 
+// Inject a GoatCounter page-view tracker into the deployed HTML
+// when `VITE_GOATCOUNTER_ENDPOINT` is set AND this is the production
+// slot (`VITE_BASE_PATH === "/"`). The preview slot is deliberately
+// skipped — it is `noindex,nofollow` and effectively only the
+// maintainer visits it, so analytics there would pollute stats with
+// self-traffic. Local dev never runs build plugins, so `make dev`
+// is also tracker-free regardless of `.env.local`.
+//
+// The `<script>` tag goes immediately before `</head>`, which is
+// AFTER `<!-- HEAD_SEO_END -->`, so the per-route splicer in
+// `emitPathAliasWithSeo` propagates it untouched into every alias
+// HTML it emits (`/privacy/index.html`, `/404.html`).
+function injectGoatcounter(): Plugin {
+  return {
+    name: "inject-goatcounter",
+    apply: "build",
+    transformIndexHtml(html) {
+      const endpoint = process.env.VITE_GOATCOUNTER_ENDPOINT?.trim();
+      if (!endpoint || IS_PREVIEW) return html;
+      const tag =
+        `<script data-goatcounter="${escapeHtmlAttr(endpoint)}" ` +
+        `async src="https://gc.zgo.at/count.js"></script>`;
+      return html.replace("</head>", `    ${tag}\n  </head>`);
+    },
+  };
+}
+
 // Configure vite-plugin-pwa so the two deploy slots (`/` and
 // `/preview/`) install as fully separate apps on a user's device.
 // Every identity-bearing field — manifest `id`, `scope`, `start_url`,
@@ -423,6 +450,7 @@ export default defineConfig({
     tailwindcss(),
     emitChangelogData(),
     patchAppleTitle(),
+    injectGoatcounter(),
     pwaPlugin(),
     emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE], {
       noindex: IS_PREVIEW,

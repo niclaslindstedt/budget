@@ -11,7 +11,8 @@ export const SITE_TAGLINE = "A local-first budget app";
 
 export const SITE_DESCRIPTION =
   "A local-first budget app that keeps your data in your browser. " +
-  "Export and import as JSON; no account, no backend, no analytics.";
+  "Export and import as JSON; no account, no backend, no behavioural " +
+  "tracking.";
 
 export const SITE_LANGUAGE = "en";
 export const SITE_LOCALE = "en_US";
