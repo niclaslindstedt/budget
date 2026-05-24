@@ -321,7 +321,7 @@ export function SheetViewerModal({
                   data-history-col="amount"
                   style={
                     {
-                      width: `calc(${colChars.amount}ch + 1rem)`,
+                      "--mobile-w": `calc(${colChars.amount}ch + 1rem)`,
                       "--desktop-w": `max(calc(${colChars.amount}ch + 1rem), calc(${HEADER_FLOOR_CH.amount}ch + 1rem))`,
                     } as CSSProperties
                   }
@@ -332,7 +332,7 @@ export function SheetViewerModal({
                   data-history-col="balance"
                   style={
                     {
-                      width: `calc(${colChars.balance}ch + 1rem)`,
+                      "--mobile-w": `calc(${colChars.balance}ch + 1rem)`,
                       "--desktop-w": `max(calc(${colChars.balance}ch + 1rem), calc(${HEADER_FLOOR_CH.balance}ch + 1rem))`,
                     } as CSSProperties
                   }
