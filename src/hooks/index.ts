@@ -14,6 +14,7 @@ export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
 export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
 export { useGridRovingTabindex, useRovingTabindex } from "./useRovingTabindex";
+export { useSheetSwipe } from "./useSheetSwipe";
 export { useStorageSizeWarning } from "./useStorageSizeWarning";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";

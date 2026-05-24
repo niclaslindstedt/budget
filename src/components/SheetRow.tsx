@@ -351,6 +351,7 @@ function SheetRowImpl({
       className={rowClass}
       data-row-id={row.id}
       data-row-date={isoDate}
+      data-swipe-handled
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
