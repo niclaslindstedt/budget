@@ -9,7 +9,13 @@ test.describe("Budget sheet", () => {
   test("renders the default sheet for a fresh guest", async ({ page }) => {
     await signInAsGuest(page);
 
-    await expect(page.getByRole("heading", { name: "Budget" })).toBeVisible();
+    // The sheet title is rendered as an `<h2>`; the page-header
+    // wordmark is the `<h1>` ("budget"), and a default `name:`
+    // match is case-insensitive substring, so pin the level to
+    // avoid matching both headings at once.
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Budget" }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /^Add row/ }).first(),
     ).toBeVisible();
