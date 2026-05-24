@@ -224,7 +224,7 @@ export function BottomBar({
               <div
                 role="tablist"
                 aria-label={t("sheetTabs.tablistLabel")}
-                className="flex min-w-0 flex-1 items-center gap-1"
+                className="flex min-w-0 items-center gap-1"
               >
                 {sheets.map((sheet, idx) => (
                   <SheetTab
