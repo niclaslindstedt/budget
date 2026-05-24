@@ -377,6 +377,17 @@ export const sv: Catalog = {
       hideTransfers: "Dölj överföringar mellan konton",
       hideTransfersHint:
         "Dölj överföringsrader från budgettabellen. Saldot räknar fortfarande med dem — en liten ↔-ikon på saldot visar var de ligger, och ett klick visar dem inbäddat.",
+      sortOrder: "Sortering",
+      sortOrderHint:
+        "Riktning att läsa transaktioner i budgetbladet, den skrivskyddade vyn, kontoöverföringar och kontohistorik. Saldon räknas alltid kronologiskt oavsett val.",
+      sortNewestFirst: "Nyast först",
+      sortOldestFirst: "Äldst först",
+      showFutureEntries: "Visa framtida poster i budgeten",
+      showFutureEntriesHint:
+        "Visa några kommande budgetmånader direkt i det redigerbara budgetbladet. När det är av göms varje framtida rad bakom en ”Visa framtida poster”-knapp så att bladet stannar förankrat på dagens månad.",
+      futureEntryMonths: "Antal framtida månader",
+      futureEntryMonthsHint:
+        "Antal budgetmånader efter den aktuella som visas direkt. Allt längre fram dyker upp först när man klickar på ”Visa framtida poster”-knappen i bladet.",
     },
     headerAction: {
       title: "Klick på rubriken",

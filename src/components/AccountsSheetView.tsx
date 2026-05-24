@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 import { allCategories, allTypes } from "../data/presets";
-import { accountBalance } from "../data/sheet";
+import { accountBalance, compareDateStrings } from "../data/sheet";
 import type {
   Account,
   Category,
@@ -181,14 +181,17 @@ export function AccountsSheetView({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [sheet.id]);
 
-  // Transactions sorted with the newest first so the log reads as a
-  // recency-first ledger, mirroring how the user thinks about
-  // transfers ("the dinner cover was last week").
+  // Transfer log direction follows the user's `transactionSortOrder`
+  // preference so it agrees with every other transaction list in the
+  // app. The historical default was newest-first ("the dinner cover
+  // was last week") — that's still the default, but the user can flip
+  // it from Settings → General → Display.
   const sortedTransactions = useMemo(() => {
+    const order = settings.transactionSortOrder;
     return [...data.transactions].sort((a, b) =>
-      a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+      compareDateStrings(a.date, b.date, order),
     );
-  }, [data.transactions]);
+  }, [data.transactions, settings.transactionSortOrder]);
 
   // Walk the sorted (newest-first) transfers and emit one group per
   // `YYYY-MM` so the table can drop a colored month-marker row between

@@ -385,6 +385,17 @@ export const en = {
       hideTransfers: "Hide transfers between accounts",
       hideTransfersHint:
         "Suppress transfer rows from the budget table. The running balance still accounts for them — a small ↔ icon on the balance shows where they sit, and clicking it reveals them inline.",
+      sortOrder: "Transaction order",
+      sortOrderHint:
+        "Direction to read transactions across the budget sheet, the read-only viewer, the account transfer log, and account history. Running balances always accumulate chronologically regardless of the choice.",
+      sortNewestFirst: "Newest first",
+      sortOldestFirst: "Oldest first",
+      showFutureEntries: "Show future entries in budget",
+      showFutureEntriesHint:
+        "Render a few upcoming fiscal months in the editable budget sheet by default. With this off, every future-dated row is tucked behind a “Show future entries” toggle so the sheet stays anchored on today.",
+      futureEntryMonths: "Future months to show",
+      futureEntryMonthsHint:
+        "Number of fiscal months past the current one to render up front. Anything further out still shows up after clicking the “Show future entries” toggle inside the sheet.",
     },
     headerAction: {
       title: "Title click",

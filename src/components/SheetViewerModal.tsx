@@ -12,6 +12,7 @@ import {
   findColumnByType,
   groupRowsByMonth,
   isTransferRow,
+  reverseRowsByDay,
   sortMonthKeys,
   sortRowsByDate,
   type RowSortContext,
@@ -74,32 +75,6 @@ function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
 }
 
 const EMPTY_ROWS: Row[] = [];
-
-// Flip the order at date boundaries so the latest day sits at the top
-// of each month, matching the descending month order. Within-date
-// ordering (incomes first, largest category first, etc.) is left
-// untouched so the secondary sort the editable view applies still
-// reads the same way inside a given day.
-function reverseByDay(rows: Row[], dateColumnId: string): Row[] {
-  if (rows.length === 0) return rows;
-  const groups: Row[][] = [];
-  let currentDate: string | null = null;
-  for (const row of rows) {
-    const v = row.cells[dateColumnId];
-    const dateStr = typeof v === "string" ? v : "";
-    if (currentDate === null || dateStr !== currentDate) {
-      groups.push([row]);
-      currentDate = dateStr;
-    } else {
-      groups[groups.length - 1].push(row);
-    }
-  }
-  const out: Row[] = [];
-  for (let i = groups.length - 1; i >= 0; i--) {
-    for (const row of groups[i]) out.push(row);
-  }
-  return out;
-}
 
 // Read-only viewer for a single sheet. Renders the same month-grouped
 // data the editable SheetView shows — same rows (including synthesized
@@ -220,12 +195,13 @@ export function SheetViewerModal({
   const sortedMonthGroups = useMemo(() => {
     if (!dateCol) return monthGroups;
     const out = new Map<string, Row[]>();
+    const reverse = settings.transactionSortOrder === "newestFirst";
     for (const [key, rows] of monthGroups) {
       const sorted = sortRowsByDate(rows, dateCol.id, sortContext);
-      out.set(key, reverseByDay(sorted, dateCol.id));
+      out.set(key, reverse ? reverseRowsByDay(sorted, dateCol.id) : sorted);
     }
     return out;
-  }, [monthGroups, dateCol, sortContext]);
+  }, [monthGroups, dateCol, sortContext, settings.transactionSortOrder]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -233,13 +209,17 @@ export function SheetViewerModal({
   );
 
   // Every month with rows, plus the current fiscal month even when it's
-  // empty so the user always lands on "today". Descending order so the
-  // modal opens on current activity.
+  // empty so the user always lands on "today". Direction tracks the
+  // user's transaction-order preference so the modal agrees with the
+  // editable sheet view.
   const visibleMonths = useMemo(() => {
     const keys = new Set<string>(monthGroups.keys());
     keys.add(currentMonth);
-    return [...sortMonthKeys(keys)].reverse();
-  }, [monthGroups, currentMonth]);
+    const sorted = sortMonthKeys(keys);
+    return settings.transactionSortOrder === "newestFirst"
+      ? sorted.reverse()
+      : sorted;
+  }, [monthGroups, currentMonth, settings.transactionSortOrder]);
 
   // Future months sit above today in the descending list. Hide them
   // behind a clickable "Show future entries" line so the modal opens
@@ -400,31 +380,19 @@ export function SheetViewerModal({
               </tr>
             </thead>
             <tbody>
-              {hasHiddenFuture && (
-                <tr>
-                  <td
+              {hasHiddenFuture &&
+                settings.transactionSortOrder === "newestFirst" && (
+                  <ShowFutureEntriesRow
+                    label={t("sheet.viewerShowFutureEntries")}
+                    onClick={() => setShowFuture(true)}
                     colSpan={
                       2 +
                       (typeCol ? 1 : 0) +
                       (amountCol ? 1 : 0) +
                       (balanceCol ? 1 : 0)
                     }
-                    className="p-0"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setShowFuture(true)}
-                      className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <span aria-hidden className="h-px flex-1 bg-line" />
-                      <span className="whitespace-nowrap">
-                        {t("sheet.viewerShowFutureEntries")}
-                      </span>
-                      <span aria-hidden className="h-px flex-1 bg-line" />
-                    </button>
-                  </td>
-                </tr>
-              )}
+                  />
+                )}
               {renderedMonths.map((monthKey) => {
                 const monthNum = monthNumberFromKey(monthKey);
                 const monthColor =
@@ -497,11 +465,50 @@ export function SheetViewerModal({
                   </Fragment>
                 );
               })}
+              {hasHiddenFuture &&
+                settings.transactionSortOrder === "oldestFirst" && (
+                  <ShowFutureEntriesRow
+                    label={t("sheet.viewerShowFutureEntries")}
+                    onClick={() => setShowFuture(true)}
+                    colSpan={
+                      2 +
+                      (typeCol ? 1 : 0) +
+                      (amountCol ? 1 : 0) +
+                      (balanceCol ? 1 : 0)
+                    }
+                  />
+                )}
             </tbody>
           </table>
         )}
       </Modal.Body>
     </Modal>
+  );
+}
+
+function ShowFutureEntriesRow({
+  label,
+  onClick,
+  colSpan,
+}: {
+  label: string;
+  onClick: () => void;
+  colSpan: number;
+}) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="p-0">
+        <button
+          type="button"
+          onClick={onClick}
+          className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        >
+          <span aria-hidden className="h-px flex-1 bg-line" />
+          <span className="whitespace-nowrap">{label}</span>
+          <span aria-hidden className="h-px flex-1 bg-line" />
+        </button>
+      </td>
+    </tr>
   );
 }
 

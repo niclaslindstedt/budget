@@ -9,7 +9,9 @@ import {
   fiscalMonthSeedIso,
   getMonthKey,
   groupRowsByMonth,
+  nextMonthKey,
   previousMonthKey,
+  reverseRowsByDay,
   sortMonthKeys,
   sortRowsByDate,
   type RowSortContext,
@@ -450,11 +452,13 @@ export function SheetView({
   const sortedMonthGroups = useMemo(() => {
     if (!dateCol) return monthGroups;
     const out = new Map<string, Row[]>();
+    const reverse = settings.transactionSortOrder === "newestFirst";
     for (const [key, rows] of monthGroups) {
-      out.set(key, sortRowsByDate(rows, dateCol.id, sortContext));
+      const sorted = sortRowsByDate(rows, dateCol.id, sortContext);
+      out.set(key, reverse ? reverseRowsByDay(sorted, dateCol.id) : sorted);
     }
     return out;
-  }, [monthGroups, dateCol, sortContext]);
+  }, [monthGroups, dateCol, sortContext, settings.transactionSortOrder]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -477,6 +481,17 @@ export function SheetView({
   const [extraHistory, setExtraHistory] = useState(0);
   useEffect(() => {
     setExtraHistory(0);
+  }, [sheet.id]);
+
+  // Reveal-all toggle for future-dated months. Sheet view defaults to
+  // showing `futureEntryMonths` ahead when `showFutureEntries` is on
+  // (zero ahead otherwise); anything past that cutoff is hidden behind
+  // an in-sheet "Show future entries" button. Local state so a sheet
+  // switch resets the reveal — preferences live in Settings, not
+  // here.
+  const [showAllFuture, setShowAllFuture] = useState(false);
+  useEffect(() => {
+    setShowAllFuture(false);
   }, [sheet.id]);
 
   // Per-month collapsed state. Local to the component so it stays
@@ -530,6 +545,20 @@ export function SheetView({
     return key;
   }, [currentMonth, extraHistory]);
 
+  // Last future fiscal month rendered by default. With `showFutureEntries`
+  // off this is just `currentMonth` (zero look-ahead); with it on we
+  // step forward by `futureEntryMonths` so the user sees their planned
+  // entries straight away. Anything past this key needs an explicit
+  // toggle.
+  const futureCutoff = useMemo(() => {
+    if (!settings.showFutureEntries) return currentMonth;
+    let key = currentMonth;
+    for (let i = 0; i < settings.futureEntryMonths; i += 1) {
+      key = nextMonthKey(key);
+    }
+    return key;
+  }, [currentMonth, settings.showFutureEntries, settings.futureEntryMonths]);
+
   const visibleMonths = useMemo(() => {
     const keys = new Set<string>();
     // Always render the current fiscal month — even when empty, the
@@ -547,16 +576,44 @@ export function SheetView({
     // Months with rows that aren't reached by stepping back from
     // current — future-dated entries and the special "undated"
     // bucket — stay visible. Past months older than the window stay
-    // hidden behind the "Show more" button.
+    // hidden behind the "Show more" button; future months past
+    // `futureCutoff` stay hidden behind the "Show future entries"
+    // button unless the user has flipped the reveal.
     for (const key of monthGroups.keys()) {
       if (key === "undated") {
         keys.add(key);
         continue;
       }
-      if (key >= cursor) keys.add(key);
+      if (key < cursor) continue;
+      if (key > futureCutoff && !showAllFuture) continue;
+      keys.add(key);
     }
-    return sortMonthKeys(keys);
-  }, [monthGroups, currentMonth, extraHistory]);
+    const sorted = sortMonthKeys(keys);
+    // When the user prefers newest-first, flip the month list too so
+    // the in-month row order and the month-stack order agree.
+    // `sortMonthKeys` parks "undated" at the end, so reversing slides
+    // it to the top — matching `SheetViewerModal`'s long-standing
+    // descending layout.
+    return settings.transactionSortOrder === "newestFirst"
+      ? sorted.reverse()
+      : sorted;
+  }, [
+    monthGroups,
+    currentMonth,
+    extraHistory,
+    futureCutoff,
+    showAllFuture,
+    settings.transactionSortOrder,
+  ]);
+
+  const hasHiddenFuture = useMemo(() => {
+    if (showAllFuture) return false;
+    for (const key of monthGroups.keys()) {
+      if (key === "undated") continue;
+      if (key > futureCutoff) return true;
+    }
+    return false;
+  }, [monthGroups, futureCutoff, showAllFuture]);
 
   const hasMoreHistory = useMemo(() => {
     for (const key of monthGroups.keys()) {
@@ -835,19 +892,20 @@ export function SheetView({
           <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
         </header>
         <div className="flex flex-col gap-3 md:gap-6">
-          {hasMoreHistory && (
-            <button
-              type="button"
-              onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
-              className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-            >
-              <span aria-hidden className="h-px flex-1 bg-line" />
-              <span className="whitespace-nowrap">
-                {t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
-              </span>
-              <span aria-hidden className="h-px flex-1 bg-line" />
-            </button>
-          )}
+          {hasMoreHistory &&
+            settings.transactionSortOrder === "oldestFirst" && (
+              <SheetSectionToggle
+                label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
+                onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
+              />
+            )}
+          {hasHiddenFuture &&
+            settings.transactionSortOrder === "newestFirst" && (
+              <SheetSectionToggle
+                label={t("sheet.viewerShowFutureEntries")}
+                onClick={() => setShowAllFuture(true)}
+              />
+            )}
           {visibleMonths.map((monthKey) => {
             const slot = monthSlots.get(monthKey);
             if (!slot) return null;
@@ -917,6 +975,20 @@ export function SheetView({
               </div>
             );
           })}
+          {hasHiddenFuture &&
+            settings.transactionSortOrder === "oldestFirst" && (
+              <SheetSectionToggle
+                label={t("sheet.viewerShowFutureEntries")}
+                onClick={() => setShowAllFuture(true)}
+              />
+            )}
+          {hasMoreHistory &&
+            settings.transactionSortOrder === "newestFirst" && (
+              <SheetSectionToggle
+                label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
+                onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
+              />
+            )}
         </div>
         <SheetViewerModal
           open={viewerOpen}
@@ -961,5 +1033,29 @@ export function SheetView({
         </div>
       )}
     </ActiveRowProvider>
+  );
+}
+
+// Pill-less divider button reused by the "Show earlier months" and
+// "Show future entries" affordances. Renders as a horizontal line
+// with a centred label so the row reads as a section break rather
+// than a button.
+function SheetSectionToggle({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+    >
+      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span className="whitespace-nowrap">{label}</span>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+    </button>
   );
 }

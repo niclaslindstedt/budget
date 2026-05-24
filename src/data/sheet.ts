@@ -17,6 +17,7 @@ import type {
   SheetItem,
   SheetType,
   Transaction,
+  TransactionSortOrder,
   UserData,
 } from "./types";
 
@@ -179,6 +180,22 @@ export function previousMonthKey(key: string): string {
   return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
 }
 
+// Step one fiscal month forwards on a `YYYY-MM` key. Mirror of
+// `previousMonthKey` — used to compute the future-month cutoff when
+// the user has asked the editable sheet to expose a few months of
+// upcoming entries by default.
+export function nextMonthKey(key: string): string {
+  if (!/^\d{4}-\d{2}$/.test(key)) return key;
+  let y = Number(key.slice(0, 4));
+  let m = Number(key.slice(5, 7));
+  m += 1;
+  if (m > 12) {
+    m = 1;
+    y += 1;
+  }
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+}
+
 export function sortMonthKeys(keys: Iterable<string>): string[] {
   return [...keys].sort((a, b) => {
     if (a === "undated") return 1;
@@ -308,6 +325,51 @@ export function sortRowsByDate(
       return a.desc.localeCompare(b.desc);
     })
     .map((aux) => aux.row);
+}
+
+// Flip the order at date boundaries so the latest day sits at the top
+// of each month, matching a descending month order. Within-date
+// ordering (incomes first, largest category first, etc.) is left
+// untouched so the secondary sort `sortRowsByDate` applies still
+// reads the same way inside a given day. Lifted out of
+// `SheetViewerModal` so every display surface that wants a
+// newest-first ledger can reuse the same helper without duplicating
+// the bucketing.
+export function reverseRowsByDay(rows: Row[], dateColumnId: string): Row[] {
+  if (rows.length === 0) return rows;
+  const groups: Row[][] = [];
+  let currentDate: string | null = null;
+  for (const row of rows) {
+    const v = row.cells[dateColumnId];
+    const dateStr = typeof v === "string" ? v : "";
+    if (currentDate === null || dateStr !== currentDate) {
+      groups.push([row]);
+      currentDate = dateStr;
+    } else {
+      groups[groups.length - 1].push(row);
+    }
+  }
+  const out: Row[] = [];
+  for (let i = groups.length - 1; i >= 0; i--) {
+    for (const row of groups[i]) out.push(row);
+  }
+  return out;
+}
+
+// Comparator for plain transaction lists keyed by an ISO date string,
+// used by surfaces that don't have a `RowSortContext` (the account
+// transfer log, the account history modal). Returns the standard
+// {-1, 0, 1} so call sites can pass it directly to `Array.prototype.sort`.
+// `order === "newestFirst"` flips the comparison so the latest entries
+// land at the start of the array.
+export function compareDateStrings(
+  a: string,
+  b: string,
+  order: TransactionSortOrder,
+): number {
+  if (a === b) return 0;
+  if (order === "newestFirst") return a < b ? 1 : -1;
+  return a < b ? -1 : 1;
 }
 
 // Running balance per row, chronological across the whole AccountBudget
