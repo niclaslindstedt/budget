@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { unlock } from "../data/achievements";
+
 // Touch-driven sheet-switch fallback. Listens at the document level
 // for a horizontal swipe that originates on a "neutral" page area —
 // anywhere that doesn't already own a horizontal gesture — and fires
@@ -138,6 +140,7 @@ export function useSheetSwipe(
       reset();
       if (!wasHorizontal) return;
       if (Math.abs(dx) <= thresholdPx()) return;
+      unlock("swiper");
       if (dx < 0) onLeftRef.current();
       else onRightRef.current();
     };

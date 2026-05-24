@@ -35,6 +35,7 @@ import {
   Lock,
   LockKeyhole,
   Merge,
+  MousePointerClick,
   Move,
   Network,
   Palette,
@@ -45,7 +46,9 @@ import {
   Save,
   Scale,
   Search,
+  Share2,
   Sigma,
+  Smartphone,
   Split,
   Tag,
   Trash2,
@@ -262,6 +265,29 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Save,
     trigger: { kind: "manual" },
   },
+  {
+    id: "homeScreen",
+    tier: "beginner",
+    glyph: Smartphone,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "shortcut",
+    tier: "beginner",
+    glyph: MousePointerClick,
+    trigger: {
+      kind: "derived",
+      predicate: (prev, next) => {
+        const p = prev.settings.headerAction;
+        const n = next.settings.headerAction;
+        if (p.kind !== n.kind) return n.kind !== "top";
+        if (p.kind === "sheet" && n.kind === "sheet")
+          return p.sheetId !== n.sheetId;
+        return false;
+      },
+    },
+  },
 
   // ────────────────────────────────────────────────────────────
   // Intermediate — "I want this to reflect my real finances."
@@ -451,6 +477,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
         !prev.settings.hideTransfers && next.settings.hideTransfers,
     },
   },
+  {
+    id: "swiper",
+    tier: "intermediate",
+    glyph: Share2,
+    trigger: { kind: "manual" },
+  },
 
   // ────────────────────────────────────────────────────────────
   // Pro — "Stop typing things the bank already knows."
@@ -594,6 +626,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: History,
     trigger: { kind: "manual" },
   },
+  {
+    id: "freshPull",
+    tier: "pro",
+    glyph: RefreshCw,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
 
   // ────────────────────────────────────────────────────────────
   // Expert — "Bend the app to my exact situation."
@@ -630,6 +669,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "calendarBender",
     tier: "expert",
     glyph: CalendarCog,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "dateShifter",
+    tier: "expert",
+    glyph: CalendarClock,
     trigger: { kind: "manual" },
   },
   {

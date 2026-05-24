@@ -1904,6 +1904,16 @@ export const sv: Catalog = {
         name: "Lita och verifiera",
         condition: "Lägg märke till sparindikatorn som bekräftar en sparning.",
       },
+      homeScreen: {
+        name: "Hemskärm",
+        condition: "Installera Budget på din enhet.",
+        learnMore:
+          "På iPhone och iPad i Safari, delningsmenyn → Lägg till på hemskärmen. På Android och desktop med Chromium, tryck på Installera-knappen i bannern — eller webbläsarens egna installations-tips i adressfältet. När den är installerad körs Budget i ett eget fönster utan webbläsarchrome.",
+      },
+      shortcut: {
+        name: "Genväg",
+        condition: "Ändra vad rubriken gör när du trycker på den.",
+      },
       bookKeeper: {
         name: "Bokhållare",
         condition: "Skapa ditt första riktiga konto.",
@@ -2006,6 +2016,10 @@ export const sv: Catalog = {
         name: "Snyggt & tyst",
         condition: "Slå på Dölj överföringar.",
       },
+      swiper: {
+        name: "Svepare",
+        condition: "Svep åt vänster eller höger för att byta blad.",
+      },
       importExport: {
         name: "Import / Export",
         condition: "Importera ditt första kontoutdrag.",
@@ -2086,6 +2100,12 @@ export const sv: Catalog = {
         name: "Tidsmaskin",
         condition: "Hoppa till en punkt i åtgärdshistoriken.",
       },
+      freshPull: {
+        name: "Färska tag",
+        condition: "Dra ner från sidans topp för att uppdatera.",
+        learnMore:
+          "När du drar skickar Budget först eventuella osparade lokala ändringar till din molnbackend, sedan hämtas senaste kopian — så uppdateringar från en annan enhet eller en annan flik dyker upp utan att du laddar om sidan.",
+      },
       spellbinder: {
         name: "Trollkarl",
         condition: "Skriv din första beloppsformel.",
@@ -2108,6 +2128,11 @@ export const sv: Catalog = {
         name: "Kalenderböjare",
         condition:
           "Använd sista-dagen-i-månaden eller ett eget återkommandeintervall.",
+      },
+      dateShifter: {
+        name: "Datumknuffare",
+        condition:
+          "Knuffa en återkommande serie med fältet Förskjut dagar med.",
       },
       auditor: {
         name: "Revisor",

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { unlock } from "../data/achievements";
 import { INSTALL_HINT_DISMISSED_KEY } from "../data/constants";
 import { useT, type TFunction } from "../i18n";
 
@@ -90,7 +91,15 @@ export function InstallPrompt() {
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if (isAlreadyInstalled() || readDismissed()) return;
+    // iOS has no `appinstalled` event — the user adds to home screen
+    // through the Share sheet, then re-launches the app from the new
+    // icon. When that re-launch hits us standalone, fire the unlock
+    // so the user gets credit. The bus dedupes across mounts.
+    if (isAlreadyInstalled()) {
+      unlock("homeScreen");
+      return;
+    }
+    if (readDismissed()) return;
 
     // Chromium: capture the install event for later replay.
     const onBeforeInstall = (e: Event) => {
@@ -106,6 +115,7 @@ export function InstallPrompt() {
       persistDismissed();
       deferredPromptRef.current = null;
       setMode(null);
+      unlock("homeScreen");
     };
     window.addEventListener("appinstalled", onAppInstalled);
 
