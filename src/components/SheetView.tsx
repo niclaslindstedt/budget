@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import {
   buildVisibleRows,
@@ -35,6 +35,7 @@ import type {
 import { formatNumber, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
+import { SheetTitleMenu } from "./SheetTitleMenu";
 import { SheetViewerModal } from "./SheetViewerModal";
 
 type Props = {
@@ -810,33 +811,12 @@ export function SheetView({
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>
-          <button
-            type="button"
-            onClick={() => onEditSheet(sheet.id)}
-            aria-label={t("sheet.edit", { name: sheet.name })}
-            title={t("sheet.editSheet")}
-            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
-            <Pencil size={14} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewerOpen(true)}
-            aria-label={t("sheet.viewMode", { name: sheet.name })}
-            title={t("sheet.viewModeTitle")}
-            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
-            <Eye size={14} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDownloadSheet(sheet.id)}
-            aria-label={t("download.downloadSheet")}
-            title={t("download.downloadSheetTitle")}
-            className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-muted opacity-70 hover:bg-surface-2 hover:text-fg-bright hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-          >
-            <Download size={14} aria-hidden focusable={false} />
-          </button>
+          <SheetTitleMenu
+            sheetName={sheet.name}
+            onEdit={() => onEditSheet(sheet.id)}
+            onView={() => setViewerOpen(true)}
+            onDownload={() => onDownloadSheet(sheet.id)}
+          />
         </header>
         <div className="flex flex-col gap-3 md:gap-6">
           {hasMoreHistory && (

@@ -734,6 +734,8 @@ export const sv: Catalog = {
     editSheet: "Redigera blad",
     viewMode: "Visa {name}",
     viewModeTitle: "Visa blad",
+    moreActions: "Bladåtgärder",
+    moreActionsAria: "Bladåtgärder för {name}",
     viewerEmpty: "Inga poster att visa.",
     viewerSearchPlaceholder: "Sök i detta blad",
     viewerSearchClear: "Rensa sökning",
