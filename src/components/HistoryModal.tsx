@@ -20,7 +20,7 @@ import { useLang, useT } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
 import { formatBalance, formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
-import { CategoryIconGlyph } from "./icons";
+import { CategoryIconGlyph, ColumnIcon } from "./icons";
 import { Modal } from "./Modal";
 import { ModalSearchBar } from "./ModalSearchBar";
 
@@ -310,26 +310,58 @@ export function HistoryModal({
             >
               <tr className="border-b border-line">
                 <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
-                  {t("history.date")}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <ColumnIcon type="date" className="shrink-0 text-accent" />
+                    <span className="hidden md:inline">
+                      {t("history.date")}
+                    </span>
+                  </span>
                 </th>
                 {hasAnyType && (
                   <th className="px-1 py-1.5 text-center md:px-2">
-                    {t("history.type")}
+                    <span className="inline-flex items-center gap-1.5 md:gap-2">
+                      <ColumnIcon
+                        type="type"
+                        className="shrink-0 text-accent"
+                      />
+                      <span className="hidden md:inline">
+                        {t("history.type")}
+                      </span>
+                    </span>
                   </th>
                 )}
                 <th className="px-2 py-1.5 text-left">
-                  {t("history.description")}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <ColumnIcon
+                      type="description"
+                      className="shrink-0 text-accent"
+                    />
+                    <span className="hidden md:inline">
+                      {t("history.description")}
+                    </span>
+                  </span>
                 </th>
                 <th className="px-1 py-1.5 text-right md:px-2">
-                  {t("history.amount")}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <ColumnIcon
+                      type="amount"
+                      className="shrink-0 text-accent"
+                    />
+                    <span className="hidden md:inline">
+                      {t("history.amount")}
+                    </span>
+                  </span>
                 </th>
                 {hasAnyBalance && (
                   <th className="px-1 py-1.5 text-right md:px-2">
-                    <span className="md:hidden">
-                      {t("history.balanceShort")}
-                    </span>
-                    <span className="hidden md:inline">
-                      {t("history.balance")}
+                    <span className="inline-flex items-center gap-1.5 md:gap-2">
+                      <ColumnIcon
+                        type="balance"
+                        className="shrink-0 text-accent"
+                      />
+                      <span className="hidden md:inline">
+                        {t("history.balance")}
+                      </span>
                     </span>
                   </th>
                 )}

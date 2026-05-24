@@ -17,5 +17,7 @@ The budget-sheet viewer (Eye button) and the account-history modal also
 gained a search bar at the top that filters rows in place against
 description, type name, amount, and date. It sits in document flow and
 scrolls away with the content, so the table claims the full viewport
-once you're reading. The `BALANCE` column header is abbreviated to
-`BAL` on mobile so it stops getting clipped on narrow phones.
+once you're reading. On mobile the account-history modal's column
+headers collapse to glyph-only (calendar / tag / lines / currency /
+wallet) to match the budget view's sheet table; desktop keeps the
+glyph + label pairing.
