@@ -127,6 +127,29 @@ body:has([data-bottom-bar]) {
   }
 }
 
+/* When the bar scroll-hides in standalone PWA mode (the
+   `data-bottom-bar-hidden="true"` attribute is set by `useScrollHide`
+   and translates the bar off the bottom edge in the standalone-mode
+   block further down), drop the offset back to the default so the
+   floating prompt stack rides the bar down instead of hovering
+   above empty space where the bar used to be. The attribute is
+   only ever set in standalone mode, so no media-query gate is
+   needed — browser-mode scroll hide is driven by the URL bar
+   collapse via `translate-y-[calc(100dvh-100svh)]` and leaves the
+   bar pinned at the bottom edge once the URL bar is gone. */
+body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
+  --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+/* Smooth the toast-stack's bottom shift so it tracks the bar's own
+   200ms translate-out instead of snapping ahead of it. The marker
+   sits on each of the three floating prompts (Toast viewport,
+   UpdateToast, InstallPrompt). The reduce-motion override at the
+   bottom of this file zeroes the duration when the user opts in. */
+[data-toast-stack] {
+  transition: bottom 200ms ease;
+}
+
 /* One Dark — applied when `data-theme="dark"` AND when no
    `data-theme` attribute is set yet (pre-React render). The latter
    keeps the brief flash before React mounts visually coherent. */
