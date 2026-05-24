@@ -851,7 +851,6 @@ body {
     }
     .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
       transform: translateX(-128px);
-      background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
     .sheet-table > thead > tr > .action-cell,
     .sheet-table > tbody > tr > .action-cell {
@@ -1000,7 +999,6 @@ body {
     }
     .accounts-table > tbody > tr.is-swiped > td:not(.account-action-cell) {
       transform: translateX(-128px);
-      background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
     .accounts-table > thead > tr > .account-action-cell,
     .accounts-table > tbody > tr > .account-action-cell {
