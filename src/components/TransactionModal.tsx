@@ -233,9 +233,7 @@ export function TransactionModal({
     <Modal open={open} onClose={onClose} labelledBy="tx-modal-title">
       <Modal.Header
         icon={<ArrowLeftRight size={14} aria-hidden focusable={false} />}
-        title={
-          isEdit ? t("transaction.titleEdit") : t("transaction.titleNew")
-        }
+        title={isEdit ? t("transaction.titleEdit") : t("transaction.titleNew")}
         onClose={onClose}
       />
       <Modal.Body>
