@@ -4,6 +4,7 @@ import { Wand2 } from "lucide-react";
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
 import { useDesktopAutoFocus } from "../hooks";
 import { useLang, useT } from "../i18n";
+import { createLogger } from "../utils/logger";
 import type {
   Category,
   EntryType,
@@ -20,6 +21,8 @@ import {
 import { Button, ClearableTextInput, SignedAmountInput } from "./form";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
+
+const log = createLogger("match-rules");
 
 type AmountSign = NonNullable<MatchRule["amountSign"]>;
 type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
@@ -270,7 +273,26 @@ export function MatchRuleModal({
     pattern.trim().length > 0 && compiled !== null && !rangeInverted;
 
   const handleSubmit = useCallback(() => {
-    if (!canSave) return;
+    if (!canSave) {
+      log.warn(
+        `apply blocked: canSave=false ` +
+          `patternLen=${pattern.trim().length} ` +
+          `compiled=${compiled !== null} ` +
+          `rangeInverted=${rangeInverted}`,
+      );
+      return;
+    }
+    log.info(
+      `apply: pattern=${JSON.stringify(pattern.trim())} ` +
+        `signMode=${signMode} amountSign=${amountSign} ` +
+        `amountMin=${amountMin ?? "(none)"} ` +
+        `amountMax=${amountMax ?? "(none)"} ` +
+        `transferFilter=${transferFilter} ` +
+        `typeId=${typeId ?? "(none)"} ` +
+        `description=${JSON.stringify(description.trim())} ` +
+        `previewMatches=${matches.length}/${allEntries.length} ` +
+        `isEdit=${isEdit}`,
+    );
     onSubmit({
       pattern: pattern.trim(),
       description: description.trim(),
@@ -286,10 +308,16 @@ export function MatchRuleModal({
     pattern,
     description,
     typeId,
+    signMode,
     amountSign,
     transferFilter,
     amountMin,
     amountMax,
+    compiled,
+    rangeInverted,
+    matches.length,
+    allEntries.length,
+    isEdit,
   ]);
 
   if (!open) return null;
