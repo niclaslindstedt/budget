@@ -254,16 +254,6 @@ export type Action =
       patch: Partial<Transaction>;
     }
   | { type: "deleteTransaction"; transactionId: string }
-  | {
-      // Drop a budget row and mint a transaction in one cycle so the
-      // app never sits in a state where the same logical transfer
-      // exists twice (once as a row, once as a transaction).
-      type: "promoteRowToTransaction";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      transaction: Transaction;
-    }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
@@ -1392,31 +1382,6 @@ export function reducer(state: UserData, action: Action): UserData {
       ),
       history: touchedHistory ? history : state.history,
     };
-  }
-  if (action.type === "promoteRowToTransaction") {
-    const next = {
-      ...state,
-      transactions: [...state.transactions, action.transaction],
-      sheets: updateAccountBudget(
-        state.sheets,
-        action.sheetId,
-        action.itemId,
-        (item) => ({
-          ...item,
-          rows: item.rows.filter((r) => r.id !== action.rowId),
-        }),
-      ),
-    };
-    return recordMerchantHints(
-      next,
-      [
-        {
-          description: action.transaction.description,
-          typeId: action.transaction.typeId ?? null,
-        },
-      ],
-      Date.now(),
-    );
   }
   if (action.type === "promoteRecurringCandidate") {
     // Mint a fresh series from a recurring-detection candidate.

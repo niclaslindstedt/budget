@@ -1895,47 +1895,25 @@ export function BudgetView({
     [dispatch, updateBalanceAccount, updateBalanceCurrent, updateBalanceDate],
   );
 
-  // Transaction modal entry points. The promote-row path computes the
-  // direction from the row's amount sign so the modal only has to ask
-  // for the OTHER account.
+  // Open the transaction modal in edit mode for a synthesized
+  // transaction row (the inline ↔ button on rows with a transactionId).
   const onTransactionRequest = useCallback(
     (row: Row) => {
       if (!activeBudget || activeBudget.accountId === null) return;
-      if (row.transactionId) {
-        // Synthesized transaction row — open it in edit mode by
-        // looking up the underlying transaction.
-        const tx = data.transactions.find((t) => t.id === row.transactionId);
-        if (!tx) return;
-        setTransactionRequest({
-          kind: "edit",
-          transactionId: tx.id,
-          date: tx.date,
-          description: tx.description,
-          amount: tx.amount,
-          fromAccountId: tx.fromAccountId,
-          toAccountId: tx.toAccountId,
-          typeId: tx.typeId ?? null,
-          completed: tx.completed ?? false,
-          isImportedPair: hasCollapsedHistory(data.history, tx.id),
-        });
-        return;
-      }
-      const dateCol = findColumnByType(activeBudget.columns, "date");
-      const descCol = findColumnByType(activeBudget.columns, "description");
-      const amountCol = findColumnByType(activeBudget.columns, "amount");
-      const rawDate = dateCol ? row.cells[dateCol.id] : null;
-      const rawDesc = descCol ? row.cells[descCol.id] : null;
-      const rawAmount = amountCol ? row.cells[amountCol.id] : null;
-      const amount = typeof rawAmount === "number" ? rawAmount : 0;
+      if (!row.transactionId) return;
+      const tx = data.transactions.find((t) => t.id === row.transactionId);
+      if (!tx) return;
       setTransactionRequest({
-        kind: "promote",
-        row,
-        selfAccountId: activeBudget.accountId,
-        seedDate: typeof rawDate === "string" ? rawDate : "",
-        seedDescription: typeof rawDesc === "string" ? rawDesc : "",
-        seedAmount: amount,
-        outgoing: amount < 0,
-        seedTypeId: row.typeId ?? null,
+        kind: "edit",
+        transactionId: tx.id,
+        date: tx.date,
+        description: tx.description,
+        amount: tx.amount,
+        fromAccountId: tx.fromAccountId,
+        toAccountId: tx.toAccountId,
+        typeId: tx.typeId ?? null,
+        completed: tx.completed ?? false,
+        isImportedPair: hasCollapsedHistory(data.history, tx.id),
       });
     },
     [activeBudget, data.transactions, data.history],
@@ -1970,30 +1948,6 @@ export function BudgetView({
       });
     },
     [data.transactions, data.history],
-  );
-  const onPromoteTransaction = useCallback(
-    (draft: TransactionDraft) => {
-      if (!activeBudget || transactionRequest?.kind !== "promote") return;
-      const transaction: Transaction = {
-        id: newId(),
-        date: draft.date,
-        description: draft.description,
-        amount: draft.amount,
-        fromAccountId: draft.fromAccountId,
-        toAccountId: draft.toAccountId,
-        ...(draft.typeId !== null && { typeId: draft.typeId }),
-        ...(draft.completed && { completed: draft.completed }),
-      };
-      dispatch({
-        type: "promoteRowToTransaction",
-        sheetId,
-        itemId: activeBudget.id,
-        rowId: transactionRequest.row.id,
-        transaction,
-      });
-      setTransactionRequest(null);
-    },
-    [dispatch, activeBudget, sheetId, transactionRequest],
   );
   const onCreateTransaction = useCallback(
     (draft: TransactionDraft) => {
@@ -3195,7 +3149,6 @@ export function BudgetView({
         types={allTypesMerged}
         settings={effectiveSettings}
         onClose={() => setTransactionRequest(null)}
-        onPromote={onPromoteTransaction}
         onCreate={onCreateTransaction}
         onEdit={onEditTransactionSave}
         onDelete={onDeleteTransactionFromModal}
