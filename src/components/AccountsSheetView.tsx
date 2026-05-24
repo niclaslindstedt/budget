@@ -241,22 +241,25 @@ export function AccountsSheetView({
             <table className="accounts-table w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
-                  <th scope="col" className="w-10 px-2 py-1.5"></th>
+                  <th
+                    scope="col"
+                    className="w-10 px-2 py-1.5 text-center"
+                    aria-label={t("accountsSheet.name")}
+                  >
+                    <Tag
+                      size={14}
+                      className="inline-block shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                  </th>
                   <th
                     scope="col"
                     className="px-2 py-1.5 text-left"
                     aria-label={t("accountsSheet.name")}
                   >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <Tag
-                        size={14}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.name")}
-                      </span>
+                    <span className="hidden md:inline">
+                      {t("accountsSheet.name")}
                     </span>
                   </th>
                   <th
@@ -397,7 +400,7 @@ export function AccountsSheetView({
                 <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
                   <th
                     scope="col"
-                    className="w-20 px-2 py-1.5 text-left"
+                    className="w-14 pr-1 pl-2 py-1.5 text-left md:w-20 md:px-2"
                     aria-label={t("accountsSheet.date")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -414,7 +417,7 @@ export function AccountsSheetView({
                   </th>
                   <th
                     scope="col"
-                    className="px-2 py-1.5 text-left"
+                    className="pr-2 pl-1 py-1.5 text-left md:px-2"
                     aria-label={t("accountsSheet.description")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -510,7 +513,7 @@ export function AccountsSheetView({
                             onClick={() => onEditTransaction(tx.id)}
                           >
                             <td
-                              className="w-20 px-2 py-2 align-middle font-mono text-xs whitespace-nowrap"
+                              className="w-14 pr-1 pl-2 py-2 align-middle font-mono text-xs whitespace-nowrap md:w-20 md:px-2"
                               style={colorStyle}
                             >
                               {formatShortDate(
@@ -519,7 +522,7 @@ export function AccountsSheetView({
                                 lang,
                               )}
                             </td>
-                            <td className="px-2 py-2 align-middle">
+                            <td className="pr-2 pl-1 py-2 align-middle md:px-2">
                               <span className="block text-fg-bright">
                                 {tx.description}
                               </span>
