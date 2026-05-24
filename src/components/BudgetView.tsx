@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AccountModal, type AccountDraft } from "./AccountModal";
 import { ActionHistoryModal } from "./ActionHistoryModal";
@@ -148,6 +155,7 @@ import { bcp47, type Lang, type MessageKey, useT } from "../i18n";
 import {
   useChangelogAutoOpen,
   useIdleSignOut,
+  useIsStandalone,
   usePullToRefresh,
   useSheetSwipe,
   useTheme,
@@ -1162,7 +1170,17 @@ export function BudgetView({
   // BottomBar) switches to the next / previous sheet. Mirrors the
   // BottomBar's Arrow-Left / Right keyboard shortcut with the same
   // wrap-around — see `onTabKey` in `BottomBar.tsx`. Skipped when the
-  // user only has one sheet (no neighbour to switch to).
+  // user only has one sheet (no neighbour to switch to), and only
+  // wired up when running as an installed PWA — in a browser tab the
+  // gesture conflicts with the OS-level back / forward swipe.
+  const isStandalone = useIsStandalone();
+  // Direction captured at swipe time so the post-commit layout effect
+  // below can replay it as a slide-in animation. "right" means the
+  // new sheet enters from the right edge (user swiped left → next
+  // sheet), "left" means it enters from the left (user swiped right
+  // → previous sheet). A ref so the captured direction survives the
+  // `selectSheet` dispatch but is consumed exactly once per change.
+  const slideFromRef = useRef<"left" | "right" | null>(null);
   const onSwipeToAdjacentSheet = useCallback(
     (direction: 1 | -1) => {
       const sheets = data.sheets;
@@ -1170,6 +1188,7 @@ export function BudgetView({
       const idx = sheets.findIndex((s) => s.id === data.activeSheetId);
       if (idx < 0) return;
       const next = (idx + direction + sheets.length) % sheets.length;
+      slideFromRef.current = direction === 1 ? "right" : "left";
       onSelectSheet(sheets[next].id);
     },
     [data.sheets, data.activeSheetId, onSelectSheet],
@@ -1177,8 +1196,42 @@ export function BudgetView({
   useSheetSwipe(
     () => onSwipeToAdjacentSheet(1),
     () => onSwipeToAdjacentSheet(-1),
-    { enabled: data.sheets.length >= 2 },
+    { enabled: isStandalone && data.sheets.length >= 2 },
   );
+  // Slide the tabpanel content in from the side the user swiped from.
+  // Runs in `useLayoutEffect` so the off-screen start position is
+  // painted before the browser ever shows the new sheet at rest —
+  // otherwise the user would see a one-frame flash of the new content
+  // at its final position before the animation began. The
+  // `data-reduce-motion="true"` guard in `styles.css` zeroes
+  // `transition-duration` for every selector, so the transform jumps
+  // straight to 0 with no animation when the user has reduce-motion
+  // on — no JS check needed here.
+  const sheetPanelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const from = slideFromRef.current;
+    slideFromRef.current = null;
+    if (!from) return;
+    const el = sheetPanelRef.current;
+    if (!el) return;
+    el.style.transition = "none";
+    el.style.transform =
+      from === "right" ? "translateX(100%)" : "translateX(-100%)";
+    // Force a reflow so the browser commits the off-screen start
+    // position before the transition is re-enabled — without this the
+    // browser would coalesce the two style writes and skip the
+    // animation entirely.
+    void el.offsetWidth;
+    el.style.transition = "transform 240ms ease-out";
+    el.style.transform = "translateX(0)";
+    const onEnd = () => {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.removeEventListener("transitionend", onEnd);
+    };
+    el.addEventListener("transitionend", onEnd);
+    return () => el.removeEventListener("transitionend", onEnd);
+  }, [data.activeSheetId]);
   const onClickHeaderTitle = useCallback(() => {
     const action = data.settings.headerAction;
     const reduceMotion =
@@ -2791,13 +2844,14 @@ export function BudgetView({
             on the inner wrapper lets `Skip to content`-style jumps move
             focus into the panel without it being part of the normal
             keyboard tour. */}
-        <main data-budget-main className="flex-1">
+        <main data-budget-main className="flex-1 [overflow-x:clip]">
           <div
+            ref={sheetPanelRef}
             role="tabpanel"
             id={`sheet-tabpanel-${activeSheet.id}`}
             aria-labelledby={`sheet-tab-${activeSheet.id}`}
             tabIndex={-1}
-            className="h-full"
+            className="h-full will-change-transform"
           >
             {status.kind === "loading" ? (
               <BudgetLoading />
