@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -53,6 +53,32 @@ export function FloatingPanel({
 
   useEscapeKey(open, onClose);
   useBlocksSheet(rowId, open, onClose);
+
+  // When the panel closes after having held keyboard focus (the
+  // listbox cursor lives inside the portal), return focus to the
+  // trigger button so the keyboard journey continues from where it
+  // started. Without this, Esc / outside-click leaves focus orphaned
+  // on `<body>` and the next Tab restarts from the page's first
+  // focusable. We only restore when the active element is inside the
+  // panel — a mouse user who never moved focus shouldn't have their
+  // keyboard cursor yanked back to the trigger.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const focusable = trigger.querySelector<HTMLElement>(
+      "button, [href], [tabindex]:not([tabindex='-1'])",
+    );
+    if (focusable && document.activeElement === document.body) {
+      focusable.focus();
+    }
+  }, [open, triggerRef]);
 
   if (!open || !position) return null;
 
