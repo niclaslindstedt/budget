@@ -939,6 +939,61 @@ body {
   .sheet-table > tbody > tr.is-revealed-transfer > td:first-child {
     box-shadow: inset 2px 0 0 0 var(--accent);
   }
+
+  /* Accounts table — mirrors the budget sheet's swipe affordance for
+     the per-account action strip, but keeps the desktop table layout
+     intact (only the action cell goes absolute on mobile). The
+     desktop layout shows the action strip inline so the icons stay
+     discoverable; the mobile layout hides it offscreen and slides it
+     in when `.is-swiped` is toggled, exposing pen / trash / more in
+     the same visual order as the budget row's swipe. */
+  @media (max-width: 720px), (max-height: 500px) {
+    .accounts-table > tbody > tr {
+      position: relative;
+      overflow: hidden;
+    }
+    .accounts-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .accounts-table > tbody > tr.is-swiped > td:not(.account-action-cell) {
+      transform: translateX(-128px);
+      background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    }
+    .accounts-table > tbody > tr > .account-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* Same 128px footprint as the budget sheet's action cell so the
+         three buttons (pen / trash / more) end up at the same ~42px
+         tap target — keeps muscle memory consistent between sheets. */
+      width: 128px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .accounts-table > tbody > tr.is-swiped > .account-action-cell {
+      transform: translateX(0);
+    }
+    .accounts-table > tbody > tr > .account-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .accounts-table > tbody > tr > .account-action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
+    .accounts-table > tbody > tr > .account-action-cell .action-btn-more {
+      background: var(--surface-2);
+      color: var(--fg-bright);
+    }
+  }
 }
 
 /* Landscape phones (≤ 500px tall, e.g. iPhone 12+ in landscape at
