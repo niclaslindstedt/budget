@@ -2308,10 +2308,17 @@ export function BudgetView({
           dispatch({ type: "deleteRows", sheetId, itemId, rowIds: ids });
           setBulkDeletePrompt(null);
           onCancelSelect();
+          toast.push({
+            kind: "info",
+            message:
+              ids.length === 1
+                ? t("toast.rowsDeletedOne")
+                : t("toast.rowsDeletedOther", { n: ids.length }),
+          });
         },
       },
     ];
-  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect, t]);
+  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect, t, toast]);
 
   const uncollapseActions: ConfirmAction[] = useMemo(() => {
     if (uncollapsePrompt === null) return [];
@@ -2610,11 +2617,15 @@ export function BudgetView({
               height={24}
               className="h-6 w-6 rounded-sm"
             />
-            <span className="text-base font-bold tracking-wide text-fg-bright">
+            <h1 className="m-0 text-base font-bold tracking-wide text-fg-bright">
               budget
-            </span>
+            </h1>
           </div>
-          <div className="ml-auto inline-flex items-center gap-2">
+          <div
+            role="toolbar"
+            aria-label={t("app.headerToolbar")}
+            className="ml-auto inline-flex items-center gap-2"
+          >
             <HeaderStar
               unseenCount={data.settings.unseenAchievements.length}
               onOpenList={() => setAchievementsListOpen(true)}
@@ -2648,92 +2659,107 @@ export function BudgetView({
             />
           </div>
         </header>
+        {/* `<main>` stays as the page-level landmark; the inner wrapper
+            carries `role="tabpanel"` so the tablist in `BottomBar`
+            has a target to bind to via `aria-labelledby`. `tabIndex={-1}`
+            on the inner wrapper lets `Skip to content`-style jumps move
+            focus into the panel without it being part of the normal
+            keyboard tour. */}
         <main data-budget-main className="flex-1">
-          {status.kind === "loading" ? (
-            <BudgetLoading />
-          ) : activeSheet.type === "accounts" ? (
-            <AccountsSheetView
-              sheet={activeSheet}
-              data={data}
-              settings={data.settings}
-              onCreateAccount={onOpenCreateAccount}
-              onEditAccount={onOpenEditAccount}
-              onUpdateBalance={onOpenUpdateBalance}
-              onCreateTransaction={onOpenCreateTransaction}
-              onEditTransaction={onOpenEditTransaction}
-              onImportHistory={onOpenImportHistory}
-              onViewHistory={onOpenViewHistory}
-              onCutHistory={onOpenCutHistory}
-              onFindTransfers={onOpenTransferCollapse}
-              onEditSheet={onOpenEditSheet}
-              onDownloadSheet={onOpenDownloadSheet}
-            />
-          ) : (
-            <>
-              <RecurringCandidatesPanel
-                history={
-                  activeItem.accountId
-                    ? (data.history[activeItem.accountId] ?? [])
-                    : []
-                }
-                dismissedKeys={data.recurringDismissals}
-                merchantHints={data.merchantHints}
-                types={allTypesMerged}
-                settings={data.settings}
-                onPromote={onPromoteRecurringCandidate}
-                onDismiss={onDismissRecurringCandidate}
-                onDismissAll={onDismissAllRecurringCandidates}
-              />
-              <SheetView
+          <div
+            role="tabpanel"
+            id={`sheet-tabpanel-${activeSheet.id}`}
+            aria-labelledby={`sheet-tab-${activeSheet.id}`}
+            tabIndex={-1}
+            className="h-full"
+          >
+            {status.kind === "loading" ? (
+              <BudgetLoading />
+            ) : activeSheet.type === "accounts" ? (
+              <AccountsSheetView
                 sheet={activeSheet}
-                item={activeItem}
                 data={data}
-                types={allTypesMerged}
-                categories={allCategoriesMerged}
-                onCreateType={onCreateType}
-                onCreateCategory={onCreateCategory}
-                accounts={data.accounts}
-                transactions={data.transactions}
-                history={
-                  activeItem.accountId
-                    ? (data.history[activeItem.accountId] ?? [])
-                    : []
-                }
-                merchantHints={data.merchantHints}
-                matchRules={data.matchRules}
-                openingBalance={
-                  activeItem.accountId
-                    ? (data.accounts.find((a) => a.id === activeItem.accountId)
-                        ?.openingBalance ?? 0)
-                    : 0
-                }
                 settings={data.settings}
-                selectMode={selectMode}
-                selectedIds={selectedIds}
-                scrollToRowRequest={scrollToRowRequest}
-                onUpdateCell={onUpdateCell}
-                onCommitCell={onCommitCell}
-                onAddRow={onAddRow}
-                onAddComplex={onAddComplex}
-                onDeleteRequest={onDeleteRequest}
-                onEditRequest={onEditRequest}
-                onEditRowRequest={onEditRowRequest}
-                onSplitRequest={onSplitRequest}
-                onTransactionRequest={onTransactionRequest}
-                onToggleRowTransfer={onToggleRowTransfer}
-                onMatchRuleRequest={onMatchRuleRequest}
-                onEditHistoryRequest={onEditHistoryRequest}
-                onCopyRequest={onCopyRequest}
-                onUpdateHistoryEntry={onUpdateHistoryEntry}
-                onCorrectionDeleteRequest={onCorrectionDeleteRequest}
-                onReorderColumns={onReorderColumns}
-                onToggleSelect={onToggleSelect}
-                onToggleSelectMonth={onToggleSelectMonth}
+                onCreateAccount={onOpenCreateAccount}
+                onEditAccount={onOpenEditAccount}
+                onUpdateBalance={onOpenUpdateBalance}
+                onCreateTransaction={onOpenCreateTransaction}
+                onEditTransaction={onOpenEditTransaction}
+                onImportHistory={onOpenImportHistory}
+                onViewHistory={onOpenViewHistory}
+                onCutHistory={onOpenCutHistory}
+                onFindTransfers={onOpenTransferCollapse}
                 onEditSheet={onOpenEditSheet}
                 onDownloadSheet={onOpenDownloadSheet}
               />
-            </>
-          )}
+            ) : (
+              <>
+                <RecurringCandidatesPanel
+                  history={
+                    activeItem.accountId
+                      ? (data.history[activeItem.accountId] ?? [])
+                      : []
+                  }
+                  dismissedKeys={data.recurringDismissals}
+                  merchantHints={data.merchantHints}
+                  types={allTypesMerged}
+                  settings={data.settings}
+                  onPromote={onPromoteRecurringCandidate}
+                  onDismiss={onDismissRecurringCandidate}
+                  onDismissAll={onDismissAllRecurringCandidates}
+                />
+                <SheetView
+                  sheet={activeSheet}
+                  item={activeItem}
+                  data={data}
+                  types={allTypesMerged}
+                  categories={allCategoriesMerged}
+                  onCreateType={onCreateType}
+                  onCreateCategory={onCreateCategory}
+                  accounts={data.accounts}
+                  transactions={data.transactions}
+                  history={
+                    activeItem.accountId
+                      ? (data.history[activeItem.accountId] ?? [])
+                      : []
+                  }
+                  merchantHints={data.merchantHints}
+                  matchRules={data.matchRules}
+                  openingBalance={
+                    activeItem.accountId
+                      ? (data.accounts.find(
+                          (a) => a.id === activeItem.accountId,
+                        )?.openingBalance ?? 0)
+                      : 0
+                  }
+                  settings={data.settings}
+                  selectMode={selectMode}
+                  selectedIds={selectedIds}
+                  scrollToRowRequest={scrollToRowRequest}
+                  onUpdateCell={onUpdateCell}
+                  onCommitCell={onCommitCell}
+                  onAddRow={onAddRow}
+                  onAddComplex={onAddComplex}
+                  onDeleteRequest={onDeleteRequest}
+                  onEditRequest={onEditRequest}
+                  onEditRowRequest={onEditRowRequest}
+                  onSplitRequest={onSplitRequest}
+                  onTransactionRequest={onTransactionRequest}
+                  onToggleRowTransfer={onToggleRowTransfer}
+                  onMatchRuleRequest={onMatchRuleRequest}
+                  onEditHistoryRequest={onEditHistoryRequest}
+                  onCopyRequest={onCopyRequest}
+                  onUpdateHistoryEntry={onUpdateHistoryEntry}
+                  onCorrectionDeleteRequest={onCorrectionDeleteRequest}
+                  onReorderColumns={onReorderColumns}
+                  onToggleSelect={onToggleSelect}
+                  onToggleSelectMonth={onToggleSelectMonth}
+                  onEditSheet={onOpenEditSheet}
+                  onDownloadSheet={onOpenDownloadSheet}
+                />
+              </>
+            )}
+          </div>
         </main>
         {status.kind === "loading" ? null : (
           <BottomBar

@@ -209,17 +209,21 @@ export function AccountsSheetView({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
-                <th className="w-10 px-2 py-1.5"></th>
-                <th className="px-2 py-1.5 text-left">
+                <th scope="col" className="w-10 px-2 py-1.5"></th>
+                <th scope="col" className="px-2 py-1.5 text-left">
                   {t("accountsSheet.name")}
                 </th>
-                <th className="hidden px-2 py-1.5 text-left md:table-cell">
+                <th
+                  scope="col"
+                  className="hidden px-2 py-1.5 text-left md:table-cell"
+                >
                   {t("accountsSheet.bank")}
                 </th>
-                <th className="px-2 py-1.5 text-right">
+                <th scope="col" className="px-2 py-1.5 text-right">
                   {t("accountsSheet.balance")}
                 </th>
                 <th
+                  scope="col"
                   className="w-44 px-2 py-1.5"
                   aria-label={t("sheet.rowActions")}
                 >
@@ -463,16 +467,19 @@ export function AccountsSheetView({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
-                <th className="w-20 px-2 py-1.5 text-left">
+                <th scope="col" className="w-20 px-2 py-1.5 text-left">
                   {t("accountsSheet.date")}
                 </th>
-                <th className="px-2 py-1.5 text-left">
+                <th scope="col" className="px-2 py-1.5 text-left">
                   {t("accountsSheet.description")}
                 </th>
-                <th className="hidden px-2 py-1.5 text-left md:table-cell">
+                <th
+                  scope="col"
+                  className="hidden px-2 py-1.5 text-left md:table-cell"
+                >
                   {t("accountsSheet.transfer")}
                 </th>
-                <th className="px-2 py-1.5 text-right">
+                <th scope="col" className="px-2 py-1.5 text-right">
                   {t("accountsSheet.amount")}
                 </th>
               </tr>

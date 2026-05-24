@@ -389,7 +389,13 @@ export function SettingsModal({
           onSelect={setActiveTab}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3 sm:px-4 sm:py-4">
+          <div
+            role="tabpanel"
+            id={`settings-tabpanel-${activeTab}`}
+            aria-labelledby={`settings-tab-${activeTab}`}
+            tabIndex={0}
+            className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
+          >
             {activeTab === "general" && (
               <GeneralTab
                 draft={draft}
@@ -495,7 +501,9 @@ export function SettingsModal({
 
 // Desktop-only vertical tab strip on the left of the modal body. The
 // burger menu picks up the same job on mobile (the sidebar is hidden
-// below `sm`).
+// below `sm`). Implemented as a WAI-ARIA tablist with roving tabindex
+// and arrow-key navigation; activation follows focus (automatic mode)
+// to match the mouse / touch behaviour.
 function TabSidebar({
   activeTab,
   tabIds,
@@ -507,20 +515,55 @@ function TabSidebar({
 }) {
   const t = useT();
   const tabs = useTabDefs(t, tabIds);
+  const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  function handleKeyDown(
+    e: React.KeyboardEvent<HTMLButtonElement>,
+    idx: number,
+  ) {
+    if (
+      e.key !== "ArrowUp" &&
+      e.key !== "ArrowDown" &&
+      e.key !== "Home" &&
+      e.key !== "End"
+    )
+      return;
+    e.preventDefault();
+    let next = idx;
+    if (e.key === "ArrowUp") next = idx - 1;
+    else if (e.key === "ArrowDown") next = idx + 1;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    const wrapped = (next + tabs.length) % tabs.length;
+    const nextId = tabs[wrapped].id;
+    onSelect(nextId);
+    buttonRefs.current[nextId]?.focus();
+  }
+
   return (
-    <nav
+    <div
+      role="tablist"
+      aria-orientation="vertical"
       aria-label={t("settings.chooseSection")}
       className="hidden w-40 shrink-0 flex-col gap-0.5 overflow-y-auto overscroll-contain border-r border-line bg-surface-3 p-2 sm:flex"
     >
-      {tabs.map((tab) => {
+      {tabs.map((tab, idx) => {
         const Icon = tab.icon;
         const isActive = tab.id === activeTab;
         return (
           <button
             key={tab.id}
+            ref={(el) => {
+              buttonRefs.current[tab.id] = el;
+            }}
             type="button"
+            role="tab"
+            id={`settings-tab-${tab.id}`}
+            aria-controls={`settings-tabpanel-${tab.id}`}
+            aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(tab.id)}
-            aria-current={isActive ? "page" : undefined}
+            onKeyDown={(e) => handleKeyDown(e, idx)}
             className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-fg hover:bg-surface-2"
           >
             <Icon size={14} aria-hidden />
@@ -528,7 +571,7 @@ function TabSidebar({
           </button>
         );
       })}
-    </nav>
+    </div>
   );
 }
 

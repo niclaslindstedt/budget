@@ -1,10 +1,29 @@
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import { useEscapeKey, useIsMobile, useVirtualKeyboardInset } from "../hooks";
 import { useT } from "../i18n";
 import { useBodyScrollLock } from "../utils/scroll-lock";
+
+// Tabbable / focusable elements inside the modal. Mirrors the standard
+// selector used by every focus-trap library — `[tabindex="-1"]` is
+// explicitly excluded so programmatically-focused-only scroll regions
+// (the SettingsModal panel wrapper, for instance) don't trap Tab.
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[contenteditable='true']",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function getFocusables(root: HTMLElement | null): HTMLElement[] {
+  if (root === null) return [];
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+}
 
 // Shared shell for every modal dialog in the app. Owns:
 //
@@ -101,6 +120,13 @@ export function Modal({
   const isMobile = useIsMobile();
   const keyboardInset = useVirtualKeyboardInset();
 
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  // The element that owned focus before the modal opened — restored
+  // on close so tab order continues from where the user left it
+  // (e.g. focus returns to the row's action button after the
+  // EditRowModal closes).
+  const openerRef = useRef<HTMLElement | null>(null);
+
   // Adds a class to <body> while any modal is open so the fixed
   // mobile chrome (sheet tabs, bulk action bar) can hide via CSS —
   // they otherwise hover above the modal during keyboard interactions
@@ -113,6 +139,71 @@ export function Modal({
       document.body.classList.remove("modal-open");
     };
   }, [open]);
+
+  // Focus management — runs on every open / close transition:
+  //  1. Capture the opener (the button or input that had focus before
+  //     the modal showed up) so we can hand control back when it
+  //     closes.
+  //  2. Move focus into the modal shell. We prefer the first
+  //     focusable inside the body (e.g. a form input) but fall back
+  //     to the shell itself (`tabIndex={-1}`) so Tab still walks into
+  //     the modal even if it has no focusable content.
+  //  3. On close, restore focus to the opener if it's still in the
+  //     document.
+  useEffect(() => {
+    if (!open) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    // Wait a frame for the portal to mount and the children to render
+    // before reaching for the first focusable — the ref is set after
+    // the first commit.
+    const raf = requestAnimationFrame(() => {
+      const shell = shellRef.current;
+      if (!shell) return;
+      const focusables = getFocusables(shell);
+      // Skip the header close button as the auto-focus target — it's
+      // a dismiss control, not the user's likely first action. Prefer
+      // the first focusable inside the modal body, falling back to
+      // close-button → shell.
+      const body = shell.querySelector<HTMLElement>("[data-modal-body]");
+      const bodyFocusables = body ? getFocusables(body) : [];
+      const target = bodyFocusables[0] ?? focusables[0] ?? shell;
+      target.focus();
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      const opener = openerRef.current;
+      if (opener && document.contains(opener)) {
+        opener.focus();
+      }
+    };
+  }, [open]);
+
+  // Focus trap — cycles Tab / Shift+Tab inside the shell so keyboard
+  // users can't accidentally Tab into the inert background. Without
+  // this, Tab past the last focusable lands on the next item in DOM
+  // order outside the portal (somewhere in the sheet view), at which
+  // point focus is lost behind the modal.
+  function trapTab(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Tab") return;
+    const shell = shellRef.current;
+    if (!shell) return;
+    const focusables = getFocusables(shell);
+    if (focusables.length === 0) {
+      e.preventDefault();
+      shell.focus();
+      return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !shell.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   if (!open) return null;
 
@@ -212,9 +303,15 @@ export function Modal({
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      onKeyDown={trapTab}
     >
       <div
+        ref={shellRef}
         data-modal-shell={overlayVariant}
+        // `tabIndex={-1}` lets the shell receive focus as a fallback
+        // when the modal has no focusable children — the trap
+        // otherwise leaves keyboard users stranded.
+        tabIndex={-1}
         className={`${shellLayout} ${shellChrome}`}
         style={shellStyle}
       >
@@ -306,6 +403,7 @@ function Body({
   return (
     <div
       ref={scrollRef}
+      data-modal-body
       className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${paddingClass} ${className}`
         .replace(/\s+/g, " ")
         .trim()}

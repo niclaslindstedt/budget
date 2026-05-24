@@ -417,7 +417,7 @@ function BalanceCell({
               // for an inline button + number, so the reveal-affordance
               // hops to its own line above to keep horizontal space for
               // the number itself.
-              className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded border-0 bg-transparent p-0.5 text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              className="hit-24 inline-flex shrink-0 cursor-pointer items-center justify-center gap-0.5 rounded border-0 bg-transparent p-0.5 text-muted hover:text-fg-bright focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
               <ArrowLeftRight size={12} aria-hidden focusable={false} />
               {transferExpanded ? (

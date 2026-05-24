@@ -1,4 +1,5 @@
 import type { CategoryIcon } from "../data/types";
+import { useGridRovingTabindex } from "../hooks";
 import { CategoryIconGlyph } from "./icons";
 
 type DefaultSlot = {
@@ -33,6 +34,13 @@ type Props = {
 };
 
 // 8-column grid of icon buttons. Used by every "pick a glyph" flow.
+//
+// Keyboard nav: roving tabindex across the whole grid (the default
+// slot, when present, counts as the leading cell). Arrow keys walk
+// the 2D layout — Left / Right cycle the row, Up / Down jump a row,
+// Home / End jump to the corners. The painted columns are fixed to
+// 8 via `grid-cols-8`, so the hook's `columns: 8` matches the
+// rendered geometry.
 export function GlyphGrid({
   icons,
   value,
@@ -46,14 +54,32 @@ export function GlyphGrid({
   const defaultTinted = Boolean(
     defaultSlot && tintColor && defaultSlot.selected,
   );
+  // The default slot, when present, is index 0; the named icons start
+  // at the next index. The cursor seats on whatever is currently
+  // selected.
+  const offset = defaultSlot ? 1 : 0;
+  const total = offset + icons.length;
+  const selectedIdx = defaultSlot?.selected
+    ? 0
+    : offset + Math.max(0, icons.indexOf(value as CategoryIcon));
+  const { isCursorAt, registerItem, onKeyDown } = useGridRovingTabindex({
+    itemCount: total,
+    columns: 8,
+    initialIndex: selectedIdx,
+    active: false,
+  });
   return (
-    <div className="grid grid-cols-8 gap-1">
+    <div role="radiogroup" className="grid grid-cols-8 gap-1">
       {defaultSlot && (
         <button
+          ref={registerItem(0)}
           type="button"
+          role="radio"
+          aria-checked={defaultSlot.selected}
+          tabIndex={isCursorAt(0) ? 0 : -1}
           onClick={defaultSlot.onSelect}
+          onKeyDown={onKeyDown}
           aria-label={defaultSlot.label}
-          aria-pressed={defaultSlot.selected}
           title={defaultSlot.label}
           className={`flex ${dim} cursor-pointer items-center justify-center rounded border ${
             defaultTinted
@@ -74,16 +100,21 @@ export function GlyphGrid({
           {defaultSlot.render()}
         </button>
       )}
-      {icons.map((name) => {
+      {icons.map((name, i) => {
         const selected = name === value;
         const tinted = tintColor && selected;
+        const cellIdx = offset + i;
         return (
           <button
             key={name}
+            ref={registerItem(cellIdx)}
             type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={isCursorAt(cellIdx) ? 0 : -1}
             aria-label={`Glyph ${name}`}
-            aria-pressed={selected}
             onClick={() => onChange(name)}
+            onKeyDown={onKeyDown}
             className={`flex ${dim} cursor-pointer items-center justify-center rounded border ${
               tinted
                 ? "border-current"

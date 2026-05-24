@@ -552,6 +552,9 @@ function CategoryEditor({
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.name")}</span>
         <ClearableTextInput
+          // Dedicated single-purpose category editor — landing focus
+          // on the name field is the expected UX in this modal context.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
           value={name}
@@ -638,6 +641,9 @@ function TypeEditor({
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.name")}</span>
         <ClearableTextInput
+          // Dedicated single-purpose type editor — landing focus on
+          // the name field is the expected UX in this modal context.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
           value={name}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import {
   Copy,
   History,
@@ -78,6 +78,25 @@ export function BottomBar({
     ? t("app.exitSelectMode")
     : t("app.selectRows");
   const bulkDisabled = bulkSelectedCount === 0;
+
+  // Arrow-Left / Right / Home / End cycle the active sheet when focus
+  // sits on a tab. WAI-ARIA tabs in "automatic" mode — focus = select —
+  // matches the rest of the chrome's switch-on-tap UX and avoids a
+  // separate Enter-to-activate step.
+  const onTabKey = useCallback(
+    (currentIdx: number, key: string) => {
+      if (sheets.length === 0) return;
+      let next = currentIdx;
+      if (key === "ArrowLeft") next = currentIdx - 1;
+      else if (key === "ArrowRight") next = currentIdx + 1;
+      else if (key === "Home") next = 0;
+      else if (key === "End") next = sheets.length - 1;
+      else return;
+      const wrapped = (next + sheets.length) % sheets.length;
+      onSelectSheet(sheets[wrapped].id);
+    },
+    [sheets, onSelectSheet],
+  );
 
   return (
     // Two-mode positioning:
@@ -166,14 +185,26 @@ export function BottomBar({
               />
             </>
           ) : (
-            <>
-              {sheets.map((sheet) => (
+            // Sheet picker as an ARIA tablist — each tab carries
+            // `aria-selected`, the inactive tabs roll `tabIndex={-1}`
+            // off the keyboard tour (the active one is the single
+            // entry point), and `onTabKey` cycles between them. The
+            // tabpanel lives in `<main data-budget-main>` over in
+            // BudgetView and points back here via `aria-labelledby`.
+            <div
+              role="tablist"
+              aria-label={t("sheetTabs.tablistLabel")}
+              className="flex min-w-0 flex-1 items-center gap-1"
+            >
+              {sheets.map((sheet, idx) => (
                 <SheetTab
                   key={sheet.id}
                   sheet={sheet}
                   active={sheet.id === activeSheetId}
+                  index={idx}
                   onSelect={() => onSelectSheet(sheet.id)}
                   onEdit={() => onEditSheet(sheet.id)}
+                  onTabKey={onTabKey}
                 />
               ))}
               <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
@@ -186,7 +217,7 @@ export function BottomBar({
               >
                 <Plus size={18} aria-hidden focusable={false} />
               </button>
-            </>
+            </div>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5 border-l border-line pl-1.5 sm:pl-2">
@@ -280,13 +311,17 @@ function BulkButton({
 function SheetTab({
   sheet,
   active,
+  index,
   onSelect,
   onEdit,
+  onTabKey,
 }: {
   sheet: Sheet;
   active: boolean;
+  index: number;
   onSelect: () => void;
   onEdit: () => void;
+  onTabKey: (currentIdx: number, key: string) => void;
 }) {
   const t = useT();
   // Long-press / right-click both open the edit modal. Mirrors the
@@ -302,7 +337,10 @@ function SheetTab({
   // Pull the active tab back into the visible window of the horizontal
   // scroller after a sheet switch. Without this, opening a sheet whose
   // tab has scrolled off the edge silently leaves the user looking at
-  // an empty-feeling bar.
+  // an empty-feeling bar. We also re-focus the active tab when it was
+  // moved via arrow keys so the roving tabindex follows the selection
+  // — `data-keyboard-focused` is set by `handleKeyDown` and cleared on
+  // any pointer interaction.
   useEffect(() => {
     if (!active) return;
     buttonRef.current?.scrollIntoView({
@@ -310,6 +348,10 @@ function SheetTab({
       inline: "center",
       behavior: "smooth",
     });
+    if (buttonRef.current?.dataset.keyboardFocused === "true") {
+      buttonRef.current.focus();
+      delete buttonRef.current.dataset.keyboardFocused;
+    }
   }, [active]);
 
   function clearTimer() {
@@ -358,18 +400,42 @@ function SheetTab({
     onEdit();
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (
+      e.key === "ArrowLeft" ||
+      e.key === "ArrowRight" ||
+      e.key === "Home" ||
+      e.key === "End"
+    ) {
+      e.preventDefault();
+      // The selected-tab effect picks the flag up after re-render and
+      // restores keyboard focus to the new active button. Without
+      // this hop, the focus would stay on the old (now `tabIndex=-1`)
+      // tab and the next arrow key would do nothing.
+      if (buttonRef.current) {
+        buttonRef.current.dataset.keyboardFocused = "true";
+      }
+      onTabKey(index, e.key);
+    }
+  }
+
   return (
     <button
       ref={buttonRef}
       type="button"
+      role="tab"
+      id={`sheet-tab-${sheet.id}`}
+      aria-controls={`sheet-tabpanel-${sheet.id}`}
+      aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onPointerLeave={handlePointerUp}
       onContextMenu={handleContextMenu}
-      aria-pressed={active}
       aria-label={t("sheetTabs.tabAriaLabel", { name: sheet.name })}
       title={
         sheet.description ? `${sheet.name} — ${sheet.description}` : sheet.name

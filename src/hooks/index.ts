@@ -12,6 +12,7 @@ export { useIdleSignOut } from "./useIdleSignOut";
 export { useIsMobile } from "./useIsMobile";
 export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
+export { useGridRovingTabindex, useRovingTabindex } from "./useRovingTabindex";
 export { useStorageSizeWarning } from "./useStorageSizeWarning";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";
