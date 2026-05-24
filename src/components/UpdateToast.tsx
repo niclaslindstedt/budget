@@ -64,7 +64,7 @@ export function UpdateToast() {
       role="status"
       aria-live="polite"
       data-toast-stack
-      className="fixed right-3 bottom-[var(--toast-stack-bottom)] z-[60] flex items-center gap-3 rounded border border-line bg-surface px-3 py-2 text-fg shadow-md"
+      className="fixed inset-x-3 bottom-[var(--toast-stack-bottom)] z-[60] mx-auto flex max-w-md items-center gap-3 rounded border border-line bg-surface px-3 py-2 text-fg shadow-md"
     >
       <span className="text-sm">
         {t("pwa.updateReady", { version: BUILD_LABEL })}
