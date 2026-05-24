@@ -12,7 +12,6 @@ import type {
   Account,
   EntryType,
   HistoryEntry,
-  HistoryImport,
   MatchRule,
   MerchantHint,
   Settings,
@@ -55,7 +54,6 @@ type Props = {
   open: boolean;
   account: Account | null;
   entries: readonly HistoryEntry[];
-  imports: readonly HistoryImport[];
   // EntryType registry so resolved typeIds can render their icon and
   // colour, matching the budget view's row chrome.
   types: readonly EntryType[];
@@ -80,7 +78,6 @@ export function HistoryModal({
   open,
   account,
   entries,
-  imports,
   types,
   merchantHints,
   matchRules,
@@ -235,11 +232,7 @@ export function HistoryModal({
         if (b > balance) balance = b;
       }
     }
-    // Floor each column at the header text length (uppercase "AMOUNT" /
-    // "BALANCE") so the sticky `<thead>` label never overflows the cell
-    // when the data is short — short abbreviated balances like "21K"
-    // would otherwise sit in a 4ch column too narrow for the header.
-    return { amount: Math.max(amount, 7), balance: Math.max(balance, 8) };
+    return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
   }, [filteredEntries, accountSettings]);
 
   return (
@@ -404,11 +397,11 @@ export function HistoryModal({
                               ) : null}
                             </td>
                           )}
-                          <td className="align-top text-fg">
+                          <td className="align-top text-muted">
                             <button
                               type="button"
                               onClick={() => setSelectedEntry(e)}
-                              className="block w-full cursor-pointer px-2 py-1.5 text-left break-words hover:text-fg-bright"
+                              className="block w-full cursor-pointer px-2 py-1.5 text-left break-words hover:text-fg"
                             >
                               {r.description}
                             </button>
@@ -475,32 +468,6 @@ export function HistoryModal({
           </div>
         )}
       </Modal>
-
-      {imports.length > 0 && (
-        <div className="border-t border-line bg-surface-2 px-4 py-2 text-xs text-muted">
-          <h3 className="mb-1 font-bold tracking-wider uppercase">
-            {t("history.importsLabel")}
-          </h3>
-          <ul className="flex flex-col gap-0.5">
-            {imports.map((imp) => (
-              <li key={imp.id} className="flex justify-between gap-2">
-                <span className="truncate font-mono text-fg">
-                  {imp.filename}
-                </span>
-                <span className="whitespace-nowrap">
-                  {imp.duplicateCount > 0
-                    ? t("history.addedSkippedBoth", {
-                        added: imp.addedCount,
-                        duplicate: imp.duplicateCount,
-                      })
-                    : t("history.addedOnly", { added: imp.addedCount })}{" "}
-                  · {imp.rangeStart} → {imp.rangeEnd}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </Modal>
   );
 }

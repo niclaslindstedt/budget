@@ -999,8 +999,6 @@ export const sv: Catalog = {
     rangePrefix: "Intervall:",
     addedCount: "{n} tillagda",
     duplicateCount: "{n} dubbletter",
-    addedSkippedBoth: "{added} nya, {duplicate} överhoppade",
-    addedOnly: "{added} nya",
     noEntries:
       "Ingen historik än. Importera ett bankutdrag för att fylla denna vy.",
     noEntriesForMonth: "Ingen historik för {month}.",
@@ -1016,7 +1014,6 @@ export const sv: Catalog = {
     bankColumn: "Från bank",
     label: "Etikett",
     importLabel: "Import",
-    importsLabel: "Importer",
     date: "Datum",
     description: "Beskrivning",
     amount: "Belopp",

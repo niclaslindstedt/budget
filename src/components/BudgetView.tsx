@@ -2881,11 +2881,6 @@ export function BudgetView({
         entries={
           viewHistoryAccount ? (data.history[viewHistoryAccount.id] ?? []) : []
         }
-        imports={
-          viewHistoryAccount
-            ? (data.historyImports[viewHistoryAccount.id] ?? [])
-            : []
-        }
         types={allTypesMerged}
         merchantHints={data.merchantHints}
         matchRules={data.matchRules}
