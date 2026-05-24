@@ -18,9 +18,15 @@ import { unlock } from "../data/achievements";
 // BottomBar), `[data-active-portal]` (FloatingPanel, Modal,
 // DismissBackdrop), `[aria-modal="true"]` (any open modal), or a
 // form-interactive control (input / textarea / select /
-// contenteditable) is ignored. iOS Safari's edge-back gesture is
-// dodged by skipping touches that start within 20 px of either
-// vertical edge.
+// contenteditable) is ignored — *except* when the touch starts
+// inside the absolute-edge band (`isInSheetSwipeEdgeBand`). The
+// hook is gated on standalone PWA mode by its caller
+// (`BudgetView.tsx`), so there's no browser edge-back gesture left
+// to fight; those few edge pixels are reserved for the sheet switch
+// so a user can swipe between sheets even when their thumb lands on
+// a row with its own left-swipe action menu. Row swipe handlers
+// (`SheetRow.tsx`, `AccountsSheetView.tsx`) read the same band and
+// stay disarmed for touches that originate inside it.
 
 // Minimum horizontal travel before the swipe fires. The viewport-
 // relative term scales the threshold up on wide phones / foldables;
@@ -36,11 +42,22 @@ function thresholdPx(): number {
 // (`src/components/SheetRow.tsx`).
 const AXIS_LOCK_PX = 10;
 
-// Edge band that iOS Safari reserves for its swipe-from-edge back
-// gesture. Touches that start inside this band are ignored so we
-// don't fight the OS — and so a user who's halfway through a back
-// swipe doesn't also land on a sheet switch.
-const EDGE_BAND_PX = 20;
+// Width of the absolute-edge band on each vertical side of the
+// viewport. Touches that start inside this band bypass the
+// `data-swipe-handled` opt-out so a swipe begun at the screen edge
+// drives a sheet switch even when the user's thumb landed on a row.
+// Kept narrow enough that the bulk of every row still belongs to the
+// row's own left-swipe action menu.
+const EDGE_OVERRIDE_PX = 20;
+
+export function isInSheetSwipeEdgeBand(
+  clientX: number,
+  viewportWidth: number,
+): boolean {
+  return (
+    clientX < EDGE_OVERRIDE_PX || clientX > viewportWidth - EDGE_OVERRIDE_PX
+  );
+}
 
 type Options = {
   // When false, the listener is mounted but no-ops. Mirrors the
@@ -97,14 +114,12 @@ export function useSheetSwipe(
       }
       if (hasOpenModal()) return;
       const t = e.touches[0];
-      // Skip the iOS edge-back gesture band on both sides.
-      if (
-        t.clientX < EDGE_BAND_PX ||
-        t.clientX > window.innerWidth - EDGE_BAND_PX
-      ) {
-        return;
-      }
-      if (isOptedOut(e.target)) return;
+      // A touch starting inside the absolute-edge band always counts
+      // as a sheet-switch candidate, even when the user's thumb
+      // lands on a row that would otherwise own the gesture. Outside
+      // the band, defer to whatever element owns the touch.
+      const onEdge = isInSheetSwipeEdgeBand(t.clientX, window.innerWidth);
+      if (!onEdge && isOptedOut(e.target)) return;
       startX = t.clientX;
       startY = t.clientY;
       axis = "none";

@@ -2,6 +2,8 @@ import { memo, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../data/sheet";
+import { readIsStandalone } from "../hooks/useIsStandalone";
+import { isInSheetSwipeEdgeBand } from "../hooks/useSheetSwipe";
 import { useLang, useT } from "../i18n";
 import type {
   Category,
@@ -209,6 +211,20 @@ function SheetRowImpl({
   const onTouchStart = (e: React.TouchEvent) => {
     if (selectMode) return;
     const t = e.touches[0];
+    // In standalone PWA mode, a touch that starts at the absolute
+    // screen edge belongs to the document-level sheet-switch gesture
+    // (see `useSheetSwipe.ts`). Leave `startX` null so this row's
+    // own swipe-to-reveal stays disarmed and the two gestures can't
+    // fight for the same touch.
+    if (
+      readIsStandalone() &&
+      isInSheetSwipeEdgeBand(t.clientX, window.innerWidth)
+    ) {
+      startX.current = null;
+      startY.current = null;
+      moved.current = false;
+      return;
+    }
     startX.current = t.clientX;
     startY.current = t.clientY;
     moved.current = false;

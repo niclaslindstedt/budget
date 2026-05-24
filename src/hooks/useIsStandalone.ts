@@ -19,6 +19,14 @@ function read(): boolean {
   return false;
 }
 
+// Non-reactive snapshot for touch handlers that only need the current
+// value (e.g. row-swipe gestures deciding whether to surrender the
+// touch to the document-level sheet-swipe hook). Avoids subscribing
+// every row to the matchMedia change event.
+export function readIsStandalone(): boolean {
+  return read();
+}
+
 export function useIsStandalone(): boolean {
   const [standalone, setStandalone] = useState<boolean>(read);
 

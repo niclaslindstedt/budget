@@ -34,6 +34,8 @@ import type {
   Sheet,
   UserData,
 } from "../data/types";
+import { readIsStandalone } from "../hooks/useIsStandalone";
+import { isInSheetSwipeEdgeBand } from "../hooks/useSheetSwipe";
 import { useLang, useT } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
 import { displayCategoryName } from "../i18n/preset-names";
@@ -654,6 +656,19 @@ function AccountRowImpl({
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
+    // In standalone PWA mode, the absolute-edge band belongs to the
+    // document-level sheet-switch gesture (see `useSheetSwipe.ts`).
+    // Leave `startX` null so this row's own swipe-to-reveal stays
+    // disarmed and the two gestures can't fight for the same touch.
+    if (
+      readIsStandalone() &&
+      isInSheetSwipeEdgeBand(t.clientX, window.innerWidth)
+    ) {
+      startX.current = null;
+      startY.current = null;
+      moved.current = false;
+      return;
+    }
     startX.current = t.clientX;
     startY.current = t.clientY;
     moved.current = false;
