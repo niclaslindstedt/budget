@@ -322,7 +322,7 @@ export function AccountsSheetView({
                     className="account-action-cell w-32 px-2 py-1.5"
                     aria-label={t("sheet.rowActions")}
                   >
-                    <span className="inline-flex items-center justify-center gap-1.5 md:gap-2">
+                    <span className="flex items-center justify-center gap-1.5 md:gap-2">
                       <Wrench
                         size={14}
                         className="shrink-0 text-accent"
