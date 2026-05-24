@@ -35,6 +35,7 @@ import type {
 import { formatNumber, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
+import type { SaveAsFormat } from "./SaveAsButton";
 import { SheetViewerModal } from "./SheetViewerModal";
 
 type Props = {
@@ -131,6 +132,10 @@ type Props = {
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onEditSheet: (sheetId: string) => void;
   onDownloadSheet: (sheetId: string) => void;
+  // Invoked from the read-only viewer modal's Save-as menu. Parent
+  // owns the export pipeline so the writer stays shared with the
+  // history-modal export — see `BudgetView.onSheetExport`.
+  onSheetExport?: (sheetId: string, format: SaveAsFormat) => void;
   // Full workspace state — needed by the formula resolver so
   // `sheet("<id>", <variable>)` references can look up other sheets'
   // running balances at this row's month.
@@ -238,6 +243,7 @@ export function SheetView({
   onToggleSelectMonth,
   onEditSheet,
   onDownloadSheet,
+  onSheetExport,
   data,
 }: Props) {
   const t = useT();
@@ -930,6 +936,9 @@ export function SheetView({
           balances={balances}
           types={types}
           settings={settings}
+          onExport={
+            onSheetExport ? (fmt) => onSheetExport(sheet.id, fmt) : undefined
+          }
         />
       </section>
       {showTodayButton && (

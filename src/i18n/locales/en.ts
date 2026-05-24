@@ -2303,9 +2303,12 @@ export const en = {
     },
     accountInfoFor: "Include account info for {name}",
     accountTransactionsFor: "Include transactions for {name}",
+    saveAs: "Save as",
+    saveAsTitle: "Save as…",
     format: {
       csv: "CSV (.csv)",
       xlsx: "Excel (.xlsx)",
+      pdf: "PDF (.pdf)",
     },
   },
 } as const;

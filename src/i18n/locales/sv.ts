@@ -2295,9 +2295,12 @@ export const sv: Catalog = {
     },
     accountInfoFor: "Inkludera kontoinfo för {name}",
     accountTransactionsFor: "Inkludera transaktioner för {name}",
+    saveAs: "Spara som",
+    saveAsTitle: "Spara som…",
     format: {
       csv: "CSV (.csv)",
       xlsx: "Excel (.xlsx)",
+      pdf: "PDF (.pdf)",
     },
   },
 };

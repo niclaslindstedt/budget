@@ -13,4 +13,6 @@ history up-front so the in-modal search filter sees the full ledger
 rather than just the recently-loaded months. The done column is shown
 inline as a small check next to the date and uncompleted rows fade
 slightly, so the table reads as one tight stack instead of spending a
-whole column on a checkmark.
+whole column on a checkmark. A **Save as** menu in the viewer's header
+exports the entire sheet (history + future) as PDF, Excel (XLSX), or
+CSV — the same formats the existing Download dialog offers, plus PDF.

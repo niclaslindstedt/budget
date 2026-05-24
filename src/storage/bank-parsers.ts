@@ -7,6 +7,7 @@ import "./bank-skandia";
 import "./bank-ica";
 import "./bank-swedbank";
 import "./bank-norwegian";
+import "./bank-budget-history";
 
 export {
   type BankFile,

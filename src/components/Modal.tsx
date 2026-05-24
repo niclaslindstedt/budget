@@ -332,10 +332,14 @@ type HeaderProps = {
   // it in an `inline-flex items-center gap-2` span with the `text-flag`
   // accent so every modal title has the same hairline of identity.
   icon?: React.ReactNode;
+  // Optional trailing action(s) rendered to the left of the close X.
+  // Used by the read-only viewer modals to surface a Save-as menu
+  // without restructuring the header.
+  actions?: React.ReactNode;
   onClose: () => void;
 };
 
-function Header({ title, icon, onClose }: HeaderProps) {
+function Header({ title, icon, actions, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
   const t = useT();
   // The padding-top is expressed as a Tailwind utility (not an inline
@@ -363,14 +367,17 @@ function Header({ title, icon, onClose }: HeaderProps) {
           title
         )}
       </h2>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t("common.close")}
-        className="-mr-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
-      >
-        <X size={20} aria-hidden focusable={false} />
-      </button>
+      <div className="-mr-1 flex items-center gap-1">
+        {actions}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t("common.close")}
+          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
+        >
+          <X size={20} aria-hidden focusable={false} />
+        </button>
+      </div>
     </header>
   );
 }

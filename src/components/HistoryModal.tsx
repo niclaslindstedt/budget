@@ -23,6 +23,7 @@ import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { CategoryIconGlyph, ColumnIcon } from "./icons";
 import { Modal } from "./Modal";
 import { ModalSearchBar } from "./ModalSearchBar";
+import { SaveAsButton, type SaveAsFormat } from "./SaveAsButton";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
@@ -65,6 +66,11 @@ type Props = {
   matchRules: readonly MatchRule[];
   settings: Settings;
   onCancel: () => void;
+  // Invoked when the user picks a Save-as format. Parent owns the
+  // export — see `BudgetView.onAccountHistoryExport` — so this modal
+  // stays purely presentational and the actual writers are shared
+  // across both viewer modals.
+  onExport?: (format: SaveAsFormat) => void;
 };
 
 // Read-only viewer for an account's imported history. Mirrors the
@@ -83,6 +89,7 @@ export function HistoryModal({
   matchRules,
   settings,
   onCancel,
+  onExport,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -246,6 +253,11 @@ export function HistoryModal({
       <Modal.Header
         icon={<History size={14} aria-hidden focusable={false} />}
         title={t("history.titleAccount", { name: account?.name ?? "" })}
+        actions={
+          onExport && entries.length > 0 ? (
+            <SaveAsButton onPick={onExport} />
+          ) : undefined
+        }
         onClose={onCancel}
       />
       <Modal.Body noPadding className="overflow-x-hidden">

@@ -35,6 +35,7 @@ import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { CategoryIconGlyph } from "./icons";
 import { Modal } from "./Modal";
 import { ModalSearchBar } from "./ModalSearchBar";
+import { SaveAsButton, type SaveAsFormat } from "./SaveAsButton";
 
 type Props = {
   open: boolean;
@@ -50,6 +51,10 @@ type Props = {
   balances: Map<string, number>;
   types: readonly EntryType[];
   settings: Settings;
+  // Invoked when the user picks a Save-as format. Parent owns the
+  // export so the modal's prop surface stays narrow — see
+  // `BudgetView.onSheetExport`.
+  onExport?: (format: SaveAsFormat) => void;
 };
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
@@ -94,6 +99,7 @@ export function SheetViewerModal({
   balances,
   types,
   settings,
+  onExport,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -253,6 +259,11 @@ export function SheetViewerModal({
       <Modal.Header
         icon={<Eye size={14} aria-hidden focusable={false} />}
         title={sheet.name}
+        actions={
+          onExport && !hasNoRows ? (
+            <SaveAsButton onPick={onExport} />
+          ) : undefined
+        }
         onClose={onClose}
       />
       <Modal.Body noPadding className="overflow-x-hidden">

@@ -72,6 +72,12 @@ import {
   rowsToCsv,
 } from "../data/budget-export";
 import {
+  buildHistoryExportRows,
+  HISTORY_EXPORT_HEADERS,
+  writeHistoryCsv,
+  writeHistoryXlsx,
+} from "../data/history-export";
+import {
   buildAccountsExport,
   JSON_MIME_TYPE,
   serializeAccountsExport,
@@ -168,9 +174,11 @@ import {
   todayStamp,
   triggerDownload,
 } from "../utils/download";
-import { formatNumber, withCurrency } from "../utils/format";
+import { formatBalance, formatNumber, withCurrency } from "../utils/format";
+import { buildHistoryPdf, PDF_MIME_TYPE } from "../utils/pdf";
 import { buildXlsx, XLSX_MIME_TYPE } from "../utils/xlsx";
 import { budgetExportFormats } from "../utils/xlsx-format";
+import type { SaveAsFormat } from "./SaveAsButton";
 
 type DeletePrompt = { kind: "delete"; row: Row };
 type EditPrompt = { kind: "edit"; row: Row };
@@ -1448,6 +1456,195 @@ export function BudgetView({
       t,
     ],
   );
+
+  // "Save as" from the sheet-viewer modal (eye icon next to a sheet
+  // title). Always exports the entire sheet history + future — the
+  // viewer has no toggles for partial slices. Reuses the same
+  // `buildBudgetExportRows` pipeline the DownloadModal flow uses.
+  const onSheetExport = useCallback(
+    (sheetId: string, format: SaveAsFormat) => {
+      const target = data.sheets.find((s) => s.id === sheetId);
+      if (!target) return;
+      const budgetItem = target.items.find(
+        (it): it is AccountBudget => it.type === "accountBudget",
+      );
+      if (!budgetItem) return;
+      const accountsById = new Map<string, string>();
+      for (const a of data.accounts) accountsById.set(a.id, a.name);
+      const opening = budgetItem.accountId
+        ? (data.accounts.find((a) => a.id === budgetItem.accountId)
+            ?.openingBalance ?? 0)
+        : 0;
+      const history = budgetItem.accountId
+        ? (data.history[budgetItem.accountId] ?? [])
+        : [];
+      const rows = buildBudgetExportRows({
+        item: budgetItem,
+        openingBalance: opening,
+        history,
+        transactions: data.transactions,
+        accountsById,
+        types: allTypesMerged,
+        categories: allCategoriesMerged,
+        merchantHints: data.merchantHints,
+        matchRules: data.matchRules,
+        includeHistory: true,
+        includeFuture: true,
+      });
+      const stamp = todayStamp();
+      const baseSlug = slugifyFilename(target.name);
+      const currencySuffix = data.settings.currency.trim();
+      const amountHeader = t("sheet.amount");
+      const balanceHeader = t("sheet.balance");
+      const baseHeaders = {
+        date: t("sheet.date"),
+        type: t("sheet.type"),
+        category: t("sheet.category"),
+        description: t("sheet.description"),
+      };
+      if (format === "csv") {
+        const table = exportRowsToTable(rows, {
+          ...baseHeaders,
+          amount:
+            currencySuffix !== ""
+              ? `${amountHeader} (${currencySuffix})`
+              : amountHeader,
+          balance:
+            currencySuffix !== ""
+              ? `${balanceHeader} (${currencySuffix})`
+              : balanceHeader,
+        });
+        const csv = rowsToCsv(table);
+        triggerDownload(csv, `${baseSlug}-${stamp}.csv`, CSV_MIME_TYPE);
+        return;
+      }
+      if (format === "xlsx") {
+        const table = exportRowsToTable(rows, {
+          ...baseHeaders,
+          amount: amountHeader,
+          balance: balanceHeader,
+        });
+        const bytes = buildXlsx([
+          {
+            name: target.name,
+            rows: table,
+            columnFormats: [
+              { kind: "date" },
+              { kind: "general" },
+              { kind: "general" },
+              { kind: "general" },
+              { kind: "currency" },
+              { kind: "currency", alwaysTwoDecimals: true },
+            ],
+            formats: budgetExportFormats(data.settings),
+            asTable: true,
+          },
+        ]);
+        triggerDownload(bytes, `${baseSlug}-${stamp}.xlsx`, XLSX_MIME_TYPE);
+        return;
+      }
+      // PDF: pre-stringify numbers so the PDF writer stays locale-pure.
+      const headers = [
+        t("sheet.date"),
+        t("sheet.description"),
+        t("sheet.type"),
+        t("sheet.category"),
+        currencySuffix !== ""
+          ? `${amountHeader} (${currencySuffix})`
+          : amountHeader,
+        currencySuffix !== ""
+          ? `${balanceHeader} (${currencySuffix})`
+          : balanceHeader,
+      ];
+      const body = rows.map((r) => [
+        r.date,
+        r.description,
+        r.type,
+        r.category,
+        r.amount !== null ? formatBalance(r.amount, data.settings) : "",
+        r.balance !== null ? formatBalance(r.balance, data.settings) : "",
+      ]);
+      void buildHistoryPdf({ title: target.name, headers, rows: body }).then(
+        (pdf) =>
+          triggerDownload(pdf, `${baseSlug}-${stamp}.pdf`, PDF_MIME_TYPE),
+      );
+    },
+    [
+      data.sheets,
+      data.accounts,
+      data.transactions,
+      data.history,
+      data.merchantHints,
+      data.matchRules,
+      data.settings,
+      allTypesMerged,
+      allCategoriesMerged,
+      t,
+    ],
+  );
+
+  // "Save as" from the account history modal. Builds rows via the
+  // shared `history-export` module so the format stays in lockstep
+  // with `bank-budget-history` (the re-import parser). Hidden entries
+  // are excluded by default — matches `buildBudgetExportRows`.
+  const onAccountHistoryExport = useCallback(
+    (accountId: string, format: SaveAsFormat) => {
+      const account = data.accounts.find((a) => a.id === accountId);
+      if (!account) return;
+      const entries = data.history[accountId] ?? [];
+      const rows = buildHistoryExportRows({
+        entries,
+        types: allTypesMerged,
+        categories: allCategoriesMerged,
+        merchantHints: data.merchantHints,
+        matchRules: data.matchRules,
+      });
+      const stamp = todayStamp();
+      const baseSlug = `${slugifyFilename(account.name)}-history`;
+      const currencySuffix = data.settings.currency.trim();
+      if (format === "csv") {
+        const csv = writeHistoryCsv(rows, currencySuffix);
+        triggerDownload(csv, `${baseSlug}-${stamp}.csv`, CSV_MIME_TYPE);
+        return;
+      }
+      if (format === "xlsx") {
+        const bytes = writeHistoryXlsx({
+          rows,
+          accountName: account.name,
+          settings: data.settings,
+        });
+        triggerDownload(bytes, `${baseSlug}-${stamp}.xlsx`, XLSX_MIME_TYPE);
+        return;
+      }
+      const body = rows.map((r) => [
+        r.date,
+        r.description,
+        formatBalance(r.amount, data.settings),
+        r.balance !== null ? formatBalance(r.balance, data.settings) : "",
+        r.type,
+        r.category,
+      ]);
+      const headers = [...HISTORY_EXPORT_HEADERS];
+      void buildHistoryPdf({
+        title: t("history.titleAccount", { name: account.name }),
+        headers,
+        rows: body,
+      }).then((pdf) =>
+        triggerDownload(pdf, `${baseSlug}-${stamp}.pdf`, PDF_MIME_TYPE),
+      );
+    },
+    [
+      data.accounts,
+      data.history,
+      data.merchantHints,
+      data.matchRules,
+      data.settings,
+      allTypesMerged,
+      allCategoriesMerged,
+      t,
+    ],
+  );
+
   const onSaveSheet = useCallback(
     (draft: SheetDraft) => {
       // Resolve the final accountId. When the user typed a name into
@@ -2936,6 +3133,7 @@ export function BudgetView({
                   onToggleSelectMonth={onToggleSelectMonth}
                   onEditSheet={onOpenEditSheet}
                   onDownloadSheet={onOpenDownloadSheet}
+                  onSheetExport={onSheetExport}
                 />
               </>
             )}
@@ -3092,6 +3290,11 @@ export function BudgetView({
         matchRules={data.matchRules}
         settings={data.settings}
         onCancel={() => setViewHistoryForId(null)}
+        onExport={
+          viewHistoryAccount
+            ? (fmt) => onAccountHistoryExport(viewHistoryAccount.id, fmt)
+            : undefined
+        }
       />
       <TransferCollapseModal
         open={transferModalOpen}
