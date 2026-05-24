@@ -1,17 +1,25 @@
-import { useCallback, useRef, useState } from "react";
-import { Download, Eye, MoreHorizontal, Pencil } from "lucide-react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import { MoreHorizontal } from "lucide-react";
 
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
 
+// Each sheet view owns its own action set, so the menu is dumb chrome:
+// it renders whatever items the caller pushes in. Keeps the surface
+// flexible as new sheet types (loan, savings, …) land with their own
+// sheet-specific actions instead of forcing the menu to grow optional
+// props for every variant.
+export type SheetTitleMenuItem = {
+  key: string;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+};
+
 type Props = {
   sheetName: string;
-  onEdit: () => void;
-  // Optional — only the budget sheet exposes a read-only viewer.
-  // The accounts sheet has no equivalent surface, so it omits this.
-  onView?: () => void;
-  onDownload: () => void;
+  items: SheetTitleMenuItem[];
 };
 
 const PLACEMENT: FloatingPlacement = {
@@ -20,55 +28,18 @@ const PLACEMENT: FloatingPlacement = {
   coordinateSpace: "document",
 };
 
-type MenuItem = {
-  key: string;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-};
-
-// Overflow menu beside each sheet's title. Replaces the row of inline
-// edit / view / download glyphs so the header stays uncluttered. Reuses
-// the FloatingPanel shell — same dismissal / portal / focus-restore
-// behaviour as the other dropdowns in the app.
-export function SheetTitleMenu({
-  sheetName,
-  onEdit,
-  onView,
-  onDownload,
-}: Props) {
+// Overflow menu beside each sheet's title. Just the trigger + dropdown
+// shell — the items live with their owning sheet view so each sheet
+// type can decide what belongs in the menu. Reuses the FloatingPanel
+// shell so dismissal / portal / focus-restore match the other
+// dropdowns in the app.
+export function SheetTitleMenu({ sheetName, items }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
 
-  function pick(handler: () => void) {
-    setOpen(false);
-    handler();
-  }
-
-  const items: MenuItem[] = [
-    {
-      key: "edit",
-      icon: <Pencil size={16} aria-hidden focusable={false} />,
-      label: t("sheet.editSheet"),
-      onClick: () => pick(onEdit),
-    },
-  ];
-  if (onView) {
-    items.push({
-      key: "view",
-      icon: <Eye size={16} aria-hidden focusable={false} />,
-      label: t("sheet.viewModeTitle"),
-      onClick: () => pick(onView),
-    });
-  }
-  items.push({
-    key: "download",
-    icon: <Download size={16} aria-hidden focusable={false} />,
-    label: t("download.downloadSheet"),
-    onClick: () => pick(onDownload),
-  });
+  if (items.length === 0) return null;
 
   return (
     <>
@@ -97,7 +68,10 @@ export function SheetTitleMenu({
               <button
                 type="button"
                 role="menuitem"
-                onClick={it.onClick}
+                onClick={() => {
+                  setOpen(false);
+                  it.onClick();
+                }}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <span aria-hidden className="text-accent">

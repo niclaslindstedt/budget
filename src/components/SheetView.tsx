@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
 
 import {
   buildVisibleRows,
@@ -35,7 +35,7 @@ import type {
 import { formatNumber, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
-import { SheetTitleMenu } from "./SheetTitleMenu";
+import { SheetTitleMenu, type SheetTitleMenuItem } from "./SheetTitleMenu";
 import { SheetViewerModal } from "./SheetViewerModal";
 
 type Props = {
@@ -804,6 +804,27 @@ export function SheetView({
 
   const canTransfer = item.accountId !== null;
 
+  const titleMenuItems: SheetTitleMenuItem[] = [
+    {
+      key: "edit",
+      icon: <Pencil size={16} aria-hidden focusable={false} />,
+      label: t("sheet.editSheet"),
+      onClick: () => onEditSheet(sheet.id),
+    },
+    {
+      key: "view",
+      icon: <Eye size={16} aria-hidden focusable={false} />,
+      label: t("sheet.viewBudget"),
+      onClick: () => setViewerOpen(true),
+    },
+    {
+      key: "download",
+      icon: <Download size={16} aria-hidden focusable={false} />,
+      label: t("download.downloadBudget"),
+      onClick: () => onDownloadSheet(sheet.id),
+    },
+  ];
+
   return (
     <ActiveRowProvider>
       <section ref={sectionRef} data-sheet-content>
@@ -811,12 +832,7 @@ export function SheetView({
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>
-          <SheetTitleMenu
-            sheetName={sheet.name}
-            onEdit={() => onEditSheet(sheet.id)}
-            onView={() => setViewerOpen(true)}
-            onDownload={() => onDownloadSheet(sheet.id)}
-          />
+          <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
         </header>
         <div className="flex flex-col gap-3 md:gap-6">
           {hasMoreHistory && (

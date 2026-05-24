@@ -13,10 +13,11 @@ import {
   ArrowRight,
   Calendar,
   DollarSign,
-  Eye,
+  Download,
   Landmark,
   Pencil,
   Plus,
+  Receipt,
   Tag,
   Trash2,
   Wallet,
@@ -42,7 +43,7 @@ import { formatBalance, formatCount, formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AccountActionsMenu } from "./AccountActionsMenu";
 import { ActiveRowProvider } from "./ActiveRowProvider";
-import { SheetTitleMenu } from "./SheetTitleMenu";
+import { SheetTitleMenu, type SheetTitleMenuItem } from "./SheetTitleMenu";
 import { useBlocksSheet } from "./useBlocksSheet";
 import { CategoryIconGlyph } from "./icons";
 
@@ -207,6 +208,21 @@ export function AccountsSheetView({
     return result;
   }, [sortedTransactions]);
 
+  const titleMenuItems: SheetTitleMenuItem[] = [
+    {
+      key: "edit",
+      icon: <Pencil size={16} aria-hidden focusable={false} />,
+      label: t("sheet.editSheet"),
+      onClick: () => onEditSheet(sheet.id),
+    },
+    {
+      key: "download",
+      icon: <Download size={16} aria-hidden focusable={false} />,
+      label: t("download.downloadAccountData"),
+      onClick: () => onDownloadSheet(sheet.id),
+    },
+  ];
+
   return (
     <ActiveRowProvider>
       <section>
@@ -214,11 +230,7 @@ export function AccountsSheetView({
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>
-          <SheetTitleMenu
-            sheetName={sheet.name}
-            onEdit={() => onEditSheet(sheet.id)}
-            onDownload={() => onDownloadSheet(sheet.id)}
-          />
+          <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
         </header>
 
         <section className="mb-6" data-sheet-content>
@@ -288,7 +300,7 @@ export function AccountsSheetView({
                     title={t("accountsSheet.historyCountTitle")}
                   >
                     <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
-                      <Eye
+                      <Receipt
                         size={14}
                         className="shrink-0 text-accent"
                         aria-hidden
@@ -782,26 +794,18 @@ function AccountRowImpl({
         )}
       </td>
       <td className="w-20 px-2 py-2 text-right align-middle">
-        <button
-          type="button"
-          onClick={() => {
-            setSwiped(false);
-            onViewHistory(account.id);
-          }}
-          aria-label={t("accountsSheet.viewHistoryAria", {
-            name: account.name,
-          })}
+        <span
           title={
             historyCount === 0
               ? t("accountsSheet.noHistoryImported")
               : t("accountsSheet.viewHistoryEntries", { n: historyCount })
           }
-          className={`w-full cursor-pointer border-0 bg-transparent p-0 text-right font-mono text-xs tabular-nums hover:text-accent ${
+          className={`block text-right font-mono text-xs tabular-nums ${
             historyCount === 0 ? "text-muted" : "text-fg"
           }`}
         >
           {formatCount(historyCount, accountSettings)}
-        </button>
+        </span>
       </td>
       <td className="account-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
@@ -837,6 +841,7 @@ function AccountRowImpl({
             accountId={account.id}
             accountName={account.name}
             canCut={canCut}
+            onViewHistory={onViewHistory}
             onImportHistory={onImportHistory}
             onCutHistory={onCutHistory}
             onAction={() => setSwiped(false)}
