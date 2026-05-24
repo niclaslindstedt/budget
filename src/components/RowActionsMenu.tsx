@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  ArrowLeftRight,
   Copy,
   Eye,
   EyeOff,
@@ -19,11 +18,8 @@ type Props = {
   row: Row;
   isHistory: boolean;
   isSeries: boolean;
-  canTransfer: boolean;
-  transferEnabled: boolean;
   onEditRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
-  onTransactionRequest: (row: Row) => void;
   onToggleRowTransfer?: (row: Row) => void;
   onSplitRequest: (row: Row) => void;
   onCopyRequest: (row: Row) => void;
@@ -51,11 +47,8 @@ export function RowActionsMenu({
   row,
   isHistory,
   isSeries,
-  canTransfer,
-  transferEnabled,
   onEditRequest,
   onMatchRuleRequest,
-  onTransactionRequest,
   onToggleRowTransfer,
   onSplitRequest,
   onCopyRequest,
@@ -88,21 +81,6 @@ export function RowActionsMenu({
       label: t("cell.labelByPattern"),
       title: t("cell.labelByPatternTitle"),
       onClick: () => pick(() => onMatchRuleRequest(row)),
-    });
-  }
-
-  if (!isHistory) {
-    items.push({
-      key: "transaction",
-      icon: <ArrowLeftRight size={16} aria-hidden focusable={false} />,
-      label: t("cell.makeTransaction"),
-      disabled: !transferEnabled,
-      title: !canTransfer
-        ? t("cell.needAccountForTransfer")
-        : !transferEnabled
-          ? t("cell.needDescAndAmount")
-          : undefined,
-      onClick: () => pick(() => onTransactionRequest(row)),
     });
   }
 
