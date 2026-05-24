@@ -39,7 +39,7 @@ import { isInSheetSwipeEdgeBand } from "../hooks/useSheetSwipe";
 import { useLang, useT } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
 import { displayCategoryName } from "../i18n/preset-names";
-import { formatBalance, formatShortDate } from "../utils/format";
+import { formatBalance, formatCount, formatShortDate } from "../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
 import { AccountActionsMenu } from "./AccountActionsMenu";
 import { ActiveRowProvider } from "./ActiveRowProvider";
@@ -282,7 +282,7 @@ export function AccountsSheetView({
                     className="px-2 py-1.5 text-right"
                     aria-label={t("accountsSheet.balance")}
                   >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
                       <Wallet
                         size={14}
                         className="shrink-0 text-accent"
@@ -538,15 +538,10 @@ export function AccountsSheetView({
                               {/* On mobile the dedicated transfer column is
                                   hidden — fold the from/to summary into the
                                   description cell instead so the row still
-                                  shows the direction at a glance. Names go
-                                  into sr-only spans so the row still reads
-                                  "Extrakonto → Lönekonto" for screen
-                                  readers; the visible chips are
-                                  color + glyph only to keep the layout
-                                  tight at phone widths. */}
-                              <span className="mt-0.5 flex items-center gap-1 md:hidden">
+                                  shows the direction at a glance. */}
+                              <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted md:hidden">
                                 <AccountGlyph account={from ?? null} />
-                                <span className="sr-only">
+                                <span className="truncate">
                                   {from?.name ?? t("accountsSheet.unknown")}
                                 </span>
                                 <ArrowRight
@@ -556,7 +551,7 @@ export function AccountsSheetView({
                                   className="shrink-0 text-flag"
                                 />
                                 <AccountGlyph account={to ?? null} />
-                                <span className="sr-only">
+                                <span className="truncate">
                                   {to?.name ?? t("accountsSheet.unknown")}
                                 </span>
                               </span>
@@ -818,7 +813,7 @@ function AccountRowImpl({
             historyCount === 0 ? "text-muted" : "text-fg"
           }`}
         >
-          {historyCount.toLocaleString()}
+          {formatCount(historyCount, accountSettings)}
         </button>
       </td>
       <td className="account-action-cell w-32 p-0 align-middle">

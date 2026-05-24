@@ -162,6 +162,17 @@ export function formatAmount(n: number, settings: Settings): string {
   return withCurrency(formatNumber(n, settings), settings);
 }
 
+// Plain integer with the user's thousands separator. Used for counts
+// (history entries, transaction tallies) so they group consistently
+// with the balance column instead of falling back to the browser's
+// locale via `toLocaleString()`.
+export function formatCount(n: number, settings: Settings): string {
+  const s = String(Math.trunc(n));
+  return settings.formatNumbers
+    ? groupThousands(s, settings.thousandsSeparator)
+    : s;
+}
+
 export function formatBalance(n: number, settings: Settings): string {
   return withCurrency(
     formatNumber(n, settings, { alwaysTwoFractionDigits: true }),
