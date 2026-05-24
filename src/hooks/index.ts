@@ -10,6 +10,7 @@ export {
 } from "./useFloatingPosition";
 export { useIdleSignOut } from "./useIdleSignOut";
 export { useIsMobile } from "./useIsMobile";
+export { useIsStandalone } from "./useIsStandalone";
 export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
 export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
