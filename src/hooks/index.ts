@@ -1,6 +1,10 @@
 export { useChangelogAutoOpen } from "./useChangelogAutoOpen";
 export { useDesktopAutoFocus } from "./useDesktopAutoFocus";
 export { useDevMode } from "./useDevMode";
+export {
+  resolveEffectiveSettings,
+  useEffectiveSettings,
+} from "./useEffectiveSettings";
 export { useEscapeKey } from "./useEscapeKey";
 export {
   type FloatingPlacement,

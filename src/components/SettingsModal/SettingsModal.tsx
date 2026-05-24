@@ -82,12 +82,6 @@ type Props = {
   folderAvailable: boolean;
   folderReconnectNeeded: boolean;
   encryption: EncryptionMode;
-  // Device-local UI preference: when true, a cloud auth-error auto-
-  // opens the sync details modal. Surfaced as a toggle alongside the
-  // cloud-backend controls so a user who finds Google Drive's hourly
-  // token expiry intrusive can opt out without losing the underlying
-  // detection (the cloud status pill still flags it).
-  cloudReauthAutoOpen: boolean;
   // Per-user opt-in: when true, cloud backends keep a copy of the
   // latest cloud bytes in this browser's storage so the session can
   // boot and accept edits even when the cloud is unreachable.
@@ -137,7 +131,6 @@ type Props = {
   onDisconnectFolder: () => void;
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
-  onSetCloudReauthAutoOpen: (on: boolean) => void;
   onSetCloudOfflineMode: (on: boolean) => void;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
@@ -227,7 +220,6 @@ export function SettingsModal({
   folderAvailable,
   folderReconnectNeeded,
   encryption,
-  cloudReauthAutoOpen,
   cloudOfflineMode,
   isGuest,
   username,
@@ -250,7 +242,6 @@ export function SettingsModal({
   onDisconnectFolder,
   onSelectBrowser,
   onSetEncryption,
-  onSetCloudReauthAutoOpen,
   onSetCloudOfflineMode,
   onClearMerchantHints,
   onClearRecurringDismissals,
@@ -473,8 +464,6 @@ export function SettingsModal({
                 onDisconnectFolder={onDisconnectFolder}
                 onSelectBrowser={onSelectBrowser}
                 onSetEncryption={onSetEncryption}
-                cloudReauthAutoOpen={cloudReauthAutoOpen}
-                onSetCloudReauthAutoOpen={onSetCloudReauthAutoOpen}
                 cloudOfflineMode={cloudOfflineMode}
                 onSetCloudOfflineMode={onSetCloudOfflineMode}
                 onDeleteAccount={onDeleteAccount}

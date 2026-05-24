@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import { deriveUnlocks } from "../src/data/achievements/derive";
 import type {
   AccountBudget,
@@ -34,7 +34,7 @@ function withItem(rows: Row[]): UserData {
     items: [item],
   };
   return {
-    version: 34,
+    version: 35,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],
@@ -51,7 +51,13 @@ function withItem(rows: Row[]): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
+    },
   };
 }
 

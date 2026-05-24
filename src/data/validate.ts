@@ -5,6 +5,10 @@ import {
   DATE_FORMATS,
   DEFAULT_CUSTOM_THEME,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,
+  DEFAULT_DEVICE_SETTINGS_DESKTOP,
+  DEFAULT_DEVICE_SETTINGS_MOBILE,
+  DEFAULT_DOWNLOAD_ACCOUNTS,
+  DEFAULT_DOWNLOAD_BUDGET,
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
@@ -24,30 +28,35 @@ import { LATEST_VERSION } from "./migrations";
 import type {
   Account,
   AccountBudget,
+  AccountsDownloadPrefs,
   AccountsView,
   BorderWidthPreset,
+  BudgetDownloadPrefs,
   Category,
   CategoryIcon,
   CellValue,
   Column,
   ColumnType,
+  CommonSettings,
   CustomTheme,
   CustomThemeColors,
   DateFormat,
   DecimalSeparator,
   DensityPreset,
+  DeviceSettings,
   EntryType,
   EntryTypeKind,
   FontFamilyId,
+  HeaderAction,
   HistoryEntry,
   HistoryEntrySplit,
   HistoryImport,
   MatchRule,
   MerchantHint,
+  PersistedSettings,
   RadiusPreset,
   Row,
   SeriesMatchRule,
-  Settings,
   Sheet,
   SheetGlyph,
   SheetItem,
@@ -851,8 +860,58 @@ function validateEntryType(
 // default when missing or invalid so a stray hand-edit can't lock the
 // user out of the app. The settings are display preferences, not data
 // — silently snapping back to sensible defaults is the right trade.
-function validateSettings(raw: unknown): Settings {
-  if (!isObject(raw)) return { ...DEFAULT_SETTINGS };
+//
+// Persisted shape: common fields sit flat at the top level;
+// device-scoped fields live under `device.{mobile,desktop}` so each
+// viewport can hold its own value. The validator independently
+// recovers each bucket: a missing `device` block reseeds both
+// scopes; a malformed individual scope reseeds just that side.
+function validateSettings(raw: unknown): PersistedSettings {
+  if (!isObject(raw)) return clonePersistedDefaults();
+  const common = validateCommonSettings(raw);
+  const rawDevice = isObject(raw.device) ? raw.device : null;
+  const mobile = validateDeviceSettings(
+    rawDevice?.mobile,
+    DEFAULT_DEVICE_SETTINGS_MOBILE,
+  );
+  const desktop = validateDeviceSettings(
+    rawDevice?.desktop,
+    DEFAULT_DEVICE_SETTINGS_DESKTOP,
+  );
+  return {
+    ...common,
+    device: { mobile, desktop },
+  };
+}
+
+function clonePersistedDefaults(): PersistedSettings {
+  return {
+    startOfMonth: DEFAULT_SETTINGS.startOfMonth,
+    dateFormat: DEFAULT_SETTINGS.dateFormat,
+    shortDateFormat: DEFAULT_SETTINGS.shortDateFormat,
+    currency: DEFAULT_SETTINGS.currency,
+    currencyPosition: DEFAULT_SETTINGS.currencyPosition,
+    currencySpace: DEFAULT_SETTINGS.currencySpace,
+    decimalSeparator: DEFAULT_SETTINGS.decimalSeparator,
+    thousandsSeparator: DEFAULT_SETTINGS.thousandsSeparator,
+    sessionTimeoutMinutes: DEFAULT_SETTINGS.sessionTimeoutMinutes,
+    lastSeenChangelogVersion: DEFAULT_SETTINGS.lastSeenChangelogVersion,
+    language: DEFAULT_SETTINGS.language,
+    hideTransfers: DEFAULT_SETTINGS.hideTransfers,
+    theme: DEFAULT_SETTINGS.theme,
+    fontFamily: DEFAULT_SETTINGS.fontFamily,
+    customTheme: DEFAULT_SETTINGS.customTheme,
+    achievements: { ...DEFAULT_SETTINGS.achievements },
+    unseenAchievements: [...DEFAULT_SETTINGS.unseenAchievements],
+    cloudReauthAutoOpen: DEFAULT_SETTINGS.cloudReauthAutoOpen,
+    device: {
+      mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
+      desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
+    },
+  };
+}
+
+function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
   const startOfMonth =
     typeof raw.startOfMonth === "number" &&
     Number.isInteger(raw.startOfMonth) &&
@@ -896,33 +955,6 @@ function validateSettings(raw: unknown): Settings {
   // to "no thousands separator" if they collide so display logic isn't
   // fighting ambiguous input.
   if (thousandsSeparator === decimalSeparator) thousandsSeparator = "";
-  const formatNumbers =
-    typeof raw.formatNumbers === "boolean"
-      ? raw.formatNumbers
-      : DEFAULT_SETTINGS.formatNumbers;
-  const showCurrency =
-    typeof raw.showCurrency === "boolean"
-      ? raw.showCurrency
-      : DEFAULT_SETTINGS.showCurrency;
-  const showDecimals =
-    typeof raw.showDecimals === "boolean"
-      ? raw.showDecimals
-      : DEFAULT_SETTINGS.showDecimals;
-  const abbreviateNumbers =
-    typeof raw.abbreviateNumbers === "boolean"
-      ? raw.abbreviateNumbers
-      : DEFAULT_SETTINGS.abbreviateNumbers;
-  const alwaysAbbreviateBalance =
-    typeof raw.alwaysAbbreviateBalance === "boolean"
-      ? raw.alwaysAbbreviateBalance
-      : DEFAULT_SETTINGS.alwaysAbbreviateBalance;
-  const fontScale =
-    typeof raw.fontScale === "number" &&
-    Number.isFinite(raw.fontScale) &&
-    raw.fontScale >= MIN_FONT_SCALE &&
-    raw.fontScale <= MAX_FONT_SCALE
-      ? raw.fontScale
-      : DEFAULT_SETTINGS.fontScale;
   const sessionTimeoutMinutes =
     typeof raw.sessionTimeoutMinutes === "number" &&
     Number.isFinite(raw.sessionTimeoutMinutes) &&
@@ -976,7 +1008,10 @@ function validateSettings(raw: unknown): Settings {
       }
     }
   }
-  const headerAction = validateHeaderAction(raw.headerAction);
+  const cloudReauthAutoOpen =
+    typeof raw.cloudReauthAutoOpen === "boolean"
+      ? raw.cloudReauthAutoOpen
+      : DEFAULT_SETTINGS.cloudReauthAutoOpen;
   return {
     startOfMonth,
     dateFormat,
@@ -986,12 +1021,6 @@ function validateSettings(raw: unknown): Settings {
     currencySpace,
     decimalSeparator,
     thousandsSeparator,
-    formatNumbers,
-    showCurrency,
-    showDecimals,
-    abbreviateNumbers,
-    alwaysAbbreviateBalance,
-    fontScale,
     sessionTimeoutMinutes,
     lastSeenChangelogVersion,
     language,
@@ -1001,8 +1030,111 @@ function validateSettings(raw: unknown): Settings {
     customTheme,
     achievements,
     unseenAchievements,
-    headerAction,
+    cloudReauthAutoOpen,
   };
+}
+
+function validateDeviceSettings(
+  raw: unknown,
+  fallback: DeviceSettings,
+): DeviceSettings {
+  if (!isObject(raw)) return { ...fallback };
+  const formatNumbers =
+    typeof raw.formatNumbers === "boolean"
+      ? raw.formatNumbers
+      : fallback.formatNumbers;
+  const showCurrency =
+    typeof raw.showCurrency === "boolean"
+      ? raw.showCurrency
+      : fallback.showCurrency;
+  const showDecimals =
+    typeof raw.showDecimals === "boolean"
+      ? raw.showDecimals
+      : fallback.showDecimals;
+  const abbreviateNumbers =
+    typeof raw.abbreviateNumbers === "boolean"
+      ? raw.abbreviateNumbers
+      : fallback.abbreviateNumbers;
+  const alwaysAbbreviateBalance =
+    typeof raw.alwaysAbbreviateBalance === "boolean"
+      ? raw.alwaysAbbreviateBalance
+      : fallback.alwaysAbbreviateBalance;
+  const fontScale =
+    typeof raw.fontScale === "number" &&
+    Number.isFinite(raw.fontScale) &&
+    raw.fontScale >= MIN_FONT_SCALE &&
+    raw.fontScale <= MAX_FONT_SCALE
+      ? raw.fontScale
+      : fallback.fontScale;
+  const headerAction = validateHeaderAction(
+    raw.headerAction,
+    fallback.headerAction,
+  );
+  const downloadBudget = validateBudgetDownloadPrefs(raw.downloadBudget);
+  const downloadAccounts = validateAccountsDownloadPrefs(raw.downloadAccounts);
+  return {
+    formatNumbers,
+    showCurrency,
+    showDecimals,
+    abbreviateNumbers,
+    alwaysAbbreviateBalance,
+    fontScale,
+    headerAction,
+    downloadBudget,
+    downloadAccounts,
+  };
+}
+
+function validateBudgetDownloadPrefs(raw: unknown): BudgetDownloadPrefs {
+  if (!isObject(raw)) return { ...DEFAULT_DOWNLOAD_BUDGET };
+  return {
+    format: raw.format === "xlsx" ? "xlsx" : "csv",
+    includeHistory:
+      typeof raw.includeHistory === "boolean"
+        ? raw.includeHistory
+        : DEFAULT_DOWNLOAD_BUDGET.includeHistory,
+  };
+}
+
+function validateAccountsDownloadPrefs(raw: unknown): AccountsDownloadPrefs {
+  if (!isObject(raw)) {
+    return {
+      accountInfo: { ...DEFAULT_DOWNLOAD_ACCOUNTS.accountInfo },
+      accountTransactions: {
+        ...DEFAULT_DOWNLOAD_ACCOUNTS.accountTransactions,
+      },
+      accountSelected: { ...DEFAULT_DOWNLOAD_ACCOUNTS.accountSelected },
+      includeTransactions: DEFAULT_DOWNLOAD_ACCOUNTS.includeTransactions,
+      includeUnconfirmed: DEFAULT_DOWNLOAD_ACCOUNTS.includeUnconfirmed,
+      includeFutureEntries: DEFAULT_DOWNLOAD_ACCOUNTS.includeFutureEntries,
+    };
+  }
+  return {
+    accountInfo: validateBoolRecord(raw.accountInfo),
+    accountTransactions: validateBoolRecord(raw.accountTransactions),
+    accountSelected: validateBoolRecord(raw.accountSelected),
+    includeTransactions:
+      typeof raw.includeTransactions === "boolean"
+        ? raw.includeTransactions
+        : DEFAULT_DOWNLOAD_ACCOUNTS.includeTransactions,
+    includeUnconfirmed:
+      typeof raw.includeUnconfirmed === "boolean"
+        ? raw.includeUnconfirmed
+        : DEFAULT_DOWNLOAD_ACCOUNTS.includeUnconfirmed,
+    includeFutureEntries:
+      typeof raw.includeFutureEntries === "boolean"
+        ? raw.includeFutureEntries
+        : DEFAULT_DOWNLOAD_ACCOUNTS.includeFutureEntries,
+  };
+}
+
+function validateBoolRecord(raw: unknown): Record<string, boolean> {
+  if (!isObject(raw)) return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "boolean") out[k] = v;
+  }
+  return out;
 }
 
 // Coerce any malformed / unknown shape back to the default. The
@@ -1010,8 +1142,11 @@ function validateSettings(raw: unknown): Settings {
 // sheet has since been deleted — the click handler in BudgetView
 // falls back to "go to top" at runtime, which keeps re-creating the
 // same sheet id from a restore harmless.
-function validateHeaderAction(raw: unknown): Settings["headerAction"] {
-  if (!isObject(raw)) return DEFAULT_SETTINGS.headerAction;
+function validateHeaderAction(
+  raw: unknown,
+  fallback: HeaderAction = DEFAULT_SETTINGS.headerAction,
+): HeaderAction {
+  if (!isObject(raw)) return fallback;
   const kind = raw.kind;
   if (kind === "top" || kind === "currentMonth" || kind === "refresh") {
     return { kind };
@@ -1019,7 +1154,7 @@ function validateHeaderAction(raw: unknown): Settings["headerAction"] {
   if (kind === "sheet" && typeof raw.sheetId === "string" && raw.sheetId) {
     return { kind: "sheet", sheetId: raw.sheetId };
   }
-  return DEFAULT_SETTINGS.headerAction;
+  return fallback;
 }
 
 export function validateUserData(raw: unknown): Result<UserData> {

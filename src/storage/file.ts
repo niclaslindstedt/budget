@@ -1,4 +1,8 @@
-import { migrate, type Versioned } from "../data/migrations";
+import {
+  migrate,
+  type MigrationContext,
+  type Versioned,
+} from "../data/migrations";
 import type { UserData } from "../data/types";
 import { validateUserData } from "../data/validate";
 import { createLogger } from "../utils/logger";
@@ -20,8 +24,15 @@ export type ImportResult =
 
 // Single entry point for "raw text → UserData". Used by file import
 // and by the localStorage loader so both paths share the same parse /
-// migrate / validate pipeline.
-export function parseUserData(text: string): ImportResult {
+// migrate / validate pipeline. The optional `ctx` is threaded into the
+// migration chain — currently only the v34 → v35 step uses it (to
+// absorb per-user values from device-local localStorage when the active
+// `userId` is known); the import path leaves it empty and the step
+// seeds defaults instead.
+export function parseUserData(
+  text: string,
+  ctx: MigrationContext = {},
+): ImportResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -37,7 +48,7 @@ export function parseUserData(text: string): ImportResult {
   let migrated;
   const fromVersion = (parsed as Versioned).version;
   try {
-    migrated = migrate(parsed);
+    migrated = migrate(parsed, ctx);
     if (migrated.migrated) {
       log.info(
         `parseUserData: migrated v${fromVersion} → v${migrated.data.version}`,

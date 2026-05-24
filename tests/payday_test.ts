@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import { detectPaydayDayOfMonth, nextPaydayDate } from "../src/data/payday";
 import type {
   Column,
@@ -52,7 +53,7 @@ function userData(over: Partial<UserData>): UserData {
     ],
   };
   return {
-    version: 34,
+    version: 35,
     sheets: over.sheets ?? [sheet],
     activeSheetId: "s",
     accounts: [{ id: "acc", name: "A" }],
@@ -70,22 +71,14 @@ function userData(over: Partial<UserData>): UserData {
     matchRules: [],
     seriesMatchRules: over.seriesMatchRules ?? [],
     settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
       startOfMonth: 1,
-      dateFormat: "YYYY-MM-DD",
-      shortDateFormat: "DD/MM",
-      currency: "kr",
-      currencyPosition: "after",
-      currencySpace: true,
       decimalSeparator: ".",
-      thousandsSeparator: " ",
-      formatNumbers: true,
-      showCurrency: true,
-      showDecimals: false,
-      abbreviateNumbers: false,
-      alwaysAbbreviateBalance: false,
-      fontScale: 1,
       sessionTimeoutMinutes: 60,
-      lastSeenChangelogVersion: null,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
     },
   };
 }

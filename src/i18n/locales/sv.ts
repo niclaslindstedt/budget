@@ -391,6 +391,8 @@ export const sv: Catalog = {
       title: "Språk",
       hint: "Översätt gränssnittet mellan svenska och engelska. Datum- och talformat styrs separat under Format.",
     },
+    appliesToMobile: "Gäller mobila enheter",
+    appliesToDesktop: "Gäller datorenheter",
     appearance: {
       themeSection: "Tema",
       modeLabel: "Läge",
@@ -478,6 +480,7 @@ export const sv: Catalog = {
       shortDateFormat: "Kort datumformat",
       shortDateFormatHint: "Används i tabellceller där utrymmet är trångt.",
       numberTitle: "Tal",
+      displayTitle: "Talvisning",
       numberPreview: "Förhandsvisning",
       decimalSeparator: "Decimaltecken",
       thousandsSeparator: "Tusentalsavgränsare",

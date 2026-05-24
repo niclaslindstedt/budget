@@ -26,6 +26,8 @@ import type {
   AccountBudget,
   Category,
   CellValue,
+  CommonSettings,
+  DeviceSettings,
   EntryType,
   EntryTypeKind,
   HistoryEntry,
@@ -38,6 +40,7 @@ import type {
   Transaction,
   UserData,
 } from "./types";
+import { applyDeviceSettingPatch, applySettingsDraft } from "./settings";
 import type {
   BulkPatch,
   ComplexEntryDraft,
@@ -187,7 +190,30 @@ export type Action =
   | { type: "deleteType"; typeId: string }
   | { type: "setPresetTypeHidden"; presetId: string; hidden: boolean }
   | { type: "setPresetTypeKind"; presetId: string; kind: EntryTypeKind }
-  | { type: "updateSettings"; settings: Settings }
+  | {
+      // Save handler from the SettingsModal. `draft` is the flat
+      // effective view the user edited; `scope` is which device
+      // bucket they edited from (mobile when their viewport is below
+      // the sm breakpoint, desktop otherwise). The reducer splits
+      // the draft back into the bucketed `PersistedSettings` shape
+      // via `applySettingsDraft`, leaving the other scope untouched.
+      type: "updateSettings";
+      draft: Settings;
+      scope: "mobile" | "desktop";
+    }
+  // Targeted device-scoped patch. Used by callers that own a single
+  // device-scoped field (e.g. the download-modal confirm path) and
+  // don't want to round-trip a whole `Settings` draft through the
+  // SettingsModal save handler.
+  | {
+      type: "updateDeviceSettings";
+      scope: "mobile" | "desktop";
+      patch: Partial<DeviceSettings>;
+    }
+  // Targeted common-scope patch. Mirrors `updateDeviceSettings` for
+  // common-only callers (today: the "cloud reauth auto-open" toggle
+  // which used to live in device-local localStorage).
+  | { type: "updateCommonSettings"; patch: Partial<CommonSettings> }
   | { type: "renameSheet"; sheetId: string; name: string }
   | {
       type: "setItemAccount";
@@ -1028,13 +1054,52 @@ export function reducer(state: UserData, action: Action): UserData {
     // on open) and to `useChangelogAutoOpen`, which captures
     // `settingsRef.current` on mount before the achievement-watcher
     // gets a chance to drain its bus.
+    //
+    // `applySettingsDraft` splits the flat editing surface back into
+    // the bucketed `PersistedSettings` shape: common keys land at the
+    // top level; device-scoped keys land in the scope the user edited
+    // from, leaving the opposite scope untouched.
+    const split = applySettingsDraft(
+      state.settings,
+      action.scope,
+      action.draft,
+    );
     return {
       ...state,
       settings: {
-        ...action.settings,
+        ...split,
         achievements: state.settings.achievements,
         unseenAchievements: state.settings.unseenAchievements,
       },
+    };
+  }
+  if (action.type === "updateDeviceSettings") {
+    return {
+      ...state,
+      settings: applyDeviceSettingPatch(
+        state.settings,
+        action.scope,
+        action.patch,
+      ),
+    };
+  }
+  if (action.type === "updateCommonSettings") {
+    // Defensive: never let a common-scope patch clobber the
+    // achievement state (which has its own dispatch path) or the
+    // device bucket. Stripping the keys here is cheaper than relying
+    // on every caller to remember the contract.
+    const patch = action.patch as Partial<CommonSettings> & {
+      achievements?: unknown;
+      unseenAchievements?: unknown;
+    };
+    const allowed: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      if (key === "achievements" || key === "unseenAchievements") continue;
+      allowed[key] = value;
+    }
+    return {
+      ...state,
+      settings: { ...state.settings, ...allowed },
     };
   }
   if (action.type === "createAccount") {

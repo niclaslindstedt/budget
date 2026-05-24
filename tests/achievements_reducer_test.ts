@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import {
+  DEFAULT_PERSISTED_SETTINGS,
+  DEFAULT_SETTINGS,
+} from "../src/data/constants";
 import { reducer } from "../src/data/reducer";
 import type { UserData } from "../src/data/types";
 
 function baseState(): UserData {
   return {
-    version: 34,
+    version: 35,
     sheets: [
       {
         id: "s",
@@ -41,7 +44,13 @@ function baseState(): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
+    },
   };
 }
 
@@ -102,9 +111,10 @@ describe("updateSettings preserves achievement fields", () => {
 
     const stale = reducer(unlocked, {
       type: "updateSettings",
-      // Caller captured `settings` before the unlock landed — uses
+      // Caller captured `draft` before the unlock landed — uses
       // the default (empty) achievement maps as its payload.
-      settings: { ...DEFAULT_SETTINGS, lastSeenChangelogVersion: "0.1.0" },
+      draft: { ...DEFAULT_SETTINGS, lastSeenChangelogVersion: "0.1.0" },
+      scope: "desktop",
     });
     expect(stale.settings.achievements).toEqual({ localHero: 42 });
     expect(stale.settings.unseenAchievements).toEqual(["localHero"]);

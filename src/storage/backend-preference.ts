@@ -5,6 +5,13 @@ import {
   writeRawStorage,
 } from "./local-adapter";
 
+// The legacy `budget.cloud.reauthAutoOpen` localStorage key used to
+// live here. As of v35 the preference rides along inside the synced
+// `UserData.settings.cloudReauthAutoOpen` field so the user's choice
+// follows them across devices; the v34 → v35 migration absorbs and
+// clears any leftover localStorage value, so no reader / writer for
+// it remains in this module.
+
 // Per-device, per-user preferences that select which `StorageAdapter`
 // backs the active budget — and the cloud access tokens that unlock
 // the cloud backends. Kept in localStorage on purpose: putting the
@@ -29,12 +36,6 @@ const DROPBOX_TOKEN_PREFIX = "budget.dropbox.token.";
 const DROPBOX_REFRESH_PREFIX = "budget.dropbox.refresh.";
 const GDRIVE_TOKEN_PREFIX = "budget.gdrive.token.";
 const ENCRYPTION_PREFIX = "budget.encryption.";
-// Device-wide UI preference, not per-user: when on (the default) a
-// cloud auth failure auto-opens `SyncDetailsModal` with the Reconnect
-// button. Some users find Google Drive's hourly token expiry annoying
-// and prefer to notice the cloud-status pill themselves, so they can
-// turn the auto-open off without disabling the underlying detection.
-const CLOUD_REAUTH_AUTO_OPEN_KEY = "budget.cloud.reauthAutoOpen";
 
 // Per-user opt-in: when on, cloud backends are wrapped with
 // `withCloudMirror` so a copy of the latest cloud bytes is kept in
@@ -127,14 +128,6 @@ export function getEncryption(userId: string): EncryptionMode {
 
 export function setEncryption(userId: string, mode: EncryptionMode): void {
   writeRawStorage(mode, encryptionKey(userId));
-}
-
-export function getCloudReauthAutoOpen(): boolean {
-  return readRawStorage(nsKey(CLOUD_REAUTH_AUTO_OPEN_KEY)) !== "off";
-}
-
-export function setCloudReauthAutoOpen(on: boolean): void {
-  writeRawStorage(on ? "on" : "off", nsKey(CLOUD_REAUTH_AUTO_OPEN_KEY));
 }
 
 // Defaults to "off" — the historical contract is that a cloud-backed
