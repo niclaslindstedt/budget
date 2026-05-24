@@ -69,16 +69,19 @@ test.describe("Accounts table", () => {
     await openAccountsSheet(page);
     await createAccount(page, "Travel fund");
 
-    // The new history-count column reads "0" for a freshly-added
-    // account. Both the name and the count cells share the
-    // "View history for <name>" aria-label since both open the
-    // viewer — target the count cell by its explicit `0` text.
+    // The history-count cell is a read-only span (only the name cell
+    // opens the viewer); both cells carry the
+    // `accountsSheet.noHistoryImported` title for count=0, so target
+    // the span specifically by its exact "0" text — the name button
+    // renders "Travel fund" and the balance button renders the
+    // currency-suffixed amount.
     const row = page.getByRole("row").filter({ hasText: "Travel fund" });
-    await expect(
-      row.getByRole("button", { name: "View history for Travel fund" }).filter({
-        hasText: "0",
-      }),
-    ).toBeVisible();
+    const historyCell = row.getByText("0", { exact: true });
+    await expect(historyCell).toBeVisible();
+    await expect(historyCell).toHaveAttribute(
+      "title",
+      "No history imported yet",
+    );
   });
 
   test("trash button opens a confirm modal and deletes on confirm", async ({

@@ -216,22 +216,28 @@ export function BottomBar({
             // entry point), and `onTabKey` cycles between them. The
             // tabpanel lives in `<main data-budget-main>` over in
             // BudgetView and points back here via `aria-labelledby`.
-            <div
-              role="tablist"
-              aria-label={t("sheetTabs.tablistLabel")}
-              className="flex min-w-0 flex-1 items-center gap-1"
-            >
-              {sheets.map((sheet, idx) => (
-                <SheetTab
-                  key={sheet.id}
-                  sheet={sheet}
-                  active={sheet.id === activeSheetId}
-                  index={idx}
-                  onSelect={() => onSelectSheet(sheet.id)}
-                  onEdit={() => onEditSheet(sheet.id)}
-                  onTabKey={onTabKey}
-                />
-              ))}
+            //
+            // The "New sheet" button lives outside the tablist — axe's
+            // `aria-required-children` flags any non-tab child of a
+            // tablist, and the button is an action, not a tab.
+            <>
+              <div
+                role="tablist"
+                aria-label={t("sheetTabs.tablistLabel")}
+                className="flex min-w-0 flex-1 items-center gap-1"
+              >
+                {sheets.map((sheet, idx) => (
+                  <SheetTab
+                    key={sheet.id}
+                    sheet={sheet}
+                    active={sheet.id === activeSheetId}
+                    index={idx}
+                    onSelect={() => onSelectSheet(sheet.id)}
+                    onEdit={() => onEditSheet(sheet.id)}
+                    onTabKey={onTabKey}
+                  />
+                ))}
+              </div>
               <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
               <button
                 type="button"
@@ -242,7 +248,7 @@ export function BottomBar({
               >
                 <Plus size={18} aria-hidden focusable={false} />
               </button>
-            </div>
+            </>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5 border-l border-line pl-1.5 sm:pl-2">

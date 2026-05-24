@@ -595,24 +595,65 @@ export function useUserDataStorage<Action extends { type: string }>(
               : "<empty>"
           }`,
         );
+        // Whether this is the first load for this hook instance.
+        // Adapter swaps (browser → folder, dropbox → gdrive) re-run
+        // the effect with `hasLoadedRef` already true; the very
+        // first call after mount finds it false.
+        const wasInitialLoad = !hasLoadedRef.current;
         lastSnapshot.current = snap;
-        skipNextSave.current = true;
         hasLoadedRef.current = true;
-        const parsed = snap
-          ? tryReadUserDataFromText(snap.text, migrationCtx)
-          : ({ data: freshUserData(), status: "fresh" } as const);
-        setData(parsed.data);
-        resetHistory(parsed.data);
-        setLastSavedText(snap?.text ?? null);
-        if (parsed.status === "parse-failed") {
-          // Real bytes came back from the adapter but this build
-          // can't parse them. The autosave guard refuses to write
-          // the fresh fallback over the user's real data on disk —
-          // the user reconnects via the sync details panel.
-          setStatus({ kind: "parse-error", message: parsed.error });
-        } else if (snap?.offline) {
-          setStatus({ kind: "offline", since: Date.now() });
+        if (snap) {
+          // Loaded the user's bytes — these are the canonical state,
+          // so suppress the immediate save the upcoming setData would
+          // otherwise trigger (no point round-tripping what we just
+          // read).
+          skipNextSave.current = true;
+          const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
+          setData(parsed.data);
+          resetHistory(parsed.data);
+          setLastSavedText(snap.text);
+          if (parsed.status === "parse-failed") {
+            // Real bytes came back from the adapter but this build
+            // can't parse them. The autosave guard refuses to write
+            // the fresh fallback over the user's real data on disk —
+            // the user reconnects via the sync details panel.
+            setStatus({ kind: "parse-error", message: parsed.error });
+          } else if (snap.offline) {
+            setStatus({ kind: "offline", since: Date.now() });
+          } else {
+            setStatus({ kind: "idle" });
+          }
+        } else if (wasInitialLoad) {
+          // No bytes on disk for a brand-new user. The `useState`
+          // initializer already seeded `data` with `freshUserData()`,
+          // so re-setting here would only blow away any dispatches
+          // that landed during the async load — most importantly,
+          // `recordAchievementUnlock("localHero")` fired by the
+          // App.tsx auth handler before the watcher subscribed to
+          // the bus. Leaving state alone lets the unlock survive
+          // long enough to reach the next save.
+          //
+          // Each of those dispatches re-ran the save effect while
+          // `hasLoadedRef.current` was still false, so every save
+          // bailed at the gate. We deliberately leave
+          // `skipNextSave.current` at false and re-publish `data` with
+          // a fresh top-level reference so the save effect runs one
+          // more time with the gate finally open — that pass picks up
+          // every change since mount and writes them out as the
+          // user's first persisted snapshot.
+          setLastSavedText(null);
+          setStatus({ kind: "idle" });
+          setData((prev) => ({ ...prev }));
         } else {
+          // Adapter swap to a backend that has no data yet — the
+          // previous adapter's bytes are stale, so wipe to a fresh
+          // baseline (parity with the snap-bearing branch's
+          // `setData(parsed.data)`).
+          skipNextSave.current = true;
+          const fresh = freshUserData();
+          setData(fresh);
+          resetHistory(fresh);
+          setLastSavedText(null);
           setStatus({ kind: "idle" });
         }
       })
