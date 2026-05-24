@@ -758,10 +758,10 @@ function DescriptionCell({
 }
 
 // Plain-text description cell. Desktop renders the inline textarea
-// editor; mobile collapses to the default recurring icon (or "…") as
-// the trigger and tucks the editor into a popover behind it (the
-// column is too narrow to wrap long descriptions without ballooning
-// the row).
+// editor; mobile shows the description text truncated to a single
+// line (falling back to "…" when empty) as the trigger and tucks the
+// editor into a popover behind it (the column is too narrow to wrap
+// long descriptions without ballooning the row).
 function PlainDescriptionCell({
   rowId,
   value,
@@ -800,9 +800,11 @@ function PlainDescriptionCell({
             ref={ref}
             type="button"
             onClick={onClick}
-            className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-2.5 py-2 text-center font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-              isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"
-            }`}
+            className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+              hasValue
+                ? "justify-start text-left"
+                : "justify-center text-center"
+            } ${isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"}`}
             aria-haspopup="dialog"
             aria-expanded={open}
             aria-label={
@@ -810,17 +812,21 @@ function PlainDescriptionCell({
                 ? t("cell.descriptionWith", { value })
                 : t("cell.addDescription")
             }
+            title={hasValue ? value : undefined}
           >
-            {isRecurring ? (
+            {isRecurring && (
               <Repeat
                 size={16}
                 aria-hidden
                 focusable={false}
                 className="shrink-0 text-flag"
               />
-            ) : (
-              <span>…</span>
             )}
+            {hasValue ? (
+              <span className="min-w-0 truncate">{value}</span>
+            ) : !isRecurring ? (
+              <span>…</span>
+            ) : null}
           </button>
         )}
       />
@@ -830,9 +836,10 @@ function PlainDescriptionCell({
 
 // Description cell for rows with an entry type. Desktop keeps the
 // inline textarea editor (the type chip lives in the dedicated type
-// column), while mobile collapses the cell down to just the type's
-// name rendered in the type's colour — no pill, no glyph — with the
-// editable description tucked into a popover behind the trigger.
+// column), while mobile shows the description text truncated to a
+// single line — falling back to the type's name rendered in the
+// type's colour when the description is empty — with the editable
+// description tucked into a popover behind the trigger.
 function TypedDescriptionCell({
   rowId,
   value,
@@ -873,14 +880,18 @@ function TypedDescriptionCell({
             ref={ref}
             type="button"
             onClick={onClick}
-            className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent px-2.5 py-2 font-mono text-xs font-medium outline-none focus-visible:bg-surface-2 md:hidden"
-            style={{ color: entryType.color }}
+            className={`flex h-full min-h-9 w-full cursor-pointer items-center border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+              value
+                ? "justify-start text-left"
+                : "justify-center text-xs font-medium"
+            }`}
+            style={value ? undefined : { color: entryType.color }}
             aria-haspopup="dialog"
             aria-expanded={open}
             aria-label={value ? `${typeLabel}: ${value}` : typeLabel}
             title={value || typeLabel}
           >
-            <span className="truncate">{typeLabel}</span>
+            <span className="min-w-0 truncate">{value || typeLabel}</span>
           </button>
         )}
       />
