@@ -52,6 +52,13 @@ type Props = {
   settings: Settings;
 };
 
+// Desktop column-width floors for amount / balance so the column-header
+// text doesn't get clipped by a content-sized col. Mirrors the same
+// constant in HistoryModal — same glyph + gap + padding stack and the
+// same upper-cased `text-xs` header. Paired with `--desktop-w` in
+// src/styles.css.
+const HEADER_FLOOR_CH = { amount: 10, balance: 11 } as const;
+
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
 function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
@@ -327,13 +334,29 @@ export function SheetViewerModal({
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
               <col className="w-12 md:w-20" />
-              {typeCol && <col className="w-9 md:w-10" />}
+              {typeCol && <col className="w-9 md:w-16" />}
               <col />
               {amountCol && (
-                <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
+                <col
+                  data-history-col="amount"
+                  style={
+                    {
+                      width: `calc(${colChars.amount}ch + 1rem)`,
+                      "--desktop-w": `max(calc(${colChars.amount}ch + 1rem), calc(${HEADER_FLOOR_CH.amount}ch + 1rem))`,
+                    } as CSSProperties
+                  }
+                />
               )}
               {balanceCol && (
-                <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
+                <col
+                  data-history-col="balance"
+                  style={
+                    {
+                      width: `calc(${colChars.balance}ch + 1rem)`,
+                      "--desktop-w": `max(calc(${colChars.balance}ch + 1rem), calc(${HEADER_FLOOR_CH.balance}ch + 1rem))`,
+                    } as CSSProperties
+                  }
+                />
               )}
             </colgroup>
             <thead

@@ -26,6 +26,15 @@ import { ModalSearchBar } from "./ModalSearchBar";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
+// Desktop column-width floors for amount / balance so the column-header
+// text ("Amount" / "Belopp", "Balance" / "Saldo") doesn't get clipped
+// by a content-sized col. Each value covers the glyph (16px), the
+// `md:gap-2` between glyph and text (8px), the `md:px-2` cell padding
+// (16px total), and the upper-cased header text at `text-xs` — with a
+// little slack so future i18n strings don't fall off the right edge.
+// Paired with `--desktop-w` in src/styles.css.
+const HEADER_FLOOR_CH = { amount: 10, balance: 11 } as const;
+
 function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
   let f = monthFormatCache.get(lang);
   if (!f) {
@@ -246,11 +255,27 @@ export function HistoryModal({
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
               <col className="w-12 md:w-20" />
-              {hasAnyType && <col className="w-9 md:w-10" />}
+              {hasAnyType && <col className="w-9 md:w-16" />}
               <col />
-              <col style={{ width: `calc(${colChars.amount}ch + 1rem)` }} />
+              <col
+                data-history-col="amount"
+                style={
+                  {
+                    width: `calc(${colChars.amount}ch + 1rem)`,
+                    "--desktop-w": `max(calc(${colChars.amount}ch + 1rem), calc(${HEADER_FLOOR_CH.amount}ch + 1rem))`,
+                  } as CSSProperties
+                }
+              />
               {hasAnyBalance && (
-                <col style={{ width: `calc(${colChars.balance}ch + 1rem)` }} />
+                <col
+                  data-history-col="balance"
+                  style={
+                    {
+                      width: `calc(${colChars.balance}ch + 1rem)`,
+                      "--desktop-w": `max(calc(${colChars.balance}ch + 1rem), calc(${HEADER_FLOOR_CH.balance}ch + 1rem))`,
+                    } as CSSProperties
+                  }
+                />
               )}
             </colgroup>
             {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
