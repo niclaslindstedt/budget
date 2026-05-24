@@ -366,6 +366,13 @@ export function BudgetView({
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     SettingsTabId | undefined
   >(undefined);
+  // Live preview of the Appearance settings while the SettingsModal is
+  // open — the modal pushes its draft up here on every edit so the user
+  // can see the theme / font / shape choice applied to the running app
+  // before committing. Cleared back to null on close, so cancelling
+  // reverts to the persisted settings without the modal having to
+  // restore anything itself.
+  const [previewSettings, setPreviewSettings] = useState<Settings | null>(null);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   // Transaction-search modal state. `searchOpen` toggles visibility;
@@ -743,12 +750,17 @@ export function BudgetView({
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndo, handleRedo, canUndo, canRedo]);
 
+  // The SettingsModal's draft, when it's open, overrides the persisted
+  // settings for any Appearance projection so the user can see their
+  // pick applied before saving. `null` whenever the modal is closed.
+  const appearanceSettings = previewSettings ?? data.settings;
+
   // Project the user's "Text size" preference onto the document root so
   // the body's `font-size: calc(... * var(--app-font-scale))` rule (and
   // every `rem`/`em` dimension downstream) picks up the multiplier.
   // Restored to the canonical 1 on sign-out so the auth screen always
   // renders at the default size.
-  const fontScale = data.settings.fontScale;
+  const fontScale = appearanceSettings.fontScale;
   useEffect(() => {
     document.documentElement.style.setProperty(
       "--app-font-scale",
@@ -765,7 +777,7 @@ export function BudgetView({
   // utility resolved through `@theme inline`) follow the user's
   // Appearance picks. See src/hooks/useTheme.ts for the per-effect
   // contract.
-  useTheme(data.settings);
+  useTheme(appearanceSettings);
 
   // Mirror the bucket's language preference into the plaintext
   // localStorage store and notify the top-level <LanguageProvider> in
@@ -3208,6 +3220,7 @@ export function BudgetView({
           setSettingsInitialTab(undefined);
         }}
         onSave={onSaveSettings}
+        onPreviewAppearance={setPreviewSettings}
         onConnectDropbox={onConnectDropbox}
         onDisconnectDropbox={onDisconnectDropbox}
         onConnectGdrive={onConnectGdrive}

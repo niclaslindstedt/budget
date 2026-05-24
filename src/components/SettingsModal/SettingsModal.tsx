@@ -122,6 +122,12 @@ type Props = {
   getEncryptionPassword: () => string | null;
   onClose: () => void;
   onSave: (next: Settings) => void;
+  // Live preview of the Appearance draft while the modal is open: the
+  // parent uses the most-recent value to project theme / font / shape
+  // / motion onto `<html>` so the user can see their pick applied
+  // before saving. `null` signals "no preview active — fall back to
+  // persisted settings", which restores the original look on cancel.
+  onPreviewAppearance: (preview: Settings | null) => void;
   onConnectDropbox: () => void;
   onDisconnectDropbox: () => void;
   onConnectGdrive: () => Promise<void>;
@@ -234,6 +240,7 @@ export function SettingsModal({
   getEncryptionPassword,
   onClose,
   onSave,
+  onPreviewAppearance,
   onConnectDropbox,
   onDisconnectDropbox,
   onConnectGdrive,
@@ -298,20 +305,43 @@ export function SettingsModal({
   }, [data, settings.startOfMonth]);
 
   useEffect(() => {
-    if (!open) return;
+    if (open) return;
     setDraft(settings);
-    setActiveTab(initialTab ?? "general");
     setCurrencyPresetId(presetIdForCurrency(settings));
-    // Re-sync the draft and reset to the requested initial tab (or
-    // General) only when the modal transitions from closed to open.
-    // Depending on `settings` here would yank the user off whatever
-    // tab they're on every time the store updates (e.g. after
-    // switching storage backend and clicking "Start fresh", which
-    // reloads `data` with a fresh `settings` reference). Depending
-    // on `initialTab` would override the user's tab switch mid-
-    // session if the prop happened to change.
+    // Re-sync the draft while the modal is closed so the next open
+    // starts from the latest persisted settings — including after a
+    // cancel, where the in-state draft still carries the cancelled
+    // edits and would otherwise flash through the Appearance preview
+    // for one frame on reopen.
+  }, [open, settings]);
+
+  useEffect(() => {
+    if (!open) return;
+    setActiveTab(initialTab ?? "general");
+    // Reset to the requested initial tab (or General) only when the
+    // modal transitions from closed to open. Depending on `initialTab`
+    // would override the user's tab switch mid-session if the prop
+    // happened to change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Push the live Appearance draft up to the parent while the modal is
+  // open so the running app reflects the user's pick before they save.
+  // Clears back to null whenever the modal is closed — that's also how
+  // Cancel reverts: the parent stops overriding, the persisted
+  // settings reassert, and the DOM snaps back to the original look
+  // without the modal having to remember it.
+  useEffect(() => {
+    onPreviewAppearance(open ? draft : null);
+  }, [open, draft, onPreviewAppearance]);
+  // Belt-and-braces clear on unmount — covers the auth-screen flip
+  // and any other path that tears the modal down without first
+  // closing it.
+  useEffect(() => {
+    return () => {
+      onPreviewAppearance(null);
+    };
+  }, [onPreviewAppearance]);
 
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
