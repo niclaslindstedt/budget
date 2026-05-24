@@ -147,6 +147,7 @@ export type CategoryIcon =
   | "laptop"
   | "headphones"
   | "camera"
+  | "tv"
   // Lifestyle
   | "shirt"
   | "scissors"
@@ -159,8 +160,10 @@ export type CategoryIcon =
   | "paw-print"
   | "tree-pine"
   | "baby"
+  | "hourglass"
   // Health
   | "heart-pulse"
+  | "shield-plus"
   // Money & finance
   | "coins"
   | "hand-coins"
