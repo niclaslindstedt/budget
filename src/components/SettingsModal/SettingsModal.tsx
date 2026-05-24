@@ -651,7 +651,7 @@ function SettingsHeader({
             aria-label={t("settings.chooseSection")}
             className={`-ml-1 inline-flex cursor-pointer items-center gap-2 rounded border px-2 py-1 text-sm font-bold tracking-wide text-fg-bright ${
               menuOpen
-                ? "border-pipe bg-pipe/15"
+                ? "border-accent bg-accent/15"
                 : "border-transparent hover:border-line hover:bg-surface-2"
             }`}
           >

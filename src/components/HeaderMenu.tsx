@@ -74,7 +74,7 @@ export function HeaderMenu({
         title={t("headerMenu.openMenu")}
         className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
           open
-            ? "border-pipe bg-pipe/15 text-pipe"
+            ? "border-accent bg-accent/15 text-accent"
             : "border-line text-muted hover:border-fg hover:bg-surface-2 hover:text-fg"
         }`}
       >
