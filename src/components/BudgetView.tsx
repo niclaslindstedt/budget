@@ -76,6 +76,7 @@ import {
   JSON_MIME_TYPE,
   serializeAccountsExport,
 } from "../data/accounts-export";
+import { findMatchingRule, ruleMatchesEntry } from "../data/match-rules";
 import { allCategories, allTypes } from "../data/presets";
 import { buildSearchIndex, type SearchEntry } from "../data/search";
 import {
@@ -162,8 +163,11 @@ import {
   triggerDownload,
 } from "../utils/download";
 import { formatNumber, withCurrency } from "../utils/format";
+import { createLogger } from "../utils/logger";
 import { buildXlsx, XLSX_MIME_TYPE } from "../utils/xlsx";
 import { budgetExportFormats } from "../utils/xlsx-format";
+
+const log = createLogger("match-rules");
 
 type DeletePrompt = { kind: "delete"; row: Row };
 type EditPrompt = { kind: "edit"; row: Row };
@@ -1025,6 +1029,7 @@ export function BudgetView({
     // Only history rows render the button, but the prop type is the
     // generic Row shape so guard the marker explicitly.
     if (!row.historyEntryId) return;
+    log.info(`open modal entryId=${row.historyEntryId}`);
     setMatchRulePrompt({ entryId: row.historyEntryId });
   }, []);
   const onEditHistoryRequest = useCallback((row: Row) => {
@@ -2357,10 +2362,47 @@ export function BudgetView({
         rule.transferFilter = draft.transferFilter;
       if (draft.amountMin !== undefined) rule.amountMin = draft.amountMin;
       if (draft.amountMax !== undefined) rule.amountMax = draft.amountMax;
+      // Predict the overlay outcome BEFORE dispatch so the trace shows
+      // both the rule shape that's being persisted AND how many history
+      // entries the new rule would actually win against the existing
+      // ruleset (rules earlier in the array shadow later ones, so a
+      // preview that matches N entries can land zero new overlays when
+      // an existing catch-all already claims them).
+      const accountId = activeItem.accountId;
+      const entries = accountId ? (data.history[accountId] ?? []) : [];
+      const nextRules = [...data.matchRules, rule];
+      let wouldOverlay = 0;
+      let newRuleWins = 0;
+      for (const entry of entries) {
+        if (entry.hidden) continue;
+        const matched = findMatchingRule(nextRules, entry);
+        if (!matched) continue;
+        wouldOverlay += 1;
+        if (matched.id === rule.id) newRuleWins += 1;
+      }
+      const ruleOnlyMatches = entries.filter(
+        (e) => !e.hidden && ruleMatchesEntry(rule, e),
+      ).length;
+      log.info(
+        `dispatch createMatchRule id=${rule.id} ` +
+          `pattern=${JSON.stringify(rule.pattern)} ` +
+          `typeId=${rule.typeId ?? "(none)"} ` +
+          `description=${rule.description ? JSON.stringify(rule.description) : "(none)"} ` +
+          `amountSign=${rule.amountSign ?? "any"} ` +
+          `transferFilter=${rule.transferFilter ?? "any"} ` +
+          `amountMin=${rule.amountMin ?? "(none)"} ` +
+          `amountMax=${rule.amountMax ?? "(none)"} ` +
+          `accountId=${accountId ?? "(none)"} ` +
+          `historyEntries=${entries.length} ` +
+          `ruleOnlyMatches=${ruleOnlyMatches} ` +
+          `newRuleWins=${newRuleWins} ` +
+          `overlaidAfter=${wouldOverlay} ` +
+          `existingRules=${data.matchRules.length}`,
+      );
       dispatch({ type: "createMatchRule", rule });
       setMatchRulePrompt(null);
     },
-    [dispatch],
+    [dispatch, data.history, data.matchRules, activeItem.accountId],
   );
 
   // Pre-fill values for the history-row promote modal. Looks the
