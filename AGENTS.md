@@ -489,14 +489,24 @@ branches on `IS_PREVIEW` inside `pwaPlugin()` in `vite.config.ts`:
 
 **Update strategy.** `registerType: "prompt"` — no `skipWaiting`,
 no `clientsClaim`. A new service worker installs and sits in the
-`waiting` state; `useRegisterSW` flips `needRefresh` to `true` and
-the `UpdateToast` component (mounted from `LanguageRoot`) surfaces
-a non-blocking "reload to apply" prompt. Clicking Reload calls
-`updateServiceWorker(true)`, which posts `SKIP_WAITING` to the
-waiting SW and reloads the page once it takes control — the
-reload happens at a moment the user controls, never mid-edit.
-Visibility-gated polling (`reg.update()` every 60 min) catches new
-builds on tabs left open all day.
+`waiting` state; the workbox `waiting` event flips a state flag in
+`UpdateToast` (mounted from `LanguageRoot`) so the component
+surfaces a non-blocking "reload to apply" prompt. Clicking Reload
+posts `SKIP_WAITING` to the waiting SW via `wb.messageSkipWaiting()`
+and reloads the page once it takes control — the reload happens at
+a moment the user controls, never mid-edit. The toast registers the
+SW itself via `workbox-window` (not vite-plugin-pwa's
+`useRegisterSW`) with `updateViaCache: "none"`, so update checks
+bypass Chrome's HTTP cache — without that option a CDN-cached
+`sw.js` can satisfy update checks indefinitely (the SW spec only
+forces a cache bypass once the cached SW is over 24h old), leaving
+desktop tabs stuck on stale JS even when the user hits refresh. An
+immediate `reg.update()` once registration resolves, then visibility-
+gated polling (`reg.update()` every 60 min plus on every
+`visibilitychange` to visible) catches new builds on tabs left open
+all day. Workbox re-fires `waiting` every time a newer SW reaches
+the waiting state, so dismissing the toast hides the current notice
+but re-opens automatically when a fresher build arrives.
 
 Do not re-enable `workbox.skipWaiting` / `clientsClaim` (or switch
 back to `registerType: "autoUpdate"`) without replacing the toast

@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useRegisterSW } from "virtual:pwa-register/react";
+import { useEffect, useRef, useState } from "react";
+import type { Workbox } from "workbox-window";
 
 import { useT } from "../i18n";
 import { BUILD_LABEL } from "../utils/build-env";
@@ -8,54 +8,109 @@ import { BUILD_LABEL } from "../utils/build-env";
 // `LanguageRoot` so it renders pre-auth, post-auth, and on every
 // prerendered SEO alias (`/privacy/`, `/system/`).
 //
-// Service worker registration is handled by the `useRegisterSW`
-// virtual module from vite-plugin-pwa. With `registerType: "prompt"`
-// (configured in `vite.config.ts`), a new SW installs and sits in
-// the `waiting` state; `useRegisterSW` flips `needRefresh` to `true`
-// and we render this toast. Clicking Reload calls
-// `updateServiceWorker(true)`, which posts `SKIP_WAITING` to the
-// waiting SW and reloads the page once it takes control. The reload
-// happens at a moment the user controls — we never want to refresh
-// mid-edit. Dismissing the toast hides it until the next polling
-// cycle finds another new build.
+// We register the service worker ourselves via `workbox-window`
+// rather than vite-plugin-pwa's `useRegisterSW` virtual module — the
+// hook's auto-injected register call doesn't forward
+// `updateViaCache: "none"` to the browser, so an HTTP-cached `sw.js`
+// can satisfy update checks indefinitely (the SW spec only forces a
+// cache bypass once the cached SW is over 24h old). With
+// `updateViaCache: "none"` every `reg.update()` re-fetches the SW
+// script from the network, so a tab that's been open long enough to
+// have built up an HTTP cache still picks up new builds on the next
+// poll.
 //
-// Polling cadence: every 60 minutes while the tab is visible. Many
-// builds per day means a tab left open without polling would never
-// pick up the new bundle until the user navigated; visibility-gated
-// polling keeps background tabs quiet but catches updates on
-// active tabs within the hour.
+// Update strategy stays "prompt": the new SW installs and parks in
+// the `waiting` state, we flip `needRefresh` from the workbox
+// `waiting` event, and the user clicks Reload at a moment of their
+// choosing. We deliberately do NOT call `skipWaiting()` from the SW
+// itself or set `clientsClaim` — the page would silently swap to new
+// JS, breaking long-lived in-progress edits.
+//
+// Dismissals are per-SW: workbox fires `waiting` again every time a
+// newer SW reaches the waiting state, so dismissing the toast hides
+// the current notice but re-opens automatically when a fresher build
+// arrives.
+//
+// Polling cadence: an immediate `reg.update()` once registration
+// resolves so we don't rely solely on the browser's built-in initial
+// check, then every 60 minutes while the tab is visible (plus on
+// every `visibilitychange` to visible).
 const HOUR_MS = 60 * 60 * 1000;
 
 export function UpdateToast() {
   const t = useT();
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    immediate: true,
-    onRegisteredSW(_url, reg) {
-      if (!reg) return;
-      const interval = setInterval(() => {
-        if (document.visibilityState === "visible") {
-          void reg.update();
-        }
-      }, HOUR_MS);
-      const onVisible = () => {
-        if (document.visibilityState === "visible") {
-          void reg.update();
-        }
-      };
-      document.addEventListener("visibilitychange", onVisible);
-      return () => {
-        clearInterval(interval);
-        document.removeEventListener("visibilitychange", onVisible);
-      };
-    },
-  });
+  const [needRefresh, setNeedRefresh] = useState(false);
+  const wbRef = useRef<Workbox | null>(null);
 
-  // No-op effect kept as a future seam (e.g. announcing the
-  // available version to screen readers via aria-live region updates).
-  useEffect(() => {}, [needRefresh]);
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    if (typeof navigator === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
+
+    const base = import.meta.env.BASE_URL ?? "/";
+    const swUrl = `${base}sw.js`;
+    let cancelled = false;
+    let cleanupFns: Array<() => void> = [];
+
+    void import("workbox-window").then(({ Workbox }) => {
+      if (cancelled) return;
+      const wb = new Workbox(swUrl, {
+        scope: base,
+        type: "classic",
+        // Bypass the HTTP cache when checking for a new SW. Without
+        // this, GitHub Pages' default caching can serve the same
+        // bytes back to the browser's update check and the new SW
+        // never gets discovered until the cached SW is >24h old.
+        updateViaCache: "none",
+      });
+      wbRef.current = wb;
+
+      const onWaiting = () => {
+        setNeedRefresh(true);
+      };
+      const onControlling = (event: { isUpdate?: boolean }) => {
+        if (event.isUpdate) window.location.reload();
+      };
+      wb.addEventListener("waiting", onWaiting);
+      wb.addEventListener("controlling", onControlling);
+      cleanupFns.push(() => {
+        wb.removeEventListener("waiting", onWaiting);
+        wb.removeEventListener("controlling", onControlling);
+      });
+
+      wb.register()
+        .then((reg) => {
+          if (cancelled || !reg) return;
+          void reg.update();
+          const interval = window.setInterval(() => {
+            if (document.visibilityState === "visible") {
+              void reg.update();
+            }
+          }, HOUR_MS);
+          const onVisible = () => {
+            if (document.visibilityState === "visible") {
+              void reg.update();
+            }
+          };
+          document.addEventListener("visibilitychange", onVisible);
+          cleanupFns.push(() => {
+            window.clearInterval(interval);
+            document.removeEventListener("visibilitychange", onVisible);
+          });
+        })
+        .catch(() => {
+          // Registration errors are swallowed — same as
+          // useRegisterSW's default. We surface no UI for "SW failed
+          // to register" because the app still functions without it.
+        });
+    });
+
+    return () => {
+      cancelled = true;
+      for (const fn of cleanupFns) fn();
+      cleanupFns = [];
+    };
+  }, []);
 
   if (!needRefresh) return null;
 
@@ -72,7 +127,14 @@ export function UpdateToast() {
       <button
         type="button"
         className="text-sm text-accent hover:underline"
-        onClick={() => updateServiceWorker(true)}
+        onClick={() => {
+          const wb = wbRef.current;
+          if (!wb) return;
+          // Post SKIP_WAITING to the waiting SW. The `controlling`
+          // listener above reloads the page once the new SW takes
+          // control.
+          wb.messageSkipWaiting();
+        }}
       >
         {t("pwa.reload")}
       </button>
