@@ -554,6 +554,14 @@ body,
      tint with that content) keeps working. Older iOS without a
      floating bar reports dvh ≈ svh ≈ lvh so this stays inert. */
   min-height: 100svh;
+  /* Suppress Chrome Android's built-in pull-to-refresh so the
+     in-app `usePullToRefresh` gesture isn't double-triggered when the
+     user pulls from the top while the address bar is visible.
+     `contain` is the gentler of the two options — bounce overscroll
+     inside scrollable children still works, only the chain to the
+     browser chrome is blocked. iOS Safari and standalone-PWA Chrome
+     don't expose a native pull-to-refresh so this is a no-op there. */
+  overscroll-behavior-y: contain;
 }
 
 body {

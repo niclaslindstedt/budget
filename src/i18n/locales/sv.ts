@@ -132,6 +132,9 @@ export const sv: Catalog = {
       "Tryck på {share} i Safari och välj Lägg till på hemskärmen för att installera Budget som en vanlig app.",
     install: "Installera",
     installDismiss: "Avfärda installationstipset",
+    pullToRefresh: "Dra för att uppdatera",
+    releaseToRefresh: "Släpp för att uppdatera",
+    refreshing: "Uppdaterar…",
   },
 
   app: {
