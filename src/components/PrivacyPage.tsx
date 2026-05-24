@@ -29,12 +29,13 @@ export function PrivacyPage() {
             <span className="text-path">budget.niclaslindstedt.se</span>. It has
             no backend, no user accounts on a server, no sync service, and no
             behavioural-tracking SDK. The production site does load a
-            privacy-friendly page-view counter (GoatCounter) that records
-            aggregated hits only — see <em>Web analytics</em> below. Your budget
-            lives in your browser&apos;s storage on your device. If you point it
-            at a folder on your disk, or connect a cloud storage backend
-            (Dropbox or Google Drive), a copy of the same bytes also lives
-            there. We never receive your data.
+            privacy-friendly page-view counter (GoatCounter) that sends
+            aggregated hits to a third-party dashboard the site owner reads —
+            see <em>Web analytics</em> below. Your budget itself lives in your
+            browser&apos;s storage on your device. If you point it at a folder
+            on your disk, or connect a cloud storage backend (Dropbox or Google
+            Drive), a copy of the same bytes also lives there. We never receive
+            your budget data.
           </p>
         </Section>
 
@@ -259,13 +260,30 @@ export function PrivacyPage() {
               GoatCounter
             </a>
             , a privacy-friendly, open-source page-view counter, via an{" "}
-            <code className="text-meta">async</code> script tag. It records
-            aggregated page views (which URL was visited, referrer, language,
-            screen size, and country) and stores a hashed/salted IP address for
-            short-term deduplication only. It sets no cookies, does not collect
-            personally identifying information, and does not track users across
-            sites. The <code className="text-meta">/preview/</code> staging slot
-            does not load the counter. No third-party advertising or behavioural
+            <code className="text-meta">async</code> script tag. Each page view
+            sends a request to GoatCounter&apos;s servers, where it is recorded
+            against the site owner&apos;s account. The data recorded per hit is
+            the URL visited, referrer, language, screen size, and country
+            (derived from the IP address); the IP address itself is hashed and
+            salted on GoatCounter&apos;s side and kept for short-term
+            deduplication only. It sets no cookies, does not collect personally
+            identifying information, and does not track users across sites. The
+            aggregated counts are visible to the site owner through{" "}
+            <a
+              href="https://www.goatcounter.com/"
+              className="text-link hover:underline"
+            >
+              GoatCounter&apos;s dashboard
+            </a>
+            ; GoatCounter&apos;s own handling of the data is governed by{" "}
+            <a
+              href="https://www.goatcounter.com/help/privacy"
+              className="text-link hover:underline"
+            >
+              GoatCounter&apos;s privacy policy
+            </a>
+            . The <code className="text-meta">/preview/</code> staging slot does
+            not load the counter. No third-party advertising or behavioural
             analytics services are used.
           </p>
         </Section>
