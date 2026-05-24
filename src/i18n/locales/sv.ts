@@ -1117,6 +1117,8 @@ export const sv: Catalog = {
     sheetDeleted: "Tog bort bladet ”{name}”",
     accountDeleted: "Tog bort kontot ”{name}”",
     saveError: "Sparandet misslyckades — {reason}",
+    rowsDeletedOne: "Tog bort 1 rad",
+    rowsDeletedOther: "Tog bort {n} rader",
   },
 
   importHistory: {

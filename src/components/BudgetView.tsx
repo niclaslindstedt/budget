@@ -2308,10 +2308,17 @@ export function BudgetView({
           dispatch({ type: "deleteRows", sheetId, itemId, rowIds: ids });
           setBulkDeletePrompt(null);
           onCancelSelect();
+          toast.push({
+            kind: "info",
+            message:
+              ids.length === 1
+                ? t("toast.rowsDeletedOne")
+                : t("toast.rowsDeletedOther", { n: ids.length }),
+          });
         },
       },
     ];
-  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect, t]);
+  }, [bulkDeletePrompt, dispatch, sheetId, itemId, onCancelSelect, t, toast]);
 
   const uncollapseActions: ConfirmAction[] = useMemo(() => {
     if (uncollapsePrompt === null) return [];

@@ -1123,6 +1123,8 @@ export const en = {
     sheetDeleted: "Deleted sheet “{name}”",
     accountDeleted: "Deleted account “{name}”",
     saveError: "Save failed — {reason}",
+    rowsDeletedOne: "Deleted 1 row",
+    rowsDeletedOther: "Deleted {n} rows",
   },
 
   importHistory: {
