@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Minus,
+  Package,
   Pencil,
   Plus,
   Trash2,
@@ -193,8 +194,12 @@ export function CategoriesAndTypesAdmin({
                 </button>
                 <CategoryChip category={cat} compact />
                 {isPreset && (
-                  <span className="text-xs text-muted">
-                    {t("settings.categoriesTab.builtIn")}
+                  <span
+                    className="inline-flex items-center text-muted"
+                    aria-label={t("settings.categoriesTab.builtIn")}
+                    title={t("settings.categoriesTab.builtIn")}
+                  >
+                    <Package size={12} aria-hidden focusable={false} />
                   </span>
                 )}
                 <span className="ml-auto text-xs text-muted">
@@ -400,8 +405,12 @@ function TypesSection({
               >
                 <TypeChip type={ty} compact />
                 {isPreset && (
-                  <span className="text-xs text-muted">
-                    {t("settings.categoriesTab.builtIn")}
+                  <span
+                    className="inline-flex items-center text-muted"
+                    aria-label={t("settings.categoriesTab.builtIn")}
+                    title={t("settings.categoriesTab.builtIn")}
+                  >
+                    <Package size={12} aria-hidden focusable={false} />
                   </span>
                 )}
                 <div className="ml-auto flex items-center gap-2">
