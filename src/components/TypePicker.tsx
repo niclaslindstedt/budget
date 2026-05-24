@@ -279,7 +279,16 @@ export function TypePicker({
             ) : null}
           </div>
         )}
-        <div className="relative overflow-hidden">
+        {/* `overflow-clip` instead of `overflow-hidden` so the inner
+            div doesn't become a scroll container. With overflow-hidden,
+            the browser's auto-scroll on focus (fired by useRovingTabindex
+            when tier flips to "type" and the first type button gains
+            focus) shifts this container's scrollLeft to bring the focused
+            item into view, compounding with the CSS translateX and
+            leaving the visible region empty. overflow:clip clips without
+            establishing a scroll container, so the focus auto-scroll has
+            nothing to scroll. */}
+        <div className="relative overflow-clip">
           <div
             className="flex w-[200%] transition-transform duration-200 ease-out"
             style={{
