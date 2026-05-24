@@ -354,14 +354,18 @@ function injectGoatcounter(): Plugin {
 //
 // Update strategy: `prompt` — a new SW installs and sits in the
 // `waiting` state until the user opts in via the soft toast in
-// `src/components/UpdateToast.tsx`. The toast's Reload button calls
-// `updateServiceWorker(true)`, which posts `SKIP_WAITING` to the
-// waiting SW and reloads the page once it activates. We deliberately
-// do NOT set `skipWaiting` / `clientsClaim` in the workbox config:
-// with those flags the new SW activates immediately, the `waiting`
-// state is never observed, `useRegisterSW`'s `needRefresh` never
-// flips to `true`, and the toast never renders — the page would
-// silently run old JS until the next full navigation.
+// `src/components/UpdateToast.tsx`. The toast registers the SW
+// itself with `updateViaCache: "none"` so update checks bypass the
+// HTTP cache (vite-plugin-pwa's auto-injected `useRegisterSW`
+// doesn't forward that option to Workbox, and without it Chrome's
+// own HTTP cache can serve a stale `sw.js` back to the update check
+// for up to 24h after the cached SW). The Reload button posts
+// `SKIP_WAITING` to the waiting SW and reloads the page once it
+// activates. We deliberately do NOT set `skipWaiting` /
+// `clientsClaim` in the workbox config: with those flags the new SW
+// activates immediately, the `waiting` state is never observed, the
+// toast never renders, and the page silently runs old JS until the
+// next full navigation.
 function pwaPlugin(): Plugin[] {
   const id = BASE_PATH; // "/" or "/preview/" — W3C app identity
   const name = IS_PREVIEW ? "Budget (preview)" : "Budget";
@@ -370,8 +374,9 @@ function pwaPlugin(): Plugin[] {
 
   return VitePWA({
     registerType: "prompt",
-    // The React `useRegisterSW` hook handles registration; no auto
-    // `<script>` injection.
+    // `UpdateToast` registers the SW itself via `workbox-window`
+    // (so it can pass `updateViaCache: "none"`); no auto `<script>`
+    // injection.
     injectRegister: null,
     includeAssets: [
       "favicon.svg",
