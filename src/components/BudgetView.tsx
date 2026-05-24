@@ -150,6 +150,7 @@ import {
   useChangelogAutoOpen,
   useIdleSignOut,
   usePullToRefresh,
+  useSheetSwipe,
   useStorageSizeWarning,
   useTheme,
   useToast,
@@ -1169,6 +1170,28 @@ export function BudgetView({
       dispatch({ type: "selectSheet", sheetId: id });
     },
     [dispatch, data.activeSheetId],
+  );
+  // Horizontal-swipe-anywhere fallback: a swipe across the page on a
+  // neutral surface (anything that isn't a swipe-owning row or the
+  // BottomBar) switches to the next / previous sheet. Mirrors the
+  // BottomBar's Arrow-Left / Right keyboard shortcut with the same
+  // wrap-around — see `onTabKey` in `BottomBar.tsx`. Skipped when the
+  // user only has one sheet (no neighbour to switch to).
+  const onSwipeToAdjacentSheet = useCallback(
+    (direction: 1 | -1) => {
+      const sheets = data.sheets;
+      if (sheets.length < 2) return;
+      const idx = sheets.findIndex((s) => s.id === data.activeSheetId);
+      if (idx < 0) return;
+      const next = (idx + direction + sheets.length) % sheets.length;
+      onSelectSheet(sheets[next].id);
+    },
+    [data.sheets, data.activeSheetId, onSelectSheet],
+  );
+  useSheetSwipe(
+    () => onSwipeToAdjacentSheet(1),
+    () => onSwipeToAdjacentSheet(-1),
+    { enabled: data.sheets.length >= 2 },
   );
   const onClickHeaderTitle = useCallback(() => {
     const action = data.settings.headerAction;
