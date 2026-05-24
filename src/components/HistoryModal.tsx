@@ -209,10 +209,13 @@ export function HistoryModal({
   // Size amount + balance columns from the longest formatted value in
   // the data so they don't claim more space than they need (which is
   // what was forcing the table off the right edge on narrow phones).
-  // Description picks up whatever is left.
+  // Type col is sized from the longest visible type name so the pill
+  // (glyph + label on desktop) gets the room it needs. Description
+  // picks up whatever is left.
   const colChars = useMemo(() => {
     let amount = 0;
     let balance = 0;
+    let type = 0;
     for (const r of filteredEntries) {
       const a = formatBalance(r.entry.amount, accountSettings).length;
       if (a > amount) amount = a;
@@ -220,9 +223,17 @@ export function HistoryModal({
         const b = formatBalance(r.entry.balance, accountSettings).length;
         if (b > balance) balance = b;
       }
+      if (r.typeId) {
+        const t = typesById.get(r.typeId);
+        if (t && t.name.length > type) type = t.name.length;
+      }
     }
-    return { amount: Math.max(amount, 4), balance: Math.max(balance, 4) };
-  }, [filteredEntries, accountSettings]);
+    return {
+      amount: Math.max(amount, 4),
+      balance: Math.max(balance, 4),
+      type: Math.max(type, 4),
+    };
+  }, [filteredEntries, accountSettings, typesById]);
 
   return (
     <Modal
@@ -256,7 +267,17 @@ export function HistoryModal({
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
               <col className="w-12 md:w-20" />
-              {hasAnyType && <col className="w-9 md:w-16" />}
+              {hasAnyType && (
+                <col
+                  data-history-col="type"
+                  style={
+                    {
+                      "--mobile-w": "2.25rem",
+                      "--desktop-w": `calc(${colChars.type}ch + 3rem)`,
+                    } as CSSProperties
+                  }
+                />
+              )}
               <col />
               <col
                 data-history-col="amount"
@@ -272,8 +293,8 @@ export function HistoryModal({
                   data-history-col="balance"
                   style={
                     {
-                      "--mobile-w": `calc(${colChars.balance}ch + 1rem)`,
-                      "--desktop-w": `max(calc(${colChars.balance}ch + 1rem), calc(${HEADER_FLOOR_CH.balance}ch + 1rem))`,
+                      "--mobile-w": `calc(${colChars.balance}ch + 1.5rem)`,
+                      "--desktop-w": `max(calc(${colChars.balance}ch + 1.5rem), calc(${HEADER_FLOOR_CH.balance}ch + 1.5rem))`,
                     } as CSSProperties
                   }
                 />
@@ -296,7 +317,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyType && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2 md:text-left">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="type"
@@ -308,7 +329,7 @@ export function HistoryModal({
                     </span>
                   </th>
                 )}
-                <th className="px-2 pt-2.5 pb-1.5 text-left">
+                <th className="px-2 pt-2.5 pb-1.5 text-left md:pl-4">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
@@ -331,7 +352,7 @@ export function HistoryModal({
                   </span>
                 </th>
                 {hasAnyBalance && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-right md:pr-2 md:pl-4">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
@@ -398,10 +419,10 @@ export function HistoryModal({
                             )}
                           </td>
                           {hasAnyType && (
-                            <td className="px-1 py-1.5 text-center align-top md:px-2">
+                            <td className="px-1 py-1.5 text-center align-top md:px-2 md:text-left">
                               {type ? (
                                 <span
-                                  className="inline-flex h-5 w-5 items-center justify-center rounded-full"
+                                  className="inline-flex max-w-full items-center gap-1.5 rounded-full px-1.5 py-0.5 text-xs md:px-2 md:py-1"
                                   style={{
                                     backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
                                     color: type.color,
@@ -410,13 +431,17 @@ export function HistoryModal({
                                 >
                                   <CategoryIconGlyph
                                     name={type.glyph}
-                                    size={12}
+                                    size={14}
+                                    className="shrink-0"
                                   />
+                                  <span className="hidden truncate md:inline">
+                                    {type.name}
+                                  </span>
                                 </span>
                               ) : null}
                             </td>
                           )}
-                          <td className="align-top text-muted">
+                          <td className="align-top text-muted md:pl-2">
                             <button
                               type="button"
                               onClick={() => setSelectedEntry(e)}
@@ -433,7 +458,7 @@ export function HistoryModal({
                             {formatBalance(e.amount, accountSettings)}
                           </td>
                           {hasAnyBalance && (
-                            <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
+                            <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
                               {e.balance !== undefined
                                 ? formatBalance(e.balance, accountSettings)
                                 : ""}

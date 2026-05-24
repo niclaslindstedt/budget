@@ -253,11 +253,13 @@ export function SheetViewerModal({
     !isSearching && !showFuture && futureMonths.length > 0;
 
   // Column widths derived once from the loaded rows so amount /
-  // balance stay narrow without truncating any value. Description
-  // takes the remainder.
+  // balance stay narrow without truncating any value. Type col sizes
+  // from the longest visible type name so the pill (glyph + label on
+  // desktop) gets the room it needs. Description takes the remainder.
   const colChars = useMemo(() => {
     let amountW = 0;
     let balanceW = 0;
+    let typeW = 0;
     if (amountCol) {
       for (const row of visibleRows) {
         const v = row.cells[amountCol.id];
@@ -275,8 +277,28 @@ export function SheetViewerModal({
         if (full.length > balanceW) balanceW = full.length;
       }
     }
-    return { amount: Math.max(amountW, 4), balance: Math.max(balanceW, 4) };
-  }, [visibleRows, amountCol, balanceCol, balances, settings]);
+    if (typeCol) {
+      for (const row of visibleRows) {
+        const tid = row.typeId ?? null;
+        if (!tid) continue;
+        const t = typesById.get(tid);
+        if (t && t.name.length > typeW) typeW = t.name.length;
+      }
+    }
+    return {
+      amount: Math.max(amountW, 4),
+      balance: Math.max(balanceW, 4),
+      type: Math.max(typeW, 4),
+    };
+  }, [
+    visibleRows,
+    amountCol,
+    balanceCol,
+    typeCol,
+    balances,
+    settings,
+    typesById,
+  ]);
 
   const hasNoRows = item.rows.length === 0;
 
@@ -314,7 +336,17 @@ export function SheetViewerModal({
           <table className="w-full table-fixed border-collapse text-sm">
             <colgroup>
               <col className="w-12 md:w-20" />
-              {typeCol && <col className="w-9 md:w-16" />}
+              {typeCol && (
+                <col
+                  data-history-col="type"
+                  style={
+                    {
+                      "--mobile-w": "2.25rem",
+                      "--desktop-w": `calc(${colChars.type}ch + 3rem)`,
+                    } as CSSProperties
+                  }
+                />
+              )}
               <col />
               {amountCol && (
                 <col
@@ -332,8 +364,8 @@ export function SheetViewerModal({
                   data-history-col="balance"
                   style={
                     {
-                      "--mobile-w": `calc(${colChars.balance}ch + 1rem)`,
-                      "--desktop-w": `max(calc(${colChars.balance}ch + 1rem), calc(${HEADER_FLOOR_CH.balance}ch + 1rem))`,
+                      "--mobile-w": `calc(${colChars.balance}ch + 1.5rem)`,
+                      "--desktop-w": `max(calc(${colChars.balance}ch + 1.5rem), calc(${HEADER_FLOOR_CH.balance}ch + 1.5rem))`,
                     } as CSSProperties
                   }
                 />
@@ -351,7 +383,7 @@ export function SheetViewerModal({
                   </span>
                 </th>
                 {typeCol && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2 md:text-left">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="type"
@@ -363,7 +395,7 @@ export function SheetViewerModal({
                     </span>
                   </th>
                 )}
-                <th className="px-2 pt-2.5 pb-1.5 text-left">
+                <th className="px-2 pt-2.5 pb-1.5 text-left md:pl-4">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
@@ -388,7 +420,7 @@ export function SheetViewerModal({
                   </th>
                 )}
                 {balanceCol && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-right md:pr-2 md:pl-4">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
@@ -615,22 +647,29 @@ function ViewerRow({
         </span>
       </td>
       {typeColId && (
-        <td className="px-1 py-1.5 text-center align-top md:px-2">
+        <td className="px-1 py-1.5 text-center align-top md:px-2 md:text-left">
           {type ? (
             <span
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full px-1.5 py-0.5 text-xs md:px-2 md:py-1"
               style={{
                 backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
                 color: type.color,
               }}
               title={type.name}
             >
-              <CategoryIconGlyph name={type.glyph} size={12} />
+              <CategoryIconGlyph
+                name={type.glyph}
+                size={14}
+                className="shrink-0"
+              />
+              <span className="hidden truncate md:inline">{type.name}</span>
             </span>
           ) : null}
         </td>
       )}
-      <td className="px-2 py-1.5 align-top text-fg break-words">{descValue}</td>
+      <td className="px-2 py-1.5 align-top text-fg break-words md:pl-4">
+        {descValue}
+      </td>
       {amountColId && (
         <td
           className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
@@ -648,7 +687,7 @@ function ViewerRow({
         </td>
       )}
       {balanceColId && (
-        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:px-2">
+        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
           {balanceValue !== undefined
             ? formatRunningBalance(balanceValue, settings)
             : ""}
