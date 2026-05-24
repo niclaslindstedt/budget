@@ -314,14 +314,14 @@ export function SheetViewerModal({
               style={{ top: "-1px" }}
             >
               <tr className="border-b border-line">
-                <th className="px-1 py-1.5 text-center md:px-2 md:text-left">
+                <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2 md:text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon type="date" className="shrink-0 text-accent" />
                     <span className="hidden md:inline">{t("sheet.date")}</span>
                   </span>
                 </th>
                 {typeCol && (
-                  <th className="px-1 py-1.5 text-center md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center md:px-2">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="type"
@@ -333,7 +333,7 @@ export function SheetViewerModal({
                     </span>
                   </th>
                 )}
-                <th className="px-2 py-1.5 text-left">
+                <th className="px-2 pt-2.5 pb-1.5 text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
@@ -345,7 +345,7 @@ export function SheetViewerModal({
                   </span>
                 </th>
                 {amountCol && (
-                  <th className="px-1 py-1.5 text-right md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="amount"
@@ -358,7 +358,7 @@ export function SheetViewerModal({
                   </th>
                 )}
                 {balanceCol && (
-                  <th className="px-1 py-1.5 text-right md:px-2">
+                  <th className="px-1 pt-2.5 pb-1.5 text-right md:px-2">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
@@ -413,10 +413,10 @@ export function SheetViewerModal({
                   (balanceCol ? 1 : 0);
                 return (
                   <Fragment key={monthKey}>
-                    <tr className="border-b border-line bg-surface-2">
+                    <tr>
                       <td
                         colSpan={colSpan}
-                        className="px-2 py-1 text-xs font-bold tracking-wider uppercase"
+                        className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
                         style={colorStyle}
                       >
                         {formatMonth(monthKey, lang, t("sheet.undated"))}
