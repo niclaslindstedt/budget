@@ -1546,6 +1546,15 @@ export function BudgetView({
       name: accountModal.account.name,
     });
   }, [accountModal]);
+  // Same flow used by AccountsSheetView's trash button — feed the
+  // prompt directly so the swipe-delete doesn't need to detour through
+  // the edit modal first.
+  const onRequestDeleteAccount = useCallback(
+    (accountId: string, name: string) => {
+      setDeleteAccountPrompt({ accountId, name });
+    },
+    [],
+  );
   const deleteAccountActions: ConfirmAction[] = useMemo(() => {
     if (!deleteAccountPrompt) return [];
     const target = deleteAccountPrompt;
@@ -2813,6 +2822,7 @@ export function BudgetView({
                 settings={data.settings}
                 onCreateAccount={onOpenCreateAccount}
                 onEditAccount={onOpenEditAccount}
+                onDeleteAccount={onRequestDeleteAccount}
                 onUpdateBalance={onOpenUpdateBalance}
                 onCreateTransaction={onOpenCreateTransaction}
                 onEditTransaction={onOpenEditTransaction}

@@ -725,19 +725,21 @@ so every tool sees the same canonical set.
 | `write-changeset`      | Decide whether the current change needs a `.changes/unreleased/<unix-ts>-<slug>.md` fragment. Resolves the latest `v*` tag, lists commits and existing fragments since, classifies the change, and either writes a new fragment, edits a parent fragment in place, or labels the PR `no-changelog`. Run per-PR, before opening the PR.                                                                              | manual    |
 | `debug-from-logs`      | The user pasted captured log output (in-app Logs tab, console transcript, CI snippet, anything timestamped or scoped). Walks the trace from last-known-good to the failure, traces each suspicious line back to its source by greping the logged string, forms and verifies a root-cause hypothesis, and ends by evaluating log sufficiency — adding the missing diagnostics in the same change when they were not. | manual    |
 | `tune-pwa-icons`       | The home-screen / launcher / browser-tab icon looks wrong on a real device (too small, off-centre, transparent, clipped by iOS rounding, eaten by an Android mask). Walks an edit / regenerate / inspect loop that reads the rasterised PNGs after every change, scored against Apple HIG and the W3C maskable-icon spec.                                                                                           | manual    |
+| `design`               | Iterating on the look or layout of a screen — tuning a CSS rule, building a new modal, redesigning a table, hunting a mobile-only regression. Walks an edit / reload / screenshot / inspect loop that uses the Read tool to view PNGs inline at every viewport. The harness (`.agent/skills/design/screenshot.mjs`) drives the app through reusable flows so each iteration only changes the bit being designed.    | manual    |
 | `write-pr-description` | About to open a PR (or revise one already pushed). Derives the title and body from the diff, commit log, and source tree — never from the chat that produced the change — and yields a Conventional-Commits title and a `## Summary` + `## Test plan` body that describe the problem and the fix in the voice of someone reading the PR cold.                                                                       | manual    |
 
 `update-manpages` and `update-website` are listed in `OSS_SPEC.md`
 §21.5 but are intentionally omitted here — see the "OSS_SPEC.md
 exceptions" section above. The `release`, `write-changeset`,
-`debug-from-logs`, `tune-pwa-icons`, and `write-pr-description`
-skills are manual playbooks (a maintainer dispatches the release
-workflow; the contributor decides per-PR whether a fragment is
-warranted; the agent runs the debug playbook whenever the user
-pastes logs; the icon set is tuned when a real device shows it
-looking wrong; the PR body is drafted right before opening the
-PR), so none of them are part of the `maintenance` umbrella —
-that umbrella only runs automatic sync skills. New automatic-sync skills go in this table in the order
+`debug-from-logs`, `tune-pwa-icons`, `design`, and
+`write-pr-description` skills are manual playbooks (a maintainer
+dispatches the release workflow; the contributor decides per-PR
+whether a fragment is warranted; the agent runs the debug playbook
+whenever the user pastes logs; the icon set is tuned when a real
+device shows it looking wrong; the design loop runs whenever an
+agent is tuning visual layout; the PR body is drafted right before
+opening the PR), so none of them are part of the `maintenance`
+umbrella — that umbrella only runs automatic sync skills. New automatic-sync skills go in this table in the order
 they should run — upstream fixes first, downstream mirrors last;
 `sync-oss-spec` always runs last to catch residual violations,
 and the `maintenance` umbrella reflects the same order in its own
