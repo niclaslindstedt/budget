@@ -7,18 +7,19 @@ import {
   FolderLinkDialog,
 } from "./components/CloudLinkDialog";
 import { unlock } from "./data/achievements";
-import { STORAGE_KEY, cloudMirrorKey, userDataKey } from "./data/constants";
+import { STORAGE_KEY } from "./data/constants";
 import type { StoredUser, UserData } from "./data/types";
 import { type AuthState, readBootAuth } from "./storage/boot-auth";
 import { clearCloudOfflineMode } from "./storage/backend-preference";
-import { clearCloudMirror } from "./storage/cloud-mirror";
 import { encryptText, isEncryptedEnvelope } from "./storage/crypto";
 import { isFolderBackendAvailable } from "./storage/folder-handle-store";
 import {
-  clearRawStorage,
-  readRawStorage,
-  writeRawStorage,
-} from "./storage/local-adapter";
+  clearCloudMirrorBytes,
+  clearUserDataBytes,
+  readUserDataBytes,
+  writeUserDataBytes,
+} from "./storage/idb-adapter";
+import { clearRawStorage, readRawStorage } from "./storage/local-adapter";
 import { clearSession, saveSession } from "./storage/session";
 import { useStorageBackend } from "./storage/useStorageBackend";
 import {
@@ -125,12 +126,12 @@ export function App() {
       // Falls back to the legacy pre-account `STORAGE_KEY` migration
       // when no default user is around and the user opted in.
       if (existingDefault) {
-        const guestBytes = readRawStorage(userDataKey(existingDefault.id));
+        const guestBytes = await readUserDataBytes(existingDefault.id);
         if (guestBytes) {
           const envelope = await encryptText(guestBytes, password);
-          writeRawStorage(envelope, userDataKey(user.id));
+          await writeUserDataBytes(user.id, envelope);
         }
-        clearRawStorage(userDataKey(existingDefault.id));
+        await clearUserDataBytes(existingDefault.id);
       } else if (importLegacy && realUsers.length === 0) {
         const legacy = readRawStorage(STORAGE_KEY);
         // Only migrate plaintext legacy data — an encrypted envelope
@@ -139,7 +140,7 @@ export function App() {
         // the Import button, which prompts for it.
         if (legacy && !isEncryptedEnvelope(legacy)) {
           const envelope = await encryptText(legacy, password);
-          writeRawStorage(envelope, userDataKey(user.id));
+          await writeUserDataBytes(user.id, envelope);
           clearRawStorage(STORAGE_KEY);
         }
       }
@@ -226,11 +227,11 @@ export function App() {
         if (!ok) throw new Error("Wrong password");
       }
       const remaining = users.filter((u) => u.id !== auth.user.id);
-      clearRawStorage(userDataKey(auth.user.id));
+      await clearUserDataBytes(auth.user.id);
       // Mop up the per-user cloud mirror so a future account on the
       // same device can't accidentally resurrect this user's bytes
       // from a cached snapshot.
-      clearCloudMirror(cloudMirrorKey(auth.user.id));
+      await clearCloudMirrorBytes(auth.user.id);
       clearCloudOfflineMode(auth.user.id);
       setUsers(remaining);
       persistRegistry(remaining, null);

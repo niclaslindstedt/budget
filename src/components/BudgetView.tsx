@@ -53,7 +53,6 @@ import { HeaderStar } from "./HeaderStar";
 import { PullToRefreshIndicator } from "./PullToRefreshIndicator";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal, type SettingsTabId } from "./SettingsModal";
-import { StorageSizeWarningModal } from "./StorageSizeWarningModal";
 import { SheetView } from "./SheetView";
 import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import { ReconnectCloudModal } from "./ReconnectCloudModal";
@@ -151,7 +150,6 @@ import {
   useIdleSignOut,
   usePullToRefresh,
   useSheetSwipe,
-  useStorageSizeWarning,
   useTheme,
   useToast,
 } from "../hooks";
@@ -1148,18 +1146,6 @@ export function BudgetView({
     if (changelogAutoOpen) onCloseChangelogAuto();
     setChangelogManualOpen(false);
   }, [changelogAutoOpen, onCloseChangelogAuto]);
-
-  const {
-    isOpen: storageWarningOpen,
-    sizeBytes: storageWarningSize,
-    thresholdBytes: storageWarningThreshold,
-    onClose: onCloseStorageWarning,
-  } = useStorageSizeWarning({ backend });
-  const onGoToStorageSettings = useCallback(() => {
-    onCloseStorageWarning();
-    setSettingsInitialTab("storage");
-    setSettingsOpen(true);
-  }, [onCloseStorageWarning]);
 
   const onSelectSheet = useCallback(
     (id: string) => {
@@ -3369,13 +3355,6 @@ export function BudgetView({
         open={changelogOpen}
         onClose={onCloseChangelog}
         since={changelogSince}
-      />
-      <StorageSizeWarningModal
-        open={storageWarningOpen}
-        sizeBytes={storageWarningSize}
-        thresholdBytes={storageWarningThreshold}
-        onClose={onCloseStorageWarning}
-        onGoToSettings={onGoToStorageSettings}
       />
       <ActionHistoryModal
         open={actionHistoryOpen}
