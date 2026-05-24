@@ -631,9 +631,14 @@ triggers `pages.yml`, which:
 
 The preview build sets `<meta name="robots" content="noindex,nofollow">`
 on every emitted alias so search engines never index a second copy
-of the app. JSON-LD `@id`s remain canonical (point at the
-production `SITE_URL`) so the preview doesn't fork structured-data
-entities.
+of the app, and the root `public/robots.txt` carries an explicit
+`Disallow: /preview/` so well-behaved crawlers skip the slot
+entirely instead of fetching it and discovering the meta tag.
+`sitemap.xml` and `llms.txt` are emitted by the production build
+only — the preview build short-circuits both in `emitPathAliasWithSeo`
+so staging URLs never appear in either discovery surface. JSON-LD
+`@id`s remain canonical (point at the production `SITE_URL`) so the
+preview doesn't fork structured-data entities.
 
 **Data isolation.** Vite's `define` block exposes
 `__IS_PREVIEW__` to the bundle when `VITE_BASE_PATH !== "/"`.
