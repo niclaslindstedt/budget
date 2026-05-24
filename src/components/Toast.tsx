@@ -103,6 +103,7 @@ function ToastViewport({
     <div
       role="region"
       aria-label={t("toast.region")}
+      data-toast-stack
       className="pointer-events-none fixed right-3 bottom-[var(--toast-stack-bottom)] z-[70] flex flex-col-reverse gap-2"
     >
       {toasts.map((toast) => (
