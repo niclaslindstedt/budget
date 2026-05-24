@@ -9,7 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-import type { Account, Category, EntryType, Row } from "../data/types";
+import type { Account, Category, EntryType } from "../data/types";
 import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import {
@@ -38,15 +38,7 @@ export type TransactionDraft = {
 };
 
 // Source-of-truth payload describing what the modal is editing. The
-// parent supplies one of three shapes:
-//
-//   - { kind: "promote" }: the user clicked the transfer button on a
-//     budget row. The row's account is fixed as one endpoint, and the
-//     modal asks for the OTHER account. The direction follows from
-//     the row's amount sign: negative = money flowing OUT of self
-//     (self → other), positive = money flowing IN (other → self).
-//     Submitting calls `onPromote` so the parent can drop the row and
-//     mint a transaction in one reducer cycle.
+// parent supplies one of two shapes:
 //
 //   - { kind: "create" }: a standalone create from the Accounts
 //     dashboard. Both pickers visible, defaults seeded from the
@@ -55,18 +47,6 @@ export type TransactionDraft = {
 //   - { kind: "edit", transactionId }: editing an existing transaction.
 //     Same UI as "create" but with a Delete button in the footer.
 export type TransactionModalRequest =
-  | {
-      kind: "promote";
-      row: Row;
-      selfAccountId: string;
-      seedDate: string;
-      seedDescription: string;
-      seedAmount: number;
-      // Sign of the row's amount drives direction; we precompute the
-      // boolean here so the modal doesn't have to know about column ids.
-      outgoing: boolean;
-      seedTypeId: string | null;
-    }
   | {
       kind: "create";
       defaultFromId: string | null;
@@ -101,7 +81,6 @@ type Props = {
   types: readonly EntryType[];
   settings: Settings;
   onClose: () => void;
-  onPromote: (draft: TransactionDraft) => void;
   onCreate: (draft: TransactionDraft) => void;
   onEdit: (transactionId: string, draft: TransactionDraft) => void;
   onDelete: (transactionId: string) => void;
@@ -122,7 +101,6 @@ export function TransactionModal({
   types,
   settings,
   onClose,
-  onPromote,
   onCreate,
   onEdit,
   onDelete,
@@ -147,27 +125,11 @@ export function TransactionModal({
   useDesktopAutoFocus(descriptionRef, open);
 
   // Seed the form whenever the modal opens or the request changes. Each
-  // mode has its own seeding strategy: promote-row pre-fills from the
-  // row, edit pre-fills from the transaction, create reuses the
-  // workspace defaults.
+  // mode has its own seeding strategy: edit pre-fills from the
+  // transaction, create reuses the workspace defaults.
   useEffect(() => {
     if (!open || !request) return;
-    if (request.kind === "promote") {
-      setDate(request.seedDate);
-      setDescription(request.seedDescription);
-      setAmountText(
-        formatAmountForInput(Math.abs(request.seedAmount), settings),
-      );
-      if (request.outgoing) {
-        setFromAccountId(request.selfAccountId);
-        setToAccountId("");
-      } else {
-        setFromAccountId("");
-        setToAccountId(request.selfAccountId);
-      }
-      setTypeId(request.seedTypeId);
-      setCompleted(false);
-    } else if (request.kind === "edit") {
+    if (request.kind === "edit") {
       setDate(request.date);
       setDescription(request.description);
       setAmountText(formatAmountForInput(request.amount, settings));
@@ -198,7 +160,6 @@ export function TransactionModal({
     );
   }
 
-  const isPromote = request.kind === "promote";
   const isEdit = request.kind === "edit";
   // Bank-imported transactions lock everything but description + type
   // because the statement is the source of truth. The "is a transfer"
@@ -208,20 +169,11 @@ export function TransactionModal({
   const isImported = isEdit && request.isImportedPair;
   const willUncollapse = isImported && !isTransfer;
 
-  // Promote-row mode locks the direction (driven by the row's amount
-  // sign) so the user only needs to pick the OTHER account. The fixed
-  // side renders as a read-only chip; the open side is a regular
-  // AccountPicker. Imported pairs lock BOTH sides for the same reason.
-  const lockedFromId = isImported
-    ? request.fromAccountId
-    : isPromote && request.outgoing
-      ? request.selfAccountId
-      : null;
-  const lockedToId = isImported
-    ? request.toAccountId
-    : isPromote && !request.outgoing
-      ? request.selfAccountId
-      : null;
+  // Imported pairs lock BOTH sides because the bank statement owns the
+  // accounts. Everything else (plain create / non-imported edit) lets
+  // the user pick freely via the AccountPicker.
+  const lockedFromId = isImported ? request.fromAccountId : null;
+  const lockedToId = isImported ? request.toAccountId : null;
 
   const parsedAmount = parseAmount(amountText);
   const canSave = willUncollapse
@@ -263,8 +215,7 @@ export function TransactionModal({
       typeId,
       completed,
     };
-    if (request?.kind === "promote") onPromote(draft);
-    else if (request?.kind === "edit") onEdit(request.transactionId, draft);
+    if (request?.kind === "edit") onEdit(request.transactionId, draft);
     else onCreate(draft);
     onClose();
   }
@@ -282,13 +233,7 @@ export function TransactionModal({
     <Modal open={open} onClose={onClose} labelledBy="tx-modal-title">
       <Modal.Header
         icon={<ArrowLeftRight size={14} aria-hidden focusable={false} />}
-        title={
-          isEdit
-            ? t("transaction.titleEdit")
-            : isPromote
-              ? t("transaction.titlePromote")
-              : t("transaction.titleNew")
-        }
+        title={isEdit ? t("transaction.titleEdit") : t("transaction.titleNew")}
         onClose={onClose}
       />
       <Modal.Body>
@@ -438,13 +383,6 @@ export function TransactionModal({
                 />
               )}
             </div>
-            {isPromote && (
-              <p className="text-xs text-muted">
-                {request.outgoing
-                  ? t("transaction.moneyLeaves")
-                  : t("transaction.moneyArrives")}
-              </p>
-            )}
             {fromAccountId && toAccountId && fromAccountId === toAccountId && (
               <p className="text-xs text-danger">
                 {t("transaction.needTwoAccounts")}
@@ -508,9 +446,7 @@ export function TransactionModal({
               ? t("transaction.uncollapseConfirm")
               : isEdit
                 ? t("common.save")
-                : isPromote
-                  ? t("transaction.titlePromote")
-                  : t("account.create")}
+                : t("account.create")}
           </Button>
         </div>
       </Modal.Footer>
