@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import {
   recordMerchantHints,
   suggestTypeForDescription,
@@ -11,7 +11,7 @@ import type { Category, EntryType, UserData } from "../src/data/types";
 function makeState(categories: Category[], types: EntryType[] = []): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 34,
+    version: 35,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -28,7 +28,13 @@ function makeState(categories: Category[], types: EntryType[] = []): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
+    },
   };
 }
 

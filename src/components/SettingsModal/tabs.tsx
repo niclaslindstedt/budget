@@ -37,7 +37,7 @@ import type {
   ThousandsSeparator,
   UserData,
 } from "../../data/types";
-import { useDevMode } from "../../hooks";
+import { useDevMode, useIsMobile } from "../../hooks";
 import { type Lang, useT, type TFunction } from "../../i18n";
 import type {
   BackendId,
@@ -173,6 +173,7 @@ export function GeneralTab({
       </Section>
 
       <Section title={t("settings.headerAction.title")}>
+        <DeviceScopeHint />
         <Field label={t("settings.headerAction.label")}>
           <HeaderActionPicker
             value={draft.headerAction}
@@ -459,7 +460,10 @@ export function FormatTab({
             })}
           </div>
         </Field>
+      </Section>
 
+      <Section title={t("settings.format.displayTitle")}>
+        <DeviceScopeHint />
         <ToggleRow
           label={t("settings.format.formatNumbers")}
           checked={draft.formatNumbers}
@@ -518,8 +522,6 @@ export function StorageTab({
   onDisconnectFolder,
   onSelectBrowser,
   onSetEncryption,
-  cloudReauthAutoOpen,
-  onSetCloudReauthAutoOpen,
   cloudOfflineMode,
   onSetCloudOfflineMode,
   onDeleteAccount,
@@ -549,8 +551,6 @@ export function StorageTab({
   onDisconnectFolder: () => void;
   onSelectBrowser: () => void;
   onSetEncryption: (mode: EncryptionMode) => void;
-  cloudReauthAutoOpen: boolean;
-  onSetCloudReauthAutoOpen: (on: boolean) => void;
   cloudOfflineMode: boolean;
   onSetCloudOfflineMode: (on: boolean) => void;
   onDeleteAccount: (password: string) => Promise<void>;
@@ -690,8 +690,8 @@ export function StorageTab({
             <ToggleRow
               label={t("settings.storage.reauthAutoOpenTitle")}
               hint={t("settings.storage.reauthAutoOpenHint")}
-              checked={cloudReauthAutoOpen}
-              onChange={onSetCloudReauthAutoOpen}
+              checked={draft.cloudReauthAutoOpen}
+              onChange={(v) => onUpdate("cloudReauthAutoOpen", v)}
             />
           </>
         )}
@@ -1005,6 +1005,7 @@ export function AppearanceTab({
           <p className="text-xs text-muted">
             {t("settings.appearance.textSizeHint")}
           </p>
+          <DeviceScopeHint />
         </Field>
       </Section>
 
@@ -1607,6 +1608,22 @@ function ClearRow({
       </div>
       <p className="text-xs text-muted">{hint}</p>
     </div>
+  );
+}
+
+// Small muted line above a section that holds device-scoped settings.
+// Reads the viewport breakpoint and tells the user which scope they're
+// editing. The label updates live if the user resizes a desktop
+// browser narrow — matching the runtime `useEffectiveSettings` flip.
+function DeviceScopeHint() {
+  const t = useT();
+  const isMobile = useIsMobile();
+  return (
+    <p className="text-[11px] tracking-wide text-muted uppercase">
+      {isMobile
+        ? t("settings.appliesToMobile")
+        : t("settings.appliesToDesktop")}
+    </p>
   );
 }
 

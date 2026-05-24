@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import {
   accountBalance,
   createDefaultSheet,
@@ -23,7 +23,7 @@ import type {
 function workspace(transactions: Transaction[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 34,
+    version: 35,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -43,7 +43,13 @@ function workspace(transactions: Transaction[] = []): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
+    },
   };
 }
 

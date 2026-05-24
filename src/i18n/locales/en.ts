@@ -399,6 +399,8 @@ export const en = {
       title: "Language",
       hint: "Translate the UI between English and Swedish. Date and number formats are controlled separately under Format.",
     },
+    appliesToMobile: "Applies to mobile devices",
+    appliesToDesktop: "Applies to desktop devices",
     appearance: {
       themeSection: "Theme",
       modeLabel: "Mode",
@@ -486,6 +488,7 @@ export const en = {
       shortDateFormat: "Short date format",
       shortDateFormatHint: "Used inside sheet cells where space is tight.",
       numberTitle: "Numbers",
+      displayTitle: "Number display",
       numberPreview: "Preview",
       decimalSeparator: "Decimal separator",
       thousandsSeparator: "Thousands separator",

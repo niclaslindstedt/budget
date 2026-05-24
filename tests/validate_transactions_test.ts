@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { EntryType, Transaction, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
@@ -21,7 +21,7 @@ const knownType: EntryType = {
 function workspaceWithTransactions(transactions: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 34,
+    version: 35,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -41,7 +41,13 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
+    },
   };
   return { ...base, transactions };
 }
@@ -138,7 +144,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 34,
+      version: 35,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -169,7 +175,13 @@ describe("validateUserData — accounts metadata", () => {
       transferCollapseDismissals: [],
       matchRules: [],
       seriesMatchRules: [],
-      settings: { ...DEFAULT_SETTINGS },
+      settings: {
+        ...DEFAULT_PERSISTED_SETTINGS,
+        device: {
+          mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+          desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+        },
+      },
     };
     const result = validateUserData(data);
     expect(result.ok).toBe(true);
@@ -184,7 +196,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 34,
+      version: 35,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -201,7 +213,13 @@ describe("validateUserData — accounts metadata", () => {
       transferCollapseDismissals: [],
       matchRules: [],
       seriesMatchRules: [],
-      settings: { ...DEFAULT_SETTINGS },
+      settings: {
+        ...DEFAULT_PERSISTED_SETTINGS,
+        device: {
+          mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+          desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+        },
+      },
     };
     const result = validateUserData(data);
     expect(result.ok).toBe(true);
@@ -213,7 +231,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose typeId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 34,
+      version: 35,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
@@ -235,7 +253,13 @@ describe("validateUserData — accounts metadata", () => {
       transferCollapseDismissals: ["pair1|pair2"],
       matchRules: [],
       seriesMatchRules: [],
-      settings: { ...DEFAULT_SETTINGS },
+      settings: {
+        ...DEFAULT_PERSISTED_SETTINGS,
+        device: {
+          mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+          desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+        },
+      },
     };
     const result = validateUserData(data);
     expect(result.ok).toBe(true);

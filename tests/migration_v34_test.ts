@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { migrate } from "../src/data/migrations";
+import { LATEST_VERSION, migrate } from "../src/data/migrations";
 
-describe("migration v33 → v34", () => {
-  it("seeds the headerAction default", () => {
+// The v33 → v34 step is the one that introduced `headerAction`. After
+// v35 the field lives inside the device buckets — the v33 fixture
+// here still validates the original migration's intent by running
+// the chain to its current end (LATEST_VERSION) and asserting
+// `headerAction` arrived in both device scopes with the default
+// shape.
+describe("migration v33 → latest (headerAction)", () => {
+  it("seeds the headerAction default into both device buckets", () => {
     const v33 = {
       version: 33,
       settings: {
@@ -15,13 +21,19 @@ describe("migration v33 → v34", () => {
     expect(result.migrated).toBe(true);
     const data = result.data as {
       version: number;
-      settings: { headerAction: unknown };
+      settings: {
+        device: {
+          mobile: { headerAction: unknown };
+          desktop: { headerAction: unknown };
+        };
+      };
     };
-    expect(data.version).toBe(34);
-    expect(data.settings.headerAction).toEqual({ kind: "top" });
+    expect(data.version).toBe(LATEST_VERSION);
+    expect(data.settings.device.mobile.headerAction).toEqual({ kind: "top" });
+    expect(data.settings.device.desktop.headerAction).toEqual({ kind: "top" });
   });
 
-  it("preserves existing settings fields", () => {
+  it("preserves existing common-scope settings fields", () => {
     const v33 = {
       version: 33,
       settings: {

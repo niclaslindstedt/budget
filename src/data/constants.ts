@@ -1,14 +1,18 @@
 import { IS_PREVIEW } from "../utils/build-env";
 import type {
+  AccountsDownloadPrefs,
   BorderWidthPreset,
+  BudgetDownloadPrefs,
   Category,
   CategoryIcon,
   CustomTheme,
   CustomThemeColors,
   DateFormat,
   DensityPreset,
+  DeviceSettings,
   EntryType,
   FontFamilyId,
+  PersistedSettings,
   RadiusPreset,
   Settings,
   SheetGlyph,
@@ -554,6 +558,30 @@ export const COLOR_GROUPS: readonly {
   { id: "status", keys: ["danger", "success", "positive", "negative"] },
 ];
 
+// Default download-modal preferences. Lifted from the legacy
+// `src/storage/download-preferences.ts` (deleted in v35) so the
+// migration and the validator can seed them without re-importing
+// from a place they no longer live.
+export const DEFAULT_DOWNLOAD_BUDGET: BudgetDownloadPrefs = {
+  format: "csv",
+  includeHistory: true,
+};
+
+export const DEFAULT_DOWNLOAD_ACCOUNTS: AccountsDownloadPrefs = {
+  accountInfo: {},
+  accountTransactions: {},
+  accountSelected: {},
+  includeTransactions: true,
+  includeUnconfirmed: false,
+  includeFutureEntries: false,
+};
+
+// Effective-shape baseline used by tests, the SettingsModal "Reset to
+// defaults" handler, and the validator's soft-recovery fallbacks. The
+// shape is flat so existing reads (`DEFAULT_SETTINGS.fontScale`,
+// `DEFAULT_SETTINGS.currency`) keep working — `DEFAULT_PERSISTED_SETTINGS`
+// below splits this into the common + device buckets the runtime stores.
+//
 // Defaults are Sweden-leaning: salary on the 25th drives the fiscal
 // month, "kr" is SEK, and the number format is the Swedish convention
 // (space as thousands separator, comma as decimal).
@@ -589,7 +617,79 @@ export const DEFAULT_SETTINGS: Settings = {
   achievements: {},
   unseenAchievements: [],
   headerAction: { kind: "top" },
+  downloadBudget: DEFAULT_DOWNLOAD_BUDGET,
+  downloadAccounts: DEFAULT_DOWNLOAD_ACCOUNTS,
+  cloudReauthAutoOpen: true,
 };
+
+// Default values for the device-scoped slice of settings. Today mobile
+// and desktop share the same defaults so a fresh install on either
+// viewport behaves like pre-v35; the structure is here so future
+// per-viewport defaults (e.g. mobile-friendly `headerAction`) can land
+// without another migration.
+export const DEFAULT_DEVICE_SETTINGS_MOBILE: DeviceSettings = {
+  formatNumbers: DEFAULT_SETTINGS.formatNumbers,
+  showCurrency: DEFAULT_SETTINGS.showCurrency,
+  showDecimals: DEFAULT_SETTINGS.showDecimals,
+  abbreviateNumbers: DEFAULT_SETTINGS.abbreviateNumbers,
+  alwaysAbbreviateBalance: DEFAULT_SETTINGS.alwaysAbbreviateBalance,
+  fontScale: DEFAULT_SETTINGS.fontScale,
+  headerAction: DEFAULT_SETTINGS.headerAction,
+  downloadBudget: { ...DEFAULT_DOWNLOAD_BUDGET },
+  downloadAccounts: cloneAccountsDownloadPrefs(DEFAULT_DOWNLOAD_ACCOUNTS),
+};
+
+export const DEFAULT_DEVICE_SETTINGS_DESKTOP: DeviceSettings = {
+  formatNumbers: DEFAULT_SETTINGS.formatNumbers,
+  showCurrency: DEFAULT_SETTINGS.showCurrency,
+  showDecimals: DEFAULT_SETTINGS.showDecimals,
+  abbreviateNumbers: DEFAULT_SETTINGS.abbreviateNumbers,
+  alwaysAbbreviateBalance: DEFAULT_SETTINGS.alwaysAbbreviateBalance,
+  fontScale: DEFAULT_SETTINGS.fontScale,
+  headerAction: DEFAULT_SETTINGS.headerAction,
+  downloadBudget: { ...DEFAULT_DOWNLOAD_BUDGET },
+  downloadAccounts: cloneAccountsDownloadPrefs(DEFAULT_DOWNLOAD_ACCOUNTS),
+};
+
+// Persisted-shape baseline. The runtime stores this; reads go through
+// `useEffectiveSettings()` which resolves the active scope.
+export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
+  startOfMonth: DEFAULT_SETTINGS.startOfMonth,
+  dateFormat: DEFAULT_SETTINGS.dateFormat,
+  shortDateFormat: DEFAULT_SETTINGS.shortDateFormat,
+  currency: DEFAULT_SETTINGS.currency,
+  currencyPosition: DEFAULT_SETTINGS.currencyPosition,
+  currencySpace: DEFAULT_SETTINGS.currencySpace,
+  decimalSeparator: DEFAULT_SETTINGS.decimalSeparator,
+  thousandsSeparator: DEFAULT_SETTINGS.thousandsSeparator,
+  sessionTimeoutMinutes: DEFAULT_SETTINGS.sessionTimeoutMinutes,
+  lastSeenChangelogVersion: DEFAULT_SETTINGS.lastSeenChangelogVersion,
+  language: DEFAULT_SETTINGS.language,
+  hideTransfers: DEFAULT_SETTINGS.hideTransfers,
+  theme: DEFAULT_SETTINGS.theme,
+  fontFamily: DEFAULT_SETTINGS.fontFamily,
+  customTheme: DEFAULT_SETTINGS.customTheme,
+  achievements: DEFAULT_SETTINGS.achievements,
+  unseenAchievements: DEFAULT_SETTINGS.unseenAchievements,
+  cloudReauthAutoOpen: DEFAULT_SETTINGS.cloudReauthAutoOpen,
+  device: {
+    mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
+    desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,
+  },
+};
+
+function cloneAccountsDownloadPrefs(
+  p: AccountsDownloadPrefs,
+): AccountsDownloadPrefs {
+  return {
+    accountInfo: { ...p.accountInfo },
+    accountTransactions: { ...p.accountTransactions },
+    accountSelected: { ...p.accountSelected },
+    includeTransactions: p.includeTransactions,
+    includeUnconfirmed: p.includeUnconfirmed,
+    includeFutureEntries: p.includeFutureEntries,
+  };
+}
 
 // Allowed UI languages, in the order the picker shows them. Used by
 // the validator, the schema, and the LanguagePicker so all three

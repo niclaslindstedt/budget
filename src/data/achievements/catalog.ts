@@ -161,6 +161,25 @@ const hasMultipartItem = (s: UserData) =>
     return corrections > 0;
   });
 
+// Did the named device bucket's headerAction transition away from the
+// default in this `(prev, next)` step? Used by the `shortcut`
+// achievement to fire as soon as the user picks a non-`top` action on
+// either mobile or desktop. Returns `false` for no-op changes (same
+// shape, same target) and for transitions *back* to the default —
+// the unlock is "ah, I can change the wordmark click target", not
+// "I keep flipping it".
+function headerActionMovedAwayFromDefault(
+  prev: UserData,
+  next: UserData,
+  scope: "mobile" | "desktop",
+): boolean {
+  const p = prev.settings.device[scope].headerAction;
+  const n = next.settings.device[scope].headerAction;
+  if (p.kind !== n.kind) return n.kind !== "top";
+  if (p.kind === "sheet" && n.kind === "sheet") return p.sheetId !== n.sheetId;
+  return false;
+}
+
 // Display strings (name / condition / optional learnMore) live in
 // `src/i18n/locales/{en,sv}.ts` under `achievements.catalog.<id>.*`.
 // Each entry below references the keys by `id` — the renderer
@@ -278,14 +297,15 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: MousePointerClick,
     trigger: {
       kind: "derived",
-      predicate: (prev, next) => {
-        const p = prev.settings.headerAction;
-        const n = next.settings.headerAction;
-        if (p.kind !== n.kind) return n.kind !== "top";
-        if (p.kind === "sheet" && n.kind === "sheet")
-          return p.sheetId !== n.sheetId;
-        return false;
-      },
+      // `headerAction` is device-scoped in v35 — the user might pick a
+      // different shortcut on mobile than on desktop. Either side
+      // diverging from the default fires the achievement; checking
+      // both buckets means a viewport flip never accidentally
+      // re-fires the trigger (the reducer only mutates one bucket
+      // per save, so non-edit churn shows up as equality on both).
+      predicate: (prev, next) =>
+        headerActionMovedAwayFromDefault(prev, next, "mobile") ||
+        headerActionMovedAwayFromDefault(prev, next, "desktop"),
     },
   },
 
@@ -444,7 +464,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
         prev.settings.thousandsSeparator !== next.settings.thousandsSeparator ||
         prev.settings.currency !== next.settings.currency ||
         prev.settings.currencyPosition !== next.settings.currencyPosition ||
-        prev.settings.abbreviateNumbers !== next.settings.abbreviateNumbers,
+        // `abbreviateNumbers` is device-scoped in v35; either bucket
+        // toggling counts as the user fiddling with number display.
+        prev.settings.device.mobile.abbreviateNumbers !==
+          next.settings.device.mobile.abbreviateNumbers ||
+        prev.settings.device.desktop.abbreviateNumbers !==
+          next.settings.device.desktop.abbreviateNumbers,
     },
   },
   {

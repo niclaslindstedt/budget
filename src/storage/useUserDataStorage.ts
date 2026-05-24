@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import type { MigrationContext } from "../data/migrations";
 import type { UserData } from "../data/types";
 import { createLogger } from "../utils/logger";
 import {
@@ -100,6 +101,13 @@ export type UserDataStorageOptions = {
   // `saveNow` deliberately bypasses this — a user clicking the save
   // button is asking for the in-memory state as-is.
   beforeSerialize?: (data: UserData) => UserData;
+  // Active user id. Forwarded into the migration chain so the v34 →
+  // v35 step can absorb that user's per-user device-local
+  // localStorage values (`budget.download.budget.<userId>`,
+  // `budget.download.accounts.<userId>`). Optional so test callers
+  // can omit it; the migration treats absent userId as "no
+  // per-user localStorage to read".
+  userId?: string;
 };
 
 // Metadata view of one history entry surfaced to the UI. The full
@@ -228,8 +236,13 @@ function initialHistoryState(seed: UserData): HistoryState {
 export function useUserDataStorage<Action extends { type: string }>(
   adapter: StorageAdapter,
   reducer: Reducer<UserData, Action>,
-  { beforeSerialize }: UserDataStorageOptions = {},
+  { beforeSerialize, userId }: UserDataStorageOptions = {},
 ): UserDataStorage<Action> {
+  // Stable migration context for every `readUserDataFromText` /
+  // `tryReadUserDataFromText` call this hook makes. Pinned to the
+  // active userId so the v34 → v35 step can find the right
+  // per-user localStorage keys to absorb.
+  const migrationCtx: MigrationContext = useMemo(() => ({ userId }), [userId]);
   // Synchronous fast path: if the adapter can hand back data before
   // the first paint (localStorage can; cloud cannot), seed the
   // reducer with the real state right away. Otherwise we start
@@ -237,7 +250,7 @@ export function useUserDataStorage<Action extends { type: string }>(
   const initial = useState<{ data: UserData; status: SaveStatus }>(() => {
     const snap = adapter.loadSync?.() ?? null;
     if (snap) {
-      const parsed = tryReadUserDataFromText(snap.text);
+      const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
       if (parsed.status === "parse-failed") {
         return {
           data: parsed.data,
@@ -496,11 +509,13 @@ export function useUserDataStorage<Action extends { type: string }>(
               err.remote.revision ?? "<none>"
             } hasLocal=${Boolean(err.local)} stale=${isStale()}`,
           );
-          const remote = readUserDataFromText(err.remote.text);
+          const remote = readUserDataFromText(err.remote.text, migrationCtx);
           // The cloud-mirror wrapper attaches `local`; bare cloud
           // adapters don't, in which case the in-memory `data` is
           // the freshest local view we have.
-          const local = err.local ? readUserDataFromText(err.local.text) : data;
+          const local = err.local
+            ? readUserDataFromText(err.local.text, migrationCtx)
+            : data;
           lastSnapshot.current = err.remote;
           setStatus({ kind: "conflict", local, remote });
           return;
@@ -521,7 +536,7 @@ export function useUserDataStorage<Action extends { type: string }>(
         });
       }
     },
-    [adapter, data],
+    [adapter, data, migrationCtx],
   );
 
   // Async load. Skipped when `loadSync` already handed us data.
@@ -546,7 +561,7 @@ export function useUserDataStorage<Action extends { type: string }>(
         skipNextSave.current = true;
         hasLoadedRef.current = true;
         const parsed = snap
-          ? tryReadUserDataFromText(snap.text)
+          ? tryReadUserDataFromText(snap.text, migrationCtx)
           : ({ data: freshUserData(), status: "fresh" } as const);
         setData(parsed.data);
         resetHistory(parsed.data);
@@ -584,7 +599,7 @@ export function useUserDataStorage<Action extends { type: string }>(
         skipNextSave.current = true;
         hasLoadedRef.current = true;
         const parsed = snap
-          ? tryReadUserDataFromText(snap.text)
+          ? tryReadUserDataFromText(snap.text, migrationCtx)
           : ({ data: freshUserData(), status: "fresh" } as const);
         setData(parsed.data);
         resetHistory(parsed.data);
@@ -613,10 +628,10 @@ export function useUserDataStorage<Action extends { type: string }>(
               err.remote.revision ?? "<none>"
             } hasLocal=${Boolean(err.local)}`,
           );
-          const remote = readUserDataFromText(err.remote.text);
+          const remote = readUserDataFromText(err.remote.text, migrationCtx);
           const localText = err.local?.text;
           const local = localText
-            ? readUserDataFromText(localText)
+            ? readUserDataFromText(localText, migrationCtx)
             : freshUserData();
           lastSnapshot.current = err.remote;
           // Seed in-memory state with the local copy so the user
@@ -646,7 +661,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       cancelled = true;
       log.info(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
     };
-  }, [adapter, resetHistory]);
+  }, [adapter, resetHistory, migrationCtx]);
 
   // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
@@ -778,7 +793,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     );
     const snap = lastSnapshot.current;
     if (snap) {
-      const parsed = tryReadUserDataFromText(snap.text);
+      const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
       skipNextSave.current = true;
       setData(parsed.data);
       resetHistory(parsed.data);
@@ -791,7 +806,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     } else {
       setStatus({ kind: "idle" });
     }
-  }, [adapter.id, resetHistory, status]);
+  }, [adapter.id, resetHistory, status, migrationCtx]);
 
   const resolveKeepRemote = useCallback(() => {
     if (status.kind !== "conflict") return;
@@ -875,7 +890,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       skipNextSave.current = true;
       hasLoadedRef.current = true;
       const parsed = snap
-        ? tryReadUserDataFromText(snap.text)
+        ? tryReadUserDataFromText(snap.text, migrationCtx)
         : ({ data: freshUserData(), status: "fresh" } as const);
       setData(parsed.data);
       resetHistory(parsed.data);
@@ -895,8 +910,10 @@ export function useUserDataStorage<Action extends { type: string }>(
             err.remote.revision ?? "<none>"
           } hasLocal=${Boolean(err.local)}`,
         );
-        const remote = readUserDataFromText(err.remote.text);
-        const local = err.local ? readUserDataFromText(err.local.text) : data;
+        const remote = readUserDataFromText(err.remote.text, migrationCtx);
+        const local = err.local
+          ? readUserDataFromText(err.local.text, migrationCtx)
+          : data;
         lastSnapshot.current = err.remote;
         setStatus({ kind: "conflict", local, remote });
         return;
@@ -912,7 +929,7 @@ export function useUserDataStorage<Action extends { type: string }>(
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [adapter, data, performSave, resetHistory]);
+  }, [adapter, data, performSave, resetHistory, migrationCtx]);
 
   // Remote-change subscription. Cloud adapters call this when
   // another device pushes; local adapters typically don't supply it.
@@ -928,7 +945,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       lastSnapshot.current = snap;
       skipNextSave.current = true;
       hasLoadedRef.current = true;
-      const parsed = tryReadUserDataFromText(snap.text);
+      const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
       setData(parsed.data);
       resetHistory(parsed.data);
       setLastSavedText(snap.text);
@@ -944,7 +961,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       log.info(`watch unsubscribe [${adapter.id}]`);
       unsubscribe();
     };
-  }, [adapter, resetHistory]);
+  }, [adapter, resetHistory, migrationCtx]);
 
   const currentText = useMemo(() => serializeUserData(data), [data]);
   const dirty = lastSavedText !== null && currentText !== lastSavedText;

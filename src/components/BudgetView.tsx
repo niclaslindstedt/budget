@@ -138,23 +138,16 @@ import type { StorageAdapter } from "../storage/adapter";
 import {
   type BackendId,
   type EncryptionMode,
-  getCloudReauthAutoOpen,
-  setCloudReauthAutoOpen,
 } from "../storage/backend-preference";
 import { mergeHistory, type ParsedBankFile } from "../storage/bank-parsers";
 import { useUserDataStorage } from "../storage/useUserDataStorage";
-import {
-  type AccountsDownloadPrefs,
-  type BudgetDownloadPrefs,
-  getAccountsDownloadPrefs,
-  getBudgetDownloadPrefs,
-  setAccountsDownloadPrefs,
-  setBudgetDownloadPrefs,
-} from "../storage/download-preferences";
+import type { AccountsDownloadPrefs, BudgetDownloadPrefs } from "../data/types";
 import { bcp47, type Lang, type MessageKey, useT } from "../i18n";
 import {
   useChangelogAutoOpen,
+  useEffectiveSettings,
   useIdleSignOut,
+  useIsMobile,
   useIsStandalone,
   usePullToRefresh,
   useSheetSwipe,
@@ -329,6 +322,7 @@ export function BudgetView({
     reload,
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
+    userId: user.id,
   });
   // Pull-to-refresh wiring. Listens for a downward drag from the top
   // of the page; on release past the trigger distance, re-runs
@@ -449,16 +443,10 @@ export function BudgetView({
     }
   }, [status.kind]);
   const [reconnectCloudOpen, setReconnectCloudOpen] = useState(false);
-  const [cloudReauthAutoOpen, setCloudReauthAutoOpenState] = useState(() =>
-    getCloudReauthAutoOpen(),
-  );
-  const handleSetCloudReauthAutoOpen = useCallback((on: boolean) => {
-    setCloudReauthAutoOpen(on);
-    setCloudReauthAutoOpenState(on);
-  }, []);
+  const cloudReauthAutoOpen = data.settings.cloudReauthAutoOpen;
   // Auto-open the dedicated reconnect modal the moment a cloud
   // auth-error surfaces, so the user can reconnect without hunting
-  // for the status pill. The `cloudReauthAutoOpen` device preference
+  // for the status pill. The `cloudReauthAutoOpen` synced preference
   // flips this off for users who'd rather notice on their own.
   // Anchored on `status.kind` so it fires exactly once per error
   // transition — re-opens on every new auth-error, not on every
@@ -788,10 +776,17 @@ export function BudgetView({
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndo, handleRedo, canUndo, canRedo]);
 
-  // The SettingsModal's draft, when it's open, overrides the persisted
+  // Resolve the bucketed `PersistedSettings` into the flat shape every
+  // downstream component already consumes. The hook subscribes to the
+  // viewport breakpoint so resizing a desktop browser narrow flips
+  // `fontScale`, `showCurrency`, `abbreviateNumbers`, etc. to the
+  // mobile bucket's values immediately.
+  const isMobile = useIsMobile();
+  const effectiveSettings = useEffectiveSettings(data.settings);
+  // The SettingsModal's draft, when it's open, overrides the effective
   // settings for any Appearance projection so the user can see their
   // pick applied before saving. `null` whenever the modal is closed.
-  const appearanceSettings = previewSettings ?? data.settings;
+  const appearanceSettings = previewSettings ?? effectiveSettings;
 
   // Project the user's "Text size" preference onto the document root so
   // the body's `font-size: calc(... * var(--app-font-scale))` rule (and
@@ -1062,8 +1057,8 @@ export function BudgetView({
           : 0;
       const sign = amount >= 0 ? "+" : "−";
       const deltaText = `${sign}${withCurrency(
-        formatNumber(Math.abs(amount), data.settings),
-        data.settings,
+        formatNumber(Math.abs(amount), effectiveSettings),
+        effectiveSettings,
       )}`;
       setCorrectionDeletePrompt({
         sheetId,
@@ -1072,7 +1067,7 @@ export function BudgetView({
         deltaText,
       });
     },
-    [activeItem, sheetId, data.settings],
+    [activeItem, sheetId, effectiveSettings],
   );
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
@@ -1133,14 +1128,17 @@ export function BudgetView({
     [dispatch],
   );
   const onSaveSettings = useCallback(
-    (settings: Settings) => dispatch({ type: "updateSettings", settings }),
-    [dispatch],
+    (draft: Settings) =>
+      dispatch({
+        type: "updateSettings",
+        draft,
+        scope: isMobile ? "mobile" : "desktop",
+      }),
+    [dispatch, isMobile],
   );
-
   const lastSeenChangelogVersion = data.settings.lastSeenChangelogVersion;
   const { isOpen: changelogAutoOpen, onClose: onCloseChangelogAuto } =
     useChangelogAutoOpen({
-      settings: data.settings,
       lastSeenChangelogVersion,
       dispatch,
     });
@@ -1233,7 +1231,7 @@ export function BudgetView({
     return () => el.removeEventListener("transitionend", onEnd);
   }, [data.activeSheetId]);
   const onClickHeaderTitle = useCallback(() => {
-    const action = data.settings.headerAction;
+    const action = effectiveSettings.headerAction;
     const reduceMotion =
       document.documentElement.dataset.reduceMotion === "true";
     const scrollBehavior: ScrollBehavior = reduceMotion ? "auto" : "smooth";
@@ -1248,7 +1246,7 @@ export function BudgetView({
       // the active sheet has no month layout (accounts page) or the
       // current month is collapsed under "Show more" — falls through
       // to the same scroll-to-top behaviour as the default action.
-      const key = getMonthKey(todayIso(), data.settings.startOfMonth);
+      const key = getMonthKey(todayIso(), effectiveSettings.startOfMonth);
       const target = document.querySelector<HTMLElement>(
         `[data-month-key="${CSS.escape(key)}"]`,
       );
@@ -1269,8 +1267,8 @@ export function BudgetView({
     }
     window.scrollTo({ top: 0, behavior: scrollBehavior });
   }, [
-    data.settings.headerAction,
-    data.settings.startOfMonth,
+    effectiveSettings.headerAction,
+    effectiveSettings.startOfMonth,
     data.sheets,
     data.activeSheetId,
     dispatch,
@@ -1291,11 +1289,15 @@ export function BudgetView({
       if (!target) return;
       setDownloadPrompt({
         sheetId: id,
-        budgetPrefs: getBudgetDownloadPrefs(user.id),
-        accountsPrefs: getAccountsDownloadPrefs(user.id),
+        budgetPrefs: effectiveSettings.downloadBudget,
+        accountsPrefs: effectiveSettings.downloadAccounts,
       });
     },
-    [data.sheets, user.id],
+    [
+      data.sheets,
+      effectiveSettings.downloadBudget,
+      effectiveSettings.downloadAccounts,
+    ],
   );
   const onCloseDownload = useCallback(() => setDownloadPrompt(null), []);
   const onConfirmDownload = useCallback(
@@ -1384,15 +1386,21 @@ export function BudgetView({
                   { kind: "currency" },
                   { kind: "currency", alwaysTwoDecimals: true },
                 ],
-                formats: budgetExportFormats(data.settings),
+                formats: budgetExportFormats(effectiveSettings),
                 asTable: true,
               },
             ]);
             triggerDownload(bytes, `${baseSlug}-${stamp}.xlsx`, XLSX_MIME_TYPE);
           }
-          setBudgetDownloadPrefs(user.id, {
-            format: config.format,
-            includeHistory: config.includeHistory,
+          dispatch({
+            type: "updateDeviceSettings",
+            scope: isMobile ? "mobile" : "desktop",
+            patch: {
+              downloadBudget: {
+                format: config.format,
+                includeHistory: config.includeHistory,
+              },
+            },
           });
         }
       } else {
@@ -1421,13 +1429,19 @@ export function BudgetView({
         }
         const text = serializeAccountsExport(payload);
         triggerDownload(text, `accounts-${stamp}.json`, JSON_MIME_TYPE);
-        setAccountsDownloadPrefs(user.id, {
-          accountInfo: config.accountInfo,
-          accountTransactions: config.accountTransactions,
-          accountSelected,
-          includeTransactions: config.includeTransactions,
-          includeUnconfirmed: config.includeUnconfirmed,
-          includeFutureEntries: config.includeFutureEntries,
+        dispatch({
+          type: "updateDeviceSettings",
+          scope: isMobile ? "mobile" : "desktop",
+          patch: {
+            downloadAccounts: {
+              accountInfo: config.accountInfo,
+              accountTransactions: config.accountTransactions,
+              accountSelected,
+              includeTransactions: config.includeTransactions,
+              includeUnconfirmed: config.includeUnconfirmed,
+              includeFutureEntries: config.includeFutureEntries,
+            },
+          },
         });
       }
       setDownloadPrompt(null);
@@ -1441,10 +1455,12 @@ export function BudgetView({
       data.merchantHints,
       data.matchRules,
       data.settings,
+      effectiveSettings,
+      dispatch,
+      isMobile,
       language,
       allTypesMerged,
       allCategoriesMerged,
-      user.id,
       t,
     ],
   );
@@ -2781,7 +2797,7 @@ export function BudgetView({
             type="button"
             onClick={onClickHeaderTitle}
             title={headerActionDescription(
-              data.settings.headerAction,
+              effectiveSettings.headerAction,
               data.sheets,
               t,
             )}
@@ -2859,7 +2875,7 @@ export function BudgetView({
               <AccountsSheetView
                 sheet={activeSheet}
                 data={data}
-                settings={data.settings}
+                settings={effectiveSettings}
                 onCreateAccount={onOpenCreateAccount}
                 onEditAccount={onOpenEditAccount}
                 onDeleteAccount={onRequestDeleteAccount}
@@ -2883,7 +2899,7 @@ export function BudgetView({
                   dismissedKeys={data.recurringDismissals}
                   merchantHints={data.merchantHints}
                   types={allTypesMerged}
-                  settings={data.settings}
+                  settings={effectiveSettings}
                   onPromote={onPromoteRecurringCandidate}
                   onDismiss={onDismissRecurringCandidate}
                   onDismissAll={onDismissAllRecurringCandidates}
@@ -2912,7 +2928,7 @@ export function BudgetView({
                         )?.openingBalance ?? 0)
                       : 0
                   }
-                  settings={data.settings}
+                  settings={effectiveSettings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}
                   scrollToRowRequest={scrollToRowRequest}
@@ -3041,7 +3057,7 @@ export function BudgetView({
         open={updateBalanceAccount !== null}
         account={updateBalanceAccount}
         currentBalance={updateBalanceCurrent}
-        settings={data.settings}
+        settings={effectiveSettings}
         date={updateBalanceDate}
         canRecord={updateBalanceHasBudget}
         onConfirm={onConfirmUpdateBalance}
@@ -3055,7 +3071,7 @@ export function BudgetView({
             ? (data.history[importHistoryAccount.id] ?? [])
             : []
         }
-        settings={data.settings}
+        settings={effectiveSettings}
         onCancel={() => setImportHistoryForId(null)}
         onConfirm={onConfirmImportHistory}
       />
@@ -3069,7 +3085,7 @@ export function BudgetView({
         candidates={reconciliation?.candidates ?? []}
         orphans={reconciliation?.orphans ?? []}
         paydayDay={reconciliation?.paydayDay ?? data.settings.startOfMonth}
-        settings={data.settings}
+        settings={effectiveSettings}
       />
       <CutAccountHistoryModal
         open={cutHistoryAccount !== null}
@@ -3090,7 +3106,7 @@ export function BudgetView({
         types={allTypesMerged}
         merchantHints={data.merchantHints}
         matchRules={data.matchRules}
-        settings={data.settings}
+        settings={effectiveSettings}
         onCancel={() => setViewHistoryForId(null)}
       />
       <TransferCollapseModal
@@ -3098,7 +3114,7 @@ export function BudgetView({
         history={data.history}
         accounts={data.accounts}
         dismissedPairKeys={data.transferCollapseDismissals}
-        settings={data.settings}
+        settings={effectiveSettings}
         onClose={() => setTransferModalOpen(false)}
         onCollapse={onCollapseTransferPair}
         onDismiss={onDismissTransferPair}
@@ -3109,7 +3125,7 @@ export function BudgetView({
         accounts={data.accounts}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         onClose={() => setTransactionRequest(null)}
         onPromote={onPromoteTransaction}
         onCreate={onCreateTransaction}
@@ -3124,7 +3140,7 @@ export function BudgetView({
         initialDate={complexSeedDate}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         sheets={data.sheets}
         currentSheetId={activeSheet.id}
         seed={complexSeed}
@@ -3149,7 +3165,7 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         lastSeriesDate={editLastSeriesDate}
         historyHintPrefill={editHistoryHintPrefill}
         historyMatches={editHistoryMatches ?? undefined}
@@ -3166,7 +3182,7 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         lastSeriesDate={editRowLastSeriesDate}
         onClose={() => setEditRowPrompt(null)}
         onSave={onSaveEditRow}
@@ -3179,7 +3195,7 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         initialSplits={splitInitialSplits}
         authoritativeAmount={splitAuthoritativeAmount}
         authoritativeDescription={splitAuthoritativeDescription}
@@ -3196,7 +3212,7 @@ export function BudgetView({
         existing={null}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
         onCreateType={onCreateType}
@@ -3207,7 +3223,7 @@ export function BudgetView({
         entry={historyEditEntry}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         onClose={() => setHistoryEditPrompt(null)}
         onSubmit={onSubmitHistoryEdit}
         onCreateType={onCreateType}
@@ -3227,7 +3243,7 @@ export function BudgetView({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
-        settings={data.settings}
+        settings={effectiveSettings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}
         onApplyRecurring={onApplyBulkRecurring}
@@ -3365,7 +3381,7 @@ export function BudgetView({
       <SettingsModal
         open={settingsOpen}
         initialTab={settingsInitialTab}
-        settings={data.settings}
+        settings={effectiveSettings}
         backend={backend}
         dropboxConnected={dropboxConnected}
         gdriveConnected={gdriveConnected}
@@ -3399,8 +3415,6 @@ export function BudgetView({
         onSelectBrowser={onSelectBrowser}
         onSetEncryption={onSetEncryption}
         onSetCloudOfflineMode={onSetCloudOfflineMode}
-        cloudReauthAutoOpen={cloudReauthAutoOpen}
-        onSetCloudReauthAutoOpen={handleSetCloudReauthAutoOpen}
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
@@ -3437,7 +3451,7 @@ export function BudgetView({
         query={searchQuery}
         onQueryChange={setSearchQuery}
         index={searchIndex}
-        settings={data.settings}
+        settings={effectiveSettings}
         onPick={(entry) => {
           if (entry.sheetId !== data.activeSheetId) {
             dispatch({ type: "selectSheet", sheetId: entry.sheetId });

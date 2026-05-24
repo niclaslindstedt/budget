@@ -5,12 +5,12 @@ import { unlock } from "../data/achievements";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
-import type { Account } from "../data/types";
 import type {
+  Account,
   AccountsDownloadPrefs,
   BudgetDownloadFormat,
   BudgetDownloadPrefs,
-} from "../storage/download-preferences";
+} from "../data/types";
 import { Button } from "./form";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";

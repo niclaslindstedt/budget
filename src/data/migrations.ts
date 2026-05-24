@@ -6,24 +6,43 @@
 // `LATEST_VERSION`, update the `UserData.version` literal in `data/types.ts`,
 // and add the next step here.
 
+import { nsKey } from "./constants";
 import {
   createSeedEntryTypes,
   DEFAULT_CATEGORY_ID,
+  DEFAULT_DEVICE_SETTINGS_DESKTOP,
+  DEFAULT_DEVICE_SETTINGS_MOBILE,
+  DEFAULT_DOWNLOAD_ACCOUNTS,
+  DEFAULT_DOWNLOAD_BUDGET,
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
   PRESET_ENTRY_TYPES,
 } from "./constants";
 import { newId } from "./sheet";
+import { DEVICE_SCOPED_KEYS } from "./settings";
+import { clearRawStorage, readRawStorage } from "../storage/local-adapter";
 
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 34 as const;
+export const LATEST_VERSION = 35 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
-const migrations: Record<number, (b: Versioned) => Versioned> = {
+// Per-call context for `migrate()`. Currently only carries the active
+// `userId` so the v34 → v35 step can absorb the per-user download
+// preferences from device-local localStorage; future migrations can
+// extend this. Defaulting to `{}` keeps existing callers (including
+// every test) source-compatible.
+export type MigrationContext = {
+  userId?: string;
+};
+
+const migrations: Record<
+  number,
+  (b: Versioned, ctx: MigrationContext) => Versioned
+> = {
   // v1 → v2: introduce categories at the budget level and ensure every
   // sheet has a `category` column, inserted just after the description
   // column so existing rows can be tagged without re-arranging.
@@ -536,7 +555,223 @@ const migrations: Record<number, (b: Versioned) => Versioned> = {
       },
     };
   },
+
+  // v34 → v35: split `Settings` into common + device scopes. Seven
+  // existing fields (`formatNumbers`, `showCurrency`, `showDecimals`,
+  // `abbreviateNumbers`, `alwaysAbbreviateBalance`, `fontScale`,
+  // `headerAction`) move from the flat top level into a new
+  // `settings.device.{mobile,desktop}` shape so each viewport can
+  // hold its own value. Both buckets are seeded with the user's
+  // pre-migration value so the device they upgrade from looks
+  // identical; either side diverges as the user edits.
+  //
+  // Three additional surfaces also move out of device-local
+  // localStorage into the synced bucket on the same migration:
+  // `cloudReauthAutoOpen` becomes a common-scope `Settings` field;
+  // `downloadBudget` / `downloadAccounts` become device-scoped
+  // (desktop tends to prefer XLSX, mobile tends to prefer CSV).
+  // The absorb only fires when a `userId` is supplied via
+  // `MigrationContext` — that's the production load path. The import
+  // path (`parseUserData` on a file the user picked) has no
+  // matching localStorage on the importing device, so it seeds the
+  // new fields with defaults instead.
+  34: (v34, ctx) => {
+    const settings = isObj(v34.settings) ? v34.settings : {};
+
+    // Lift the device-scoped fields out of the flat settings shape.
+    // Each falls back to the canonical default when the source is
+    // missing or malformed; the validator on the next load applies
+    // its own bounds, so we don't reproduce them here.
+    const deviceCarry = {
+      formatNumbers: extractBool(
+        settings.formatNumbers,
+        DEFAULT_SETTINGS.formatNumbers,
+      ),
+      showCurrency: extractBool(
+        settings.showCurrency,
+        DEFAULT_SETTINGS.showCurrency,
+      ),
+      showDecimals: extractBool(
+        settings.showDecimals,
+        DEFAULT_SETTINGS.showDecimals,
+      ),
+      abbreviateNumbers: extractBool(
+        settings.abbreviateNumbers,
+        DEFAULT_SETTINGS.abbreviateNumbers,
+      ),
+      alwaysAbbreviateBalance: extractBool(
+        settings.alwaysAbbreviateBalance,
+        DEFAULT_SETTINGS.alwaysAbbreviateBalance,
+      ),
+      fontScale:
+        typeof settings.fontScale === "number" &&
+        Number.isFinite(settings.fontScale)
+          ? settings.fontScale
+          : DEFAULT_SETTINGS.fontScale,
+      headerAction:
+        isObj(settings.headerAction) && settings.headerAction !== null
+          ? settings.headerAction
+          : DEFAULT_SETTINGS.headerAction,
+    };
+
+    // Pull the absorbing-from-localStorage values, scoped to the
+    // active user when one was supplied. All three writes are best-
+    // effort: if a key is absent, malformed, or unreadable we fall
+    // back to the v35 default rather than failing the migration.
+    const userId = ctx.userId;
+    const reauthFromLocal = readLegacyCloudReauthAutoOpen();
+    const budgetPrefsFromLocal = userId
+      ? readLegacyBudgetDownloadPrefs(userId)
+      : null;
+    const accountsPrefsFromLocal = userId
+      ? readLegacyAccountsDownloadPrefs(userId)
+      : null;
+
+    // Clear the absorbed keys so the next load doesn't see stale
+    // shadows next to the migrated values. Safe to call even when
+    // the key is absent.
+    clearLegacyCloudReauthAutoOpen();
+    if (userId) {
+      clearLegacyBudgetDownloadPrefs(userId);
+      clearLegacyAccountsDownloadPrefs(userId);
+    }
+
+    const deviceBucket = {
+      ...deviceCarry,
+      downloadBudget: budgetPrefsFromLocal ?? { ...DEFAULT_DOWNLOAD_BUDGET },
+      downloadAccounts: accountsPrefsFromLocal ?? {
+        ...DEFAULT_DOWNLOAD_ACCOUNTS,
+        accountInfo: { ...DEFAULT_DOWNLOAD_ACCOUNTS.accountInfo },
+        accountTransactions: {
+          ...DEFAULT_DOWNLOAD_ACCOUNTS.accountTransactions,
+        },
+        accountSelected: { ...DEFAULT_DOWNLOAD_ACCOUNTS.accountSelected },
+      },
+    };
+
+    // Strip the device-scoped keys from the flat settings rest so
+    // they don't sit at the top level twice — the validator on the
+    // next load reads `settings.device.{mobile,desktop}.fontScale`
+    // and ignores any stale flat `settings.fontScale`.
+    const common: Record<string, unknown> = { ...settings };
+    for (const key of DEVICE_SCOPED_KEYS) {
+      delete common[key];
+    }
+
+    return {
+      ...v34,
+      version: 35,
+      settings: {
+        ...common,
+        cloudReauthAutoOpen:
+          reauthFromLocal ?? DEFAULT_SETTINGS.cloudReauthAutoOpen,
+        device: {
+          mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE, ...deviceBucket },
+          desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP, ...deviceBucket },
+        },
+      },
+    };
+  },
 };
+
+function extractBool(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+// Legacy localStorage absorb helpers for the v34 → v35 migration. The
+// matching writers in `src/storage/backend-preference.ts` (cloud
+// reauth) and `src/storage/download-preferences.ts` were deleted on
+// the same change; the keys may still sit on the user's machine until
+// the migration runs once, after which they're cleared.
+const LEGACY_CLOUD_REAUTH_KEY = nsKey("budget.cloud.reauthAutoOpen");
+
+function legacyBudgetDownloadKey(userId: string): string {
+  return nsKey(`budget.download.budget.${userId}`);
+}
+
+function legacyAccountsDownloadKey(userId: string): string {
+  return nsKey(`budget.download.accounts.${userId}`);
+}
+
+function readLegacyCloudReauthAutoOpen(): boolean | null {
+  const raw = readRawStorage(LEGACY_CLOUD_REAUTH_KEY);
+  if (raw === null) return null;
+  return raw !== "off";
+}
+
+function clearLegacyCloudReauthAutoOpen(): void {
+  clearRawStorage(LEGACY_CLOUD_REAUTH_KEY);
+}
+
+function readLegacyBudgetDownloadPrefs(
+  userId: string,
+): { format: "csv" | "xlsx"; includeHistory: boolean } | null {
+  const raw = readRawStorage(legacyBudgetDownloadKey(userId));
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      format: parsed.format === "xlsx" ? "xlsx" : "csv",
+      includeHistory:
+        typeof parsed.includeHistory === "boolean"
+          ? parsed.includeHistory
+          : DEFAULT_DOWNLOAD_BUDGET.includeHistory,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearLegacyBudgetDownloadPrefs(userId: string): void {
+  clearRawStorage(legacyBudgetDownloadKey(userId));
+}
+
+function readLegacyAccountsDownloadPrefs(userId: string): {
+  accountInfo: Record<string, boolean>;
+  accountTransactions: Record<string, boolean>;
+  accountSelected: Record<string, boolean>;
+  includeTransactions: boolean;
+  includeUnconfirmed: boolean;
+  includeFutureEntries: boolean;
+} | null {
+  const raw = readRawStorage(legacyAccountsDownloadKey(userId));
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      accountInfo: toBoolRecord(parsed.accountInfo),
+      accountTransactions: toBoolRecord(parsed.accountTransactions),
+      accountSelected: toBoolRecord(parsed.accountSelected),
+      includeTransactions:
+        typeof parsed.includeTransactions === "boolean"
+          ? parsed.includeTransactions
+          : DEFAULT_DOWNLOAD_ACCOUNTS.includeTransactions,
+      includeUnconfirmed:
+        typeof parsed.includeUnconfirmed === "boolean"
+          ? parsed.includeUnconfirmed
+          : DEFAULT_DOWNLOAD_ACCOUNTS.includeUnconfirmed,
+      includeFutureEntries:
+        typeof parsed.includeFutureEntries === "boolean"
+          ? parsed.includeFutureEntries
+          : DEFAULT_DOWNLOAD_ACCOUNTS.includeFutureEntries,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearLegacyAccountsDownloadPrefs(userId: string): void {
+  clearRawStorage(legacyAccountsDownloadKey(userId));
+}
+
+function toBoolRecord(value: unknown): Record<string, boolean> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof v === "boolean") out[k] = v;
+  }
+  return out;
+}
 
 // Build-time lookup of preset-type-name → preset-category-id, used by
 // the v24 → v25 migration to assign legacy seed types (whose ids were
@@ -845,7 +1080,10 @@ export type MigrationResult = {
   migrated: boolean;
 };
 
-export function migrate(raw: Versioned): MigrationResult {
+export function migrate(
+  raw: Versioned,
+  ctx: MigrationContext = {},
+): MigrationResult {
   if (raw.version > LATEST_VERSION) {
     throw new Error(
       `Data was created by a newer version of the app (v${raw.version}); ` +
@@ -861,7 +1099,7 @@ export function migrate(raw: Versioned): MigrationResult {
         `No migration registered from v${current.version} to v${current.version + 1}.`,
       );
     }
-    current = step(current);
+    current = step(current, ctx);
     migrated = true;
   }
   return { data: current, migrated };

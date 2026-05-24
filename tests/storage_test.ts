@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import {
+  DEFAULT_PERSISTED_SETTINGS,
+  DEFAULT_SETTINGS,
+} from "../src/data/constants";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { AccountBudget, UserData } from "../src/data/types";
@@ -30,7 +33,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 34,
+    version: 35,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -47,7 +50,13 @@ function sampleData(): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_PERSISTED_SETTINGS,
+      device: {
+        mobile: { ...DEFAULT_PERSISTED_SETTINGS.device.mobile },
+        desktop: { ...DEFAULT_PERSISTED_SETTINGS.device.desktop },
+      },
+    },
   };
 }
 
@@ -264,27 +273,46 @@ describe("validateUserData — soft recovery", () => {
     if (r.ok) expect(r.value.categories).toEqual([]);
   });
 
-  it("defaults settings to DEFAULT_SETTINGS when missing", () => {
+  it("defaults settings to DEFAULT_PERSISTED_SETTINGS when missing", () => {
     const b = sampleData();
     const withoutSettings: Record<string, unknown> = { ...b };
     delete withoutSettings.settings;
     const r = validateUserData(withoutSettings);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
+    if (r.ok) expect(r.value.settings).toEqual(DEFAULT_PERSISTED_SETTINGS);
   });
 
   it("snaps individual invalid settings back to their default", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));
+    // Common-scope rubbish at the top level.
     raw.settings.startOfMonth = 99;
     raw.settings.dateFormat = "wat";
     raw.settings.decimalSeparator = "_";
     raw.settings.thousandsSeparator = "X";
     raw.settings.currency = "";
-    raw.settings.formatNumbers = "yes";
+    // Device-scoped rubbish inside each bucket.
+    raw.settings.device.mobile.formatNumbers = "yes";
+    raw.settings.device.desktop.formatNumbers = "yes";
     const r = validateUserData(raw);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.settings).toEqual(DEFAULT_SETTINGS);
+    if (r.ok) {
+      expect(r.value.settings.startOfMonth).toBe(DEFAULT_SETTINGS.startOfMonth);
+      expect(r.value.settings.dateFormat).toBe(DEFAULT_SETTINGS.dateFormat);
+      expect(r.value.settings.decimalSeparator).toBe(
+        DEFAULT_SETTINGS.decimalSeparator,
+      );
+      expect(r.value.settings.thousandsSeparator).toBe(
+        DEFAULT_SETTINGS.thousandsSeparator,
+      );
+      expect(r.value.settings.currency).toBe(DEFAULT_SETTINGS.currency);
+      expect(r.value.settings.device.mobile.formatNumbers).toBe(
+        DEFAULT_SETTINGS.formatNumbers,
+      );
+      expect(r.value.settings.device.desktop.formatNumbers).toBe(
+        DEFAULT_SETTINGS.formatNumbers,
+      );
+    }
   });
 
   it("accepts an in-range sessionTimeoutMinutes and rounds it", () => {
@@ -324,35 +352,80 @@ describe("validateUserData — soft recovery", () => {
       );
   });
 
-  it("accepts an in-range fontScale", () => {
+  it("accepts an in-range fontScale in both device buckets", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));
-    raw.settings.fontScale = 1.25;
+    raw.settings.device.mobile.fontScale = 1.25;
+    raw.settings.device.desktop.fontScale = 0.9;
     const r = validateUserData(raw);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.settings.fontScale).toBe(1.25);
+    if (r.ok) {
+      expect(r.value.settings.device.mobile.fontScale).toBe(1.25);
+      expect(r.value.settings.device.desktop.fontScale).toBe(0.9);
+    }
   });
 
-  it("snaps an out-of-range fontScale back to the default", () => {
+  it("snaps an out-of-range fontScale back to the default per bucket", () => {
     const b = sampleData();
     const raw = JSON.parse(serializeUserData(b));
-    raw.settings.fontScale = 0;
+    raw.settings.device.mobile.fontScale = 0;
+    raw.settings.device.desktop.fontScale = 9;
     let r = validateUserData(raw);
     expect(r.ok).toBe(true);
-    if (r.ok)
-      expect(r.value.settings.fontScale).toBe(DEFAULT_SETTINGS.fontScale);
+    if (r.ok) {
+      expect(r.value.settings.device.mobile.fontScale).toBe(
+        DEFAULT_SETTINGS.fontScale,
+      );
+      expect(r.value.settings.device.desktop.fontScale).toBe(
+        DEFAULT_SETTINGS.fontScale,
+      );
+    }
 
-    raw.settings.fontScale = 9;
+    raw.settings.device.mobile.fontScale = "large";
     r = validateUserData(raw);
     expect(r.ok).toBe(true);
     if (r.ok)
-      expect(r.value.settings.fontScale).toBe(DEFAULT_SETTINGS.fontScale);
+      expect(r.value.settings.device.mobile.fontScale).toBe(
+        DEFAULT_SETTINGS.fontScale,
+      );
+  });
 
-    raw.settings.fontScale = "large";
-    r = validateUserData(raw);
+  it("ignores a stray top-level fontScale on the persisted shape", () => {
+    // v35 dropped fontScale from the flat top level. A hand-edited
+    // file (or a v35-producer that didn't read the spec) putting it
+    // back at the top must NOT be silently picked up — the validator
+    // reads only the device buckets.
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    raw.settings.fontScale = 1.4;
+    raw.settings.device.mobile.fontScale = 1;
+    raw.settings.device.desktop.fontScale = 1;
+    const r = validateUserData(raw);
     expect(r.ok).toBe(true);
-    if (r.ok)
-      expect(r.value.settings.fontScale).toBe(DEFAULT_SETTINGS.fontScale);
+    if (r.ok) {
+      expect(r.value.settings.device.mobile.fontScale).toBe(1);
+      expect(r.value.settings.device.desktop.fontScale).toBe(1);
+      // The stray top-level field is dropped from the validated output.
+      expect(
+        (r.value.settings as unknown as Record<string, unknown>).fontScale,
+      ).toBeUndefined();
+    }
+  });
+
+  it("recovers a malformed device bucket to defaults", () => {
+    const b = sampleData();
+    const raw = JSON.parse(serializeUserData(b));
+    // Mobile bucket entirely missing — desktop carries values.
+    raw.settings.device = { desktop: { fontScale: 1.1 } };
+    const r = validateUserData(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      // Mobile defaults filled in.
+      expect(r.value.settings.device.mobile.fontScale).toBe(
+        DEFAULT_SETTINGS.fontScale,
+      );
+      expect(r.value.settings.device.desktop.fontScale).toBe(1.1);
+    }
   });
 
   it("clears thousands separator when it collides with the decimal", () => {
@@ -490,7 +563,7 @@ describe("migrate", () => {
     const { data, migrated } = migrate(v3);
     expect(migrated).toBe(true);
     expect(data.version).toBe(LATEST_VERSION);
-    expect(data.settings).toEqual(DEFAULT_SETTINGS);
+    expect(data.settings).toEqual(DEFAULT_PERSISTED_SETTINGS);
     const item = (
       data.sheets as Array<{
         items: Array<{ rows: Array<{ id: string }> }>;
@@ -1019,7 +1092,10 @@ describe("migrate", () => {
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
     if (validated.ok) {
-      expect(validated.value.settings.fontScale).toBe(
+      expect(validated.value.settings.device.mobile.fontScale).toBe(
+        DEFAULT_SETTINGS.fontScale,
+      );
+      expect(validated.value.settings.device.desktop.fontScale).toBe(
         DEFAULT_SETTINGS.fontScale,
       );
     }
@@ -1110,9 +1186,12 @@ describe("migrate", () => {
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
     if (validated.ok) {
-      expect(validated.value.settings.alwaysAbbreviateBalance).toBe(
-        DEFAULT_SETTINGS.alwaysAbbreviateBalance,
-      );
+      expect(
+        validated.value.settings.device.mobile.alwaysAbbreviateBalance,
+      ).toBe(DEFAULT_SETTINGS.alwaysAbbreviateBalance);
+      expect(
+        validated.value.settings.device.desktop.alwaysAbbreviateBalance,
+      ).toBe(DEFAULT_SETTINGS.alwaysAbbreviateBalance);
     }
   });
 

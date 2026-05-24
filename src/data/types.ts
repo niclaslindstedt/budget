@@ -564,27 +564,40 @@ export type CustomTheme = {
   reduceMotion: boolean;
 };
 
-export type Settings = {
-  // Day-of-month the fiscal month rolls over on. Defaults to 25 because
-  // the typical Swedish payday is the 25th, so the budget month aligns
-  // with when salary lands. Bounded 1..28 so every calendar month has
-  // the chosen day.
-  startOfMonth: number;
-  dateFormat: DateFormat;
-  shortDateFormat: ShortDateFormat;
-  // Free-form currency token shown next to amounts when `showCurrency`
-  // is on. Defaults to "kr" (SEK). Not validated against a list — users
-  // are free to type "$", "€", "USD", etc.
-  currency: string;
-  // Whether the currency symbol renders before ("$10") or after ("10 kr")
-  // the amount. Independent of `currencySpace` so all four combinations
-  // are reachable.
-  currencyPosition: "before" | "after";
-  // Whether a single space separates the symbol from the amount. Off
-  // renders "$10" / "10kr"; on renders "$ 10" / "10 kr".
-  currencySpace: boolean;
-  decimalSeparator: DecimalSeparator;
-  thousandsSeparator: ThousandsSeparator;
+// Per-device download-modal defaults. Persisted inside the device
+// scope of `Settings` so a desktop user's XLSX habit doesn't follow
+// them onto a phone where CSV is friendlier, while two phones syncing
+// the same account still get the same mobile defaults. The
+// `accountInfo` / `accountTransactions` / `accountSelected` maps are
+// keyed by account id; missing keys default to `true` so a freshly
+// minted account inherits the sensible default.
+export type BudgetDownloadFormat = "csv" | "xlsx";
+
+export type BudgetDownloadPrefs = {
+  format: BudgetDownloadFormat;
+  includeHistory: boolean;
+};
+
+export type AccountsDownloadPrefs = {
+  accountInfo: Record<string, boolean>;
+  accountTransactions: Record<string, boolean>;
+  accountSelected: Record<string, boolean>;
+  includeTransactions: boolean;
+  includeUnconfirmed: boolean;
+  includeFutureEntries: boolean;
+};
+
+// Settings whose value can differ between mobile and desktop. Held in
+// `PersistedSettings.device[scope]`; `useEffectiveSettings` resolves
+// the active scope from the viewport and merges the bucket into the
+// flat `Settings` shape every read site already consumes.
+//
+// New device-scoped fields go here. Anything that helps the user
+// trade screen space for precision (showCurrency, abbreviateNumbers,
+// fontScale, …) belongs in this bucket; anything that's a personal
+// preference about the user, not about the screen (language, theme,
+// startOfMonth, …) lives in `CommonSettings`.
+export type DeviceSettings = {
   // Display toggles. `formatNumbers` controls whether amounts/balances
   // render with thousands grouping; `showCurrency` controls whether the
   // currency token is appended; `showDecimals` controls whether the
@@ -613,6 +626,47 @@ export type Settings = {
   // content scales too) read through that variable so the whole UI
   // scales together. Bounded by `MIN_FONT_SCALE` / `MAX_FONT_SCALE`.
   fontScale: number;
+  // What clicking the "budget" wordmark in the page header does.
+  // Inspired by the iPhone Action Button: the user picks a single
+  // navigation shortcut they want one tap away. Default scrolls to
+  // the top of the page (the web convention for a clickable
+  // wordmark). The `sheet` variant carries the target sheet id; if
+  // that sheet is later deleted the click handler falls back to
+  // scrolling to the top so a dangling reference stays harmless.
+  headerAction: HeaderAction;
+  // Per-device download-modal defaults — desktop users tend to prefer
+  // XLSX with the full export; mobile users tend to prefer CSV / JSON.
+  // Seeded identically in both buckets by the v34 → v35 migration so
+  // upgrading users see no behaviour change until they pick something
+  // different on one of the devices.
+  downloadBudget: BudgetDownloadPrefs;
+  downloadAccounts: AccountsDownloadPrefs;
+};
+
+// Settings that hold a single value applied everywhere — locale,
+// appearance, security, sync-error UX. A change on any device reaches
+// every other device through the normal UserData cloud sync.
+export type CommonSettings = {
+  // Day-of-month the fiscal month rolls over on. Defaults to 25 because
+  // the typical Swedish payday is the 25th, so the budget month aligns
+  // with when salary lands. Bounded 1..28 so every calendar month has
+  // the chosen day.
+  startOfMonth: number;
+  dateFormat: DateFormat;
+  shortDateFormat: ShortDateFormat;
+  // Free-form currency token shown next to amounts when `showCurrency`
+  // is on. Defaults to "kr" (SEK). Not validated against a list — users
+  // are free to type "$", "€", "USD", etc.
+  currency: string;
+  // Whether the currency symbol renders before ("$10") or after ("10 kr")
+  // the amount. Independent of `currencySpace` so all four combinations
+  // are reachable.
+  currencyPosition: "before" | "after";
+  // Whether a single space separates the symbol from the amount. Off
+  // renders "$10" / "10kr"; on renders "$ 10" / "10 kr".
+  currencySpace: boolean;
+  decimalSeparator: DecimalSeparator;
+  thousandsSeparator: ThousandsSeparator;
   // Minutes the decrypted password may sit in the tab's sessionStorage
   // before the user is auto-signed-out. The clock resets on every user
   // input, so this is an idle timeout, not a hard ceiling. Bounded
@@ -671,15 +725,36 @@ export type Settings = {
   // `clearUnseenAchievements`. The HeaderStar shows a filled yellow
   // star whenever this array is non-empty; clicking opens the modal.
   unseenAchievements: string[];
-  // What clicking the "budget" wordmark in the page header does.
-  // Inspired by the iPhone Action Button: the user picks a single
-  // navigation shortcut they want one tap away. Default scrolls to
-  // the top of the page (the web convention for a clickable
-  // wordmark). The `sheet` variant carries the target sheet id; if
-  // that sheet is later deleted the click handler falls back to
-  // scrolling to the top so a dangling reference stays harmless.
-  headerAction: HeaderAction;
+  // When on (the default), a cloud auth-error auto-opens the dedicated
+  // reconnect modal so the user can fix it without hunting for the
+  // sync-status pill. Off if the user finds the prompt intrusive (e.g.
+  // Google Drive's hourly token expiry); the underlying detection still
+  // surfaces in the status pill regardless. Moved from device-local
+  // localStorage into the synced bucket in v35 so the choice follows
+  // the user across devices.
+  cloudReauthAutoOpen: boolean;
 };
+
+// Persisted shape of `UserData.settings`. Common fields stay flat at
+// the top level so the rest of the codebase (which reads
+// `settings.currency`, `settings.startOfMonth`, …) keeps working; the
+// device-scoped fields move into `device.{mobile,desktop}` so each
+// viewport can hold its own value. Consumers should not read this
+// type directly — go through `useEffectiveSettings()` (in
+// `src/hooks/useEffectiveSettings.ts`) which returns the flat
+// `Settings` shape with the active scope already merged in.
+export type PersistedSettings = CommonSettings & {
+  device: {
+    mobile: DeviceSettings;
+    desktop: DeviceSettings;
+  };
+};
+
+// Effective, flat shape every read site already consumes. Produced by
+// `resolveEffectiveSettings(persisted, isMobile)` — the common fields
+// come from the top level, the device-scoped fields come from
+// whichever bucket the active viewport selects.
+export type Settings = CommonSettings & DeviceSettings;
 
 // Discriminated union — `kind` selects the action and the only
 // parameterised variant (`sheet`) carries its target id. Scales to
@@ -790,7 +865,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 34;
+  version: 35;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -869,7 +944,7 @@ export type UserData = {
   // and collapse any predicted row + history entry pair that fits
   // the rule's pattern + amount band + date lag, no modal needed.
   seriesMatchRules: SeriesMatchRule[];
-  settings: Settings;
+  settings: PersistedSettings;
 };
 
 // User account record persisted in the device-wide registry. The

@@ -1,4 +1,5 @@
-import { DEFAULT_SETTINGS } from "../data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../data/constants";
+import type { MigrationContext } from "../data/migrations";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
 import { detectInitialCurrency, detectInitialLanguage } from "../i18n/locale";
@@ -17,7 +18,7 @@ export function freshUserData(): UserData {
   // data living in their export.
   const sheet = createDefaultSheet("Budget");
   return {
-    version: 34,
+    version: 35,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -38,9 +39,11 @@ export function freshUserData(): UserData {
     // genuinely new installs. Existing buckets keep whatever they had
     // (the v26 → v27 migration pinned language to "en"; currency is
     // never touched by a migration) so a returning user's UI doesn't
-    // flip when they upgrade.
+    // flip when they upgrade. `currency`, `currencyPosition`, and
+    // `currencySpace` are common-scope so they land at the top level
+    // of the persisted shape; the device buckets stay at defaults.
     settings: {
-      ...DEFAULT_SETTINGS,
+      ...DEFAULT_PERSISTED_SETTINGS,
       ...detectInitialCurrency(),
       language: detectInitialLanguage(),
     },
@@ -51,8 +54,14 @@ export function freshUserData(): UserData {
 // back to a fresh value on any failure so a corrupt entry never traps
 // the user. Consumed by both the local adapter and the storage hook so
 // every load path shares the same parse / migrate / validate pipeline.
-export function readUserDataFromText(raw: string | null): UserData {
-  return tryReadUserDataFromText(raw).data;
+// The optional `ctx` is forwarded to the migration chain (the v34 →
+// v35 step uses `ctx.userId` to absorb per-user values from
+// device-local localStorage).
+export function readUserDataFromText(
+  raw: string | null,
+  ctx: MigrationContext = {},
+): UserData {
+  return tryReadUserDataFromText(raw, ctx).data;
 }
 
 export type ReadUserDataResult =
@@ -70,12 +79,13 @@ export type ReadUserDataResult =
 // `freshUserData()` is data loss.
 export function tryReadUserDataFromText(
   raw: string | null,
+  ctx: MigrationContext = {},
 ): ReadUserDataResult {
   if (!raw) {
     log.info("readUserDataFromText: no bytes — seeding fresh budget");
     return { data: freshUserData(), status: "fresh" };
   }
-  const result = parseUserData(raw);
+  const result = parseUserData(raw, ctx);
   if (result.ok) {
     log.info(
       `readUserDataFromText: parsed ok (migrated=${result.migrated}) bytes=${raw.length}`,
