@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
-import type { FloatingPlacement } from "../hooks";
+import { useRovingTabindex, type FloatingPlacement } from "../hooks";
 import { FloatingPanel } from "./FloatingPanel";
 
 type Labels = {
@@ -76,6 +76,19 @@ export function EntityPickerShell<T extends { id: string }>({
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Roving-tabindex cursor across the option buttons inside the
+  // listbox. On open we seat it on the currently selected item (or
+  // 0); ArrowUp / ArrowDown / Home / End move it; Enter / Space is
+  // the browser's native button activation.
+  const selectedIdx = Math.max(
+    0,
+    items.findIndex((it) => it.id === selectedId),
+  );
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: items.length,
+    initialIndex: selectedIdx,
+    active: open,
+  });
   const close = useCallback(() => {
     setOpen(false);
     setCreating(false);
@@ -158,13 +171,16 @@ export function EntityPickerShell<T extends { id: string }>({
           {items.length === 0 && (
             <li className="px-3 py-2 text-xs text-muted">{labels.empty}</li>
           )}
-          {items.map((item) => (
+          {items.map((item, idx) => (
             <li key={item.id}>
               <button
+                ref={registerItem(idx)}
                 type="button"
                 role="option"
                 aria-selected={item.id === selectedId}
+                tabIndex={isCursorAt(idx) ? 0 : -1}
                 onClick={() => handlePick(item.id)}
+                onKeyDown={onKeyDown}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 {renderOption(item)}

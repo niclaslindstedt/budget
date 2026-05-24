@@ -3,7 +3,7 @@ import { Check, ChevronDown, ChevronLeft, Plus, Tag, X } from "lucide-react";
 
 import { DEFAULT_CATEGORY_ID, TYPE_GLYPH_NAMES } from "../data/constants";
 import type { Category, EntryType } from "../data/types";
-import type { FloatingPlacement } from "../hooks";
+import { useRovingTabindex, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
 import { CategoryChip, CategoryCreator } from "./CategoryPicker";
@@ -355,18 +355,30 @@ function CategoryPane({
   onPick: (id: string) => void;
   emptyLabel: string;
 }) {
+  const initialIdx = Math.max(
+    0,
+    categories.findIndex((c) => c.id === selectedCategoryId),
+  );
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: categories.length,
+    initialIndex: initialIdx,
+    active: true,
+  });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
       {categories.length === 0 && (
         <li className="px-3 py-2 text-xs text-muted">{emptyLabel}</li>
       )}
-      {categories.map((cat) => (
+      {categories.map((cat, idx) => (
         <li key={cat.id}>
           <button
+            ref={registerItem(idx)}
             type="button"
             role="option"
             aria-selected={cat.id === selectedCategoryId}
+            tabIndex={isCursorAt(idx) ? 0 : -1}
             onClick={() => onPick(cat.id)}
+            onKeyDown={onKeyDown}
             className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
           >
             <CategoryChip category={cat} compact />
@@ -408,6 +420,15 @@ function TypePane({
   createLabel: string;
   emptyLabel: string;
 }) {
+  const initialIdx = Math.max(
+    0,
+    types.findIndex((t) => t.id === selectedId),
+  );
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: types.length,
+    initialIndex: initialIdx,
+    active: true,
+  });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
       <li>
@@ -428,14 +449,17 @@ function TypePane({
       {types.length === 0 && (
         <li className="px-3 py-2 text-xs text-muted">{emptyLabel}</li>
       )}
-      {types.map((ty) => (
+      {types.map((ty, idx) => (
         <Fragment key={ty.id}>
           <li>
             <button
+              ref={registerItem(idx)}
               type="button"
               role="option"
               aria-selected={ty.id === selectedId}
+              tabIndex={isCursorAt(idx) ? 0 : -1}
               onClick={() => onPick(ty.id)}
+              onKeyDown={onKeyDown}
               className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
               <TypeChip type={ty} compact />
@@ -586,6 +610,15 @@ function CategorySelector({
   const [creating, setCreating] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const selected = categories.find((c) => c.id === value) ?? null;
+  const initialIdx = Math.max(
+    0,
+    categories.findIndex((c) => c.id === value),
+  );
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: categories.length,
+    initialIndex: initialIdx,
+    active: open,
+  });
   return (
     <div ref={triggerRef} className="relative">
       <button
@@ -614,16 +647,19 @@ function CategorySelector({
         placement={CATEGORY_SELECTOR_PLACEMENT}
       >
         <ul role="listbox" className="max-h-60 overflow-auto py-1">
-          {categories.map((c) => (
+          {categories.map((c, idx) => (
             <li key={c.id}>
               <button
+                ref={registerItem(idx)}
                 type="button"
                 role="option"
                 aria-selected={c.id === value}
+                tabIndex={isCursorAt(idx) ? 0 : -1}
                 onClick={() => {
                   onChange(c.id);
                   setOpen(false);
                 }}
+                onKeyDown={onKeyDown}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-2 py-1 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <CategoryChip category={c} compact />
