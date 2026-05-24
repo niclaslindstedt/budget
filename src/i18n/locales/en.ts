@@ -744,6 +744,7 @@ export const en = {
     viewerSearchPlaceholder: "Search this sheet",
     viewerSearchClear: "Clear search",
     viewerSearchNoResults: "No entries match the search.",
+    viewerShowFutureEntries: "Show future entries",
     showEarlierMonths: "Show {n} earlier months",
     rowActions: "row actions",
     selectAllInMonth: "Select all in month",

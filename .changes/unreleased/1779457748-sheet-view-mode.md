@@ -10,7 +10,11 @@ no column-drag handles, no select-mode checkboxes — just the
 data, clean and compact. The viewer fills the screen on mobile and
 opens as a wide centered card on desktop, and renders every month of
 history up-front so the in-modal search filter sees the full ledger
-rather than just the recently-loaded months. The done column is shown
-inline as a small check next to the date and uncompleted rows fade
-slightly, so the table reads as one tight stack instead of spending a
-whole column on a checkmark.
+rather than just the recently-loaded months. Months dated after today
+are tucked behind a clickable **Show future entries** line above the
+current fiscal month so the modal opens anchored on today instead of
+deep in next year's planning, and the line stays out of the way while
+a search is active so a query reveals every match. The done column is
+shown inline as a small check next to the date and uncompleted rows
+fade slightly, so the table reads as one tight stack instead of
+spending a whole column on a checkmark.

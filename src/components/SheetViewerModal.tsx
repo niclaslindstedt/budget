@@ -214,6 +214,30 @@ export function SheetViewerModal({
     return [...sortMonthKeys(keys)].reverse();
   }, [monthGroups, currentMonth]);
 
+  // Future months sit above today in the descending list. Hide them
+  // behind a clickable "Show future entries" line so the modal opens
+  // anchored on today's fiscal month, matching the editable view that
+  // tucks "Show earlier months" above its visible window. Search
+  // bypasses the gate so a query reveals every match regardless.
+  const [showFuture, setShowFuture] = useState(false);
+  useEffect(() => {
+    if (!open) setShowFuture(false);
+  }, [open]);
+  const isSearching = query.trim() !== "";
+  const futureMonths = useMemo(
+    () =>
+      visibleMonths.filter((key) => key !== "undated" && key > currentMonth),
+    [visibleMonths, currentMonth],
+  );
+  const renderedMonths = useMemo(() => {
+    if (isSearching || showFuture) return visibleMonths;
+    return visibleMonths.filter(
+      (key) => key === "undated" || key <= currentMonth,
+    );
+  }, [visibleMonths, isSearching, showFuture, currentMonth]);
+  const hasHiddenFuture =
+    !isSearching && !showFuture && futureMonths.length > 0;
+
   // Column widths derived once from the loaded rows so amount /
   // balance stay narrow without truncating any value. Description
   // takes the remainder.
@@ -349,7 +373,32 @@ export function SheetViewerModal({
               </tr>
             </thead>
             <tbody>
-              {visibleMonths.map((monthKey) => {
+              {hasHiddenFuture && (
+                <tr>
+                  <td
+                    colSpan={
+                      2 +
+                      (typeCol ? 1 : 0) +
+                      (amountCol ? 1 : 0) +
+                      (balanceCol ? 1 : 0)
+                    }
+                    className="p-0"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowFuture(true)}
+                      className="group flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    >
+                      <span aria-hidden className="h-px flex-1 bg-line" />
+                      <span className="whitespace-nowrap">
+                        {t("sheet.viewerShowFutureEntries")}
+                      </span>
+                      <span aria-hidden className="h-px flex-1 bg-line" />
+                    </button>
+                  </td>
+                </tr>
+              )}
+              {renderedMonths.map((monthKey) => {
                 const monthNum = monthNumberFromKey(monthKey);
                 const monthColor =
                   monthNum !== null ? monthColorVar(monthNum) : undefined;
