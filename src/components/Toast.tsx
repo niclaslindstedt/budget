@@ -18,10 +18,13 @@ import { useT } from "../i18n";
 // General-purpose toast notifications. Mounted by `LanguageRoot`
 // alongside `UpdateToast` / `InstallPrompt` so `useToast()` is
 // available on every route (pre-auth, post-auth, SEO aliases). The
-// viewport anchors above the BottomBar (4rem mobile / 5rem sm,
-// plus `env(safe-area-inset-bottom)`) at `z-[70]` so the stack
-// drifts upward above the PWA prompts at `z-[60]` and never
-// overlaps the bottom menu.
+// viewport anchors via the shared `--toast-stack-bottom` custom
+// property (defined in `src/styles.css`), which sits above the
+// BottomBar when one is mounted and visible and falls back to the
+// safe-area inset on routes without a bar (pre-auth, `/privacy/`,
+// `/system/`) and on mobile viewports where an open modal hides
+// the bar. `z-[70]` keeps the stack above the PWA prompts at
+// `z-[60]` so the floating chrome stays legible.
 //
 // Visual shell mirrors `UpdateToast` and `InstallPrompt` so the three
 // stay visually coherent — `rounded border border-line bg-surface
@@ -100,7 +103,7 @@ function ToastViewport({
     <div
       role="region"
       aria-label={t("toast.region")}
-      className="pointer-events-none fixed right-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-[70] flex flex-col-reverse gap-2 sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+      className="pointer-events-none fixed right-3 bottom-[var(--toast-stack-bottom)] z-[70] flex flex-col-reverse gap-2"
     >
       {toasts.map((toast) => (
         <ToastItemView key={toast.id} toast={toast} onDismiss={onDismiss} />
