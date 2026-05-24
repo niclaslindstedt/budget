@@ -2830,7 +2830,7 @@ export function BudgetView({
     // so the AddRow clears the now-out-of-flow bar.
     <div
       data-budget-shell
-      className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
+      className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-6 lg:px-10 xl:px-14"
     >
       {/* Pull-to-refresh pip lives outside the `data-modal-background`
           wrapper so an open modal's `inert` doesn't disable its

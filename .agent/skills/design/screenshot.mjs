@@ -35,6 +35,10 @@ import { join } from "node:path";
 // here is shaped for direct spread into the context options.
 const VIEWPORTS = {
   desktop: { viewport: { width: 1280, height: 800 } },
+  // Maximised macOS Chrome PWA window on a typical 16" / 27" display.
+  // Wider than `desktop` so the `xl:` Tailwind utilities engage and
+  // the chrome breathing room can be reviewed at PWA-typical widths.
+  ultrawide: { viewport: { width: 1920, height: 1080 } },
   // iPhone 12 viewport — same `390 × 844` Playwright's "iPhone 12"
   // device descriptor exposes, with hasTouch / isMobile flipped so
   // touchscreen swipes work and the mobile media queries match.
