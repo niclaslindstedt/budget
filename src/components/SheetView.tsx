@@ -576,11 +576,17 @@ export function SheetView({
     const target = scrollTargetRef.current;
     // First pass: today's row may already be mounted (the user is on
     // or near the current month). Trust it only when its month is
-    // current or later — when the user is scrolled deep into history,
-    // MonthTable's near-viewport gate replaces the current-month row
-    // tree with a placeholder, so `findRowNearestToday` returns the
-    // latest *past* row (already on-screen) and scrolling to it would
-    // be a no-op. Fall through to the container scroll in that case.
+    // current or later AND the current month's own rows are mounted —
+    // when the user is scrolled deep into history, MonthTable's near-
+    // viewport gate replaces the current-month row tree with a
+    // placeholder, so `findRowNearestToday` returns the latest *past*
+    // row (already on-screen) and scrolling to it would be a no-op.
+    // When the user is scrolled deep into the future the same gate
+    // hides earlier rows, so `findRowNearestToday` returns the first
+    // mounted row ≥ today (e.g. a Sept row when today is in May) — not
+    // the actual next-row-after-today. In both cases fall through to
+    // the container scroll, which mounts the current month and lets
+    // refine find the true target on the second pass.
     const refine = (): boolean => {
       const section = sectionRef.current;
       const row = findRowNearestToday(section, today);
@@ -589,6 +595,10 @@ export function SheetView({
       const rowMonth = rowMonthEl?.getAttribute("data-month-key") ?? null;
       if (rowMonth === "undated") return false;
       if (rowMonth !== null && rowMonth < currentMonth) return false;
+      if (rowMonth !== null && rowMonth > currentMonth) {
+        const currentMonthEl = scrollTargetRef.current;
+        if (!currentMonthEl?.querySelector("[data-row-date]")) return false;
+      }
       scrollRowToTop(row, behavior);
       return true;
     };
