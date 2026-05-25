@@ -2342,7 +2342,6 @@ export function AppShell({
         id: entry.id,
         description: entry.description,
         amount: entry.amount,
-        kind: "history",
       };
     }
     const row = matchRulePrompt.row;
@@ -2356,7 +2355,7 @@ export function AppShell({
       amountCol && typeof row.cells[amountCol.id] === "number"
         ? (row.cells[amountCol.id] as number)
         : 0;
-    return { id: row.id, description, amount, kind: "row" };
+    return { id: row.id, description, amount };
   }, [matchRulePrompt, activeItem, data.history]);
 
   // The rule the modal is editing, when the prompt came from Settings.

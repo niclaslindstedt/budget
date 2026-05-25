@@ -57,16 +57,14 @@ export type MatchRuleDraft = {
 // Minimum surface the modal needs from whatever row the user invoked
 // the rule from. Both `HistoryEntry` and a budget-row projection map
 // onto this shape so the modal doesn't have to branch on which kind it
-// got. The `kind` discriminator picks the pattern-seeding strategy —
-// history entries seed with their raw bank text (most are already
-// short-and-canonical), budget rows seed with a date-stripped derivation
-// because a manual description tends to read `<merchant> <date>` and
-// would otherwise pin the pattern to a single row.
+// got. Either origin gets the same date / ref-number stripping in
+// `pattern-derive.ts` — bank exports and manually-typed descriptions
+// both embed dates that would otherwise pin the pattern to a single
+// transaction.
 export type MatchRuleSeed = {
   id: string;
   description: string;
   amount: number;
-  kind: "history" | "row";
 };
 
 type Props = {
@@ -113,18 +111,14 @@ function previewEntries(
   return ordered.slice(0, PREVIEW_LIMIT);
 }
 
-// Seed the pattern from the source row. History entries get the raw
-// bank text wrapped in stars (most bank labels are dominated by a
-// stable merchant token plus noise). Budget rows go through the date /
-// ref-number stripper in `pattern-derive.ts` because manually-typed
-// descriptions tend to read `<merchant> <date>` and would otherwise
-// pin the pattern to a single transaction.
+// Seed the pattern from the source row. Both history entries and
+// budget rows go through the date / ref-number stripper in
+// `pattern-derive.ts` — bank exports routinely embed the transaction
+// date in the description (Skandia ships `<date> <merchant>`) and
+// manually-typed descriptions tend to read `<merchant> <date>`. Either
+// would otherwise pin the pattern to a single transaction.
 function seedPatternFromSeed(seed: MatchRuleSeed): string {
-  if (seed.kind === "row")
-    return derivePatternFromDescription(seed.description);
-  const trimmed = seed.description.trim();
-  if (trimmed === "") return "";
-  return `*${trimmed}*`;
+  return derivePatternFromDescription(seed.description);
 }
 
 export function MatchRuleModal({
