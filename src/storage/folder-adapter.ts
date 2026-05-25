@@ -112,6 +112,18 @@ export function createFolderAdapter(
     }
   }
 
+  async function removeBackupFile(name: string): Promise<void> {
+    const dir = await getBackupsDir(false);
+    if (!dir) return;
+    try {
+      await dir.removeEntry(name);
+    } catch (err) {
+      if (isNotFoundError(err)) return;
+      if (isPermissionError(err)) onPermissionLost?.();
+      throw err;
+    }
+  }
+
   async function writeBackupFile(name: string, text: string): Promise<void> {
     const dir = await getBackupsDir(true);
     if (!dir) throw new Error("backups folder unavailable");
@@ -151,6 +163,15 @@ export function createFolderAdapter(
         throw new Error(`Backup not found: ${filename}`);
       }
       return text;
+    },
+    async remove(filename) {
+      log.info(`backups: remove ${filename}`);
+      await removeBackupFile(filename);
+      const existing = parseBackupIndex(
+        await readBackupFile(BACKUP_INDEX_FILENAME),
+      );
+      const next = existing.filter((m) => m.filename !== filename);
+      await writeBackupFile(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
     },
   };
 

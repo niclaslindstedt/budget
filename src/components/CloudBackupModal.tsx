@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Database, Download, History, RotateCcw, Upload } from "lucide-react";
+import {
+  Database,
+  Download,
+  History,
+  RotateCcw,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import type { UserData } from "../data/types";
 import { type TFunction, useT } from "../i18n";
@@ -49,6 +56,7 @@ export function CloudBackupModal({
   const [restorePrompt, setRestorePrompt] = useState<BackupMetadata | null>(
     null,
   );
+  const [deletePrompt, setDeletePrompt] = useState<BackupMetadata | null>(null);
 
   const ops = adapter.backups;
 
@@ -145,6 +153,27 @@ export function CloudBackupModal({
     }
   }
 
+  async function handleDelete(entry: BackupMetadata) {
+    if (!ops) return;
+    setDeletePrompt(null);
+    setStatus({ kind: "working", message: t("cloudBackup.deleting") });
+    try {
+      await ops.remove(entry.filename);
+      setStatus({
+        kind: "ok",
+        message: t("cloudBackup.deleted", { filename: entry.filename }),
+      });
+      await refresh();
+    } catch (err) {
+      setStatus({
+        kind: "error",
+        message: t("cloudBackup.deleteFailed", {
+          error: (err as Error).message,
+        }),
+      });
+    }
+  }
+
   const busy = status.kind === "working" || status.kind === "loading";
 
   return (
@@ -212,6 +241,7 @@ export function CloudBackupModal({
                     disabled={busy}
                     onRestore={() => setRestorePrompt(entry)}
                     onDownload={() => void handleDownload(ops, entry)}
+                    onDelete={() => setDeletePrompt(entry)}
                   />
                 ))}
               </ul>
@@ -246,6 +276,28 @@ export function CloudBackupModal({
         ]}
         onCancel={() => setRestorePrompt(null)}
       />
+      <ConfirmDialog
+        open={deletePrompt !== null}
+        title={t("cloudBackup.deleteTitle")}
+        description={
+          deletePrompt ? (
+            <p>
+              {t("cloudBackup.deleteHint")}{" "}
+              <span className="font-mono text-path">
+                {deletePrompt.filename}
+              </span>
+            </p>
+          ) : null
+        }
+        actions={[
+          {
+            label: t("cloudBackup.delete"),
+            tone: "danger",
+            onSelect: () => deletePrompt && void handleDelete(deletePrompt),
+          },
+        ]}
+        onCancel={() => setDeletePrompt(null)}
+      />
     </>
   );
 }
@@ -255,11 +307,13 @@ function BackupRow({
   disabled,
   onRestore,
   onDownload,
+  onDelete,
 }: {
   entry: BackupMetadata;
   disabled: boolean;
   onRestore: () => void;
   onDownload: () => void;
+  onDelete: () => void;
 }) {
   const t = useT();
   return (
@@ -305,6 +359,18 @@ function BackupRow({
           className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-line bg-transparent text-muted hover:border-link hover:text-link disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download size={14} aria-hidden focusable={false} />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={disabled}
+          aria-label={t("cloudBackup.deleteAria", {
+            filename: entry.filename,
+          })}
+          title={t("cloudBackup.delete")}
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-line bg-transparent text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash2 size={14} aria-hidden focusable={false} />
         </button>
         <button
           type="button"

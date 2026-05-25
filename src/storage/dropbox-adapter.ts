@@ -77,6 +77,7 @@ const AUTH_BASE = "https://www.dropbox.com/oauth2/authorize";
 const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
 const UPLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/upload";
 const DOWNLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/download";
+const DELETE_ENDPOINT = "https://api.dropboxapi.com/2/files/delete_v2";
 
 // 1-second coalescing window so cloud sync matches local-storage
 // "save on every change" in feel — rapid keystrokes within a single
@@ -285,6 +286,24 @@ export function createDropboxAdapter(
     return res.text();
   }
 
+  async function deleteBackupFile(path: string): Promise<void> {
+    const res = await authedFetch(DELETE_ENDPOINT, (token) => ({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ path }),
+    }));
+    // 409 is Dropbox's "path not found" — treat as already gone so the
+    // manifest update below can still run.
+    if (res.status === 409) return;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw new Error(`Dropbox backup delete failed: ${res.status} ${body}`);
+    }
+  }
+
   async function uploadBackupFile(path: string, text: string): Promise<void> {
     const args = {
       path,
@@ -340,6 +359,18 @@ export function createDropboxAdapter(
         throw new Error(`Backup not found: ${filename}`);
       }
       return text;
+    },
+    async remove(filename) {
+      log.info(`backups: remove ${filename}`);
+      await deleteBackupFile(`${DROPBOX_BACKUPS_FOLDER}/${filename}`);
+      const existing = parseBackupIndex(
+        await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH),
+      );
+      const next = existing.filter((m) => m.filename !== filename);
+      await uploadBackupFile(
+        DROPBOX_BACKUPS_INDEX_PATH,
+        serializeBackupIndex(next),
+      );
     },
   };
 

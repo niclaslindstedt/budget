@@ -1750,7 +1750,13 @@ export const sv: Catalog = {
     restoreHint:
       "Den aktuella budgeten ersätts med denna ögonblicksbild. Din nuvarande fil sparas som en automatisk säkerhetskopia först.",
     delete: "Ta bort",
+    deleteAria: "Ta bort {filename}",
     deleteTitle: "Ta bort den här säkerhetskopian?",
+    deleteHint:
+      "Ögonblicksbilden tas bort från säkerhetskopiemappen. Det går inte att ångra.",
+    deleting: "Tar bort säkerhetskopia…",
+    deleted: "Tog bort {filename}.",
+    deleteFailed: "Borttagning misslyckades: {error}",
     listing: "Listar säkerhetskopior…",
     failed: "Kunde inte lista säkerhetskopior.",
     download: "Ladda ner",

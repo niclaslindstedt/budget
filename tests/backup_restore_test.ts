@@ -25,6 +25,9 @@ function inMemoryBackupOps(): BackupOps {
       if (!entry) throw new Error(`Unknown backup: ${filename}`);
       return entry.text;
     },
+    async remove(filename) {
+      store.delete(filename);
+    },
   };
 }
 

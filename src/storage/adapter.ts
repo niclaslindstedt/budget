@@ -124,6 +124,12 @@ export type BackupOps = {
   // encrypting wrapper decrypts on the way back out so callers see
   // serialized `UserData` JSON regardless.
   read(filename: string): Promise<string>;
+  // Remove a previously-created backup and drop its entry from the
+  // manifest. The user-facing modal exposes this as a trash button on
+  // each row — older snapshots go stale quickly and the user wants to
+  // prune them as they go. Missing files are treated as already gone;
+  // the implementation must still update the manifest.
+  remove(filename: string): Promise<void>;
 };
 
 export class ConflictError extends Error {
