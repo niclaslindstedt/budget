@@ -19,7 +19,6 @@ import "@fontsource/source-serif-4/400.css";
 import "@fontsource/source-serif-4/700.css";
 import "@fontsource/opendyslexic/400.css";
 import "@fontsource/opendyslexic/700.css";
-import { BUILD_LABEL } from "./utils/build-env";
 import { installFocusDiagnostic } from "./utils/focus-diagnostic";
 import { installSelectOnFocus } from "./utils/select-on-focus";
 
@@ -27,13 +26,6 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element #root not found in index.html");
 }
-
-// Suffix the static page title baked into the HTML with the build
-// label so the browser tab shows which version is running. The static
-// title (set per-route by the build-time SEO splicer) stays intact for
-// search-engine crawlers and link unfurlers; only the live tab title
-// gains the suffix.
-document.title = `${document.title} (${BUILD_LABEL})`;
 
 installFocusDiagnostic();
 installSelectOnFocus();
