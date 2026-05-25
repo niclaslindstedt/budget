@@ -470,13 +470,24 @@ export type Action =
       // Apply user choices from the post-import reconciliation modal.
       // `mergedRowIds` are user rows the user confirmed map to a
       // history entry — they're deleted in a single transition.
+      // `entryOverrides` carry the curated description / typeId from
+      // each merged row, stamped onto the matching history entry as
+      // `userDescription` / `userTypeId` so the user's fine-tuning
+      // survives the row deletion. Only blank fields on the entry are
+      // filled — prior per-entry overrides are preserved.
       // `seriesRules` are auto-reconciliation rules learned from
       // "Apply to whole series" — appended verbatim.
       // `orphans` carry per-row triage decisions for predictions
       // that didn't post: either "delete" the row outright, or
       // "move" it to a new date (typically the next payday).
       type: "applyReconciliation";
+      accountId: string;
       mergedRowIds: string[];
+      entryOverrides: Array<{
+        historyEntryId: string;
+        userDescription?: string;
+        userTypeId?: string;
+      }>;
       seriesRules: SeriesMatchRule[];
       orphans: Array<
         | { rowId: string; action: "delete" }
@@ -1807,14 +1818,51 @@ export function reducer(state: UserData, action: Action): UserData {
   if (action.type === "applyReconciliation") {
     const mergedSet = new Set(action.mergedRowIds);
     const orphanByRow = new Map(action.orphans.map((o) => [o.rowId, o]));
+    // Stamp curated description / typeId from each merged row onto the
+    // matching history entry as `userDescription` / `userTypeId`.
+    // Conflict policy: only fill blanks — prior per-entry edits win.
+    const overrideByEntry = new Map(
+      action.entryOverrides.map((o) => [o.historyEntryId, o]),
+    );
+    const existingHistory = state.history[action.accountId] ?? [];
+    let historyTouched = false;
+    const patchedHistory = existingHistory.map((entry) => {
+      const o = overrideByEntry.get(entry.id);
+      if (!o) return entry;
+      const next: HistoryEntry = { ...entry };
+      let changed = false;
+      if (
+        o.userDescription &&
+        (entry.userDescription === undefined ||
+          entry.userDescription.trim() === "")
+      ) {
+        next.userDescription = o.userDescription;
+        changed = true;
+      }
+      if (o.userTypeId && entry.userTypeId === undefined) {
+        next.userTypeId = o.userTypeId;
+        changed = true;
+      }
+      if (changed) {
+        historyTouched = true;
+        return next;
+      }
+      return entry;
+    });
     // Index rows touched by both lists so we can prune sheets in
     // a single pass — modifying / deleting per-row is cheaper than
     // recomputing every sheet's rows from scratch.
     if (mergedSet.size === 0 && orphanByRow.size === 0) {
-      if (action.seriesRules.length === 0) return state;
+      if (action.seriesRules.length === 0 && !historyTouched) return state;
       return {
         ...state,
-        seriesMatchRules: [...state.seriesMatchRules, ...action.seriesRules],
+        history: historyTouched
+          ? { ...state.history, [action.accountId]: patchedHistory }
+          : state.history,
+        seriesMatchRules:
+          action.seriesRules.length > 0
+            ? [...state.seriesMatchRules, ...action.seriesRules]
+            : state.seriesMatchRules,
       };
     }
     const sheets = state.sheets.map((sheet) => {
@@ -1853,6 +1901,9 @@ export function reducer(state: UserData, action: Action): UserData {
     return {
       ...state,
       sheets,
+      history: historyTouched
+        ? { ...state.history, [action.accountId]: patchedHistory }
+        : state.history,
       seriesMatchRules:
         action.seriesRules.length > 0
           ? [...state.seriesMatchRules, ...action.seriesRules]
