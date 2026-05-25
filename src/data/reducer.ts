@@ -20,6 +20,7 @@ import {
 } from "./sheet";
 import { nextUncoveredDate } from "./coverage";
 import { findMatchingRuleForCandidate } from "./match-rules";
+import { reapplyPatternsToAllSheets } from "./pattern-apply";
 import { findRuleDrivenCandidates } from "./reconciliation";
 import { type HintRecording, recordMerchantHints } from "./merchant-hints";
 import type {
@@ -402,6 +403,17 @@ export type Action =
     }
   | { type: "deleteMatchRule"; ruleId: string }
   | {
+      // Manually walk every budget row and re-evaluate against the
+      // current ruleset. The reducer already runs this walk on
+      // `createMatchRule` / `updateMatchRule`, so the only reason to
+      // dispatch this directly is the Patterns settings tab's
+      // "Reapply all" button — it lets the user sweep without
+      // pretending to edit a rule. No-ops when no rule wins anything
+      // new (state is referentially identical so React skips a
+      // wasted render).
+      type: "reapplyMatchRules";
+    }
+  | {
       // Per-entry override on a single `HistoryEntry`. Patches the
       // entry's `userDescription` and / or `userTypeId` in place so
       // the synthesized row picks the override up at the top of the
@@ -591,73 +603,6 @@ function applyPatternsAfterCellEdit(
   });
   if (!changed) return next;
   return { ...next, rows: nextRows };
-}
-
-// Re-evaluate every budget row against the current ruleset, regardless
-// of whether the row changed. Used when the ruleset itself changes
-// (rule created or updated) so a freshly authored pattern catches up
-// the rows that were sitting at their old auto-label — or unlabelled
-// because no rule matched at the time the row was typed. Manual
-// choices stay sticky: rows with `typeIdLocked` are skipped, same as
-// the cell-edit path. Returns the input unchanged when nothing
-// resolves (referentially identical so the outer reducer can
-// short-circuit a no-op rule edit into a no-op state diff).
-function reapplyPatternsToBudget(
-  item: AccountBudget,
-  rules: readonly MatchRule[],
-): AccountBudget {
-  const descId = findColumnByType(item.columns, "description")?.id;
-  if (descId === undefined) return item;
-  const amountId = findColumnByType(item.columns, "amount")?.id;
-  let changed = false;
-  const nextRows = item.rows.map((row) => {
-    if (row.typeIdLocked) return row;
-    const desc = row.cells[descId];
-    if (typeof desc !== "string" || desc.trim() === "") return row;
-    const amount =
-      amountId !== undefined && typeof row.cells[amountId] === "number"
-        ? (row.cells[amountId] as number)
-        : 0;
-    const candidate = {
-      description: desc,
-      amount,
-      isTransfer: row.isTransfer === true,
-    };
-    const rule =
-      rules.length === 0
-        ? null
-        : findMatchingRuleForCandidate(rules, candidate);
-    const wantTypeId = rule?.typeId ?? null;
-    const currentTypeId = row.typeId ?? null;
-    if (wantTypeId === currentTypeId) return row;
-    changed = true;
-    const updated: Row = { ...row };
-    if (wantTypeId === null) delete updated.typeId;
-    else updated.typeId = wantTypeId;
-    return updated;
-  });
-  if (!changed) return item;
-  return { ...item, rows: nextRows };
-}
-
-function reapplyPatternsToAllSheets(
-  sheets: readonly Sheet[],
-  rules: readonly MatchRule[],
-): Sheet[] {
-  let sheetsChanged = false;
-  const next = sheets.map((sheet) => {
-    let itemsChanged = false;
-    const items = sheet.items.map((item) => {
-      if (item.type !== "accountBudget") return item;
-      const updated = reapplyPatternsToBudget(item, rules);
-      if (updated !== item) itemsChanged = true;
-      return updated;
-    });
-    if (!itemsChanged) return sheet;
-    sheetsChanged = true;
-    return { ...sheet, items };
-  });
-  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
 }
 
 // Shared row-minting body for the two recurring-promote actions
@@ -1743,6 +1688,11 @@ export function reducer(state: UserData, action: Action): UserData {
     // every budget row the new shape now wins (or loses) against.
     const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
     return { ...state, matchRules, sheets };
+  }
+  if (action.type === "reapplyMatchRules") {
+    const sheets = reapplyPatternsToAllSheets(state.sheets, state.matchRules);
+    if (sheets === state.sheets) return state;
+    return { ...state, sheets };
   }
   if (action.type === "deleteMatchRule") {
     const next = state.matchRules.filter((r) => r.id !== action.ruleId);

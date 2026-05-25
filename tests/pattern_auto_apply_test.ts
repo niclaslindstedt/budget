@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
+import { countRuleHitsOnSheets } from "../src/data/pattern-apply";
 import { reducer } from "../src/data/reducer";
 import { createDefaultSheet, findColumnByType, newId } from "../src/data/sheet";
 import type {
@@ -308,5 +309,65 @@ describe("pattern auto-apply on description commit", () => {
       value: "RANDOM MERCHANT",
     });
     expect(firstRow(state).typeId).toBeUndefined();
+  });
+});
+
+describe("reapplyMatchRules action", () => {
+  it("re-evaluates every budget row against the current ruleset", () => {
+    // Mid-state: rule exists and a matching row sits with a stale
+    // (cleared) typeId. The reapply dispatch should re-label it.
+    let state = workspace(
+      [],
+      [{ id: "rule-grocery", pattern: "*ICA*", typeId: "type-grocery" }],
+    );
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      makeRow({ [descId]: "ICA KVANTUM" }),
+    ];
+    expect(firstRow(state).typeId).toBeUndefined();
+    state = reducer(state, { type: "reapplyMatchRules" });
+    expect(firstRow(state).typeId).toBe("type-grocery");
+  });
+
+  it("returns the same state when no row would change", () => {
+    let state = workspace(
+      [],
+      [{ id: "rule-grocery", pattern: "*ICA*", typeId: "type-grocery" }],
+    );
+    const before = state;
+    state = reducer(state, { type: "reapplyMatchRules" });
+    expect(state).toBe(before);
+  });
+});
+
+describe("countRuleHitsOnSheets", () => {
+  it("attributes each row to its first-matching rule and skips locked rows", () => {
+    const state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      makeRow({ [descId]: "ICA KVANTUM" }),
+      makeRow({ [descId]: "ICA NORDSTAN" }),
+      // Locked: should NOT count toward any rule's hit total even
+      // though its description matches the grocery pattern.
+      {
+        ...makeRow({ [descId]: "ICA MAXI" }),
+        typeId: "type-rent",
+        typeIdLocked: true,
+      },
+      makeRow({ [descId]: "RANDOM MERCHANT" }),
+    ];
+    state.matchRules = [
+      { id: "rule-grocery", pattern: "*ICA*", typeId: "type-grocery" },
+      { id: "rule-other", pattern: "*COFFEE*", typeId: "type-rent" },
+    ];
+    const counts = countRuleHitsOnSheets(state.sheets, state.matchRules);
+    expect(counts.get("rule-grocery")).toBe(2);
+    expect(counts.get("rule-other")).toBe(0);
+  });
+
+  it("returns an empty map when there are no rules", () => {
+    const state = workspace();
+    const counts = countRuleHitsOnSheets(state.sheets, []);
+    expect(counts.size).toBe(0);
   });
 });

@@ -637,6 +637,15 @@ export const sv: Catalog = {
         "Inga mönsterregler än. Öppna radmenyn på en post och välj ”Etikettera liknande” för att skapa en.",
       editTitle: "Redigera mönster",
       editAria: "Redigera mönster {pattern}",
+      reapplyAll: "Återapplicera alla",
+      reapplyAllHint:
+        "Utvärdera varje budgetrad mot nuvarande regler igen. Rader du valt typ för själv hoppas över.",
+      reapplyNoop: "Mönstren är redan applicerade. Inga rader ändrades.",
+      reapplyOne: "1 rad ommärkt.",
+      reapplyOther: "{n} rader ommärkta.",
+      hitsOne: "1 rad",
+      hitsOther: "{n} rader",
+      hitsHint: "Budgetrader som denna regel märker just nu.",
     },
     memory: {
       merchantTitle: "Handlarminne",

@@ -645,6 +645,15 @@ export const en = {
         'No pattern rules yet. Open the row menu on any entry and pick "Label similar" to create one.',
       editTitle: "Edit pattern",
       editAria: "Edit pattern {pattern}",
+      reapplyAll: "Reapply all",
+      reapplyAllHint:
+        "Re-evaluate every budget row against the current ruleset. Rows you typed by hand are skipped.",
+      reapplyNoop: "Patterns already applied. No rows changed.",
+      reapplyOne: "1 row relabelled.",
+      reapplyOther: "{n} rows relabelled.",
+      hitsOne: "1 row",
+      hitsOther: "{n} rows",
+      hitsHint: "Budget rows this rule currently types.",
     },
     memory: {
       merchantTitle: "Merchant memory",
