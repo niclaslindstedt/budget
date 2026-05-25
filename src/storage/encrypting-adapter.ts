@@ -58,6 +58,7 @@ export function withEncryption(
           log.info(`backup read: decrypting ${filename}`);
           return decryptEnvelope(raw, password);
         },
+        remove: (filename) => inner.backups!.remove(filename),
       }
     : undefined;
 

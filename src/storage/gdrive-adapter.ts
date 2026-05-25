@@ -496,6 +496,20 @@ export function createGdriveAdapter(
     return res.text();
   }
 
+  async function deleteBackup(name: string): Promise<void> {
+    const id = await findInBackupsFolder(name);
+    if (!id) return;
+    const res = await fetchImpl(`${DRIVE_FILES_API}/${id}`, {
+      method: "DELETE",
+      headers: authHeader(),
+    });
+    if (res.status === 404) return;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw gdriveError("backup delete", res.status, body);
+    }
+  }
+
   async function uploadBackup(name: string, text: string): Promise<void> {
     const folderId = await ensureBackupsFolder();
     const existing = await findInBackupsFolder(name);
@@ -567,6 +581,15 @@ export function createGdriveAdapter(
         throw new Error(`Backup not found: ${filename}`);
       }
       return text;
+    },
+    async remove(filename) {
+      log.info(`backups: remove ${filename}`);
+      await deleteBackup(filename);
+      const existing = parseBackupIndex(
+        await downloadBackup(BACKUP_INDEX_FILENAME),
+      );
+      const next = existing.filter((m) => m.filename !== filename);
+      await uploadBackup(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
     },
   };
 

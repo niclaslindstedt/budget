@@ -1754,7 +1754,13 @@ export const en = {
     restoreHint:
       "The current budget will be replaced with this snapshot. Your current file will be saved as an auto-backup first.",
     delete: "Delete",
+    deleteAria: "Delete {filename}",
     deleteTitle: "Delete this backup?",
+    deleteHint:
+      "This snapshot will be removed from the backups folder. This cannot be undone.",
+    deleting: "Deleting backup…",
+    deleted: "Deleted {filename}.",
+    deleteFailed: "Delete failed: {error}",
     listing: "Listing backups…",
     failed: "Could not list backups.",
     download: "Download",
