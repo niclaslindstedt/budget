@@ -310,6 +310,31 @@ describe("pattern auto-apply on description commit", () => {
     });
     expect(firstRow(state).typeId).toBeUndefined();
   });
+
+  it("preserves an existing typeId when an edited description matches no rule", () => {
+    // Row pre-dates the patterns feature: it has a hand-set typeId
+    // but no `typeIdLocked` (migrated rows are unlocked). Editing
+    // its description to something no rule matches must NOT strip
+    // the type — patterns are additive only.
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      { ...makeRow({ [descId]: "OLD LABEL" }), typeId: "type-rent" },
+    ];
+    state.matchRules = [
+      { id: "rule-grocery", pattern: "*ICA*", typeId: "type-grocery" },
+    ];
+    const rowId = firstRow(state).id;
+    state = reducer(state, {
+      type: "updateCell",
+      sheetId: state.sheets[0].id,
+      itemId: state.sheets[0].items[0].id,
+      rowId,
+      columnId: descId,
+      value: "RANDOM MERCHANT",
+    });
+    expect(firstRow(state).typeId).toBe("type-rent");
+  });
 });
 
 describe("reapplyMatchRules action", () => {
@@ -337,6 +362,76 @@ describe("reapplyMatchRules action", () => {
     const before = state;
     state = reducer(state, { type: "reapplyMatchRules" });
     expect(state).toBe(before);
+  });
+
+  it("preserves an unlocked row's typeId when no rule matches it", () => {
+    // The smoking-gun case from the user's logs: a recurring entry
+    // created before the patterns feature existed carries an
+    // unlocked typeId; the user's ruleset (shaped for long
+    // bank-export descriptions) wins on no recurring row. Reapply
+    // must leave the existing types intact.
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      { ...makeRow({ [descId]: "Lön" }), typeId: "type-rent" },
+      { ...makeRow({ [descId]: "Agilator" }), typeId: "type-grocery" },
+    ];
+    state.matchRules = [
+      {
+        id: "rule-apple",
+        pattern: "*APPLE.COM/BILL*",
+        typeId: "type-grocery",
+      },
+    ];
+    state = reducer(state, { type: "reapplyMatchRules" });
+    const rows = (state.sheets[0].items[0] as AccountBudget).rows;
+    expect(rows[0].typeId).toBe("type-rent");
+    expect(rows[1].typeId).toBe("type-grocery");
+  });
+
+  it("preserves an unlocked typeId when its rule's pattern is narrowed away", () => {
+    // Row was previously labeled by rule-grocery; the user narrows
+    // the rule's pattern so it no longer matches "ICA KVANTUM".
+    // Pre-fix, updateMatchRule's re-evaluation would strip the
+    // typeId. Post-fix, the row keeps its rule-assigned type until
+    // the user clears it by hand.
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      { ...makeRow({ [descId]: "ICA KVANTUM" }), typeId: "type-grocery" },
+    ];
+    state.matchRules = [
+      { id: "rule-grocery", pattern: "*ICA*", typeId: "type-grocery" },
+    ];
+    state = reducer(state, {
+      type: "updateMatchRule",
+      rule: {
+        id: "rule-grocery",
+        pattern: "*COOP*",
+        typeId: "type-grocery",
+      },
+    });
+    expect(firstRow(state).typeId).toBe("type-grocery");
+  });
+
+  it("preserves an unlocked typeId when a brand-new rule doesn't catch it", () => {
+    // Creating a fresh rule must not strip types off rows the new
+    // rule doesn't happen to match — that's the regression that
+    // surfaced when the user added a *LOOPIA AB, VÄSTERÅS* rule.
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      { ...makeRow({ [descId]: "Fortum" }), typeId: "type-rent" },
+    ];
+    state = reducer(state, {
+      type: "createMatchRule",
+      rule: {
+        id: "rule-loopia",
+        pattern: "*LOOPIA AB, VÄSTERÅS*",
+        typeId: "type-grocery",
+      },
+    });
+    expect(firstRow(state).typeId).toBe("type-rent");
   });
 });
 

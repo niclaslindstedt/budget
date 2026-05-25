@@ -709,12 +709,13 @@ const migrations: Record<
   // v38 → v39: introduces optional `Row.typeIdLocked` so the reducer
   // can distinguish "user picked this type by hand" from "pattern
   // auto-assigned this type". Locked rows survive description edits
-  // unchanged; unlocked rows pick up a fresh pattern match on every
-  // commit. Old exports lack the field; the row validator falls back
-  // to absent (i.e. unlocked) so existing rows pick up patterns the
-  // first time their description is touched after upgrade — which is
-  // the desired behaviour for users discovering this feature on a
-  // pre-populated budget. Bare version bump.
+  // unchanged; unlocked rows pick up a fresh pattern match when their
+  // description / amount commits, but only when a rule actually wins —
+  // see the header note in `pattern-apply.ts`. A pre-existing typeId
+  // on an unlocked row is never stripped by the auto-apply pass, so
+  // rows that carried hand-set types from before this feature shipped
+  // keep them whether or not any pattern happens to match. Bare
+  // version bump.
   38: (v38) => ({ ...v38, version: 39 }),
 
   // v39 → v40: renames the persisted field `transactions` → `transfers`
