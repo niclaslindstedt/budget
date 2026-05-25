@@ -1671,14 +1671,6 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       kind: "expense",
     },
     {
-      slug: "child-allowance",
-      name: "Barnbidrag",
-      color: C[3],
-      glyph: "baby",
-      category: "family",
-      kind: "income",
-    },
-    {
       slug: "allowance",
       name: "Veckopeng",
       color: C[6],
@@ -1892,6 +1884,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     {
       slug: "parental-leave",
       name: "Parental leave",
+      color: C[3],
+      glyph: "baby",
+      category: "income",
+      kind: "income",
+    },
+    {
+      slug: "child-allowance",
+      name: "Child benefit",
       color: C[3],
       glyph: "baby",
       category: "income",

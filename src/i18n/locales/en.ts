@@ -2331,7 +2331,7 @@ export const en = {
     therapy: "Therapy",
     haircut: "Haircut",
     childcare: "Childcare",
-    "child-allowance": "Child allowance",
+    "child-allowance": "Child benefit",
     allowance: "Allowance",
     toys: "Toys",
     "kids-clothing": "Kids' clothing",
