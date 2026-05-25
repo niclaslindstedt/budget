@@ -201,6 +201,64 @@ export function BudgetViewerModal({
     return groupRowsByMonth(visibleRows, dateCol.id, settings.startOfMonth);
   }, [visibleRows, dateCol, settings.startOfMonth]);
 
+  // Compute the longest formatted amount and balance across every row so
+  // the mobile grid template can pin those columns to a width that fits
+  // the worst case. Mirrors `BudgetPage`'s `colWidths` memo — without it
+  // the table falls back on table-auto sizing, which lets a long
+  // description squeeze the right-aligned amount + balance columns until
+  // they're clipped by the modal body's `overflow-x-hidden`.
+  const colWidths = useMemo(() => {
+    let amountChars = 0;
+    let balanceChars = 0;
+    if (amountCol) {
+      for (const row of item.rows) {
+        const v = row.cells[amountCol.id];
+        if (typeof v !== "number") continue;
+        const full = withCurrency(
+          formatNumber(Math.abs(v), settings),
+          settings,
+        );
+        if (full.length > amountChars) amountChars = full.length;
+      }
+    }
+    if (balanceCol) {
+      for (const b of balances.values()) {
+        const full = withCurrency(
+          formatNumber(Math.abs(b), settings, {
+            alwaysTwoFractionDigits: true,
+            alwaysAbbreviate: settings.alwaysAbbreviateBalance,
+          }),
+          settings,
+        );
+        if (full.length > balanceChars) balanceChars = full.length;
+      }
+    }
+    return {
+      amountChars: Math.max(amountChars, 4),
+      balanceChars: Math.max(balanceChars, 4),
+    };
+  }, [item.rows, amountCol, balanceCol, balances, settings]);
+
+  // Mobile grid template — one track per rendered column. Date and type
+  // get `auto` so they hug their icon-sized content, description is the
+  // flexible `minmax(0, 1fr)` so it shrinks before the amount + balance
+  // tracks do, and amount + balance are pinned to `Nch + buffer` using
+  // the longest formatted value above. Inline rather than CSS-only
+  // because the type / amount / balance columns are optional — pre-
+  // declaring every variant in styles.css would be brittle.
+  const mobileGridTemplate = useMemo(() => {
+    const tracks: string[] = ["auto"]; // date
+    if (typeCol) tracks.push("auto");
+    tracks.push("minmax(0, 1fr)"); // description
+    if (amountCol) {
+      tracks.push(`minmax(56px, calc(${colWidths.amountChars} * 1ch + 1rem))`);
+    }
+    if (balanceCol) {
+      tracks.push(`minmax(56px, calc(${colWidths.balanceChars} * 1ch + 1rem))`);
+    }
+    return tracks.join(" ");
+  }, [typeCol, amountCol, balanceCol, colWidths]);
+
   const sortedMonthGroups = useMemo(() => {
     if (!dateCol) return monthGroups;
     const out = new Map<string, Row[]>();
@@ -296,6 +354,32 @@ export function BudgetViewerModal({
     }
   }, [extraFutureMonths]);
 
+  // Land on today's fiscal month every time the modal opens. In
+  // newest-first sort the current month already sits at the top of the
+  // rendered list (future months are tucked behind the reveal button),
+  // so the scroll is a near no-op there. Oldest-first stacks past
+  // months above today — without this jump the user lands on the
+  // earliest month and has to scroll years down to find their current
+  // position. The rAF gives the portal + table one paint pass to
+  // commit its first layout before we read getBoundingClientRect.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(() => {
+      const body = scrollBodyRef.current;
+      const anchor = currentMonthHeaderRef.current;
+      if (!body || !anchor) return;
+      const thead = body.querySelector("thead");
+      const theadH = thead?.getBoundingClientRect().height ?? 0;
+      const delta =
+        anchor.getBoundingClientRect().top -
+        body.getBoundingClientRect().top -
+        theadH;
+      const next = body.scrollTop + delta;
+      body.scrollTop = next > 0 ? next : 0;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
   const hasNoRows = item.rows.length === 0;
 
   return (
@@ -333,7 +417,14 @@ export function BudgetViewerModal({
             {t("sheet.viewerSearchNoResults")}
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
+          <table
+            className="budget-viewer-table w-full border-collapse text-sm"
+            style={
+              {
+                "--viewer-row-template": mobileGridTemplate,
+              } as CSSProperties
+            }
+          >
             <thead
               className="sticky z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted"
               style={{ top: "-1px" }}
@@ -429,6 +520,7 @@ export function BudgetViewerModal({
                 return (
                   <Fragment key={monthKey}>
                     <tr
+                      className="budget-viewer-fullspan"
                       ref={
                         monthKey === currentMonth
                           ? currentMonthHeaderRef
@@ -444,7 +536,7 @@ export function BudgetViewerModal({
                       </td>
                     </tr>
                     {rows.length === 0 ? (
-                      <tr className="border-b border-line">
+                      <tr className="budget-viewer-fullspan border-b border-line">
                         <td
                           colSpan={colSpan}
                           className="px-2 py-1.5 text-center text-xs italic text-muted"
@@ -524,7 +616,7 @@ function ShowFutureEntriesRow({
   colSpan: number;
 }) {
   return (
-    <tr>
+    <tr className="budget-viewer-fullspan">
       <td colSpan={colSpan} className="p-0">
         <button
           type="button"
@@ -692,7 +784,7 @@ function CorrectionRow({
   const sign = amount >= 0 ? "+" : "−";
   const body = withCurrency(formatNumber(Math.abs(amount), settings), settings);
   return (
-    <tr className="border-b border-line last:border-b-0">
+    <tr className="budget-viewer-fullspan border-b border-line last:border-b-0">
       <td
         colSpan={colSpan}
         className="px-2 py-1 text-center text-xs italic text-muted"
