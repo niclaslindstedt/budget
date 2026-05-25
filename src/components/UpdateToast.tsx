@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Workbox } from "workbox-window";
 
+import { markPwaReloading } from "../hooks";
 import { useT } from "../i18n";
 import { BUILD_LABEL } from "../utils/build-env";
 
@@ -69,7 +70,10 @@ export function UpdateToast() {
         setNeedRefresh(true);
       };
       const onControlling = (event: { isUpdate?: boolean }) => {
-        if (event.isUpdate) window.location.reload();
+        if (event.isUpdate) {
+          markPwaReloading();
+          window.location.reload();
+        }
       };
       wb.addEventListener("waiting", onWaiting);
       wb.addEventListener("controlling", onControlling);
@@ -130,6 +134,11 @@ export function UpdateToast() {
         onClick={() => {
           const wb = wbRef.current;
           if (!wb) return;
+          // Mark the reload as in flight so HeaderStar can render
+          // inactive immediately — the SW activation hop plus the
+          // browser tearing the page down is enough time for the
+          // filled star to flash before the new build mounts.
+          markPwaReloading();
           // Post SKIP_WAITING to the waiting SW. The `controlling`
           // listener above reloads the page once the new SW takes
           // control.
