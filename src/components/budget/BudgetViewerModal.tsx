@@ -1,7 +1,10 @@
 import {
   Fragment,
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -12,6 +15,7 @@ import {
   findColumnByType,
   groupRowsByMonth,
   isTransferRow,
+  nextMonthKey,
   reverseRowsByDay,
   sortMonthKeys,
   sortRowsByDate,
@@ -75,6 +79,11 @@ function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
 }
 
 const EMPTY_ROWS: Row[] = [];
+
+// Future-month reveal pagination size. Matches the editable BudgetPage so
+// clicking the reveal button advances the same number of months whether
+// the user is viewing or editing.
+const FUTURE_PAGE_SIZE = 3;
 
 // Read-only viewer for a single sheet. Renders the same month-grouped
 // data the editable BudgetPage shows — same rows (including synthesized
@@ -222,28 +231,70 @@ export function BudgetViewerModal({
   }, [monthGroups, currentMonth, settings.transactionSortOrder]);
 
   // Future months sit above today in the descending list. Hide them
-  // behind a clickable "Show future entries" line so the modal opens
+  // behind a clickable "Show N future months" line so the modal opens
   // anchored on today's fiscal month, matching the editable view that
-  // tucks "Show earlier months" above its visible window. Search
-  // bypasses the gate so a query reveals every match regardless.
-  const [showFuture, setShowFuture] = useState(false);
+  // tucks "Show earlier months" above its visible window. Each click
+  // reveals another `FUTURE_PAGE_SIZE` months instead of dumping the
+  // entire future at once — mirroring `BudgetPage`'s paginated reveal.
+  // Search bypasses the gate so a query reveals every match regardless.
+  const [extraFutureMonths, setExtraFutureMonths] = useState(0);
   useEffect(() => {
-    if (!open) setShowFuture(false);
+    if (!open) setExtraFutureMonths(0);
   }, [open]);
   const isSearching = query.trim() !== "";
-  const futureMonths = useMemo(
-    () =>
-      visibleMonths.filter((key) => key !== "undated" && key > currentMonth),
-    [visibleMonths, currentMonth],
-  );
+  const futureCutoff = useMemo(() => {
+    let key = currentMonth;
+    for (let i = 0; i < extraFutureMonths; i += 1) {
+      key = nextMonthKey(key);
+    }
+    return key;
+  }, [currentMonth, extraFutureMonths]);
   const renderedMonths = useMemo(() => {
-    if (isSearching || showFuture) return visibleMonths;
+    if (isSearching) return visibleMonths;
     return visibleMonths.filter(
-      (key) => key === "undated" || key <= currentMonth,
+      (key) => key === "undated" || key <= futureCutoff,
     );
-  }, [visibleMonths, isSearching, showFuture, currentMonth]);
-  const hasHiddenFuture =
-    !isSearching && !showFuture && futureMonths.length > 0;
+  }, [visibleMonths, isSearching, futureCutoff]);
+  const hasHiddenFuture = useMemo(() => {
+    if (isSearching) return false;
+    for (const key of visibleMonths) {
+      if (key === "undated") continue;
+      if (key > futureCutoff) return true;
+    }
+    return false;
+  }, [visibleMonths, isSearching, futureCutoff]);
+
+  // Preserve the user's visual position when the reveal button steps the
+  // cutoff forward. In newest-first sort the revealed months get inserted
+  // above the current-month header; the Modal.Body's scroll position
+  // would otherwise stay at scrollTop=0, parking the user in the deepest
+  // future instead of the current month they were reading. Capture the
+  // current-month header's top before the state change and adjust the
+  // scroll container by the delta after layout so clicking the toggle
+  // just expands the list. In oldest-first the new months append below
+  // the existing content so the delta is 0 and nothing moves.
+  const scrollBodyRef = useRef<HTMLDivElement | null>(null);
+  const currentMonthHeaderRef = useRef<HTMLTableRowElement | null>(null);
+  const futureRevealAnchorRef = useRef<number | null>(null);
+  const onShowMoreFutureClick = useCallback(() => {
+    const anchor = currentMonthHeaderRef.current;
+    futureRevealAnchorRef.current = anchor
+      ? anchor.getBoundingClientRect().top
+      : null;
+    setExtraFutureMonths((n) => n + FUTURE_PAGE_SIZE);
+  }, []);
+  useLayoutEffect(() => {
+    const before = futureRevealAnchorRef.current;
+    if (before === null) return;
+    futureRevealAnchorRef.current = null;
+    const anchor = currentMonthHeaderRef.current;
+    const body = scrollBodyRef.current;
+    if (!anchor || !body) return;
+    const delta = anchor.getBoundingClientRect().top - before;
+    if (Math.abs(delta) > 0.5) {
+      body.scrollTop += delta;
+    }
+  }, [extraFutureMonths]);
 
   const hasNoRows = item.rows.length === 0;
 
@@ -260,7 +311,11 @@ export function BudgetViewerModal({
         title={sheet.name}
         onClose={onClose}
       />
-      <Modal.Body noPadding className="overflow-x-hidden">
+      <Modal.Body
+        noPadding
+        className="overflow-x-hidden"
+        scrollRef={scrollBodyRef}
+      >
         {!hasNoRows && (
           <ModalSearchBar
             value={query}
@@ -346,8 +401,10 @@ export function BudgetViewerModal({
               {hasHiddenFuture &&
                 settings.transactionSortOrder === "newestFirst" && (
                   <ShowFutureEntriesRow
-                    label={t("sheet.viewerShowFutureEntries")}
-                    onClick={() => setShowFuture(true)}
+                    label={t("sheet.showFutureMonths", {
+                      n: FUTURE_PAGE_SIZE,
+                    })}
+                    onClick={onShowMoreFutureClick}
                     colSpan={
                       2 +
                       (typeCol ? 1 : 0) +
@@ -371,7 +428,13 @@ export function BudgetViewerModal({
                   (balanceCol ? 1 : 0);
                 return (
                   <Fragment key={monthKey}>
-                    <tr>
+                    <tr
+                      ref={
+                        monthKey === currentMonth
+                          ? currentMonthHeaderRef
+                          : undefined
+                      }
+                    >
                       <td
                         colSpan={colSpan}
                         className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
@@ -431,8 +494,10 @@ export function BudgetViewerModal({
               {hasHiddenFuture &&
                 settings.transactionSortOrder === "oldestFirst" && (
                   <ShowFutureEntriesRow
-                    label={t("sheet.viewerShowFutureEntries")}
-                    onClick={() => setShowFuture(true)}
+                    label={t("sheet.showFutureMonths", {
+                      n: FUTURE_PAGE_SIZE,
+                    })}
+                    onClick={onShowMoreFutureClick}
                     colSpan={
                       2 +
                       (typeCol ? 1 : 0) +

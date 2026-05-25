@@ -760,7 +760,6 @@ export const sv: Catalog = {
     viewerSearchPlaceholder: "Sök i detta blad",
     viewerSearchClear: "Rensa sökning",
     viewerSearchNoResults: "Inga poster matchar sökningen.",
-    viewerShowFutureEntries: "Visa framtida poster",
     showEarlierMonths: "Visa {n} tidigare månader",
     showFutureMonths: "Visa {n} framtida månader",
     rowActions: "radåtgärder",
