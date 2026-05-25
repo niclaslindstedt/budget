@@ -98,7 +98,7 @@ const WEBSITE = {
 
 export const HOME_ROUTE: RouteSeo = {
   path: "/",
-  title: "Budget — local-first budget app",
+  title: "Budget",
   description: SITE_DESCRIPTION,
   ogType: "website",
   sitemap: { changefreq: "weekly", priority: 1.0 },
