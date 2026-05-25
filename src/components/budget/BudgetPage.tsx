@@ -789,12 +789,39 @@ export function BudgetPage({
     const before = revealAnchorRef.current;
     if (before === null) return;
     revealAnchorRef.current = null;
-    const anchor = scrollTargetRef.current;
-    if (!anchor) return;
-    const delta = anchor.getBoundingClientRect().top - before;
-    if (Math.abs(delta) > 0.5) {
-      window.scrollBy({ top: delta, behavior: "auto" });
-    }
+    const apply = () => {
+      const anchor = scrollTargetRef.current;
+      if (!anchor) return;
+      const delta = anchor.getBoundingClientRect().top - before;
+      if (Math.abs(delta) > 0.5) {
+        window.scrollBy({ top: delta, behavior: "auto" });
+      }
+    };
+    apply();
+    // Newly-revealed `MonthTable`s render as a height-estimated
+    // placeholder for one frame (`useNearViewport` starts false and
+    // only flips to true via its own layout effect), then re-render
+    // with the real row tree on the next frame. The placeholder's
+    // 40px-per-row estimate rarely matches the real stack, so the
+    // anchor shifts a second time after our initial compensation —
+    // and a third / fourth if any of the revealed months sit just
+    // outside the 1200px near-viewport margin and need the row tree
+    // measured before their cached height settles. Re-apply across
+    // the next handful of frames until the layout above the anchor
+    // stops moving.
+    let frames = 0;
+    let raf = 0;
+    const loop = () => {
+      apply();
+      frames += 1;
+      if (frames < 8) {
+        raf = requestAnimationFrame(loop);
+      }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+    };
   }, [extraFuture, extraHistory]);
 
   // Track which rendered month containers are currently intersecting
