@@ -1136,9 +1136,12 @@ export function BudgetPage({
             className={
               todayButtonDirection === "up"
                 ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+0.5rem)]"
-                : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(4rem+env(safe-area-inset-bottom))] sm:bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+                : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[var(--toast-stack-bottom)]"
             }
             data-floating-chrome
+            data-toast-stack={
+              todayButtonDirection === "down" ? "" : undefined
+            }
           >
             <button
               type="button"
