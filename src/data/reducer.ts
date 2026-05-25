@@ -403,6 +403,15 @@ export type Action =
     }
   | { type: "deleteMatchRule"; ruleId: string }
   | {
+      // Swap a rule with its neighbour in `matchRules`. Earlier in the
+      // array = higher priority, so "up" lifts a rule above the rules
+      // that currently shadow it and "down" demotes it. No-op at the
+      // ends of the array, or if the rule id is unknown.
+      type: "moveMatchRule";
+      ruleId: string;
+      direction: "up" | "down";
+    }
+  | {
       // Manually walk every budget row and re-evaluate against the
       // current ruleset. The reducer already runs this walk on
       // `createMatchRule` / `updateMatchRule`, so the only reason to
@@ -1665,8 +1674,9 @@ export function reducer(state: UserData, action: Action): UserData {
   if (action.type === "createMatchRule") {
     // Append, not prepend: rules earlier in the array win, and a
     // fresh rule should defer to whatever the user already set up
-    // unless they reorder later. Reordering UI lives in a future
-    // settings panel.
+    // unless they reorder. The Patterns tab's up/down buttons go
+    // through `moveMatchRule` to promote a new rule above its
+    // current shadower.
     const matchRules = [...state.matchRules, action.rule];
     // Walk every budget row and re-evaluate against the new ruleset
     // so a freshly authored pattern catches up the rows that were
@@ -1698,6 +1708,24 @@ export function reducer(state: UserData, action: Action): UserData {
     const next = state.matchRules.filter((r) => r.id !== action.ruleId);
     if (next.length === state.matchRules.length) return state;
     return { ...state, matchRules: next };
+  }
+  if (action.type === "moveMatchRule") {
+    const idx = state.matchRules.findIndex((r) => r.id === action.ruleId);
+    if (idx < 0) return state;
+    const swapWith = action.direction === "up" ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= state.matchRules.length) return state;
+    const matchRules = state.matchRules.slice();
+    [matchRules[idx], matchRules[swapWith]] = [
+      matchRules[swapWith],
+      matchRules[idx],
+    ];
+    // Same retroactive re-evaluation as create / update / delete: the
+    // reorder changes which rule wins for every row whose previous
+    // winner moved relative to a sibling that also matched. typeIdLocked
+    // rows are skipped inside reapplyPatternsToAllSheets so manual picks
+    // stay sticky.
+    const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
+    return { ...state, matchRules, sheets };
   }
   if (action.type === "updateHistoryEntry") {
     const history = updateHistoryEntry(

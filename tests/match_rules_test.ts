@@ -134,6 +134,34 @@ describe("ruleMatchesEntry — amountMin / amountMax", () => {
     // In-band by value but the sign filter rejects positives.
     expect(ruleMatchesEntry(r, entry({ amount: 300 }))).toBe(false);
   });
+
+  it("matches exact-mode rules where amountMin === amountMax", () => {
+    // The "Exact" UI mode persists as a single-value band so the
+    // matcher needs no special branch — assert the collapse works.
+    const exact = rule({
+      pattern: "*APPLE*",
+      amountMin: -39,
+      amountMax: -39,
+    });
+    expect(
+      ruleMatchesEntry(
+        exact,
+        entry({ description: "APPLE.COM/BILL", amount: -39 }),
+      ),
+    ).toBe(true);
+    expect(
+      ruleMatchesEntry(
+        exact,
+        entry({ description: "APPLE.COM/BILL", amount: -129 }),
+      ),
+    ).toBe(false);
+    expect(
+      ruleMatchesEntry(
+        exact,
+        entry({ description: "APPLE.COM/BILL", amount: 39 }),
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("ruleMatchesEntry — transferFilter", () => {

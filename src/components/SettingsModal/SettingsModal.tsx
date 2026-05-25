@@ -161,6 +161,10 @@ type Props = {
   // MatchRuleModal in edit mode. The modal's own danger button handles
   // deletion, so no separate delete callback is needed here.
   onEditMatchRule: (ruleId: string) => void;
+  // Reorder a rule in `data.matchRules`. Earlier in the array = higher
+  // priority, so the up button lifts a rule above the catch-alls that
+  // currently shadow it; down demotes. Reducer no-ops at the ends.
+  onMoveMatchRule: (ruleId: string, direction: "up" | "down") => void;
   // "Reapply all" button in the Patterns tab. Walks every budget row
   // against the current ruleset and shows a toast with the count of
   // rows that moved. Useful when the user wants to sweep without
@@ -270,6 +274,7 @@ export function SettingsModal({
   onSetPresetTypeHidden,
   onSetPresetTypeKind,
   onEditMatchRule,
+  onMoveMatchRule,
   onReapplyMatchRules,
   onDeleteAccount,
 }: Props) {
@@ -502,7 +507,9 @@ export function SettingsModal({
             {activeTab === "patterns" && (
               <PatternsTab
                 data={data}
+                settings={draft}
                 onEditRule={onEditMatchRule}
+                onMoveRule={onMoveMatchRule}
                 onReapplyAll={onReapplyMatchRules}
               />
             )}
