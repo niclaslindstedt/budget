@@ -27,14 +27,15 @@ const log = createLogger("match-rules");
 
 type AmountSign = NonNullable<MatchRule["amountSign"]>;
 type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
-// UI-only mode that extends the persisted `amountSign` with a fourth
-// "range" option. Range mode is mutually exclusive with the sign
-// filters: picking it hides the sign filter and surfaces the bounded
-// amount inputs between Amount and Transfers; picking Any / Negative /
-// Positive clears the bounds. The persisted `amountSign` stays "any"
-// while in range mode — the bounds carry their own sign — so the
-// data model is unchanged.
-type SignMode = AmountSign | "range";
+// UI-only mode that extends the persisted `amountSign` with two extra
+// options: "exact" pins to a single amount (stored as
+// `amountMin === amountMax`), and "range" stores a signed band. Both
+// are mutually exclusive with the sign filters — picking either hides
+// the sign filter and surfaces the bounded-amount inputs; picking
+// Any / Negative / Positive clears the bounds. The persisted
+// `amountSign` stays "any" while in either mode (the bounds carry
+// their own sign) so the data model is unchanged.
+type SignMode = AmountSign | "exact" | "range";
 
 export type MatchRuleDraft = {
   pattern: string;
@@ -151,6 +152,11 @@ export function MatchRuleModal({
   const [amountMinNegative, setAmountMinNegative] = useState(true);
   const [amountMaxText, setAmountMaxText] = useState("");
   const [amountMaxNegative, setAmountMaxNegative] = useState(true);
+  // Single signed amount used when the user picks the Exact mode.
+  // Persisted as `amountMin === amountMax` so the matcher needs no
+  // changes — only the UI distinguishes "exact" from "1-wide range".
+  const [amountExactText, setAmountExactText] = useState("");
+  const [amountExactNegative, setAmountExactNegative] = useState(true);
 
   const patternRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(patternRef, open);
@@ -161,12 +167,21 @@ export function MatchRuleModal({
       setPattern(existing.pattern);
       setDescription(existing.description ?? "");
       setTypeId(existing.typeId ?? null);
-      // A rule with bounds was created in range mode — show it that
-      // way so the user lands back on the inputs they filled in. A
-      // rule without bounds shows the saved sign filter.
-      const hasBounds =
-        existing.amountMin !== undefined || existing.amountMax !== undefined;
-      setSignMode(hasBounds ? "range" : (existing.amountSign ?? "any"));
+      // A rule with both bounds equal collapses to Exact mode (one
+      // input). A rule with any other combination of bounds keeps the
+      // legacy Range mode. A rule without bounds shows the saved sign
+      // filter as before.
+      const minDef = existing.amountMin !== undefined;
+      const maxDef = existing.amountMax !== undefined;
+      const isExact =
+        minDef && maxDef && existing.amountMin === existing.amountMax;
+      setSignMode(
+        isExact
+          ? "exact"
+          : minDef || maxDef
+            ? "range"
+            : (existing.amountSign ?? "any"),
+      );
       setTransferFilter(existing.transferFilter ?? "any");
       if (existing.amountMin !== undefined) {
         setAmountMinText(
@@ -185,6 +200,15 @@ export function MatchRuleModal({
       } else {
         setAmountMaxText("");
         setAmountMaxNegative(true);
+      }
+      if (isExact) {
+        setAmountExactText(
+          formatAmountForInput(Math.abs(existing.amountMin!), settings),
+        );
+        setAmountExactNegative(existing.amountMin! < 0);
+      } else {
+        setAmountExactText("");
+        setAmountExactNegative(true);
       }
       return;
     }
@@ -205,11 +229,13 @@ export function MatchRuleModal({
     setTransferFilter("exclude");
     setAmountMinText("");
     setAmountMaxText("");
+    setAmountExactText("");
     // Default the toggles to the seed's direction so the user can
     // type magnitudes without first remembering to flip the sign.
     const seedNeg = seedEntry ? seedEntry.amount < 0 : true;
     setAmountMinNegative(seedNeg);
     setAmountMaxNegative(seedNeg);
+    setAmountExactNegative(seedNeg);
   }, [open, existing, seedEntry, settings]);
 
   // Compile the regex once per pattern; an empty pattern yields no
@@ -225,32 +251,41 @@ export function MatchRuleModal({
   }, [pattern]);
 
   // Resolve each bound to a signed JS number (or undefined when the
-  // user left the field blank or range mode is off). Done once so the
-  // preview, the draft, and the submit handler all agree on what
-  // "this band means".
+  // user left the field blank or range/exact mode is off). Done once
+  // so the preview, the draft, and the submit handler all agree on
+  // what "this band means".
   const isRangeMode = signMode === "range";
-  const amountMin = useMemo(
+  const isExactMode = signMode === "exact";
+  const amountExact = useMemo(
     () =>
-      isRangeMode
-        ? parseSignedAmount(amountMinText, amountMinNegative)
+      isExactMode
+        ? parseSignedAmount(amountExactText, amountExactNegative)
         : undefined,
-    [isRangeMode, amountMinText, amountMinNegative],
+    [isExactMode, amountExactText, amountExactNegative],
   );
-  const amountMax = useMemo(
-    () =>
-      isRangeMode
-        ? parseSignedAmount(amountMaxText, amountMaxNegative)
-        : undefined,
-    [isRangeMode, amountMaxText, amountMaxNegative],
-  );
+  // In Exact mode the single value drives both ends of the band so
+  // the matcher (which still compares amountMin <= a <= amountMax)
+  // accepts only that exact amount. Range mode keeps the user's
+  // From/To inputs. Otherwise both ends are undefined (no bounds).
+  const amountMin = useMemo(() => {
+    if (isExactMode) return amountExact;
+    if (isRangeMode) return parseSignedAmount(amountMinText, amountMinNegative);
+    return undefined;
+  }, [isExactMode, isRangeMode, amountExact, amountMinText, amountMinNegative]);
+  const amountMax = useMemo(() => {
+    if (isExactMode) return amountExact;
+    if (isRangeMode) return parseSignedAmount(amountMaxText, amountMaxNegative);
+    return undefined;
+  }, [isExactMode, isRangeMode, amountExact, amountMaxText, amountMaxNegative]);
   // Reject a band where the user has typed both ends but inverted
   // them (min > max). The preview falls through to zero matches so
-  // the user sees the mistake immediately.
+  // the user sees the mistake immediately. Exact mode collapses min
+  // and max to the same value, so this can only fire in range mode.
   const rangeInverted =
     amountMin !== undefined && amountMax !== undefined && amountMin > amountMax;
-  // Persisted sign filter — "any" while in range mode, since the
-  // bounds carry their own sign.
-  const amountSign: AmountSign = isRangeMode ? "any" : signMode;
+  // Persisted sign filter — "any" while in range or exact mode, since
+  // the bounds carry their own sign.
+  const amountSign: AmountSign = isRangeMode || isExactMode ? "any" : signMode;
 
   const draft = useMemo<MatchRule>(
     () => ({
@@ -291,8 +326,12 @@ export function MatchRuleModal({
     [matches, seedEntry],
   );
 
+  const exactBlank = isExactMode && amountExact === undefined;
   const canSave =
-    pattern.trim().length > 0 && compiled !== null && !rangeInverted;
+    pattern.trim().length > 0 &&
+    compiled !== null &&
+    !rangeInverted &&
+    !exactBlank;
 
   const handleSubmit = useCallback(() => {
     if (!canSave) {
@@ -300,7 +339,8 @@ export function MatchRuleModal({
         `apply blocked: canSave=false ` +
           `patternLen=${pattern.trim().length} ` +
           `compiled=${compiled !== null} ` +
-          `rangeInverted=${rangeInverted}`,
+          `rangeInverted=${rangeInverted} ` +
+          `exactBlank=${exactBlank}`,
       );
       return;
     }
@@ -337,6 +377,7 @@ export function MatchRuleModal({
     amountMax,
     compiled,
     rangeInverted,
+    exactBlank,
     matches.length,
     allEntries.length,
     isEdit,
@@ -416,9 +457,25 @@ export function MatchRuleModal({
                 { value: "any", label: t("matchRule.amountAny") },
                 { value: "negative", label: t("matchRule.amountNegative") },
                 { value: "positive", label: t("matchRule.amountPositive") },
+                { value: "exact", label: t("matchRule.amountExact") },
                 { value: "range", label: t("matchRule.amountRange") },
               ]}
             />
+            {isExactMode && (
+              <div className="mt-1 flex flex-col gap-1.5">
+                <SignedAmountInput
+                  value={amountExactText}
+                  negative={amountExactNegative}
+                  onValueChange={setAmountExactText}
+                  onToggleSign={() => setAmountExactNegative((s) => !s)}
+                  settings={settings}
+                  ariaLabel={t("matchRule.amountExactAria")}
+                  placeholder={t("matchRule.amountExactPlaceholder")}
+                  density="compact"
+                  width="w-32"
+                />
+              </div>
+            )}
             {isRangeMode && (
               <div className="mt-1 flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center gap-2">

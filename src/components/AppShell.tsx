@@ -2477,6 +2477,14 @@ export function AppShell({
     setMatchRulePrompt({ kind: "edit", ruleId });
   }, []);
 
+  const onMoveMatchRule = useCallback(
+    (ruleId: string, direction: "up" | "down") => {
+      log.info(`dispatch moveMatchRule id=${ruleId} direction=${direction}`);
+      dispatch({ type: "moveMatchRule", ruleId, direction });
+    },
+    [dispatch],
+  );
+
   // "Reapply all" button in the Patterns settings tab. Simulates the
   // walk ahead of dispatch so the success toast can quote the actual
   // number of rows that moved — a 0-row reapply still surfaces a
@@ -3579,6 +3587,7 @@ export function AppShell({
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
         onEditMatchRule={onEditMatchRule}
+        onMoveMatchRule={onMoveMatchRule}
         onReapplyMatchRules={onReapplyMatchRules}
         onDeleteAccount={onDeleteAccount}
       />

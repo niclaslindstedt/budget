@@ -81,9 +81,11 @@ export function ruleMatchesEntry(
 }
 
 // First rule that matches the candidate, or null. Order matters —
-// rules earlier in the array win, so the user can layer specific rules
-// on top of catch-alls by reordering. Today the modal appends new
-// rules; reordering UI lives in a future settings panel.
+// rules earlier in the array win, so the user can layer specific
+// rules on top of catch-alls by reordering. The Patterns settings
+// tab exposes up/down buttons that swap a rule with its neighbour
+// (see `moveMatchRule` in the reducer); fresh rules are appended at
+// the end so they defer to whatever the user already set up.
 export function findMatchingRuleForCandidate(
   rules: readonly MatchRule[],
   candidate: RuleCandidate,
