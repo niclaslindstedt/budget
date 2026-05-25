@@ -1943,6 +1943,7 @@ export function reducer(state: UserData, action: Action): UserData {
           accountHistory,
           targetItem.rows,
           targetItem.columns,
+          state.settings.startOfMonth,
         );
         if (snapped !== action.value) {
           effectiveAction = { ...action, value: snapped };

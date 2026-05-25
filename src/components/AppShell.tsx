@@ -1790,6 +1790,7 @@ export function AppShell({
               existingHistory,
               rowsForAccount.flatMap((r) => r.rows),
               rowsForAccount[0].columns,
+              preImportData.settings.startOfMonth,
             )
           : new Set<string>();
       // Apply silent auto-deletions before computing post-coverage
@@ -1804,6 +1805,7 @@ export function AppShell({
               merged,
               afterRowsForAccount.flatMap((r) => r.rows),
               afterRowsForAccount[0].columns,
+              preImportData.settings.startOfMonth,
             )
           : new Set<string>();
       const newlyCovered = coverageDelta(beforeCovered, afterCovered);
@@ -1816,7 +1818,13 @@ export function AppShell({
         );
         for (const c of candidates) allCandidates.push(c);
         const claimedIds = new Set(candidates.map((c) => c.rowId));
-        const orphans = findOrphans(rows, columns, newlyCovered, claimedIds);
+        const orphans = findOrphans(
+          rows,
+          columns,
+          newlyCovered,
+          claimedIds,
+          preImportData.settings.startOfMonth,
+        );
         for (const o of orphans) allOrphans.push(o);
       }
 

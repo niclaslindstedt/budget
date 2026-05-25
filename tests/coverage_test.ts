@@ -161,3 +161,55 @@ describe("isDateCovered", () => {
     expect(isDateCovered("2026-07-15", history, [], columns)).toBe(false);
   });
 });
+
+describe("coveredMonths — fiscal months (startOfMonth=25)", () => {
+  // Fiscal "2026-04" spans 2026-04-25 → 2026-05-24. History stops at
+  // 2026-05-18 (mid-window), so coverage cannot flip on — the bank
+  // hasn't reported the last week of the fiscal month yet.
+  const history: HistoryEntry[] = [
+    hist("h1", "2026-04-13"),
+    hist("h2", "2026-05-15"),
+    hist("h3", "2026-05-18"),
+  ];
+  // Manually-added row past the last history date but still inside
+  // fiscal "2026-04" (matches the regression: user enters something
+  // on May 20 in the April column).
+  const userRows: Row[] = [row("manual", "2026-05-20")];
+
+  it("does NOT cover the in-progress fiscal month even when calendar April is bracketed", () => {
+    const covered = coveredMonths(history, userRows, columns, 25);
+    expect(covered.has("2026-04")).toBe(false);
+  });
+
+  it("flips covered once history extends past the fiscal month end", () => {
+    const extended = [...history, hist("h4", "2026-05-25")];
+    const covered = coveredMonths(extended, userRows, columns, 25);
+    expect(covered.has("2026-04")).toBe(true);
+  });
+
+  it("groups user rows by fiscal month when checking bracketing", () => {
+    // History entirely inside fiscal "2026-04" plus one entry after.
+    // With startOfMonth=25, a calendar-May row at 2026-05-10 belongs
+    // to fiscal "2026-04" — so an uncovered fiscal "2026-04" must
+    // see it as a user row living in the same window (no entries
+    // before fiscal-firstDay → still uncovered).
+    const h = [hist("h1", "2026-04-26"), hist("h2", "2026-05-30")];
+    const r = [row("u", "2026-05-10")];
+    const covered = coveredMonths(h, r, columns, 25);
+    expect(covered.has("2026-04")).toBe(false);
+  });
+});
+
+describe("nextUncoveredDate — fiscal months (startOfMonth=25)", () => {
+  it("snaps to the next fiscal month start, not the calendar first", () => {
+    // Bracketing history: fiscal "2026-04" is covered (history before
+    // Apr 25 and after May 24), fiscal "2026-05" is not (no history
+    // past Jun 24). Snapping a date inside fiscal "2026-04" should
+    // land on the fiscal-month start of "2026-05" — 2026-05-25 —
+    // not 2026-05-01 (which would land in fiscal "2026-04" again).
+    const h = [hist("a", "2026-03-15"), hist("b", "2026-06-10")];
+    expect(nextUncoveredDate("2026-05-10", h, [], columns, 25)).toBe(
+      "2026-05-25",
+    );
+  });
+});

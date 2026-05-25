@@ -366,12 +366,16 @@ export function BudgetPage({
     return m;
   }, [history]);
 
-  // Calendar months fully covered by imported history. Computed once
+  // Fiscal months fully covered by imported history. Computed once
   // per render; passed down so each `MonthTable` can hide its
-  // `+ Add row` footer.
+  // `+ Add row` footer. Uses `settings.startOfMonth` so the coverage
+  // window matches the column the rows are grouped under — with
+  // startOfMonth=25, fiscal "2026-04" only flips covered once
+  // history extends past May 24, not April 30.
   const coveredSet = useMemo(
-    () => coveredMonths(history, item.rows, item.columns),
-    [history, item.rows, item.columns],
+    () =>
+      coveredMonths(history, item.rows, item.columns, settings.startOfMonth),
+    [history, item.rows, item.columns, settings.startOfMonth],
   );
 
   // Evaluate every formula row's amount against the merged view (so
@@ -1022,7 +1026,6 @@ export function BudgetPage({
             const slot = monthSlots.get(monthKey);
             if (!slot) return null;
             const {
-              seedDate,
               onAddRow: slotAdd,
               onAddComplex: slotAddComplex,
               onToggleCollapsed: slotToggle,
@@ -1052,14 +1055,12 @@ export function BudgetPage({
                   balanceChars={colWidths.balanceChars}
                   collapsed={collapsedMonths.has(monthKey)}
                   covered={
-                    // Gate by the seed date's calendar month. The
-                    // `+` button defaults a new row to `seedDate`,
-                    // so if that date sits in a covered window
-                    // (history is authoritative there) the button
-                    // is pointless. Fiscal-month keys may straddle
-                    // two calendar months when `startOfMonth ≠ 1`,
-                    // so we check the seed rather than the key.
-                    seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
+                    // `coveredSet` keys are fiscal months — same
+                    // basis as `monthKey` — so straight membership
+                    // is the right check. The `+` button hides only
+                    // when history is authoritative across the entire
+                    // fiscal window the section represents.
+                    coveredSet.has(monthKey)
                   }
                   onToggleCollapsed={slotToggle}
                   forceMount={monthKey === forceMountMonthKey}
