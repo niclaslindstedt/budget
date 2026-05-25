@@ -26,7 +26,7 @@ import { clearRawStorage, readRawStorage } from "../storage/local-adapter";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 38 as const;
+export const LATEST_VERSION = 39 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -703,6 +703,17 @@ const migrations: Record<
     }
     return out as Versioned;
   },
+
+  // v38 → v39: introduces optional `Row.typeIdLocked` so the reducer
+  // can distinguish "user picked this type by hand" from "pattern
+  // auto-assigned this type". Locked rows survive description edits
+  // unchanged; unlocked rows pick up a fresh pattern match on every
+  // commit. Old exports lack the field; the row validator falls back
+  // to absent (i.e. unlocked) so existing rows pick up patterns the
+  // first time their description is touched after upgrade — which is
+  // the desired behaviour for users discovering this feature on a
+  // pre-populated budget. Bare version bump.
+  38: (v38) => ({ ...v38, version: 39 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

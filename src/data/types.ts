@@ -75,6 +75,13 @@ export type Row = {
   // Synthesized transaction rows (those carrying `peerAccountId`) are
   // implicitly transfers and don't need this flag set.
   isTransfer?: boolean;
+  // True when the user has manually assigned `typeId` for this row
+  // (via the type cell picker, the edit-row modal, or any other
+  // explicit choice). Locks the row out of automatic pattern-driven
+  // type assignment so a later description edit can't silently
+  // overwrite a deliberate label. Cleared when the user clears the
+  // typeId so a freshly-blank row can pick up a pattern again.
+  typeIdLocked?: boolean;
 };
 
 // Master allowlist of glyph names used anywhere in the app. The picker
@@ -912,7 +919,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 38;
+  version: 39;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

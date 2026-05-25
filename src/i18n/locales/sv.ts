@@ -360,6 +360,7 @@ export const sv: Catalog = {
       format: "Format",
       storage: "Lagring",
       categories: "Kategorier",
+      patterns: "Mönster",
       memory: "Minne",
       developer: "Utvecklare",
       logs: "Loggar",
@@ -628,6 +629,15 @@ export const sv: Catalog = {
       kindIncomeTitle: "Visas bara på inkomstrader (positivt belopp)",
       kindExpenseTitle: "Visas bara på utgiftsrader (negativt belopp)",
     },
+    patterns: {
+      title: "Mönsterregler",
+      intro:
+        "Sparade mönster märker om matchande poster — både importerade från banken och manuellt inskrivna. Att redigera eller ta bort en regel återapplicerar den på äldre poster vid nästa rendering. Nya rader plockar upp matchande regler så fort beskrivningen sparas; en manuellt vald typ vinner tills du rensar den.",
+      empty:
+        "Inga mönsterregler än. Öppna radmenyn på en post och välj ”Etikettera liknande” för att skapa en.",
+      editTitle: "Redigera mönster",
+      editAria: "Redigera mönster {pattern}",
+    },
     memory: {
       merchantTitle: "Handlarminne",
       merchantHint:
@@ -789,6 +799,9 @@ export const sv: Catalog = {
     labelByPattern: "Etikett via mönster",
     labelByPatternTitle:
       "Etikettera alla historikposter som matchar ett wildcard-mönster",
+    labelSimilar: "Etikettera liknande",
+    labelSimilarTitle:
+      "Skapa ett mönster som etiketterar alla poster vars beskrivning matchar",
     editHistoryEntry: "Redigera denna historikpost",
     editTransaction: "Redigera transaktion",
     markAsTransfer: "Markera som överföring",

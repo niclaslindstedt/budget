@@ -368,6 +368,7 @@ export const en = {
       format: "Format",
       storage: "Storage",
       categories: "Categories",
+      patterns: "Patterns",
       memory: "Memory",
       developer: "Developer",
       logs: "Logs",
@@ -636,6 +637,15 @@ export const en = {
       kindIncomeTitle: "Shows only on income rows (positive amount)",
       kindExpenseTitle: "Shows only on expense rows (negative amount)",
     },
+    patterns: {
+      title: "Pattern rules",
+      intro:
+        "Saved patterns relabel matching entries — bank-imported and manually-typed alike. Editing or deleting a rule re-applies to past entries on the next render. New rows pick up matching rules on the description's first commit; a manually-picked type wins until you clear it.",
+      empty:
+        'No pattern rules yet. Open the row menu on any entry and pick "Label similar" to create one.',
+      editTitle: "Edit pattern",
+      editAria: "Edit pattern {pattern}",
+    },
     memory: {
       merchantTitle: "Merchant memory",
       merchantHint:
@@ -795,6 +805,9 @@ export const en = {
     labelByPattern: "Label by pattern",
     labelByPatternTitle:
       "Label every history entry matching a wildcard pattern",
+    labelSimilar: "Label similar",
+    labelSimilarTitle:
+      "Create a pattern that labels every entry whose description matches",
     editHistoryEntry: "Edit this history entry",
     editTransaction: "Edit transaction",
     markAsTransfer: "Mark as transfer",

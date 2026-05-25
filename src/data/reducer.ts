@@ -19,6 +19,7 @@ import {
   updateHistoryEntry,
 } from "./sheet";
 import { nextUncoveredDate } from "./coverage";
+import { findMatchingRuleForCandidate } from "./match-rules";
 import { findRuleDrivenCandidates } from "./reconciliation";
 import { type HintRecording, recordMerchantHints } from "./merchant-hints";
 import type {
@@ -520,8 +521,15 @@ function applyPatch(
   // `undefined` means "don't touch"; explicit `null` clears the type
   // and the row falls back to its description as the primary label.
   if (patch.typeId !== undefined) {
-    if (patch.typeId === null) delete next.typeId;
-    else next.typeId = patch.typeId;
+    if (patch.typeId === null) {
+      delete next.typeId;
+      delete next.typeIdLocked;
+    } else {
+      next.typeId = patch.typeId;
+      // The edit modal is an explicit user choice — lock the row out
+      // of pattern-driven re-labelling, same as the inline type cell.
+      next.typeIdLocked = true;
+    }
   }
   if (cols.dateId && patch.dateShiftDays && patch.dateShiftDays !== 0) {
     const cur = next.cells[cols.dateId];
@@ -530,6 +538,59 @@ function applyPatch(
     }
   }
   return next;
+}
+
+// Walk the diff between prev and next; for any row whose description
+// or amount changed and that isn't locked to a manual type, look up
+// the first rule that matches the new shape and write the rule's
+// typeId onto the row. Returns next unchanged when nothing matches
+// (referentially identical so the outer reducer can short-circuit).
+function applyPatternsAfterCellEdit(
+  prev: AccountBudget,
+  next: AccountBudget,
+  rules: readonly MatchRule[],
+): AccountBudget {
+  if (rules.length === 0) return next;
+  const descId = findColumnByType(next.columns, "description")?.id;
+  const amountId = findColumnByType(next.columns, "amount")?.id;
+  if (!descId && !amountId) return next;
+  const prevById = new Map<string, Row>();
+  for (const r of prev.rows) prevById.set(r.id, r);
+  let changed = false;
+  const nextRows = next.rows.map((row) => {
+    if (row.typeIdLocked) return row;
+    // Synthesized rows (transactions, history) never persist here, but
+    // a user-authored row that's still empty has nothing to match.
+    if (descId === undefined) return row;
+    const desc = row.cells[descId];
+    if (typeof desc !== "string" || desc.trim() === "") return row;
+    const before = prevById.get(row.id);
+    const descChanged = !before || before.cells[descId] !== row.cells[descId];
+    const amountChanged =
+      amountId !== undefined &&
+      (!before || before.cells[amountId] !== row.cells[amountId]);
+    if (!descChanged && !amountChanged) return row;
+    const amount =
+      amountId !== undefined && typeof row.cells[amountId] === "number"
+        ? (row.cells[amountId] as number)
+        : 0;
+    const candidate = {
+      description: desc,
+      amount,
+      isTransfer: row.isTransfer === true,
+    };
+    const rule = findMatchingRuleForCandidate(rules, candidate);
+    const wantTypeId = rule?.typeId ?? null;
+    const currentTypeId = row.typeId ?? null;
+    if (wantTypeId === currentTypeId) return row;
+    changed = true;
+    const updated: Row = { ...row };
+    if (wantTypeId === null) delete updated.typeId;
+    else updated.typeId = wantTypeId;
+    return updated;
+  });
+  if (!changed) return next;
+  return { ...next, rows: nextRows };
 }
 
 // Shared row-minting body for the two recurring-promote actions
@@ -586,8 +647,15 @@ function reduceAccountBudget(
             const next: Row = { ...r };
             if (typeof action.value === "string" && action.value !== "") {
               next.typeId = action.value;
+              // Manual type assignment locks the row out of pattern-
+              // driven re-labelling: a later description edit shouldn't
+              // silently overwrite a label the user chose by hand.
+              next.typeIdLocked = true;
             } else {
               delete next.typeId;
+              // Clearing the type re-opens the row to pattern matching
+              // so the next description commit can pick one up.
+              delete next.typeIdLocked;
             }
             return next;
           }),
@@ -641,7 +709,13 @@ function reduceAccountBudget(
           completed: defaultCompletedForDate(date),
         });
         if (seriesId) row.seriesId = seriesId;
-        if (draft.typeId) row.typeId = draft.typeId;
+        if (draft.typeId) {
+          row.typeId = draft.typeId;
+          // The modal asked the user for a type — treat the choice as
+          // an explicit pick so future description edits don't reroute
+          // it through pattern matching.
+          row.typeIdLocked = true;
+        }
         // Formula rows carry the canonical id-keyed form so renames of
         // a referenced sheet don't break the formula; the renderer
         // recomputes the amount each pass via the resolver.
@@ -675,7 +749,10 @@ function reduceAccountBudget(
           completed: false,
         });
         row.seriesId = seriesId;
-        if (action.typeId) row.typeId = action.typeId;
+        if (action.typeId) {
+          row.typeId = action.typeId;
+          row.typeIdLocked = true;
+        }
         return row;
       });
       return {
@@ -684,8 +761,13 @@ function reduceAccountBudget(
           ...item.rows.map((r) => {
             if (r.id !== anchor.id) return r;
             const next: Row = { ...r, seriesId };
-            if (action.typeId) next.typeId = action.typeId;
-            else if (action.typeId === null) delete next.typeId;
+            if (action.typeId) {
+              next.typeId = action.typeId;
+              next.typeIdLocked = true;
+            } else if (action.typeId === null) {
+              delete next.typeId;
+              delete next.typeIdLocked;
+            }
             return next;
           }),
           ...newRows,
@@ -1820,8 +1902,15 @@ export function reducer(state: UserData, action: Action): UserData {
     action.sheetId,
     action.itemId,
     (item) => {
-      const next = reduceAccountBudget(item, effectiveAction);
-      if (next === item) return item;
+      const reduced = reduceAccountBudget(item, effectiveAction);
+      if (reduced === item) return item;
+      // Apply pattern-driven typeIds AFTER the sub-reducer runs so
+      // every cell-mutating action (inline edit, edit modal, complex
+      // add, recurring promote) inherits the same auto-labelling
+      // policy without each having to know about matchRules. The
+      // hint-recording pass below then sees the post-pattern shape so
+      // a freshly auto-assigned type also feeds the merchant memory.
+      const next = applyPatternsAfterCellEdit(item, reduced, state.matchRules);
       recordings.push(...hintRecordingsFromBudget(item, next));
       // "Make recurring" should also backfill the user-typed
       // description onto past bank-history entries whose normalised

@@ -208,6 +208,7 @@ function validateRow(
     isCorrection,
     amountFormula,
     isTransfer,
+    typeIdLocked,
   } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
@@ -254,6 +255,11 @@ function validateRow(
     // Only persist `true` — stored `false` is indistinguishable from
     // "field absent" and just bloats the snapshot.
     if (isTransfer) row.isTransfer = true;
+  }
+  if (typeIdLocked !== undefined) {
+    if (typeof typeIdLocked !== "boolean")
+      return fail(`${path}.typeIdLocked`, "expected a boolean");
+    if (typeIdLocked) row.typeIdLocked = true;
   }
   return { ok: true, value: row };
 }

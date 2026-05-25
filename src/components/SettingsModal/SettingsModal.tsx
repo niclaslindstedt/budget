@@ -9,6 +9,7 @@ import {
   Settings as SettingsIcon,
   Sliders,
   Tag,
+  Tags,
   Wrench,
   X,
 } from "lucide-react";
@@ -41,6 +42,7 @@ import {
   GeneralTab,
   LogsTab,
   MemoryTab,
+  PatternsTab,
   StorageTab,
 } from "./tabs";
 
@@ -155,6 +157,10 @@ type Props = {
     presetId: string,
     kind: "income" | "expense" | "any",
   ) => void;
+  // Pattern management for the Patterns tab. Opens the existing
+  // MatchRuleModal in edit mode. The modal's own danger button handles
+  // deletion, so no separate delete callback is needed here.
+  onEditMatchRule: (ruleId: string) => void;
   // Danger-zone callback for the Storage tab: deletes the active
   // account (or clears guest data when no password is set).
   onDeleteAccount: (password: string) => Promise<void>;
@@ -166,6 +172,7 @@ export type SettingsTabId =
   | "format"
   | "storage"
   | "categories"
+  | "patterns"
   | "memory"
   | "developer"
   | "logs";
@@ -187,6 +194,7 @@ const TAB_ICONS: Record<TabId, LucideIcon> = {
   format: Hash,
   storage: HardDrive,
   categories: Tag,
+  patterns: Tags,
   memory: SettingsIcon,
   developer: Wrench,
   logs: ScrollText,
@@ -198,6 +206,7 @@ const BASE_TAB_IDS: readonly TabId[] = [
   "format",
   "storage",
   "categories",
+  "patterns",
   "memory",
 ];
 
@@ -255,6 +264,7 @@ export function SettingsModal({
   onDeleteType,
   onSetPresetTypeHidden,
   onSetPresetTypeKind,
+  onEditMatchRule,
   onDeleteAccount,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
@@ -482,6 +492,9 @@ export function SettingsModal({
                 onSetPresetTypeHidden={onSetPresetTypeHidden}
                 onSetPresetTypeKind={onSetPresetTypeKind}
               />
+            )}
+            {activeTab === "patterns" && (
+              <PatternsTab data={data} onEditRule={onEditMatchRule} />
             )}
             {activeTab === "memory" && (
               <MemoryTab
