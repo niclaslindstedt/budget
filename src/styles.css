@@ -865,6 +865,22 @@ body {
         )
         40px;
     }
+    /* Month-header (the "APRIL 2026" pill at the top of each section)
+       and month-footer (the "+ Add row" button at the bottom) rows hold
+       a single `colSpan`'d `<td>`. With the grid layout above, that
+       single cell would land in the first 40px track and the rest of
+       the row would be empty — so the header label and the add-row
+       button visually collapse to the date column on mobile. Drop them
+       back to block flow so the `<td>` fills the full row width like
+       its `colSpan` intends. */
+    .sheet-table > tbody > tr[data-month-header],
+    .sheet-table > tbody > tr[data-month-footer] {
+      display: block;
+    }
+    .sheet-table > tbody > tr[data-month-header] > td,
+    .sheet-table > tbody > tr[data-month-footer] > td {
+      width: 100%;
+    }
     /* Highlight the row in select mode and tint the selected ones. */
     .sheet-table > tbody > tr.is-selecting-row {
       cursor: pointer;
