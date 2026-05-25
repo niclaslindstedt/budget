@@ -15,6 +15,7 @@ type Props = {
   surface?: "surface" | "surface-2";
   density?: "regular" | "compact";
   width?: "flex" | "w-32";
+  disabled?: boolean;
 };
 
 // Shared signed-amount editor: a +/- toggle button absolutely positioned
@@ -37,6 +38,7 @@ export function SignedAmountInput({
   surface = "surface-2",
   density = "regular",
   width = "flex",
+  disabled = false,
 }: Props) {
   const t = useT();
 
@@ -60,17 +62,20 @@ export function SignedAmountInput({
   }
 
   return (
-    <div className={wrapperClass}>
+    <div className={`${wrapperClass}${disabled ? " opacity-60" : ""}`}>
       <button
         type="button"
         onClick={onToggleSign}
+        disabled={disabled}
         aria-label={
           negative ? t("editEntry.makePositive") : t("editEntry.makeNegative")
         }
         tabIndex={-1}
-        className={`absolute inset-y-0 left-0 z-10 flex w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0 hover:text-fg-bright ${
-          negative ? "text-negative" : "text-positive"
-        }`}
+        className={`absolute inset-y-0 left-0 z-10 flex w-7 items-center justify-center border-0 bg-transparent p-0 ${
+          disabled
+            ? "cursor-not-allowed"
+            : "cursor-pointer hover:text-fg-bright"
+        } ${negative ? "text-negative" : "text-positive"}`}
       >
         {negative ? (
           <Minus size={14} aria-hidden focusable={false} />
@@ -84,8 +89,9 @@ export function SignedAmountInput({
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         aria-label={ariaLabel}
-        className={`field-input ${inputWidthClass} rounded border border-line ${bgClass} ${paddingClass} pr-2 pl-7 text-right font-mono text-sm tabular-nums ${tone}`}
+        className={`field-input ${inputWidthClass} rounded border border-line ${bgClass} ${paddingClass} pr-2 pl-7 text-right font-mono text-sm tabular-nums ${tone}${disabled ? " cursor-not-allowed" : ""}`}
       />
     </div>
   );

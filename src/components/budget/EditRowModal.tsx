@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { findColumnByType } from "../../data/sheet";
+import { findColumnByType, sortRowsByDate } from "../../data/sheet";
 import type {
   Category,
   Column,
@@ -11,7 +11,12 @@ import type {
 } from "../../data/types";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useT } from "../../i18n";
-import { formatAmountForInput, parseAmount } from "../../utils/format";
+import {
+  formatAmount,
+  formatAmountForInput,
+  formatShortDate,
+  parseAmount,
+} from "../../utils/format";
 import {
   Checkbox,
   Button,
@@ -44,6 +49,12 @@ type Props = {
   // Last ISO date in the same series — defaults the "until" picker
   // when the user picks the future scope. `null` for one-off rows.
   lastSeriesDate: string | null;
+  // Every row in the same series, including the anchor, ordered
+  // however the caller likes (the modal re-sorts by date). Empty for
+  // one-off rows. Used to render the "Affected rows" preview list
+  // under the scope picker so the user can see what they're about to
+  // change before pressing Save.
+  seriesRows: readonly Row[];
   onClose: () => void;
   onSave: (rowId: string, patch: EditRowPatch, scope: EditRowScope) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
@@ -67,7 +78,11 @@ export type EditRowPatch = {
 
 export type EditRowScope =
   | { kind: "just-this" }
-  | { kind: "future"; untilIso: string | null };
+  | { kind: "future"; untilIso: string | null }
+  // Whole-series scope. The modal locks the amount input out under
+  // this scope — changing the amount on past, already-reconciled
+  // occurrences would silently rewrite history.
+  | { kind: "all" };
 
 export function EditRowModal({
   open,
@@ -77,6 +92,7 @@ export function EditRowModal({
   types,
   settings,
   lastSeriesDate,
+  seriesRows,
   onClose,
   onSave,
   onCreateType,
@@ -134,7 +150,7 @@ export function EditRowModal({
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [completed, setCompleted] = useState(initialCompleted);
 
-  const [scopeKind, setScopeKind] = useState<"just-this" | "future">(
+  const [scopeKind, setScopeKind] = useState<"just-this" | "future" | "all">(
     "just-this",
   );
   const [untilEnabled, setUntilEnabled] = useState(false);
@@ -164,6 +180,36 @@ export function EditRowModal({
     setShiftDaysText("0");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
+
+  // Rows that the chosen scope will touch. Recomputed on every render
+  // — the source list, the anchor date, and the optional "until" date
+  // can all change between renders, and the picker is cheap to walk.
+  // Returns an empty array for "just-this" and for non-series rows so
+  // the preview list collapses cleanly.
+  const affectedRows = useMemo<readonly Row[]>(() => {
+    if (!row?.seriesId || !dateCol) return [];
+    if (scopeKind === "just-this") return [];
+    const sorted = sortRowsByDate([...seriesRows], dateCol.id);
+    if (scopeKind === "all") return sorted;
+    const anchorDate = initialDate;
+    if (!anchorDate) return [];
+    const until = untilEnabled ? untilDate : null;
+    return sorted.filter((r) => {
+      const d = r.cells[dateCol.id];
+      if (typeof d !== "string") return false;
+      if (d < anchorDate) return false;
+      if (until && d > until) return false;
+      return true;
+    });
+  }, [
+    row?.seriesId,
+    dateCol,
+    scopeKind,
+    seriesRows,
+    initialDate,
+    untilEnabled,
+    untilDate,
+  ]);
 
   if (!open || !row) return null;
 
@@ -197,11 +243,15 @@ export function EditRowModal({
 
   function handleSave() {
     if (!row) return;
+    // "all" scope explicitly skips the amount — the input is disabled
+    // in the UI so the user can see why, but force-null it here too
+    // in case anything ever bypasses the disabled state.
+    const patchAmount = scopeKind === "all" ? null : parsedAmount;
     onSave(
       row.id,
       {
         description: description.trim(),
-        amount: parsedAmount,
+        amount: patchAmount,
         date,
         typeId,
         completed,
@@ -209,7 +259,9 @@ export function EditRowModal({
       },
       scopeKind === "just-this"
         ? { kind: "just-this" }
-        : { kind: "future", untilIso: untilEnabled ? untilDate : null },
+        : scopeKind === "all"
+          ? { kind: "all" }
+          : { kind: "future", untilIso: untilEnabled ? untilDate : null },
     );
   }
 
@@ -261,7 +313,13 @@ export function EditRowModal({
                 onToggleSign={toggleSign}
                 settings={settings}
                 ariaLabel={t("editEntry.amount")}
+                disabled={scopeKind === "all"}
               />
+              {scopeKind === "all" && (
+                <span className="text-xs text-muted">
+                  {t("editRow.scopeAllAmountDisabled")}
+                </span>
+              )}
             </label>
           )}
           <div className="col-span-2 flex flex-col gap-1">
@@ -297,7 +355,9 @@ export function EditRowModal({
             <RadioGroup
               name="edit-row-scope"
               value={scopeKind}
-              onChange={(v) => setScopeKind(v as "just-this" | "future")}
+              onChange={(v) =>
+                setScopeKind(v as "just-this" | "future" | "all")
+              }
             >
               <Radio
                 value="just-this"
@@ -324,10 +384,85 @@ export function EditRowModal({
                   )}
                 </div>
               )}
+              <Radio value="all" label={t("editRow.scopeAll")} />
             </RadioGroup>
             <p className="mt-2 text-xs text-muted">
               {t("editRow.scopeAlwaysJustThis")}
             </p>
+            {affectedRows.length > 0 && (
+              <div className="mt-3 flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs text-muted">
+                    {t("editRow.affectedRows")}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {affectedRows.length === 1
+                      ? t("editRow.affectedRowsCountOne", {
+                          n: String(affectedRows.length),
+                        })
+                      : t("editRow.affectedRowsCountOther", {
+                          n: String(affectedRows.length),
+                        })}
+                  </span>
+                </div>
+                <ul className="max-h-40 overflow-y-auto rounded border border-line bg-surface">
+                  {affectedRows.map((r) => {
+                    const rowDate =
+                      dateCol && typeof r.cells[dateCol.id] === "string"
+                        ? (r.cells[dateCol.id] as string)
+                        : "";
+                    const rowDesc =
+                      descCol && typeof r.cells[descCol.id] === "string"
+                        ? (r.cells[descCol.id] as string)
+                        : "";
+                    const rowAmount =
+                      amountCol && typeof r.cells[amountCol.id] === "number"
+                        ? (r.cells[amountCol.id] as number)
+                        : null;
+                    const isAnchor = r.id === row?.id;
+                    return (
+                      <li
+                        key={r.id}
+                        className={`flex items-baseline gap-2 px-2 py-1 font-mono text-xs ${
+                          isAnchor ? "bg-surface-2 text-fg" : "text-muted"
+                        }`}
+                      >
+                        <span className="w-16 shrink-0 text-path">
+                          {rowDate
+                            ? formatShortDate(
+                                rowDate,
+                                settings.shortDateFormat,
+                                settings.language,
+                              )
+                            : "—"}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {rowDesc || "—"}
+                          {isAnchor && (
+                            <span className="ml-1.5 text-muted">
+                              ({t("editRow.affectedRowsCurrent")})
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={`shrink-0 tabular-nums ${
+                            rowAmount === null
+                              ? "text-muted"
+                              : rowAmount < 0
+                                ? "text-negative"
+                                : "text-positive"
+                          }`}
+                        >
+                          {rowAmount === null
+                            ? "—"
+                            : formatAmount(rowAmount, settings)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             <label className="mt-3 flex flex-col gap-1">
               <span className="text-xs text-muted">
                 {t("editEntry.shiftDaysBy")}

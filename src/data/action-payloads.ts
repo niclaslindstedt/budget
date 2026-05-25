@@ -50,7 +50,12 @@ export type EditPatch = {
 
 export type EditScope =
   | { kind: "just-this" }
-  | { kind: "future"; untilIso: string | null };
+  | { kind: "future"; untilIso: string | null }
+  // Whole-series scope. Reserved for cosmetic fields (description, type)
+  // — the modal disables the amount input under this scope because
+  // touching the amount on past, already-reconciled occurrences would
+  // silently rewrite history.
+  | { kind: "all" };
 
 export type ComplexEntryDraft = {
   description: string;

@@ -788,6 +788,12 @@ function reduceAccountBudget(
       let targets: ReadonlySet<string>;
       if (action.scope.kind === "just-this") {
         targets = new Set([anchor.id]);
+      } else if (action.scope.kind === "all") {
+        targets = new Set(
+          item.rows
+            .filter((r) => r.seriesId === anchor.seriesId)
+            .map((r) => r.id),
+        );
       } else {
         const future = rowsInSeriesFrom(
           item.rows,
