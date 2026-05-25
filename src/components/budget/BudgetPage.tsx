@@ -759,33 +759,43 @@ export function BudgetPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id, currentMonth]);
 
-  // Preserve the user's visual position when the "Show 3 future months"
-  // toggle steps the cutoff forward. In newestFirst sort the revealed
-  // months get inserted above the viewport; browser scroll anchoring
-  // can't shift past scrollY=0, so the user ends up looking at the
-  // latest future month instead of the current month they were editing.
+  // Preserve the user's visual position when either reveal toggle
+  // ("Show 3 future months" / "Show 3 earlier months") steps its cutoff.
+  // Whichever direction the revealed months land relative to the
+  // viewport, browser scroll anchoring can't shift past scrollY=0, so
+  // expansions above the current scroll position leave the user looking
+  // at the newly-revealed slab instead of the rows they were editing.
   // Capture the current-month anchor's top before the state change and
   // scroll by the delta after layout so the view stays put — clicking
-  // the toggle just expands the list.
-  const futureRevealAnchorRef = useRef<number | null>(null);
-  const onShowMoreFutureClick = useCallback(() => {
+  // either toggle just expands the list. When the revealed months land
+  // below the anchor (oldest-first future, newest-first earlier) the
+  // delta is ~0 and the layout effect is a no-op.
+  const revealAnchorRef = useRef<number | null>(null);
+  const captureRevealAnchor = useCallback(() => {
     const anchor = scrollTargetRef.current;
-    futureRevealAnchorRef.current = anchor
+    revealAnchorRef.current = anchor
       ? anchor.getBoundingClientRect().top
       : null;
-    setExtraFuture((n) => n + FUTURE_PAGE_SIZE);
   }, []);
+  const onShowMoreFutureClick = useCallback(() => {
+    captureRevealAnchor();
+    setExtraFuture((n) => n + FUTURE_PAGE_SIZE);
+  }, [captureRevealAnchor]);
+  const onShowMoreHistoryClick = useCallback(() => {
+    captureRevealAnchor();
+    setExtraHistory((n) => n + HISTORY_PAGE_SIZE);
+  }, [captureRevealAnchor]);
   useLayoutEffect(() => {
-    const before = futureRevealAnchorRef.current;
+    const before = revealAnchorRef.current;
     if (before === null) return;
-    futureRevealAnchorRef.current = null;
+    revealAnchorRef.current = null;
     const anchor = scrollTargetRef.current;
     if (!anchor) return;
     const delta = anchor.getBoundingClientRect().top - before;
     if (Math.abs(delta) > 0.5) {
       window.scrollBy({ top: delta, behavior: "auto" });
     }
-  }, [extraFuture]);
+  }, [extraFuture, extraHistory]);
 
   // Track which rendered month containers are currently intersecting
   // the viewport so the floating "Today" button below can decide when
@@ -1012,7 +1022,7 @@ export function BudgetPage({
             settings.transactionSortOrder === "oldestFirst" && (
               <BudgetMonthSectionToggle
                 label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
-                onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
+                onClick={onShowMoreHistoryClick}
               />
             )}
           {hasHiddenFuture &&
@@ -1099,7 +1109,7 @@ export function BudgetPage({
             settings.transactionSortOrder === "newestFirst" && (
               <BudgetMonthSectionToggle
                 label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
-                onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
+                onClick={onShowMoreHistoryClick}
               />
             )}
         </div>
