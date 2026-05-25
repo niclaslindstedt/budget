@@ -170,6 +170,9 @@ export type CategoryIcon =
   | "toy-brick"
   | "school"
   | "trophy"
+  | "pencil"
+  | "dice-5"
+  | "book-headphones"
   | "hourglass"
   // Health
   | "heart-pulse"
