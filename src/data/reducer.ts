@@ -555,7 +555,9 @@ function applyPatch(
 // Walk the diff between prev and next; for any row whose description
 // or amount changed and that isn't locked to a manual type, look up
 // the first rule that matches the new shape and write the rule's
-// typeId onto the row. Returns next unchanged when nothing matches
+// typeId onto the row. Additive only — see the header note in
+// `pattern-apply.ts`: when no rule wins, the row's existing typeId
+// is preserved. Returns next unchanged when no row moves
 // (referentially identical so the outer reducer can short-circuit).
 function applyPatternsAfterCellEdit(
   prev: AccountBudget,
@@ -592,14 +594,10 @@ function applyPatternsAfterCellEdit(
       isTransfer: row.isTransfer === true,
     };
     const rule = findMatchingRuleForCandidate(rules, candidate);
-    const wantTypeId = rule?.typeId ?? null;
-    const currentTypeId = row.typeId ?? null;
-    if (wantTypeId === currentTypeId) return row;
+    if (!rule || !rule.typeId) return row;
+    if (rule.typeId === row.typeId) return row;
     changed = true;
-    const updated: Row = { ...row };
-    if (wantTypeId === null) delete updated.typeId;
-    else updated.typeId = wantTypeId;
-    return updated;
+    return { ...row, typeId: rule.typeId };
   });
   if (!changed) return next;
   return { ...next, rows: nextRows };

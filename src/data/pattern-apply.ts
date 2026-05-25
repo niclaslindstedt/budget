@@ -21,6 +21,14 @@
 // skipped entirely so the user's deliberate label is never
 // overwritten and never attributed to a rule that "would have won"
 // against an unlocked row.
+//
+// Patterns are **additive only**: when no rule matches a row (or a
+// matching rule carries no `typeId` of its own), the existing
+// `typeId` on the row is left untouched. Rules add types, they never
+// strip one. Otherwise editing a rule's pattern, creating a fresh
+// rule that doesn't catch a long-standing recurring entry, or
+// hitting "Reapply all" would silently wipe types the user had set
+// long before the patterns feature existed.
 
 import { findMatchingRule, findMatchingRuleForCandidate } from "./match-rules";
 import { findColumnByType } from "./sheet";
@@ -36,6 +44,7 @@ export function reapplyPatternsToBudget(
   item: AccountBudget,
   rules: readonly MatchRule[],
 ): AccountBudget {
+  if (rules.length === 0) return item;
   const descId = findColumnByType(item.columns, "description")?.id;
   if (descId === undefined) return item;
   const amountId = findColumnByType(item.columns, "amount")?.id;
@@ -53,18 +62,14 @@ export function reapplyPatternsToBudget(
       amount,
       isTransfer: row.isTransfer === true,
     };
-    const rule =
-      rules.length === 0
-        ? null
-        : findMatchingRuleForCandidate(rules, candidate);
-    const wantTypeId = rule?.typeId ?? null;
-    const currentTypeId = row.typeId ?? null;
-    if (wantTypeId === currentTypeId) return row;
+    const rule = findMatchingRuleForCandidate(rules, candidate);
+    // Additive only: if no rule wins (or the winning rule itself
+    // carries no typeId), keep whatever the row already had. See the
+    // header note — rules add types, they never strip them.
+    if (!rule || !rule.typeId) return row;
+    if (rule.typeId === row.typeId) return row;
     changed = true;
-    const updated: Row = { ...row };
-    if (wantTypeId === null) delete updated.typeId;
-    else updated.typeId = wantTypeId;
-    return updated;
+    return { ...row, typeId: rule.typeId };
   });
   if (!changed) return item;
   return { ...item, rows: nextRows };
