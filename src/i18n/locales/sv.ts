@@ -2314,8 +2314,11 @@ export const sv: Catalog = {
     magazines: "Tidskrifter",
     newspaper: "Dagstidningar",
     books: "Böcker",
+    audiobooks: "Ljudböcker",
     media: "Media",
     "museum-visit": "Museibesök",
+    games: "Spel",
+    gambling: "Hasardspel",
     "union-fee": "Fackavgift",
     "a-kassa": "A-kassa",
     csn: "Studielån",
@@ -2323,6 +2326,7 @@ export const sv: Catalog = {
     bonus: "Bonusar",
     "tax-refund": "Skatteåterbäring",
     savings: "Sparande",
+    "child-savings": "Barnsparande",
     isk: "ISK",
     pension: "Pension",
     investment: "Investeringar",
@@ -2340,6 +2344,7 @@ export const sv: Catalog = {
     decor: "Dekor",
     plants: "Växter",
     tools: "Verktyg",
+    stationery: "Kontorsmaterial",
   },
 
   download: {

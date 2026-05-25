@@ -2321,8 +2321,11 @@ export const en = {
     magazines: "Magazines",
     newspaper: "Newspapers",
     books: "Books",
+    audiobooks: "Audiobooks",
     media: "Media",
     "museum-visit": "Museum visit",
+    games: "Games",
+    gambling: "Gambling",
     "union-fee": "Union fee",
     "a-kassa": "A-kassa",
     csn: "Student loan",
@@ -2330,6 +2333,7 @@ export const en = {
     bonus: "Bonuses",
     "tax-refund": "Tax refund",
     savings: "Savings",
+    "child-savings": "Child savings",
     isk: "ISK",
     pension: "Pension",
     investment: "Investments",
@@ -2347,6 +2351,7 @@ export const en = {
     decor: "Decor",
     plants: "Plants",
     tools: "Tools",
+    stationery: "Stationery",
   },
 
   download: {
