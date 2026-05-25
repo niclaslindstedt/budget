@@ -66,6 +66,17 @@ function hasOpenModal(): boolean {
   return document.querySelector('[aria-modal="true"]') !== null;
 }
 
+// FloatingPanel (TypePicker, CategoryPicker, BackendPicker, …) marks
+// its portalled root + dismiss backdrop with `data-active-portal`.
+// While one is open the user is interacting with a popover whose own
+// scroll container sits over the page, so a downward drag inside it
+// is "scroll up in the list", not "pull the page". Without this gate
+// the document-level listener arms at scrollY=0 and the resulting
+// pull fires `onRefresh` when the user lifts their finger.
+function hasOpenFloatingPanel(): boolean {
+  return document.querySelector("[data-active-portal]") !== null;
+}
+
 function isFormInteractive(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return (
@@ -117,6 +128,7 @@ export function usePullToRefresh(
       if (e.touches.length !== 1) return;
       if (window.scrollY > 0) return;
       if (hasOpenModal()) return;
+      if (hasOpenFloatingPanel()) return;
       if (isFormInteractive(e.target)) return;
       startYRef.current = e.touches[0].clientY;
     };
