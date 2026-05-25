@@ -384,7 +384,7 @@ function SheetRowImpl({
       {selectMode && (
         <td
           data-select-cell
-          className="select-cell border-b border-line bg-surface-3 p-0 text-center"
+          className="select-cell border-r border-b border-line bg-surface-3 p-0 text-center"
         >
           <button
             type="button"
@@ -444,7 +444,7 @@ function SheetRowImpl({
           onCommitCell={onCommitCell}
         />
       ))}
-      <td className="action-cell border-b border-line bg-surface-3 p-0 text-center">
+      <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <div className="action-stack flex h-full w-full items-stretch">
           {isTransaction && (
             <button

@@ -7,14 +7,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import {
-  ChevronDown,
-  ChevronUp,
-  Download,
-  Eye,
-  Pencil,
-  Wrench,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
 
 import {
   buildVisibleRows,
@@ -51,7 +44,6 @@ import type {
 } from "../data/types";
 import { formatNumber, withCurrency } from "../utils/format";
 import { ActiveRowProvider } from "./ActiveRowProvider";
-import { ColumnHeader } from "./ColumnHeader";
 import { MonthTable } from "./MonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "./SheetTitleMenu";
 import { SheetViewerModal } from "./SheetViewerModal";
@@ -685,23 +677,10 @@ export function SheetView({
   // "current" resolves to). The ref guards against re-running after the
   // user has scrolled away on their own — we only auto-scroll for
   // sheet+month identity changes, not on every render.
-  //
-  // The "current month" anchor element is found by data-attribute
-  // lookup inside the section rather than via a React ref, because
-  // every month's container lives inside the shared `<table>` as a
-  // `<tbody>` rendered by `MonthTable` — there is no per-month wrapper
-  // for a ref to land on. `[data-month-key]` is stamped on the header
-  // tbody, so it's the natural scroll target.
+  const scrollTargetRef = useRef<HTMLDivElement | null>(null);
   const lastScrolledKey = useRef<string | null>(null);
-  const findCurrentMonthEl = useCallback((): HTMLElement | null => {
-    const section = sectionRef.current;
-    if (!section) return null;
-    return section.querySelector<HTMLElement>(
-      `[data-month-key="${CSS.escape(currentMonth)}"]`,
-    );
-  }, [currentMonth]);
   const scrollToToday = (behavior: ScrollBehavior) => {
-    const target = findCurrentMonthEl();
+    const target = scrollTargetRef.current;
     // First pass: today's row may already be mounted (the user is on
     // or near the current month). Trust it only when its month is
     // current or later AND the current month's own rows are mounted —
@@ -724,12 +703,8 @@ export function SheetView({
       if (rowMonth === "undated") return false;
       if (rowMonth !== null && rowMonth < currentMonth) return false;
       if (rowMonth !== null && rowMonth > currentMonth) {
-        const currentMonthEl = findCurrentMonthEl();
-        // The header tbody we found is empty of data-row-date — those
-        // sit in the sibling data tbody. Walk forward to inspect the
-        // next tbody whose rows would carry that attribute.
-        const dataTbody = currentMonthEl?.nextElementSibling;
-        if (!dataTbody?.querySelector("[data-row-date]")) return false;
+        const currentMonthEl = scrollTargetRef.current;
+        if (!currentMonthEl?.querySelector("[data-row-date]")) return false;
       }
       scrollRowToTop(row, behavior);
       return true;
@@ -781,26 +756,23 @@ export function SheetView({
   // the view stays put — clicking the toggle just expands the list.
   const futureRevealAnchorRef = useRef<number | null>(null);
   const onShowAllFutureClick = useCallback(() => {
-    // Resolve via the `[data-month-key]` attribute MonthTable stamps
-    // on its header tbody — the per-month wrapper div was dropped in
-    // the unified-table refactor, so there's no React ref to read.
-    const anchor = findCurrentMonthEl();
+    const anchor = scrollTargetRef.current;
     futureRevealAnchorRef.current = anchor
       ? anchor.getBoundingClientRect().top
       : null;
     setShowAllFuture(true);
-  }, [findCurrentMonthEl]);
+  }, []);
   useLayoutEffect(() => {
     const before = futureRevealAnchorRef.current;
     if (before === null) return;
     futureRevealAnchorRef.current = null;
-    const anchor = findCurrentMonthEl();
+    const anchor = scrollTargetRef.current;
     if (!anchor) return;
     const delta = anchor.getBoundingClientRect().top - before;
     if (Math.abs(delta) > 0.5) {
       window.scrollBy({ top: delta, behavior: "auto" });
     }
-  }, [showAllFuture, findCurrentMonthEl]);
+  }, [showAllFuture]);
 
   // Track which rendered month containers are currently intersecting
   // the viewport so the floating "Today" button below can decide when
@@ -1022,7 +994,7 @@ export function SheetView({
           </h2>
           <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
         </header>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3 md:gap-6">
           {hasMoreHistory &&
             settings.transactionSortOrder === "oldestFirst" && (
               <SheetSectionToggle
@@ -1037,148 +1009,75 @@ export function SheetView({
                 onClick={onShowAllFutureClick}
               />
             )}
-          {/* Single continuous table. Every month renders as a
-             Fragment of `<tbody>`s (header + data + footer) inside one
-             shared `<table>` so columns stay aligned across months and
-             scrolling reads as one canvas — matching the accounts
-             transfer log and the read-only SheetViewerModal. */}
-          <div
-            className={`overflow-clip rounded border border-line bg-surface ${
-              selectMode ? "sheet-table-selecting" : ""
-            }`}
-            style={
-              {
-                "--amount-col-ch": colWidths.amountChars,
-                "--balance-col-ch": colWidths.balanceChars,
-                // Mobile balance column buffer. Currency-before
-                // renders the symbol absolute-positioned at the
-                // cell's left edge while the number stays
-                // right-aligned, so a tight column collapses the
-                // visual gap between the two. Widen the buffer in
-                // that mode to keep the symbol and the number from
-                // hugging each other; currency-after (and
-                // no-currency) keep the tighter 1.5rem default
-                // sized in styles.css.
-                "--balance-col-buffer":
-                  settings.showCurrency &&
-                  settings.currencyPosition === "before"
-                    ? "3rem"
-                    : undefined,
-              } as React.CSSProperties
-            }
-          >
-            <table
-              className={`sheet-table w-full border-collapse text-sm md:text-[13px] ${
-                selectMode ? "is-selecting" : ""
-              }`}
-            >
-              {/* Sticky column-header row. Lives at the top of the
-                 viewport so column names stay visible across every
-                 month, matching the accounts transfer log and the
-                 read-only SheetViewerModal. The month-header rows in
-                 each `<tbody>` stick directly underneath via the
-                 `--sheet-thead-h` offset. */}
-              <thead className="sticky top-[var(--app-header-h)] z-[19]">
-                <tr>
-                  {selectMode && (
-                    <th
-                      scope="col"
-                      className="select-cell border-b border-line bg-surface-3"
-                      aria-label={t("sheet.selectRow")}
-                    />
-                  )}
-                  {decoratedItem.columns.map((col) => (
-                    <ColumnHeader
-                      key={col.id}
-                      column={col}
-                      onReorder={onReorderColumns}
-                    />
-                  ))}
-                  <th
-                    scope="col"
-                    className="action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
-                    aria-label={t("sheet.rowActions")}
-                  >
-                    <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">
-                      <Wrench
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="column-header-label hidden md:inline">
-                        {t("sheet.actions")}
-                      </span>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              {visibleMonths.map((monthKey) => {
-                const slot = monthSlots.get(monthKey);
-                if (!slot) return null;
-                const {
-                  seedDate,
-                  onAddRow: slotAdd,
-                  onAddComplex: slotAddComplex,
-                  onToggleCollapsed: slotToggle,
-                } = slot;
-                const monthRows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
-                const totalCols =
-                  decoratedItem.columns.length + 1 + (selectMode ? 1 : 0);
-                return (
-                  <MonthTable
-                    key={monthKey}
-                    monthKey={monthKey}
-                    rows={monthRows}
-                    columns={decoratedItem.columns}
-                    balances={balances}
-                    types={types}
-                    categories={categories}
-                    onCreateType={onCreateType}
-                    onCreateCategory={onCreateCategory}
-                    settings={settings}
-                    selectMode={selectMode}
-                    selectedIds={selectedIds}
-                    canTransfer={canTransfer}
-                    totalCols={totalCols}
-                    collapsed={collapsedMonths.has(monthKey)}
-                    covered={
-                      // Gate by the seed date's calendar month. The
-                      // `+` button defaults a new row to `seedDate`,
-                      // so if that date sits in a covered window
-                      // (history is authoritative there) the button
-                      // is pointless. Fiscal-month keys may straddle
-                      // two calendar months when `startOfMonth ≠ 1`,
-                      // so we check the seed rather than the key.
-                      seedDate.length >= 7 &&
-                      coveredSet.has(seedDate.slice(0, 7))
-                    }
-                    onToggleCollapsed={slotToggle}
-                    forceMount={monthKey === forceMountMonthKey}
-                    hideTransfers={settings.hideTransfers}
-                    expandedTransferAnchors={expandedTransferAnchors}
-                    onToggleTransferAnchor={toggleTransferAnchor}
-                    onToggleRowTransfer={onToggleRowTransfer}
-                    onUpdateCell={handleUpdateCell}
-                    onCommitCell={onCommitCell}
-                    onAddRow={slotAdd}
-                    onAddComplex={slotAddComplex}
-                    onDeleteRequest={onDeleteRequest}
-                    onEditRequest={onEditRequest}
-                    onEditRowRequest={onEditRowRequest}
-                    onSplitRequest={onSplitRequest}
-                    onTransactionRequest={onTransactionRequest}
-                    onMatchRuleRequest={onMatchRuleRequest}
-                    onEditHistoryRequest={onEditHistoryRequest}
-                    onCopyRequest={onCopyRequest}
-                    onCorrectionDeleteRequest={onCorrectionDeleteRequest}
-                    onToggleSelect={onToggleSelect}
-                    onToggleSelectMonth={onToggleSelectMonth}
-                  />
-                );
-              })}
-            </table>
-          </div>
+          {visibleMonths.map((monthKey) => {
+            const slot = monthSlots.get(monthKey);
+            if (!slot) return null;
+            const {
+              seedDate,
+              onAddRow: slotAdd,
+              onAddComplex: slotAddComplex,
+              onToggleCollapsed: slotToggle,
+            } = slot;
+            const isCurrent = monthKey === currentMonth;
+            const monthRows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
+            return (
+              <div
+                key={monthKey}
+                ref={isCurrent ? scrollTargetRef : null}
+                data-month-key={monthKey}
+              >
+                <MonthTable
+                  monthKey={monthKey}
+                  rows={monthRows}
+                  columns={decoratedItem.columns}
+                  balances={balances}
+                  types={types}
+                  categories={categories}
+                  onCreateType={onCreateType}
+                  onCreateCategory={onCreateCategory}
+                  settings={settings}
+                  selectMode={selectMode}
+                  selectedIds={selectedIds}
+                  canTransfer={canTransfer}
+                  amountChars={colWidths.amountChars}
+                  balanceChars={colWidths.balanceChars}
+                  collapsed={collapsedMonths.has(monthKey)}
+                  covered={
+                    // Gate by the seed date's calendar month. The
+                    // `+` button defaults a new row to `seedDate`,
+                    // so if that date sits in a covered window
+                    // (history is authoritative there) the button
+                    // is pointless. Fiscal-month keys may straddle
+                    // two calendar months when `startOfMonth ≠ 1`,
+                    // so we check the seed rather than the key.
+                    seedDate.length >= 7 && coveredSet.has(seedDate.slice(0, 7))
+                  }
+                  onToggleCollapsed={slotToggle}
+                  forceMount={monthKey === forceMountMonthKey}
+                  hideTransfers={settings.hideTransfers}
+                  expandedTransferAnchors={expandedTransferAnchors}
+                  onToggleTransferAnchor={toggleTransferAnchor}
+                  onToggleRowTransfer={onToggleRowTransfer}
+                  onUpdateCell={handleUpdateCell}
+                  onCommitCell={onCommitCell}
+                  onAddRow={slotAdd}
+                  onAddComplex={slotAddComplex}
+                  onDeleteRequest={onDeleteRequest}
+                  onEditRequest={onEditRequest}
+                  onEditRowRequest={onEditRowRequest}
+                  onSplitRequest={onSplitRequest}
+                  onTransactionRequest={onTransactionRequest}
+                  onMatchRuleRequest={onMatchRuleRequest}
+                  onEditHistoryRequest={onEditHistoryRequest}
+                  onCopyRequest={onCopyRequest}
+                  onCorrectionDeleteRequest={onCorrectionDeleteRequest}
+                  onReorderColumns={onReorderColumns}
+                  onToggleSelect={onToggleSelect}
+                  onToggleSelectMonth={onToggleSelectMonth}
+                />
+              </div>
+            );
+          })}
           {hasHiddenFuture &&
             settings.transactionSortOrder === "oldestFirst" && (
               <SheetSectionToggle
