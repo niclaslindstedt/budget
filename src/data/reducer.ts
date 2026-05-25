@@ -593,6 +593,73 @@ function applyPatternsAfterCellEdit(
   return { ...next, rows: nextRows };
 }
 
+// Re-evaluate every budget row against the current ruleset, regardless
+// of whether the row changed. Used when the ruleset itself changes
+// (rule created or updated) so a freshly authored pattern catches up
+// the rows that were sitting at their old auto-label — or unlabelled
+// because no rule matched at the time the row was typed. Manual
+// choices stay sticky: rows with `typeIdLocked` are skipped, same as
+// the cell-edit path. Returns the input unchanged when nothing
+// resolves (referentially identical so the outer reducer can
+// short-circuit a no-op rule edit into a no-op state diff).
+function reapplyPatternsToBudget(
+  item: AccountBudget,
+  rules: readonly MatchRule[],
+): AccountBudget {
+  const descId = findColumnByType(item.columns, "description")?.id;
+  if (descId === undefined) return item;
+  const amountId = findColumnByType(item.columns, "amount")?.id;
+  let changed = false;
+  const nextRows = item.rows.map((row) => {
+    if (row.typeIdLocked) return row;
+    const desc = row.cells[descId];
+    if (typeof desc !== "string" || desc.trim() === "") return row;
+    const amount =
+      amountId !== undefined && typeof row.cells[amountId] === "number"
+        ? (row.cells[amountId] as number)
+        : 0;
+    const candidate = {
+      description: desc,
+      amount,
+      isTransfer: row.isTransfer === true,
+    };
+    const rule =
+      rules.length === 0
+        ? null
+        : findMatchingRuleForCandidate(rules, candidate);
+    const wantTypeId = rule?.typeId ?? null;
+    const currentTypeId = row.typeId ?? null;
+    if (wantTypeId === currentTypeId) return row;
+    changed = true;
+    const updated: Row = { ...row };
+    if (wantTypeId === null) delete updated.typeId;
+    else updated.typeId = wantTypeId;
+    return updated;
+  });
+  if (!changed) return item;
+  return { ...item, rows: nextRows };
+}
+
+function reapplyPatternsToAllSheets(
+  sheets: readonly Sheet[],
+  rules: readonly MatchRule[],
+): Sheet[] {
+  let sheetsChanged = false;
+  const next = sheets.map((sheet) => {
+    let itemsChanged = false;
+    const items = sheet.items.map((item) => {
+      if (item.type !== "accountBudget") return item;
+      const updated = reapplyPatternsToBudget(item, rules);
+      if (updated !== item) itemsChanged = true;
+      return updated;
+    });
+    if (!itemsChanged) return sheet;
+    sheetsChanged = true;
+    return { ...sheet, items };
+  });
+  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+}
+
 // Shared row-minting body for the two recurring-promote actions
 // (`promoteRecurringCandidate` and `promoteHistoryToRecurring`).
 // Both produce a series of N rows from a single (description, amount,
@@ -1655,14 +1722,27 @@ export function reducer(state: UserData, action: Action): UserData {
     // fresh rule should defer to whatever the user already set up
     // unless they reorder later. Reordering UI lives in a future
     // settings panel.
-    return { ...state, matchRules: [...state.matchRules, action.rule] };
+    const matchRules = [...state.matchRules, action.rule];
+    // Walk every budget row and re-evaluate against the new ruleset
+    // so a freshly authored pattern catches up the rows that were
+    // sitting unlabelled because no rule matched when they were
+    // first typed. History entries don't need this — they're matched
+    // at render time via `findMatchingRule` so they pick up new
+    // rules automatically. `typeIdLocked` rows are skipped so the
+    // user's manual choices stay sticky.
+    const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
+    return { ...state, matchRules, sheets };
   }
   if (action.type === "updateMatchRule") {
     const idx = state.matchRules.findIndex((r) => r.id === action.rule.id);
     if (idx < 0) return state;
-    const next = state.matchRules.slice();
-    next[idx] = action.rule;
-    return { ...state, matchRules: next };
+    const matchRules = state.matchRules.slice();
+    matchRules[idx] = action.rule;
+    // Same retroactive re-evaluation as `createMatchRule` — editing a
+    // rule's pattern, type, or filters should immediately re-label
+    // every budget row the new shape now wins (or loses) against.
+    const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
+    return { ...state, matchRules, sheets };
   }
   if (action.type === "deleteMatchRule") {
     const next = state.matchRules.filter((r) => r.id !== action.ruleId);
