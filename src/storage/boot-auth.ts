@@ -11,7 +11,7 @@ import { findDefaultUser, loadUsersFile } from "./users";
 // The state is also persisted in `budget.users.v1` so a reload lands
 // the user on the sign-in form for the same account they last used.
 // The session-storage cache (see `src/storage/session.ts`) carries the
-// rolling-window deadline; an idle-tracking effect inside BudgetView
+// rolling-window deadline; an idle-tracking effect inside AppShell
 // extends it while the user is active and signs the user out once
 // activity has been idle for longer than the user's chosen TTL.
 export type AuthState =

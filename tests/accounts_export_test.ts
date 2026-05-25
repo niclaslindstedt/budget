@@ -4,12 +4,7 @@ import {
   buildAccountsExport,
   serializeAccountsExport,
 } from "../src/data/accounts-export";
-import type {
-  Account,
-  HistoryEntry,
-  Sheet,
-  Transaction,
-} from "../src/data/types";
+import type { Account, HistoryEntry, Sheet, Transfer } from "../src/data/types";
 
 const ACC_A: Account = {
   id: "a",
@@ -28,7 +23,7 @@ const ACC_B: Account = {
   openingBalance: 500,
 };
 
-const TRANSFER_AB: Transaction = {
+const TRANSFER_AB: Transfer = {
   id: "tx1",
   date: "2026-05-01",
   description: "Transfer",
@@ -37,7 +32,7 @@ const TRANSFER_AB: Transaction = {
   toAccountId: "b",
 };
 
-const TRANSFER_AX: Transaction = {
+const TRANSFER_AX: Transfer = {
   id: "tx2",
   date: "2026-05-02",
   description: "External",
@@ -69,7 +64,7 @@ const TODAY = "2026-05-15";
 const EMPTY_OPTS = {
   sheets: [] as Sheet[],
   transactions: {} as Record<string, HistoryEntry[]>,
-  transfers: [] as Transaction[],
+  transfers: [] as Transfer[],
   today: TODAY,
   includeUnconfirmed: false,
   includeFuture: false,
@@ -369,7 +364,7 @@ describe("buildAccountsExport formatting", () => {
       balance: 35347.41000000001,
       importedAt: 1714000000000,
     };
-    const driftyTransfer: Transaction = {
+    const driftyTransfer: Transfer = {
       id: "tx1",
       date: "2026-05-01",
       description: "Move",

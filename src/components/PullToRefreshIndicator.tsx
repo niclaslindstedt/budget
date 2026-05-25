@@ -16,7 +16,7 @@ import type { PullToRefreshState } from "../hooks/usePullToRefresh";
 //   refreshing → spinner "Refreshing…"
 //
 // Rendered above the sticky header (`z-[55]` beats the header's `z-30`
-// in BudgetView) so the pill is visible during the pull instead of
+// in AppShell) so the pill is visible during the pull instead of
 // being clipped by the header band.
 
 type Props = {

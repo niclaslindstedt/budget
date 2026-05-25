@@ -1,12 +1,12 @@
 import { createContext, useContext } from "react";
 
-// Coordinator handle exposed to consumers inside a SheetView's
+// Coordinator handle exposed to consumers inside a BudgetPage's
 // ActiveRowProvider. `useActiveRowCoordinator` returns null outside a
 // provider so the same components (CategoryPicker, …) keep working
 // when reused inside modals where the coordinator is not relevant.
 //
 // The coordinator is split from the `hasActive` state so the thousands
-// of components below a SheetView that only need to *register* a row
+// of components below a BudgetPage that only need to *register* a row
 // (cell inputs, popovers, pickers, swipe handles) subscribe to a
 // reference-stable context — when a cell flips active, only the one
 // consumer that watches `hasActive` (the `+ Add row` footer button)

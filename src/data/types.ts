@@ -37,19 +37,19 @@ export type Row = {
   // running balance reads `amount` like any other row, so the correction
   // shifts the total without further special casing.
   isCorrection?: boolean;
-  // Runtime-only markers populated by `synthesizeTransactionRow` when a
-  // Transaction is interleaved into a budget view. Never persisted —
+  // Runtime-only markers populated by `synthesizeTransferRow` when a
+  // Transfer is interleaved into a budget view. Never persisted —
   // synthesized rows live outside `item.rows` (the budget view merges
   // them in at render time), and the validator/schema do not list
   // these fields. The cell renderer reads them to disable inline
-  // editing, swap the row glyph, and offer the transaction-edit modal
+  // editing, swap the row glyph, and offer the transfer-edit modal
   // in place of the usual delete/recurring actions.
-  transactionId?: string;
+  transferId?: string;
   peerAccountId?: string;
   peerAccountName?: string;
   // Runtime-only marker populated by `synthesizeHistoryRow` when an
   // imported bank-statement entry is projected into a budget view.
-  // Like the transaction markers, this is never persisted — history
+  // Like the transfer markers, this is never persisted — history
   // rows live in `UserData.history`, not in `item.rows`. The cell
   // renderer reads it to disable inline editing and surface a
   // "promote to recurring" action in place of the usual edit dialog.
@@ -72,7 +72,7 @@ export type Row = {
   // while their amounts continue to contribute to the running balance.
   // Set via the per-row "mark as transfer" (eye-slash) action and
   // mirrored from `HistoryEntry.isTransfer` by `synthesizeHistoryRow`.
-  // Synthesized transaction rows (those carrying `peerAccountId`) are
+  // Synthesized transfer rows (those carrying `peerAccountId`) are
   // implicitly transfers and don't need this flag set.
   isTransfer?: boolean;
   // True when the user has manually assigned `typeId` for this row
@@ -303,12 +303,12 @@ export type Account = {
 // loaded so a future "undo last import" affordance can roll back a
 // session-worth of writes by timestamp.
 //
-// `collapsedIntoTransactionId` is set by the cross-account transfer
+// `collapsedIntoTransferId` is set by the cross-account transfer
 // auto-collapse flow: when a pair of mirror entries (one on each side
-// of an internal Swish) is merged into a single `Transaction`, both
+// of an internal Swish) is merged into a single `Transfer`, both
 // HistoryEntrys are flipped to `hidden: true` and stamped with the
-// transaction's id so the operation is reversible (delete the
-// transaction → clear the backref → un-hide) and idempotent
+// transfer's id so the operation is reversible (delete the
+// transfer → clear the backref → un-hide) and idempotent
 // (subsequent imports skip entries that already carry a backref).
 // One slice of a split bank entry. Each split renders as its own row
 // in the synthesized budget view and contributes its own amount to
@@ -332,14 +332,14 @@ export type HistoryEntry = {
   balance?: number;
   importedAt: number;
   hidden?: boolean;
-  collapsedIntoTransactionId?: string;
+  collapsedIntoTransferId?: string;
   // True when the user has flagged this bank row as an inter-account
   // transfer (set via the history-entry edit modal). The synthesized
   // row picks this up and the `hideTransfers` setting filters it out of
   // the budget projection. The amount still contributes to the running
   // balance — the row is suppressed, not deleted. Independent of the
-  // auto-collapse path (`collapsedIntoTransactionId`), which dedups a
-  // matched pair into a single Transaction; this flag stands in when no
+  // auto-collapse path (`collapsedIntoTransferId`), which dedups a
+  // matched pair into a single Transfer; this flag stands in when no
   // peer side is available yet.
   isTransfer?: boolean;
   // Per-entry user overrides for the synthesized row's description /
@@ -394,11 +394,11 @@ export type HistoryImport = {
 };
 
 // One transfer between two accounts. Stored at the UserData level so a
-// transaction can exist for accounts without a budget attached — the
+// transfer can exist for accounts without a budget attached — the
 // Accounts sheet renders the global list, and budget views synthesize
 // the involving rows for the account they track. `amount` is always
 // positive; direction is `fromAccountId → toAccountId`.
-export type Transaction = {
+export type Transfer = {
   id: string;
   date: string;
   description: string;
@@ -427,7 +427,7 @@ export type AccountBudget = {
 
 // Workspace-wide dashboard sheet item. The Accounts sheet is a
 // singleton flavour that doesn't track a single account — instead it
-// renders the global account list and the cross-account transactions
+// renders the global account list and the cross-account transfers
 // log. The item carries no data of its own today; the shape exists so
 // future per-sheet config (account filter, sort order, …) lands here
 // without another migration.
@@ -717,7 +717,7 @@ export type CommonSettings = {
   // Suppress rows flagged as inter-account transfers from the budget
   // tables. The running balance still accounts for their amounts —
   // they're hidden, not removed. Triggered by: a synthesized
-  // Transaction row's `peerAccountId`, a `HistoryEntry.isTransfer`
+  // Transfer row's `peerAccountId`, a `HistoryEntry.isTransfer`
   // flagged in the entry-edit modal, or a budget row's `isTransfer`
   // flagged by the per-row eye action. Each visible row whose
   // computed balance step crossed at least one hidden transfer gets
@@ -865,7 +865,7 @@ export type MerchantHint = {
 // labels incoming refunds only or outgoing purchases only. The
 // `transferFilter` follows the same shape applied to whether the
 // entry is part of a cross-account transfer (i.e. carries a
-// `collapsedIntoTransactionId`) — useful when a description token
+// `collapsedIntoTransferId`) — useful when a description token
 // like "BAUHAUS" can appear both on real purchases and on transfers
 // the user labelled themselves.
 //
@@ -919,7 +919,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 39;
+  version: 40;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -950,11 +950,11 @@ export type UserData = {
   presetTypeKindOverrides: Record<string, EntryTypeKind>;
   // Same shape as `hiddenPresetTypeIds`, scoped to preset categories.
   hiddenPresetCategoryIds: string[];
-  // Transfers between accounts. Each transaction renders as a read-only
+  // Transfers between accounts. Each transfer renders as a read-only
   // synthesized row on every budget that tracks one of its endpoints,
-  // and as a top-level row on the Accounts sheet's transaction log.
+  // and as a top-level row on the Accounts sheet's transfer log.
   // Empty on a fresh budget and on v8 imports the v9 migration upgrades.
-  transactions: Transaction[];
+  transfers: Transfer[];
   // Imported bank-statement entries, keyed by account id. Each entry
   // is the raw bank row — date, description, amount, balance — kept
   // independently of any budget rows the user has authored. The

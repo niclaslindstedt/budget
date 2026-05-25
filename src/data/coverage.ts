@@ -51,7 +51,7 @@ function calendarMonthKey(value: CellValue): string | null {
 }
 
 // Map of calendar-month → user-authored rows in that month. Excludes
-// synthesized rows (history / transaction projections) since those
+// synthesized rows (history / transfer projections) since those
 // don't belong to the "user data" set the coverage rule cares about.
 function indexUserRowsByMonth(
   rows: readonly Row[],
@@ -62,7 +62,7 @@ function indexUserRowsByMonth(
   if (!dateCol) return out;
   for (const row of rows) {
     if (row.historyEntryId) continue;
-    if (row.transactionId) continue;
+    if (row.transferId) continue;
     const key = calendarMonthKey(row.cells[dateCol.id]);
     if (!key) continue;
     const list = out.get(key);

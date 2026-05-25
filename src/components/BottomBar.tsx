@@ -215,7 +215,7 @@ export function BottomBar({
             // off the keyboard tour (the active one is the single
             // entry point), and `onTabKey` cycles between them. The
             // tabpanel lives in `<main data-budget-main>` over in
-            // BudgetView and points back here via `aria-labelledby`.
+            // AppShell and points back here via `aria-labelledby`.
             //
             // The "New sheet" button lives outside the tablist — axe's
             // `aria-required-children` flags any non-tab child of a

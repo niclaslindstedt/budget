@@ -34,7 +34,7 @@ function withItem(rows: Row[]): UserData {
     items: [item],
   };
   return {
-    version: 39,
+    version: 40,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],
@@ -43,7 +43,7 @@ function withItem(rows: Row[]): UserData {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
-    transactions: [],
+    transfers: [],
     history: {},
     historyImports: {},
     merchantHints: {},

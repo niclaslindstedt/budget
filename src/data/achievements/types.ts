@@ -27,7 +27,7 @@ export const TIER_POINTS: Record<AchievementTier, number> = {
 // - `manual` — the trigger lives outside the reducer (cloud connect,
 //   encryption toggle, language change, etc.). Callers fire the
 //   unlock by calling `unlock(id)` from `src/data/achievements`; the
-//   bus stores it until the watcher in BudgetView is ready to
+//   bus stores it until the watcher in AppShell is ready to
 //   dispatch it through the reducer.
 export type Trigger =
   | { kind: "derived"; predicate: (prev: UserData, next: UserData) => boolean }

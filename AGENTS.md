@@ -98,17 +98,43 @@ src/
 ├── App.tsx               # thin auth state machine + storage hookup
 ├── styles.css            # global styles + sheet layout
 ├── components/
-│   ├── BudgetView.tsx    # main editor — owns the budget reducer, modal state, and every handler
-│   ├── SheetView.tsx     # one sheet — month grouping + opening balance
-│   ├── MonthTable.tsx    # one month's table (header + rows + add row)
-│   ├── ColumnHeader.tsx  # draggable column header (HTML5 drag-and-drop)
-│   ├── Cell.tsx          # per-type cell editor (date/text/number/check)
-│   ├── Modal.tsx         # compound shell for every modal dialog
-│   ├── FloatingPanel.tsx # portalled dropdown shell for pickers
-│   ├── ColorPalette.tsx  # circular color-swatch grid
-│   ├── GlyphGrid.tsx     # 8-column icon-button grid
-│   ├── UpdateToast.tsx   # PWA "new build, click to reload" prompt
-│   └── cells/            # readonly cell variants + shared classes
+│   ├── AppShell.tsx          # top-level orchestrator — owns the reducer,
+│   │                         #   storage harness, page-routing switch
+│   ├── AppLoading.tsx        # loading screen shown while a backend loads
+│   ├── SheetModal.tsx        # universal: edit sheet metadata (… menu)
+│   ├── SheetTitleMenu.tsx    # universal: the "…" menu next to a sheet title
+│   ├── BottomBar.tsx         # universal: the sheet tab strip
+│   ├── Modal.tsx             # compound shell for every modal dialog
+│   ├── FloatingPanel.tsx     # portalled dropdown shell for pickers
+│   ├── ColorPalette.tsx      # circular color-swatch grid
+│   ├── GlyphGrid.tsx         # 8-column icon-button grid
+│   ├── UpdateToast.tsx       # PWA "new build, click to reload" prompt
+│   ├── ActiveRowProvider.tsx # universal row-claim coordinator
+│   ├── useClaimActiveRow.ts  # hook every in-row interactive element calls
+│   ├── budget/               # budget page — per-account ledger
+│   │   ├── BudgetPage.tsx       # page root — months + columns + rows
+│   │   ├── BudgetViewerModal.tsx# read-only view-mode of a budget
+│   │   ├── MonthTable.tsx       # one month's table
+│   │   ├── ColumnHeader.tsx     # draggable column header
+│   │   ├── BudgetRow.tsx        # one budget row
+│   │   ├── BudgetCell.tsx       # per-type cell editor
+│   │   ├── AddRowButton.tsx, RowActionsMenu.tsx
+│   │   ├── EditEntryModal.tsx, EditRowModal.tsx, SplitEntryModal.tsx,
+│   │   │   ComplexEntryModal.tsx, BulkEditModal.tsx, MoveCopyModal.tsx,
+│   │   │   ApplySeriesEditDialog.tsx, MatchRuleModal.tsx,
+│   │   │   RecurringCandidatesPanel.tsx, RecurrenceForm.tsx,
+│   │   │   TransactionSearchModal.tsx
+│   │   ├── FormulaHelpButton.tsx, FormulaInput.tsx, FormulaVariableHelper.tsx
+│   │   └── cells/               # readonly cell variants for the budget table
+│   └── accounts/             # accounts page — workspace dashboard
+│       ├── AccountsPage.tsx     # page root — accounts table + transfer log
+│       ├── AccountModal.tsx, AccountActionsMenu.tsx
+│       ├── TransactionModal.tsx, UpdateBalanceModal.tsx
+│       ├── HistoryModal.tsx     # read-only per-account bank history viewer
+│       ├── ImportHistoryModal.tsx, HistoryEntryEditModal.tsx,
+│       │   CutAccountHistoryModal.tsx
+│       ├── ReconciliationModal.tsx (post-import flow)
+│       └── TransferCollapseModal.tsx (cross-account pair collapse)
 ├── data/
 │   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
@@ -157,30 +183,121 @@ Dependency direction: `components/` depend on `data/` and `storage/`.
 Nothing in `data/` or `storage/` imports from `components/`. Keep it
 that way.
 
+## Resolving user vocabulary
+
+The user (and team) refer to parts of the app in plain English —
+"budget row", "viewer modal", "transfer log", "promote a history
+entry". These words rarely match filenames one-to-one. Before
+searching for code, **look the term up in `docs/dictionary.md`** —
+it maps every term the codebase has accreted to the concrete
+component, type, file, or workflow it points at.
+
+**Maintain the dictionary in lockstep with the code.** When you:
+
+- ship a new feature that introduces a user-facing concept,
+- rename a file or symbol the dictionary mentions,
+- hear the user use a word the dictionary doesn't already cover,
+
+add or update the entry **in the same pull request as the code
+change**. The dictionary is the index that lets the next agent
+resolve "the thing the user just said" without a fresh round of
+exploration; letting it rot defeats the purpose. The file's own
+"Conventions for editing" section spells out the format.
+
+If the user uses a term you can't find in `docs/dictionary.md` and
+you can't infer it from filenames, ask before guessing. Once you
+have the answer, add the row.
+
+## Pages and the Sheet abstraction
+
+A **Sheet** is the universal top-level container the user adds, names,
+switches between, and reorders from the `BottomBar`. Sheet metadata
+(name, glyph, color, description, type) is edited through `SheetModal`,
+opened by the "…" button on the active sheet's title via
+`SheetTitleMenu`. The persisted `SheetType` literal — currently
+`"budget" | "accounts"` — selects which **page** renders inside the
+active sheet. Future page types (savings, loans, utility tools) extend
+the union.
+
+**Rule:** only the universal Sheet abstraction — the type, the tab
+strip, the meta-edit modal, the title menu, the swipe-between-sheets
+gesture, the row-claim coordinator — stays named `Sheet*` and lives at
+`src/components/` root. **Everything page-specific** belongs in a
+per-page subdirectory (`src/components/budget/`,
+`src/components/accounts/`, …) and carries the page's name as a
+prefix (`BudgetPage`, `BudgetRow`, `BudgetCell`, `BudgetViewerModal`,
+`AccountsPage`, etc.). Page-specific modals follow normal
+`*Modal.tsx` / `*Dialog.tsx` / `*Panel.tsx` naming — the directory
+they live in tells you which page owns them. Page directories must
+NOT import from a sibling page's directory — go through universal
+helpers in `src/data/*` instead.
+
+**Adding a new page type** (template: how `budget/` and `accounts/`
+slot in):
+
+1. Add a new literal to `SheetType` in `src/data/types.ts`.
+2. Add a new arm to the routing switch in
+   `src/components/AppShell.tsx` (the `activeSheet.type === ...` chain
+   near the end). This is the only place that knows about every page.
+3. Add an entry to `SHEET_TYPES` in `src/data/constants.ts` so the
+   "new sheet" picker offers the new type.
+4. Create `src/components/<page>/<Page>Page.tsx` plus any page-only
+   primitives (`<Page>Row.tsx`, `<Page>Cell.tsx`, modals, etc.) under
+   the same directory.
+5. If the page has its own row data, add a new `SheetItem` discriminated
+   variant in `src/data/types.ts` plus a factory in `src/data/sheet.ts`
+   so `createDefaultSheet` can seed it. Use the existing `AccountBudget`
+   / `AccountsView` shapes as the template.
+6. New page-specific data helpers go in `src/data/<page>.ts` —
+   matches the existing `budget-export.ts` / `accounts-export.ts`
+   pattern. Do not pile new budget-only or accounts-only helpers
+   into `src/data/sheet.ts`.
+
+**Known gap (not yet refactored):** `src/data/sheet.ts` still mixes
+universal sheet factories with budget-row algebra
+(`buildVisibleRows`, `synthesizeTransactionRow`, `computeBalances`,
+etc.) and accounts-page helpers (`transactionsForAccount`). The
+runtime is fine — the file is widely imported and the algebra is
+correct — but new page-specific helpers should still go in
+`src/data/<page>.ts`. A follow-up split is recommended once a third
+page lands (savings / loans) to make the entanglement visible. Same
+applies to the `sheet.*` i18n group in
+`src/i18n/locales/en.ts`: the keys are a working mix of sheet-meta
+(`sheet.editSheet`, `sheet.rename`, `sheet.delete`) and
+budget-page-only (`sheet.openingBalance`, `sheet.addRow`,
+`sheet.runningBalance`, etc.). New page-specific strings go under a
+page-named group (`budget.*` if it lands; `accounts.*`); leave
+existing keys alone until the i18n parity check has a reason to move
+them.
+
 ## Where new code goes
 
-| Change                                  | Location                                                                                                                                                                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| New UI section / page                   | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                                                                                                                                                              |
-| Reusable React hook                     | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                                                                                                                                                                    |
-| Persisted-data shape changes            | `src/data/` (add types + a migration if needed)                                                                                                                                                                                    |
-| Read/write to `localStorage`            | `src/storage/local.ts`                                                                                                                                                                                                             |
-| Export / import file format             | `src/storage/file.ts`                                                                                                                                                                                                              |
-| Vite config (base path, plugins)        | `vite.config.ts`                                                                                                                                                                                                                   |
-| Vite plugin (build-time codegen)        | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                                                                                                                                                                   |
-| Build-time generated TS                 | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                                                                                                                                                                     |
-| New persisted storage key               | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`                                                                                                                                                     |
-| SEO copy / per-route head               | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                                                                                                                                                                       |
-| Site-wide discovery files               | `public/robots.txt`, `public/og-default.png` (static). `sitemap.xml` and `llms.txt` are generated at build time from `src/seo/routes.ts` + `src/seo/siteConfig.ts` — edit the routes table, not the output files.                  |
-| PWA manifest / service-worker config    | `vite.config.ts` (`pwaPlugin()`); `public/` (icons generated from `public/favicon.svg` via `make icons`). See "Service-worker rollout invariants" below.                                                                           |
-| ESLint rules, TS config                 | `eslint.config.js`, `tsconfig.app.json`                                                                                                                                                                                            |
-| New `make` target                       | `Makefile` + the README Usage table + `ci.yml`                                                                                                                                                                                     |
-| Changelog fragment (user-affecting PRs) | `.changes/unreleased/<unix-ts>-<slug>.md`                                                                                                                                                                                          |
-| Release / changelog tooling             | `scripts/release/*.mjs` (collator, extractor, PR check)                                                                                                                                                                            |
-| New user-facing string                  | `src/i18n/locales/en.ts` (canonical) + `src/i18n/locales/sv.ts` (Swedish). See "Translations" below.                                                                                                                               |
-| New language                            | `src/i18n/locale.ts` (`Lang` union, `bcp47`, `detectInitialLanguage`), `src/i18n/locales/<code>.ts`, `src/data/constants.ts` (`SUPPORTED_LANGUAGES`), `src/components/LanguagePicker.tsx` (flag button). See "Translations" below. |
-| New end-to-end test (common flow)       | `e2e/specs/<name>.spec.ts` — exercises a user journey through the `/preview/` build. See "End-to-end tests" below.                                                                                                                 |
-| Regression test for a shipped bug       | `e2e/regression/<slug>.spec.ts` — confirms the bug then locks in the fix. See `e2e/regression/README.md`.                                                                                                                          |
+| Change                                                         | Location                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Budget-page change (rows, cells, modals scoped to the ledger)  | `src/components/budget/`                                                                                                                                                                                                            |
+| Accounts-page change (accounts table, transfers, bank history) | `src/components/accounts/`                                                                                                                                                                                                          |
+| New page type (savings, loans, utility, …)                     | New `src/components/<page>/` dir + new arm in `AppShell.tsx`'s routing switch + new literal in `SheetType` in `src/data/types.ts` + entry in `SHEET_TYPES` in `src/data/constants.ts`. See "Pages and the Sheet abstraction" below. |
+| New universal sheet-level chrome (tab strip, sheet-meta modal) | `src/components/` root — sheet-meta only. Do NOT add anything page-specific here.                                                                                                                                                   |
+| New UI section / page                                          | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                                                                                                                                                               |
+| Reusable React hook                                            | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                                                                                                                                                                     |
+| Persisted-data shape changes                                   | `src/data/` (add types + a migration if needed)                                                                                                                                                                                     |
+| Read/write to `localStorage`                                   | `src/storage/local.ts`                                                                                                                                                                                                              |
+| Export / import file format                                    | `src/storage/file.ts`                                                                                                                                                                                                               |
+| Vite config (base path, plugins)                               | `vite.config.ts`                                                                                                                                                                                                                    |
+| Vite plugin (build-time codegen)                               | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                                                                                                                                                                    |
+| Build-time generated TS                                        | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                                                                                                                                                                      |
+| New persisted storage key                                      | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`                                                                                                                                                      |
+| SEO copy / per-route head                                      | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                                                                                                                                                                        |
+| Site-wide discovery files                                      | `public/robots.txt`, `public/og-default.png` (static). `sitemap.xml` and `llms.txt` are generated at build time from `src/seo/routes.ts` + `src/seo/siteConfig.ts` — edit the routes table, not the output files.                   |
+| PWA manifest / service-worker config                           | `vite.config.ts` (`pwaPlugin()`); `public/` (icons generated from `public/favicon.svg` via `make icons`). See "Service-worker rollout invariants" below.                                                                            |
+| ESLint rules, TS config                                        | `eslint.config.js`, `tsconfig.app.json`                                                                                                                                                                                             |
+| New `make` target                                              | `Makefile` + the README Usage table + `ci.yml`                                                                                                                                                                                      |
+| Changelog fragment (user-affecting PRs)                        | `.changes/unreleased/<unix-ts>-<slug>.md`                                                                                                                                                                                           |
+| Release / changelog tooling                                    | `scripts/release/*.mjs` (collator, extractor, PR check)                                                                                                                                                                             |
+| New user-facing string                                         | `src/i18n/locales/en.ts` (canonical) + `src/i18n/locales/sv.ts` (Swedish). See "Translations" below.                                                                                                                                |
+| New language                                                   | `src/i18n/locale.ts` (`Lang` union, `bcp47`, `detectInitialLanguage`), `src/i18n/locales/<code>.ts`, `src/data/constants.ts` (`SUPPORTED_LANGUAGES`), `src/components/LanguagePicker.tsx` (flag button). See "Translations" below.  |
+| New end-to-end test (common flow)                              | `e2e/specs/<name>.spec.ts` — exercises a user journey through the `/preview/` build. See "End-to-end tests" below.                                                                                                                  |
+| Regression test for a shipped bug                              | `e2e/regression/<slug>.spec.ts` — confirms the bug then locks in the fix. See `e2e/regression/README.md`.                                                                                                                           |
 
 ## Conventions
 
@@ -353,6 +470,7 @@ that aren't in the template comments:
 | `package.json` scripts                                                                     | `Makefile`, `README.md` Usage section                                                                                         |
 | `Makefile` targets                                                                         | `README.md` Usage section, `ci.yml`                                                                                           |
 | `src/` top-level layout                                                                    | `README.md`, this file                                                                                                        |
+| Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` — update the row in the same PR. See "Resolving user vocabulary" above.                                  |
 | Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                            |
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                        |
 | CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |

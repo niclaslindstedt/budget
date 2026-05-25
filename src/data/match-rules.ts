@@ -25,7 +25,7 @@ export function compilePattern(pattern: string): RegExp {
 
 // Minimum surface a candidate needs to be matched against a rule.
 // Both `HistoryEntry` (where `isTransfer` is derived from the
-// collapsed-into-transaction backref) and a synthesized projection of
+// collapsed-into-transfer backref) and a synthesized projection of
 // a plain budget row map onto this shape, so the matcher can score
 // either kind without growing two near-identical code paths.
 export type RuleCandidate = {
@@ -38,7 +38,7 @@ export function candidateFromHistoryEntry(entry: HistoryEntry): RuleCandidate {
   return {
     description: entry.description,
     amount: entry.amount,
-    isTransfer: entry.collapsedIntoTransactionId !== undefined,
+    isTransfer: entry.collapsedIntoTransferId !== undefined,
   };
 }
 

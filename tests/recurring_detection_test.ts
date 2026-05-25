@@ -121,7 +121,7 @@ describe("detectRecurringCandidates", () => {
     const entries: HistoryEntry[] = [
       entry("2026-01-01", "Spotify", -119, { hidden: true }),
       entry("2026-02-01", "Spotify", -119, {
-        collapsedIntoTransactionId: "tx1",
+        collapsedIntoTransferId: "tx1",
       }),
       entry("2026-03-01", "Spotify", -119),
     ];

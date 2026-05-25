@@ -20,11 +20,11 @@ import { useT, type MessageKey, type TFunction } from "../i18n";
 import { Modal } from "./Modal";
 
 // Live, in-app view of the achievement catalog. Mounted from
-// BudgetView and opened via the empty (outline) header star — same
+// AppShell and opened via the empty (outline) header star — same
 // surface the filled star uses to open the unlock toast, but for
 // browsing the whole list instead of just the new ones. Reads
 // `data.settings.achievements` straight from React state (passed in
-// from BudgetView's `useUserDataStorage`), so there's no localStorage
+// from AppShell's `useUserDataStorage`), so there's no localStorage
 // scraping and the modal stays correct under any storage backend
 // (cloud, encrypted, folder, mirror) — the previous standalone
 // `/achievements` page sat outside the React tree and could only

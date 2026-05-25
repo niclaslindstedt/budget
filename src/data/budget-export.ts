@@ -1,16 +1,16 @@
 // Shape an AccountBudget plus its surrounding context (imported
-// history, cross-account transactions, opening balance) into a flat
+// history, cross-account transfers, opening balance) into a flat
 // row stream ready for CSV / XLSX export. The shape mirrors what the
-// user sees in `SheetView`, with the same merge of authored rows +
-// transactions + history entries and the same running balance.
+// user sees in `BudgetPage`, with the same merge of authored rows +
+// transfers + history entries and the same running balance.
 
 import {
   computeBalances,
   findColumnByType,
   sortRowsByDate,
   synthesizeHistoryRow,
-  synthesizeTransactionRow,
-  transactionsForAccount,
+  synthesizeTransferRow,
+  transfersForAccount,
   type RowSortContext,
 } from "./sheet";
 import type {
@@ -21,7 +21,7 @@ import type {
   MatchRule,
   MerchantHint,
   Row,
-  Transaction,
+  Transfer,
 } from "./types";
 
 export type ExportRow = {
@@ -40,10 +40,10 @@ export type BuildBudgetExportArgs = {
   // filtered out — they belong to the user's noise pile, not the
   // export.
   history: readonly HistoryEntry[];
-  // Workspace-wide transactions. The exporter filters to the ones
+  // Workspace-wide transfers. The exporter filters to the ones
   // touching `item.accountId`.
-  transactions: readonly Transaction[];
-  // Resolved by name lookup so transaction rows render "→ Savings"
+  transfers: readonly Transfer[];
+  // Resolved by name lookup so transfer rows render "→ Savings"
   // instead of a bare id.
   accountsById: ReadonlyMap<string, string>;
   // Effective type list (presets + user-added, visible only) so the
@@ -66,7 +66,7 @@ function todayIso(): string {
 
 // Build the flat list of export rows for one budget. Returns a
 // chronologically sorted array — empty when the budget has no rows and
-// no synthesized history / transactions.
+// no synthesized history / transfers.
 export function buildBudgetExportRows(
   args: BuildBudgetExportArgs,
 ): ExportRow[] {
@@ -74,7 +74,7 @@ export function buildBudgetExportRows(
     item,
     openingBalance,
     history,
-    transactions,
+    transfers,
     accountsById,
     types,
     categories,
@@ -95,11 +95,11 @@ export function buildBudgetExportRows(
   const amountCol = findColumnByType(item.columns, "amount");
   if (!dateCol || !descCol || !amountCol) return [];
 
-  // Synthesize the same rows SheetView shows so the running balance and
+  // Synthesize the same rows BudgetPage shows so the running balance and
   // descriptions line up with what's on screen.
-  const transactionRows: Row[] = item.accountId
-    ? transactionsForAccount(transactions, item.accountId).map((tx) =>
-        synthesizeTransactionRow(
+  const transferRows: Row[] = item.accountId
+    ? transfersForAccount(transfers, item.accountId).map((tx) =>
+        synthesizeTransferRow(
           tx,
           item.accountId as string,
           item.columns,
@@ -117,10 +117,10 @@ export function buildBudgetExportRows(
 
   const merged: AccountBudget = {
     ...item,
-    rows: [...item.rows, ...transactionRows, ...historyRows],
+    rows: [...item.rows, ...transferRows, ...historyRows],
   };
 
-  // Mirror SheetView's silent balance-correction pinning so the
+  // Mirror BudgetPage's silent balance-correction pinning so the
   // exported running balance lines up with what's on screen — each
   // imported history entry's stored balance overrides the cumulative
   // amount sum at that row. Split entries pin at the LAST split row

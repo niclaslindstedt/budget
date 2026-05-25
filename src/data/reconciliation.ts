@@ -120,11 +120,11 @@ export function findCandidates(
   const pool: MatchCandidate[] = [];
   for (const entry of newEntries) {
     if (entry.hidden) continue;
-    if (entry.collapsedIntoTransactionId !== undefined) continue;
+    if (entry.collapsedIntoTransferId !== undefined) continue;
     for (const row of rows) {
       if (row.isCorrection) continue;
       if (row.historyEntryId) continue;
-      if (row.transactionId) continue;
+      if (row.transferId) continue;
       const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
       if (!ra) continue;
       if (!sameSign(entry.amount, ra.amount)) continue;
@@ -199,7 +199,7 @@ export function findOrphans(
     if (reconciledRowIds.has(row.id)) continue;
     if (row.isCorrection) continue;
     if (row.historyEntryId) continue;
-    if (row.transactionId) continue;
+    if (row.transferId) continue;
     const d = row.cells[dateCol.id];
     if (typeof d !== "string" || d.length < 7) continue;
     const monthKey = d.slice(0, 7);
@@ -273,7 +273,7 @@ export function expandToSeries(
   const pool: MatchCandidate[] = [];
   for (const entry of newEntries) {
     if (entry.hidden) continue;
-    if (entry.collapsedIntoTransactionId !== undefined) continue;
+    if (entry.collapsedIntoTransferId !== undefined) continue;
     if (alreadyMatched.has(`hist:${entry.id}`)) continue;
     if (!re.test(entry.description)) continue;
     for (const row of seriesRows) {
@@ -347,14 +347,14 @@ export function findRuleDrivenCandidates(
   const pool: MatchCandidate[] = [];
   for (const entry of newEntries) {
     if (entry.hidden) continue;
-    if (entry.collapsedIntoTransactionId !== undefined) continue;
+    if (entry.collapsedIntoTransferId !== undefined) continue;
     for (const c of compiled) {
       if (!c) continue;
       if (!c.re.test(entry.description)) continue;
       for (const row of rows) {
         if (row.isCorrection) continue;
         if (row.historyEntryId) continue;
-        if (row.transactionId) continue;
+        if (row.transferId) continue;
         if (row.seriesId !== c.rule.seriesId) continue;
         const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
         if (!ra) continue;

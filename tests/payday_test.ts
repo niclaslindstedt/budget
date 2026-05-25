@@ -53,7 +53,7 @@ function userData(over: Partial<UserData>): UserData {
     ],
   };
   return {
-    version: 39,
+    version: 40,
     sheets: over.sheets ?? [sheet],
     activeSheetId: "s",
     accounts: [{ id: "acc", name: "A" }],
@@ -62,7 +62,7 @@ function userData(over: Partial<UserData>): UserData {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
-    transactions: [],
+    transfers: [],
     history: over.history ?? {},
     historyImports: {},
     merchantHints: {},

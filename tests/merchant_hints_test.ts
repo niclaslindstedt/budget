@@ -11,7 +11,7 @@ import type { Category, EntryType, UserData } from "../src/data/types";
 function makeState(categories: Category[], types: EntryType[] = []): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 39,
+    version: 40,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -20,7 +20,7 @@ function makeState(categories: Category[], types: EntryType[] = []): UserData {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
-    transactions: [],
+    transfers: [],
     history: {},
     historyImports: {},
     merchantHints: {},

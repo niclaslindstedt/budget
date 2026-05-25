@@ -283,7 +283,7 @@ function HeaderActionPicker({
   // Stable order: built-ins first, then one entry per sheet.
   // Sheet-target whose sheet no longer exists falls back to the
   // "Scroll to top" entry in the picker so the dropdown never shows
-  // a blank selection — the BudgetView click handler applies the
+  // a blank selection — the AppShell click handler applies the
   // same fallback at runtime.
   const sheetExists = sheets.some(
     (s) => value.kind === "sheet" && s.id === value.sheetId,

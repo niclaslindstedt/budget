@@ -16,7 +16,7 @@ import type {
   EntryType,
   HistoryEntry,
   Row,
-  Transaction,
+  Transfer,
 } from "../src/data/types";
 
 const TODAY = "2026-05-20";
@@ -59,7 +59,7 @@ function buildItem(
 const baseArgs = {
   openingBalance: 0,
   history: [] as readonly HistoryEntry[],
-  transactions: [] as readonly Transaction[],
+  transfers: [] as readonly Transfer[],
   accountsById: new Map<string, string>(),
   types: [] as readonly EntryType[],
   categories: [] as readonly Category[],
@@ -243,7 +243,7 @@ describe("exportRowsToTable", () => {
 
 // Sanity check that the export's running balance matches what
 // `computeBalances` produces on the same item — keeps both paths from
-// drifting when SheetView and the exporter both evolve.
+// drifting when BudgetPage and the exporter both evolve.
 describe("buildBudgetExportRows / computeBalances parity", () => {
   it("matches per-row balance against the canonical balance helper", () => {
     const item = buildItem("acct-1", [

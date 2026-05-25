@@ -12,7 +12,7 @@ import { parseAmount } from "../utils/format";
 
 // Flattened, search-friendly projection of one row that the user sees
 // inside a sheet. The index keys by `(sheetId, itemId, rowId)` because
-// a single Transaction may render on two sheets (from-account and
+// a single Transfer may render on two sheets (from-account and
 // to-account) under the same row id, so `rowId` alone isn't unique
 // across the workspace.
 export type SearchEntry = {
@@ -23,7 +23,7 @@ export type SearchEntry = {
   itemId: string;
   rowId: string;
   // ISO date pulled from the row's date cell (empty string for undated
-  // rows). Needed by the navigation flow so SheetView can expand its
+  // rows). Needed by the navigation flow so BudgetPage can expand its
   // history window to include the target row's month.
   iso: string;
   description: string;
@@ -52,7 +52,7 @@ export type SearchResult = {
 
 // Build a flat searchable list across every sheet the user has. Pulls
 // in user-authored rows plus the same synthesized rows that
-// `SheetView` renders — `buildVisibleRows` is the single source of
+// `BudgetPage` renders — `buildVisibleRows` is the single source of
 // truth so the index and the visible UI can't drift. Each row is
 // projected to its searchable fields: description, type name,
 // category name, amount. Computed once per `UserData` snapshot via
@@ -125,7 +125,7 @@ function visibleRowsFor(
   const history = item.accountId ? (data.history[item.accountId] ?? []) : [];
   return buildVisibleRows(
     item,
-    data.transactions,
+    data.transfers,
     history,
     accountsById,
     data.merchantHints,

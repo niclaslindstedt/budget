@@ -804,7 +804,7 @@ export const sv: Catalog = {
     labelSimilarTitle:
       "Skapa ett mönster som etiketterar alla poster vars beskrivning matchar",
     editHistoryEntry: "Redigera denna historikpost",
-    editTransaction: "Redigera transaktion",
+    editTransfer: "Redigera överföring",
     markAsTransfer: "Markera som överföring",
     unmarkAsTransfer: "Avmarkera överföring",
     markAsTransferTitle:
@@ -1108,9 +1108,9 @@ export const sv: Catalog = {
       updateAccount: "Redigerade konto",
       deleteAccount: "Tog bort konto",
       correctAccountBalance: "Korrigerade kontosaldo",
-      createTransaction: "Skapade transaktion",
-      updateTransaction: "Redigerade transaktion",
-      deleteTransaction: "Tog bort transaktion",
+      createTransfer: "Skapade överföring",
+      updateTransfer: "Redigerade överföring",
+      deleteTransfer: "Tog bort överföring",
       addSheet: "Lade till blad",
       updateSheetMeta: "Redigerade blad",
       deleteSheet: "Tog bort blad",
@@ -1408,10 +1408,10 @@ export const sv: Catalog = {
     none: "Inga överföringspar just nu.",
   },
 
-  transaction: {
-    title: "Transaktion",
-    titleEdit: "Redigera transaktion",
-    titleNew: "Ny transaktion",
+  transfer: {
+    title: "Överföring",
+    titleEdit: "Redigera överföring",
+    titleNew: "Ny överföring",
     date: "Datum",
     description: "Beskrivning",
     descriptionPlaceholder: "Vad är denna överföring för?",
@@ -1424,7 +1424,7 @@ export const sv: Catalog = {
     needTwoAccounts: "En överföring kräver två olika konton.",
     markAsDone: "Markera som klar",
     pickAccount: "Välj ett konto",
-    deleteTitle: "Ta bort transaktion?",
+    deleteTitle: "Ta bort överföring?",
     deleteHint: "De två bankposterna som slogs ihop kommer tillbaka.",
     isTransfer: "Detta är en överföring mellan två konton",
     importedLockedHint:

@@ -2,8 +2,8 @@
 // history. A Swish from Account A to Account B leaves a negative
 // row in A's statement AND a positive row in B's statement; this
 // module finds those mirror pairs so the user can collapse them into
-// a single `Transaction` (and shelve both `HistoryEntry`s as hidden
-// with a `collapsedIntoTransactionId` backref).
+// a single `Transfer` (and shelve both `HistoryEntry`s as hidden
+// with a `collapsedIntoTransferId` backref).
 //
 // Pure: takes in entries (already merged into UserData.history) and a
 // dismissal allowlist, emits a list of candidate pairs. The actual
@@ -19,18 +19,18 @@ export type TransferCandidate = {
   // entry on its own.
   pairKey: string;
   // The account losing money (the negative-side entry). The
-  // resulting Transaction's `fromAccountId`.
+  // resulting Transfer's `fromAccountId`.
   fromAccountId: string;
   fromEntry: HistoryEntry;
-  // The account receiving money. The resulting Transaction's
+  // The account receiving money. The resulting Transfer's
   // `toAccountId`.
   toAccountId: string;
   toEntry: HistoryEntry;
-  // ISO date for the resulting Transaction. The earlier of the two
+  // ISO date for the resulting Transfer. The earlier of the two
   // statement dates so a 1-3 day clearing delay doesn't push the
   // transfer into the next fiscal month.
   date: string;
-  // Always positive — the Transaction.amount convention.
+  // Always positive — the Transfer.amount convention.
   amount: number;
   // 0..1 score. Exact-day, keyword-laden pairs score highest; pairs
   // that need a 3-day window and no keyword overlap score around the
@@ -39,17 +39,17 @@ export type TransferCandidate = {
 };
 
 // True when at least one HistoryEntry across `history` is collapsed
-// into the given transaction id (i.e. the transaction was minted by
+// into the given transfer id (i.e. the transfer was minted by
 // merging imported bank entries). The UI uses this to lock the
 // fields the bank statement owns and expose an "is a transfer"
 // toggle that demotes the pair back into stand-alone entries.
 export function hasCollapsedHistory(
   history: Readonly<Record<string, readonly HistoryEntry[]>>,
-  transactionId: string,
+  transferId: string,
 ): boolean {
   for (const entries of Object.values(history)) {
     for (const entry of entries) {
-      if (entry.collapsedIntoTransactionId === transactionId) return true;
+      if (entry.collapsedIntoTransferId === transferId) return true;
     }
   }
   return false;
@@ -98,7 +98,7 @@ export function detectTransferCandidates(
   const tagged: Tagged[] = [];
   for (const [accountId, entries] of Object.entries(input.history)) {
     for (const entry of entries) {
-      if (entry.collapsedIntoTransactionId) continue;
+      if (entry.collapsedIntoTransferId) continue;
       if (entry.hidden) continue;
       tagged.push({ accountId, entry });
     }
@@ -166,7 +166,7 @@ function makeCandidate(
   const from = aNegative ? a : b;
   const to = aNegative ? b : a;
   const pairKey = [a.entry.id, b.entry.id].sort().join("|");
-  // Date stamp on the resulting Transaction: the earlier of the two
+  // Date stamp on the resulting Transfer: the earlier of the two
   // so the transfer appears in the same fiscal month a user would
   // expect (the receiving bank often clears a day later).
   const date =

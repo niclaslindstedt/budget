@@ -113,7 +113,7 @@ function gatherSalaryPostings(
   for (const list of Object.values(data.history)) {
     for (const entry of list) {
       if (entry.hidden) continue;
-      if (entry.collapsedIntoTransactionId !== undefined) continue;
+      if (entry.collapsedIntoTransferId !== undefined) continue;
       allHistory.push(entry);
     }
   }
@@ -145,7 +145,7 @@ function gatherSalaryPostings(
       const [accountId, entries] = list;
       for (const entry of entries) {
         if (entry.hidden) continue;
-        if (entry.collapsedIntoTransactionId !== undefined) continue;
+        if (entry.collapsedIntoTransferId !== undefined) continue;
         if (entry.amount <= 0) continue;
         const monthKey = entry.date.slice(0, 7);
         const k = `${accountId}|${monthKey}`;

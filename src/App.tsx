@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { AuthScreen } from "./components/AuthScreen";
-import { BudgetView } from "./components/BudgetView";
+import { AppShell } from "./components/AppShell";
 import {
   CloudLinkDialog,
   FolderLinkDialog,
@@ -60,9 +60,9 @@ export function App() {
     boot.auth.kind === "signed-in" ? boot.auth.password : null,
   );
 
-  // Mirror of BudgetView's in-memory `UserData` so the OAuth-completion
+  // Mirror of AppShell's in-memory `UserData` so the OAuth-completion
   // and conflict-resolution paths can push the user's current budget
-  // into a freshly-linked cloud backend. BudgetView updates this on
+  // into a freshly-linked cloud backend. AppShell updates this on
   // every render — see the `useEffect` near `useUserDataStorage` — and
   // null means "no budget loaded yet" (e.g. between mount and the
   // first async load on a cloud adapter).
@@ -282,7 +282,7 @@ export function App() {
 
   return (
     <>
-      <BudgetView
+      <AppShell
         adapter={adapter}
         user={auth.user}
         password={auth.password}

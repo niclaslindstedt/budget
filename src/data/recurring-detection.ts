@@ -101,12 +101,12 @@ export function detectRecurringCandidates(
   const staleAfterFactor = input.staleAfterFactor ?? 3;
 
   // Bucket by normalised description, ignoring entries the user has
-  // shelved (hidden: true) or already collapsed into a transaction —
+  // shelved (hidden: true) or already collapsed into a transfer —
   // both of those carry no signal for "this is recurring".
   const buckets = new Map<string, HistoryEntry[]>();
   for (const entry of input.entries) {
     if (entry.hidden) continue;
-    if (entry.collapsedIntoTransactionId) continue;
+    if (entry.collapsedIntoTransferId) continue;
     const key = normaliseDescription(entry.description);
     if (!isNormalisedKeyMeaningful(key)) continue;
     if (dismissed.has(key)) continue;

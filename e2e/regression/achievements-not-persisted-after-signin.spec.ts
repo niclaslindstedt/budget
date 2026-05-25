@@ -1,7 +1,7 @@
 import { expect, signInAsGuest, test } from "../fixtures";
 
 // Regression: achievements unlocked during sign-in (and any other
-// flow that fires `unlock()` from outside BudgetView's subtree) never
+// flow that fires `unlock()` from outside AppShell's subtree) never
 // reached on-disk storage, so the achievements modal rendered 0/63
 // even when the in-app star had shown an unlock modal moments before.
 // Two distinct races contribute and both have to stay fixed:

@@ -16,7 +16,7 @@ import type {
   SheetGlyph,
   SheetItem,
   SheetType,
-  Transaction,
+  Transfer,
   TransactionSortOrder,
   UserData,
 } from "./types";
@@ -332,7 +332,7 @@ export function sortRowsByDate(
 // ordering (incomes first, largest category first, etc.) is left
 // untouched so the secondary sort `sortRowsByDate` applies still
 // reads the same way inside a given day. Lifted out of
-// `SheetViewerModal` so every display surface that wants a
+// `BudgetViewerModal` so every display surface that wants a
 // newest-first ledger can reuse the same helper without duplicating
 // the bucketing.
 export function reverseRowsByDay(rows: Row[], dateColumnId: string): Row[] {
@@ -531,15 +531,15 @@ export function userDataHasHalfDoneRows(data: UserData): boolean {
   );
 }
 
-// Every transaction with `accountId` on either end, ordered by date.
-// Both incoming and outgoing transactions are included — callers
+// Every transfer with `accountId` on either end, ordered by date.
+// Both incoming and outgoing transfers are included — callers
 // decide the sign at render time from `selfAccountId` vs the
-// transaction's `fromAccountId` / `toAccountId`.
-export function transactionsForAccount(
-  transactions: readonly Transaction[],
+// transfer's `fromAccountId` / `toAccountId`.
+export function transfersForAccount(
+  transfers: readonly Transfer[],
   accountId: string,
-): Transaction[] {
-  const matches = transactions.filter(
+): Transfer[] {
+  const matches = transfers.filter(
     (tx) => tx.fromAccountId === accountId || tx.toAccountId === accountId,
   );
   return matches.sort((a, b) =>
@@ -547,19 +547,19 @@ export function transactionsForAccount(
   );
 }
 
-// Synthesize a Row that represents one side of a transaction so the
-// existing MonthTable + SheetRow + Cell pipeline can render it without
+// Synthesize a Row that represents one side of a transfer so the
+// existing MonthTable + BudgetRow + Cell pipeline can render it without
 // special-casing. The cells are keyed by the budget's column ids so the
 // row drops straight into the existing grid. Marker fields
-// (`transactionId`, `peerAccountId`, `peerAccountName`) flag the
-// synthesized origin — `Cell` / `SheetRow` read them to disable inline
+// (`transferId`, `peerAccountId`, `peerAccountName`) flag the
+// synthesized origin — `Cell` / `BudgetRow` read them to disable inline
 // editing and swap the action buttons. These fields are runtime-only;
 // they're never written back to storage because synthesized rows live
 // outside `item.rows`. The `accountsById` map carries names so the cell
 // renderer can show "→ Savings" without re-walking the accounts list
 // for every cell.
-export function synthesizeTransactionRow(
-  tx: Transaction,
+export function synthesizeTransferRow(
+  tx: Transfer,
   selfAccountId: string,
   columns: Column[],
   accountsById: ReadonlyMap<string, string>,
@@ -588,13 +588,13 @@ export function synthesizeTransactionRow(
       // stored cell is needed.
     }
   }
-  // Reuse the transaction id as the row id so React's keyed reconciler
+  // Reuse the transfer id as the row id so React's keyed reconciler
   // stays stable across re-syntheses and so deletion paths (which key
-  // by row id today) can be wired to a transaction lookup cleanly.
+  // by row id today) can be wired to a transfer lookup cleanly.
   const row: Row = {
     id: `tx:${tx.id}`,
     cells,
-    transactionId: tx.id,
+    transferId: tx.id,
     peerAccountId,
     peerAccountName: accountsById.get(peerAccountId) ?? "Unknown account",
   };
@@ -605,8 +605,8 @@ export function synthesizeTransactionRow(
 // Synthesize one or more Rows from an imported bank-statement entry
 // so the budget view can interleave them alongside user-authored
 // rows without special-casing. Marker field `historyEntryId` flags
-// the synthesized origin — `Cell` / `SheetRow` read it to disable
-// inline editing. Like `synthesizeTransactionRow`, the synthesized
+// the synthesized origin — `Cell` / `BudgetRow` read it to disable
+// inline editing. Like `synthesizeTransferRow`, the synthesized
 // rows never reach storage.
 //
 // Labels stack with rules winning over hints: an explicit pattern
@@ -713,7 +713,7 @@ export function resolveEntryLabels(
 
 // True when this row should be treated as an inter-account transfer
 // for the `Settings.hideTransfers` filter. Three signals qualify a row:
-//   1. a synthesized Transaction row carries `peerAccountId`
+//   1. a synthesized Transfer row carries `peerAccountId`
 //   2. a synthesized history row whose underlying entry was flagged
 //      `isTransfer` (propagated by `synthesizeHistoryRow`)
 //   3. a budget row flagged `isTransfer` via the per-row eye action
@@ -723,27 +723,27 @@ export function isTransferRow(row: Row): boolean {
   return row.peerAccountId !== undefined || row.isTransfer === true;
 }
 
-// Build the full list of rows a `SheetView` would render for an
+// Build the full list of rows a `BudgetPage` would render for an
 // `AccountBudget` item: the user-authored rows plus synthesized
-// transaction rows and synthesized history rows. Centralised so the
+// transfer rows and synthesized history rows. Centralised so the
 // search index sees exactly what the user sees — extracting this from
-// `SheetView` keeps the merge rules in one place and avoids drift if
+// `BudgetPage` keeps the merge rules in one place and avoids drift if
 // the synthesis logic changes later. Hidden history entries are
 // dropped pre-synthesis. Returns `item.rows` unchanged when the
-// budget has no account attached (no transactions or history to
+// budget has no account attached (no transfers or history to
 // project).
 export function buildVisibleRows(
   item: AccountBudget,
-  transactions: readonly Transaction[],
+  transfers: readonly Transfer[],
   history: readonly HistoryEntry[],
   accountsById: ReadonlyMap<string, string>,
   merchantHints: Readonly<Record<string, MerchantHint>> = {},
   matchRules: readonly MatchRule[] = [],
 ): Row[] {
   if (!item.accountId) return [...item.rows];
-  const accountTxs = transactionsForAccount(transactions, item.accountId);
-  const transactionRows = accountTxs.map((tx) =>
-    synthesizeTransactionRow(
+  const accountTxs = transfersForAccount(transfers, item.accountId);
+  const transferRows = accountTxs.map((tx) =>
+    synthesizeTransferRow(
       tx,
       item.accountId as string,
       item.columns,
@@ -755,19 +755,19 @@ export function buildVisibleRows(
     .flatMap((e) =>
       synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
     );
-  return [...item.rows, ...transactionRows, ...historyRows];
+  return [...item.rows, ...transferRows, ...historyRows];
 }
 
-// Sum of the account's budget rows' amounts plus signed transaction
+// Sum of the account's budget rows' amounts plus signed transfer
 // amounts (outgoing subtract, incoming add), counting only entries
 // that have actually taken place — i.e. dated on or before `today`.
-// Future-dated budget rows and transactions are projections, not yet
+// Future-dated budget rows and transfers are projections, not yet
 // money in or out of the account, so they're excluded from the
 // displayed balance. Undated rows are likewise excluded since we
 // don't know when (or whether) they happen. Returns 0 when the
-// account has neither past budget rows nor past transactions —
+// account has neither past budget rows nor past transfers —
 // those accounts are still listed on the Accounts sheet at zero so
-// the user can add transactions against them later.
+// the user can add transfers against them later.
 export function accountBalance(
   data: UserData,
   accountId: string,
@@ -813,7 +813,7 @@ export function accountBalance(
       }
     }
   }
-  for (const tx of data.transactions) {
+  for (const tx of data.transfers) {
     if (tx.date > today) continue;
     if (anchored && tx.date <= anchorDate) continue;
     if (tx.fromAccountId === accountId) total -= tx.amount;

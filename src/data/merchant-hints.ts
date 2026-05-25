@@ -1,5 +1,5 @@
 // Merchant-hint memory. Whenever the user assigns a type to a row
-// (budget row, recurring entry, transaction, or a promoted history
+// (budget row, recurring entry, transfer, or a promoted history
 // entry), we tally that against the normalised description so the
 // next import can suggest the same type. The hint's category is
 // derived through `typeId → type.categoryId` and isn't stored on

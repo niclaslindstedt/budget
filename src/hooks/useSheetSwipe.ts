@@ -21,11 +21,11 @@ import { unlock } from "../data/achievements";
 // contenteditable) is ignored — *except* when the touch starts
 // inside the absolute-edge band (`isInSheetSwipeEdgeBand`). The
 // hook is gated on standalone PWA mode by its caller
-// (`BudgetView.tsx`), so there's no browser edge-back gesture left
+// (`AppShell.tsx`), so there's no browser edge-back gesture left
 // to fight; those few edge pixels are reserved for the sheet switch
 // so a user can swipe between sheets even when their thumb lands on
 // a row with its own left-swipe action menu. Row swipe handlers
-// (`SheetRow.tsx`, `AccountsSheetView.tsx`) read the same band and
+// (`BudgetRow.tsx`, `AccountsPage.tsx`) read the same band and
 // stay disarmed for touches that originate inside it.
 
 // Minimum horizontal travel before the swipe fires. The viewport-
@@ -39,7 +39,7 @@ function thresholdPx(): number {
 // Discrimination tolerance — the gesture has to commit to one axis
 // before we'll either bail (vertical) or arm (horizontal). 10 px is
 // the same threshold the row-swipe handler uses
-// (`src/components/SheetRow.tsx`).
+// (`src/components/BudgetRow.tsx`).
 const AXIS_LOCK_PX = 10;
 
 // Width of the absolute-edge band on each vertical side of the
