@@ -2417,6 +2417,25 @@ export function AppShell({
         rule.transferFilter = draft.transferFilter;
       if (draft.amountMin !== undefined) rule.amountMin = draft.amountMin;
       if (draft.amountMax !== undefined) rule.amountMax = draft.amountMax;
+      // "Save pattern" unchecked → apply the rule's labels once and
+      // throw the rule away. The MatchRuleModal already coerces edits
+      // to saveRule=true so an existing rule can never be downgraded
+      // to a one-shot sweep here.
+      if (!existingId && !draft.saveRule) {
+        log.info(
+          `dispatch applyMatchRuleOnce id=${rule.id} ` +
+            `pattern=${JSON.stringify(rule.pattern)} ` +
+            `typeId=${rule.typeId ?? "(none)"} ` +
+            `description=${rule.description ? JSON.stringify(rule.description) : "(none)"} ` +
+            `amountSign=${rule.amountSign ?? "any"} ` +
+            `transferFilter=${rule.transferFilter ?? "any"} ` +
+            `amountMin=${rule.amountMin ?? "(none)"} ` +
+            `amountMax=${rule.amountMax ?? "(none)"}`,
+        );
+        dispatch({ type: "applyMatchRuleOnce", rule });
+        setMatchRulePrompt(null);
+        return;
+      }
       // Predict the overlay outcome BEFORE dispatch so the trace shows
       // both the rule shape that's being persisted AND how many history
       // entries the new rule would actually win against the existing

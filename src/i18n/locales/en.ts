@@ -1294,6 +1294,12 @@ export const en = {
     deleteConfirmHint:
       "Existing history rows that the rule relabelled will revert to their bank description.",
     labelMatchesCount: "Label {n}",
+    labelMatchesOnceCount: "Label {n} (don't save)",
+    savePattern: "Save pattern",
+    savePatternHintOn:
+      "Keeps the rule so future imports get the same label automatically.",
+    savePatternHintOff:
+      "Applies the labels once to existing matches and discards the rule. Use for one-off bulk-labelling of merchants you'll never see again.",
   },
 
   recurring: {

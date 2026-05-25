@@ -1289,6 +1289,12 @@ export const sv: Catalog = {
     deleteConfirmHint:
       "Befintliga historikrader som regeln omdöpte återgår till bankens beskrivning.",
     labelMatchesCount: "Etikettera {n}",
+    labelMatchesOnceCount: "Etikettera {n} (spara inte)",
+    savePattern: "Spara mönster",
+    savePatternHintOn:
+      "Behåller regeln så att framtida importer får samma etikett automatiskt.",
+    savePatternHintOff:
+      "Etiketterar befintliga träffar en gång och slänger sedan regeln. Använd för engångsetikettering av handlare du aldrig kommer se igen.",
   },
 
   recurring: {
