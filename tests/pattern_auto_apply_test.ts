@@ -370,4 +370,59 @@ describe("countRuleHitsOnSheets", () => {
     const counts = countRuleHitsOnSheets(state.sheets, []);
     expect(counts.size).toBe(0);
   });
+
+  it("counts synthesized history rows alongside explicit budget rows", () => {
+    const state = workspace();
+    state.matchRules = [
+      { id: "rule-apple", pattern: "*APPLE.COM/BILL*", typeId: "type-rent" },
+    ];
+    state.history = {
+      "checking-id": [
+        {
+          id: "h1",
+          date: "2024-07-16",
+          description: "APPLE.COM/BILL 020100",
+          amount: -39,
+        },
+        {
+          id: "h2",
+          date: "2024-08-15",
+          description: "APPLE.COM/BILL ITUNES",
+          amount: -39,
+        },
+        // Hidden: should not count.
+        {
+          id: "h3",
+          date: "2024-09-15",
+          description: "APPLE.COM/BILL 020100",
+          amount: -39,
+          hidden: true,
+        },
+        // Split: rule labels don't apply to splits.
+        {
+          id: "h4",
+          date: "2024-10-15",
+          description: "APPLE.COM/BILL 020100",
+          amount: -39,
+          splits: [
+            { description: "iCloud", amount: -19 },
+            { description: "Apple Music", amount: -20 },
+          ],
+        },
+        // Non-matching: should not count.
+        {
+          id: "h5",
+          date: "2024-11-15",
+          description: "RANDOM MERCHANT",
+          amount: -39,
+        },
+      ],
+    };
+    const counts = countRuleHitsOnSheets(
+      state.sheets,
+      state.matchRules,
+      state.history,
+    );
+    expect(counts.get("rule-apple")).toBe(2);
+  });
 });

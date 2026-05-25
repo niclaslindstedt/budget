@@ -645,7 +645,7 @@ export const sv: Catalog = {
       reapplyOther: "{n} rader ommärkta.",
       hitsOne: "1 rad",
       hitsOther: "{n} rader",
-      hitsHint: "Budgetrader som denna regel märker just nu.",
+      hitsHint: "Rader i budgetvyn som denna regel märker just nu.",
     },
     memory: {
       merchantTitle: "Handlarminne",

@@ -22,9 +22,15 @@
 // overwritten and never attributed to a rule that "would have won"
 // against an unlocked row.
 
-import { findMatchingRuleForCandidate } from "./match-rules";
+import { findMatchingRule, findMatchingRuleForCandidate } from "./match-rules";
 import { findColumnByType } from "./sheet";
-import type { AccountBudget, MatchRule, Row, Sheet } from "./types";
+import type {
+  AccountBudget,
+  HistoryEntry,
+  MatchRule,
+  Row,
+  Sheet,
+} from "./types";
 
 export function reapplyPatternsToBudget(
   item: AccountBudget,
@@ -116,13 +122,29 @@ export function countRowsAffectedByReapply(
   return count;
 }
 
-// Fold a single walk over every unlocked budget row into a per-rule
-// counter. The winning rule for each row is the first match in
-// `rules`, mirroring the matcher's "earlier rules win" contract.
-// Rows that no rule matches contribute to neither count.
+// Fold a single walk over every unlocked budget row plus every visible
+// history entry into a per-rule counter. The winning rule for each
+// candidate is the first match in `rules`, mirroring the matcher's
+// "earlier rules win" contract. Candidates that no rule matches
+// contribute to no count.
+//
+// Two surfaces feed the count, matching what the user sees in the
+// budget view (`buildVisibleRows`):
+//   1. Explicit budget rows — manually-typed or recurring. Skipped
+//      when `typeIdLocked` (manual type pick wins over the rule).
+//   2. Synthesized history rows — every non-hidden history entry on
+//      every account renders as a row via `synthesizeHistoryRow`.
+//      Split entries are excluded because each split brings its own
+//      description / typeId; the rule's labels don't apply to them.
+//
+// History overrides (`userTypeId`, `userDescription`) are intentionally
+// NOT excluded — the MatchRuleModal preview that drives the user's
+// expectation counts every match, and re-subtracting overrides here
+// would re-open the same gap from the other side.
 export function countRuleHitsOnSheets(
   sheets: readonly Sheet[],
   rules: readonly MatchRule[],
+  history: Readonly<Record<string, HistoryEntry[]>> = {},
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const rule of rules) counts.set(rule.id, 0);
@@ -150,6 +172,17 @@ export function countRuleHitsOnSheets(
         if (!winning) continue;
         counts.set(winning.id, (counts.get(winning.id) ?? 0) + 1);
       }
+    }
+  }
+  for (const accountId of Object.keys(history)) {
+    const entries = history[accountId];
+    if (!entries) continue;
+    for (const entry of entries) {
+      if (entry.hidden) continue;
+      if (entry.splits && entry.splits.length > 0) continue;
+      const winning = findMatchingRule(rules, entry);
+      if (!winning) continue;
+      counts.set(winning.id, (counts.get(winning.id) ?? 0) + 1);
     }
   }
   return counts;

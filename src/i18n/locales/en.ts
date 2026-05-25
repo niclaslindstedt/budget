@@ -653,7 +653,7 @@ export const en = {
       reapplyOther: "{n} rows relabelled.",
       hitsOne: "1 row",
       hitsOther: "{n} rows",
-      hitsHint: "Budget rows this rule currently types.",
+      hitsHint: "Rows in the budget view this rule currently labels.",
     },
     memory: {
       merchantTitle: "Merchant memory",
