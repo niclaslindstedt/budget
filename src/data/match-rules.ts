@@ -23,46 +23,80 @@ export function compilePattern(pattern: string): RegExp {
   return new RegExp(`^${body}$`, "i");
 }
 
-// True when the entry passes every filter on the rule. Bogus rules
+// Minimum surface a candidate needs to be matched against a rule.
+// Both `HistoryEntry` (where `isTransfer` is derived from the
+// collapsed-into-transaction backref) and a synthesized projection of
+// a plain budget row map onto this shape, so the matcher can score
+// either kind without growing two near-identical code paths.
+export type RuleCandidate = {
+  description: string;
+  amount: number;
+  isTransfer: boolean;
+};
+
+export function candidateFromHistoryEntry(entry: HistoryEntry): RuleCandidate {
+  return {
+    description: entry.description,
+    amount: entry.amount,
+    isTransfer: entry.collapsedIntoTransactionId !== undefined,
+  };
+}
+
+// True when the candidate passes every filter on the rule. Bogus rules
 // (empty pattern) never match — the modal blocks save on empty input
 // but a hand-edited file could still smuggle one in.
-export function ruleMatchesEntry(
+export function ruleMatchesCandidate(
   rule: MatchRule,
-  entry: HistoryEntry,
+  candidate: RuleCandidate,
 ): boolean {
   if (rule.pattern.length === 0) return false;
   const sign = rule.amountSign ?? "any";
-  if (sign === "positive" && entry.amount < 0) return false;
-  if (sign === "negative" && entry.amount > 0) return false;
-  if (rule.amountMin !== undefined && entry.amount < rule.amountMin) {
+  if (sign === "positive" && candidate.amount < 0) return false;
+  if (sign === "negative" && candidate.amount > 0) return false;
+  if (rule.amountMin !== undefined && candidate.amount < rule.amountMin) {
     return false;
   }
-  if (rule.amountMax !== undefined && entry.amount > rule.amountMax) {
+  if (rule.amountMax !== undefined && candidate.amount > rule.amountMax) {
     return false;
   }
   const transfer = rule.transferFilter ?? "any";
-  const isTransfer = entry.collapsedIntoTransactionId !== undefined;
-  if (transfer === "exclude" && isTransfer) return false;
-  if (transfer === "only" && !isTransfer) return false;
+  if (transfer === "exclude" && candidate.isTransfer) return false;
+  if (transfer === "only" && !candidate.isTransfer) return false;
   let re: RegExp;
   try {
     re = compilePattern(rule.pattern);
   } catch {
     return false;
   }
-  return re.test(entry.description);
+  return re.test(candidate.description);
 }
 
-// First rule that matches the entry, or null. Order matters — rules
-// earlier in the array win, so the user can layer specific rules on
-// top of catch-alls by reordering. Today the modal appends new rules;
-// reordering UI lives in a future settings panel.
+// Backcompat wrapper kept so existing call sites (history rendering,
+// the rule modal preview) don't have to project entries by hand.
+export function ruleMatchesEntry(
+  rule: MatchRule,
+  entry: HistoryEntry,
+): boolean {
+  return ruleMatchesCandidate(rule, candidateFromHistoryEntry(entry));
+}
+
+// First rule that matches the candidate, or null. Order matters —
+// rules earlier in the array win, so the user can layer specific rules
+// on top of catch-alls by reordering. Today the modal appends new
+// rules; reordering UI lives in a future settings panel.
+export function findMatchingRuleForCandidate(
+  rules: readonly MatchRule[],
+  candidate: RuleCandidate,
+): MatchRule | null {
+  for (const rule of rules) {
+    if (ruleMatchesCandidate(rule, candidate)) return rule;
+  }
+  return null;
+}
+
 export function findMatchingRule(
   rules: readonly MatchRule[],
   entry: HistoryEntry,
 ): MatchRule | null {
-  for (const rule of rules) {
-    if (ruleMatchesEntry(rule, entry)) return rule;
-  }
-  return null;
+  return findMatchingRuleForCandidate(rules, candidateFromHistoryEntry(entry));
 }

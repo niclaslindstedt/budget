@@ -74,12 +74,20 @@ export function RowActionsMenu({
     onClick: () => pick(() => onEditRequest(row)),
   });
 
-  if (isHistory) {
+  // Available on every editable row, not just history. For a history
+  // entry it opens the modal seeded with the raw bank text; for a
+  // user-authored budget row it opens it with a date-stripped pattern
+  // derived from the row's description. Either way the saved rule
+  // applies to past history entries, future imports, and any new
+  // manually-typed entry the user creates from here on. Hide it on
+  // synthesized transaction rows and balance-correction rows, which
+  // have no editable description for the rule to key off.
+  if (!row.transactionId && !row.isCorrection) {
     items.push({
       key: "labelByPattern",
       icon: <Tags size={16} aria-hidden focusable={false} />,
-      label: t("cell.labelByPattern"),
-      title: t("cell.labelByPatternTitle"),
+      label: t("cell.labelSimilar"),
+      title: t("cell.labelSimilarTitle"),
       onClick: () => pick(() => onMatchRuleRequest(row)),
     });
   }

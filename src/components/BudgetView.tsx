@@ -51,7 +51,11 @@ import {
   ReconciliationModal,
   type ReconciliationApply,
 } from "./ReconciliationModal";
-import { MatchRuleModal, type MatchRuleDraft } from "./MatchRuleModal";
+import {
+  MatchRuleModal,
+  type MatchRuleDraft,
+  type MatchRuleSeed,
+} from "./MatchRuleModal";
 import { MoveCopyModal } from "./MoveCopyModal";
 import { AchievementUnlockModal } from "./AchievementUnlockModal";
 import { AchievementsModal } from "./AchievementsModal";
@@ -599,13 +603,19 @@ export function BudgetView({
   // entries. Renders a ConfirmDialog so an accidental toggle doesn't
   // silently delete the merged transfer.
   const [uncollapsePrompt, setUncollapsePrompt] = useState<string | null>(null);
-  // null = closed; otherwise the history entry the user invoked the
-  // pattern-rule modal from. Looked up by id each render so a
-  // concurrent re-import / delete can't leave a stale entry snapshot
-  // stranded in state; if the entry is gone the modal closes.
-  const [matchRulePrompt, setMatchRulePrompt] = useState<{
-    entryId: string;
-  } | null>(null);
+  // null = closed; otherwise the row the user invoked the pattern-rule
+  // modal from. Three shapes cover the entry paths: `entryId` from a
+  // synthesized history row (looked up against `data.history` so a
+  // concurrent re-import / delete closes the modal cleanly), `row`
+  // from a user-authored budget row (the row itself carries everything
+  // the modal needs to seed), and `ruleId` from the Patterns tab in
+  // Settings (no seed; opens the modal in edit mode).
+  const [matchRulePrompt, setMatchRulePrompt] = useState<
+    | { kind: "history"; entryId: string }
+    | { kind: "row"; row: Row }
+    | { kind: "edit"; ruleId: string }
+    | null
+  >(null);
   // null = closed; otherwise the history entry the user invoked the
   // per-entry edit modal from (the pen button on a history row).
   // Resolved fresh each render so a concurrent re-import / delete
@@ -1026,11 +1036,17 @@ export function BudgetView({
     setSplitPrompt({ kind: "split", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
-    // Only history rows render the button, but the prop type is the
-    // generic Row shape so guard the marker explicitly.
-    if (!row.historyEntryId) return;
-    log.info(`open modal entryId=${row.historyEntryId}`);
-    setMatchRulePrompt({ entryId: row.historyEntryId });
+    // Synthesized transaction / correction rows have no editable
+    // description for a rule to key off; the menu hides the item on
+    // them but guard the entry path too so a stray dispatch is a no-op.
+    if (row.transactionId || row.isCorrection) return;
+    if (row.historyEntryId) {
+      log.info(`open modal entryId=${row.historyEntryId}`);
+      setMatchRulePrompt({ kind: "history", entryId: row.historyEntryId });
+      return;
+    }
+    log.info(`open modal rowId=${row.id}`);
+    setMatchRulePrompt({ kind: "row", row });
   }, []);
   const onEditHistoryRequest = useCallback((row: Row) => {
     if (!row.historyEntryId) return;
@@ -2278,20 +2294,55 @@ export function BudgetView({
   const splitAuthoritativeAmount = splitHistoryEntry?.amount;
   const splitAuthoritativeDescription = splitHistoryEntry?.description;
 
-  // Resolve the seed entry for the pattern-rule modal from
-  // `matchRulePrompt.entryId`. Looked up fresh each render so a
-  // concurrent delete / re-import doesn't strand a stale snapshot.
-  const matchRuleSeedEntry = useMemo<HistoryEntry | null>(() => {
+  // Resolve the seed for the pattern-rule modal from the active
+  // prompt. History-row prompts look the entry up against the active
+  // account's history so a concurrent re-import / delete closes the
+  // modal cleanly. Budget-row prompts read date / description / amount
+  // out of the row itself (no lookup needed) and tag the seed `kind:
+  // "row"` so the modal switches to the date-stripping derivation
+  // when seeding the pattern. Edit prompts have no seed — the modal
+  // shows the existing rule's fields.
+  const matchRuleSeed = useMemo<MatchRuleSeed | null>(() => {
     if (!matchRulePrompt) return null;
-    const accountId = activeItem.accountId;
-    if (!accountId) return null;
-    const entries = data.history[accountId] ?? [];
-    return entries.find((e) => e.id === matchRulePrompt.entryId) ?? null;
-  }, [matchRulePrompt, activeItem.accountId, data.history]);
+    if (matchRulePrompt.kind === "edit") return null;
+    if (matchRulePrompt.kind === "history") {
+      const accountId = activeItem.accountId;
+      if (!accountId) return null;
+      const entries = data.history[accountId] ?? [];
+      const entry = entries.find((e) => e.id === matchRulePrompt.entryId);
+      if (!entry) return null;
+      return {
+        id: entry.id,
+        description: entry.description,
+        amount: entry.amount,
+        kind: "history",
+      };
+    }
+    const row = matchRulePrompt.row;
+    const descCol = findColumnByType(activeItem.columns, "description");
+    const amountCol = findColumnByType(activeItem.columns, "amount");
+    const description =
+      descCol && typeof row.cells[descCol.id] === "string"
+        ? (row.cells[descCol.id] as string)
+        : "";
+    const amount =
+      amountCol && typeof row.cells[amountCol.id] === "number"
+        ? (row.cells[amountCol.id] as number)
+        : 0;
+    return { id: row.id, description, amount, kind: "row" };
+  }, [matchRulePrompt, activeItem, data.history]);
+
+  // The rule the modal is editing, when the prompt came from Settings.
+  // Looked up by id so a concurrent rule delete drops the prompt.
+  const matchRuleExisting = useMemo<MatchRule | null>(() => {
+    if (matchRulePrompt?.kind !== "edit") return null;
+    return data.matchRules.find((r) => r.id === matchRulePrompt.ruleId) ?? null;
+  }, [matchRulePrompt, data.matchRules]);
 
   // Every history entry on the active account, fed into the rule
   // modal's live preview so the user sees what their pattern matches
-  // before they save it.
+  // before they save it. Empty when the active sheet has no account
+  // attached (the rule still saves; the preview just shows zero rows).
   const matchRuleAllEntries = useMemo<readonly HistoryEntry[]>(() => {
     const accountId = activeItem.accountId;
     if (!accountId) return [];
@@ -2326,8 +2377,10 @@ export function BudgetView({
 
   const onSubmitMatchRule = useCallback(
     (draft: MatchRuleDraft) => {
+      const existingId =
+        matchRulePrompt?.kind === "edit" ? matchRulePrompt.ruleId : null;
       const rule: MatchRule = {
-        id: newId(),
+        id: existingId ?? newId(),
         pattern: draft.pattern,
       };
       if (draft.description) rule.description = draft.description;
@@ -2345,7 +2398,9 @@ export function BudgetView({
       // an existing catch-all already claims them).
       const accountId = activeItem.accountId;
       const entries = accountId ? (data.history[accountId] ?? []) : [];
-      const nextRules = [...data.matchRules, rule];
+      const nextRules = existingId
+        ? data.matchRules.map((r) => (r.id === existingId ? rule : r))
+        : [...data.matchRules, rule];
       let wouldOverlay = 0;
       let newRuleWins = 0;
       for (const entry of entries) {
@@ -2359,8 +2414,8 @@ export function BudgetView({
         (e) => !e.hidden && ruleMatchesEntry(rule, e),
       ).length;
       log.info(
-        `dispatch createMatchRule id=${rule.id} ` +
-          `pattern=${JSON.stringify(rule.pattern)} ` +
+        `dispatch ${existingId ? "updateMatchRule" : "createMatchRule"} ` +
+          `id=${rule.id} pattern=${JSON.stringify(rule.pattern)} ` +
           `typeId=${rule.typeId ?? "(none)"} ` +
           `description=${rule.description ? JSON.stringify(rule.description) : "(none)"} ` +
           `amountSign=${rule.amountSign ?? "any"} ` +
@@ -2374,11 +2429,34 @@ export function BudgetView({
           `overlaidAfter=${wouldOverlay} ` +
           `existingRules=${data.matchRules.length}`,
       );
-      dispatch({ type: "createMatchRule", rule });
+      dispatch(
+        existingId
+          ? { type: "updateMatchRule", rule }
+          : { type: "createMatchRule", rule },
+      );
       setMatchRulePrompt(null);
     },
-    [dispatch, data.history, data.matchRules, activeItem.accountId],
+    [
+      dispatch,
+      data.history,
+      data.matchRules,
+      activeItem.accountId,
+      matchRulePrompt,
+    ],
   );
+
+  const onDeleteMatchRule = useCallback(() => {
+    if (matchRulePrompt?.kind !== "edit") return;
+    const ruleId = matchRulePrompt.ruleId;
+    log.info(`dispatch deleteMatchRule id=${ruleId}`);
+    dispatch({ type: "deleteMatchRule", ruleId });
+    setMatchRulePrompt(null);
+  }, [dispatch, matchRulePrompt]);
+
+  const onEditMatchRule = useCallback((ruleId: string) => {
+    log.info(`open modal edit ruleId=${ruleId}`);
+    setMatchRulePrompt({ kind: "edit", ruleId });
+  }, []);
 
   // Pre-fill values for the history-row promote modal. Looks the
   // active history entry up by id (the synthesized row carries only
@@ -3227,15 +3305,23 @@ export function BudgetView({
         onCreateCategory={onCreateCategory}
       />
       <MatchRuleModal
-        open={matchRulePrompt !== null && matchRuleSeedEntry !== null}
-        seedEntry={matchRuleSeedEntry}
+        open={
+          matchRulePrompt !== null &&
+          (matchRulePrompt.kind === "edit"
+            ? matchRuleExisting !== null
+            : matchRuleSeed !== null)
+        }
+        seedEntry={matchRuleSeed}
         allEntries={matchRuleAllEntries}
-        existing={null}
+        existing={matchRuleExisting}
         categories={allCategoriesMerged}
         types={allTypesMerged}
         settings={effectiveSettings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
+        onDelete={
+          matchRulePrompt?.kind === "edit" ? onDeleteMatchRule : undefined
+        }
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
@@ -3448,6 +3534,7 @@ export function BudgetView({
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
+        onEditMatchRule={onEditMatchRule}
         onDeleteAccount={onDeleteAccount}
       />
       <ChangelogModal

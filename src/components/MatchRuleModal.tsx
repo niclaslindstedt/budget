@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wand2 } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
+import { derivePatternFromDescription } from "../data/pattern-derive";
 import { useDesktopAutoFocus } from "../hooks";
 import { useLang, useT } from "../i18n";
 import { createLogger } from "../utils/logger";
@@ -47,14 +48,32 @@ export type MatchRuleDraft = {
   amountMax: number | undefined;
 };
 
+// Minimum surface the modal needs from whatever row the user invoked
+// the rule from. Both `HistoryEntry` and a budget-row projection map
+// onto this shape so the modal doesn't have to branch on which kind it
+// got. The `kind` discriminator picks the pattern-seeding strategy —
+// history entries seed with their raw bank text (most are already
+// short-and-canonical), budget rows seed with a date-stripped derivation
+// because a manual description tends to read `<merchant> <date>` and
+// would otherwise pin the pattern to a single row.
+export type MatchRuleSeed = {
+  id: string;
+  description: string;
+  amount: number;
+  kind: "history" | "row";
+};
+
 type Props = {
   open: boolean;
-  // The history entry the user invoked the rule from. Used to seed the
-  // pattern with that entry's raw bank text, and to highlight which
-  // entry is the "source" of the rule in the preview.
-  seedEntry: HistoryEntry | null;
+  // The row or history entry the user invoked the rule from. Used to
+  // seed the pattern and to highlight the source in the preview.
+  // Optional `null` covers two cases: the modal is being opened blank
+  // from settings to author a new rule, or it's being opened to edit
+  // an existing rule without re-seeding from a specific row.
+  seedEntry: MatchRuleSeed | null;
   // Every history entry on the active account, used to preview the
-  // rule's matches live as the user types.
+  // rule's matches live as the user types. Empty when the modal is
+  // opened from settings without an active account context.
   allEntries: readonly HistoryEntry[];
   // Existing rule to edit, or null for a new one. When non-null the
   // form seeds from the rule rather than the seed entry's raw text;
@@ -78,23 +97,26 @@ const PREVIEW_LIMIT = 8;
 // follow in newest-first order to mirror the History modal.
 function previewEntries(
   matches: readonly HistoryEntry[],
-  seed: HistoryEntry | null,
+  seed: { id: string } | null,
 ): readonly HistoryEntry[] {
   if (matches.length === 0) return matches;
   if (!seed) return matches.slice(0, PREVIEW_LIMIT);
+  const seedMatch = matches.find((m) => m.id === seed.id);
   const rest = matches.filter((m) => m.id !== seed.id);
-  const seedMatched = matches.some((m) => m.id === seed.id);
-  const ordered = seedMatched ? [seed, ...rest] : rest;
+  const ordered = seedMatch ? [seedMatch, ...rest] : rest;
   return ordered.slice(0, PREVIEW_LIMIT);
 }
 
-// Seed the pattern from the bank text by wrapping it in stars so a
-// returning user lands on a working substring match by default. The
-// raw text from a bank statement is often dominated by a stable
-// merchant token plus noise — wrapping with `*…*` is the right
-// default; the user can sharpen the pattern from there.
-function seedPatternFromDescription(text: string): string {
-  const trimmed = text.trim();
+// Seed the pattern from the source row. History entries get the raw
+// bank text wrapped in stars (most bank labels are dominated by a
+// stable merchant token plus noise). Budget rows go through the date /
+// ref-number stripper in `pattern-derive.ts` because manually-typed
+// descriptions tend to read `<merchant> <date>` and would otherwise
+// pin the pattern to a single transaction.
+function seedPatternFromSeed(seed: MatchRuleSeed): string {
+  if (seed.kind === "row")
+    return derivePatternFromDescription(seed.description);
+  const trimmed = seed.description.trim();
   if (trimmed === "") return "";
   return `*${trimmed}*`;
 }
@@ -166,7 +188,7 @@ export function MatchRuleModal({
       }
       return;
     }
-    setPattern(seedPatternFromDescription(seedEntry?.description ?? ""));
+    setPattern(seedEntry ? seedPatternFromSeed(seedEntry) : "");
     setDescription("");
     setTypeId(null);
     // Seed sign filter from the row the user invoked from: most

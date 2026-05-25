@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Database, Pencil, ShieldAlert, ShieldCheck } from "lucide-react";
 
 import {
   BORDER_WIDTH_PRESETS,
@@ -53,6 +53,7 @@ import {
   type LogLevel,
   subscribeToLogs,
 } from "../../utils/logger";
+import { allCategories, allTypes } from "../../data/presets";
 import { BackendPicker } from "../BackendPicker";
 import { CategoryIconGlyph } from "../icons";
 
@@ -947,6 +948,115 @@ export function MemoryTab({
         buttonLabel={t("settings.memory.clearDismissed")}
         onClear={onClearTransferDismissals}
       />
+    </Section>
+  );
+}
+
+export function PatternsTab({
+  data,
+  onEditRule,
+}: {
+  data: UserData;
+  // Open the existing MatchRuleModal in edit mode. The modal's own
+  // danger button handles deletion — keeping the destructive action
+  // behind the modal preserves the "open, review matches, then delete"
+  // affordance the user already gets when invoking a rule from a row.
+  onEditRule: (ruleId: string) => void;
+}) {
+  const t = useT();
+  // Merge user + preset types so the chip shows the right label even
+  // for rules pointing at a built-in preset that lives in code, not in
+  // `data.types`. Hidden presets stay in the lookup — a rule that
+  // references one shouldn't render as orphaned just because the user
+  // hid the type from pickers.
+  const types = useMemo(() => allTypes(data), [data]);
+  const categories = useMemo(() => allCategories(data), [data]);
+  const typesById = useMemo(() => {
+    const m = new Map<string, (typeof types)[number]>();
+    for (const ty of types) m.set(ty.id, ty);
+    return m;
+  }, [types]);
+  const categoriesById = useMemo(() => {
+    const m = new Map<string, (typeof categories)[number]>();
+    for (const c of categories) m.set(c.id, c);
+    return m;
+  }, [categories]);
+  const rules = data.matchRules;
+  return (
+    <Section title={t("settings.patterns.title")}>
+      <p className="text-xs text-muted">{t("settings.patterns.intro")}</p>
+      {rules.length === 0 ? (
+        <p className="rounded border border-line bg-surface-2 px-3 py-3 text-center text-xs text-muted">
+          {t("settings.patterns.empty")}
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-line rounded border border-line bg-surface-2">
+          {rules.map((rule) => {
+            const ty = rule.typeId ? typesById.get(rule.typeId) : null;
+            const cat = ty ? categoriesById.get(ty.categoryId) : null;
+            return (
+              <li
+                key={rule.id}
+                className="flex items-center gap-2 px-3 py-2 text-xs"
+              >
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <code className="truncate font-mono text-sm text-flag">
+                    {rule.pattern}
+                  </code>
+                  <div className="flex flex-wrap items-center gap-1.5 text-muted">
+                    {rule.description && (
+                      <span className="truncate text-fg">
+                        {rule.description}
+                      </span>
+                    )}
+                    {ty && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5"
+                        style={{ color: ty.color }}
+                      >
+                        <CategoryIconGlyph
+                          name={ty.glyph}
+                          size={12}
+                          aria-hidden
+                        />
+                        <span>{ty.name}</span>
+                        {cat && (
+                          <span className="text-muted">/ {cat.name}</span>
+                        )}
+                      </span>
+                    )}
+                    {rule.amountSign && rule.amountSign !== "any" && (
+                      <span className="rounded border border-line px-1.5 py-0.5">
+                        {rule.amountSign === "positive"
+                          ? t("matchRule.amountPositive")
+                          : t("matchRule.amountNegative")}
+                      </span>
+                    )}
+                    {rule.transferFilter && rule.transferFilter !== "any" && (
+                      <span className="rounded border border-line px-1.5 py-0.5">
+                        {rule.transferFilter === "exclude"
+                          ? t("matchRule.transferExcludeFull")
+                          : t("matchRule.transferOnlyFull")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onEditRule(rule.id)}
+                  aria-label={t("settings.patterns.editAria", {
+                    pattern: rule.pattern,
+                  })}
+                  title={t("settings.patterns.editTitle")}
+                  className="cursor-pointer rounded border border-line p-1.5 text-muted hover:border-accent hover:text-accent"
+                >
+                  <Pencil size={14} aria-hidden focusable={false} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </Section>
   );
 }
