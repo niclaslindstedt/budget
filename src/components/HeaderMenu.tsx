@@ -136,9 +136,20 @@ function MainView({
           {isGuest ? t("userMenu.guestNoAccount") : user.username}
         </p>
         {isGuest && (
-          <p className="mt-1 text-xs text-muted">
-            {t("userMenu.guestModeHint")}
-          </p>
+          <>
+            <p className="mt-1 text-xs text-muted">
+              {t("userMenu.guestModeHint")}
+            </p>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={onCreateAccount}
+              className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded border border-accent bg-accent/10 px-3 py-2 text-sm font-bold text-accent hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+            >
+              <UserPlus size={16} aria-hidden focusable={false} />
+              <span>{t("userMenu.createAccount")}</span>
+            </button>
+          </>
         )}
       </div>
 
@@ -150,29 +161,31 @@ function MainView({
         />
       </MenuSection>
 
-      <MenuSection>
-        {!isGuest && (
-          <MenuItem
-            icon={<LogOut size={16} aria-hidden focusable={false} />}
-            label={t("userMenu.signOut")}
-            onClick={onSignOut}
-          />
-        )}
-        {hasOtherUsers && (
-          <MenuItem
-            icon={<Users size={16} aria-hidden focusable={false} />}
-            label={t("userMenu.switchUser")}
-            onClick={onSwitchUser}
-          />
-        )}
-        <MenuItem
-          icon={<UserPlus size={16} aria-hidden focusable={false} />}
-          label={
-            isGuest ? t("userMenu.createAccount") : t("userMenu.createAnother")
-          }
-          onClick={onCreateAccount}
-        />
-      </MenuSection>
+      {(!isGuest || hasOtherUsers) && (
+        <MenuSection>
+          {!isGuest && (
+            <MenuItem
+              icon={<LogOut size={16} aria-hidden focusable={false} />}
+              label={t("userMenu.signOut")}
+              onClick={onSignOut}
+            />
+          )}
+          {hasOtherUsers && (
+            <MenuItem
+              icon={<Users size={16} aria-hidden focusable={false} />}
+              label={t("userMenu.switchUser")}
+              onClick={onSwitchUser}
+            />
+          )}
+          {!isGuest && (
+            <MenuItem
+              icon={<UserPlus size={16} aria-hidden focusable={false} />}
+              label={t("userMenu.createAnother")}
+              onClick={onCreateAccount}
+            />
+          )}
+        </MenuSection>
+      )}
 
       <MenuSection>
         <MenuLink
