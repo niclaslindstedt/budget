@@ -47,6 +47,11 @@ export type MatchRuleDraft = {
   // the band can be open.
   amountMin: number | undefined;
   amountMax: number | undefined;
+  // When false, the parent applies the rule's labels once and
+  // discards the rule. Default true (persist the rule) — the
+  // checkbox is the "Save pattern" toggle in the modal. Ignored when
+  // editing an existing rule.
+  saveRule: boolean;
 };
 
 // Minimum surface the modal needs from whatever row the user invoked
@@ -157,12 +162,20 @@ export function MatchRuleModal({
   // changes — only the UI distinguishes "exact" from "1-wide range".
   const [amountExactText, setAmountExactText] = useState("");
   const [amountExactNegative, setAmountExactNegative] = useState(true);
+  // "Save pattern" — when checked (the default) the rule is persisted
+  // alongside the labels it applies; when unchecked the parent stamps
+  // matching rows / history once and throws the rule away. The latter
+  // is the right tool for bulk-labelling older entries from a merchant
+  // that's never coming back (the canonical example in the project
+  // brief: a pizzeria the user moved away from).
+  const [saveRule, setSaveRule] = useState(true);
 
   const patternRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(patternRef, open);
 
   useEffect(() => {
     if (!open) return;
+    setSaveRule(true);
     if (existing) {
       setPattern(existing.pattern);
       setDescription(existing.description ?? "");
@@ -344,6 +357,10 @@ export function MatchRuleModal({
       );
       return;
     }
+    // Edits always persist — the "Save pattern" toggle is hidden in
+    // edit mode, so an edited rule can't be downgraded to a one-shot
+    // sweep by accident.
+    const willSave = isEdit ? true : saveRule;
     log.info(
       `apply: pattern=${JSON.stringify(pattern.trim())} ` +
         `signMode=${signMode} amountSign=${amountSign} ` +
@@ -353,7 +370,7 @@ export function MatchRuleModal({
         `typeId=${typeId ?? "(none)"} ` +
         `description=${JSON.stringify(description.trim())} ` +
         `previewMatches=${matches.length}/${allEntries.length} ` +
-        `isEdit=${isEdit}`,
+        `isEdit=${isEdit} saveRule=${willSave}`,
     );
     onSubmit({
       pattern: pattern.trim(),
@@ -363,6 +380,7 @@ export function MatchRuleModal({
       transferFilter,
       amountMin,
       amountMax,
+      saveRule: willSave,
     });
   }, [
     canSave,
@@ -381,6 +399,7 @@ export function MatchRuleModal({
     matches.length,
     allEntries.length,
     isEdit,
+    saveRule,
   ]);
 
   if (!open) return null;
@@ -530,6 +549,25 @@ export function MatchRuleModal({
           </div>
         </fieldset>
 
+        {!isEdit && (
+          <div className="mt-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+              <input
+                type="checkbox"
+                checked={saveRule}
+                onChange={(e) => setSaveRule(e.target.checked)}
+                className="h-4 w-4 cursor-pointer"
+              />
+              {t("matchRule.savePattern")}
+            </label>
+            <p className="mt-1 ml-6 text-xs text-muted">
+              {saveRule
+                ? t("matchRule.savePatternHintOn")
+                : t("matchRule.savePatternHintOff")}
+            </p>
+          </div>
+        )}
+
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between">
             <h3 className="text-xs font-bold tracking-wider uppercase text-muted">
@@ -598,7 +636,9 @@ export function MatchRuleModal({
         <Button variant="primary" onClick={handleSubmit} disabled={!canSave}>
           {isEdit
             ? t("common.save")
-            : t("matchRule.labelMatchesCount", { n: matches.length })}
+            : saveRule
+              ? t("matchRule.labelMatchesCount", { n: matches.length })
+              : t("matchRule.labelMatchesOnceCount", { n: matches.length })}
         </Button>
       </Modal.Footer>
     </Modal>

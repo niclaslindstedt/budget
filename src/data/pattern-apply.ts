@@ -30,7 +30,11 @@
 // hitting "Reapply all" would silently wipe types the user had set
 // long before the patterns feature existed.
 
-import { findMatchingRule, findMatchingRuleForCandidate } from "./match-rules";
+import {
+  findMatchingRule,
+  findMatchingRuleForCandidate,
+  ruleMatchesEntry,
+} from "./match-rules";
 import { findColumnByType } from "./sheet";
 import type {
   AccountBudget,
@@ -191,4 +195,127 @@ export function countRuleHitsOnSheets(
     }
   }
   return counts;
+}
+
+// One-shot application of a rule that the user explicitly chose NOT
+// to persist (the "Save pattern" checkbox in MatchRuleModal). Stamps
+// every match as if the user had manually labelled each row / entry:
+// budget rows pick up `typeId` plus `typeIdLocked: true`, history
+// entries pick up `userTypeId` (and `userDescription` when the rule
+// carries one). Locking matches the user's framing — they're using
+// the modal as a bulk-label tool, not authoring a rule that should
+// keep watching for future imports. Returns the input shapes
+// unchanged when the rule wouldn't change anything so the reducer
+// can short-circuit a no-op dispatch.
+export function applyMatchRuleOnceToBudget(
+  item: AccountBudget,
+  rule: MatchRule,
+): AccountBudget {
+  const ruleTypeId = rule.typeId;
+  if (!ruleTypeId) return item;
+  const descId = findColumnByType(item.columns, "description")?.id;
+  if (descId === undefined) return item;
+  const amountId = findColumnByType(item.columns, "amount")?.id;
+  let changed = false;
+  // Locked rows are NOT skipped — `typeIdLocked` exists to protect
+  // against automatic sweeps (a new saved rule, "Reapply all"), not
+  // against a deliberate user action. "Label similar" without saving
+  // is a deliberate action, so the user expects locked rows to be
+  // relabelled the same as any other manual pick would relabel them.
+  const nextRows = item.rows.map((row) => {
+    const desc = row.cells[descId];
+    if (typeof desc !== "string" || desc.trim() === "") return row;
+    const amount =
+      amountId !== undefined && typeof row.cells[amountId] === "number"
+        ? (row.cells[amountId] as number)
+        : 0;
+    const candidate = {
+      description: desc,
+      amount,
+      isTransfer: row.isTransfer === true,
+    };
+    if (!findMatchingRuleForCandidate([rule], candidate)) return row;
+    if (row.typeId === ruleTypeId && row.typeIdLocked === true) return row;
+    changed = true;
+    return { ...row, typeId: ruleTypeId, typeIdLocked: true };
+  });
+  if (!changed) return item;
+  return { ...item, rows: nextRows };
+}
+
+export function applyMatchRuleOnceToAllSheets(
+  sheets: readonly Sheet[],
+  rule: MatchRule,
+): Sheet[] {
+  let sheetsChanged = false;
+  const next = sheets.map((sheet) => {
+    let itemsChanged = false;
+    const items = sheet.items.map((item) => {
+      if (item.type !== "accountBudget") return item;
+      const updated = applyMatchRuleOnceToBudget(item, rule);
+      if (updated !== item) itemsChanged = true;
+      return updated;
+    });
+    if (!itemsChanged) return sheet;
+    sheetsChanged = true;
+    return { ...sheet, items };
+  });
+  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+}
+
+// Stamp `userTypeId` (and `userDescription` when set on the rule) on
+// every non-hidden history entry the rule matches. Split entries are
+// skipped — each split carries its own description / typeId and the
+// rule's labels don't apply to them, matching the contract in
+// `countRuleHitsOnSheets`. Returns the input map unchanged when
+// nothing moves.
+export function applyMatchRuleOnceToHistory(
+  history: Readonly<Record<string, HistoryEntry[]>>,
+  rule: MatchRule,
+): Record<string, HistoryEntry[]> {
+  const ruleTypeId = rule.typeId ?? undefined;
+  const ruleDescription =
+    typeof rule.description === "string" && rule.description !== ""
+      ? rule.description
+      : undefined;
+  if (ruleTypeId === undefined && ruleDescription === undefined)
+    return history as Record<string, HistoryEntry[]>;
+  let mapChanged = false;
+  const out: Record<string, HistoryEntry[]> = {};
+  for (const accountId of Object.keys(history)) {
+    const entries = history[accountId];
+    if (!entries) {
+      out[accountId] = entries;
+      continue;
+    }
+    let listChanged = false;
+    const nextEntries = entries.map((entry) => {
+      if (entry.hidden) return entry;
+      if (entry.splits && entry.splits.length > 0) return entry;
+      if (!ruleMatchesEntry(rule, entry)) return entry;
+      const next: HistoryEntry = { ...entry };
+      let touched = false;
+      if (ruleTypeId !== undefined && next.userTypeId !== ruleTypeId) {
+        next.userTypeId = ruleTypeId;
+        touched = true;
+      }
+      if (
+        ruleDescription !== undefined &&
+        next.userDescription !== ruleDescription
+      ) {
+        next.userDescription = ruleDescription;
+        touched = true;
+      }
+      if (!touched) return entry;
+      listChanged = true;
+      return next;
+    });
+    if (listChanged) {
+      mapChanged = true;
+      out[accountId] = nextEntries;
+    } else {
+      out[accountId] = entries;
+    }
+  }
+  return mapChanged ? out : (history as Record<string, HistoryEntry[]>);
 }

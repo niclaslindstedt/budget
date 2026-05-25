@@ -20,7 +20,11 @@ import {
 } from "./sheet";
 import { nextUncoveredDate } from "./coverage";
 import { findMatchingRuleForCandidate } from "./match-rules";
-import { reapplyPatternsToAllSheets } from "./pattern-apply";
+import {
+  applyMatchRuleOnceToAllSheets,
+  applyMatchRuleOnceToHistory,
+  reapplyPatternsToAllSheets,
+} from "./pattern-apply";
 import { findRuleDrivenCandidates } from "./reconciliation";
 import { type HintRecording, recordMerchantHints } from "./merchant-hints";
 import type {
@@ -421,6 +425,18 @@ export type Action =
       // new (state is referentially identical so React skips a
       // wasted render).
       type: "reapplyMatchRules";
+    }
+  | {
+      // One-shot application of a match rule that the user explicitly
+      // chose NOT to persist (the "Save pattern" checkbox in the
+      // Label-by-pattern modal). Stamps every matching budget row
+      // with the rule's typeId + `typeIdLocked: true`, and every
+      // matching history entry with `userTypeId` (and
+      // `userDescription` when the rule carries one). The rule
+      // itself is discarded — handy when the user wants to bulk-label
+      // older entries from a merchant they'll never see again.
+      type: "applyMatchRuleOnce";
+      rule: MatchRule;
     }
   | {
       // Per-entry override on a single `HistoryEntry`. Patches the
@@ -1701,6 +1717,12 @@ export function reducer(state: UserData, action: Action): UserData {
     const sheets = reapplyPatternsToAllSheets(state.sheets, state.matchRules);
     if (sheets === state.sheets) return state;
     return { ...state, sheets };
+  }
+  if (action.type === "applyMatchRuleOnce") {
+    const sheets = applyMatchRuleOnceToAllSheets(state.sheets, action.rule);
+    const history = applyMatchRuleOnceToHistory(state.history, action.rule);
+    if (sheets === state.sheets && history === state.history) return state;
+    return { ...state, sheets, history };
   }
   if (action.type === "deleteMatchRule") {
     const next = state.matchRules.filter((r) => r.id !== action.ruleId);
