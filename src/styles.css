@@ -65,6 +65,13 @@
      app-header-h + month-header-h. */
   --month-header-h: 28px;
 
+  /* Height of the sticky column-header thead (ColumnIcon 16px + py-2
+     × 2 + the 1px border-b). Pinned just below the month header so the
+     full sticky stack lands at app-header-h + month-header-h +
+     column-header-h. Used by the up-direction Today pill to sit
+     INSIDE the data rather than overlap the chrome. */
+  --column-header-h: 33px;
+
   /* Corner-radius scale. Tailwind v4 resolves `rounded-sm` / `rounded-md`
      / `rounded-lg` through these vars by default; the bare `rounded`
      utility (used ~300× across the codebase) is remapped to

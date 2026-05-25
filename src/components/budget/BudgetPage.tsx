@@ -1135,7 +1135,7 @@ export function BudgetPage({
           <div
             className={
               todayButtonDirection === "up"
-                ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+0.5rem)]"
+                ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+var(--month-header-h)+var(--column-header-h)+0.5rem)]"
                 : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[var(--toast-stack-bottom)]"
             }
             data-floating-chrome
