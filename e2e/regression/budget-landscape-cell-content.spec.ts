@@ -32,7 +32,7 @@ test.describe("Budget cells in landscape", () => {
     const newRow = page.locator("tbody").first().locator("tr").last();
     await newRow.getByRole("button", { name: "Add type" }).click();
     await page.getByRole("option", { name: /Housing/ }).click();
-    await page.getByRole("option", { name: /^Rent$/ }).click();
+    await page.getByRole("option", { name: /^Rent \/ Fee$/ }).click();
 
     // Date cell: the short-date span (`hidden md:inline`) should stay
     // hidden in landscape; the day-only span (`md:hidden`) is what the

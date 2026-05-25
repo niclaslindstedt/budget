@@ -32,24 +32,32 @@ test.describe("Entry-type picker", () => {
     const income = page.getByRole("option", { name: /Income/ });
     await expect(housing).toBeVisible();
     await expect(income).toBeVisible();
-    await expect(page.getByRole("option", { name: /^Rent$/ })).toHaveCount(0);
+    await expect(
+      page.getByRole("option", { name: /^Rent \/ Fee$/ }),
+    ).toHaveCount(0);
     await expect(page.getByRole("option", { name: /^Salary$/ })).toHaveCount(0);
 
-    // Tap "Housing" → the type pane slides in. "Rent" lives in
+    // Tap "Housing" → the type pane slides in. "Rent / Fee" lives in
     // Housing; "Salary" lives in Income and must stay hidden.
     await housing.click();
-    await expect(page.getByRole("option", { name: /^Rent$/ })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: /^Rent \/ Fee$/ }),
+    ).toBeVisible();
     await expect(page.getByRole("option", { name: /^Salary$/ })).toHaveCount(0);
 
     // Back row returns to the category list.
     await page.getByRole("button", { name: "All categories" }).click();
     await expect(housing).toBeVisible();
-    await expect(page.getByRole("option", { name: /^Rent$/ })).toHaveCount(0);
+    await expect(
+      page.getByRole("option", { name: /^Rent \/ Fee$/ }),
+    ).toHaveCount(0);
 
     // Pick a type → the picker closes and the cell adopts the chip.
     await housing.click();
-    await page.getByRole("option", { name: /^Rent$/ }).click();
-    await expect(page.getByRole("option", { name: /^Rent$/ })).toHaveCount(0);
+    await page.getByRole("option", { name: /^Rent \/ Fee$/ }).click();
+    await expect(
+      page.getByRole("option", { name: /^Rent \/ Fee$/ }),
+    ).toHaveCount(0);
     // The chip is rendered inside the trigger button — Playwright's
     // accessible-name match picks up its visible label.
     await expect(newRow.getByRole("button", { name: /Rent/ })).toBeVisible();
@@ -57,7 +65,7 @@ test.describe("Entry-type picker", () => {
     // Re-opening the picker on a labelled row jumps straight into
     // that type's category with the existing selection checkmarked.
     await newRow.getByRole("button", { name: /Rent/ }).click();
-    const rentOption = page.getByRole("option", { name: /^Rent$/ });
+    const rentOption = page.getByRole("option", { name: /^Rent \/ Fee$/ });
     await expect(rentOption).toBeVisible();
     await expect(rentOption).toHaveAttribute("aria-selected", "true");
   });
