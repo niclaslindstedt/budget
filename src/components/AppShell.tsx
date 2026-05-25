@@ -2273,6 +2273,13 @@ export function AppShell({
     if (!row?.seriesId || !dateCol) return null;
     return getLastSeriesDate(activeItem.rows, row.seriesId, dateCol.id);
   }, [editRowPrompt, activeItem.rows, dateCol]);
+  // Every row in the active prompt's series, fed to the modal so the
+  // affected-rows preview can render under the scope picker.
+  const editRowSeriesRows = useMemo<readonly Row[]>(() => {
+    const row = editRowPrompt?.row;
+    if (!row?.seriesId) return [];
+    return activeItem.rows.filter((r) => r.seriesId === row.seriesId);
+  }, [editRowPrompt, activeItem.rows]);
 
   // Look up the bank entry behind a history-row split prompt so the
   // modal can pre-fill any existing splits and use the entry's
@@ -3286,6 +3293,7 @@ export function AppShell({
         types={allTypesMerged}
         settings={effectiveSettings}
         lastSeriesDate={editRowLastSeriesDate}
+        seriesRows={editRowSeriesRows}
         onClose={() => setEditRowPrompt(null)}
         onSave={onSaveEditRow}
         onCreateType={onCreateType}

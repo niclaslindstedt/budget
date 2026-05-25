@@ -981,7 +981,14 @@ export const en = {
     scopeJustThis: "Just this row",
     scopeJustThisDate: "Only this row ({date})",
     scopeThisAndFuture: "This row and all future",
+    scopeAll: "All rows in the series",
+    scopeAllAmountDisabled:
+      "Amount stays locked under this scope — changing it would rewrite past, already-reconciled entries.",
     scopeAlwaysJustThis: "Date and completed always apply to this row only.",
+    affectedRows: "Affected rows",
+    affectedRowsCountOne: "{n} row will be updated",
+    affectedRowsCountOther: "{n} rows will be updated",
+    affectedRowsCurrent: "current",
     completed: "Completed",
   },
 
