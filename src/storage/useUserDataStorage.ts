@@ -14,6 +14,7 @@ import { createLogger } from "../utils/logger";
 import {
   AuthError,
   ConflictError,
+  RateLimitError,
   type Snapshot,
   type StorageAdapter,
 } from "./adapter";
@@ -48,6 +49,12 @@ export type SaveStatus =
   // `resolveKeepLocal` / `resolveKeepRemote`.
   | { kind: "conflict"; local: UserData; remote: UserData }
   | { kind: "error"; message: string }
+  // The cloud backend asked us to slow down (HTTP 429). Soft signal —
+  // autosave pauses until `until` (wall-clock ms), then a resume timer
+  // re-runs the save effect against the latest `data` so pending edits
+  // ride along on a single full-blob write. The cloud-icon UI paints
+  // the orange `flag` tone instead of the red `err` tone.
+  | { kind: "throttled"; until: number }
   // The cloud backend rejected the request with a 401 after any silent
   // refresh has already been tried. The UI shows a Reconnect button
   // instead of a Try-again that would fail the same way.
@@ -216,7 +223,8 @@ function isBailStatus(status: SaveStatus): boolean {
     status.kind === "conflict" ||
     status.kind === "loading" ||
     status.kind === "parse-error" ||
-    status.kind === "shrink-warning"
+    status.kind === "shrink-warning" ||
+    status.kind === "throttled"
   );
 }
 
@@ -305,6 +313,15 @@ export function useUserDataStorage<Action extends { type: string }>(
   // Handle to the pending debounced save, so `saveNow` can cancel
   // it before issuing its own immediate write.
   const pendingTimerRef = useRef<number | null>(null);
+
+  // Timer that flips status back to `idle` after a cloud-side rate
+  // limit (HTTP 429) cooldown expires. Cleared on adapter unmount so a
+  // backend swap doesn't leave a dangling resume firing into the new
+  // adapter. The `resumeNonce` bump alongside the flip re-runs the save
+  // effect against the latest `data` even when nothing else changed in
+  // the meantime — pending edits coalesce into the next single save.
+  const throttleResumeRef = useRef<number | null>(null);
+  const [resumeNonce, setResumeNonce] = useState(0);
 
   // Latest status, exposed via a ref so the save effect can bail when
   // the app is in a bad state without keeping `status` in its dep
@@ -520,6 +537,38 @@ export function useUserDataStorage<Action extends { type: string }>(
           setStatus({ kind: "conflict", local, remote });
           return;
         }
+        if (err instanceof RateLimitError) {
+          // Soft pause: schedule a resume timer for the carried
+          // cooldown, then re-run the save effect via a nonce bump so
+          // whatever the user has been editing during the cooldown
+          // lands in a single full-blob save. Like the conflict
+          // branch, this runs before the stale check — the throttle
+          // applies to the whole adapter, not to a single in-flight
+          // request, so a stale completion still needs to set up the
+          // cooldown bookkeeping.
+          const until = Date.now() + err.retryAfterMs;
+          log.warn(
+            `save throttled (${ms}ms) [${adapter.id}] retryAfter=${err.retryAfterMs}ms until=${until}`,
+          );
+          if (throttleResumeRef.current !== null) {
+            window.clearTimeout(throttleResumeRef.current);
+          }
+          throttleResumeRef.current = window.setTimeout(() => {
+            throttleResumeRef.current = null;
+            // Only resume if we're still in the throttled state we set
+            // ourselves — an intervening adapter swap or other status
+            // change shouldn't be clobbered with `idle`.
+            if (statusRef.current.kind === "throttled") {
+              log.info(
+                `save throttle cleared [${adapter.id}] — resuming autosave`,
+              );
+              setStatus({ kind: "idle" });
+              setResumeNonce((n) => n + 1);
+            }
+          }, err.retryAfterMs);
+          setStatus({ kind: "throttled", until });
+          return;
+        }
         if (isStale()) {
           log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
           return;
@@ -701,6 +750,13 @@ export function useUserDataStorage<Action extends { type: string }>(
     return () => {
       cancelled = true;
       log.info(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
+      // Drop any pending rate-limit resume timer so a backend swap
+      // (or sign-out) doesn't leave a setTimeout firing into the new
+      // adapter and flipping its status to `idle` mid-load.
+      if (throttleResumeRef.current !== null) {
+        window.clearTimeout(throttleResumeRef.current);
+        throttleResumeRef.current = null;
+      }
     };
   }, [adapter, resetHistory, migrationCtx]);
 
@@ -760,7 +816,12 @@ export function useUserDataStorage<Action extends { type: string }>(
       window.clearTimeout(timer);
       if (pendingTimerRef.current === timer) pendingTimerRef.current = null;
     };
-  }, [adapter, data, performSave]);
+    // `resumeNonce` is in the dep list so that when the throttle
+    // resume timer flips status back to `idle` and bumps the nonce,
+    // this effect re-runs against the current `data` and pushes the
+    // pending edits in a single full-blob save. Without the nonce a
+    // throttle that elapsed with no further edits would never retry.
+  }, [adapter, data, performSave, resumeNonce]);
 
   // Save the current in-memory state verbatim. Used by the explicit
   // "save" button — bypasses `beforeSerialize` so the user can persist
@@ -781,7 +842,8 @@ export function useUserDataStorage<Action extends { type: string }>(
       status.kind === "error" ||
       status.kind === "loading" ||
       status.kind === "parse-error" ||
-      status.kind === "shrink-warning"
+      status.kind === "shrink-warning" ||
+      status.kind === "throttled"
     ) {
       log.warn(
         `saveNow ignored [${adapter.id}] — status=${status.kind}; resolve the failure before saving`,

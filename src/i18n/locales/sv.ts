@@ -1785,6 +1785,9 @@ export const sv: Catalog = {
     offline: "Offline",
     failed: "Synk misslyckades",
     failedWithMessage: "Synk misslyckades: {message}",
+    throttled: "Sparning pausad en stund",
+    throttledDetail:
+      "{name} bad oss sakta ner. Autosparning återupptas om några sekunder — dina ändringar skickas i nästa sparning.",
     syncConflict: "Synkkonflikt",
     syncConflictDetail:
       "{name} ändrades under den här enheten. Ladda om för att hämta fjärrkopian.",

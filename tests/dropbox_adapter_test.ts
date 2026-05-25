@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ConflictError } from "../src/storage/adapter";
+import { ConflictError, RateLimitError } from "../src/storage/adapter";
 import { createDropboxAdapter } from "../src/storage/dropbox-adapter";
 
 // Minimal `Response` shim. The adapter only ever reads `.status`,
@@ -130,6 +130,46 @@ describe("dropbox adapter", () => {
       name: "ConflictError",
       remote: { text: remoteText, revision: remoteRev },
     });
+  });
+
+  it("throws RateLimitError with the Retry-After header when save 429s", async () => {
+    const { fn } = fakeFetch((call) => {
+      if (call.url.includes("/files/upload")) {
+        return makeResponse({
+          status: 429,
+          body: '{"error_summary":"too_many_write_operations/"}',
+          headers: { "Retry-After": "12" },
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createDropboxAdapter("token-123", fn);
+    const err = await adapter.save("payload").then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect((err as RateLimitError).retryAfterMs).toBe(12_000);
+  });
+
+  it("floors the 429 cooldown to 5 seconds when Retry-After is missing or tiny", async () => {
+    const { fn } = fakeFetch((call) => {
+      if (call.url.includes("/files/upload")) {
+        return makeResponse({
+          status: 429,
+          body: '{"error_summary":"too_many_write_operations/"}',
+          // No Retry-After header — Dropbox doesn't always set one.
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createDropboxAdapter("token-123", fn);
+    const err = await adapter.save("payload").then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect((err as RateLimitError).retryAfterMs).toBeGreaterThanOrEqual(5_000);
   });
 
   it("sets a 1-second debounce so keystrokes coalesce", () => {
