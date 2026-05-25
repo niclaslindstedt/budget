@@ -126,7 +126,7 @@ export function UpdateToast() {
       </span>
       <button
         type="button"
-        className="text-sm text-accent hover:underline"
+        className="cursor-pointer text-sm text-accent hover:underline"
         onClick={() => {
           const wb = wbRef.current;
           if (!wb) return;
