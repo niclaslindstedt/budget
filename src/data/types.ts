@@ -767,11 +767,11 @@ export type CommonSettings = {
   transactionSortOrder: TransactionSortOrder;
   // When true, the editable budget sheet exposes `futureEntryMonths`
   // worth of upcoming fiscal months by default; when false, every
-  // future-dated entry is tucked behind a "Show future entries"
-  // toggle inside the sheet (matching the read-only viewer's
-  // long-standing behaviour). Default false — keeps the sheet
-  // anchored on today's month so a planner with rows scheduled
-  // months out doesn't push the current row off-screen.
+  // future-dated entry is tucked behind a "Show 3 future months"
+  // toggle inside the sheet that steps the cutoff three months
+  // forward per click. Default false — keeps the sheet anchored on
+  // today's month so a planner with rows scheduled months out
+  // doesn't push the current row off-screen.
   showFutureEntries: boolean;
   // Number of fiscal months past the current one to render by default
   // when `showFutureEntries` is true. Bounded 1..24 so a typo can't

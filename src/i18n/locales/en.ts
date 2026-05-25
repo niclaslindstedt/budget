@@ -392,10 +392,10 @@ export const en = {
       sortOldestFirst: "Oldest first",
       showFutureEntries: "Show future entries in budget",
       showFutureEntriesHint:
-        "Render a few upcoming fiscal months in the editable budget sheet by default. With this off, every future-dated row is tucked behind a “Show future entries” toggle so the sheet stays anchored on today.",
+        "Render a few upcoming fiscal months in the editable budget sheet by default. With this off, every future-dated row is tucked behind a “Show 3 future months” toggle so the sheet stays anchored on today.",
       futureEntryMonths: "Future months to show",
       futureEntryMonthsHint:
-        "Number of fiscal months past the current one to render up front. Anything further out still shows up after clicking the “Show future entries” toggle inside the sheet.",
+        "Number of fiscal months past the current one to render up front. Anything further out still shows up after clicking the “Show 3 future months” toggle inside the sheet — each click reveals three more months.",
     },
     headerAction: {
       title: "Title click",
@@ -758,6 +758,7 @@ export const en = {
     viewerSearchNoResults: "No entries match the search.",
     viewerShowFutureEntries: "Show future entries",
     showEarlierMonths: "Show {n} earlier months",
+    showFutureMonths: "Show {n} future months",
     rowActions: "row actions",
     selectAllInMonth: "Select all in month",
     expandMonth: "Expand {month}",

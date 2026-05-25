@@ -384,10 +384,10 @@ export const sv: Catalog = {
       sortOldestFirst: "Äldst först",
       showFutureEntries: "Visa framtida poster i budgeten",
       showFutureEntriesHint:
-        "Visa några kommande budgetmånader direkt i det redigerbara budgetbladet. När det är av göms varje framtida rad bakom en ”Visa framtida poster”-knapp så att bladet stannar förankrat på dagens månad.",
+        "Visa några kommande budgetmånader direkt i det redigerbara budgetbladet. När det är av göms varje framtida rad bakom en ”Visa 3 framtida månader”-knapp så att bladet stannar förankrat på dagens månad.",
       futureEntryMonths: "Antal framtida månader",
       futureEntryMonthsHint:
-        "Antal budgetmånader efter den aktuella som visas direkt. Allt längre fram dyker upp först när man klickar på ”Visa framtida poster”-knappen i bladet.",
+        "Antal budgetmånader efter den aktuella som visas direkt. Allt längre fram dyker upp först när man klickar på ”Visa 3 framtida månader”-knappen i bladet — varje klick visar tre månader till.",
     },
     headerAction: {
       title: "Klick på rubriken",
@@ -752,6 +752,7 @@ export const sv: Catalog = {
     viewerSearchNoResults: "Inga poster matchar sökningen.",
     viewerShowFutureEntries: "Visa framtida poster",
     showEarlierMonths: "Visa {n} tidigare månader",
+    showFutureMonths: "Visa {n} framtida månader",
     rowActions: "radåtgärder",
     selectAllInMonth: "Markera alla i månaden",
     expandMonth: "Expandera {month}",
