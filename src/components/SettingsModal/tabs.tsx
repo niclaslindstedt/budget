@@ -996,13 +996,15 @@ export function PatternsTab({
     return m;
   }, [categories]);
   const rules = data.matchRules;
-  // Per-rule budget-row counts. Folded into one walk so the cost is
-  // O(rows + rules) per render rather than O(rows × rules).
+  // Per-rule hit counts across the whole budget view — explicit
+  // budget rows AND synthesized history rows (what the rule modal
+  // preview also counts). Folded into one walk so the cost is
+  // O(rows + entries + rules) per render rather than O(× rules).
   // typeIdLocked rows are excluded — they don't move on reapply so
   // attributing them to a rule would mislead the chip the user sees.
   const ruleCounts = useMemo(
-    () => countRuleHitsOnSheets(data.sheets, rules),
-    [data.sheets, rules],
+    () => countRuleHitsOnSheets(data.sheets, rules, data.history),
+    [data.sheets, rules, data.history],
   );
   return (
     <Section title={t("settings.patterns.title")}>
