@@ -36,7 +36,7 @@ type Props = {
 type View = {
   Icon: typeof CloudCheck;
   label: string;
-  tone: "ok" | "busy" | "warn" | "err" | "accent";
+  tone: "ok" | "busy" | "warn" | "err" | "accent" | "flag";
   spin?: boolean;
   action: "save" | "open";
 };
@@ -69,6 +69,13 @@ function viewFor(
         Icon: CloudAlert,
         label: t("sync.failedWithMessage", { message: status.message }),
         tone: "err",
+        action: "open",
+      };
+    case "throttled":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.throttled"),
+        tone: "flag",
         action: "open",
       };
     case "auth-error":
@@ -130,6 +137,7 @@ const TONE_CLASS: Record<View["tone"], string> = {
   warn: "border-pipe/50 text-pipe hover:bg-pipe/10",
   err: "border-danger/50 text-danger hover:bg-danger/10",
   accent: "border-accent bg-accent/15 text-accent hover:bg-accent/25",
+  flag: "border-flag/50 text-flag hover:bg-flag/10",
 };
 
 export function SyncStatus({

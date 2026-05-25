@@ -76,7 +76,7 @@ function providerView(backend: BackendId): ProviderView | null {
 type StatusView = {
   Icon: typeof CloudCheck;
   label: string;
-  tone: "ok" | "busy" | "warn" | "err";
+  tone: "ok" | "busy" | "warn" | "err" | "flag";
   detail?: string;
   spin?: boolean;
 };
@@ -108,6 +108,13 @@ function statusView(
         label: t("sync.failed"),
         tone: "err",
         detail: status.message,
+      };
+    case "throttled":
+      return {
+        Icon: CloudAlert,
+        label: t("sync.throttled"),
+        tone: "flag",
+        detail: t("sync.throttledDetail", { name: providerName }),
       };
     case "auth-error":
       return {
@@ -178,6 +185,7 @@ const TONE_BORDER: Record<StatusView["tone"], string> = {
   busy: "border-line",
   warn: "border-pipe/50",
   err: "border-danger/50",
+  flag: "border-flag/50",
 };
 
 const TONE_TEXT: Record<StatusView["tone"], string> = {
@@ -185,6 +193,7 @@ const TONE_TEXT: Record<StatusView["tone"], string> = {
   busy: "text-muted",
   warn: "text-pipe",
   err: "text-danger",
+  flag: "text-flag",
 };
 
 export function SyncDetailsModal({

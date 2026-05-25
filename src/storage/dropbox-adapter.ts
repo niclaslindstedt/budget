@@ -4,6 +4,7 @@ import {
   AuthError,
   type BackupOps,
   ConflictError,
+  RateLimitError,
   type Snapshot,
   type StorageAdapter,
 } from "./adapter";
@@ -84,6 +85,12 @@ const DOWNLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/download";
 // they finish it. `saveNow()` (the disk button) still bypasses this
 // for the immediate-flush escape hatch.
 const SAVE_DEBOUNCE_MS = 1000;
+
+// Floor for the cooldown after Dropbox returns 429 "too_many_write_operations".
+// Dropbox normally sets `Retry-After`, but we clamp to at least this so a
+// missing / zero / one-second header still gives the burst a chance to
+// settle before we try again.
+const RATE_LIMIT_FALLBACK_MS = 5000;
 
 // `sessionStorage` survives the OAuth redirect round-trip but is
 // scoped to the tab, so a parallel auth flow in another tab can't
@@ -375,6 +382,19 @@ export function createDropboxAdapter(
         const detail = await res.text().catch(() => "conflict");
         log.error(`save: 409 with no remote bytes: ${detail}`);
         throw new Error(`Dropbox save failed: 409 ${detail}`);
+      }
+      if (res.status === 429) {
+        // Dropbox returns 429 when the app exceeds its per-user write
+        // quota. The hook converts the carried cooldown into a soft
+        // `throttled` status and resumes automatically — pending edits
+        // ride along on the next full-blob save.
+        const headerSeconds = Number(res.headers.get("Retry-After") ?? "");
+        const headerMs = Number.isFinite(headerSeconds)
+          ? Math.max(0, headerSeconds) * 1000
+          : 0;
+        const retryAfterMs = Math.max(headerMs, RATE_LIMIT_FALLBACK_MS);
+        log.warn(`save: 429 — throttled retryAfter=${retryAfterMs}ms`);
+        throw new RateLimitError(retryAfterMs);
       }
       if (!res.ok) {
         const body = await res.text().catch(() => "<unreadable>");

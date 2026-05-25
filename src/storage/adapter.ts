@@ -156,3 +156,17 @@ export class AuthError extends Error {
     this.name = "AuthError";
   }
 }
+
+// Thrown by cloud adapters when the backend rate-limits a write (HTTP
+// 429). The storage hook treats this as a soft, transient signal:
+// instead of surfacing a red sync error and stopping autosave, it flips
+// status to `throttled`, paints the cloud icon orange, and schedules a
+// resume once the carried cooldown has elapsed. Saves coalesce for
+// free during the cooldown because every save serialises the full
+// `UserData` blob.
+export class RateLimitError extends Error {
+  constructor(readonly retryAfterMs: number) {
+    super(`Rate limited; retry after ${retryAfterMs}ms`);
+    this.name = "RateLimitError";
+  }
+}

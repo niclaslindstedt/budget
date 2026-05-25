@@ -1789,6 +1789,9 @@ export const en = {
     offline: "Offline",
     failed: "Sync failed",
     failedWithMessage: "Sync failed: {message}",
+    throttled: "Saving paused briefly",
+    throttledDetail:
+      "{name} asked us to slow down. Auto-save resumes in a few seconds — your edits will be pushed in the next save.",
     syncConflict: "Sync conflict",
     syncConflictDetail:
       "{name} changed underneath this device. Reload to pick up the remote copy.",
