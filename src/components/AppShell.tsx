@@ -151,7 +151,11 @@ import {
   type BackendId,
   type EncryptionMode,
 } from "../storage/backend-preference";
-import { mergeHistory, type ParsedBankFile } from "../storage/bank-parsers";
+import {
+  mergeHistory,
+  type ParsedBankEntry,
+  type ParsedBankFile,
+} from "../storage/bank-parsers";
 import { useUserDataStorage } from "../storage/useUserDataStorage";
 import type { AccountsDownloadPrefs, BudgetDownloadPrefs } from "../data/types";
 import { bcp47, type Lang, type MessageKey, useT } from "../i18n";
@@ -197,25 +201,39 @@ type PendingSeriesEdit = {
   value: CellValue;
 };
 
-// Reconciliation modal state, populated immediately after an import
-// dispatch. Snapshotted from the pre-import data + parsed entries so
-// the modal doesn't have to chase the reducer to reproduce the
-// matcher's view of the world. The reducer applies stored series
-// rules silently in advance; `candidates` therefore only contains
-// pairs that don't already fit a learned rule.
+// Reconciliation modal state, populated after the user picks a bank
+// file but BEFORE the import is committed to `state.history`. The
+// modal is the commit gate: Apply / Skip-all dispatch the deferred
+// `importBankHistory`, X / Escape / click-outside discard the parsed
+// file unread. Snapshotted from the pre-import data + parsed entries
+// so the modal doesn't have to chase the reducer to reproduce the
+// matcher's view of the world.
 type ReconciliationState = {
   accountId: string;
   // For rendering: pre-import data so the modal can look up row /
   // entry shapes from a stable reference even if the user keeps
   // working in the background.
   preImportData: UserData;
-  // History entries newly added by this import (excluding ones the
-  // silent series-rule pass already paired up).
+  // Entries that WILL be added when the import commits (i.e. the
+  // freshly parsed rows minus those that dedup against the existing
+  // history). Computed once so the matcher view stays stable across
+  // background edits.
   newEntries: HistoryEntry[];
   candidates: MatchCandidate[];
   orphans: OrphanRow[];
   // Day-of-month the orphan move-to picker defaults to.
   paydayDay: number;
+  // Parsed bank file held in memory until commit. Dispatched verbatim
+  // as the `importBankHistory` payload when the user clicks Apply or
+  // Skip all; dropped on cancel.
+  pendingImport: {
+    bankParserId: string;
+    bankClearing?: string;
+    bankAccountNumber?: string;
+    filename: string;
+    entries: ParsedBankEntry[];
+    now: number;
+  };
 };
 
 // In-flight recurring-candidate promotion. Captured when the user
@@ -1828,56 +1846,86 @@ export function AppShell({
         for (const o of orphans) allOrphans.push(o);
       }
 
-      dispatch({
-        type: "importBankHistory",
-        accountId,
+      setImportHistoryForId(null);
+
+      const pendingImport = {
         bankParserId: parsed.bankParserId,
         bankClearing: parsed.bankClearing,
         bankAccountNumber: parsed.bankAccountNumber,
         filename,
         entries: parsed.entries,
         now,
-      });
-      setImportHistoryForId(null);
+      };
 
-      if (allCandidates.length > 0 || allOrphans.length > 0) {
-        const paydayDay = detectPaydayDayOfMonth(
-          preImportData,
-          preImportData.settings.startOfMonth,
-        );
-        setReconciliation({
+      // Quiet path — nothing to triage, commit the import immediately
+      // and skip the modal. Matches the pre-deferred-commit behaviour
+      // when the matcher had no candidates or orphans to show.
+      if (allCandidates.length === 0 && allOrphans.length === 0) {
+        dispatch({
+          type: "importBankHistory",
           accountId,
-          preImportData,
-          newEntries,
-          candidates: allCandidates,
-          orphans: allOrphans,
-          paydayDay,
+          ...pendingImport,
         });
+        return;
       }
+
+      const paydayDay = detectPaydayDayOfMonth(
+        preImportData,
+        preImportData.settings.startOfMonth,
+      );
+      setReconciliation({
+        accountId,
+        preImportData,
+        newEntries,
+        candidates: allCandidates,
+        orphans: allOrphans,
+        paydayDay,
+        pendingImport,
+      });
     },
     [data, dispatch, importHistoryAccount],
   );
 
   const onApplyReconciliation = useCallback(
     (decisions: ReconciliationApply) => {
-      if (
-        decisions.mergedRowIds.length === 0 &&
-        decisions.seriesRules.length === 0 &&
-        decisions.orphans.length === 0
-      ) {
-        setReconciliation(null);
-        return;
-      }
+      if (!reconciliation) return;
+      const { accountId, pendingImport } = reconciliation;
+      // Commit the deferred bank-history import first so the
+      // applyReconciliation pass operates on a state that already
+      // contains the new entries (the stamps in `entryOverrides`
+      // target ids that only exist after `importBankHistory`).
       dispatch({
-        type: "applyReconciliation",
-        mergedRowIds: decisions.mergedRowIds,
-        seriesRules: decisions.seriesRules,
-        orphans: decisions.orphans,
+        type: "importBankHistory",
+        accountId,
+        ...pendingImport,
       });
+      if (
+        decisions.mergedRowIds.length > 0 ||
+        decisions.entryOverrides.length > 0 ||
+        decisions.seriesRules.length > 0 ||
+        decisions.orphans.length > 0
+      ) {
+        dispatch({
+          type: "applyReconciliation",
+          accountId,
+          mergedRowIds: decisions.mergedRowIds,
+          entryOverrides: decisions.entryOverrides,
+          seriesRules: decisions.seriesRules,
+          orphans: decisions.orphans,
+        });
+      }
       setReconciliation(null);
     },
-    [dispatch],
+    [dispatch, reconciliation],
   );
+
+  // Discard the pending import unread. Wired to the modal's X /
+  // Escape / click-outside so dismissing the dialog rolls back to
+  // pre-pick state — the parsed file is dropped, nothing lands in
+  // `state.history`, no `HistoryImport` log entry is written.
+  const onCancelReconciliation = useCallback(() => {
+    setReconciliation(null);
+  }, []);
 
   // Balance-correction flow. The Accounts page surfaces a clickable
   // balance per account; clicking opens UpdateBalanceModal, which lets
@@ -3255,7 +3303,7 @@ export function AppShell({
       />
       <ReconciliationModal
         open={reconciliation !== null}
-        onClose={() => setReconciliation(null)}
+        onCancel={onCancelReconciliation}
         onApply={onApplyReconciliation}
         accountId={reconciliation?.accountId ?? ""}
         preImportData={reconciliation?.preImportData ?? data}

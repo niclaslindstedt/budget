@@ -24,6 +24,15 @@ type OrphanDecision =
 
 export type ReconciliationApply = {
   mergedRowIds: string[];
+  // Stamps to apply to the matching history entries so the user's
+  // curated description / typeId survive the merged row's deletion.
+  // Conflict policy lives in the reducer — only blank fields on the
+  // entry get filled.
+  entryOverrides: Array<{
+    historyEntryId: string;
+    userDescription?: string;
+    userTypeId?: string;
+  }>;
   seriesRules: SeriesMatchRule[];
   orphans: Array<
     | { rowId: string; action: "delete" }
@@ -33,7 +42,10 @@ export type ReconciliationApply = {
 
 type Props = {
   open: boolean;
-  onClose: () => void;
+  // Called when the user dismisses the modal without committing: the
+  // X button, Escape, or click-outside. The parent treats this as
+  // "cancel the import" and discards the parsed file unread.
+  onCancel: () => void;
   onApply: (decisions: ReconciliationApply) => void;
   accountId: string;
   preImportData: UserData;
@@ -62,7 +74,7 @@ type Props = {
 //   can also delete the row outright or keep it as-is.
 export function ReconciliationModal({
   open,
-  onClose,
+  onCancel,
   onApply,
   accountId,
   preImportData,
@@ -216,13 +228,38 @@ export function ReconciliationModal({
   }
 
   function handleSkipAll() {
-    onApply({ mergedRowIds: [], seriesRules: [], orphans: [] });
+    onApply({
+      mergedRowIds: [],
+      entryOverrides: [],
+      seriesRules: [],
+      orphans: [],
+    });
   }
 
   function handleApply() {
     const mergedRowIds: string[] = [];
+    const entryOverrides: ReconciliationApply["entryOverrides"] = [];
     for (const c of allCandidates) {
-      if (checked.has(candidateKey(c))) mergedRowIds.push(c.rowId);
+      if (!checked.has(candidateKey(c))) continue;
+      mergedRowIds.push(c.rowId);
+      // Carry the row's curated description + typeId onto the bank
+      // entry as per-entry overrides so the user's fine-tuning isn't
+      // lost when the row is deleted. The reducer enforces the
+      // conflict policy — only blanks on the entry get filled.
+      const lookup = rowsById.get(c.rowId);
+      if (!lookup) continue;
+      const descCol = findColumnByType(lookup.columns, "description");
+      const rowDesc = descCol
+        ? String(lookup.row.cells[descCol.id] ?? "").trim()
+        : "";
+      const override: ReconciliationApply["entryOverrides"][number] = {
+        historyEntryId: c.historyEntryId,
+      };
+      if (rowDesc) override.userDescription = rowDesc;
+      if (lookup.row.typeId) override.userTypeId = lookup.row.typeId;
+      if (override.userDescription || override.userTypeId) {
+        entryOverrides.push(override);
+      }
     }
     // Only persist rules whose paired candidate was actually checked.
     // Clicking "Apply to whole series" but then unchecking the
@@ -249,7 +286,7 @@ export function ReconciliationModal({
           toDate: decision.toDate,
         });
     }
-    onApply({ mergedRowIds, seriesRules, orphans: orphanOut });
+    onApply({ mergedRowIds, entryOverrides, seriesRules, orphans: orphanOut });
   }
 
   const candidateRows = allCandidates.map((c) => {
@@ -405,7 +442,7 @@ export function ReconciliationModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={onCancel}
       labelledBy="reconciliation-modal-title"
       size="max-w-2xl"
       centered
@@ -413,7 +450,7 @@ export function ReconciliationModal({
       <Modal.Header
         icon={<Scale size={14} aria-hidden focusable={false} />}
         title={t("reconciliation.title")}
-        onClose={onClose}
+        onClose={onCancel}
       />
       <Modal.Body>
         {candidateRows.length === 0 && orphanRowItems.length === 0 && (
