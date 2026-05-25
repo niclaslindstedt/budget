@@ -742,12 +742,26 @@ export function SheetView({
       // MonthTable's IntersectionObserver flips and the row tree
       // mounts. Refine to today's row once the smooth-scroll tail
       // and lazy-mount commit have landed.
+      //
+      // `scrollIntoView({ behavior: "smooth" })` has no fixed
+      // duration — Chrome interpolates roughly with distance, so a
+      // jump from deep-future months to today can run well past a
+      // second. A single deadline (we used to wait 450 ms) silently
+      // misses long jumps: the current-month container isn't yet in
+      // MonthTable's intersection-observer margin, its rows are
+      // still unmounted, `refine` returns false, and the user is
+      // parked short of today — they had to click Today several
+      // times to step closer. Poll every frame until the row mounts
+      // and refine commits, capped at 3 s so we never spin forever.
       if (!target) return;
       target.scrollIntoView({ behavior, block: "start" });
-      window.setTimeout(
-        () => requestAnimationFrame(refine),
-        behavior === "smooth" ? 450 : 60,
-      );
+      const deadline = performance.now() + 3000;
+      const poll = () => {
+        if (refine()) return;
+        if (performance.now() > deadline) return;
+        requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
     });
   };
   useEffect(() => {
