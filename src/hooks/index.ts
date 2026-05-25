@@ -18,7 +18,6 @@ export { useIsStandalone } from "./useIsStandalone";
 export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
 export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
-export { markPwaReloading, usePwaReloading } from "./usePwaReloading";
 export { useGridRovingTabindex, useRovingTabindex } from "./useRovingTabindex";
 export { useScrollHide } from "./useScrollHide";
 export { useSheetSwipe } from "./useSheetSwipe";

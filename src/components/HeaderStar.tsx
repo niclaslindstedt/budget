@@ -1,6 +1,5 @@
 import { Star } from "lucide-react";
 
-import { usePwaReloading } from "../hooks";
 import { useT } from "../i18n";
 
 type Props = {
@@ -23,19 +22,13 @@ type Props = {
 // Styled to match `SaveStateButton` / `SyncStatus` so the header
 // chrome stays uniform: 36 × 36 button, 18-pixel icon, border that
 // echoes the accent or muted tone of its sibling buttons.
-//
-// During a PWA reload the star renders inactive regardless of
-// `unseenCount` so the filled state doesn't flicker between the
-// user clicking the update toast's Reload button and the new
-// build mounting (the gap is short but visible).
 export function HeaderStar({
   unseenCount,
   onOpenList,
   onOpenUnlockModal,
 }: Props) {
   const t = useT();
-  const pwaReloading = usePwaReloading();
-  const filled = !pwaReloading && unseenCount > 0;
+  const filled = unseenCount > 0;
   const label = filled
     ? unseenCount === 1
       ? t("achievements.star.unseenOne")
