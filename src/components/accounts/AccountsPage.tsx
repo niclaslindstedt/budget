@@ -82,8 +82,8 @@ type Props = {
   // in the per-row swipe strip uses this.
   onDeleteAccount: (accountId: string, name: string) => void;
   onUpdateBalance: (accountId: string) => void;
-  onCreateTransaction: () => void;
-  onEditTransaction: (transactionId: string) => void;
+  onCreateTransfer: () => void;
+  onEditTransfer: (transferId: string) => void;
   // Opens the import-history modal scoped to the clicked account.
   onImportHistory: (accountId: string) => void;
   // Opens the read-only history viewer for the clicked account. The
@@ -92,7 +92,7 @@ type Props = {
   // a "no history" placeholder with the import path inside.
   onViewHistory: (accountId: string) => void;
   // Opens the "cut history" modal scoped to the clicked account. Drops
-  // imported entries and cross-account transactions dated before a
+  // imported entries and cross-account transfers dated before a
   // user-picked cutoff — useful when an account's purpose has changed
   // and the old history is no longer relevant.
   onCutHistory: (accountId: string) => void;
@@ -108,8 +108,8 @@ export function AccountsPage({
   onEditAccount,
   onDeleteAccount,
   onUpdateBalance,
-  onCreateTransaction,
-  onEditTransaction,
+  onCreateTransfer,
+  onEditTransfer,
   onImportHistory,
   onViewHistory,
   onCutHistory,
@@ -119,7 +119,7 @@ export function AccountsPage({
   const t = useT();
   const lang = useLang();
   // Pre-compute every account's balance once per render. The helper
-  // walks every budget item in the workspace plus every transaction,
+  // walks every budget item in the workspace plus every transfer,
   // so doing it inside a map() would be O(accounts²) on every keystroke
   // — pulling it out keeps balances cheap as the dataset grows.
   const balances = useMemo(() => {
@@ -141,18 +141,18 @@ export function AccountsPage({
     }
     return s;
   }, [data.sheets]);
-  // Per-account count of cross-account transactions, used by the swipe
+  // Per-account count of cross-account transfers, used by the swipe
   // strip's cut button to decide whether anything is cuttable when the
   // account has no imported history (transfers alone are enough). The
   // map is built once per render so each row read is O(1).
-  const transactionCountByAccount = useMemo(() => {
+  const transferCountByAccount = useMemo(() => {
     const m = new Map<string, number>();
-    for (const tx of data.transactions) {
+    for (const tx of data.transfers) {
       m.set(tx.fromAccountId, (m.get(tx.fromAccountId) ?? 0) + 1);
       m.set(tx.toAccountId, (m.get(tx.toAccountId) ?? 0) + 1);
     }
     return m;
-  }, [data.transactions]);
+  }, [data.transfers]);
   const accountsById = useMemo(() => {
     const m = new Map<string, Account>();
     for (const a of data.accounts) m.set(a.id, a);
@@ -161,12 +161,12 @@ export function AccountsPage({
   const categoriesById = useMemo(() => {
     const m = new Map<string, Category>();
     // Resolve both user-added and built-in preset categories so the
-    // transaction log renders a chip even when its typeId resolves
+    // transfer log renders a chip even when its typeId resolves
     // to a preset category.
     for (const c of allCategories(data)) m.set(c.id, c);
     return m;
   }, [data]);
-  // Types indexed by id so the transaction log can resolve a
+  // Types indexed by id so the transfer log can resolve a
   // `tx.typeId` to its parent category for the chip rendering. The
   // map covers presets + user-added types via `allTypes`.
   const typesById = useMemo(() => {
@@ -190,12 +190,12 @@ export function AccountsPage({
   // app. The historical default was newest-first ("the dinner cover
   // was last week") — that's still the default, but the user can flip
   // it from Settings → General → Display.
-  const sortedTransactions = useMemo(() => {
+  const sortedTransfers = useMemo(() => {
     const order = settings.transactionSortOrder;
-    return [...data.transactions].sort((a, b) =>
+    return [...data.transfers].sort((a, b) =>
       compareDateStrings(a.date, b.date, order),
     );
-  }, [data.transactions, settings.transactionSortOrder]);
+  }, [data.transfers, settings.transactionSortOrder]);
 
   // Walk the sorted (newest-first) transfers and emit one group per
   // `YYYY-MM` so the table can drop a colored month-marker row between
@@ -204,16 +204,16 @@ export function AccountsPage({
   const transferGroups = useMemo(() => {
     const result: {
       monthKey: string;
-      transactions: typeof sortedTransactions;
+      transfers: typeof sortedTransfers;
     }[] = [];
-    for (const tx of sortedTransactions) {
+    for (const tx of sortedTransfers) {
       const key = tx.date.slice(0, 7);
       const last = result[result.length - 1];
-      if (last && last.monthKey === key) last.transactions.push(tx);
-      else result.push({ monthKey: key, transactions: [tx] });
+      if (last && last.monthKey === key) last.transfers.push(tx);
+      else result.push({ monthKey: key, transfers: [tx] });
     }
     return result;
-  }, [sortedTransactions]);
+  }, [sortedTransfers]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     {
@@ -357,9 +357,9 @@ export function AccountsPage({
                     ? { ...settings, currency: account.currency }
                     : settings;
                   const historyCount = data.history[account.id]?.length ?? 0;
-                  const transactionsForAccount =
-                    transactionCountByAccount.get(account.id) ?? 0;
-                  const canCut = historyCount > 0 || transactionsForAccount > 0;
+                  const transfersForAccount =
+                    transferCountByAccount.get(account.id) ?? 0;
+                  const canCut = historyCount > 0 || transfersForAccount > 0;
                   return (
                     <AccountRow
                       key={account.id}
@@ -476,7 +476,7 @@ export function AccountsPage({
                 </tr>
               </thead>
               <tbody>
-                {sortedTransactions.length === 0 && (
+                {sortedTransfers.length === 0 && (
                   <tr>
                     <td
                       colSpan={4}
@@ -504,7 +504,7 @@ export function AccountsPage({
                           {formatMonth(group.monthKey, lang)}
                         </td>
                       </tr>
-                      {group.transactions.map((tx) => {
+                      {group.transfers.map((tx) => {
                         const from = accountsById.get(tx.fromAccountId);
                         const to = accountsById.get(tx.toAccountId);
                         const type = tx.typeId
@@ -517,7 +517,7 @@ export function AccountsPage({
                           <tr
                             key={tx.id}
                             className="cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
-                            onClick={() => onEditTransaction(tx.id)}
+                            onClick={() => onEditTransfer(tx.id)}
                           >
                             <td
                               className="w-14 pr-1 pl-2 py-2 align-middle font-mono text-xs whitespace-nowrap md:w-20 md:px-2"
@@ -592,7 +592,7 @@ export function AccountsPage({
                   <td colSpan={4} className="bg-surface-3 p-0">
                     <button
                       type="button"
-                      onClick={onCreateTransaction}
+                      onClick={onCreateTransfer}
                       disabled={data.accounts.length < 2}
                       title={
                         data.accounts.length < 2

@@ -111,7 +111,7 @@ const hasLinkedSheet = (s: UserData) =>
     s,
     (i) => typeof i.accountId === "string" && i.accountId !== "",
   );
-const hasTransaction = (s: UserData) => s.transactions.length > 0;
+const hasTransfer = (s: UserData) => s.transfers.length > 0;
 const hasUserCategory = (s: UserData) => s.categories.length > 0;
 const hasUserType = (s: UserData) => s.types.length > 0;
 const hasHiddenPreset = (s: UserData) =>
@@ -128,7 +128,7 @@ const hasSplitHistoryEntry = (s: UserData) =>
   );
 const hasCollapsedTransferPair = (s: UserData) =>
   Object.values(s.history).some((arr) =>
-    arr.some((e) => typeof e.collapsedIntoTransactionId === "string"),
+    arr.some((e) => typeof e.collapsedIntoTransferId === "string"),
   );
 const hasUserHistoryOverride = (s: UserData) =>
   Object.values(s.history).some((arr) =>
@@ -367,7 +367,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
-      predicate: (prev, next) => !hasTransaction(prev) && hasTransaction(next),
+      predicate: (prev, next) => !hasTransfer(prev) && hasTransfer(next),
     },
   },
   {

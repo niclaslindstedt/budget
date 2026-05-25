@@ -57,12 +57,12 @@ type Props = {
   categories?: readonly Category[];
   onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory?: (draft: Omit<Category, "id">) => Category;
-  // True when this row is a synthesized side of a Transaction. Disables
-  // every editor (the row is sourced from `data.transactions`, not the
+  // True when this row is a synthesized side of a Transfer. Disables
+  // every editor (the row is sourced from `data.transfers`, not the
   // budget's `item.rows`) and swaps the description leading glyph to a
   // transfer indicator. The `peerName` / `outgoing` props feed the
   // direction arrow and "→ Savings" prefix in the description cell.
-  isTransaction?: boolean;
+  isTransfer?: boolean;
   peerName?: string;
   outgoing?: boolean;
   // True when this row is a synthesized projection of an imported
@@ -125,7 +125,7 @@ function CellImpl({
   categories,
   onCreateType,
   onCreateCategory,
-  isTransaction,
+  isTransfer,
   peerName,
   outgoing,
   isHistory,
@@ -148,11 +148,11 @@ function CellImpl({
   const onCommit = onCommitCell
     ? (next: CellValue) => onCommitCell(rowId, column.id, next)
     : undefined;
-  // Synthesized transaction rows are not editable inline — the
-  // underlying data lives in `data.transactions`, not on the budget's
+  // Synthesized transfer rows are not editable inline — the
+  // underlying data lives in `data.transfers`, not on the budget's
   // rows[]. Render each cell as a display-only span / icon and offer
-  // editing through the action button (which opens the transaction
-  // modal). The dedicated transaction layouts only differ from the
+  // editing through the action button (which opens the transfer
+  // modal). The dedicated transfer layouts only differ from the
   // regular layouts in two ways: no input element, and the description
   // cell shows a transfer arrow + peer-account name.
   //
@@ -162,12 +162,12 @@ function CellImpl({
   // while date / amount / balance / completed stay read-only — those
   // are bank-authoritative and the user shouldn't be able to rewrite
   // them without re-importing.
-  // The two synthesized-row modes (transaction, history) share the same
+  // The two synthesized-row modes (transfer, history) share the same
   // readonly leaves for date / amount / balance / completed — the only
   // per-mode variation is in the description and type cells. Route the
   // shared half through a single helper so the leaves stay in lock-step
   // when their prop contracts change.
-  if (isTransaction || isHistory) {
+  if (isTransfer || isHistory) {
     const readonly = renderReadonlyColumn({
       column,
       value,
@@ -178,11 +178,11 @@ function CellImpl({
       onToggleTransferAnchor,
     });
     if (readonly) return readonly;
-    if (isTransaction) {
+    if (isTransfer) {
       switch (column.type) {
         case "description":
           return (
-            <TransactionDescriptionCell
+            <TransferDescriptionCell
               value={typeof value === "string" ? value : ""}
               peerName={peerName ?? ""}
               outgoing={!!outgoing}
@@ -336,7 +336,7 @@ function CellImpl({
 export const BudgetCell = memo(CellImpl);
 
 // Shared readonly balance cell. Three render paths in `BudgetCell` (default,
-// `isTransaction`, `isHistory`) all need the same display logic plus
+// `isTransfer`, `isHistory`) all need the same display logic plus
 // the optional ↔ button that reveals hidden transfers behind this
 // balance step, so the JSX is factored out here. When
 // `hiddenTransferCount` is 0 the button branch never renders, so a
@@ -446,7 +446,7 @@ function BalanceCell({
   );
 }
 
-// Readonly variant of the type cell — used for synthesized transaction
+// Readonly variant of the type cell — used for synthesized transfer
 // and history rows where the row is sourced from outside the budget's
 // `rows[]` and inline editing is suppressed.
 function ReadonlyTypeCell({ entryType }: { entryType: EntryType | null }) {
@@ -1062,7 +1062,7 @@ function DescriptionPopover({
   );
 }
 
-// Read-only date cell for synthesized transaction rows. Uses the same
+// Read-only date cell for synthesized transfer rows. Uses the same
 // long / short / day-only formatters as the editable variant so widths
 // line up across the table.
 function ReadonlyDateCell({
@@ -1075,11 +1075,11 @@ function ReadonlyDateCell({
   return <DateCellDisplay iso={value} settings={settings} mode="static" />;
 }
 
-// Description cell for synthesized transaction rows. Shows a transfer
-// arrow leading into the peer account name, then the transaction
+// Description cell for synthesized transfer rows. Shows a transfer
+// arrow leading into the peer account name, then the transfer
 // description as plain text. Mirrors the editable description cell's
 // desktop / mobile split so the row collapses cleanly on small screens.
-function TransactionDescriptionCell({
+function TransferDescriptionCell({
   value,
   peerName,
   outgoing,
@@ -1124,7 +1124,7 @@ function TransactionDescriptionCell({
 }
 
 // Readonly variant of the `completed` cell — used by synthesized
-// transaction and history rows. The editable variant in `CellImpl`
+// transfer and history rows. The editable variant in `CellImpl`
 // renders a `<button>` instead; this one is just a static glyph so the
 // row reads identically without becoming clickable.
 function ReadonlyCompletedCell({ checked }: { checked: boolean }) {
@@ -1202,7 +1202,7 @@ function TypePickerCell({
   );
 }
 
-// Cells that are read-only in both the `isTransaction` and `isHistory`
+// Cells that are read-only in both the `isTransfer` and `isHistory`
 // modes. The two modes used to repeat these four switch arms verbatim
 // — keeping them in sync was a recurring source of drift (e.g. when
 // `BalanceCell` grew its hidden-transfer toggle, every copy had to be

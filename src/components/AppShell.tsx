@@ -18,12 +18,12 @@ import { ChangelogModal } from "./ChangelogModal";
 import { BottomBar } from "./BottomBar";
 import { BulkEditModal, type BulkPatch } from "./budget/BulkEditModal";
 import { SheetModal, type SheetDraft } from "./SheetModal";
-import { TransactionSearchModal } from "./budget/TransactionSearchModal";
+import { TransferSearchModal } from "./budget/TransferSearchModal";
 import {
-  TransactionModal,
-  type TransactionDraft,
-  type TransactionModalRequest,
-} from "./accounts/TransactionModal";
+  TransferModal,
+  type TransferDraft,
+  type TransferModalRequest,
+} from "./accounts/TransferModal";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
@@ -121,7 +121,7 @@ import type {
   Settings,
   Sheet,
   StoredUser,
-  Transaction,
+  Transfer,
   UserData,
 } from "../data/types";
 import { normaliseDescription } from "../data/description-normaliser";
@@ -418,7 +418,7 @@ export function AppShell({
   const [previewSettings, setPreviewSettings] = useState<Settings | null>(null);
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
-  // Transaction-search modal state. `searchOpen` toggles visibility;
+  // Transfer-search modal state. `searchOpen` toggles visibility;
   // `searchQuery` survives modal close so the user can reopen the
   // search with their last query already filled in (session-only —
   // never persisted to localStorage).
@@ -558,7 +558,7 @@ export function AppShell({
   } | null>(null);
   // null = closed; otherwise the account queued for deletion. Rendered
   // as a ConfirmDialog on top of the AccountModal so an accidental tap
-  // on the trash button doesn't wipe the account, its transactions, and
+  // on the trash button doesn't wipe the account, its transfers, and
   // its history entries in one shot.
   const [deleteAccountPrompt, setDeleteAccountPrompt] = useState<{
     accountId: string;
@@ -579,7 +579,7 @@ export function AppShell({
   );
   const [viewHistoryForId, setViewHistoryForId] = useState<string | null>(null);
   // Account id targeted by the cut-history modal, or null when closed.
-  // The modal drops imported entries and cross-account transactions
+  // The modal drops imported entries and cross-account transfers
   // dated before a user-chosen cutoff date.
   const [cutHistoryForId, setCutHistoryForId] = useState<string | null>(null);
   // Post-import reconciliation modal state. Null = closed. Populated
@@ -598,10 +598,10 @@ export function AppShell({
     deltaText: string;
   } | null>(null);
   // null = closed; otherwise the request describes the mode (promote /
-  // create / edit). The TransactionModal seeds itself from the request.
-  const [transactionRequest, setTransactionRequest] =
-    useState<TransactionModalRequest | null>(null);
-  // null = closed; otherwise the id of the imported-pair transaction
+  // create / edit). The TransferModal seeds itself from the request.
+  const [transferRequest, setTransferRequest] =
+    useState<TransferModalRequest | null>(null);
+  // null = closed; otherwise the id of the imported-pair transfer
   // the user has asked to demote back to two stand-alone history
   // entries. Renders a ConfirmDialog so an accidental toggle doesn't
   // silently delete the merged transfer.
@@ -1020,29 +1020,29 @@ export function AppShell({
     setEditPrompt({ kind: "edit", row });
   }, []);
   const onEditRowRequest = useCallback((row: Row) => {
-    // Synthesized rows (transaction / history) and balance-correction
+    // Synthesized rows (transfer / history) and balance-correction
     // rows have their own edit flows; the row component already
     // suppresses the long-press and the pen button on them, but guard
     // here too so a stray dispatch never opens the modal on a row it
     // can't meaningfully edit.
-    if (row.transactionId || row.historyEntryId || row.isCorrection) return;
+    if (row.transferId || row.historyEntryId || row.isCorrection) return;
     setEditRowPrompt({ kind: "edit-row", row });
   }, []);
   const onSplitRequest = useCallback((row: Row) => {
-    // Transactions have their own edit modal, correction rows are
+    // Transfers have their own edit modal, correction rows are
     // display-only — splitting either of those is meaningless. History
     // rows are allowed: splitting a bank entry writes a `splits` array
     // on the underlying `HistoryEntry`, which the synthesizer fans out
     // into multiple rows on the next render.
-    if (row.transactionId || row.isCorrection) return;
+    if (row.transferId || row.isCorrection) return;
     unlockAchievement("splitTheBill");
     setSplitPrompt({ kind: "split", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
-    // Synthesized transaction / correction rows have no editable
+    // Synthesized transfer / correction rows have no editable
     // description for a rule to key off; the menu hides the item on
     // them but guard the entry path too so a stray dispatch is a no-op.
-    if (row.transactionId || row.isCorrection) return;
+    if (row.transferId || row.isCorrection) return;
     if (row.historyEntryId) {
       log.info(`open modal entryId=${row.historyEntryId}`);
       setMatchRulePrompt({ kind: "history", entryId: row.historyEntryId });
@@ -1370,7 +1370,7 @@ export function AppShell({
             item: budgetItem,
             openingBalance: opening,
             history,
-            transactions: data.transactions,
+            transfers: data.transfers,
             accountsById,
             types: allTypesMerged,
             categories: allCategoriesMerged,
@@ -1451,7 +1451,7 @@ export function AppShell({
       } else {
         const payload = buildAccountsExport({
           accounts: data.accounts,
-          transfers: data.transactions,
+          transfers: data.transfers,
           transactions: data.history,
           sheets: data.sheets,
           selectedAccountIds: config.selectedAccountIds,
@@ -1495,7 +1495,7 @@ export function AppShell({
       downloadPrompt,
       data.sheets,
       data.accounts,
-      data.transactions,
+      data.transfers,
       data.history,
       data.merchantHints,
       data.matchRules,
@@ -1583,7 +1583,7 @@ export function AppShell({
     ];
   }, [deleteSheetPrompt, dispatch, t, toast]);
 
-  // Account / transaction modal handlers. Kept on the AppShell so
+  // Account / transfer modal handlers. Kept on the AppShell so
   // they share the same dispatch and Account state as the rest of the
   // workspace — the modals themselves stay pure presentational shells.
   const onOpenCreateAccount = useCallback(() => {
@@ -1914,17 +1914,17 @@ export function AppShell({
     [dispatch, updateBalanceAccount, updateBalanceCurrent, updateBalanceDate],
   );
 
-  // Open the transaction modal in edit mode for a synthesized
-  // transaction row (the inline ↔ button on rows with a transactionId).
-  const onTransactionRequest = useCallback(
+  // Open the transfer modal in edit mode for a synthesized
+  // transfer row (the inline ↔ button on rows with a transferId).
+  const onTransferRequest = useCallback(
     (row: Row) => {
       if (!activeBudget || activeBudget.accountId === null) return;
-      if (!row.transactionId) return;
-      const tx = data.transactions.find((t) => t.id === row.transactionId);
+      if (!row.transferId) return;
+      const tx = data.transfers.find((t) => t.id === row.transferId);
       if (!tx) return;
-      setTransactionRequest({
+      setTransferRequest({
         kind: "edit",
-        transactionId: tx.id,
+        transferId: tx.id,
         date: tx.date,
         description: tx.description,
         amount: tx.amount,
@@ -1935,27 +1935,27 @@ export function AppShell({
         isImportedPair: hasCollapsedHistory(data.history, tx.id),
       });
     },
-    [activeBudget, data.transactions, data.history],
+    [activeBudget, data.transfers, data.history],
   );
-  const onOpenCreateTransaction = useCallback(() => {
+  const onOpenCreateTransfer = useCallback(() => {
     const today = (() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     })();
-    setTransactionRequest({
+    setTransferRequest({
       kind: "create",
       defaultFromId: data.accounts[0]?.id ?? null,
       defaultToId: data.accounts[1]?.id ?? null,
       seedDate: today,
     });
   }, [data.accounts]);
-  const onOpenEditTransaction = useCallback(
-    (transactionId: string) => {
-      const tx = data.transactions.find((t) => t.id === transactionId);
+  const onOpenEditTransfer = useCallback(
+    (transferId: string) => {
+      const tx = data.transfers.find((t) => t.id === transferId);
       if (!tx) return;
-      setTransactionRequest({
+      setTransferRequest({
         kind: "edit",
-        transactionId: tx.id,
+        transferId: tx.id,
         date: tx.date,
         description: tx.description,
         amount: tx.amount,
@@ -1966,11 +1966,11 @@ export function AppShell({
         isImportedPair: hasCollapsedHistory(data.history, tx.id),
       });
     },
-    [data.transactions, data.history],
+    [data.transfers, data.history],
   );
-  const onCreateTransaction = useCallback(
-    (draft: TransactionDraft) => {
-      const transaction: Transaction = {
+  const onCreateTransfer = useCallback(
+    (draft: TransferDraft) => {
+      const transfer: Transfer = {
         id: newId(),
         date: draft.date,
         description: draft.description,
@@ -1980,16 +1980,16 @@ export function AppShell({
         ...(draft.typeId !== null && { typeId: draft.typeId }),
         ...(draft.completed && { completed: draft.completed }),
       };
-      dispatch({ type: "createTransaction", transaction });
-      setTransactionRequest(null);
+      dispatch({ type: "createTransfer", transfer });
+      setTransferRequest(null);
     },
     [dispatch],
   );
-  const onEditTransactionSave = useCallback(
-    (transactionId: string, draft: TransactionDraft) => {
+  const onEditTransferSave = useCallback(
+    (transferId: string, draft: TransferDraft) => {
       dispatch({
-        type: "updateTransaction",
-        transactionId,
+        type: "updateTransfer",
+        transferId,
         patch: {
           date: draft.date,
           description: draft.description,
@@ -2000,23 +2000,23 @@ export function AppShell({
           completed: draft.completed,
         },
       });
-      setTransactionRequest(null);
+      setTransferRequest(null);
     },
     [dispatch],
   );
-  const onDeleteTransactionFromModal = useCallback(
-    (transactionId: string) => {
-      dispatch({ type: "deleteTransaction", transactionId });
-      setTransactionRequest(null);
+  const onDeleteTransferFromModal = useCallback(
+    (transferId: string) => {
+      dispatch({ type: "deleteTransfer", transferId });
+      setTransferRequest(null);
     },
     [dispatch],
   );
   // Imported-pair demote: the user cleared the "is a transfer" toggle
   // in the edit modal. The modal has already closed itself — we open
-  // a ConfirmDialog and dispatch `deleteTransaction` on accept (which
+  // a ConfirmDialog and dispatch `deleteTransfer` on accept (which
   // restores the two underlying history entries via the reducer).
-  const onUncollapseTransaction = useCallback((transactionId: string) => {
-    setUncollapsePrompt(transactionId);
+  const onUncollapseTransfer = useCallback((transferId: string) => {
+    setUncollapsePrompt(transferId);
   }, []);
   const onComplexSubmit = useCallback(
     (draft: ComplexEntryDraft) => {
@@ -2515,7 +2515,7 @@ export function AppShell({
     const matches: HistoryMatchPreview[] = [];
     for (const e of entries) {
       if (e.hidden) continue;
-      if (e.collapsedIntoTransactionId) continue;
+      if (e.collapsedIntoTransferId) continue;
       if (normaliseDescription(e.description) !== targetKey) continue;
       const preview: HistoryMatchPreview = {
         id: e.id,
@@ -2604,10 +2604,10 @@ export function AppShell({
     const txId = uncollapsePrompt;
     return [
       {
-        label: t("transaction.uncollapseConfirm"),
+        label: t("transfer.uncollapseConfirm"),
         tone: "danger",
         onSelect: () => {
-          dispatch({ type: "deleteTransaction", transactionId: txId });
+          dispatch({ type: "deleteTransfer", transferId: txId });
           setUncollapsePrompt(null);
         },
       },
@@ -2983,8 +2983,8 @@ export function AppShell({
                 onEditAccount={onOpenEditAccount}
                 onDeleteAccount={onRequestDeleteAccount}
                 onUpdateBalance={onOpenUpdateBalance}
-                onCreateTransaction={onOpenCreateTransaction}
-                onEditTransaction={onOpenEditTransaction}
+                onCreateTransfer={onOpenCreateTransfer}
+                onEditTransfer={onOpenEditTransfer}
                 onImportHistory={onOpenImportHistory}
                 onViewHistory={onOpenViewHistory}
                 onCutHistory={onOpenCutHistory}
@@ -3016,7 +3016,7 @@ export function AppShell({
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
                   accounts={data.accounts}
-                  transactions={data.transactions}
+                  transfers={data.transfers}
                   history={
                     activeItem.accountId
                       ? (data.history[activeItem.accountId] ?? [])
@@ -3043,7 +3043,7 @@ export function AppShell({
                   onEditRequest={onEditRequest}
                   onEditRowRequest={onEditRowRequest}
                   onSplitRequest={onSplitRequest}
-                  onTransactionRequest={onTransactionRequest}
+                  onTransferRequest={onTransferRequest}
                   onToggleRowTransfer={onToggleRowTransfer}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onEditHistoryRequest={onEditHistoryRequest}
@@ -3196,7 +3196,7 @@ export function AppShell({
         history={
           cutHistoryAccount ? (data.history[cutHistoryAccount.id] ?? []) : []
         }
-        transactions={data.transactions}
+        transfers={data.transfers}
         onCancel={() => setCutHistoryForId(null)}
         onConfirm={onConfirmCutHistory}
       />
@@ -3222,18 +3222,18 @@ export function AppShell({
         onCollapse={onCollapseTransferPair}
         onDismiss={onDismissTransferPair}
       />
-      <TransactionModal
-        open={transactionRequest !== null}
-        request={transactionRequest}
+      <TransferModal
+        open={transferRequest !== null}
+        request={transferRequest}
         accounts={data.accounts}
         categories={allCategoriesMerged}
         types={allTypesMerged}
         settings={effectiveSettings}
-        onClose={() => setTransactionRequest(null)}
-        onCreate={onCreateTransaction}
-        onEdit={onEditTransactionSave}
-        onDelete={onDeleteTransactionFromModal}
-        onUncollapse={onUncollapseTransaction}
+        onClose={() => setTransferRequest(null)}
+        onCreate={onCreateTransfer}
+        onEdit={onEditTransferSave}
+        onDelete={onDeleteTransferFromModal}
+        onUncollapse={onUncollapseTransfer}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
@@ -3422,8 +3422,8 @@ export function AppShell({
       />
       <ConfirmDialog
         open={uncollapsePrompt !== null}
-        title={t("transaction.uncollapseTitle")}
-        description={t("transaction.uncollapseHint")}
+        title={t("transfer.uncollapseTitle")}
+        description={t("transfer.uncollapseHint")}
         actions={uncollapseActions}
         onCancel={() => setUncollapsePrompt(null)}
       />
@@ -3556,7 +3556,7 @@ export function AppShell({
           setActionHistoryOpen(false);
         }}
       />
-      <TransactionSearchModal
+      <TransferSearchModal
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         query={searchQuery}

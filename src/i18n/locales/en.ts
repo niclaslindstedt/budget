@@ -810,7 +810,7 @@ export const en = {
     labelSimilarTitle:
       "Create a pattern that labels every entry whose description matches",
     editHistoryEntry: "Edit this history entry",
-    editTransaction: "Edit transaction",
+    editTransfer: "Edit transfer",
     markAsTransfer: "Mark as transfer",
     unmarkAsTransfer: "Unmark as transfer",
     markAsTransferTitle:
@@ -1113,9 +1113,9 @@ export const en = {
       updateAccount: "Edited account",
       deleteAccount: "Deleted account",
       correctAccountBalance: "Corrected account balance",
-      createTransaction: "Created transaction",
-      updateTransaction: "Edited transaction",
-      deleteTransaction: "Deleted transaction",
+      createTransfer: "Created transfer",
+      updateTransfer: "Edited transfer",
+      deleteTransfer: "Deleted transfer",
       addSheet: "Added sheet",
       updateSheetMeta: "Edited sheet",
       deleteSheet: "Deleted sheet",
@@ -1413,10 +1413,10 @@ export const en = {
     none: "No transfer pairs right now.",
   },
 
-  transaction: {
-    title: "Transaction",
-    titleEdit: "Edit transaction",
-    titleNew: "New transaction",
+  transfer: {
+    title: "Transfer",
+    titleEdit: "Edit transfer",
+    titleNew: "New transfer",
     date: "Date",
     description: "Description",
     descriptionPlaceholder: "What is this transfer for?",
@@ -1429,7 +1429,7 @@ export const en = {
     needTwoAccounts: "A transfer needs two different accounts.",
     markAsDone: "Mark as done",
     pickAccount: "Pick an account",
-    deleteTitle: "Delete transaction?",
+    deleteTitle: "Delete transfer?",
     deleteHint: "The two bank entries it collapsed will come back.",
     isTransfer: "This is a transfer between two accounts",
     importedLockedHint:

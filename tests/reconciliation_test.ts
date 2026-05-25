@@ -171,7 +171,7 @@ describe("findCandidates — boundaries", () => {
   it("skips hidden + transfer-collapsed entries", () => {
     const r = row({ date: "2026-03-27" });
     const hidden = entry({ id: "h", hidden: true });
-    const collapsed = entry({ id: "c", collapsedIntoTransactionId: "t1" });
+    const collapsed = entry({ id: "c", collapsedIntoTransferId: "t1" });
     expect(findCandidates([hidden, collapsed], [r], columns)).toHaveLength(0);
   });
 });

@@ -140,25 +140,25 @@ describe("ruleMatchesEntry — transferFilter", () => {
   it("any ignores the collapse marker", () => {
     const r = rule({ pattern: "*", transferFilter: "any" });
     expect(ruleMatchesEntry(r, entry({}))).toBe(true);
-    expect(
-      ruleMatchesEntry(r, entry({ collapsedIntoTransactionId: "t1" })),
-    ).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ collapsedIntoTransferId: "t1" }))).toBe(
+      true,
+    );
   });
 
-  it("exclude skips entries collapsed into a transaction", () => {
+  it("exclude skips entries collapsed into a transfer", () => {
     const r = rule({ pattern: "*", transferFilter: "exclude" });
     expect(ruleMatchesEntry(r, entry({}))).toBe(true);
-    expect(
-      ruleMatchesEntry(r, entry({ collapsedIntoTransactionId: "t1" })),
-    ).toBe(false);
+    expect(ruleMatchesEntry(r, entry({ collapsedIntoTransferId: "t1" }))).toBe(
+      false,
+    );
   });
 
   it("only matches exclusively the collapsed entries", () => {
     const r = rule({ pattern: "*", transferFilter: "only" });
     expect(ruleMatchesEntry(r, entry({}))).toBe(false);
-    expect(
-      ruleMatchesEntry(r, entry({ collapsedIntoTransactionId: "t1" })),
-    ).toBe(true);
+    expect(ruleMatchesEntry(r, entry({ collapsedIntoTransferId: "t1" }))).toBe(
+      true,
+    );
   });
 });
 
@@ -187,7 +187,7 @@ describe("ruleMatchesEntry — pattern + filter interplay", () => {
         entry({
           description: "BAUHAUS internal swish",
           amount: -100,
-          collapsedIntoTransactionId: "tx",
+          collapsedIntoTransferId: "tx",
         }),
       ),
     ).toBe(false);

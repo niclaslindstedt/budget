@@ -5,25 +5,25 @@ import {
   accountBalance,
   createDefaultSheet,
   synthesizeHistoryRow,
-  synthesizeTransactionRow,
-  transactionsForAccount,
+  synthesizeTransferRow,
+  transfersForAccount,
   userDataWithSavableRows,
 } from "../src/data/sheet";
 import type {
   AccountBudget,
   HistoryEntry,
   MerchantHint,
-  Transaction,
+  Transfer,
   UserData,
 } from "../src/data/types";
 
 // Build a minimal workspace with two accounts, one budget, and an
-// optional list of transactions. Tests use this as a fixture so each
+// optional list of transfers. Tests use this as a fixture so each
 // case can focus on the interesting bit instead of re-stating shape.
-function workspace(transactions: Transaction[] = []): UserData {
+function workspace(transfers: Transfer[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 39,
+    version: 40,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -35,7 +35,7 @@ function workspace(transactions: Transaction[] = []): UserData {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
-    transactions,
+    transfers,
     history: {},
     historyImports: {},
     merchantHints: {},
@@ -53,9 +53,9 @@ function workspace(transactions: Transaction[] = []): UserData {
   };
 }
 
-describe("transactionsForAccount", () => {
-  it("returns transactions on either end of the account, sorted by date", () => {
-    const txs: Transaction[] = [
+describe("transfersForAccount", () => {
+  it("returns transfers on either end of the account, sorted by date", () => {
+    const txs: Transfer[] = [
       {
         id: "t2",
         date: "2026-05-10",
@@ -81,19 +81,17 @@ describe("transactionsForAccount", () => {
         toAccountId: "third-account",
       },
     ];
-    const result = transactionsForAccount(txs, "checking-id");
+    const result = transfersForAccount(txs, "checking-id");
     expect(result.map((t) => t.id)).toEqual(["t1", "t2"]);
   });
 
-  it("returns an empty list for an account that has no transactions", () => {
+  it("returns an empty list for an account that has no transfers", () => {
     const data = workspace();
-    expect(transactionsForAccount(data.transactions, "checking-id")).toEqual(
-      [],
-    );
+    expect(transfersForAccount(data.transfers, "checking-id")).toEqual([]);
   });
 });
 
-describe("synthesizeTransactionRow", () => {
+describe("synthesizeTransferRow", () => {
   const accountsById = new Map<string, string>([
     ["checking-id", "Checking"],
     ["savings-id", "Savings"],
@@ -105,7 +103,7 @@ describe("synthesizeTransactionRow", () => {
   }
 
   it("renders the from-side amount as negative", () => {
-    const tx: Transaction = {
+    const tx: Transfer = {
       id: "t1",
       date: "2026-05-01",
       description: "Dinner cover",
@@ -114,16 +112,16 @@ describe("synthesizeTransactionRow", () => {
       toAccountId: "savings-id",
     };
     const cols = budgetColumns();
-    const row = synthesizeTransactionRow(tx, "checking-id", cols, accountsById);
+    const row = synthesizeTransferRow(tx, "checking-id", cols, accountsById);
     const amountCol = cols.find((c) => c.type === "amount")!;
     expect(row.cells[amountCol.id]).toBe(-987);
-    expect(row.transactionId).toBe("t1");
+    expect(row.transferId).toBe("t1");
     expect(row.peerAccountId).toBe("savings-id");
     expect(row.peerAccountName).toBe("Savings");
   });
 
   it("renders the to-side amount as positive", () => {
-    const tx: Transaction = {
+    const tx: Transfer = {
       id: "t1",
       date: "2026-05-01",
       description: "Dinner cover",
@@ -132,14 +130,14 @@ describe("synthesizeTransactionRow", () => {
       toAccountId: "checking-id",
     };
     const cols = budgetColumns();
-    const row = synthesizeTransactionRow(tx, "checking-id", cols, accountsById);
+    const row = synthesizeTransferRow(tx, "checking-id", cols, accountsById);
     const amountCol = cols.find((c) => c.type === "amount")!;
     expect(row.cells[amountCol.id]).toBe(987);
     expect(row.peerAccountName).toBe("Savings");
   });
 
   it("uses 'Unknown account' for a peer id with no matching account", () => {
-    const tx: Transaction = {
+    const tx: Transfer = {
       id: "t1",
       date: "2026-05-01",
       description: "Mystery",
@@ -147,7 +145,7 @@ describe("synthesizeTransactionRow", () => {
       fromAccountId: "checking-id",
       toAccountId: "gone-id",
     };
-    const row = synthesizeTransactionRow(
+    const row = synthesizeTransferRow(
       tx,
       "checking-id",
       budgetColumns(),
@@ -160,11 +158,11 @@ describe("synthesizeTransactionRow", () => {
     const data = workspace();
     // The save pass only walks `item.rows`, which never carries
     // synthesized rows — they live outside the persisted data. Round
-    // through the helper to confirm a workspace with transactions
+    // through the helper to confirm a workspace with transfers
     // still produces the same item.rows on save.
     const saved = userDataWithSavableRows(data);
     const item = saved.sheets[0].items[0] as AccountBudget;
-    expect(item.rows.every((r) => r.transactionId === undefined)).toBe(true);
+    expect(item.rows.every((r) => r.transferId === undefined)).toBe(true);
   });
 });
 
@@ -271,12 +269,12 @@ describe("accountBalance", () => {
   // and silently re-categorise rows as past vs. future over time.
   const TODAY = "2026-05-17";
 
-  it("returns 0 for an account with no budget and no transactions", () => {
+  it("returns 0 for an account with no budget and no transfers", () => {
     const data = workspace();
     expect(accountBalance(data, "savings-id", TODAY)).toBe(0);
   });
 
-  it("sums budget-row amounts plus signed transaction amounts", () => {
+  it("sums budget-row amounts plus signed transfer amounts", () => {
     const data = workspace([
       {
         id: "t1",
@@ -308,14 +306,14 @@ describe("accountBalance", () => {
         cells: { [dateCol.id]: "2026-05-12", [amountCol.id]: -20 },
       },
     ];
-    // Checking: budget rows 50 + (-20) = 30; transactions +300 (in)
+    // Checking: budget rows 50 + (-20) = 30; transfers +300 (in)
     // − 100 (out) = 200. Total = 230.
     expect(accountBalance(data, "checking-id", TODAY)).toBe(230);
-    // Savings: no budget rows; transactions −300 (out) + 100 (in) = −200.
+    // Savings: no budget rows; transfers −300 (out) + 100 (in) = −200.
     expect(accountBalance(data, "savings-id", TODAY)).toBe(-200);
   });
 
-  it("excludes future-dated budget rows and transactions", () => {
+  it("excludes future-dated budget rows and transfers", () => {
     // Future entries are projections, not money that has moved —
     // the displayed account balance must reflect today's reality.
     const data = workspace([
@@ -353,7 +351,7 @@ describe("accountBalance", () => {
         cells: { [dateCol.id]: "2026-12-31", [amountCol.id]: 9999 },
       },
     ];
-    // Checking: past budget rows 40 + 5 = 45; past transaction
+    // Checking: past budget rows 40 + 5 = 45; past transfer
     // +100 (in). The 9999 and the 500 are after `TODAY` and
     // contribute nothing.
     expect(accountBalance(data, "checking-id", TODAY)).toBe(145);
@@ -421,7 +419,7 @@ describe("accountBalance", () => {
       },
     ];
     // The 999 belongs to Checking; Savings has neither budget nor
-    // transactions involving it, so its balance stays at 0.
+    // transfers involving it, so its balance stays at 0.
     expect(accountBalance(data, "savings-id", TODAY)).toBe(0);
     expect(accountBalance(data, "checking-id", TODAY)).toBe(999);
   });

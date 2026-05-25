@@ -15,7 +15,7 @@ import type {
   HistoryEntry,
   HistoryEntrySplit,
   Sheet,
-  Transaction,
+  Transfer,
 } from "./types";
 
 // Numeric values land in the JSON via `JSON.stringify`, so any
@@ -116,8 +116,8 @@ export type BudgetEntryExportEntry = {
 
 export type BuildAccountsExportArgs = {
   accounts: readonly Account[];
-  // Cross-account transfers (data.transactions in UserData).
-  transfers: readonly Transaction[];
+  // Cross-account transfers (data.transfers in UserData).
+  transfers: readonly Transfer[];
   // Per-account +/- posts (data.history in UserData).
   transactions: Readonly<Record<string, readonly HistoryEntry[]>>;
   // Workspace sheets. The exporter walks AccountBudget items bound

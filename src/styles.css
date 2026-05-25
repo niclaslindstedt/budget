@@ -940,8 +940,8 @@ body {
        gesture telegraphs each option at a glance. Pen is meta yellow
        ("edit row"), trash is danger red, and the ellipsis (More) sits
        on a neutral surface tone so it reads as "open a menu" rather
-       than another destructive action. The Transaction button (shown
-       only on synthesized transaction rows) inherits the row's
+       than another destructive action. The Transfer button (shown
+       only on synthesized transfer rows) inherits the row's
        transparent default and reads as the muted middle option. */
     .budget-table > tbody > tr > .action-cell .action-btn-pen {
       background: var(--meta);

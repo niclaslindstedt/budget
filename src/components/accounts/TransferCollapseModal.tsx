@@ -27,8 +27,8 @@ type Props = {
 };
 
 // Modal that lists every detected cross-account pair so the user can
-// bulk-collapse them into real Transactions. Three controls per pair:
-// Collapse (mint a Transaction, hide both entries), Skip (do nothing
+// bulk-collapse them into real Transfers. Three controls per pair:
+// Collapse (mint a Transfer, hide both entries), Skip (do nothing
 // this session), Never (persist a dismissal). A bulk "Collapse all"
 // at the bottom runs Collapse on every pair the user hasn't skipped.
 //

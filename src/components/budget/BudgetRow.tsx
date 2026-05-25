@@ -51,7 +51,7 @@ type Props = {
   // remain available so the user can unmark the transfer in place.
   revealedTransfer?: boolean;
   // Flip the row's `isTransfer` flag. The eye-toggle action button
-  // dispatches this for budget rows (synth transactions and history
+  // dispatches this for budget rows (synth transfers and history
   // rows manage their transfer status through other paths and don't
   // get the button).
   onToggleRowTransfer?: (row: Row) => void;
@@ -64,16 +64,16 @@ type Props = {
   onEditRequest: (row: Row) => void;
   // Opens the generic edit-row modal that edits every field at once.
   // Fired by the pen action button and by long-pressing the row.
-  // Suppressed for synthesized rows (transactions / history) since
+  // Suppressed for synthesized rows (transfers / history) since
   // those have their own edit flows.
   onEditRowRequest: (row: Row) => void;
   // Opens the split modal for the row. Works on both authored budget
   // rows and synthesized history rows — splitting a bank entry writes
   // a `HistoryEntry.splits` array that the synthesizer fans out into
-  // one row per split. Suppressed only for transaction rows (those
+  // one row per split. Suppressed only for transfer rows (those
   // have a dedicated edit modal) and correction lines.
   onSplitRequest: (row: Row) => void;
-  onTransactionRequest: (row: Row) => void;
+  onTransferRequest: (row: Row) => void;
   // Fires when the user clicks the pattern button on a synthesized
   // history row. Opens the wildcard rule modal seeded from the row's
   // bank text; ignored when called on non-history rows since the
@@ -120,7 +120,7 @@ function BudgetRowImpl({
   onEditRequest,
   onEditRowRequest,
   onSplitRequest,
-  onTransactionRequest,
+  onTransferRequest,
   onMatchRuleRequest,
   onEditHistoryRequest,
   onCopyRequest,
@@ -156,23 +156,23 @@ function BudgetRowImpl({
   const isCompleted =
     completedCol !== undefined && row.cells[completedCol.id] === true;
   const isSeries = !!row.seriesId;
-  const isTransaction = !!row.transactionId;
+  const isTransfer = !!row.transferId;
   const isHistory = !!row.historyEntryId;
   // The transfer button needs both a savable row (so we know an amount
   // and description exist to promote) AND a parent budget with a known
-  // account. Synthesized transaction rows skip the savable check —
-  // they're already a transaction, so the button takes the user to the
+  // account. Synthesized transfer rows skip the savable check —
+  // they're already a transfer, so the button takes the user to the
   // edit modal instead of promoting.
   const transferEnabled =
-    canTransfer && (isTransaction || isRowSavable(row, columns));
-  // Direction for a synthesized transaction row: negative amount means
+    canTransfer && (isTransfer || isRowSavable(row, columns));
+  // Direction for a synthesized transfer row: negative amount means
   // money flows OUT of this budget's account. The BudgetCell renderer uses
   // this to pick the right arrow glyph for the description cell.
   const amountCol = findColumnByType(columns, "amount");
   const amountValue =
     amountCol !== undefined ? row.cells[amountCol.id] : undefined;
   const isOutgoing =
-    isTransaction && typeof amountValue === "number" && amountValue < 0;
+    isTransfer && typeof amountValue === "number" && amountValue < 0;
   // Sign hint for the type column's TypePicker. Only meaningful when
   // the row carries a non-zero numeric amount — zero / empty rows
   // are still ambiguous so the picker shows every type.
@@ -251,13 +251,13 @@ function BudgetRowImpl({
     else if (dx > SWIPE_THRESHOLD) setSwiped(false);
   };
 
-  // Synthesized rows have their own edit affordances (TransactionModal
-  // for transactions, the promote flow for history) and balance-
+  // Synthesized rows have their own edit affordances (TransferModal
+  // for transfers, the promote flow for history) and balance-
   // correction rows are display-only — long-press is a no-op on all of
   // them. The select-mode tap toggles selection so we leave it alone
   // there too.
   const longPressEligible =
-    !selectMode && !isTransaction && !isHistory && !row.isCorrection;
+    !selectMode && !isTransfer && !isHistory && !row.isCorrection;
 
   function clearLongPress() {
     if (longPressTimer.current !== null) {
@@ -426,7 +426,7 @@ function BudgetRowImpl({
           categories={categories}
           onCreateType={onCreateType}
           onCreateCategory={onCreateCategory}
-          isTransaction={isTransaction}
+          isTransfer={isTransfer}
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}
           isHistory={isHistory}
@@ -446,23 +446,23 @@ function BudgetRowImpl({
       ))}
       <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <div className="action-stack flex h-full w-full items-stretch">
-          {isTransaction && (
+          {isTransfer && (
             <button
               type="button"
               disabled={!transferEnabled}
               className="action-btn action-btn-transfer inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white disabled:cursor-not-allowed disabled:opacity-40 md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={tr("cell.editTransaction")}
-              title={tr("cell.editTransaction")}
+              aria-label={tr("cell.editTransfer")}
+              title={tr("cell.editTransfer")}
               onClick={() => {
                 if (!transferEnabled) return;
                 setSwiped(false);
-                onTransactionRequest(row);
+                onTransferRequest(row);
               }}
             >
               <ArrowLeftRight size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {!isTransaction && isHistory && (
+          {!isTransfer && isHistory && (
             <button
               type="button"
               className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
@@ -476,7 +476,7 @@ function BudgetRowImpl({
               <Pencil size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {!isTransaction && !isHistory && (
+          {!isTransfer && !isHistory && (
             <button
               type="button"
               className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
@@ -489,7 +489,7 @@ function BudgetRowImpl({
               <Pencil size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {!isTransaction && !isHistory && (
+          {!isTransfer && !isHistory && (
             <button
               type="button"
               className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
@@ -503,7 +503,7 @@ function BudgetRowImpl({
               <Trash2 size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {!isTransaction && isHistory && (
+          {!isTransfer && isHistory && (
             <span
               aria-hidden
               title={tr("cell.cannotDeleteHistory")}
@@ -517,7 +517,7 @@ function BudgetRowImpl({
               </span>
             </span>
           )}
-          {!isTransaction && (
+          {!isTransfer && (
             <RowActionsMenu
               row={row}
               isHistory={isHistory}

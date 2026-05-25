@@ -16,7 +16,7 @@ import type {
   EntryType,
   HistoryEntry,
   Row,
-  Transaction,
+  Transfer,
 } from "../src/data/types";
 
 const TODAY = "2026-05-20";
@@ -59,7 +59,7 @@ function buildItem(
 const baseArgs = {
   openingBalance: 0,
   history: [] as readonly HistoryEntry[],
-  transactions: [] as readonly Transaction[],
+  transfers: [] as readonly Transfer[],
   accountsById: new Map<string, string>(),
   types: [] as readonly EntryType[],
   categories: [] as readonly Category[],

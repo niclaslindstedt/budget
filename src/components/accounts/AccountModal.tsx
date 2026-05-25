@@ -30,7 +30,7 @@ type Props = {
   // from the account. When null it's the create-account form. Edit
   // mode surfaces a Delete button in the footer; the parent decides
   // whether the delete actually goes through (it may need to refuse
-  // when budgets / transactions still reference the account).
+  // when budgets / transfers still reference the account).
   account: Account | null;
   onClose: () => void;
   onSave: (draft: AccountDraft) => void;

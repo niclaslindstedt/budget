@@ -80,9 +80,9 @@ export function RowActionsMenu({
   // derived from the row's description. Either way the saved rule
   // applies to past history entries, future imports, and any new
   // manually-typed entry the user creates from here on. Hide it on
-  // synthesized transaction rows and balance-correction rows, which
+  // synthesized transfer rows and balance-correction rows, which
   // have no editable description for the rule to key off.
-  if (!row.transactionId && !row.isCorrection) {
+  if (!row.transferId && !row.isCorrection) {
     items.push({
       key: "labelByPattern",
       icon: <Tags size={16} aria-hidden focusable={false} />,

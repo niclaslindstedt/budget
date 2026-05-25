@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import { createDefaultSheet } from "../src/data/sheet";
-import type { EntryType, Transaction, UserData } from "../src/data/types";
+import type { EntryType, Transfer, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
 
 // A known EntryType the workspace can reference. Linked to the catch-all
@@ -17,11 +17,11 @@ const knownType: EntryType = {
 };
 
 // Build a minimal valid workspace then let each case mutate the
-// `transactions` array. Keeps the irrelevant fields off-screen.
-function workspaceWithTransactions(transactions: unknown[]): unknown {
+// `transfers` array. Keeps the irrelevant fields off-screen.
+function workspaceWithTransfers(transfers: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 39,
+    version: 40,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -33,7 +33,7 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
-    transactions: [],
+    transfers: [],
     history: {},
     historyImports: {},
     merchantHints: {},
@@ -49,10 +49,10 @@ function workspaceWithTransactions(transactions: unknown[]): unknown {
       },
     },
   };
-  return { ...base, transactions };
+  return { ...base, transfers };
 }
 
-const validTx: Transaction = {
+const validTx: Transfer = {
   id: "t1",
   date: "2026-05-01",
   description: "Dinner cover",
@@ -61,23 +61,21 @@ const validTx: Transaction = {
   toAccountId: "a2",
 };
 
-describe("validateUserData — transactions", () => {
-  it("accepts a fully populated transaction", () => {
+describe("validateUserData — transfers", () => {
+  it("accepts a fully populated transfer", () => {
     const result = validateUserData(
-      workspaceWithTransactions([
-        { ...validTx, typeId: null, completed: true },
-      ]),
+      workspaceWithTransfers([{ ...validTx, typeId: null, completed: true }]),
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.transactions[0].completed).toBe(true);
+      expect(result.value.transfers[0].completed).toBe(true);
     }
   });
 
-  it("rejects a transaction missing its date", () => {
+  it("rejects a transfer missing its date", () => {
     const { date: _drop, ...rest } = validTx;
     void _drop;
-    const result = validateUserData(workspaceWithTransactions([rest]));
+    const result = validateUserData(workspaceWithTransfers([rest]));
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toContain("date");
@@ -86,7 +84,7 @@ describe("validateUserData — transactions", () => {
 
   it("rejects a non-string fromAccountId", () => {
     const result = validateUserData(
-      workspaceWithTransactions([{ ...validTx, fromAccountId: 42 }]),
+      workspaceWithTransfers([{ ...validTx, fromAccountId: 42 }]),
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -96,7 +94,7 @@ describe("validateUserData — transactions", () => {
 
   it("rejects a non-finite amount", () => {
     const result = validateUserData(
-      workspaceWithTransactions([{ ...validTx, amount: Number.NaN }]),
+      workspaceWithTransfers([{ ...validTx, amount: Number.NaN }]),
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -106,7 +104,7 @@ describe("validateUserData — transactions", () => {
 
   it("rejects a fromAccountId that doesn't match any known account", () => {
     const result = validateUserData(
-      workspaceWithTransactions([{ ...validTx, fromAccountId: "ghost" }]),
+      workspaceWithTransfers([{ ...validTx, fromAccountId: "ghost" }]),
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -114,10 +112,8 @@ describe("validateUserData — transactions", () => {
     }
   });
 
-  it("rejects duplicate transaction ids", () => {
-    const result = validateUserData(
-      workspaceWithTransactions([validTx, validTx]),
-    );
+  it("rejects duplicate transfer ids", () => {
+    const result = validateUserData(workspaceWithTransfers([validTx, validTx]));
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toContain("duplicate id");
@@ -126,16 +122,16 @@ describe("validateUserData — transactions", () => {
 
   it("silently drops a typeId that no longer exists", () => {
     const result = validateUserData(
-      workspaceWithTransactions([{ ...validTx, typeId: "gone" }]),
+      workspaceWithTransfers([{ ...validTx, typeId: "gone" }]),
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.transactions[0].typeId).toBeNull();
+      expect(result.value.transfers[0].typeId).toBeNull();
     }
   });
 
-  it("accepts an empty transactions array", () => {
-    const result = validateUserData(workspaceWithTransactions([]));
+  it("accepts an empty transfers array", () => {
+    const result = validateUserData(workspaceWithTransfers([]));
     expect(result.ok).toBe(true);
   });
 });
@@ -144,7 +140,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 39,
+      version: 40,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -167,7 +163,7 @@ describe("validateUserData — accounts metadata", () => {
       hiddenPresetTypeIds: [],
       presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
-      transactions: [],
+      transfers: [],
       history: {},
       historyImports: {},
       merchantHints: {},
@@ -196,7 +192,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 39,
+      version: 40,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -205,7 +201,7 @@ describe("validateUserData — accounts metadata", () => {
       hiddenPresetTypeIds: [],
       presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
-      transactions: [],
+      transfers: [],
       history: {},
       historyImports: {},
       merchantHints: {},
@@ -231,7 +227,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose typeId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 39,
+      version: 40,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
@@ -242,7 +238,7 @@ describe("validateUserData — accounts metadata", () => {
       hiddenPresetTypeIds: [],
       presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
-      transactions: [],
+      transfers: [],
       history: {},
       historyImports: {},
       merchantHints: {

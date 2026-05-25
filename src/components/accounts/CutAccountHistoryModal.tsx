@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Scissors } from "lucide-react";
 
-import type { Account, HistoryEntry, Transaction } from "../../data/types";
+import type { Account, HistoryEntry, Transfer } from "../../data/types";
 import { todayIso } from "../../utils/date";
 import { useT } from "../../i18n";
 import { Button } from "../form";
@@ -11,20 +11,20 @@ type Props = {
   open: boolean;
   account: Account | null;
   history: HistoryEntry[];
-  transactions: Transaction[];
+  transfers: Transfer[];
   onCancel: () => void;
   onConfirm: (cutoffDate: string) => void;
 };
 
 // "Cut" an account's history by dropping every bank-history entry and
-// every transfer transaction dated strictly before `cutoffDate`. Used
+// every transfer dated strictly before `cutoffDate`. Used
 // when an account's purpose has changed (e.g. a private account turning
 // into a shared one) and the pre-cutoff stuff is no longer relevant.
 export function CutAccountHistoryModal({
   open,
   account,
   history,
-  transactions,
+  transfers,
   onCancel,
   onConfirm,
 }: Props) {
@@ -40,16 +40,16 @@ export function CutAccountHistoryModal({
     return history.filter((e) => e.date < cutoffDate).length;
   }, [history, cutoffDate, account]);
 
-  const transactionsToCut = useMemo(() => {
+  const transfersToCut = useMemo(() => {
     if (!cutoffDate || !account) return 0;
-    return transactions.filter(
+    return transfers.filter(
       (tx) =>
         (tx.fromAccountId === account.id || tx.toAccountId === account.id) &&
         tx.date < cutoffDate,
     ).length;
-  }, [transactions, cutoffDate, account]);
+  }, [transfers, cutoffDate, account]);
 
-  const totalToCut = historyToCut + transactionsToCut;
+  const totalToCut = historyToCut + transfersToCut;
   const canCut = cutoffDate.length === 10 && totalToCut > 0;
 
   function handleConfirm() {
@@ -110,12 +110,12 @@ export function CutAccountHistoryModal({
                         })}
                   </li>
                   <li>
-                    {transactionsToCut === 1
+                    {transfersToCut === 1
                       ? t("cutHistory.previewTransactionsOne", {
-                          n: transactionsToCut,
+                          n: transfersToCut,
                         })
                       : t("cutHistory.previewTransactionsOther", {
-                          n: transactionsToCut,
+                          n: transfersToCut,
                         })}
                   </li>
                 </ul>

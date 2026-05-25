@@ -13,7 +13,7 @@ type Props = {
   formula?: boolean;
 };
 
-// Read-only amount cell for synthesized transaction and history rows.
+// Read-only amount cell for synthesized transfer and history rows.
 // Mirrors the editable cell's coloured sign + currency suffix but
 // renders as plain text so the row reads identically without becoming
 // editable. The display pipeline matches what the editable cell shows

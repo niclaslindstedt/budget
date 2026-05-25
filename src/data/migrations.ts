@@ -26,7 +26,7 @@ import { clearRawStorage, readRawStorage } from "../storage/local-adapter";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 39 as const;
+export const LATEST_VERSION = 40 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -223,11 +223,12 @@ const migrations: Record<
   // keys the user said "not recurring" to), and
   // `transferCollapseDismissals` (cross-account pair keys the user
   // said "never" to). HistoryEntry also gains an optional
-  // `collapsedIntoTransactionId` backref so the collapse flow is
-  // reversible; no row data needs rewriting because the new field is
-  // optional and absent entries continue to validate. All three new
-  // top-level collections default to empty so v11 records pass the
-  // v12 validator unchanged.
+  // `collapsedIntoTransactionId` backref (renamed to
+  // `collapsedIntoTransferId` by the v39 → v40 migration) so the
+  // collapse flow is reversible; no row data needs rewriting because
+  // the new field is optional and absent entries continue to validate.
+  // All three new top-level collections default to empty so v11
+  // records pass the v12 validator unchanged.
   11: (v11) => ({
     ...v11,
     version: 12,
@@ -387,7 +388,8 @@ const migrations: Record<
   //   type is minted under that category and attached to the row so
   //   the meaning isn't lost. The original cell value is dropped
   //   along with the column.
-  // - `Transaction.categoryId`, `MerchantHint.categoryId`, and
+  // - `Transaction.categoryId` (now `Transfer.categoryId`),
+  //   `MerchantHint.categoryId`, and
   //   `MatchRule.categoryId` are removed. Entities that only knew
   //   their category get a generic type minted the same way the row
   //   migration above does, so a future picker can still surface
@@ -714,6 +716,51 @@ const migrations: Record<
   // the desired behaviour for users discovering this feature on a
   // pre-populated budget. Bare version bump.
   38: (v38) => ({ ...v38, version: 39 }),
+
+  // v39 → v40: renames the persisted field `transactions` → `transfers`
+  // on the user-data envelope, and `HistoryEntry.collapsedIntoTransactionId`
+  // → `collapsedIntoTransferId` on every entry in `history`. The code
+  // type used to be called `Transaction` but always referred to a
+  // cross-own-account transfer; the user word "transaction" maps to a
+  // bank-statement entry (`HistoryEntry`). Renaming the type to `Transfer`
+  // aligns code with user vocabulary. Old exports that lack either field
+  // default to an empty array / leave the entry untouched.
+  39: (v39) => {
+    const transfers = Array.isArray(v39.transactions)
+      ? v39.transactions
+      : Array.isArray(v39.transfers)
+        ? v39.transfers
+        : [];
+    const { transactions: _drop, history: rawHistory, ...rest } = v39;
+    void _drop;
+    const nextHistory: Record<string, unknown[]> = {};
+    if (rawHistory && typeof rawHistory === "object") {
+      for (const [accountId, entries] of Object.entries(
+        rawHistory as Record<string, unknown>,
+      )) {
+        if (!Array.isArray(entries)) {
+          nextHistory[accountId] = [];
+          continue;
+        }
+        nextHistory[accountId] = entries.map((entry) => {
+          if (!entry || typeof entry !== "object") return entry;
+          const e = entry as Record<string, unknown>;
+          if (e.collapsedIntoTransactionId === undefined) return e;
+          const { collapsedIntoTransactionId, ...restEntry } = e;
+          return {
+            ...restEntry,
+            collapsedIntoTransferId: collapsedIntoTransactionId,
+          };
+        });
+      }
+    }
+    return {
+      ...rest,
+      version: 40,
+      transfers,
+      history: nextHistory,
+    };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

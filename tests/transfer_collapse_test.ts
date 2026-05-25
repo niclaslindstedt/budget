@@ -96,7 +96,7 @@ describe("detectTransferCandidates", () => {
       history: {
         a1: [
           entry("2026-05-01", "Transfer", -500, {
-            collapsedIntoTransactionId: "tx1",
+            collapsedIntoTransferId: "tx1",
             hidden: true,
           }),
         ],

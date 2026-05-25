@@ -39,7 +39,7 @@ import type {
   Row,
   Settings,
   Sheet,
-  Transaction,
+  Transfer,
   UserData,
 } from "../../data/types";
 import { formatNumber, withCurrency } from "../../utils/format";
@@ -64,7 +64,7 @@ type Props = {
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   // All accounts in the workspace. Needed so the view can look up the
-  // peer account name when synthesizing a transaction row, and so the
+  // peer account name when synthesizing a transfer row, and so the
   // running balance can mirror what the Accounts dashboard shows.
   accounts: Account[];
   // Seeds the running balance for the budget. Reads `openingBalance`
@@ -72,10 +72,10 @@ type Props = {
   // with what the bank says after a history import. Optional and
   // defaults to 0.
   openingBalance?: number;
-  // Every cross-account transaction in the workspace. The view filters
+  // Every cross-account transfer in the workspace. The view filters
   // to the ones involving `item.accountId` and interleaves them into
   // the rows displayed in each month.
-  transactions: Transaction[];
+  transfers: Transfer[];
   // Imported bank-statement entries for `item.accountId`. Projected
   // into the budget view as read-only rows that the user can promote
   // to recurring later. Defaults to an empty array on accounts that
@@ -93,7 +93,7 @@ type Props = {
   settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
-  // One-shot scroll-to-row request issued by the transaction-search
+  // One-shot scroll-to-row request issued by the transfer-search
   // modal when the user picks a result. The `tick` field is bumped on
   // every new request so the effect re-fires even if the same row is
   // picked twice in a row. `null` is the idle state. The view only
@@ -117,11 +117,11 @@ type Props = {
   onEditRequest: (row: Row) => void;
   onEditRowRequest: (row: Row) => void;
   onSplitRequest: (row: Row) => void;
-  onTransactionRequest: (row: Row) => void;
+  onTransferRequest: (row: Row) => void;
   // Flip the per-row `isTransfer` flag on a budget row. Used by the
   // eye-toggle action button to mark or unmark a one-off entry as an
   // inter-account transfer so the `hideTransfers` setting can suppress
-  // it without converting it into a full Transaction.
+  // it without converting it into a full Transfer.
   onToggleRowTransfer: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
@@ -262,7 +262,7 @@ export function BudgetPage({
   onCreateType,
   onCreateCategory,
   accounts,
-  transactions,
+  transfers,
   history,
   merchantHints,
   matchRules,
@@ -279,7 +279,7 @@ export function BudgetPage({
   onEditRequest,
   onEditRowRequest,
   onSplitRequest,
-  onTransactionRequest,
+  onTransferRequest,
   onToggleRowTransfer,
   onMatchRuleRequest,
   onEditHistoryRequest,
@@ -318,12 +318,12 @@ export function BudgetPage({
     };
   }, [item.columns, types]);
 
-  // Interleave synthesized transaction rows alongside the budget's own
+  // Interleave synthesized transfer rows alongside the budget's own
   // rows so month grouping, running balance, and sort-by-date pick them
-  // up without further special-casing. Only the transactions involving
+  // up without further special-casing. Only the transfers involving
   // this budget's account contribute. When the budget has no account
   // attached, no synthesis happens — there is no "this account" to
-  // place the transactions against.
+  // place the transfers against.
   const accountsById = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of accounts) m.set(a.id, a.name);
@@ -334,14 +334,14 @@ export function BudgetPage({
       ...item,
       rows: buildVisibleRows(
         item,
-        transactions,
+        transfers,
         history,
         accountsById,
         merchantHints,
         matchRules,
       ),
     }),
-    [item, transactions, history, accountsById, merchantHints, matchRules],
+    [item, transfers, history, accountsById, merchantHints, matchRules],
   );
 
   // Each imported bank entry's stored balance is the truth: it pins
@@ -375,7 +375,7 @@ export function BudgetPage({
   );
 
   // Evaluate every formula row's amount against the merged view (so
-  // synthesized transactions and history rows count toward
+  // synthesized transfers and history rows count toward
   // `endOfMonthBalance`, `income`, etc.) — then mirror the resolved
   // value into each formula row's amount cell so the existing
   // MonthTable / Cell rendering chain shows the evaluated number
@@ -858,7 +858,7 @@ export function BudgetPage({
   }, [visibleMonthRange, currentMonth, settings.transactionSortOrder]);
   const showTodayButton = todayButtonDirection !== null;
 
-  // Honour a one-shot scroll-to-row request from the transaction-search
+  // Honour a one-shot scroll-to-row request from the transfer-search
   // modal. When the row's month falls outside the default history
   // window, grow `extraHistory` enough to include it before scrolling —
   // otherwise the row is filtered out of `visibleMonths` and the
@@ -1075,7 +1075,7 @@ export function BudgetPage({
                   onEditRequest={onEditRequest}
                   onEditRowRequest={onEditRowRequest}
                   onSplitRequest={onSplitRequest}
-                  onTransactionRequest={onTransactionRequest}
+                  onTransferRequest={onTransferRequest}
                   onMatchRuleRequest={onMatchRuleRequest}
                   onEditHistoryRequest={onEditHistoryRequest}
                   onCopyRequest={onCopyRequest}

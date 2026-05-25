@@ -90,7 +90,7 @@ describe("backup restore — migration pipeline", () => {
       types: [],
       hiddenPresetTypeIds: [],
       hiddenPresetCategoryIds: [],
-      transactions: [],
+      transfers: [],
       history: {},
       historyImports: {},
       merchantHints: {},

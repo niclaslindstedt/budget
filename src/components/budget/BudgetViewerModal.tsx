@@ -42,7 +42,7 @@ type Props = {
   onClose: () => void;
   sheet: Sheet;
   // Decorated AccountBudget from BudgetPage — its `rows` already include
-  // synthesized transaction + history rows and formula-resolved amount
+  // synthesized transfer + history rows and formula-resolved amount
   // cells. The viewer just reads; it never writes.
   item: AccountBudget;
   // Running-balance map keyed by row id, computed upstream by
@@ -78,7 +78,7 @@ const EMPTY_ROWS: Row[] = [];
 
 // Read-only viewer for a single sheet. Renders the same month-grouped
 // data the editable BudgetPage shows — same rows (including synthesized
-// transaction / history rows) and same running balances — but stripped
+// transfer / history rows) and same running balances — but stripped
 // of every interactive affordance: no inline editing, no add buttons,
 // no column drag, no selection. Designed to be opened from the sheet
 // header's Eye button for cases where the user wants to read the

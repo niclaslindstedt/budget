@@ -12,7 +12,7 @@ import { parseAmount } from "../utils/format";
 
 // Flattened, search-friendly projection of one row that the user sees
 // inside a sheet. The index keys by `(sheetId, itemId, rowId)` because
-// a single Transaction may render on two sheets (from-account and
+// a single Transfer may render on two sheets (from-account and
 // to-account) under the same row id, so `rowId` alone isn't unique
 // across the workspace.
 export type SearchEntry = {
@@ -125,7 +125,7 @@ function visibleRowsFor(
   const history = item.accountId ? (data.history[item.accountId] ?? []) : [];
   return buildVisibleRows(
     item,
-    data.transactions,
+    data.transfers,
     history,
     accountsById,
     data.merchantHints,

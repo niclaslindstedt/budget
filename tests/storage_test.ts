@@ -33,7 +33,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 39,
+    version: 40,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -42,7 +42,7 @@ function sampleData(): UserData {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
-    transactions: [],
+    transfers: [],
     history: {},
     historyImports: {},
     merchantHints: {},
@@ -110,7 +110,7 @@ describe("serializeUserData", () => {
       hiddenPresetTypeIds: b.hiddenPresetTypeIds,
       presetTypeKindOverrides: b.presetTypeKindOverrides,
       hiddenPresetCategoryIds: b.hiddenPresetCategoryIds,
-      transactions: b.transactions,
+      transfers: b.transfers,
       history: b.history,
       historyImports: b.historyImports,
       merchantHints: b.merchantHints,
@@ -146,8 +146,8 @@ describe("serializeUserData", () => {
       "seriesMatchRules",
       "settings",
       "sheets",
-      "transactions",
       "transferCollapseDismissals",
+      "transfers",
       "types",
       "version",
     ]);
@@ -750,7 +750,7 @@ describe("migrate", () => {
       version: 11,
       activeSheetId: "s1",
       categories: [],
-      transactions: [],
+      transfers: [],
       settings: { ...DEFAULT_SETTINGS },
       accounts: [{ id: "a1", name: "Default" }],
       history: {},
@@ -796,7 +796,7 @@ describe("migrate", () => {
       version: 10,
       activeSheetId: "s1",
       categories: [],
-      transactions: [],
+      transfers: [],
       settings: { ...DEFAULT_SETTINGS },
       accounts: [
         { id: "a1", name: "Default", openingBalance: 1234 },
@@ -844,7 +844,7 @@ describe("migrate", () => {
       version: 9,
       activeSheetId: "s1",
       categories: [],
-      transactions: [],
+      transfers: [],
       settings: { ...DEFAULT_SETTINGS },
       accounts: [{ id: "a1", name: "Default" }],
       sheets: [
@@ -893,7 +893,7 @@ describe("migrate", () => {
     }
   });
 
-  it("v8 → v9: adds an empty transactions array and accepts new account fields", () => {
+  it("v8 → v9: adds an empty transfers array and accepts new account fields", () => {
     const v8 = {
       version: 8,
       activeSheetId: "s1",
@@ -932,7 +932,7 @@ describe("migrate", () => {
     const { data, migrated } = migrate(v8);
     expect(migrated).toBe(true);
     expect(data.version).toBe(LATEST_VERSION);
-    expect((data as unknown as UserData).transactions).toEqual([]);
+    expect((data as unknown as UserData).transfers).toEqual([]);
     const validated = validateUserData(data);
     expect(validated.ok).toBe(true);
   });
@@ -980,7 +980,7 @@ describe("migrate", () => {
       version: 13,
       activeSheetId: "s1",
       categories: [],
-      transactions: [],
+      transfers: [],
       settings: { ...DEFAULT_SETTINGS },
       accounts: [{ id: "a1", name: "Default" }],
       history: {},
@@ -1059,7 +1059,7 @@ describe("migrate", () => {
       activeSheetId: "s1",
       categories: [],
       types: [],
-      transactions: [],
+      transfers: [],
       // Settings as they'd look pre-v18: no fontScale field.
       settings: (() => {
         const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
@@ -1107,7 +1107,7 @@ describe("migrate", () => {
       activeSheetId: "s1",
       categories: [],
       types: [],
-      transactions: [],
+      transfers: [],
       // Settings as they'd look pre-v19: no lastSeenChangelogVersion field.
       settings: (() => {
         const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
@@ -1153,7 +1153,7 @@ describe("migrate", () => {
       hiddenPresetTypeIds: [],
       presetTypeKindOverrides: {},
       hiddenPresetCategoryIds: [],
-      transactions: [],
+      transfers: [],
       // Settings as they'd look pre-v21: no alwaysAbbreviateBalance field.
       settings: (() => {
         const s: Record<string, unknown> = { ...DEFAULT_SETTINGS };
@@ -1201,7 +1201,7 @@ describe("migrate", () => {
       activeSheetId: "s1",
       categories: [],
       types: [],
-      transactions: [],
+      transfers: [],
       settings: { ...DEFAULT_SETTINGS },
       accounts: [],
       history: {},
@@ -1240,7 +1240,7 @@ describe("migrate", () => {
       activeSheetId: "s1",
       categories: [],
       types: [],
-      transactions: [],
+      transfers: [],
       settings: { ...DEFAULT_SETTINGS },
       accounts: [],
       history: {},
@@ -1344,7 +1344,7 @@ describe("typeId field on rows", () => {
   });
 
   it("drops a dangling typeId silently rather than rejecting the load", () => {
-    // Validator is forgiving here — same contract as Transaction's
+    // Validator is forgiving here — same contract as Transfer's
     // typeId — so a deleted EntryType can't trap a row in zombie state.
     const b = sampleData();
     b.types = [

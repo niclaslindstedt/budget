@@ -64,7 +64,7 @@ import type {
   ShortDateFormat,
   ThemePreset,
   ThousandsSeparator,
-  Transaction,
+  Transfer,
   UserData,
 } from "./types";
 
@@ -495,17 +495,17 @@ function validateHistoryEntry(
       return fail(`${path}.hidden`, "expected a boolean");
     if (raw.hidden) entry.hidden = true;
   }
-  if (raw.collapsedIntoTransactionId !== undefined) {
+  if (raw.collapsedIntoTransferId !== undefined) {
     if (
-      typeof raw.collapsedIntoTransactionId !== "string" ||
-      raw.collapsedIntoTransactionId === ""
+      typeof raw.collapsedIntoTransferId !== "string" ||
+      raw.collapsedIntoTransferId === ""
     ) {
       return fail(
-        `${path}.collapsedIntoTransactionId`,
+        `${path}.collapsedIntoTransferId`,
         "expected a non-empty string",
       );
     }
-    entry.collapsedIntoTransactionId = raw.collapsedIntoTransactionId;
+    entry.collapsedIntoTransferId = raw.collapsedIntoTransferId;
   }
   if (raw.userDescription !== undefined) {
     if (typeof raw.userDescription !== "string")
@@ -741,12 +741,12 @@ function validateHistoryImport(
   };
 }
 
-function validateTransaction(
+function validateTransfer(
   raw: unknown,
   path: string,
   knownAccountIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
-): Result<Transaction> {
+): Result<Transfer> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, description, amount, fromAccountId, toAccountId } = raw;
   if (typeof id !== "string" || id === "")
@@ -771,7 +771,7 @@ function validateTransaction(
       `${path}.toAccountId`,
       `references unknown account "${toAccountId}"`,
     );
-  const tx: Transaction = {
+  const tx: Transfer = {
     id,
     date,
     description,
@@ -784,7 +784,7 @@ function validateTransaction(
       tx.typeId = null;
     } else if (typeof raw.typeId === "string" && raw.typeId !== "") {
       // Drop dangling type references silently so a deleted type
-      // can't trap the transaction; the renderer treats an unknown id
+      // can't trap the transfer; the renderer treats an unknown id
       // as "no type".
       tx.typeId = knownTypeIds.has(raw.typeId) ? raw.typeId : null;
     } else {
@@ -1264,23 +1264,21 @@ export function validateUserData(raw: unknown): Result<UserData> {
     ...seenTypeIds,
   ]);
 
-  const rawTransactions = Array.isArray(raw.transactions)
-    ? raw.transactions
-    : [];
-  const transactions: Transaction[] = [];
-  const seenTransactionIds = new Set<string>();
-  for (let i = 0; i < rawTransactions.length; i++) {
-    const r = validateTransaction(
-      rawTransactions[i],
-      `transactions[${i}]`,
+  const rawTransfers = Array.isArray(raw.transfers) ? raw.transfers : [];
+  const transfers: Transfer[] = [];
+  const seenTransferIds = new Set<string>();
+  for (let i = 0; i < rawTransfers.length; i++) {
+    const r = validateTransfer(
+      rawTransfers[i],
+      `transfers[${i}]`,
       seenAccountIds,
       knownTypeIds,
     );
     if (!r.ok) return r;
-    if (seenTransactionIds.has(r.value.id))
-      return fail(`transactions[${i}].id`, `duplicate id "${r.value.id}"`);
-    seenTransactionIds.add(r.value.id);
-    transactions.push(r.value);
+    if (seenTransferIds.has(r.value.id))
+      return fail(`transfers[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenTransferIds.add(r.value.id);
+    transfers.push(r.value);
   }
 
   const sheets: Sheet[] = [];
@@ -1432,7 +1430,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       hiddenPresetTypeIds,
       presetTypeKindOverrides,
       hiddenPresetCategoryIds,
-      transactions,
+      transfers,
       history,
       historyImports,
       merchantHints,

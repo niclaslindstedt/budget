@@ -73,7 +73,7 @@ type Props = {
   onEditRequest: (row: Row) => void;
   onEditRowRequest: (row: Row) => void;
   onSplitRequest: (row: Row) => void;
-  onTransactionRequest: (row: Row) => void;
+  onTransferRequest: (row: Row) => void;
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
   onCopyRequest: (row: Row) => void;
@@ -152,7 +152,7 @@ function MonthTableImpl({
   onEditRequest,
   onEditRowRequest,
   onSplitRequest,
-  onTransactionRequest,
+  onTransferRequest,
   onMatchRuleRequest,
   onEditHistoryRequest,
   onCopyRequest,
@@ -211,7 +211,7 @@ function MonthTableImpl({
     // intentionally out of scope.
     return { hiddenBefore: map };
   }, [rows, hideTransfers]);
-  // Synthesized transaction rows live in `rows` (the parent merges them
+  // Synthesized transfer rows live in `rows` (the parent merges them
   // in) but they are not selectable for bulk operations — they aren't
   // real budget rows, so a delete or move that targets them would do
   // nothing. Correction rows render as a divider line rather than a
@@ -224,7 +224,7 @@ function MonthTableImpl({
   const selectableRowIds = rows
     .filter(
       (r) =>
-        r.transactionId === undefined &&
+        r.transferId === undefined &&
         !r.isCorrection &&
         !(hideTransfers && isTransferRow(r)),
     )
@@ -486,7 +486,7 @@ function MonthTableImpl({
                           onEditRequest={onEditRequest}
                           onEditRowRequest={onEditRowRequest}
                           onSplitRequest={onSplitRequest}
-                          onTransactionRequest={onTransactionRequest}
+                          onTransferRequest={onTransferRequest}
                           onToggleRowTransfer={onToggleRowTransfer}
                           onMatchRuleRequest={onMatchRuleRequest}
                           onEditHistoryRequest={onEditHistoryRequest}
@@ -517,7 +517,7 @@ function MonthTableImpl({
                       onEditRequest={onEditRequest}
                       onEditRowRequest={onEditRowRequest}
                       onSplitRequest={onSplitRequest}
-                      onTransactionRequest={onTransactionRequest}
+                      onTransferRequest={onTransferRequest}
                       onToggleRowTransfer={onToggleRowTransfer}
                       onMatchRuleRequest={onMatchRuleRequest}
                       onEditHistoryRequest={onEditHistoryRequest}

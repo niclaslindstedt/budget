@@ -38,7 +38,7 @@ import type {
   SeriesMatchRule,
   Settings,
   Sheet,
-  Transaction,
+  Transfer,
   UserData,
 } from "./types";
 import { applyDeviceSettingPatch, applySettingsDraft } from "./settings";
@@ -74,7 +74,7 @@ type ItemAction =
     }
   | {
       // Flip a budget row's `isTransfer` flag. The synthesized
-      // transaction and history row variants set their transfer status
+      // transfer and history row variants set their transfer status
       // through other paths (`peerAccountId` and
       // `HistoryEntry.isTransfer` respectively) — this action only
       // touches user-authored rows that live in `item.rows`.
@@ -226,7 +226,7 @@ export type Action =
   | { type: "updateAccount"; accountId: string; patch: Partial<Account> }
   | { type: "deleteAccount"; accountId: string }
   | {
-      // Drop bank history, transactions, and import-audit rows that
+      // Drop bank history, transfers, and import-audit rows that
       // predate `cutoffDate` for the named account. Used when the
       // account's purpose changes (e.g. a private account turning into
       // a shared household account) and the user no longer wants the
@@ -248,13 +248,13 @@ export type Action =
       date: string;
       amount: number;
     }
-  | { type: "createTransaction"; transaction: Transaction }
+  | { type: "createTransfer"; transfer: Transfer }
   | {
-      type: "updateTransaction";
-      transactionId: string;
-      patch: Partial<Transaction>;
+      type: "updateTransfer";
+      transferId: string;
+      patch: Partial<Transfer>;
     }
-  | { type: "deleteTransaction"; transactionId: string }
+  | { type: "deleteTransfer"; transferId: string }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
@@ -360,8 +360,8 @@ export type Action =
   | { type: "clearRecurringDismissals" }
   | {
       // Collapse one detected cross-account pair into a single
-      // Transaction and mark both HistoryEntrys as `hidden: true` with
-      // the new transaction's id stored on `collapsedIntoTransactionId`
+      // Transfer and mark both HistoryEntrys as `hidden: true` with
+      // the new transfer's id stored on `collapsedIntoTransferId`
       // so the operation is reversible (delete the tx → clear the
       // backref → un-hide) and idempotent (subsequent runs skip
       // already-collapsed pairs).
@@ -559,7 +559,7 @@ function applyPatternsAfterCellEdit(
   let changed = false;
   const nextRows = next.rows.map((row) => {
     if (row.typeIdLocked) return row;
-    // Synthesized rows (transactions, history) never persist here, but
+    // Synthesized rows (transfers, history) never persist here, but
     // a user-authored row that's still empty has nothing to match.
     if (descId === undefined) return row;
     const desc = row.cells[descId];
@@ -1199,7 +1199,7 @@ export function reducer(state: UserData, action: Action): UserData {
   if (action.type === "deleteAccount") {
     // Cascading detach: clear `accountId` on any AccountBudget that
     // referenced this account so the budgets keep working as
-    // free-standing ledgers, and drop any transactions that touched
+    // free-standing ledgers, and drop any transfers that touched
     // it (a transfer between two known accounts loses its other half
     // once one side is gone, so the cleanest answer is removal).
     // Imported history and import audit rows belong to the account
@@ -1219,7 +1219,7 @@ export function reducer(state: UserData, action: Action): UserData {
             : item,
         ),
       })),
-      transactions: state.transactions.filter(
+      transfers: state.transfers.filter(
         (tx) =>
           tx.fromAccountId !== action.accountId &&
           tx.toAccountId !== action.accountId,
@@ -1243,7 +1243,7 @@ export function reducer(state: UserData, action: Action): UserData {
       ...state,
       history: nextHistory,
       historyImports: nextHistoryImports,
-      transactions: state.transactions.filter(
+      transfers: state.transfers.filter(
         (tx) =>
           !(
             (tx.fromAccountId === accountId || tx.toAccountId === accountId) &&
@@ -1393,28 +1393,28 @@ export function reducer(state: UserData, action: Action): UserData {
     if (sheets === state.sheets) return state;
     return { ...state, sheets };
   }
-  if (action.type === "createTransaction") {
+  if (action.type === "createTransfer") {
     const next = {
       ...state,
-      transactions: [...state.transactions, action.transaction],
+      transfers: [...state.transfers, action.transfer],
     };
     return recordMerchantHints(
       next,
       [
         {
-          description: action.transaction.description,
-          typeId: action.transaction.typeId ?? null,
+          description: action.transfer.description,
+          typeId: action.transfer.typeId ?? null,
         },
       ],
       Date.now(),
     );
   }
-  if (action.type === "updateTransaction") {
-    const prev = state.transactions.find((t) => t.id === action.transactionId);
+  if (action.type === "updateTransfer") {
+    const prev = state.transfers.find((t) => t.id === action.transferId);
     const next = {
       ...state,
-      transactions: state.transactions.map((tx) =>
-        tx.id === action.transactionId ? { ...tx, ...action.patch } : tx,
+      transfers: state.transfers.map((tx) =>
+        tx.id === action.transferId ? { ...tx, ...action.patch } : tx,
       ),
     };
     // Only fire a hint recording when the type was actually touched
@@ -1433,24 +1433,24 @@ export function reducer(state: UserData, action: Action): UserData {
     }
     return next;
   }
-  if (action.type === "deleteTransaction") {
-    // Also clear the `collapsedIntoTransactionId` backref on any
-    // history entry that pointed at this transaction, and un-hide
+  if (action.type === "deleteTransfer") {
+    // Also clear the `collapsedIntoTransferId` backref on any
+    // history entry that pointed at this transfer, and un-hide
     // those entries — collapse is reversible only if the entries
-    // come back when the transaction goes away. We don't try to
-    // distinguish "this transaction was a collapse" from "this was
+    // come back when the transfer goes away. We don't try to
+    // distinguish "this transfer was a collapse" from "this was
     // a user-created transfer" because the backref disambiguates: an
     // entry only un-hides if it's pointing at the deleted tx.
-    const txId = action.transactionId;
+    const txId = action.transferId;
     let touchedHistory = false;
     const history: Record<string, HistoryEntry[]> = {};
     for (const [accountId, entries] of Object.entries(state.history)) {
       let touched = false;
       const next = entries.map((e) => {
-        if (e.collapsedIntoTransactionId !== txId) return e;
+        if (e.collapsedIntoTransferId !== txId) return e;
         touched = true;
         const restored: HistoryEntry = { ...e };
-        delete restored.collapsedIntoTransactionId;
+        delete restored.collapsedIntoTransferId;
         delete restored.hidden;
         return restored;
       });
@@ -1459,9 +1459,7 @@ export function reducer(state: UserData, action: Action): UserData {
     }
     return {
       ...state,
-      transactions: state.transactions.filter(
-        (tx) => tx.id !== action.transactionId,
-      ),
+      transfers: state.transfers.filter((tx) => tx.id !== action.transferId),
       history: touchedHistory ? history : state.history,
     };
   }
@@ -1584,7 +1582,7 @@ export function reducer(state: UserData, action: Action): UserData {
     return { ...state, recurringDismissals: [] };
   }
   if (action.type === "collapseTransferPair") {
-    // Mint a new Transaction and stamp the two source entries as
+    // Mint a new Transfer and stamp the two source entries as
     // collapsed + hidden. Idempotent: a re-run that finds the same
     // pair already carrying a backref skips the action entirely.
     const fromEntries = state.history[action.fromAccountId] ?? [];
@@ -1592,9 +1590,9 @@ export function reducer(state: UserData, action: Action): UserData {
     const fromEntry = fromEntries.find((e) => e.id === action.fromEntryId);
     const toEntry = toEntries.find((e) => e.id === action.toEntryId);
     if (!fromEntry || !toEntry) return state;
-    if (fromEntry.collapsedIntoTransactionId) return state;
-    if (toEntry.collapsedIntoTransactionId) return state;
-    const transaction: Transaction = {
+    if (fromEntry.collapsedIntoTransferId) return state;
+    if (toEntry.collapsedIntoTransferId) return state;
+    const transfer: Transfer = {
       id: newId(),
       date: action.date,
       description: action.description,
@@ -1604,7 +1602,7 @@ export function reducer(state: UserData, action: Action): UserData {
     };
     return {
       ...state,
-      transactions: [...state.transactions, transaction],
+      transfers: [...state.transfers, transfer],
       history: {
         ...state.history,
         [action.fromAccountId]: fromEntries.map((e) =>
@@ -1612,7 +1610,7 @@ export function reducer(state: UserData, action: Action): UserData {
             ? {
                 ...e,
                 hidden: true,
-                collapsedIntoTransactionId: transaction.id,
+                collapsedIntoTransferId: transfer.id,
               }
             : e,
         ),
@@ -1621,7 +1619,7 @@ export function reducer(state: UserData, action: Action): UserData {
             ? {
                 ...e,
                 hidden: true,
-                collapsedIntoTransactionId: transaction.id,
+                collapsedIntoTransferId: transfer.id,
               }
             : e,
         ),
