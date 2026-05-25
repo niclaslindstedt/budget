@@ -161,6 +161,11 @@ type Props = {
   // MatchRuleModal in edit mode. The modal's own danger button handles
   // deletion, so no separate delete callback is needed here.
   onEditMatchRule: (ruleId: string) => void;
+  // "Reapply all" button in the Patterns tab. Walks every budget row
+  // against the current ruleset and shows a toast with the count of
+  // rows that moved. Useful when the user wants to sweep without
+  // editing a rule.
+  onReapplyMatchRules: () => void;
   // Danger-zone callback for the Storage tab: deletes the active
   // account (or clears guest data when no password is set).
   onDeleteAccount: (password: string) => Promise<void>;
@@ -265,6 +270,7 @@ export function SettingsModal({
   onSetPresetTypeHidden,
   onSetPresetTypeKind,
   onEditMatchRule,
+  onReapplyMatchRules,
   onDeleteAccount,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
@@ -494,7 +500,11 @@ export function SettingsModal({
               />
             )}
             {activeTab === "patterns" && (
-              <PatternsTab data={data} onEditRule={onEditMatchRule} />
+              <PatternsTab
+                data={data}
+                onEditRule={onEditMatchRule}
+                onReapplyAll={onReapplyMatchRules}
+              />
             )}
             {activeTab === "memory" && (
               <MemoryTab

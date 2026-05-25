@@ -84,6 +84,10 @@ import {
   serializeAccountsExport,
 } from "../data/accounts-export";
 import { findMatchingRule, ruleMatchesEntry } from "../data/match-rules";
+import {
+  countRowsAffectedByReapply,
+  reapplyPatternsToAllSheets,
+} from "../data/pattern-apply";
 import { allCategories, allTypes } from "../data/presets";
 import { buildSearchIndex, type SearchEntry } from "../data/search";
 import {
@@ -2468,6 +2472,30 @@ export function AppShell({
     setMatchRulePrompt({ kind: "edit", ruleId });
   }, []);
 
+  // "Reapply all" button in the Patterns settings tab. Simulates the
+  // walk ahead of dispatch so the success toast can quote the actual
+  // number of rows that moved — a 0-row reapply still surfaces a
+  // toast (success kind, "no changes" copy) so the user gets feedback
+  // that the button did its job.
+  const onReapplyMatchRules = useCallback(() => {
+    const next = reapplyPatternsToAllSheets(data.sheets, data.matchRules);
+    const changed = countRowsAffectedByReapply(data.sheets, next);
+    log.info(
+      `dispatch reapplyMatchRules rules=${data.matchRules.length} ` +
+        `rowsChanged=${changed}`,
+    );
+    dispatch({ type: "reapplyMatchRules" });
+    toast.push({
+      kind: "success",
+      message:
+        changed === 0
+          ? t("settings.patterns.reapplyNoop")
+          : changed === 1
+            ? t("settings.patterns.reapplyOne")
+            : t("settings.patterns.reapplyOther", { n: changed }),
+    });
+  }, [dispatch, data.sheets, data.matchRules, toast, t]);
+
   // Pre-fill values for the history-row promote modal. Looks the
   // active history entry up by id (the synthesized row carries only
   // the overlaid description), normalises its raw bank text, and
@@ -3546,6 +3574,7 @@ export function AppShell({
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
         onEditMatchRule={onEditMatchRule}
+        onReapplyMatchRules={onReapplyMatchRules}
         onDeleteAccount={onDeleteAccount}
       />
       <ChangelogModal

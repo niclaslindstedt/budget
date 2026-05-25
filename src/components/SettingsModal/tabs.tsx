@@ -1,5 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Database, Pencil, ShieldAlert, ShieldCheck } from "lucide-react";
+import {
+  Database,
+  Pencil,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 
 import {
   BORDER_WIDTH_PRESETS,
@@ -54,6 +60,7 @@ import {
   subscribeToLogs,
 } from "../../utils/logger";
 import { allCategories, allTypes } from "../../data/presets";
+import { countRuleHitsOnSheets } from "../../data/pattern-apply";
 import { BackendPicker } from "../BackendPicker";
 import { CategoryIconGlyph } from "../icons";
 
@@ -955,6 +962,7 @@ export function MemoryTab({
 export function PatternsTab({
   data,
   onEditRule,
+  onReapplyAll,
 }: {
   data: UserData;
   // Open the existing MatchRuleModal in edit mode. The modal's own
@@ -962,6 +970,12 @@ export function PatternsTab({
   // behind the modal preserves the "open, review matches, then delete"
   // affordance the user already gets when invoking a rule from a row.
   onEditRule: (ruleId: string) => void;
+  // Sweep every budget row against the current ruleset. The reducer
+  // already runs this walk on rule create / update, so this surface
+  // only exists so the user can force a sweep without pretending to
+  // edit a rule (e.g. after importing a new workspace or unlocking
+  // rows that were previously typeIdLocked by hand).
+  onReapplyAll: () => void;
 }) {
   const t = useT();
   // Merge user + preset types so the chip shows the right label even
@@ -982,9 +996,30 @@ export function PatternsTab({
     return m;
   }, [categories]);
   const rules = data.matchRules;
+  // Per-rule budget-row counts. Folded into one walk so the cost is
+  // O(rows + rules) per render rather than O(rows × rules).
+  // typeIdLocked rows are excluded — they don't move on reapply so
+  // attributing them to a rule would mislead the chip the user sees.
+  const ruleCounts = useMemo(
+    () => countRuleHitsOnSheets(data.sheets, rules),
+    [data.sheets, rules],
+  );
   return (
     <Section title={t("settings.patterns.title")}>
       <p className="text-xs text-muted">{t("settings.patterns.intro")}</p>
+      {rules.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onReapplyAll}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-2 px-2 py-1 text-xs text-fg hover:border-accent hover:text-accent"
+            title={t("settings.patterns.reapplyAllHint")}
+          >
+            <RefreshCw size={12} aria-hidden focusable={false} />
+            <span>{t("settings.patterns.reapplyAll")}</span>
+          </button>
+        </div>
+      )}
       {rules.length === 0 ? (
         <p className="rounded border border-line bg-surface-2 px-3 py-3 text-center text-xs text-muted">
           {t("settings.patterns.empty")}
@@ -994,6 +1029,7 @@ export function PatternsTab({
           {rules.map((rule) => {
             const ty = rule.typeId ? typesById.get(rule.typeId) : null;
             const cat = ty ? categoriesById.get(ty.categoryId) : null;
+            const hitCount = ruleCounts.get(rule.id) ?? 0;
             return (
               <li
                 key={rule.id}
@@ -1004,6 +1040,14 @@ export function PatternsTab({
                     {rule.pattern}
                   </code>
                   <div className="flex flex-wrap items-center gap-1.5 text-muted">
+                    <span
+                      className="rounded border border-line px-1.5 py-0.5"
+                      title={t("settings.patterns.hitsHint")}
+                    >
+                      {hitCount === 1
+                        ? t("settings.patterns.hitsOne")
+                        : t("settings.patterns.hitsOther", { n: hitCount })}
+                    </span>
                     {rule.description && (
                       <span className="truncate text-fg">
                         {rule.description}
