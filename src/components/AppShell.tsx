@@ -1044,7 +1044,6 @@ export function AppShell({
     // on the underlying `HistoryEntry`, which the synthesizer fans out
     // into multiple rows on the next render.
     if (row.transferId || row.isCorrection) return;
-    unlockAchievement("splitTheBill");
     setSplitPrompt({ kind: "split", row });
   }, []);
   const onMatchRuleRequest = useCallback((row: Row) => {
@@ -2119,6 +2118,7 @@ export function AppShell({
           entryId: row.historyEntryId,
           splits: fullSplits,
         });
+        unlockAchievement("splitTheBill");
         setSplitPrompt(null);
         return;
       }
@@ -2130,6 +2130,7 @@ export function AppShell({
         splits,
         remainderAmount,
       });
+      unlockAchievement("splitTheBill");
       setSplitPrompt(null);
     },
     [
