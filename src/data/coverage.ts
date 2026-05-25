@@ -1,6 +1,6 @@
 // History-coverage rules.
 //
-// A calendar month is "covered" when imported bank-history makes it
+// A fiscal month is "covered" when imported bank-history makes it
 // authoritative — no user-authored row should be added there, and
 // any predicted row that didn't post in that window is an orphan.
 //
@@ -8,6 +8,12 @@
 //   M is covered iff
 //     ∃ history.date > M.lastDay, AND
 //     (∃ history.date < M.firstDay) OR (no user rows in M).
+//
+// The fiscal month boundaries follow `settings.startOfMonth`: with
+// startOfMonth=25, fiscal "2026-04" spans 2026-04-25 → 2026-05-24,
+// so coverage only flips on once history extends past May 24 (not
+// April 30). With startOfMonth=1 the helpers collapse to calendar
+// months — the legacy behaviour kept for default callers and tests.
 //
 // Consequences:
 // - The latest imported month is never covered (no entries beyond
@@ -23,39 +29,39 @@
 //   pairing them up.
 
 import { findColumnByType, getMonthKey } from "./sheet";
-import type { CellValue, Column, HistoryEntry, Row } from "./types";
+import type { Column, HistoryEntry, Row } from "./types";
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
 
-function monthFirstDay(monthKey: string): string {
-  return `${monthKey}-01`;
+function monthFirstDay(monthKey: string, startOfMonth: number): string {
+  return `${monthKey}-${String(startOfMonth).padStart(2, "0")}`;
 }
 
-function monthLastDay(monthKey: string): string {
+function monthLastDay(monthKey: string, startOfMonth: number): string {
   const y = Number(monthKey.slice(0, 4));
   const m = Number(monthKey.slice(5, 7));
   if (!Number.isFinite(y) || !Number.isFinite(m)) return `${monthKey}-31`;
-  // JavaScript's day=0 trick gives the last day of the previous
-  // month → ask for month+1 day 0.
-  const d = new Date(Date.UTC(y, m, 0));
-  return `${monthKey}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  // Day before the next fiscal month starts. `Date.UTC` happily
+  // overflows the month index (Dec → next Jan), so we pass `m`
+  // (already 1-based here, i.e. the next month in 0-based terms)
+  // along with `startOfMonth`, then step back one calendar day. With
+  // startOfMonth=1 this collapses to the calendar-month last day
+  // — the legacy behaviour for default callers.
+  const d = new Date(Date.UTC(y, m, startOfMonth));
+  d.setUTCDate(d.getUTCDate() - 1);
+  const ny = d.getUTCFullYear();
+  const nm = d.getUTCMonth() + 1;
+  const nd = d.getUTCDate();
+  return `${String(ny).padStart(4, "0")}-${String(nm).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
 }
 
-// Calendar-month key (`YYYY-MM`) for an ISO date. Falls back to
-// `null` for undated / malformed inputs so the caller can skip them
-// rather than misfile under "1970-01".
-function calendarMonthKey(value: CellValue): string | null {
-  if (typeof value !== "string" || value.length < 7) return null;
-  const key = value.slice(0, 7);
-  return MONTH_KEY_RE.test(key) ? key : null;
-}
-
-// Map of calendar-month → user-authored rows in that month. Excludes
+// Map of fiscal-month → user-authored rows in that month. Excludes
 // synthesized rows (history / transfer projections) since those
 // don't belong to the "user data" set the coverage rule cares about.
 function indexUserRowsByMonth(
   rows: readonly Row[],
   columns: readonly Column[],
+  startOfMonth: number,
 ): Map<string, Row[]> {
   const dateCol = findColumnByType(columns, "date");
   const out = new Map<string, Row[]>();
@@ -63,8 +69,8 @@ function indexUserRowsByMonth(
   for (const row of rows) {
     if (row.historyEntryId) continue;
     if (row.transferId) continue;
-    const key = calendarMonthKey(row.cells[dateCol.id]);
-    if (!key) continue;
+    const key = getMonthKey(row.cells[dateCol.id], startOfMonth);
+    if (!MONTH_KEY_RE.test(key)) continue;
     const list = out.get(key);
     if (list) list.push(row);
     else out.set(key, [row]);
@@ -74,14 +80,19 @@ function indexUserRowsByMonth(
 
 // True iff `monthKey` is covered given the account's history + the
 // month's user rows. Pure — caller controls which rows count.
+// `startOfMonth` defaults to 1 (calendar months) for callers that
+// don't have access to settings; budget/reconciliation surfaces pass
+// the user's `settings.startOfMonth` so the fiscal boundary moves
+// with the column the rows are grouped under.
 export function isMonthCovered(
   monthKey: string,
   history: readonly HistoryEntry[],
   userRowsInMonth: readonly Row[],
+  startOfMonth: number = 1,
 ): boolean {
   if (!MONTH_KEY_RE.test(monthKey)) return false;
-  const firstDay = monthFirstDay(monthKey);
-  const lastDay = monthLastDay(monthKey);
+  const firstDay = monthFirstDay(monthKey, startOfMonth);
+  const lastDay = monthLastDay(monthKey, startOfMonth);
   let hasAfter = false;
   let hasBefore = false;
   for (const h of history) {
@@ -100,11 +111,12 @@ export function isMonthCovered(
 // (sorted ascending) to find the min and max dates, then iterates
 // every month from the earliest active month forward to the latest
 // history date, applying `isMonthCovered`. The output set lists
-// calendar-month keys (`YYYY-MM`).
+// fiscal-month keys (`YYYY-MM`) using the given `startOfMonth`.
 export function coveredMonths(
   history: readonly HistoryEntry[],
   rows: readonly Row[],
   columns: readonly Column[],
+  startOfMonth: number = 1,
 ): Set<string> {
   const out = new Set<string>();
   if (history.length === 0) return out;
@@ -122,13 +134,13 @@ export function coveredMonths(
   }
   if (earliestDate === "" || latestHistoryDate === "") return out;
 
-  const rowsByMonth = indexUserRowsByMonth(rows, columns);
+  const rowsByMonth = indexUserRowsByMonth(rows, columns, startOfMonth);
   // User rows may date earlier than the earliest history entry; in
   // that case we still want to evaluate those months (the rule will
   // come out false unless history brackets them, but the math is
   // free to run).
   for (const key of rowsByMonth.keys()) {
-    const firstDay = `${key}-01`;
+    const firstDay = monthFirstDay(key, startOfMonth);
     if (firstDay < earliestDate) earliestDate = firstDay;
   }
 
@@ -138,8 +150,8 @@ export function coveredMonths(
   // is covered" case from the design discussion: no history before
   // Feb 1, no user rows in Feb, but history after Feb 28 → Feb is
   // covered because there's nothing left to argue against it).
-  const startKey = previousMonthKey(earliestDate.slice(0, 7));
-  const endKey = latestHistoryDate.slice(0, 7);
+  const startKey = previousMonthKey(getMonthKey(earliestDate, startOfMonth));
+  const endKey = getMonthKey(latestHistoryDate, startOfMonth);
   // Sort guard: shouldn't happen, but if input is degenerate just
   // emit nothing rather than loop forever.
   if (startKey > endKey) return out;
@@ -149,7 +161,9 @@ export function coveredMonths(
   // 12 years of months is more than enough headroom and keeps the
   // worst case O(144) regardless of input size.
   for (let i = 0; i < 12 * 12; i++) {
-    if (isMonthCovered(cur, history, rowsByMonth.get(cur) ?? [])) {
+    if (
+      isMonthCovered(cur, history, rowsByMonth.get(cur) ?? [], startOfMonth)
+    ) {
       out.add(cur);
     }
     if (cur === endKey) break;
@@ -203,24 +217,25 @@ export function nextMonthKey(key: string): string {
 
 // Earliest date strictly after `date` that lands in an uncovered
 // month for this account. Used to snap a user's date edit forward
-// when they try to move a row into a covered window. Walks months
-// forward until one is uncovered; returns its first day.
+// when they try to move a row into a covered window. Walks fiscal
+// months forward until one is uncovered; returns its first day.
 export function nextUncoveredDate(
   date: string,
   history: readonly HistoryEntry[],
   rows: readonly Row[],
   columns: readonly Column[],
+  startOfMonth: number = 1,
 ): string {
-  const covered = coveredMonths(history, rows, columns);
+  const covered = coveredMonths(history, rows, columns, startOfMonth);
   if (date.length < 10) return date;
   // Start in the candidate month: if `date` itself sits in an
   // uncovered month we don't need to move.
-  const startKey = date.slice(0, 7);
+  const startKey = getMonthKey(date, startOfMonth);
   if (!covered.has(startKey)) return date;
   // Walk forward until the first uncovered month.
   let cur = nextMonthKey(startKey);
   for (let i = 0; i < 12 * 12; i++) {
-    if (!covered.has(cur)) return `${cur}-01`;
+    if (!covered.has(cur)) return monthFirstDay(cur, startOfMonth);
     cur = nextMonthKey(cur);
   }
   return date; // Fallback: nothing uncovered found (shouldn't happen).
@@ -233,14 +248,14 @@ export function isDateCovered(
   history: readonly HistoryEntry[],
   rows: readonly Row[],
   columns: readonly Column[],
+  startOfMonth: number = 1,
 ): boolean {
   if (date.length < 7) return false;
-  const key = date.slice(0, 7);
-  return coveredMonths(history, rows, columns).has(key);
+  const key = getMonthKey(date, startOfMonth);
+  return coveredMonths(history, rows, columns, startOfMonth).has(key);
 }
 
 // `getMonthKey` is fiscal-month aware (it honours `startOfMonth`);
-// coverage is strictly calendar-month, so we never call it from
-// here. Re-exported only to keep the import surface small for the
-// `App.tsx` wire-up that needs both helpers in one place.
+// re-exported to keep the import surface small for the `App.tsx`
+// wire-up that needs both helpers in one place.
 export { getMonthKey };

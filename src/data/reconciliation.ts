@@ -22,7 +22,7 @@
 // `SeriesMatchRule` already covers the pair.
 
 import { compilePattern } from "./match-rules";
-import { findColumnByType } from "./sheet";
+import { findColumnByType, getMonthKey } from "./sheet";
 import type { Column, HistoryEntry, Row, SeriesMatchRule } from "./types";
 
 export const RECONCILIATION_DATE_LAG_DAYS = 7;
@@ -184,12 +184,16 @@ export function findCandidates(
 // under "Predictions that didn't post" with delete / move actions.
 // `coveredMonthKeys` is the set of *newly*-covered months (the
 // coverage delta from the import); rows in months that were already
-// covered before the import are out of scope.
+// covered before the import are out of scope. `startOfMonth` matches
+// the basis `coveredMonths` returned its keys under so fiscal-month
+// callers stay aligned; defaults to 1 (calendar months) for legacy
+// callers / tests that don't care.
 export function findOrphans(
   rows: readonly Row[],
   columns: readonly Column[],
   newlyCovered: ReadonlySet<string>,
   reconciledRowIds: ReadonlySet<string>,
+  startOfMonth: number = 1,
 ): OrphanRow[] {
   if (newlyCovered.size === 0) return [];
   const dateCol = findColumnByType(columns, "date");
@@ -200,9 +204,8 @@ export function findOrphans(
     if (row.isCorrection) continue;
     if (row.historyEntryId) continue;
     if (row.transferId) continue;
-    const d = row.cells[dateCol.id];
-    if (typeof d !== "string" || d.length < 7) continue;
-    const monthKey = d.slice(0, 7);
+    const monthKey = getMonthKey(row.cells[dateCol.id], startOfMonth);
+    if (monthKey === "undated") continue;
     if (!newlyCovered.has(monthKey)) continue;
     out.push({ rowId: row.id, monthKey });
   }
