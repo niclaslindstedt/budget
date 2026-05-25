@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { CircleUser, Eye, EyeOff, Lock, UserPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleUser,
+  Eye,
+  EyeOff,
+  Lock,
+  UserPlus,
+} from "lucide-react";
 
 import type { StoredUser } from "../data/types";
 import { useT } from "../i18n";
@@ -8,7 +15,7 @@ import { Checkbox, ClearableTextInput } from "./form";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-type Mode = "sign-in" | "sign-up";
+type Mode = "pick" | "sign-in" | "sign-up";
 
 type Props = {
   users: readonly StoredUser[];
@@ -55,21 +62,51 @@ export function AuthScreen({
   const noRealUsers = realUsers.length === 0;
 
   // No real accounts yet: the first thing the user has to do is set
-  // one up (or continue as guest). Subsequent visits default to the
-  // sign-in view.
+  // one up (or continue as guest). When real users exist, default to
+  // the picker so a returning user can just click their account
+  // instead of typing the username again.
   const [mode, setMode] = useState<Mode>(() =>
-    noRealUsers ? "sign-up" : "sign-in",
+    noRealUsers ? "sign-up" : "pick",
   );
+
+  // Username chosen from the picker (or carried in via `initialUsername`)
+  // — the sign-in form binds to this so picking a user lands the cursor
+  // straight on the password field.
+  const [pickedUsername, setPickedUsername] = useState<string | null>(
+    initialUsername,
+  );
+
+  const handlePick = useCallback((user: StoredUser) => {
+    setPickedUsername(user.username);
+    setMode("sign-in");
+  }, []);
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
-        {mode === "sign-in" ? (
+        {mode === "pick" && !noRealUsers ? (
+          <UserPicker
+            users={realUsers}
+            lastUsername={initialUsername}
+            guestAvailable={guestAvailable}
+            onPick={handlePick}
+            onAddUser={() => setMode("sign-up")}
+            onContinueWithoutAccount={onContinueWithoutAccount}
+          />
+        ) : mode === "sign-in" ? (
           <SignInForm
             users={realUsers}
-            initialUsername={initialUsername}
+            initialUsername={pickedUsername}
             onSignIn={onSignIn}
             onSwitchToSignUp={() => setMode("sign-up")}
+            onBackToPicker={
+              noRealUsers
+                ? null
+                : () => {
+                    setPickedUsername(null);
+                    setMode("pick");
+                  }
+            }
           />
         ) : (
           <SignUpForm
@@ -82,11 +119,115 @@ export function AuthScreen({
             showGuestOption={noRealUsers}
             onCreate={onCreateAccount}
             onContinueWithoutAccount={onContinueWithoutAccount}
-            onSwitchToSignIn={noRealUsers ? null : () => setMode("sign-in")}
+            onSwitchToSignIn={noRealUsers ? null : () => setMode("pick")}
           />
         )}
       </div>
     </main>
+  );
+}
+
+function UserPicker({
+  users,
+  lastUsername,
+  guestAvailable,
+  onPick,
+  onAddUser,
+  onContinueWithoutAccount,
+}: {
+  users: readonly StoredUser[];
+  // Last active user on the device (if any) — gets a "Last" hint so a
+  // returning user knows which card was theirs without having to read
+  // every name.
+  lastUsername: string | null;
+  guestAvailable: boolean;
+  onPick: (user: StoredUser) => void;
+  onAddUser: () => void;
+  onContinueWithoutAccount: () => Promise<void>;
+}) {
+  const t = useT();
+  const [guestBusy, setGuestBusy] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
+
+  const handleGuest = useCallback(async () => {
+    if (guestBusy) return;
+    setGuestBusy(true);
+    setGuestError(null);
+    try {
+      await onContinueWithoutAccount();
+    } catch (err) {
+      setGuestError(err instanceof Error ? err.message : String(err));
+      setGuestBusy(false);
+    }
+  }, [guestBusy, onContinueWithoutAccount]);
+
+  return (
+    <div className="flex w-full flex-col gap-4 rounded-lg border border-line bg-surface p-5 shadow-xl">
+      <div className="flex items-center gap-2 text-pipe">
+        <Lock size={18} aria-hidden focusable={false} />
+        <h1 className="text-sm font-bold tracking-wide text-fg-bright">
+          {t("auth.pickUser")}
+        </h1>
+      </div>
+      <p className="text-xs text-muted">{t("auth.privacyHint")}</p>
+
+      <ul className="flex flex-col gap-2">
+        {users.map((user) => {
+          const isLast =
+            lastUsername !== null && user.username === lastUsername;
+          return (
+            <li key={user.id}>
+              <button
+                type="button"
+                onClick={() => onPick(user)}
+                className="flex w-full cursor-pointer items-center gap-3 rounded border border-line bg-surface-2 px-3 py-2 text-left text-sm text-fg hover:border-accent hover:bg-accent/10"
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus={isLast}
+              >
+                <CircleUser
+                  size={20}
+                  aria-hidden
+                  focusable={false}
+                  className="text-muted"
+                />
+                <span className="flex-1 truncate font-bold text-fg-bright">
+                  {user.username}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <button
+        type="button"
+        onClick={onAddUser}
+        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded border border-line bg-surface-2 px-3 py-2 text-sm text-link hover:border-accent hover:bg-accent/10"
+      >
+        <UserPlus size={16} aria-hidden focusable={false} />
+        <span>{t("auth.addUser")}</span>
+      </button>
+
+      {guestAvailable && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              void handleGuest();
+            }}
+            disabled={guestBusy}
+            className="-mt-1 cursor-pointer text-center text-xs text-link hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {guestBusy ? t("auth.loading") : t("auth.continueAsGuest")}
+          </button>
+          {guestError && (
+            <p role="alert" className="-mt-2 text-center text-xs text-danger">
+              {guestError}
+            </p>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -95,11 +236,15 @@ function SignInForm({
   initialUsername,
   onSignIn,
   onSwitchToSignUp,
+  onBackToPicker,
 }: {
   users: readonly StoredUser[];
   initialUsername: string | null;
   onSignIn: (user: StoredUser, password: string) => Promise<void>;
   onSwitchToSignUp: () => void;
+  // Return to the picker. Null when no real users exist (so there's
+  // no picker to go back to — the sign-in form is the only landing).
+  onBackToPicker: (() => void) | null;
 }) {
   const t = useT();
   const [username, setUsername] = useState(initialUsername ?? "");
@@ -137,6 +282,16 @@ function SignInForm({
       className="flex w-full flex-col gap-4 rounded-lg border border-line bg-surface p-5 shadow-xl"
     >
       <div className="flex items-center gap-2 text-pipe">
+        {onBackToPicker && (
+          <button
+            type="button"
+            onClick={onBackToPicker}
+            aria-label={t("common.back")}
+            className="-ml-1 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
+          >
+            <ArrowLeft size={16} aria-hidden focusable={false} />
+          </button>
+        )}
         <Lock size={18} aria-hidden focusable={false} />
         <h1 className="text-sm font-bold tracking-wide text-fg-bright">
           {t("auth.signIn")}
