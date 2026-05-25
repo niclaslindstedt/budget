@@ -772,7 +772,7 @@ export const en = {
     showEmptyMonths: "Show empty months",
     hideEmptyMonths: "Hide empty months",
     editSheet: "Edit sheet",
-    viewBudget: "View budget",
+    viewBudget: "Viewing mode",
     moreActions: "Sheet actions",
     moreActionsAria: "Sheet actions for {name}",
     viewerEmpty: "No entries to display.",

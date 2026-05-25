@@ -766,7 +766,7 @@ export const sv: Catalog = {
     showEmptyMonths: "Visa tomma månader",
     hideEmptyMonths: "Dölj tomma månader",
     editSheet: "Redigera blad",
-    viewBudget: "Visa budget",
+    viewBudget: "Visningsläge",
     moreActions: "Bladåtgärder",
     moreActionsAria: "Bladåtgärder för {name}",
     viewerEmpty: "Inga poster att visa.",
