@@ -167,6 +167,9 @@ export type CategoryIcon =
   | "paw-print"
   | "tree-pine"
   | "baby"
+  | "toy-brick"
+  | "school"
+  | "trophy"
   | "hourglass"
   // Health
   | "heart-pulse"
