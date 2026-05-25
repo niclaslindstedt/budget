@@ -720,10 +720,10 @@ export type CommonSettings = {
   // Transfer row's `peerAccountId`, a `HistoryEntry.isTransfer`
   // flagged in the entry-edit modal, or a budget row's `isTransfer`
   // flagged by the per-row eye action. Each visible row whose
-  // computed balance step crossed at least one hidden transfer gets
-  // a small ↔ icon on its balance cell that inline-expands the
-  // hidden rows underneath when clicked. Default false so the
-  // out-of-the-box view matches existing builds.
+  // computed balance step crossed at least one hidden transfer has
+  // its balance rendered in italic with a dotted underline; clicking
+  // the balance inline-expands the hidden rows underneath. Default
+  // false so the out-of-the-box view matches existing builds.
   hideTransfers: boolean;
   // Active theme preset. Defaults to `"system"` so a fresh install
   // tracks the OS colour scheme — matching the legacy behaviour

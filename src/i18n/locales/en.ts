@@ -385,7 +385,7 @@ export const en = {
       title: "Display",
       hideTransfers: "Hide transfers between accounts",
       hideTransfersHint:
-        "Suppress transfer rows from the budget table. The running balance still accounts for them — a small ↔ icon on the balance shows where they sit, and clicking it reveals them inline.",
+        "Suppress transfer rows from the budget table. The running balance still accounts for them — any balance the hidden rows contributed to renders in italic with a dotted underline, and clicking it reveals them inline.",
       sortOrder: "Transaction order",
       sortOrderHint:
         "Direction to read transactions across the budget sheet, the read-only viewer, the account transfer log, and account history. Running balances always accumulate chronologically regardless of the choice.",

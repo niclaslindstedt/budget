@@ -377,7 +377,7 @@ export const sv: Catalog = {
       title: "Visning",
       hideTransfers: "Dölj överföringar mellan konton",
       hideTransfersHint:
-        "Dölj överföringsrader från budgettabellen. Saldot räknar fortfarande med dem — en liten ↔-ikon på saldot visar var de ligger, och ett klick visar dem inbäddat.",
+        "Dölj överföringsrader från budgettabellen. Saldot räknar fortfarande med dem — saldon som dolda rader bidragit till visas i kursiv stil med en prickad understrykning, och ett klick visar raderna inbäddat.",
       sortOrder: "Sortering",
       sortOrderHint:
         "Riktning att läsa transaktioner i budgetbladet, den skrivskyddade vyn, kontoöverföringar och kontohistorik. Saldon räknas alltid kronologiskt oavsett val.",
