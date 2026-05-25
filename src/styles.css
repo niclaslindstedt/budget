@@ -1308,6 +1308,26 @@ body {
   padding-top: 0.75rem;
 }
 
+/* Browser-mode breathing room between the last page content (the
+   "Show 3 future months" / "Show 3 earlier months" toggle, or the
+   AddRow at the foot of the final month) and the sticky BottomBar.
+   The bar is `position: sticky; bottom: 0` in flow in browser mode,
+   so without padding the last row sits flush against the bar's top
+   border. The standalone-mode block further down replaces this with
+   a much larger `4rem` / `5rem` reserve because the bar there is
+   `position: fixed` and out of flow. Same-specificity rule, and the
+   standalone block is later in the file, so its value wins inside a
+   PWA install. */
+[data-budget-main] {
+  padding-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  [data-budget-main] {
+    padding-bottom: 1.5rem;
+  }
+}
+
 /* Installed-PWA layout override for the BottomBar.
    The browser-mode block (no `@media (display-mode: standalone)`
    wrap) keeps the svh + sticky + translate-y math from PR #354
