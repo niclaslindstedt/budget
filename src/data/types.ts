@@ -778,12 +778,6 @@ export type CommonSettings = {
   // force the sheet to render decades of empty placeholders. Anything
   // beyond this cutoff remains hidden behind the in-sheet toggle.
   futureEntryMonths: number;
-  // Whether tables draw vertical dividers between columns. Off by
-  // default so the budget table reads as a single continuous canvas
-  // (matching the Accounts transfer log); on adds 1px column dividers
-  // to both the budget sheet and the accounts transfer table so the
-  // setting consolidates the two surfaces.
-  columnBorders: boolean;
 };
 
 export type TransactionSortOrder = "newestFirst" | "oldestFirst";
@@ -918,7 +912,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 37;
+  version: 38;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

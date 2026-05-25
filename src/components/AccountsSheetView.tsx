@@ -398,7 +398,7 @@ export function AccountsSheetView({
             {t("accountsSheet.transfers")}
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="accounts-transfers-table w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-sm">
               <thead className="sticky top-[var(--app-header-h)] z-[15] bg-surface-3">
                 <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
                   <th

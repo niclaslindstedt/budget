@@ -26,7 +26,7 @@ import { clearRawStorage, readRawStorage } from "../storage/local-adapter";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 37 as const;
+export const LATEST_VERSION = 38 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -686,6 +686,23 @@ const migrations: Record<
   // validator substitutes the default so existing budgets land on the
   // new clean look without rewriting their settings blob. Bare bump.
   36: (v36) => ({ ...v36, version: 37 }),
+
+  // v37 → v38: removes `Settings.columnBorders` again. The unified-
+  // table redesign that field gated was reverted, so the field has no
+  // backing UI and no longer affects rendering. Strip it from settings
+  // so a future v38+ export round-trips cleanly without a dangling
+  // unknown key. Users who never saw v37 (the validator left it absent)
+  // still pass through this step harmlessly — `delete settings.columnBorders`
+  // is a no-op when the field isn't there.
+  37: (v37) => {
+    const out: Record<string, unknown> = { ...v37, version: 38 };
+    if (isObj(out.settings)) {
+      const settings = { ...out.settings };
+      delete settings.columnBorders;
+      out.settings = settings;
+    }
+    return out as Versioned;
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

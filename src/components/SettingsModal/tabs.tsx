@@ -1059,15 +1059,6 @@ export function AppearanceTab({
         </Field>
       </Section>
 
-      <Section title={t("settings.appearance.tableSection")}>
-        <ToggleRow
-          label={t("settings.appearance.columnBorders")}
-          hint={t("settings.appearance.columnBordersHint")}
-          checked={draft.columnBorders}
-          onChange={(v) => onUpdate("columnBorders", v)}
-        />
-      </Section>
-
       {isCustom && (
         <>
           <Section title={t("settings.appearance.colorsSection")}>

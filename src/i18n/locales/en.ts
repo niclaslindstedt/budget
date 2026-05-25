@@ -486,10 +486,6 @@ export const en = {
       borderWidthBold: "Bold",
       reduceMotion: "Reduce motion",
       reduceMotionHint: "Disable transitions and animations.",
-      tableSection: "Tables",
-      columnBorders: "Show column borders",
-      columnBordersHint:
-        "Draw vertical dividers between columns in the budget sheet and the accounts transfer log.",
     },
     session: {
       title: "Session",

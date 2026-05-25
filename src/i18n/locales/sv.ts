@@ -478,10 +478,6 @@ export const sv: Catalog = {
       borderWidthBold: "Tjock",
       reduceMotion: "Minska rörelse",
       reduceMotionHint: "Inaktivera övergångar och animationer.",
-      tableSection: "Tabeller",
-      columnBorders: "Visa kolumnlinjer",
-      columnBordersHint:
-        "Rita vertikala linjer mellan kolumner i budgetbladet och kontolistan.",
     },
     session: {
       title: "Session",
