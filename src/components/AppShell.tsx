@@ -355,7 +355,12 @@ export function AppShell({
   // state delta and drains the manual-unlock bus; new unlocks land
   // in `data.settings.unseenAchievements` via `recordAchievementUnlock`,
   // which the HeaderStar below reads to decide whether to glow.
-  useAchievementWatcher(data, dispatch);
+  // Gated on a loaded budget so the placeholder `freshUserData()`
+  // state never gets compared against the hydrated snapshot — that
+  // comparison would briefly flip the star on while loading, then
+  // off again the moment the adapter replaces state with the
+  // persisted bucket.
+  useAchievementWatcher(data, dispatch, status.kind !== "loading");
   const [achievementsModalOpen, setAchievementsModalOpen] = useState(false);
   const [achievementsListOpen, setAchievementsListOpen] = useState(false);
   // Mirror in-memory data into the App-owned ref so the cloud-link
