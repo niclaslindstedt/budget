@@ -183,6 +183,31 @@ Dependency direction: `components/` depend on `data/` and `storage/`.
 Nothing in `data/` or `storage/` imports from `components/`. Keep it
 that way.
 
+## Resolving user vocabulary
+
+The user (and team) refer to parts of the app in plain English —
+"budget row", "viewer modal", "transfer log", "promote a history
+entry". These words rarely match filenames one-to-one. Before
+searching for code, **look the term up in `docs/dictionary.md`** —
+it maps every term the codebase has accreted to the concrete
+component, type, file, or workflow it points at.
+
+**Maintain the dictionary in lockstep with the code.** When you:
+
+- ship a new feature that introduces a user-facing concept,
+- rename a file or symbol the dictionary mentions,
+- hear the user use a word the dictionary doesn't already cover,
+
+add or update the entry **in the same pull request as the code
+change**. The dictionary is the index that lets the next agent
+resolve "the thing the user just said" without a fresh round of
+exploration; letting it rot defeats the purpose. The file's own
+"Conventions for editing" section spells out the format.
+
+If the user uses a term you can't find in `docs/dictionary.md` and
+you can't infer it from filenames, ask before guessing. Once you
+have the answer, add the row.
+
 ## Pages and the Sheet abstraction
 
 A **Sheet** is the universal top-level container the user adds, names,
@@ -445,6 +470,7 @@ that aren't in the template comments:
 | `package.json` scripts                                                                     | `Makefile`, `README.md` Usage section                                                                                         |
 | `Makefile` targets                                                                         | `README.md` Usage section, `ci.yml`                                                                                           |
 | `src/` top-level layout                                                                    | `README.md`, this file                                                                                                        |
+| Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` — update the row in the same PR. See "Resolving user vocabulary" above.                                  |
 | Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                            |
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                        |
 | CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |
