@@ -707,6 +707,17 @@ function DateCell({
   );
 }
 
+// Typed rows reclaim the narrow mobile description column for the
+// type's name (plain text in the type's colour) — a clearer
+// identifier than the bank's memo at a glance. Desktop keeps the
+// description inline since the dedicated type column already
+// carries the chip + name there. Both branches render the same
+// `DesktopDescriptionEditor` + `DescriptionPopover` tree so that a
+// reducer-driven type flip mid-edit (pattern auto-categorisation
+// assigning `typeId` after a matching description lands) reconciles
+// without unmounting the textarea — otherwise the keystroke that
+// completed the match (often a trailing space) is lost along with
+// focus.
 function DescriptionCell({
   rowId,
   value,
@@ -722,55 +733,9 @@ function DescriptionCell({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
-  // Typed rows reclaim the narrow mobile description column for the
-  // type's name (plain text in the type's colour) — a clearer
-  // identifier than the bank's memo at a glance. Desktop keeps the
-  // description inline since the dedicated type column already
-  // carries the chip + name there. Fall back to the plain editor for
-  // rows whose typeId is still unset.
-  if (entryType) {
-    return (
-      <TypedDescriptionCell
-        rowId={rowId}
-        value={value}
-        isRecurring={isRecurring}
-        entryType={entryType}
-        onChange={onChange}
-        onCommit={onCommit}
-      />
-    );
-  }
-  return (
-    <PlainDescriptionCell
-      rowId={rowId}
-      value={value}
-      isRecurring={isRecurring}
-      onChange={onChange}
-      onCommit={onCommit}
-    />
-  );
-}
-
-// Plain-text description cell. Desktop renders the inline textarea
-// editor; mobile shows the description text truncated to a single
-// line (falling back to "…" when empty) as the trigger and tucks the
-// editor into a popover behind it (the column is too narrow to wrap
-// long descriptions without ballooning the row).
-function PlainDescriptionCell({
-  rowId,
-  value,
-  isRecurring,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  isRecurring: boolean;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
   const t = useT();
   const hasValue = value.length > 0;
+  const typeLabel = entryType ? displayTypeName(entryType, t) : "";
   return (
     <td
       className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
@@ -789,105 +754,62 @@ function PlainDescriptionCell({
         value={value}
         onChange={onChange}
         onCommit={onCommit}
-        renderTrigger={({ ref, onClick, open }) => (
-          <button
-            ref={ref}
-            type="button"
-            onClick={onClick}
-            className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-              hasValue
-                ? "justify-start text-left"
-                : "justify-center text-center"
-            } ${isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"}`}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            aria-label={
-              hasValue
-                ? t("cell.descriptionWith", { value })
-                : t("cell.addDescription")
-            }
-            title={hasValue ? value : undefined}
-          >
-            {isRecurring && (
-              <Repeat
-                size={16}
-                aria-hidden
-                focusable={false}
-                className="shrink-0 text-flag"
-              />
-            )}
-            {hasValue ? (
-              <span className="min-w-0 truncate">{value}</span>
-            ) : !isRecurring ? (
-              <span>…</span>
-            ) : null}
-          </button>
-        )}
-      />
-    </td>
-  );
-}
-
-// Description cell for rows with an entry type. Desktop keeps the
-// inline textarea editor (the type chip lives in the dedicated type
-// column), while mobile shows the description text truncated to a
-// single line — falling back to the type's name rendered in the
-// type's colour when the description is empty — with the editable
-// description tucked into a popover behind the trigger.
-function TypedDescriptionCell({
-  rowId,
-  value,
-  isRecurring,
-  entryType,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  isRecurring: boolean;
-  entryType: EntryType;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
-  const t = useT();
-  const typeLabel = displayTypeName(entryType, t);
-  return (
-    <td
-      className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
-        isRecurring ? "text-flag" : "text-fg"
-      }`}
-    >
-      <DesktopDescriptionEditor
-        rowId={rowId}
-        value={value}
-        isRecurring={isRecurring}
-        onChange={onChange}
-        onCommit={onCommit}
-      />
-      <DescriptionPopover
-        rowId={rowId}
-        value={value}
-        onChange={onChange}
-        onCommit={onCommit}
-        renderTrigger={({ ref, onClick, open }) => (
-          <button
-            ref={ref}
-            type="button"
-            onClick={onClick}
-            className={`flex h-full min-h-9 w-full cursor-pointer items-center border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-              value
-                ? "justify-start text-left"
-                : "justify-center text-xs font-medium"
-            }`}
-            style={value ? undefined : { color: entryType.color }}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            aria-label={value ? `${typeLabel}: ${value}` : typeLabel}
-            title={value || typeLabel}
-          >
-            <span className="min-w-0 truncate">{value || typeLabel}</span>
-          </button>
-        )}
+        renderTrigger={({ ref, onClick, open }) =>
+          entryType ? (
+            <button
+              ref={ref}
+              type="button"
+              onClick={onClick}
+              className={`flex h-full min-h-9 w-full cursor-pointer items-center border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+                hasValue
+                  ? "justify-start text-left"
+                  : "justify-center text-xs font-medium"
+              }`}
+              style={hasValue ? undefined : { color: entryType.color }}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              aria-label={hasValue ? `${typeLabel}: ${value}` : typeLabel}
+              title={hasValue ? value : typeLabel}
+            >
+              <span className="min-w-0 truncate">
+                {hasValue ? value : typeLabel}
+              </span>
+            </button>
+          ) : (
+            <button
+              ref={ref}
+              type="button"
+              onClick={onClick}
+              className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+                hasValue
+                  ? "justify-start text-left"
+                  : "justify-center text-center"
+              } ${isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"}`}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              aria-label={
+                hasValue
+                  ? t("cell.descriptionWith", { value })
+                  : t("cell.addDescription")
+              }
+              title={hasValue ? value : undefined}
+            >
+              {isRecurring && (
+                <Repeat
+                  size={16}
+                  aria-hidden
+                  focusable={false}
+                  className="shrink-0 text-flag"
+                />
+              )}
+              {hasValue ? (
+                <span className="min-w-0 truncate">{value}</span>
+              ) : !isRecurring ? (
+                <span>…</span>
+              ) : null}
+            </button>
+          )
+        }
       />
     </td>
   );
