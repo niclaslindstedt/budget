@@ -135,6 +135,7 @@ export type CategoryIcon =
   | "train"
   | "bike"
   | "fuel"
+  | "car-front"
   // Home & utilities
   | "bed"
   | "sofa"
@@ -149,6 +150,8 @@ export type CategoryIcon =
   | "trash-2"
   | "sprout"
   | "umbrella"
+  | "paint-roller"
+  | "washing-machine"
   // Tech & gadgets
   | "smartphone"
   | "laptop"
@@ -177,6 +180,8 @@ export type CategoryIcon =
   // Health
   | "heart-pulse"
   | "shield-plus"
+  | "glasses"
+  | "brain"
   // Money & finance
   | "coins"
   | "hand-coins"
