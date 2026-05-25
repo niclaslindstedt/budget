@@ -5,7 +5,7 @@ import { Loader } from "lucide-react";
 // an empty "Budget" sheet with the current month — which looks like
 // the user's data was lost when it's actually still being fetched.
 
-export function BudgetLoading() {
+export function AppLoading() {
   return (
     <div
       role="status"

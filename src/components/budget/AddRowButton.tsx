@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Plus, Sparkles } from "lucide-react";
 
-import { useT } from "../i18n";
-import { useActiveRowHasActive } from "./useActiveRow";
+import { useT } from "../../i18n";
+import { useActiveRowHasActive } from "../useActiveRow";
 
 type Props = {
   onAdd: () => void;

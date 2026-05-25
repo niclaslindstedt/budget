@@ -9,23 +9,23 @@ import {
   Wallet,
 } from "lucide-react";
 
-import type { Account, Category, EntryType } from "../data/types";
-import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
-import { useT } from "../i18n";
+import type { Account, Category, EntryType } from "../../data/types";
+import { useDesktopAutoFocus, type FloatingPlacement } from "../../hooks";
+import { useT } from "../../i18n";
 import {
   formatAmountForInput,
   formatDate,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
-} from "../utils/format";
-import { FloatingPanel } from "./FloatingPanel";
-import { Modal } from "./Modal";
-import { DatePickerModal } from "./DatePickerModal";
-import { Button, Checkbox, ClearableTextInput } from "./form";
-import { CategoryIconGlyph } from "./icons";
-import { TypePicker } from "./TypePicker";
-import type { Settings } from "../data/types";
+} from "../../utils/format";
+import { FloatingPanel } from "../FloatingPanel";
+import { Modal } from "../Modal";
+import { DatePickerModal } from "../DatePickerModal";
+import { Button, Checkbox, ClearableTextInput } from "../form";
+import { CategoryIconGlyph } from "../icons";
+import { TypePicker } from "../TypePicker";
+import type { Settings } from "../../data/types";
 
 export type TransactionDraft = {
   date: string;

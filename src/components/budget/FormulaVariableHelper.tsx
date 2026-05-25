@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { FORMULA_FUNCTIONS, FORMULA_VARIABLES } from "../data/formula";
-import type { FloatingPlacement } from "../hooks";
-import type { Sheet } from "../data/types";
-import { useT } from "../i18n";
-import { FloatingPanel } from "./FloatingPanel";
+import { FORMULA_FUNCTIONS, FORMULA_VARIABLES } from "../../data/formula";
+import type { FloatingPlacement } from "../../hooks";
+import type { Sheet } from "../../data/types";
+import { useT } from "../../i18n";
+import { FloatingPanel } from "../FloatingPanel";
 
 // Right-anchored so the panel hugs the trigger button, which sits at
 // the right edge of the formula input row. Wide enough to fit the

@@ -2,20 +2,21 @@ import { useLayoutEffect, useRef } from "react";
 
 import { useActiveRowCoordinator } from "./useActiveRow";
 
-// Register the calling component as the sheet's active row whenever
-// `active` is true, and tear down again when it flips false. The
-// `dismiss` callback fires when a tap outside the row forces the
-// ActiveRowProvider to clear the registration so the caller can close
-// itself in lockstep (blur an input, close a popover, retract a swipe).
+// Claim the active-row slot from `ActiveRowProvider` whenever `active`
+// is true, and release it when it flips false. The `dismiss` callback
+// fires when a tap outside the row forces the coordinator to clear the
+// claim so the caller can close itself in lockstep (blur an input,
+// close a popover, retract a swipe).
 //
-// **Every interactive element that opens inside a sheet row must call
-// this hook** — cell inputs, popovers, pickers, swipe handles, all of
-// them. Without it the AddRowButton won't grey itself out while you're
-// editing, and a stray tap on it (or on another row's button) will
-// fire its action instead of just dismissing yours. Forgetting this
-// hook is the canonical cause of the "tap got eaten / tap added a
-// stray row" family of bugs; if a new interactive element shows up in
-// the sheet, this hook is what wires it into the coordinator.
+// **Every interactive element that opens inside a page row (budget,
+// accounts, future page types) must call this hook** — cell inputs,
+// popovers, pickers, swipe handles, all of them. Without it the
+// AddRowButton won't grey itself out while you're editing, and a stray
+// tap on it (or on another row's button) will fire its action instead
+// of just dismissing yours. Forgetting this hook is the canonical
+// cause of the "tap got eaten / tap added a stray row" family of bugs;
+// if a new interactive element shows up in any page row, this hook is
+// what wires it into the coordinator.
 //
 // Design notes:
 //
@@ -32,7 +33,7 @@ import { useActiveRowCoordinator } from "./useActiveRow";
 //   a tap during that gap would slip through.
 // - Callers pass plain inline arrow functions; no memoisation
 //   needed.
-export function useBlocksSheet(
+export function useClaimActiveRow(
   rowId: string | undefined,
   active: boolean,
   dismiss: () => void,

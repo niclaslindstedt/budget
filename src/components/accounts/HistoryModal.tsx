@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { FileText, History } from "lucide-react";
 
-import { compareDateStrings, resolveEntryLabels } from "../data/sheet";
+import { compareDateStrings, resolveEntryLabels } from "../../data/sheet";
 import type {
   Account,
   EntryType,
@@ -10,14 +10,14 @@ import type {
   MatchRule,
   MerchantHint,
   Settings,
-} from "../data/types";
-import { useLang, useT } from "../i18n";
-import { bcp47, type Lang } from "../i18n/locale";
-import { formatBalance, formatShortDate } from "../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
-import { CategoryIconGlyph, ColumnIcon } from "./icons";
-import { Modal } from "./Modal";
-import { ModalSearchBar } from "./ModalSearchBar";
+} from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import { bcp47, type Lang } from "../../i18n/locale";
+import { formatBalance, formatShortDate } from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { CategoryIconGlyph, ColumnIcon } from "../icons";
+import { Modal } from "../Modal";
+import { ModalSearchBar } from "../ModalSearchBar";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
@@ -224,7 +224,7 @@ export function HistoryModal({
           <table className="w-full border-collapse text-sm">
             {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
                 where scrolled rows would otherwise bleed through above the
-                sticky band. Mirrors the `.sheet-table > thead` trick. */}
+                sticky band. Mirrors the `.budget-table > thead` trick. */}
             <thead
               className="sticky z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted"
               style={{ top: "-1px" }}
@@ -309,7 +309,7 @@ export function HistoryModal({
                           `pt-2.5 pb-1.5` padding; `z-[9]` sits one notch
                           below the thead so the two bands paint cleanly
                           when they overlap. Mirrors the same pattern
-                          used in SheetViewerModal. */}
+                          used in BudgetViewerModal. */}
                       <td
                         colSpan={colSpan}
                         className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"

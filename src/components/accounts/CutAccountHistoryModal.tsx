@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Scissors } from "lucide-react";
 
-import type { Account, HistoryEntry, Transaction } from "../data/types";
-import { todayIso } from "../utils/date";
-import { useT } from "../i18n";
-import { Button } from "./form";
-import { Modal } from "./Modal";
+import type { Account, HistoryEntry, Transaction } from "../../data/types";
+import { todayIso } from "../../utils/date";
+import { useT } from "../../i18n";
+import { Button } from "../form";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

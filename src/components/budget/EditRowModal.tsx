@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { findColumnByType } from "../data/sheet";
-import type { Category, Column, EntryType, Row, Settings } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
-import { useT } from "../i18n";
-import { formatAmountForInput, parseAmount } from "../utils/format";
+import { findColumnByType } from "../../data/sheet";
+import type {
+  Category,
+  Column,
+  EntryType,
+  Row,
+  Settings,
+} from "../../data/types";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useT } from "../../i18n";
+import { formatAmountForInput, parseAmount } from "../../utils/format";
 import {
   Checkbox,
   Button,
@@ -13,9 +19,9 @@ import {
   Radio,
   RadioGroup,
   SignedAmountInput,
-} from "./form";
-import { Modal } from "./Modal";
-import { TypePicker } from "./TypePicker";
+} from "../form";
+import { Modal } from "../Modal";
+import { TypePicker } from "../TypePicker";
 
 // Generic editor for a single budget row. Opened by long-pressing a row
 // or pressing the pen action button. Edits date, description, amount,

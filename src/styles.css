@@ -644,7 +644,7 @@ body {
      inside the table wrapper. z-index sits above the amount cell's
      sign button (z-10) so the negative sign in a scrolled-past row
      doesn't bleed through the header. */
-  .sheet-table > thead {
+  .budget-table > thead {
     position: sticky;
     top: calc(var(--app-header-h) + var(--month-header-h) - 1px);
     z-index: 15;
@@ -765,12 +765,12 @@ body {
      this with `auto` so editable inputs still allow text selection. */
   .add-row-button,
   .sheet-tab,
-  .sheet-table > tbody > tr {
+  .budget-table > tbody > tr {
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }
-  .sheet-table > tbody > tr input,
-  .sheet-table > tbody > tr textarea {
+  .budget-table > tbody > tr input,
+  .budget-table > tbody > tr textarea {
     -webkit-user-select: auto;
     user-select: auto;
     -webkit-touch-callout: default;
@@ -808,20 +808,20 @@ body {
      viewport width > 720 (iPhone 12+: 844–932px) but a height of only
      375–430px, so width-only detection would fall through to the
      desktop layout. That's wrong on a touch device: the swipe-reveal
-     transforms below never apply (the gesture handler in SheetRow
+     transforms below never apply (the gesture handler in BudgetRow
      flips `is-swiped` but nothing visible happens), and hover-only
      action icons are unreachable. Tablets in landscape report
      heights well above 500px so they keep the desktop layout. */
   @media (max-width: 720px), (max-height: 500px) {
-    .sheet-table,
-    .sheet-table > thead,
-    .sheet-table > tbody,
-    .sheet-table > tfoot {
+    .budget-table,
+    .budget-table > thead,
+    .budget-table > tbody,
+    .budget-table > tfoot {
       display: block;
       width: 100%;
     }
-    .sheet-table > thead > tr,
-    .sheet-table > tbody > tr {
+    .budget-table > thead > tr,
+    .budget-table > tbody > tr {
       display: grid;
       /* Amount and balance widths are driven by --amount-col-ch /
          --balance-col-ch, set per-sheet from the longest formatted value
@@ -852,8 +852,8 @@ body {
     }
     /* In select mode, prepend a 30px checkbox column. The grid takes one
        more leading track so the rest of the layout doesn't reflow. */
-    .sheet-table.is-selecting > thead > tr,
-    .sheet-table.is-selecting > tbody > tr {
+    .budget-table.is-selecting > thead > tr,
+    .budget-table.is-selecting > tbody > tr {
       grid-template-columns:
         30px 40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
@@ -866,24 +866,24 @@ body {
         40px;
     }
     /* Highlight the row in select mode and tint the selected ones. */
-    .sheet-table > tbody > tr.is-selecting-row {
+    .budget-table > tbody > tr.is-selecting-row {
       cursor: pointer;
     }
-    .sheet-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
+    .budget-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
       pointer-events: none;
     }
-    .sheet-table
+    .budget-table
       > tbody
       > tr.is-selecting-row.is-selected
       > td:not(.action-cell) {
       background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     }
-    .sheet-table > tfoot > tr {
+    .budget-table > tfoot > tr {
       display: block;
       width: 100%;
     }
-    .sheet-table th,
-    .sheet-table td {
+    .budget-table th,
+    .budget-table td {
       display: flex;
       /* `align-items: center` keeps each cell's content vertically
          centered when a sibling cell forces the row taller (the
@@ -898,20 +898,20 @@ body {
       align-items: center;
       max-width: none;
     }
-    .sheet-table th > *,
-    .sheet-table td > * {
+    .budget-table th > *,
+    .budget-table td > * {
       width: 100%;
     }
 
     /* Row swipe: shift content left, slide action cell in from the right */
-    .sheet-table > tbody > tr > td {
+    .budget-table > tbody > tr > td {
       transition: transform 200ms ease;
     }
-    .sheet-table > tbody > tr.is-swiped > td:not(.action-cell) {
+    .budget-table > tbody > tr.is-swiped > td:not(.action-cell) {
       transform: translateX(-128px);
     }
-    .sheet-table > thead > tr > .action-cell,
-    .sheet-table > tbody > tr > .action-cell {
+    .budget-table > thead > tr > .action-cell,
+    .budget-table > tbody > tr > .action-cell {
       position: absolute;
       top: 0;
       right: 0;
@@ -933,7 +933,7 @@ body {
       justify-content: center;
       padding: 0;
     }
-    .sheet-table > tbody > tr.is-swiped > .action-cell {
+    .budget-table > tbody > tr.is-swiped > .action-cell {
       transform: translateX(0);
     }
     /* Split the revealed area into equal-width action buttons so the
@@ -943,21 +943,21 @@ body {
        than another destructive action. The Transaction button (shown
        only on synthesized transaction rows) inherits the row's
        transparent default and reads as the muted middle option. */
-    .sheet-table > tbody > tr > .action-cell .action-btn-pen {
+    .budget-table > tbody > tr > .action-cell .action-btn-pen {
       background: var(--meta);
       color: var(--surface);
     }
-    .sheet-table > tbody > tr > .action-cell .action-btn-delete {
+    .budget-table > tbody > tr > .action-cell .action-btn-delete {
       background: var(--danger);
       color: white;
     }
-    .sheet-table > tbody > tr > .action-cell .action-btn-more {
+    .budget-table > tbody > tr > .action-cell .action-btn-more {
       background: var(--surface-2);
       color: var(--fg-bright);
     }
 
     /* Done state tint applies on every cell so the entire row reads green */
-    .sheet-table
+    .budget-table
       > tbody
       > tr.is-completed:not(.is-swiped)
       > td:not(.action-cell) {
@@ -970,16 +970,16 @@ body {
      skips the absolutely-positioned action-cell) isn't overridden by
      this `> td` selector when both media queries match. */
   @media (min-width: 720px) and (min-height: 501px) {
-    .sheet-table > tbody > tr.is-completed > td {
+    .budget-table > tbody > tr.is-completed > td {
       background: color-mix(in srgb, var(--success) 10%, var(--surface));
     }
-    .sheet-table > tbody > tr.is-selecting-row {
+    .budget-table > tbody > tr.is-selecting-row {
       cursor: pointer;
     }
-    .sheet-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
+    .budget-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
       pointer-events: none;
     }
-    .sheet-table > tbody > tr.is-selecting-row.is-selected > td {
+    .budget-table > tbody > tr.is-selecting-row.is-selected > td {
       background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     }
   }
@@ -988,19 +988,19 @@ body {
      Softer tone + a thin left stripe so the user can tell at a glance
      these rows came from behind the ↔ icon and aren't part of the
      normal visible stream. */
-  .sheet-table > tbody > tr.is-revealed-transfer > td {
+  .budget-table > tbody > tr.is-revealed-transfer > td {
     background: color-mix(in srgb, var(--muted) 10%, var(--surface));
     color: var(--muted);
     font-style: italic;
   }
-  .sheet-table > tbody > tr.is-revealed-transfer > td:first-child {
+  .budget-table > tbody > tr.is-revealed-transfer > td:first-child {
     box-shadow: inset 2px 0 0 0 var(--accent);
   }
 
   /* Accounts table — mirrors the budget sheet's swipe affordance for
      the per-account action strip. Desktop keeps the inline action
      strip so the icons stay discoverable; mobile converts the table
-     to a block / per-row grid (same approach as `.sheet-table`) so
+     to a block / per-row grid (same approach as `.budget-table`) so
      `position: relative` on `<tr>` establishes a containing block
      the absolutely-positioned action cell can anchor to. Without the
      grid conversion the browser keeps the rows as `display: table-row`
@@ -1105,10 +1105,10 @@ body {
    via `.hidden` (no media query needed) so this rule doesn't need
    to cover that case. */
 @media (max-height: 500px) {
-  .sheet-table .column-header-label {
+  .budget-table .column-header-label {
     display: none;
   }
-  .sheet-table .column-header-cell {
+  .budget-table .column-header-cell {
     justify-content: center;
     gap: 0.375rem;
   }
@@ -1122,11 +1122,11 @@ body {
      spans are kept as `inline-flex` to match the type-cell icon
      wrappers (the date span is text-only — `inline-flex` is harmless
      here). */
-  .sheet-table .md\:hidden {
+  .budget-table .md\:hidden {
     display: inline-flex;
   }
-  .sheet-table .hidden.md\:inline,
-  .sheet-table .hidden.md\:inline-flex {
+  .budget-table .hidden.md\:inline,
+  .budget-table .hidden.md\:inline-flex {
     display: none;
   }
   /* Accounts table: drop the bank column on landscape phones so the
@@ -1199,7 +1199,7 @@ body {
 }
 
 /* One-shot highlight applied to a sheet row after the transaction-
-   search modal navigates to it. The attribute is added by SheetView's
+   search modal navigates to it. The attribute is added by BudgetPage's
    scroll-to-row effect and removed ~1500ms later, so the same row can
    pulse again on a future pick. Cells inside the row participate via
    `[data-row-pulse] > td` so the highlight covers the full row width
@@ -1311,7 +1311,7 @@ body {
        same trick `[data-modal-shell="fullscreen"]`'s footer uses.
        Scoped to `[data-bottom-bar]` (not the broader
        `[data-floating-chrome]`) so sibling floating chrome like
-       the SheetView "Today" pill — which carries its own
+       the BudgetPage "Today" pill — which carries its own
        `top: …` / `bottom: …` Tailwind class because it isn't
        always bottom-anchored — keeps its own positioning instead
        of being forced to `bottom: 0` underneath this bar.

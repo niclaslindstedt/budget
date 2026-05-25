@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, Move } from "lucide-react";
 
-import type { Row } from "../data/types";
-import { useLang, useT } from "../i18n";
-import { bcp47, type Lang } from "../i18n/locale";
-import { Button } from "./form";
-import { Modal } from "./Modal";
+import type { Row } from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import { bcp47, type Lang } from "../../i18n/locale";
+import { Button } from "../form";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

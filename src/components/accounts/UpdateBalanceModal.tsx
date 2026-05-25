@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calculator } from "lucide-react";
 
-import type { Account, Settings } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
-import { useT } from "../i18n";
+import type { Account, Settings } from "../../data/types";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useT } from "../../i18n";
 import {
   formatAmountForInput,
   formatBalance,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
-} from "../utils/format";
-import { Modal } from "./Modal";
+} from "../../utils/format";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

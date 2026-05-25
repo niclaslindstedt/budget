@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sigma } from "lucide-react";
 
-import { formulaToStored, parseFormula } from "../data/formula";
-import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, EntryType, Settings, Sheet } from "../data/types";
-import { useT } from "../i18n";
-import { normalizeAmountInput, parseAmount } from "../utils/format";
-import { Button, ClearableTextInput, SignedAmountInput } from "./form";
+import { formulaToStored, parseFormula } from "../../data/formula";
+import type { RecurrenceRule } from "../../data/recurrence";
+import type { Category, EntryType, Settings, Sheet } from "../../data/types";
+import { useT } from "../../i18n";
+import { normalizeAmountInput, parseAmount } from "../../utils/format";
+import { Button, ClearableTextInput, SignedAmountInput } from "../form";
 import { FormulaHelpButton } from "./FormulaHelpButton";
 import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
 import { FormulaVariableHelper } from "./FormulaVariableHelper";
-import { Modal } from "./Modal";
+import { Modal } from "../Modal";
 import { RecurrenceForm } from "./RecurrenceForm";
-import { TypePicker } from "./TypePicker";
+import { TypePicker } from "../TypePicker";
 
 type Props = {
   open: boolean;
@@ -54,11 +54,11 @@ export type ComplexEntrySeed = {
   // Signed: negative seeds the sign toggle as "−"; positive as "+".
   amount: number;
   typeId: string | null;
-  rule: import("../data/recurrence").RecurrenceRule | null;
+  rule: import("../../data/recurrence").RecurrenceRule | null;
 };
 
-export type { ComplexEntryDraft } from "../data/action-payloads";
-import type { ComplexEntryDraft } from "../data/action-payloads";
+export type { ComplexEntryDraft } from "../../data/action-payloads";
+import type { ComplexEntryDraft } from "../../data/action-payloads";
 
 export function ComplexEntryModal({
   open,

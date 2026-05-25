@@ -1,10 +1,10 @@
 import { memo, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
-import { findColumnByType, isRowSavable } from "../data/sheet";
-import { readIsStandalone } from "../hooks/useIsStandalone";
-import { isInSheetSwipeEdgeBand } from "../hooks/useSheetSwipe";
-import { useLang, useT } from "../i18n";
+import { findColumnByType, isRowSavable } from "../../data/sheet";
+import { readIsStandalone } from "../../hooks/useIsStandalone";
+import { isInSheetSwipeEdgeBand } from "../../hooks/useSheetSwipe";
+import { useLang, useT } from "../../i18n";
 import type {
   Category,
   CellValue,
@@ -12,11 +12,11 @@ import type {
   EntryType,
   Row,
   Settings,
-} from "../data/types";
-import { formatShortDate } from "../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
-import { useBlocksSheet } from "./useBlocksSheet";
-import { Cell } from "./Cell";
+} from "../../data/types";
+import { formatShortDate } from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { useClaimActiveRow } from "../useClaimActiveRow";
+import { BudgetCell } from "./BudgetCell";
 import { RowActionsMenu } from "./RowActionsMenu";
 
 type Props = {
@@ -97,7 +97,7 @@ const SWIPE_THRESHOLD = 40;
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
 
-function SheetRowImpl({
+function BudgetRowImpl({
   row,
   columns,
   balances,
@@ -150,7 +150,7 @@ function SheetRowImpl({
   // A swiped row exposes destructive action buttons; mark it active so
   // a tap outside only dismisses the swipe instead of also firing the
   // button that was tapped.
-  useBlocksSheet(row.id, swiped, () => setSwiped(false));
+  useClaimActiveRow(row.id, swiped, () => setSwiped(false));
 
   const completedCol = findColumnByType(columns, "completed");
   const isCompleted =
@@ -166,7 +166,7 @@ function SheetRowImpl({
   const transferEnabled =
     canTransfer && (isTransaction || isRowSavable(row, columns));
   // Direction for a synthesized transaction row: negative amount means
-  // money flows OUT of this budget's account. The Cell renderer uses
+  // money flows OUT of this budget's account. The BudgetCell renderer uses
   // this to pick the right arrow glyph for the description cell.
   const amountCol = findColumnByType(columns, "amount");
   const amountValue =
@@ -183,7 +183,7 @@ function SheetRowImpl({
         ? "negative"
         : "any";
 
-  // Expose the row's ISO date so SheetView's scroll-to-today can target
+  // Expose the row's ISO date so BudgetPage's scroll-to-today can target
   // it directly. Skipped when the date cell is empty or non-string.
   const dateCol = findColumnByType(columns, "date");
   const isoDate =
@@ -411,7 +411,7 @@ function SheetRowImpl({
         </td>
       )}
       {columns.map((col) => (
-        <Cell
+        <BudgetCell
           key={col.id}
           rowId={row.id}
           column={col}
@@ -539,4 +539,4 @@ function SheetRowImpl({
 // Memoized so a state change on one row (cell focus, popover open,
 // selection toggle) doesn't re-render every other row in the sheet —
 // see the matching `memo` on `Cell` for the broader rationale.
-export const SheetRow = memo(SheetRowImpl);
+export const BudgetRow = memo(BudgetRowImpl);

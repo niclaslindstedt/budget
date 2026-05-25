@@ -1,19 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { unlock } from "../data/achievements";
-import { findColumnByType } from "../data/sheet";
-import { nextOccurrenceWithSameDom } from "../data/recurrence";
-import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Column, EntryType, Row, Settings } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
-import { useT } from "../i18n";
+import { unlock } from "../../data/achievements";
+import { findColumnByType } from "../../data/sheet";
+import { nextOccurrenceWithSameDom } from "../../data/recurrence";
+import type { RecurrenceRule } from "../../data/recurrence";
+import type {
+  Category,
+  Column,
+  EntryType,
+  Row,
+  Settings,
+} from "../../data/types";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useT } from "../../i18n";
 import {
   formatAmount,
   formatAmountForInput,
   parseAmount,
-} from "../utils/format";
-import { Modal } from "./Modal";
+} from "../../utils/format";
+import { Modal } from "../Modal";
 import {
   Button,
   Checkbox,
@@ -21,9 +27,9 @@ import {
   Radio,
   RadioGroup,
   SignedAmountInput,
-} from "./form";
+} from "../form";
 import { RecurrenceForm } from "./RecurrenceForm";
-import { TypePicker } from "./TypePicker";
+import { TypePicker } from "../TypePicker";
 
 type Props = {
   open: boolean;
@@ -110,8 +116,8 @@ export type HistoryPromotion = {
   excludedHistoryEntryIds: readonly string[];
 };
 
-export type { EditPatch, EditScope } from "../data/action-payloads";
-import type { EditPatch, EditScope } from "../data/action-payloads";
+export type { EditPatch, EditScope } from "../../data/action-payloads";
+import type { EditPatch, EditScope } from "../../data/action-payloads";
 
 export function EditEntryModal({
   open,

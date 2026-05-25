@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { Scale } from "lucide-react";
 
-import { findColumnByType } from "../data/sheet";
-import { expandToSeries, inferSeriesRule } from "../data/reconciliation";
-import { newId } from "../data/sheet";
-import { nextPaydayDate } from "../data/payday";
+import { findColumnByType } from "../../data/sheet";
+import { expandToSeries, inferSeriesRule } from "../../data/reconciliation";
+import { newId } from "../../data/sheet";
+import { nextPaydayDate } from "../../data/payday";
 import type {
   HistoryEntry,
   Row,
   SeriesMatchRule,
   Settings,
   UserData,
-} from "../data/types";
-import type { MatchCandidate, OrphanRow } from "../data/reconciliation";
-import { useT } from "../i18n";
-import { formatAmount } from "../utils/format";
-import { Modal } from "./Modal";
+} from "../../data/types";
+import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
+import { useT } from "../../i18n";
+import { formatAmount } from "../../utils/format";
+import { Modal } from "../Modal";
 
 type OrphanDecision =
   | { action: "keep" }

@@ -5,12 +5,12 @@ import {
   makeBankFile,
   type ParsedBankFile,
   parseBankFile,
-} from "../storage/bank-parsers";
-import type { Account, HistoryEntry, Settings } from "../data/types";
-import { useLang, useT } from "../i18n";
-import { historyEntryId } from "../storage/bank-parsers";
-import { formatDate, formatShortDate } from "../utils/format";
-import { Modal } from "./Modal";
+} from "../../storage/bank-parsers";
+import type { Account, HistoryEntry, Settings } from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import { historyEntryId } from "../../storage/bank-parsers";
+import { formatDate, formatShortDate } from "../../utils/format";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

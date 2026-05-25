@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { Repeat, X } from "lucide-react";
 
-import type { RecurringCandidate } from "../data/recurring-detection";
-import { detectRecurringCandidates } from "../data/recurring-detection";
-import { expandRecurrence, type RecurrenceRule } from "../data/recurrence";
-import { suggestTypeForDescription } from "../data/merchant-hints";
+import type { RecurringCandidate } from "../../data/recurring-detection";
+import { detectRecurringCandidates } from "../../data/recurring-detection";
+import { expandRecurrence, type RecurrenceRule } from "../../data/recurrence";
+import { suggestTypeForDescription } from "../../data/merchant-hints";
 import type {
   EntryType,
   HistoryEntry,
   MerchantHint,
   Settings,
-} from "../data/types";
-import { type TFunction, useLang, useT } from "../i18n";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { Modal } from "./Modal";
-import { TypeChip } from "./TypePicker";
-import { formatDate, formatNumber, withCurrency } from "../utils/format";
+} from "../../data/types";
+import { type TFunction, useLang, useT } from "../../i18n";
+import { ConfirmDialog } from "../ConfirmDialog";
+import { Modal } from "../Modal";
+import { TypeChip } from "../TypePicker";
+import { formatDate, formatNumber, withCurrency } from "../../utils/format";
 
 type Props = {
   // History entries for the budget's account. The panel runs detection

@@ -7,28 +7,28 @@ import {
   useState,
 } from "react";
 
-import { AccountModal, type AccountDraft } from "./AccountModal";
+import { AccountModal, type AccountDraft } from "./accounts/AccountModal";
 import { ActionHistoryModal } from "./ActionHistoryModal";
-import { UpdateBalanceModal } from "./UpdateBalanceModal";
-import { AccountsSheetView } from "./AccountsSheetView";
-import { CutAccountHistoryModal } from "./CutAccountHistoryModal";
-import { ApplySeriesEditDialog } from "./ApplySeriesEditDialog";
-import { BudgetLoading } from "./BudgetLoading";
+import { UpdateBalanceModal } from "./accounts/UpdateBalanceModal";
+import { AccountsPage } from "./accounts/AccountsPage";
+import { CutAccountHistoryModal } from "./accounts/CutAccountHistoryModal";
+import { ApplySeriesEditDialog } from "./budget/ApplySeriesEditDialog";
+import { AppLoading } from "./AppLoading";
 import { ChangelogModal } from "./ChangelogModal";
 import { BottomBar } from "./BottomBar";
-import { BulkEditModal, type BulkPatch } from "./BulkEditModal";
+import { BulkEditModal, type BulkPatch } from "./budget/BulkEditModal";
 import { SheetModal, type SheetDraft } from "./SheetModal";
-import { TransactionSearchModal } from "./TransactionSearchModal";
+import { TransactionSearchModal } from "./budget/TransactionSearchModal";
 import {
   TransactionModal,
   type TransactionDraft,
   type TransactionModalRequest,
-} from "./TransactionModal";
+} from "./accounts/TransactionModal";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
   type ComplexEntrySeed,
-} from "./ComplexEntryModal";
+} from "./budget/ComplexEntryModal";
 import { ConfirmDialog, type ConfirmAction } from "./ConfirmDialog";
 import {
   EditEntryModal,
@@ -36,27 +36,30 @@ import {
   type EditScope,
   type HistoryMatchPreview,
   type HistoryPromotePrefill,
-} from "./EditEntryModal";
+} from "./budget/EditEntryModal";
 import {
   EditRowModal,
   type EditRowPatch,
   type EditRowScope,
-} from "./EditRowModal";
-import { SplitEntryModal, type SplitSubmission } from "./SplitEntryModal";
+} from "./budget/EditRowModal";
+import {
+  SplitEntryModal,
+  type SplitSubmission,
+} from "./budget/SplitEntryModal";
 import { DownloadModal, type DownloadConfig } from "./DownloadModal";
-import { HistoryEntryEditModal } from "./HistoryEntryEditModal";
-import { HistoryModal } from "./HistoryModal";
-import { ImportHistoryModal } from "./ImportHistoryModal";
+import { HistoryEntryEditModal } from "./accounts/HistoryEntryEditModal";
+import { HistoryModal } from "./accounts/HistoryModal";
+import { ImportHistoryModal } from "./accounts/ImportHistoryModal";
 import {
   ReconciliationModal,
   type ReconciliationApply,
-} from "./ReconciliationModal";
+} from "./accounts/ReconciliationModal";
 import {
   MatchRuleModal,
   type MatchRuleDraft,
   type MatchRuleSeed,
-} from "./MatchRuleModal";
-import { MoveCopyModal } from "./MoveCopyModal";
+} from "./budget/MatchRuleModal";
+import { MoveCopyModal } from "./budget/MoveCopyModal";
 import { AchievementUnlockModal } from "./AchievementUnlockModal";
 import { AchievementsModal } from "./AchievementsModal";
 import { HeaderMenu } from "./HeaderMenu";
@@ -64,7 +67,7 @@ import { HeaderStar } from "./HeaderStar";
 import { PullToRefreshIndicator } from "./PullToRefreshIndicator";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal, type SettingsTabId } from "./SettingsModal";
-import { SheetView } from "./SheetView";
+import { BudgetPage } from "./budget/BudgetPage";
 import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import { ReconnectCloudModal } from "./ReconnectCloudModal";
 import { SyncDetailsModal } from "./SyncDetailsModal";
@@ -122,8 +125,8 @@ import type {
   UserData,
 } from "../data/types";
 import { normaliseDescription } from "../data/description-normaliser";
-import { RecurringCandidatesPanel } from "./RecurringCandidatesPanel";
-import { TransferCollapseModal } from "./TransferCollapseModal";
+import { RecurringCandidatesPanel } from "./budget/RecurringCandidatesPanel";
+import { TransferCollapseModal } from "./accounts/TransferCollapseModal";
 import type { RecurringCandidate } from "../data/recurring-detection";
 import {
   detectTransferCandidates,
@@ -221,7 +224,7 @@ type RecurringPromoteContext = {
   sourceDescription: string;
 };
 
-type BudgetViewProps = {
+type AppShellProps = {
   adapter: StorageAdapter;
   user: StoredUser;
   // The active user's password — handed to the idle tracker so it can
@@ -241,7 +244,7 @@ type BudgetViewProps = {
   // adapter uses.
   getEncryptionPassword: () => string | null;
   // App owns this ref and reads it from the cloud-link conflict path
-  // when the user picks "replace with current budget"; BudgetView's
+  // when the user picks "replace with current budget"; AppShell's
   // job is to keep it pointed at whatever `useUserDataStorage` is
   // showing on screen so the upload reflects the latest in-memory edits.
   currentDataRef: React.MutableRefObject<UserData | null>;
@@ -277,7 +280,7 @@ function headerActionDescription(
   return t(`settings.headerAction.${action.kind}`);
 }
 
-export function BudgetView({
+export function AppShell({
   adapter,
   user,
   password,
@@ -307,7 +310,7 @@ export function BudgetView({
   onSelectBrowser,
   onSetEncryption,
   onSetCloudOfflineMode,
-}: BudgetViewProps) {
+}: AppShellProps) {
   const t = useT();
   const toast = useToast();
   const {
@@ -424,9 +427,9 @@ export function BudgetView({
   // One-shot request from the search modal: "scroll to this row,
   // pulse it briefly". The tick bumps on every pick so the effect
   // re-fires even when the user picks the same row twice. `null` =
-  // idle. SheetView reads it via prop and ignores requests for other
+  // idle. BudgetPage reads it via prop and ignores requests for other
   // sheets (the parent dispatches `selectSheet` first; the new
-  // SheetView mounts with the request already set).
+  // BudgetPage mounts with the request already set).
   const [scrollToRowRequest, setScrollToRowRequest] = useState<{
     sheetId: string;
     rowId: string;
@@ -638,7 +641,7 @@ export function BudgetView({
   // The active sheet's first AccountBudget block. For sheets of type
   // "budget" this is what the rest of the view renders against. For
   // "accounts" sheets there's no budget item — `activeBudget` is null
-  // and we render `AccountsSheetView` in place of `SheetView`. The
+  // and we render `AccountsPage` in place of `BudgetPage`. The
   // budget-only callbacks below fall back to a stub when null so the
   // type checker stays happy; they're never invoked while an accounts
   // sheet is active because the budget UI isn't on screen.
@@ -1261,7 +1264,7 @@ export function BudgetView({
       return;
     }
     if (action.kind === "currentMonth") {
-      // Look up the month-group wrapper SheetView stamps with
+      // Look up the month-group wrapper BudgetPage stamps with
       // `data-month-key`. All visible months are always rendered, so
       // the lookup either finds an element to scroll to or — when
       // the active sheet has no month layout (accounts page) or the
@@ -1580,7 +1583,7 @@ export function BudgetView({
     ];
   }, [deleteSheetPrompt, dispatch, t, toast]);
 
-  // Account / transaction modal handlers. Kept on the BudgetView so
+  // Account / transaction modal handlers. Kept on the AppShell so
   // they share the same dispatch and Account state as the rest of the
   // workspace — the modals themselves stay pure presentational shells.
   const onOpenCreateAccount = useCallback(() => {
@@ -1643,7 +1646,7 @@ export function BudgetView({
       name: accountModal.account.name,
     });
   }, [accountModal]);
-  // Same flow used by AccountsSheetView's trash button — feed the
+  // Same flow used by AccountsPage's trash button — feed the
   // prompt directly so the swipe-delete doesn't need to detour through
   // the edit modal first.
   const onRequestDeleteAccount = useCallback(
@@ -2970,9 +2973,9 @@ export function BudgetView({
             className="h-full will-change-transform"
           >
             {status.kind === "loading" ? (
-              <BudgetLoading />
+              <AppLoading />
             ) : activeSheet.type === "accounts" ? (
-              <AccountsSheetView
+              <AccountsPage
                 sheet={activeSheet}
                 data={data}
                 settings={effectiveSettings}
@@ -3004,7 +3007,7 @@ export function BudgetView({
                   onDismiss={onDismissRecurringCandidate}
                   onDismissAll={onDismissAllRecurringCandidates}
                 />
-                <SheetView
+                <BudgetPage
                   sheet={activeSheet}
                   item={activeItem}
                   data={data}

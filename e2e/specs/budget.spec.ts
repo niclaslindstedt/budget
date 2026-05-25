@@ -5,7 +5,7 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // view. The specs below exercise the most common manipulations:
 // adding rows, editing a description, and persisting across a reload.
 
-test.describe("Budget sheet", () => {
+test.describe("Budget page", () => {
   test("renders the default sheet for a fresh guest", async ({ page }) => {
     await signInAsGuest(page);
 

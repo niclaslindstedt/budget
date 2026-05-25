@@ -1,7 +1,7 @@
 // Shape an AccountBudget plus its surrounding context (imported
 // history, cross-account transactions, opening balance) into a flat
 // row stream ready for CSV / XLSX export. The shape mirrors what the
-// user sees in `SheetView`, with the same merge of authored rows +
+// user sees in `BudgetPage`, with the same merge of authored rows +
 // transactions + history entries and the same running balance.
 
 import {
@@ -95,7 +95,7 @@ export function buildBudgetExportRows(
   const amountCol = findColumnByType(item.columns, "amount");
   if (!dateCol || !descCol || !amountCol) return [];
 
-  // Synthesize the same rows SheetView shows so the running balance and
+  // Synthesize the same rows BudgetPage shows so the running balance and
   // descriptions line up with what's on screen.
   const transactionRows: Row[] = item.accountId
     ? transactionsForAccount(transactions, item.accountId).map((tx) =>
@@ -120,7 +120,7 @@ export function buildBudgetExportRows(
     rows: [...item.rows, ...transactionRows, ...historyRows],
   };
 
-  // Mirror SheetView's silent balance-correction pinning so the
+  // Mirror BudgetPage's silent balance-correction pinning so the
   // exported running balance lines up with what's on screen — each
   // imported history entry's stored balance overrides the cumulative
   // amount sum at that row. Split entries pin at the LAST split row

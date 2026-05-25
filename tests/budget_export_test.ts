@@ -243,7 +243,7 @@ describe("exportRowsToTable", () => {
 
 // Sanity check that the export's running balance matches what
 // `computeBalances` produces on the same item — keeps both paths from
-// drifting when SheetView and the exporter both evolve.
+// drifting when BudgetPage and the exporter both evolve.
 describe("buildBudgetExportRows / computeBalances parity", () => {
   it("matches per-row balance against the canonical balance helper", () => {
     const item = buildItem("acct-1", [

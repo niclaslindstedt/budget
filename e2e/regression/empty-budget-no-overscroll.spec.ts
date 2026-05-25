@@ -3,7 +3,7 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // Regression: on iOS 26 Safari the floating Liquid Glass address bar
 // makes `dvh` resolve to the full layout viewport (including the chrome
 // footprint) while `svh` resolves to the chrome-excluded inner box. The
-// page-level `min-height: 100dvh` (and the BudgetView wrapper's
+// page-level `min-height: 100dvh` (and the AppShell wrapper's
 // `min-h-dvh`) therefore forced the body taller than what the user can
 // actually see — for an empty budget that band below the AddRow button
 // became a scrollable strip of empty page background. Fixed by switching
@@ -18,7 +18,7 @@ test.describe("Empty budget scroll", () => {
     page,
   }) => {
     await signInAsGuest(page);
-    // Wait a frame past the SheetView's auto-scroll-to-today rAF so the
+    // Wait a frame past the BudgetPage's auto-scroll-to-today rAF so the
     // measurement reflects the settled layout, not the pre-effect one.
     await page.waitForTimeout(200);
 

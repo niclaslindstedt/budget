@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 
-import { DEFAULT_RECURRENCE_MONTHS } from "../data/constants";
-import { useT } from "../i18n";
+import { DEFAULT_RECURRENCE_MONTHS } from "../../data/constants";
+import { useT } from "../../i18n";
 import {
   expandRecurrence,
   isIsoDate,
   type RecurrenceRule,
-} from "../data/recurrence";
+} from "../../data/recurrence";
 
 type Mode = "once" | "dates" | "everyNDays" | "monthly";
 

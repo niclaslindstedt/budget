@@ -4,7 +4,7 @@
 // touch this file. The remainder — cloud connect, encryption toggle,
 // JSON export, account create, etc. — fire from outside the reducer.
 // Those callers invoke `unlock(id)`, which queues the id here; the
-// watcher mounted in BudgetView subscribes, drains the queue on each
+// watcher mounted in AppShell subscribes, drains the queue on each
 // notification, and dispatches `recordAchievementUnlock` so the
 // usual reducer path persists them. The queue survives
 // across-component-tree dispatches but does NOT persist across page
@@ -13,7 +13,7 @@
 //
 // Why an in-memory bus instead of a context? Because callers like
 // `useStorageBackend` and `App.tsx` run before — and outside the
-// subtree of — BudgetView, where the dispatch lives. A bus
+// subtree of — AppShell, where the dispatch lives. A bus
 // decouples timing: anyone can unlock at any moment; the watcher
 // catches up when it's ready.
 

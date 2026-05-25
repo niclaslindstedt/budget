@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Merge } from "lucide-react";
 
-import type { TransferCandidate } from "../data/transfer-collapse";
-import { detectTransferCandidates } from "../data/transfer-collapse";
-import type { Account, HistoryEntry, Settings } from "../data/types";
-import { useLang, useT } from "../i18n";
-import { formatNumber, withCurrency } from "../utils/format";
-import { formatShortDate } from "../utils/format";
-import { Button } from "./form";
-import { Modal } from "./Modal";
+import type { TransferCandidate } from "../../data/transfer-collapse";
+import { detectTransferCandidates } from "../../data/transfer-collapse";
+import type { Account, HistoryEntry, Settings } from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import { formatNumber, withCurrency } from "../../utils/format";
+import { formatShortDate } from "../../utils/format";
+import { Button } from "../form";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

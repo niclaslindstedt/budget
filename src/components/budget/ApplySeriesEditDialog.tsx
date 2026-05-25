@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Repeat } from "lucide-react";
 
-import { useT } from "../i18n";
-import { Checkbox } from "./form";
-import { Modal } from "./Modal";
+import { useT } from "../../i18n";
+import { Checkbox } from "../form";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

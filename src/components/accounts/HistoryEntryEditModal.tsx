@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { useDesktopAutoFocus } from "../hooks";
-import { useLang, useT } from "../i18n";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useLang, useT } from "../../i18n";
 import type {
   Category,
   EntryType,
   HistoryEntry,
   Settings,
-} from "../data/types";
-import { formatBalance, formatShortDate } from "../utils/format";
-import { Button, ClearableTextInput } from "./form";
-import { Modal } from "./Modal";
-import { TypePicker } from "./TypePicker";
+} from "../../data/types";
+import { formatBalance, formatShortDate } from "../../utils/format";
+import { Button, ClearableTextInput } from "../form";
+import { Modal } from "../Modal";
+import { TypePicker } from "../TypePicker";
 
 // Per-entry edit modal opened by the pen button on a synthesized
 // history row. Edits the `userDescription` and `userTypeId` overrides

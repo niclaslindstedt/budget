@@ -1172,7 +1172,7 @@ function validateBoolRecord(raw: unknown): Record<string, boolean> {
 
 // Coerce any malformed / unknown shape back to the default. The
 // `sheet` variant keeps whatever id the user picked even when the
-// sheet has since been deleted — the click handler in BudgetView
+// sheet has since been deleted — the click handler in AppShell
 // falls back to "go to top" at runtime, which keeps re-creating the
 // same sheet id from a restore harmless.
 function validateHeaderAction(

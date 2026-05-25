@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import { Download, MoreHorizontal, Receipt, Scissors } from "lucide-react";
 
-import type { FloatingPlacement } from "../hooks";
-import { useT } from "../i18n";
-import { FloatingPanel } from "./FloatingPanel";
+import type { FloatingPlacement } from "../../hooks";
+import { useT } from "../../i18n";
+import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
   accountId: string;

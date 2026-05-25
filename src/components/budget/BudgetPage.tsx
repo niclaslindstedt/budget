@@ -23,10 +23,10 @@ import {
   sortMonthKeys,
   sortRowsByDate,
   type RowSortContext,
-} from "../data/sheet";
-import { coveredMonths } from "../data/coverage";
-import { resolveEffectiveAmounts } from "../data/formula-resolve";
-import { useT } from "../i18n";
+} from "../../data/sheet";
+import { coveredMonths } from "../../data/coverage";
+import { resolveEffectiveAmounts } from "../../data/formula-resolve";
+import { useT } from "../../i18n";
 import type {
   Account,
   AccountBudget,
@@ -41,12 +41,12 @@ import type {
   Sheet,
   Transaction,
   UserData,
-} from "../data/types";
-import { formatNumber, withCurrency } from "../utils/format";
-import { ActiveRowProvider } from "./ActiveRowProvider";
+} from "../../data/types";
+import { formatNumber, withCurrency } from "../../utils/format";
+import { ActiveRowProvider } from "../ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "./SheetTitleMenu";
-import { SheetViewerModal } from "./SheetViewerModal";
+import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import { BudgetViewerModal } from "./BudgetViewerModal";
 
 type Props = {
   sheet: Sheet;
@@ -99,7 +99,7 @@ type Props = {
   // picked twice in a row. `null` is the idle state. The view only
   // acts when `request.sheetId === sheet.id` so requests for other
   // sheets are ignored (the parent handles the sheet switch first;
-  // the new SheetView mounts and picks up the request via prop). `iso`
+  // the new BudgetPage mounts and picks up the request via prop). `iso`
   // is the target row's ISO date — used to expand `extraHistory` so the
   // target row is included in `visibleMonths` even when it sits older
   // than the default history window. Empty string for undated rows.
@@ -128,7 +128,7 @@ type Props = {
   onCopyRequest: (row: Row) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
   // Inline per-cell write for a synthesized history row. Routed by
-  // `SheetView` when the user edits the description or type cell on a
+  // `BudgetPage` when the user edits the description or type cell on a
   // history row — `onUpdateCell` would no-op on the underlying
   // `UserData.history` map, so the cell handler dispatches this
   // instead, with the active `accountId` already attached.
@@ -254,7 +254,7 @@ const FUTURE_PAGE_SIZE = 3;
 // reference across renders instead of a fresh `[]` each time.
 const EMPTY_ROWS: Row[] = [];
 
-export function SheetView({
+export function BudgetPage({
   sheet,
   item,
   types,
@@ -651,7 +651,7 @@ export function SheetView({
     // When the user prefers newest-first, flip the month list too so
     // the in-month row order and the month-stack order agree.
     // `sortMonthKeys` parks "undated" at the end, so reversing slides
-    // it to the top — matching `SheetViewerModal`'s long-standing
+    // it to the top — matching `BudgetViewerModal`'s long-standing
     // descending layout.
     return settings.transactionSortOrder === "newestFirst"
       ? sorted.reverse()
@@ -1006,14 +1006,14 @@ export function SheetView({
         <div className="flex flex-col gap-3 md:gap-6">
           {hasMoreHistory &&
             settings.transactionSortOrder === "oldestFirst" && (
-              <SheetSectionToggle
+              <BudgetMonthSectionToggle
                 label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
                 onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
               />
             )}
           {hasHiddenFuture &&
             settings.transactionSortOrder === "newestFirst" && (
-              <SheetSectionToggle
+              <BudgetMonthSectionToggle
                 label={t("sheet.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
                 onClick={onShowMoreFutureClick}
               />
@@ -1089,20 +1089,20 @@ export function SheetView({
           })}
           {hasHiddenFuture &&
             settings.transactionSortOrder === "oldestFirst" && (
-              <SheetSectionToggle
+              <BudgetMonthSectionToggle
                 label={t("sheet.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
                 onClick={onShowMoreFutureClick}
               />
             )}
           {hasMoreHistory &&
             settings.transactionSortOrder === "newestFirst" && (
-              <SheetSectionToggle
+              <BudgetMonthSectionToggle
                 label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
                 onClick={() => setExtraHistory((n) => n + HISTORY_PAGE_SIZE)}
               />
             )}
         </div>
-        <SheetViewerModal
+        <BudgetViewerModal
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
           sheet={sheet}
@@ -1123,7 +1123,7 @@ export function SheetView({
         //
         // Portalled to `document.body` so `position: fixed` resolves
         // against the layout viewport. The sheet-panel wrapper in
-        // BudgetView carries `will-change: transform` (for the
+        // AppShell carries `will-change: transform` (for the
         // swipe-between-sheets perf hint), and the CSS spec says any
         // element with `will-change` set to a property that creates a
         // stacking context — `transform` included — also creates a
@@ -1165,7 +1165,7 @@ export function SheetView({
 // "Show future months" affordances. Renders as a horizontal line
 // with a centred label so the row reads as a section break rather
 // than a button.
-function SheetSectionToggle({
+function BudgetMonthSectionToggle({
   label,
   onClick,
 }: {

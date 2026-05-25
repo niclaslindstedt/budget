@@ -879,7 +879,7 @@ export function useUserDataStorage<Action extends { type: string }>(
   // — same lastSnapshot / skipNextSave / hasLoadedRef bookkeeping so
   // the autosave effect doesn't immediately push the freshly-loaded
   // bytes back out. Skips the `setStatus({kind:"loading"})` flip the
-  // initial load does — that triggers the full-screen `BudgetLoading`
+  // initial load does — that triggers the full-screen `AppLoading`
   // splash, which is wrong for a manual refresh on top of an already-
   // populated app. The pull-to-refresh indicator owns its own
   // "refreshing…" pip instead.

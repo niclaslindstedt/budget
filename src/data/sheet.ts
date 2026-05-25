@@ -332,7 +332,7 @@ export function sortRowsByDate(
 // ordering (incomes first, largest category first, etc.) is left
 // untouched so the secondary sort `sortRowsByDate` applies still
 // reads the same way inside a given day. Lifted out of
-// `SheetViewerModal` so every display surface that wants a
+// `BudgetViewerModal` so every display surface that wants a
 // newest-first ledger can reuse the same helper without duplicating
 // the bucketing.
 export function reverseRowsByDay(rows: Row[], dateColumnId: string): Row[] {
@@ -548,11 +548,11 @@ export function transactionsForAccount(
 }
 
 // Synthesize a Row that represents one side of a transaction so the
-// existing MonthTable + SheetRow + Cell pipeline can render it without
+// existing MonthTable + BudgetRow + Cell pipeline can render it without
 // special-casing. The cells are keyed by the budget's column ids so the
 // row drops straight into the existing grid. Marker fields
 // (`transactionId`, `peerAccountId`, `peerAccountName`) flag the
-// synthesized origin — `Cell` / `SheetRow` read them to disable inline
+// synthesized origin — `Cell` / `BudgetRow` read them to disable inline
 // editing and swap the action buttons. These fields are runtime-only;
 // they're never written back to storage because synthesized rows live
 // outside `item.rows`. The `accountsById` map carries names so the cell
@@ -605,7 +605,7 @@ export function synthesizeTransactionRow(
 // Synthesize one or more Rows from an imported bank-statement entry
 // so the budget view can interleave them alongside user-authored
 // rows without special-casing. Marker field `historyEntryId` flags
-// the synthesized origin — `Cell` / `SheetRow` read it to disable
+// the synthesized origin — `Cell` / `BudgetRow` read it to disable
 // inline editing. Like `synthesizeTransactionRow`, the synthesized
 // rows never reach storage.
 //
@@ -723,11 +723,11 @@ export function isTransferRow(row: Row): boolean {
   return row.peerAccountId !== undefined || row.isTransfer === true;
 }
 
-// Build the full list of rows a `SheetView` would render for an
+// Build the full list of rows a `BudgetPage` would render for an
 // `AccountBudget` item: the user-authored rows plus synthesized
 // transaction rows and synthesized history rows. Centralised so the
 // search index sees exactly what the user sees — extracting this from
-// `SheetView` keeps the merge rules in one place and avoids drift if
+// `BudgetPage` keeps the merge rules in one place and avoids drift if
 // the synthesis logic changes later. Hidden history entries are
 // dropped pre-synthesis. Returns `item.rows` unchanged when the
 // budget has no account attached (no transactions or history to

@@ -1,7 +1,7 @@
 import { Fragment, memo, useLayoutEffect, useMemo, useRef } from "react";
 import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
 
-import { findColumnByType, isTransferRow } from "../data/sheet";
+import { findColumnByType, isTransferRow } from "../../data/sheet";
 import type {
   Category,
   CellValue,
@@ -9,15 +9,15 @@ import type {
   EntryType,
   Row,
   Settings,
-} from "../data/types";
-import { useNearViewport } from "../hooks";
-import { type TFunction, useLang, useT } from "../i18n";
-import { bcp47, type Lang } from "../i18n/locale";
-import { formatNumber, withCurrency } from "../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
+} from "../../data/types";
+import { useNearViewport } from "../../hooks";
+import { type TFunction, useLang, useT } from "../../i18n";
+import { bcp47, type Lang } from "../../i18n/locale";
+import { formatNumber, withCurrency } from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
-import { SheetRow } from "./SheetRow";
+import { BudgetRow } from "./BudgetRow";
 
 type Props = {
   monthKey: string;
@@ -51,14 +51,14 @@ type Props = {
   hideTransfers: boolean;
   // Anchor rows the user has expanded — their immediately preceding
   // hidden transfers render inline above the anchor. Lifted into
-  // SheetView so a future "collapse all on sheet switch" stays a
+  // BudgetPage so a future "collapse all on sheet switch" stays a
   // single source of truth; MonthTable just reads-and-renders.
   expandedTransferAnchors: ReadonlySet<string>;
   onToggleTransferAnchor: (rowId: string) => void;
   onToggleRowTransfer: (row: Row) => void;
   onToggleCollapsed: () => void;
   // Bypass the viewport-proximity gate so the row tree always renders.
-  // Used by SheetView when a scroll-to-row request targets this month —
+  // Used by BudgetPage when a scroll-to-row request targets this month —
   // the row only exists in the DOM (and so can be `querySelector`ed for
   // scrollIntoView) when it's actually been rendered. Defaults to false:
   // a far-from-viewport month with no forceMount renders only its
@@ -179,7 +179,7 @@ function MonthTableImpl({
   const nearViewport = useNearViewport(sectionRef, MONTH_VIEWPORT_MARGIN_PX);
   // When the hide-transfers setting is on, partition the month's
   // chronologically-sorted rows into the visible set (rendered as
-  // normal SheetRows) and a map from each visible anchor to the
+  // normal BudgetRows) and a map from each visible anchor to the
   // contiguous run of hidden transfer rows immediately preceding it.
   // The map is what powers the balance-cell ↔ icon: a non-empty run
   // means at least one hidden transfer contributed to the anchor's
@@ -328,7 +328,7 @@ function MonthTableImpl({
       <div
         hidden={collapsed}
         className={`overflow-clip rounded border border-line bg-surface ${
-          selectMode ? "sheet-table-selecting" : ""
+          selectMode ? "budget-table-selecting" : ""
         }`}
         style={
           {
@@ -349,7 +349,7 @@ function MonthTableImpl({
         }
       >
         <table
-          className={`sheet-table w-full border-collapse text-sm md:text-[13px] ${
+          className={`budget-table w-full border-collapse text-sm md:text-[13px] ${
             selectMode ? "is-selecting" : ""
           }`}
         >
@@ -466,7 +466,7 @@ function MonthTableImpl({
                     {expanded &&
                       hiddenRun !== undefined &&
                       hiddenRun.map((hidden) => (
-                        <SheetRow
+                        <BudgetRow
                           key={hidden.id}
                           row={hidden}
                           columns={columns}
@@ -494,7 +494,7 @@ function MonthTableImpl({
                           onToggleSelect={onToggleSelect}
                         />
                       ))}
-                    <SheetRow
+                    <BudgetRow
                       row={row}
                       columns={columns}
                       balances={balances}
@@ -550,9 +550,9 @@ function MonthTableImpl({
   );
 }
 
-// Memoized so SheetView re-renders (driven by other months, by typing
+// Memoized so BudgetPage re-renders (driven by other months, by typing
 // in a single cell, or by a state flip elsewhere in the app) don't
-// rebuild every month's row tree. Shallow compare suffices — SheetView
+// rebuild every month's row tree. Shallow compare suffices — BudgetPage
 // memoizes the per-month `rows` array (via `sortedMonthGroups`) and the
 // other props are stable references coming from the workspace data.
 export const MonthTable = memo(MonthTableImpl);

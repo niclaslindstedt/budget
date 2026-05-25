@@ -9,10 +9,10 @@ import {
   Tags,
 } from "lucide-react";
 
-import type { FloatingPlacement } from "../hooks";
-import { useT } from "../i18n";
-import type { Row } from "../data/types";
-import { FloatingPanel } from "./FloatingPanel";
+import type { FloatingPlacement } from "../../hooks";
+import { useT } from "../../i18n";
+import type { Row } from "../../data/types";
+import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
   row: Row;

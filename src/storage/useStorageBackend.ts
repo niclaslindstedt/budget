@@ -136,7 +136,7 @@ export type UseStorageBackendOptions = {
   // on every save / load; the hook reads it through the ref so silent
   // token refreshes don't have to rebuild the adapter `useMemo`.
   passwordRef: React.MutableRefObject<string | null>;
-  // Mirror of BudgetView's in-memory `UserData` so the OAuth-completion
+  // Mirror of AppShell's in-memory `UserData` so the OAuth-completion
   // and conflict-resolution paths can push the user's current budget
   // into a freshly-linked cloud backend.
   currentDataRef: React.MutableRefObject<UserData | null>;
@@ -356,7 +356,7 @@ export function useStorageBackend({
   // Build a raw adapter for the *source* backend so the OAuth-
   // completion path can load the user's current bytes without
   // depending on `currentDataRef` — which only reflects whatever
-  // BudgetView happens to have loaded by the time the redirect lands
+  // AppShell happens to have loaded by the time the redirect lands
   // (typically `freshUserData()` on a cold boot, since cloud loads
   // are async). Returns null only when the source is a cloud backend
   // and the token has gone missing.
@@ -429,7 +429,7 @@ export function useStorageBackend({
   // Before flipping the backend we probe both sides — the target
   // cloud (so the dialog knows whether it already holds a budget)
   // and the source backend (so we have authoritative bytes to push,
-  // independent of whether BudgetView has finished its async load
+  // independent of whether AppShell has finished its async load
   // into `currentDataRef`). The result is always parked in
   // `pendingCloudLink` so the user sees an explicit confirmation
   // dialog for the switch, even in the no-conflict cases — silently

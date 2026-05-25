@@ -1,7 +1,7 @@
 import { Minus, Plus } from "lucide-react";
 
-import type { Settings } from "../../data/types";
-import { formatNumber } from "../../utils/format";
+import type { Settings } from "../../../data/types";
+import { formatNumber } from "../../../utils/format";
 import { CELL_BASE } from "./constants";
 
 type Props = {

@@ -6,7 +6,7 @@ import { drain, subscribe } from "./bus";
 import { ACHIEVEMENT_BY_ID } from "./catalog";
 import { deriveUnlocks } from "./derive";
 
-// Mounted once inside BudgetView. Two responsibilities:
+// Mounted once inside AppShell. Two responsibilities:
 //
 // 1. After every state transition, run `deriveUnlocks(prev, next, …)`
 //    and dispatch `recordAchievementUnlock` for each id the predicate
@@ -17,7 +17,7 @@ import { deriveUnlocks } from "./derive";
 //
 // 2. Subscribe to the manual-unlock bus and drain queued ids on each
 //    notification, dispatching them the same way. Lets callers
-//    outside the BudgetView subtree (App.tsx auth handlers,
+//    outside the AppShell subtree (App.tsx auth handlers,
 //    useStorageBackend cloud connectors, anywhere) record an unlock
 //    by invoking `unlock(id)` — no prop drilling, no context.
 export function useAchievementWatcher(

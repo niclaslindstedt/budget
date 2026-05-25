@@ -12,7 +12,7 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // grid's height-based media query for the cell-content visibility too
 // (same pattern the column-header label already used at line 776).
 
-test.describe("Sheet cells in landscape", () => {
+test.describe("Budget cells in landscape", () => {
   // 844 × 390 mimics an iPhone 12+ held sideways: width > 720 (so
   // Tailwind's md:* would naively kick in) but height ≤ 500 (so the
   // grid layout flips to mobile-narrow tracks).

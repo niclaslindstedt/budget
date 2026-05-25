@@ -16,32 +16,32 @@ import {
   sortMonthKeys,
   sortRowsByDate,
   type RowSortContext,
-} from "../data/sheet";
+} from "../../data/sheet";
 import type {
   AccountBudget,
   EntryType,
   Row,
   Settings,
   Sheet,
-} from "../data/types";
-import { useLang, useT } from "../i18n";
-import { bcp47, type Lang } from "../i18n/locale";
+} from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import { bcp47, type Lang } from "../../i18n/locale";
 import {
   formatNumber,
   formatRunningBalance,
   formatShortDate,
   withCurrency,
-} from "../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
-import { CategoryIconGlyph, ColumnIcon } from "./icons";
-import { Modal } from "./Modal";
-import { ModalSearchBar } from "./ModalSearchBar";
+} from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { CategoryIconGlyph, ColumnIcon } from "../icons";
+import { Modal } from "../Modal";
+import { ModalSearchBar } from "../ModalSearchBar";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   sheet: Sheet;
-  // Decorated AccountBudget from SheetView — its `rows` already include
+  // Decorated AccountBudget from BudgetPage — its `rows` already include
   // synthesized transaction + history rows and formula-resolved amount
   // cells. The viewer just reads; it never writes.
   item: AccountBudget;
@@ -77,7 +77,7 @@ function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
 const EMPTY_ROWS: Row[] = [];
 
 // Read-only viewer for a single sheet. Renders the same month-grouped
-// data the editable SheetView shows — same rows (including synthesized
+// data the editable BudgetPage shows — same rows (including synthesized
 // transaction / history rows) and same running balances — but stripped
 // of every interactive affordance: no inline editing, no add buttons,
 // no column drag, no selection. Designed to be opened from the sheet
@@ -87,7 +87,7 @@ const EMPTY_ROWS: Row[] = [];
 // Every month renders up-front so the in-modal search filter sees the
 // entire history (matches HistoryModal). No interactive affordances
 // hang off the rows, so a years-deep ledger still renders fine.
-export function SheetViewerModal({
+export function BudgetViewerModal({
   open,
   onClose,
   sheet,
@@ -130,7 +130,7 @@ export function SheetViewerModal({
     return m;
   }, [types]);
 
-  // Mirror the sort context SheetView builds so multi-entry days agree
+  // Mirror the sort context BudgetPage builds so multi-entry days agree
   // between the editable and viewer surfaces.
   const sortContext = useMemo<RowSortContext | undefined>(() => {
     if (!descCol || !amountCol) return undefined;
@@ -251,7 +251,7 @@ export function SheetViewerModal({
     <Modal
       open={open}
       onClose={onClose}
-      labelledBy="sheet-viewer-modal-title"
+      labelledBy="budget-viewer-modal-title"
       size="max-w-6xl"
       fixedHeight
     >

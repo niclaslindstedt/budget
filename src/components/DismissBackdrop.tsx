@@ -82,8 +82,8 @@ export function DismissBackdrop({ onDismiss }: { onDismiss: () => void }) {
     // React portals bubble events through the *React* tree, not the
     // DOM tree — even though this backdrop sits in `document.body`,
     // its parent in React is whatever rendered the `DismissBackdrop`
-    // (an AmountCell inside a SheetRow, say). Without stopping
-    // propagation, the dismissing pointerdown reaches the SheetRow's
+    // (an AmountCell inside a BudgetRow, say). Without stopping
+    // propagation, the dismissing pointerdown reaches the BudgetRow's
     // own `onPointerDown` and starts its long-press timer; 450 ms
     // later the row opens its edit modal even though the tap was only
     // meant to close the active editor.

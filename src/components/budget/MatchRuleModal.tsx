@@ -1,27 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wand2 } from "lucide-react";
 
-import { compilePattern, ruleMatchesEntry } from "../data/match-rules";
-import { derivePatternFromDescription } from "../data/pattern-derive";
-import { useDesktopAutoFocus } from "../hooks";
-import { useLang, useT } from "../i18n";
-import { createLogger } from "../utils/logger";
+import { compilePattern, ruleMatchesEntry } from "../../data/match-rules";
+import { derivePatternFromDescription } from "../../data/pattern-derive";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useLang, useT } from "../../i18n";
+import { createLogger } from "../../utils/logger";
 import type {
   Category,
   EntryType,
   HistoryEntry,
   MatchRule,
   Settings,
-} from "../data/types";
+} from "../../data/types";
 import {
   formatAmountForInput,
   formatBalance,
   formatShortDate,
   parseAmount,
-} from "../utils/format";
-import { Button, ClearableTextInput, SignedAmountInput } from "./form";
-import { Modal } from "./Modal";
-import { TypePicker } from "./TypePicker";
+} from "../../utils/format";
+import { Button, ClearableTextInput, SignedAmountInput } from "../form";
+import { Modal } from "../Modal";
+import { TypePicker } from "../TypePicker";
 
 const log = createLogger("match-rules");
 

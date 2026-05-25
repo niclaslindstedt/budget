@@ -16,26 +16,26 @@ import type {
   Column,
   EntryType,
   Settings,
-} from "../data/types";
+} from "../../data/types";
 import {
   formatAmountForInput,
   formatNumber,
   normalizeAmountInput,
   parseAmount,
   withCurrency,
-} from "../utils/format";
-import type { FloatingPlacement } from "../hooks";
-import { plural, useT } from "../i18n";
-import { displayTypeName } from "../i18n/preset-names";
-import { useBlocksSheet } from "./useBlocksSheet";
-import { DatePickerModal } from "./DatePickerModal";
-import { DismissBackdrop } from "./DismissBackdrop";
-import { FloatingPanel } from "./FloatingPanel";
-import { TypePicker } from "./TypePicker";
+} from "../../utils/format";
+import type { FloatingPlacement } from "../../hooks";
+import { plural, useT } from "../../i18n";
+import { displayTypeName } from "../../i18n/preset-names";
+import { useClaimActiveRow } from "../useClaimActiveRow";
+import { DatePickerModal } from "../DatePickerModal";
+import { DismissBackdrop } from "../DismissBackdrop";
+import { FloatingPanel } from "../FloatingPanel";
+import { TypePicker } from "../TypePicker";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
 import { CELL_BASE, INPUT_BASE } from "./cells/constants";
 import { DateCellDisplay } from "./cells/DateCellDisplay";
-import { CategoryIconGlyph } from "./icons";
+import { CategoryIconGlyph } from "../icons";
 
 type Props = {
   rowId: string;
@@ -70,7 +70,7 @@ type Props = {
   // lives in `data.history`, not the budget's rows) and renders the
   // description cell as plain readonly text — no transfer arrow,
   // no peer name. The action column hides edit/delete buttons too,
-  // gated upstream in SheetRow.
+  // gated upstream in BudgetRow.
   isHistory?: boolean;
   // True when the row carries an `amountFormula`. The amount cell
   // becomes read-only (the value comes from the formula resolver) and
@@ -86,14 +86,14 @@ type Props = {
   hiddenTransferCount?: number;
   transferExpanded?: boolean;
   onToggleTransferAnchor?: () => void;
-  // Sign of the row's amount, derived once by SheetRow from the
+  // Sign of the row's amount, derived once by BudgetRow from the
   // amount cell. Only consulted by the `type` column's TypePicker
   // to filter income-only / expense-only types out of the list.
   amountSign?: "positive" | "negative" | "any";
   // Row context surfaced inside the `type` column's TypePicker
   // dropdown header — the dropdown physically overlaps the date and
   // description columns on mobile, so the picker re-displays them at
-  // the top of the panel. Pre-formatted upstream by SheetRow (date
+  // the top of the panel. Pre-formatted upstream by BudgetRow (date
   // through the user's short-date format, month-tint colour through
   // `monthColorVar`). Only the `type` column reads them; other
   // columns receive undefined and pass shallow-compare cleanly.
@@ -101,7 +101,7 @@ type Props = {
   rowDateColor?: string;
   rowDescription?: string;
   // Parent-level update / commit handlers. Carry rowId + columnId so
-  // SheetRow can pass the same reference-stable function to every cell
+  // BudgetRow can pass the same reference-stable function to every cell
   // in the row — React.memo's shallow compare then skips re-rendering a
   // cell whose value didn't change. Cell wraps these into the
   // (value)-only closures its sub-components expect.
@@ -330,12 +330,12 @@ function CellImpl({
 
 // Memoized so that a focus / popover-open in one cell — which fires a
 // state change at the row's parent — doesn't ripple through every cell
-// in every row. Shallow compare is enough: SheetRow passes the parent
+// in every row. Shallow compare is enough: BudgetRow passes the parent
 // `onUpdateCell` / `onCommitCell` straight through (stable refs), and
 // the other props are scalars or stable references derived from the row.
-export const Cell = memo(CellImpl);
+export const BudgetCell = memo(CellImpl);
 
-// Shared readonly balance cell. Three render paths in `Cell` (default,
+// Shared readonly balance cell. Three render paths in `BudgetCell` (default,
 // `isTransaction`, `isHistory`) all need the same display logic plus
 // the optional ↔ button that reveals hidden transfers behind this
 // balance step, so the JSX is factored out here. When
@@ -533,7 +533,7 @@ function AmountCell({
   // Snapshot the signed value at focus time so blur can decide whether
   // the edit actually changed anything before bubbling a commit signal.
   const focusValueRef = useRef<number | null>(externalNumber);
-  useBlocksSheet(rowId, focused, () => inputRef.current?.blur());
+  useClaimActiveRow(rowId, focused, () => inputRef.current?.blur());
 
   function handleFocus() {
     setFocused(true);
@@ -693,7 +693,7 @@ function DateCell({
   // calendar is open the AddRowButton greys itself out and a tap on it
   // (or anywhere else outside the modal) only dismisses, mirroring how
   // amount focus and the description popover behave.
-  useBlocksSheet(rowId, open, () => setOpen(false));
+  useClaimActiveRow(rowId, open, () => setOpen(false));
 
   return (
     <>
@@ -920,7 +920,7 @@ function DesktopDescriptionEditor({
   const [focused, setFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const focusValueRef = useRef<string>(value);
-  useBlocksSheet(rowId, focused, () => textareaRef.current?.blur());
+  useClaimActiveRow(rowId, focused, () => textareaRef.current?.blur());
 
   function handleFocus() {
     setFocused(true);

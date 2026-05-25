@@ -8,7 +8,7 @@ import {
 } from "../hooks";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 import { DismissBackdrop } from "./DismissBackdrop";
-import { useBlocksSheet } from "./useBlocksSheet";
+import { useClaimActiveRow } from "./useClaimActiveRow";
 
 type Props = {
   open: boolean;
@@ -53,7 +53,7 @@ export function FloatingPanel({
   const position = useFloatingPosition(triggerRef, open, placement);
 
   useEscapeKey(open, onClose);
-  useBlocksSheet(rowId, open, onClose);
+  useClaimActiveRow(rowId, open, onClose);
   // Lock body scroll while the panel is open. Without this, a touch
   // drag inside the panel chains to the page on iOS — most visibly on
   // the burger menu, whose short list never reaches its own scroll

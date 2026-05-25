@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 
-import type { FloatingPlacement } from "../hooks";
-import { useT } from "../i18n";
-import { FloatingPanel } from "./FloatingPanel";
+import type { FloatingPlacement } from "../../hooks";
+import { useT } from "../../i18n";
+import { FloatingPanel } from "../FloatingPanel";
 
 // Right-anchored so the popover hugs the trigger button, which sits
 // at the right edge of the formula input row. The min width keeps

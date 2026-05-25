@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Search, X } from "lucide-react";
 
-import type { SearchEntry, SearchMatch, SearchResult } from "../data/search";
-import { runSearch } from "../data/search";
-import type { CategoryIcon, Settings } from "../data/types";
-import { useLang, useT } from "../i18n";
-import { formatNumber, formatShortDate, withCurrency } from "../utils/format";
-import { CategoryIconGlyph } from "./icons";
-import { Modal } from "./Modal";
+import type { SearchEntry, SearchMatch, SearchResult } from "../../data/search";
+import { runSearch } from "../../data/search";
+import type { CategoryIcon, Settings } from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import {
+  formatNumber,
+  formatShortDate,
+  withCurrency,
+} from "../../utils/format";
+import { CategoryIconGlyph } from "../icons";
+import { Modal } from "../Modal";
 
 type Props = {
   open: boolean;

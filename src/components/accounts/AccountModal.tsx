@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2, Wallet } from "lucide-react";
 
-import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../data/constants";
-import type { Account, CategoryIcon } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
-import { useT } from "../i18n";
-import { ColorPalette } from "./ColorPalette";
-import { Button, ClearableTextInput } from "./form";
-import { GlyphPicker } from "./GlyphPicker";
-import { Modal } from "./Modal";
-import { CategoryIconGlyph } from "./icons";
+import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../../data/constants";
+import type { Account, CategoryIcon } from "../../data/types";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useT } from "../../i18n";
+import { ColorPalette } from "../ColorPalette";
+import { Button, ClearableTextInput } from "../form";
+import { GlyphPicker } from "../GlyphPicker";
+import { Modal } from "../Modal";
+import { CategoryIconGlyph } from "../icons";
 
 export type AccountDraft = {
   name: string;

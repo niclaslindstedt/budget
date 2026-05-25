@@ -13,30 +13,51 @@ src/
 │   ├── AuthScreen.tsx             # sign-in / sign-up / "continue without account"
 │   ├── UserMenu.tsx               # per-user menu (sign out, switch, delete)
 │   ├── SettingsModal.tsx          # app-level settings (formats, storage, etc.)
-│   ├── SheetTabs.tsx              # bottom tab bar — sheet glyphs + `+`
-│   ├── SheetModal.tsx             # new / edit sheet form (name, type, glyph, …)
+│   ├── AppShell.tsx               # top-level orchestrator — reducer + routing
+│   ├── AppLoading.tsx             # full-area loader while a backend boots
+│   ├── BottomBar.tsx              # bottom tab bar — sheet glyphs + `+`
+│   ├── SheetModal.tsx             # universal: new / edit sheet form (… menu)
+│   ├── SheetTitleMenu.tsx         # universal: "…" menu next to a sheet title
+│   ├── SettingsModal/             # app-level settings (formats, storage, etc.)
 │   ├── BackendPicker.tsx          # browser / folder / Dropbox / Drive picker
 │   ├── DropboxGlyph.tsx           # Dropbox brand mark for the picker
 │   ├── SyncStatus.tsx             # syncing / saved indicator for cloud backends
 │   ├── SaveStateButton.tsx        # manual "save now" affordance
 │   ├── ImportExportControls.tsx   # file download + file picker
 │   ├── CloudBackupModal.tsx       # list, create, and restore timestamped backups
-│   ├── SheetView.tsx              # one sheet — month grouping + balances
-│   ├── MonthTable.tsx             # one month's table
-│   ├── ColumnHeader.tsx           # draggable column header
-│   ├── Cell.tsx                   # per-type cell editor
-│   ├── SheetRow.tsx               # row body — swipe-to-act + cell wiring
-│   ├── AddRowButton.tsx           # `+` with long-press / right-click hatch
-│   ├── ComplexEntryModal.tsx      # recurring + categorised entry form
-│   ├── EditEntryModal.tsx         # promote-to-recurring / scoped series edit
-│   ├── RecurrenceForm.tsx         # mode-tabs + preview, shared by both modals
-│   ├── BulkActionBar.tsx          # toolbar shown in select mode
-│   ├── BulkEditModal.tsx          # apply patches to many rows at once
-│   ├── MoveCopyModal.tsx          # shift / duplicate rows across months
-│   ├── DatePickerModal.tsx        # modal calendar (mobile-friendly)
+│   ├── ActiveRowProvider.tsx      # universal row-claim coordinator
+│   ├── useClaimActiveRow.ts       # hook in-row interactive elements call
 │   ├── ConfirmDialog.tsx          # generic confirm prompt with scope options
+│   ├── DatePickerModal.tsx        # modal calendar (mobile-friendly)
 │   ├── CategoryPicker.tsx         # custom dropdown + inline category creator
-│   └── icons.tsx                  # column-type + category-icon registries
+│   ├── icons.tsx                  # column-type + category-icon registries
+│   ├── budget/                    # budget page — per-account ledger
+│   │   ├── BudgetPage.tsx              # page root — month grouping + balances
+│   │   ├── BudgetViewerModal.tsx       # read-only viewer
+│   │   ├── MonthTable.tsx              # one month's table
+│   │   ├── ColumnHeader.tsx            # draggable column header
+│   │   ├── BudgetCell.tsx              # per-type cell editor
+│   │   ├── BudgetRow.tsx               # row body — swipe-to-act + cell wiring
+│   │   ├── AddRowButton.tsx, RowActionsMenu.tsx
+│   │   ├── ComplexEntryModal.tsx       # recurring + categorised entry form
+│   │   ├── EditEntryModal.tsx          # promote-to-recurring / scoped series edit
+│   │   ├── EditRowModal.tsx, SplitEntryModal.tsx
+│   │   ├── RecurrenceForm.tsx          # mode-tabs + preview, shared by both modals
+│   │   ├── BulkEditModal.tsx, MoveCopyModal.tsx, ApplySeriesEditDialog.tsx
+│   │   ├── MatchRuleModal.tsx          # wildcard rule for history rendering
+│   │   ├── RecurringCandidatesPanel.tsx
+│   │   ├── TransactionSearchModal.tsx
+│   │   ├── FormulaHelpButton.tsx, FormulaInput.tsx, FormulaVariableHelper.tsx
+│   │   └── cells/                      # readonly cell variants
+│   └── accounts/                  # accounts page — workspace dashboard
+│       ├── AccountsPage.tsx            # page root — accounts table + transfers
+│       ├── AccountModal.tsx, AccountActionsMenu.tsx
+│       ├── TransactionModal.tsx, UpdateBalanceModal.tsx
+│       ├── HistoryModal.tsx            # per-account bank history viewer
+│       ├── ImportHistoryModal.tsx, HistoryEntryEditModal.tsx,
+│       │   CutAccountHistoryModal.tsx
+│       ├── ReconciliationModal.tsx     # post-import flow on a single account
+│       └── TransferCollapseModal.tsx   # cross-account pair collapse
 ├── data/
 │   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget,
 │   │                     # Settings, StoredUser, UsersFile, …
@@ -139,7 +160,7 @@ type UserData = {
   // series to a bank-description glob, an amount-tolerance band, and
   // a date lag; future imports collapse any matching predicted row +
   // history entry pair silently. See `src/data/reconciliation.ts`
-  // for the matcher and `src/components/ReconciliationModal.tsx`
+  // for the matcher and `src/components/accounts/ReconciliationModal.tsx`
   // for the surface that records them.
   seriesMatchRules: SeriesMatchRule[];
   settings: Settings;

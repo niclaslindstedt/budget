@@ -1,6 +1,10 @@
-import type { Settings } from "../../data/types";
-import { formatDate, formatDayOnly, formatShortDate } from "../../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import type { Settings } from "../../../data/types";
+import {
+  formatDate,
+  formatDayOnly,
+  formatShortDate,
+} from "../../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../../utils/monthColor";
 import { CELL_BASE } from "./constants";
 
 type Props = {

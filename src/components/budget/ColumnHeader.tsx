@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import type { Column } from "../data/types";
-import { ColumnIcon } from "./icons";
+import type { Column } from "../../data/types";
+import { ColumnIcon } from "../icons";
 
 type Props = {
   column: Column;

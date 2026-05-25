@@ -1,22 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
 
-import { findColumnByType } from "../data/sheet";
-import type { RecurrenceRule } from "../data/recurrence";
-import type { Category, Column, EntryType, Row, Settings } from "../data/types";
-import { useT } from "../i18n";
+import { findColumnByType } from "../../data/sheet";
+import type { RecurrenceRule } from "../../data/recurrence";
+import type {
+  Category,
+  Column,
+  EntryType,
+  Row,
+  Settings,
+} from "../../data/types";
+import { useT } from "../../i18n";
 import {
   formatAmountForInput,
   normalizeAmountInput,
   parseAmount,
-} from "../utils/format";
-import { Modal } from "./Modal";
-import { Button, Checkbox } from "./form";
+} from "../../utils/format";
+import { Modal } from "../Modal";
+import { Button, Checkbox } from "../form";
 import { RecurrenceForm } from "./RecurrenceForm";
-import { TypePicker } from "./TypePicker";
+import { TypePicker } from "../TypePicker";
 
-export type { BulkPatch } from "../data/action-payloads";
-import type { BulkPatch } from "../data/action-payloads";
+export type { BulkPatch } from "../../data/action-payloads";
+import type { BulkPatch } from "../../data/action-payloads";
 
 type Props = {
   open: boolean;

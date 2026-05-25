@@ -24,8 +24,8 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { allCategories, allTypes } from "../data/presets";
-import { accountBalance, compareDateStrings } from "../data/sheet";
+import { allCategories, allTypes } from "../../data/presets";
+import { accountBalance, compareDateStrings } from "../../data/sheet";
 import type {
   Account,
   Category,
@@ -33,19 +33,23 @@ import type {
   Settings,
   Sheet,
   UserData,
-} from "../data/types";
-import { readIsStandalone } from "../hooks/useIsStandalone";
-import { isInSheetSwipeEdgeBand } from "../hooks/useSheetSwipe";
-import { useLang, useT } from "../i18n";
-import { bcp47, type Lang } from "../i18n/locale";
-import { displayCategoryName } from "../i18n/preset-names";
-import { formatBalance, formatCount, formatShortDate } from "../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../utils/monthColor";
+} from "../../data/types";
+import { readIsStandalone } from "../../hooks/useIsStandalone";
+import { isInSheetSwipeEdgeBand } from "../../hooks/useSheetSwipe";
+import { useLang, useT } from "../../i18n";
+import { bcp47, type Lang } from "../../i18n/locale";
+import { displayCategoryName } from "../../i18n/preset-names";
+import {
+  formatBalance,
+  formatCount,
+  formatShortDate,
+} from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AccountActionsMenu } from "./AccountActionsMenu";
-import { ActiveRowProvider } from "./ActiveRowProvider";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "./SheetTitleMenu";
-import { useBlocksSheet } from "./useBlocksSheet";
-import { CategoryIconGlyph } from "./icons";
+import { ActiveRowProvider } from "../ActiveRowProvider";
+import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import { useClaimActiveRow } from "../useClaimActiveRow";
+import { CategoryIconGlyph } from "../icons";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
@@ -96,7 +100,7 @@ type Props = {
   onDownloadSheet: (sheetId: string) => void;
 };
 
-export function AccountsSheetView({
+export function AccountsPage({
   sheet,
   data,
   settings,
@@ -651,8 +655,8 @@ function AccountRowImpl({
   // Hook the row into the ActiveRowProvider so a tap elsewhere in the
   // accounts table only dismisses the swipe — the underlying control
   // still gets a follow-up tap to fire properly. Mirrors the budget
-  // sheet's SheetRow wiring.
-  useBlocksSheet(account.id, swiped, () => setSwiped(false));
+  // sheet's BudgetRow wiring.
+  useClaimActiveRow(account.id, swiped, () => setSwiped(false));
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -708,7 +712,7 @@ function AccountRowImpl({
       // treats a left-swipe on the row as a sheet-switch gesture and
       // navigates away before `setSwiped(true)` ever paints — see the
       // opt-out selector in `src/hooks/useSheetSwipe.ts`. Mirrors the
-      // equivalent attribute on `SheetRow`.
+      // equivalent attribute on `BudgetRow`.
       data-swipe-handled
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}

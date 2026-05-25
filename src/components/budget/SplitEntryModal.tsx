@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, Split, Trash2 } from "lucide-react";
 
-import { findColumnByType } from "../data/sheet";
-import type { Category, Column, EntryType, Row, Settings } from "../data/types";
-import { useDesktopAutoFocus } from "../hooks";
-import { useT } from "../i18n";
+import { findColumnByType } from "../../data/sheet";
+import type {
+  Category,
+  Column,
+  EntryType,
+  Row,
+  Settings,
+} from "../../data/types";
+import { useDesktopAutoFocus } from "../../hooks";
+import { useT } from "../../i18n";
 import {
   formatAmountForInput,
   formatNumber,
   parseAmount,
   withCurrency,
-} from "../utils/format";
-import { Button, SignedAmountInput } from "./form";
-import { Modal } from "./Modal";
-import { TypePicker } from "./TypePicker";
+} from "../../utils/format";
+import { Button, SignedAmountInput } from "../form";
+import { Modal } from "../Modal";
+import { TypePicker } from "../TypePicker";
 
 // Per-split UI state. `amount` is the typed text (absolute, sign lives
 // on `negative`) so the field can keep partial input ("12,") while the
@@ -28,8 +34,8 @@ type SplitDraft = {
   typeId: string | null;
 };
 
-export type { SplitSubmission } from "../data/action-payloads";
-import type { SplitSubmission } from "../data/action-payloads";
+export type { SplitSubmission } from "../../data/action-payloads";
+import type { SplitSubmission } from "../../data/action-payloads";
 
 type Props = {
   open: boolean;
