@@ -117,6 +117,16 @@
      above the bar (4rem mobile / 5rem sm+) when the budget shell is
      mounted and the bar is visible. */
   --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+
+  /* Rendered height of the BottomBar when mounted, including the
+     safe-area inset. Used by the down-direction "Today" pill in
+     `BudgetPage` so it sits 0.5 rem above the bar — the same gap
+     the up-direction pill has below the sticky headers. Falls back
+     to the safe-area inset only on routes that don't render a bar.
+     The values mirror BottomBar's own padding stack:
+       pt + h-8 content + pb + 1px border-top
+     so the bar's top edge resolves exactly here. */
+  --bottom-bar-h: env(safe-area-inset-bottom);
 }
 
 /* Promote the toast-stack offset when the BottomBar is in the DOM
@@ -126,11 +136,13 @@
    breakpoint. */
 body:has([data-bottom-bar]) {
   --toast-stack-bottom: calc(4rem + env(safe-area-inset-bottom));
+  --bottom-bar-h: calc(2.5625rem + max(env(safe-area-inset-bottom), 0.25rem));
 }
 
 @media (min-width: 640px) {
   body:has([data-bottom-bar]) {
     --toast-stack-bottom: calc(5rem + env(safe-area-inset-bottom));
+    --bottom-bar-h: calc(2.9375rem + max(env(safe-area-inset-bottom), 0.25rem));
   }
 }
 
@@ -146,6 +158,7 @@ body:has([data-bottom-bar]) {
    bar pinned at the bottom edge once the URL bar is gone. */
 body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  --bottom-bar-h: env(safe-area-inset-bottom);
 }
 
 /* Smooth the toast-stack's bottom shift so it tracks the bar's own

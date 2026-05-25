@@ -1147,7 +1147,7 @@ export function BudgetPage({
             className={
               todayButtonDirection === "up"
                 ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+var(--month-header-h)+var(--column-header-h)+0.5rem)]"
-                : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[var(--toast-stack-bottom)]"
+                : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(var(--bottom-bar-h)+0.5rem)]"
             }
             data-floating-chrome
             data-toast-stack={todayButtonDirection === "down" ? "" : undefined}
