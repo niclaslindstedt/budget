@@ -1547,7 +1547,7 @@ export const en = {
     deleteAccountAria: "Delete {name}",
     deleteAccountTitle: "Delete account",
     cutHistoryAria: "Cut history for {name}",
-    cutHistoryTitle: "Cut history before a date",
+    cutHistoryTitle: "Cut history",
     nothingToCut: "No history or transactions to cut",
     moreActionsAria: "More actions for {name}",
     moreActions: "More actions",
@@ -1560,7 +1560,7 @@ export const en = {
 
   cutHistory: {
     title: "Cut history — {name}",
-    hint: "Drop everything dated before the cutoff. Useful when the account's purpose has changed and the old history is no longer relevant.",
+    hint: "Permanently delete imported bank-history entries and transfer transactions for this account dated before the cutoff. The current balance is preserved — only the per-row history is dropped. Useful when the account's purpose has changed and the old activity is no longer relevant.",
     cutoffDate: "Cutoff date",
     pickDateFirst: "Pick a cutoff date to preview.",
     nothingToCut: "Nothing to cut before {date}.",

@@ -1543,7 +1543,7 @@ export const sv: Catalog = {
     deleteAccountAria: "Ta bort {name}",
     deleteAccountTitle: "Ta bort konto",
     cutHistoryAria: "Klipp historik för {name}",
-    cutHistoryTitle: "Klipp historik före ett datum",
+    cutHistoryTitle: "Klipp historik",
     nothingToCut: "Ingen historik eller transaktioner att klippa",
     moreActionsAria: "Fler åtgärder för {name}",
     moreActions: "Fler åtgärder",
@@ -1557,7 +1557,7 @@ export const sv: Catalog = {
 
   cutHistory: {
     title: "Klipp historik — {name}",
-    hint: "Ta bort allt daterat före brytdatumet. Användbart när kontots syfte har ändrats och den gamla historiken inte längre är relevant.",
+    hint: "Ta bort permanent importerade historikposter och överföringstransaktioner för det här kontot som är daterade före brytdatumet. Det aktuella saldot bevaras — bara raderna i historiken försvinner. Användbart när kontots syfte har ändrats och den gamla aktiviteten inte längre är relevant.",
     cutoffDate: "Brytdatum",
     pickDateFirst: "Välj ett brytdatum för förhandsvisning.",
     nothingToCut: "Inget att klippa före {date}.",

@@ -122,7 +122,7 @@ test.describe("Accounts table", () => {
       menu.getByRole("menuitem", { name: "Import bank history" }),
     ).toBeVisible();
     await expect(
-      menu.getByRole("menuitem", { name: "Cut history before a date" }),
+      menu.getByRole("menuitem", { name: "Cut history" }),
     ).toBeVisible();
   });
 });
