@@ -1139,9 +1139,7 @@ export function BudgetPage({
                 : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[var(--toast-stack-bottom)]"
             }
             data-floating-chrome
-            data-toast-stack={
-              todayButtonDirection === "down" ? "" : undefined
-            }
+            data-toast-stack={todayButtonDirection === "down" ? "" : undefined}
           >
             <button
               type="button"
