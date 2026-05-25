@@ -221,6 +221,71 @@ describe("pattern auto-apply on description commit", () => {
     expect(firstRow(state).typeId).toBe("type-grocery");
   });
 
+  it("retroactively types existing rows when a new rule is created", () => {
+    // Row exists FIRST with a description, then the user creates a
+    // matching rule. The row should pick up the rule's type without
+    // requiring a second cell edit.
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      makeRow({ [descId]: "ICA KVANTUM" }),
+      makeRow({ [descId]: "RANDOM MERCHANT" }),
+    ];
+    state = reducer(state, {
+      type: "createMatchRule",
+      rule: {
+        id: "rule-grocery",
+        pattern: "*ICA*",
+        typeId: "type-grocery",
+      },
+    });
+    const rows = (state.sheets[0].items[0] as AccountBudget).rows;
+    expect(rows[0].typeId).toBe("type-grocery");
+    expect(rows[0].typeIdLocked).toBeUndefined();
+    expect(rows[1].typeId).toBeUndefined();
+  });
+
+  it("retroactively re-types existing rows when a rule is updated", () => {
+    // Row exists with description, rule already typed it grocery;
+    // editing the rule's typeId should immediately re-label the row.
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      { ...makeRow({ [descId]: "ICA KVANTUM" }), typeId: "type-grocery" },
+    ];
+    state.matchRules = [
+      { id: "rule-grocery", pattern: "*ICA*", typeId: "type-grocery" },
+    ];
+    // Re-point the rule at a different type.
+    state = reducer(state, {
+      type: "updateMatchRule",
+      rule: { id: "rule-grocery", pattern: "*ICA*", typeId: "type-rent" },
+    });
+    expect(firstRow(state).typeId).toBe("type-rent");
+  });
+
+  it("does not overwrite locked rows when a rule is created", () => {
+    let state = workspace();
+    const descId = descColumnId(state);
+    (state.sheets[0].items[0] as AccountBudget).rows = [
+      {
+        ...makeRow({ [descId]: "ICA KVANTUM" }),
+        typeId: "type-rent",
+        typeIdLocked: true,
+      },
+    ];
+    state = reducer(state, {
+      type: "createMatchRule",
+      rule: {
+        id: "rule-grocery",
+        pattern: "*ICA*",
+        typeId: "type-grocery",
+      },
+    });
+    expect(firstRow(state).typeId).toBe("type-rent");
+    expect(firstRow(state).typeIdLocked).toBe(true);
+  });
+
   it("falls back to no type when no rule matches", () => {
     let state = workspace(
       [makeRow({})],
