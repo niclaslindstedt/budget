@@ -1093,6 +1093,49 @@ body {
       color: var(--fg-bright);
     }
   }
+
+  /* Budget viewer modal — read-only month-stacked sheet. Mobile borrows
+     the same display:block + per-row CSS grid trick as `.budget-table`
+     so the date / type / amount / balance columns get explicit tracks
+     instead of fighting the description for space. Without this, the
+     modal's `overflow-x-hidden` body silently clips the rightmost
+     column (the running balance) once a long description pushes the
+     table past the modal width. The grid template comes from React via
+     `--viewer-row-template` so the optional type / amount / balance
+     columns can drop their tracks when absent. The landscape clause
+     (max-height: 500px) catches phones held sideways the same way the
+     budget table does, since width-only detection would fall through
+     to the desktop layout. */
+  @media (max-width: 720px), (max-height: 500px) {
+    .budget-viewer-table,
+    .budget-viewer-table > thead,
+    .budget-viewer-table > tbody {
+      display: block;
+      width: 100%;
+    }
+    .budget-viewer-table > thead > tr,
+    .budget-viewer-table > tbody > tr:not(.budget-viewer-fullspan) {
+      display: grid;
+      grid-template-columns: var(--viewer-row-template);
+      align-items: center;
+      width: 100%;
+    }
+    .budget-viewer-table > thead > tr > th,
+    .budget-viewer-table > tbody > tr:not(.budget-viewer-fullspan) > td {
+      min-width: 0;
+    }
+    /* Month headers, correction lines, empty-month notes and the
+       future-reveal button all carry `colSpan` so they need to stay as
+       single full-width blocks rather than being placed in the grid. */
+    .budget-viewer-table > tbody > tr.budget-viewer-fullspan {
+      display: block;
+      width: 100%;
+    }
+    .budget-viewer-table > tbody > tr.budget-viewer-fullspan > td {
+      display: block;
+      width: 100%;
+    }
+  }
 }
 
 /* Landscape phones (≤ 500px tall, e.g. iPhone 12+ in landscape at
