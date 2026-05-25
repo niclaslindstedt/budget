@@ -14,6 +14,15 @@ describe("derivePatternFromDescription", () => {
     );
   });
 
+  it("strips a leading ISO date (bank-export shape)", () => {
+    // Skandia and similar banks ship `<date> <merchant>` history lines.
+    // The Label-similar modal must strip the date so the seed pattern
+    // matches future imports rather than only this one transaction.
+    expect(
+      derivePatternFromDescription("2026-05-11 Apoteket Tranan, Vänersborg"),
+    ).toBe("*Apoteket Tranan Vänersborg*");
+  });
+
   it("strips slash and dot dates", () => {
     expect(derivePatternFromDescription("SPOTIFY 12/05/2024")).toBe(
       "*SPOTIFY*",
