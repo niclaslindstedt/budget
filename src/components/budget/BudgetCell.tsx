@@ -734,7 +734,6 @@ function DescriptionCell({
   onCommit?: (value: CellValue) => void;
 }) {
   const t = useT();
-  const hasValue = value.length > 0;
   const typeLabel = entryType ? displayTypeName(entryType, t) : "";
   return (
     <td
@@ -754,8 +753,9 @@ function DescriptionCell({
         value={value}
         onChange={onChange}
         onCommit={onCommit}
-        renderTrigger={({ ref, onClick, open }) =>
-          entryType ? (
+        renderTrigger={({ ref, onClick, open, displayValue }) => {
+          const hasValue = displayValue.length > 0;
+          return entryType ? (
             <button
               ref={ref}
               type="button"
@@ -768,11 +768,13 @@ function DescriptionCell({
               style={hasValue ? undefined : { color: entryType.color }}
               aria-haspopup="dialog"
               aria-expanded={open}
-              aria-label={hasValue ? `${typeLabel}: ${value}` : typeLabel}
-              title={hasValue ? value : typeLabel}
+              aria-label={
+                hasValue ? `${typeLabel}: ${displayValue}` : typeLabel
+              }
+              title={hasValue ? displayValue : typeLabel}
             >
               <span className="min-w-0 truncate">
-                {hasValue ? value : typeLabel}
+                {hasValue ? displayValue : typeLabel}
               </span>
             </button>
           ) : (
@@ -789,10 +791,10 @@ function DescriptionCell({
               aria-expanded={open}
               aria-label={
                 hasValue
-                  ? t("cell.descriptionWith", { value })
+                  ? t("cell.descriptionWith", { value: displayValue })
                   : t("cell.addDescription")
               }
-              title={hasValue ? value : undefined}
+              title={hasValue ? displayValue : undefined}
             >
               {isRecurring && (
                 <Repeat
@@ -803,13 +805,13 @@ function DescriptionCell({
                 />
               )}
               {hasValue ? (
-                <span className="min-w-0 truncate">{value}</span>
+                <span className="min-w-0 truncate">{displayValue}</span>
               ) : !isRecurring ? (
                 <span>…</span>
               ) : null}
             </button>
-          )
-        }
+          );
+        }}
       />
     </td>
   );
@@ -915,10 +917,18 @@ function DescriptionPopover({
     ref: React.Ref<HTMLButtonElement>;
     onClick: () => void;
     open: boolean;
+    displayValue: string;
   }) => React.ReactNode;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  // Local draft so the textarea (and the trigger behind it) stay with
+  // what the user typed even when the parent's `value` re-resolves to
+  // a fallback — e.g. on history rows, emptying `userDescription`
+  // would otherwise refill from the bank's raw description via
+  // `resolveEntryLabels`, making the original text "come back" while
+  // the user is still editing.
+  const [draft, setDraft] = useState<string>(value);
   // Snapshot the value at popover-open time so we only emit a commit
   // when the user actually changed the description before closing.
   const openValueRef = useRef<string>(value);
@@ -926,11 +936,18 @@ function DescriptionPopover({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Keep the draft synced from `value` while the popover is closed so
+  // external updates land cleanly on the next open.
+  useEffect(() => {
+    if (!open) setDraft(value);
+  }, [open, value]);
+
   useEffect(() => {
     if (open && !wasOpenRef.current) {
       openValueRef.current = value;
+      setDraft(value);
     } else if (!open && wasOpenRef.current) {
-      if (onCommit && value !== openValueRef.current) onCommit(value);
+      if (onCommit && draft !== openValueRef.current) onCommit(draft);
     }
     wasOpenRef.current = open;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -940,12 +957,18 @@ function DescriptionPopover({
     if (open) textareaRef.current?.focus();
   }, [open]);
 
+  function handleDraftChange(next: string) {
+    setDraft(next);
+    onChange(next);
+  }
+
   return (
     <>
       {renderTrigger({
         ref: triggerRef,
         onClick: () => setOpen((v) => !v),
         open,
+        displayValue: open ? draft : value,
       })}
       <FloatingPanel
         open={open}
@@ -957,8 +980,8 @@ function DescriptionPopover({
       >
         <textarea
           ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          onChange={(e) => handleDraftChange(e.target.value)}
           onKeyDown={(e) => {
             if (
               e.key === "Enter" &&
