@@ -580,8 +580,8 @@ function MonthTableImpl({
                       </span>
                     </button>
                   ) : (
-                    <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-success">
-                      <Check size={14} aria-hidden focusable={false} />
+                    <div className="flex w-full select-none items-center justify-center gap-2 py-3 text-success">
+                      <Check size={22} aria-hidden focusable={false} />
                       <span>{t("sheet.historyCoversMonth")}</span>
                     </div>
                   )
