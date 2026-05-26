@@ -763,7 +763,7 @@ function DescriptionCell({
               className={`flex h-full min-h-9 w-full cursor-pointer items-center border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
                 hasValue
                   ? "justify-start text-left"
-                  : "justify-center text-xs font-medium"
+                  : "justify-center text-xs font-medium italic"
               }`}
               style={hasValue ? undefined : { color: entryType.color }}
               aria-haspopup="dialog"
