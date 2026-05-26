@@ -22,6 +22,29 @@ const HIDE_THRESHOLD = 24;
 // app or pulling-to-refresh doesn't immediately collapse the chrome.
 const TOP_BAND = 60;
 
+// How long a `suppressScrollHide()` call keeps the hook ignoring
+// scroll events. Long enough to cover both the initial scrollIntoView
+// and the polling refine pass `scrollToToday` runs after lazy-mounted
+// rows arrive, but short enough that a real user scroll-down that
+// follows the auto-scroll still triggers hide normally.
+const SUPPRESS_MS = 600;
+
+// Custom event the hook listens for to skip the next burst of scroll
+// events. Dispatched by `suppressScrollHide()` below — call it from
+// any code that drives a programmatic scroll for layout reasons (auto
+// scroll-to-today on sheet mount, row-pulse navigation, header-click
+// "scroll to current month") so the bar doesn't slide off-screen in
+// response to its own jump.
+const SUPPRESS_EVENT = "budget:scroll-hide-suppress";
+
+// Pulse the suppress event so the BottomBar's hide-on-scroll hook
+// ignores the next ~600ms of scroll events. Safe to call from any
+// context — the event is a no-op when no hook is mounted.
+export function suppressScrollHide(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(SUPPRESS_EVENT));
+}
+
 type Options = {
   enabled?: boolean;
 };
@@ -39,10 +62,20 @@ export function useScrollHide({ enabled = true }: Options = {}): boolean {
     let lastY = window.scrollY;
     let accDown = 0;
     let rafId = 0;
+    let suppressUntil = 0;
 
     const update = () => {
       rafId = 0;
       const y = window.scrollY;
+      // Programmatic-scroll window: re-baseline the tracker so when
+      // the suppression ends, user scrolls resume from the new
+      // position rather than firing a giant delta from where we
+      // started before the jump.
+      if (performance.now() < suppressUntil) {
+        lastY = y;
+        accDown = 0;
+        return;
+      }
       const delta = y - lastY;
       lastY = y;
 
@@ -66,9 +99,18 @@ export function useScrollHide({ enabled = true }: Options = {}): boolean {
       rafId = window.requestAnimationFrame(update);
     };
 
+    const onSuppress = () => {
+      suppressUntil = performance.now() + SUPPRESS_MS;
+      accDown = 0;
+      lastY = window.scrollY;
+      setHidden(false);
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener(SUPPRESS_EVENT, onSuppress);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener(SUPPRESS_EVENT, onSuppress);
       if (rafId !== 0) window.cancelAnimationFrame(rafId);
     };
   }, [enabled]);

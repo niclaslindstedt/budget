@@ -178,6 +178,7 @@ import {
   useSheetSwipe,
   useTheme,
   useToast,
+  suppressScrollHide,
 } from "../hooks";
 import { writeLanguagePreference } from "../i18n/language-preference";
 import { todayIso } from "../utils/date";
@@ -1381,6 +1382,10 @@ export function AppShell({
           document.querySelector<HTMLElement>("[data-app-header]");
         const appH = appHeader?.getBoundingClientRect().height ?? 0;
         const top = target.getBoundingClientRect().top + window.scrollY - appH;
+        // Same rationale as BudgetPage's `scrollToToday`: this jump
+        // would otherwise read as a fast user scroll-down and slide
+        // the BottomBar off-screen mid-tap.
+        suppressScrollHide();
         window.scrollTo({
           top: Math.max(0, top),
           behavior: scrollBehavior,
