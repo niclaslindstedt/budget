@@ -657,18 +657,17 @@ body {
 @layer components {
   /* Sticky column headers: thead's containing block is the table so it
      keeps sticking until the table itself scrolls past. Offset sits
-     flush with the bottom of the sticky month-name h3 — the thead's
-     own `border-t border-line` on every header cell closes the
-     hairline gap that scrolled rows could otherwise bleed through
-     between the two sticky bands on iOS Safari, so no -1px overlap
-     is needed. Ancestor overflow must be `clip` (not `hidden`) —
-     `hidden` establishes a scroll container which would trap sticky
-     positioning inside the table wrapper. z-index sits above the
-     amount cell's sign button (z-10) so the negative sign in a
-     scrolled-past row doesn't bleed through the header. */
+     directly below the month header — the -1px overlap closes a
+     subpixel-rounded hairline that would otherwise let scrolled rows
+     bleed through between the two sticky bands on iOS Safari.
+     Ancestor overflow must be `clip` (not `hidden`) — `hidden`
+     establishes a scroll container which would trap sticky positioning
+     inside the table wrapper. z-index sits above the amount cell's
+     sign button (z-10) so the negative sign in a scrolled-past row
+     doesn't bleed through the header. */
   .budget-table > thead {
     position: sticky;
-    top: calc(var(--app-header-h) + var(--month-header-h));
+    top: calc(var(--app-header-h) + var(--month-header-h) - 1px);
     z-index: 15;
   }
 
