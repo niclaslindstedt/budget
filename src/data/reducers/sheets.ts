@@ -2,10 +2,7 @@ import { updateAccountBudget } from "../sheet";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
 
-export function reduceSheets(
-  state: UserData,
-  action: Action,
-): UserData | null {
+export function reduceSheets(state: UserData, action: Action): UserData | null {
   if (action.type === "renameSheet") {
     return {
       ...state,
