@@ -42,6 +42,10 @@ export function reduceHistory(
           if (action.patch.userTypeId === null) delete next.userTypeId;
           else next.userTypeId = action.patch.userTypeId;
         }
+        if (action.patch.userCompanyId !== undefined) {
+          if (action.patch.userCompanyId === null) delete next.userCompanyId;
+          else next.userCompanyId = action.patch.userCompanyId;
+        }
         if (action.patch.isTransfer !== undefined) {
           // Only persist `true` — absent means "not a transfer".
           if (action.patch.isTransfer) next.isTransfer = true;
@@ -51,6 +55,7 @@ export function reduceHistory(
         if (
           next.userDescription === prev.userDescription &&
           next.userTypeId === prev.userTypeId &&
+          next.userCompanyId === prev.userCompanyId &&
           next.isTransfer === prev.isTransfer
         ) {
           return prev;
@@ -73,11 +78,23 @@ export function reduceHistory(
       const trimmed = action.patch.userDescription.trim();
       const previousText = effectiveDescription(priorEntry);
       if (trimmed !== previousText.trim()) {
+        // Company learned alongside the description: prefer the
+        // current patch value when it pins one, otherwise carry the
+        // entry's prior `userCompanyId`. `null` from the patch is an
+        // explicit clear — the learner treats it as "no company to
+        // learn", and `recordRename` preserves whatever was previously
+        // stored for the key.
+        const patchCompany = action.patch.userCompanyId;
+        const learnedCompany =
+          patchCompany === undefined
+            ? (priorEntry.userCompanyId ?? null)
+            : patchCompany;
         renamePatterns = recordRename(
           renamePatterns,
           action.accountId,
           priorEntry.description,
           trimmed,
+          learnedCompany,
           Date.now(),
         );
       }
@@ -92,15 +109,23 @@ export function reduceHistory(
     const existing = state.history[action.accountId];
     if (!existing) return state;
     const renameById = new Map(action.renames.map((r) => [r.entryId, r]));
+    const knownCompanyIds = new Set(state.companies.map((c) => c.id));
     let historyTouched = false;
     const patched = existing.map((entry) => {
       const r = renameById.get(entry.id);
       if (!r) return entry;
       const trimmed = r.userDescription.trim();
       if (trimmed === "") return entry;
-      if (entry.userDescription === trimmed) return entry;
+      const companyValid =
+        r.userCompanyId !== undefined && knownCompanyIds.has(r.userCompanyId);
+      const wouldChangeDescription = entry.userDescription !== trimmed;
+      const wouldChangeCompany =
+        companyValid && entry.userCompanyId !== r.userCompanyId;
+      if (!wouldChangeDescription && !wouldChangeCompany) return entry;
       historyTouched = true;
-      return { ...entry, userDescription: trimmed };
+      const next: HistoryEntry = { ...entry, userDescription: trimmed };
+      if (companyValid) next.userCompanyId = r.userCompanyId;
+      return next;
     });
     let renamePatterns = state.renamePatterns;
     const now = Date.now();

@@ -8,6 +8,7 @@ import type { RecurrenceRule } from "../../data/recurrence";
 import type {
   Category,
   Column,
+  Company,
   EntryType,
   Row,
   Settings,
@@ -19,6 +20,7 @@ import {
   formatAmountForInput,
   parseAmount,
 } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import {
   Button,
@@ -37,6 +39,7 @@ type Props = {
   columns: Column[];
   categories: Category[];
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.
@@ -60,6 +63,7 @@ type Props = {
     rowId: string,
     dates: string[],
     typeId: string | null,
+    companyId: string | null,
   ) => void;
   onEditSeries: (rowId: string, patch: EditPatch, scope: EditScope) => void;
   // Fires when the user submits the promote form on a synthesized
@@ -73,6 +77,7 @@ type Props = {
   ) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 function todayIso(): string {
@@ -83,6 +88,7 @@ function todayIso(): string {
 export type HistoryPromotePrefill = {
   description: string | null;
   typeId: string | null;
+  companyId: string | null;
 };
 
 export type HistoryMatchPreview = {
@@ -104,6 +110,9 @@ export type HistoryPromotion = {
   description: string;
   amount: number;
   typeId: string | null;
+  // Company tagged on the promoted entry. Folded into the merchant-
+  // hint alongside the type so future imports inherit both.
+  companyId: string | null;
   dates: string[];
   // When false, the merchant-hint stamp is skipped so past entries
   // that share the merchant key keep their raw bank text. The future
@@ -125,6 +134,7 @@ export function EditEntryModal({
   columns,
   categories,
   types,
+  companies,
   settings,
   lastSeriesDate,
   historyHintPrefill,
@@ -135,6 +145,7 @@ export function EditEntryModal({
   onPromoteHistory,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const descCol = useMemo(
@@ -185,6 +196,9 @@ export function EditEntryModal({
   const initialTypeId: string | null = isHistory
     ? (historyHintPrefill?.typeId ?? null)
     : (row?.typeId ?? null);
+  const initialCompanyId: string | null = isHistory
+    ? (historyHintPrefill?.companyId ?? null)
+    : (row?.companyId ?? null);
 
   const isSeries = !!row?.seriesId;
 
@@ -201,6 +215,7 @@ export function EditEntryModal({
   const [amount, setAmount] = useState(initialAmountText);
   const [negative, setNegative] = useState(initialNegative);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
+  const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
 
   // "Just this" vs "this and all future"; the latter optionally clamped
   // to a date so temporary price changes can revert later.
@@ -241,6 +256,7 @@ export function EditEntryModal({
     setAmount(initialAmountText);
     setNegative(initialNegative);
     setTypeId(initialTypeId);
+    setCompanyId(initialCompanyId);
     setScopeKind("just-this");
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
@@ -280,6 +296,7 @@ export function EditEntryModal({
   }
 
   const typeTouched = typeId !== initialTypeId;
+  const companyTouched = companyId !== initialCompanyId;
 
   const parsedShiftDays = Number.parseInt(shiftDaysText, 10);
   const shiftDays =
@@ -296,6 +313,7 @@ export function EditEntryModal({
         description: description.trim(),
         amount: amountTouched ? parsedAmount : null,
         typeId: typeTouched ? typeId : undefined,
+        companyId: companyTouched ? companyId : undefined,
         dateShiftDays: shiftDays !== 0 ? shiftDays : undefined,
       },
       scopeKind === "just-this"
@@ -311,7 +329,7 @@ export function EditEntryModal({
     // the action payload minimal.
     const extras = recurringDates.filter((d) => d !== initialDate);
     if (extras.length === 0) return;
-    onConvertToRecurring(row.id, extras, typeId);
+    onConvertToRecurring(row.id, extras, typeId, companyId);
   }
 
   function handlePromoteHistory() {
@@ -321,6 +339,7 @@ export function EditEntryModal({
       description: description.trim(),
       amount: parsedAmount,
       typeId,
+      companyId,
       dates: recurringDates,
       applyToHistoric,
       excludedHistoryEntryIds: applyToHistoric
@@ -376,6 +395,18 @@ export function EditEntryModal({
                   onSelect={setTypeId}
                   onCreate={onCreateType}
                   onCreateCategory={onCreateCategory}
+                />
+              </div>
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">
+                  {t("editEntry.company")}
+                </span>
+                <CompanyPicker
+                  variant="field"
+                  companies={companies}
+                  selectedId={companyId}
+                  onSelect={setCompanyId}
+                  onCreate={onCreateCompany}
                 />
               </div>
               <label className="flex min-w-0 flex-col gap-1">
@@ -495,6 +526,18 @@ export function EditEntryModal({
                   onCreateCategory={onCreateCategory}
                 />
               </div>
+              <div className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">
+                  {t("editEntry.company")}
+                </span>
+                <CompanyPicker
+                  variant="field"
+                  companies={companies}
+                  selectedId={companyId}
+                  onSelect={setCompanyId}
+                  onCreate={onCreateCompany}
+                />
+              </div>
             </div>
             <div className="mt-4">
               <RecurrenceForm
@@ -591,7 +634,7 @@ export function EditEntryModal({
               {t("editEntry.promoteIntro")}
             </p>
             <div className="mb-4 flex flex-col gap-1">
-              <span className="text-xs text-muted">Type</span>
+              <span className="text-xs text-muted">{t("editEntry.type")}</span>
               <TypePicker
                 variant="field"
                 types={types}
@@ -600,6 +643,18 @@ export function EditEntryModal({
                 onSelect={setTypeId}
                 onCreate={onCreateType}
                 onCreateCategory={onCreateCategory}
+              />
+            </div>
+            <div className="mb-4 flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("editEntry.company")}
+              </span>
+              <CompanyPicker
+                variant="field"
+                companies={companies}
+                selectedId={companyId}
+                onSelect={setCompanyId}
+                onCreate={onCreateCompany}
               />
             </div>
             <RecurrenceForm

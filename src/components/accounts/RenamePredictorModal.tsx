@@ -32,6 +32,10 @@ import { Modal } from "../Modal";
 export type RenameDecision = {
   entryId: string;
   userDescription: string;
+  // Company learned alongside the description. Undefined when the
+  // pattern never recorded one; the reducer leaves `userCompanyId`
+  // untouched on the entry in that case.
+  userCompanyId?: string;
 };
 
 type Props = {
@@ -124,7 +128,11 @@ export function RenamePredictorModal({
       if (!state?.accepted) continue;
       const trimmed = state.text.trim();
       if (trimmed === "") continue;
-      decisions.push({ entryId: s.entryId, userDescription: trimmed });
+      decisions.push({
+        entryId: s.entryId,
+        userDescription: trimmed,
+        userCompanyId: s.suggestedCompanyId,
+      });
     }
     onCommit(decisions);
   }, [suggestions, rowState, onCommit]);

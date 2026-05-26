@@ -130,6 +130,8 @@ function visibleRowsFor(
     accountsById,
     data.merchantHints,
     data.matchRules,
+    data.companies,
+    data.types,
   );
 }
 

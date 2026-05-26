@@ -361,6 +361,7 @@ export const sv: Catalog = {
       format: "Format",
       storage: "Lagring",
       categories: "Kategorier",
+      companies: "Företag",
       patterns: "Mönster",
       memory: "Minne",
       developer: "Utvecklare",
@@ -629,6 +630,26 @@ export const sv: Catalog = {
       kindAnyTitle: "Visas på både inkomst- och utgiftsrader",
       kindIncomeTitle: "Visas bara på inkomstrader (positivt belopp)",
       kindExpenseTitle: "Visas bara på utgiftsrader (negativt belopp)",
+    },
+    companiesTab: {
+      title: "Företag",
+      intro:
+        "Företag är de leverantörer och organisationer dina pengar går till — Fortum, H&M, lokala pizzerian. Tagga poster med ett företag i redigeringsdialogen så att beskrivningskolumnen visar vem pengarna gick till, även när raden saknar egen beskrivning.",
+      empty: "Inga företag än. Lägg till ett för att börja tagga poster.",
+      addCompany: "Lägg till företag",
+      editCompany: "Redigera företag",
+      deleteCompany: "Ta bort företag",
+      editLabel: "Redigera",
+      deleteLabel: "Ta bort",
+      name: "Namn",
+      namePlaceholder: "H&M",
+      duplicateName: "Ett företag med detta namn finns redan.",
+      addSubmit: "Lägg till",
+      saveSubmit: "Spara",
+      cancelSubmit: "Avbryt",
+      deleteCompanyTitle: "Ta bort företag",
+      deleteCompanyHint:
+        "Ta bort ”{name}”? Poster taggade med det tappar taggen; deras beskrivning och typ behålls.",
     },
     patterns: {
       title: "Mönsterregler",
@@ -949,6 +970,7 @@ export const sv: Catalog = {
     description: "Beskrivning",
     amount: "Belopp",
     type: "Typ",
+    company: "Företag",
     pickType: "Välj en typ",
     scope: "Omfattning",
     scopeJustThis: "Bara denna post",
@@ -1048,6 +1070,7 @@ export const sv: Catalog = {
     description: "Beskrivning",
     descriptionPlaceholder: "Skriv över bankens beskrivning",
     type: "Typ",
+    company: "Företag",
     originalDescription: "Original från banken",
     hint:
       "Byter namn på bara denna post. Bankens text lämnas orörd så du " +
@@ -1060,6 +1083,8 @@ export const sv: Catalog = {
     progress: "{month} · {index} av {total}",
     fromBank: "Från banken",
     typeLabel: "Typ",
+    companyLabel: "Företag",
+    companyHint: "Tagga företaget som tog emot pengarna.",
     descriptionLabel: "Beskrivning",
     descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
     descriptionHint: "Tomt fält behåller bankens text.",
@@ -1317,6 +1342,7 @@ export const sv: Catalog = {
     labelPlaceholder: "t.ex. Mat",
     type: "Typ",
     typeOptional: "Typ (valfritt)",
+    company: "Företag (valfritt)",
     filters: "Filter",
     amountSign: "Beloppstecken",
     amountLabel: "Belopp",
@@ -1699,6 +1725,19 @@ export const sv: Catalog = {
     noTypesInCategory: "Inga typer i den här kategorin än.",
     create: "Skapa",
     backToCategories: "Alla kategorier",
+  },
+
+  company: {
+    pickCompany: "Välj ett företag",
+    pickCompanyEllipsis: "Välj ett företag…",
+    addCompany: "Lägg till företag",
+    clearCompany: "Rensa företag",
+    newCompany: "Nytt företag",
+    noCompaniesYet: "Inga företag än.",
+    name: "Namn",
+    namePlaceholder: "H&M",
+    create: "Skapa",
+    duplicateName: "Ett företag med detta namn finns redan.",
   },
 
   glyph: {

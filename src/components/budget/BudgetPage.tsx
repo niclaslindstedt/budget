@@ -41,6 +41,7 @@ import type {
   AccountBudget,
   Category,
   CellValue,
+  Company,
   EntryType,
   HistoryEntry,
   MatchRule,
@@ -76,8 +77,15 @@ type Props = {
   // category → type browse. Required because every new EntryType
   // belongs to a category.
   categories: readonly Category[];
+  // User-curated companies. Threaded through to the CompanyPicker in
+  // the row-edit modal, the history-entry edit modal, and the
+  // metadata mode walkthrough so the user can tag the merchant for
+  // each entry. Lookup also feeds the description-cell fallback chain
+  // on synthesized history rows.
+  companies: readonly Company[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
   // All accounts in the workspace. Needed so the view can look up the
   // peer account name when synthesizing a transfer row, and so the
   // running balance can mirror what the Accounts dashboard shows.
@@ -150,7 +158,11 @@ type Props = {
   onUpdateHistoryEntry: (
     accountId: string,
     entryId: string,
-    patch: { userDescription?: string; userTypeId?: string | null },
+    patch: {
+      userDescription?: string;
+      userTypeId?: string | null;
+      userCompanyId?: string | null;
+    },
   ) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
@@ -296,8 +308,10 @@ export function BudgetPage({
   item,
   types,
   categories,
+  companies,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
   accounts,
   transfers,
   history,
@@ -379,9 +393,20 @@ export function BudgetPage({
         accountsById,
         merchantHints,
         matchRules,
+        companies,
+        types,
       ),
     }),
-    [item, transfers, history, accountsById, merchantHints, matchRules],
+    [
+      item,
+      transfers,
+      history,
+      accountsById,
+      merchantHints,
+      matchRules,
+      companies,
+      types,
+    ],
   );
 
   // Each imported bank entry's stored balance is the truth: it pins
@@ -1261,9 +1286,11 @@ export function BudgetPage({
           matchRules={matchRules}
           types={types}
           categories={categories}
+          companies={companies}
           settings={settings}
           onCreateType={onCreateType}
           onCreateCategory={onCreateCategory}
+          onCreateCompany={onCreateCompany}
           onUpdateHistoryEntry={onUpdateHistoryEntry}
         />
       </section>

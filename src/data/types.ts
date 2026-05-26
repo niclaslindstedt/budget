@@ -82,6 +82,15 @@ export type Row = {
   // overwrite a deliberate label. Cleared when the user clears the
   // typeId so a freshly-blank row can pick up a pattern again.
   typeIdLocked?: boolean;
+  // Optional reference to a reusable `Company` in `UserData.companies`.
+  // The "merchant" / "organisation" the entry transacts with — Fortum,
+  // Ellevio, H&M. Sits between the row's free-text description and the
+  // type chip: a row paying H&M might carry `typeId: accessories` plus
+  // `companyId: hm`, with a free-form description like "Sunglasses" on
+  // top. When no description is set, the description cell falls back
+  // to the company name; when no company is set, it falls back to the
+  // type name; absent both, to the raw bank text for history rows.
+  companyId?: string;
 };
 
 // Master allowlist of glyph names used anywhere in the app. The picker
@@ -263,6 +272,23 @@ export type EntryType = {
   kind?: EntryTypeKind;
 };
 
+// A merchant / organisation a row's money flows to (or from). Sits in
+// `UserData.companies`; rows reference it through `Row.companyId`. The
+// model is intentionally minimal — name only — so the Companies tab in
+// Settings is a flat rename-list and analysis grows on top later. No
+// presets ship: companies are entirely user-curated and grown through
+// the inline create rows on `CompanyPicker`.
+//
+// The display fallback chain in the budget cell reads
+// description → company name → type name → bank text, so a row paying
+// H&M for sunglasses shows "Sunglasses" (description), a row paying
+// H&M with no description shows "H&M" (company), and a row paying H&M
+// with neither shows "Accessories" (type).
+export type Company = {
+  id: string;
+  name: string;
+};
+
 // A real-world account (a bank account, credit card, cash envelope, …)
 // that a budget tracks. Accounts live at the UserData level so the same
 // account can be referenced from multiple sheets and a future roll-up
@@ -340,6 +366,13 @@ export type HistoryEntrySplit = {
   description: string;
   amount: number;
   typeId?: string | null;
+  // Same shape as `typeId`: optional reference to a `Company` in
+  // `UserData.companies`. Each split row carries its own company
+  // because the merchant of the parent bank entry might cover multiple
+  // payees (a card swipe at a multi-tenant register can split into
+  // distinct companies). `null` is reserved for explicit "no company"
+  // when a future patch path needs to clear it.
+  companyId?: string | null;
 };
 
 export type HistoryEntry = {
@@ -373,6 +406,14 @@ export type HistoryEntry = {
   // alongside the override in the edit modal.
   userDescription?: string;
   userTypeId?: string;
+  // Per-entry override for `companyId`. Set by the per-entry edit
+  // modal (pen button on a history row) and any inline editor that
+  // exposes the company picker. Higher priority than `MatchRule.companyId`
+  // and `MerchantHint.companyId`. Absent means "fall through to rule /
+  // hint / nothing"; a deleted company id is dropped silently by the
+  // validator so the synthesizer doesn't render a chip pointing at
+  // nothing.
+  userCompanyId?: string;
   // True when the user has explicitly opted this entry out of the
   // merchant-hint overlay. Set per-entry from the "Past matches" list
   // in the promote-to-recurring modal — checking off a row there
@@ -864,6 +905,12 @@ export type MerchantHint = {
   // flow so a row of "ICA SUPERMARKET 12345" can display as
   // "Groceries" once the user names it.
   description?: string;
+  // Optional company association the user attached to the merchant.
+  // Lower priority than `HistoryEntry.userCompanyId` and matching
+  // `MatchRule.companyId`, higher priority than no resolution. Dropped
+  // silently by the validator when the referenced company no longer
+  // exists, same contract as `typeId`.
+  companyId?: string;
 };
 
 // User-defined rule that relabels imported bank-history entries by
@@ -894,6 +941,12 @@ export type MatchRule = {
   pattern: string;
   description?: string;
   typeId?: string | null;
+  // Optional company stamped onto matching rows / history entries.
+  // Follows the same shape as `typeId`: `null` means "explicit no
+  // company" (clears any prior pick), `undefined` means "don't touch
+  // company". Validator drops a dangling reference to a deleted
+  // company silently — same contract as `typeId`.
+  companyId?: string | null;
   amountSign?: "any" | "positive" | "negative";
   transferFilter?: "any" | "exclude" | "only";
   // Signed lower / upper bounds on the entry amount, applied on top
@@ -920,6 +973,14 @@ export type RenamePattern = {
   suggestedDescription: string;
   hitCount: number;
   lastUsedAt: number;
+  // Optional company id learned alongside the description rename.
+  // When the user types a fresh description on a history entry AND
+  // assigns a company, the next import suggests both — the modal
+  // surfaces the description as the editable field, the company rides
+  // along silently so the predicted rename also tags the merchant.
+  // Dropped silently by the validator when the referenced company no
+  // longer exists.
+  suggestedCompanyId?: string;
 };
 
 // User-defined rule that auto-reconciles future bank-history entries
@@ -953,10 +1014,17 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 41;
+  version: 42;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
+  // User-added companies (merchants / organisations). Referenced from
+  // `Row.companyId`, `HistoryEntry.userCompanyId`,
+  // `MatchRule.companyId`, and `MerchantHint.companyId`. No presets
+  // ship — companies are entirely user-curated through the inline
+  // create row on the `CompanyPicker` and the Companies tab in
+  // Settings. Empty on a fresh budget.
+  companies: Company[];
   // User-added categories. On top of these the runtime also shows a
   // built-in list of broad Swedish-household preset categories
   // (`PRESET_CATEGORIES` in `data/constants.ts`); preset categories

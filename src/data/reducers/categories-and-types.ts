@@ -121,5 +121,91 @@ export function reduceCategoriesAndTypes(
     const next = { ...current, [action.presetId]: action.kind };
     return { ...state, presetTypeKindOverrides: next };
   }
+  if (action.type === "addCompany") {
+    return { ...state, companies: [...state.companies, action.company] };
+  }
+  if (action.type === "updateCompany") {
+    return {
+      ...state,
+      companies: state.companies.map((c) =>
+        c.id === action.companyId ? { ...c, ...action.patch } : c,
+      ),
+    };
+  }
+  if (action.type === "deleteCompany") {
+    const id = action.companyId;
+    const stripCompany = <T extends { companyId?: string | null }>(v: T): T => {
+      if (v.companyId !== id) return v;
+      const { companyId: _drop, ...rest } = v;
+      void _drop;
+      return rest as T;
+    };
+    const nextSheets = state.sheets.map((sheet) => ({
+      ...sheet,
+      items: sheet.items.map((item) => {
+        if (item.type !== "accountBudget") return item;
+        return {
+          ...item,
+          rows: item.rows.map((r) =>
+            r.companyId === id ? stripCompany(r) : r,
+          ),
+        };
+      }),
+    }));
+    const nextHistory: Record<string, (typeof state.history)[string]> = {};
+    for (const [accountId, entries] of Object.entries(state.history)) {
+      nextHistory[accountId] = entries.map((e) => {
+        let next = e;
+        if (next.userCompanyId === id) {
+          const { userCompanyId: _drop, ...rest } = next;
+          void _drop;
+          next = rest;
+        }
+        if (next.splits && next.splits.length > 0) {
+          const splits = next.splits.map((s) =>
+            s.companyId === id ? stripCompany(s) : s,
+          );
+          if (splits.some((s, i) => s !== next.splits![i])) {
+            next = { ...next, splits };
+          }
+        }
+        return next;
+      });
+    }
+    const nextMerchantHints = { ...state.merchantHints };
+    for (const [key, hint] of Object.entries(nextMerchantHints)) {
+      if (hint.companyId === id) {
+        const { companyId: _drop, ...rest } = hint;
+        void _drop;
+        nextMerchantHints[key] = rest;
+      }
+    }
+    const nextMatchRules = state.matchRules.map((rule) =>
+      rule.companyId === id ? { ...rule, companyId: null } : rule,
+    );
+    const nextRenamePatterns: typeof state.renamePatterns = {};
+    for (const [accountId, bucket] of Object.entries(state.renamePatterns)) {
+      const nextBucket: typeof bucket = {};
+      for (const [key, pattern] of Object.entries(bucket)) {
+        if (pattern.suggestedCompanyId === id) {
+          const { suggestedCompanyId: _drop, ...rest } = pattern;
+          void _drop;
+          nextBucket[key] = rest;
+        } else {
+          nextBucket[key] = pattern;
+        }
+      }
+      nextRenamePatterns[accountId] = nextBucket;
+    }
+    return {
+      ...state,
+      companies: state.companies.filter((c) => c.id !== id),
+      sheets: nextSheets,
+      history: nextHistory,
+      merchantHints: nextMerchantHints,
+      matchRules: nextMatchRules,
+      renamePatterns: nextRenamePatterns,
+    };
+  }
   return null;
 }

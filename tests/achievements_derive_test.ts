@@ -34,10 +34,11 @@ function withItem(rows: Row[]): UserData {
     items: [item],
   };
   return {
-    version: 41,
+    version: 42,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],
+    companies: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],

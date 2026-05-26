@@ -9,6 +9,7 @@ import { todayIso } from "../../utils/date";
 import { createLogger } from "../../utils/logger";
 import type {
   Category,
+  Company,
   EntryType,
   HistoryEntry,
   MatchRule,
@@ -20,6 +21,7 @@ import {
   formatShortDate,
   parseAmount,
 } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableTextInput, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
@@ -42,6 +44,10 @@ export type MatchRuleDraft = {
   pattern: string;
   description: string;
   typeId: string | null;
+  // Company id stamped on matching rows. `null` = explicit no-company
+  // override (clears any prior pick on matching budget rows); a string
+  // assigns the company.
+  companyId: string | null;
   amountSign: AmountSign;
   transferFilter: TransferFilter;
   // Signed bounds. `undefined` means "no constraint" — either end of
@@ -86,12 +92,14 @@ type Props = {
   existing: MatchRule | null;
   categories: readonly Category[];
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
   onClose: () => void;
   onSubmit: (draft: MatchRuleDraft) => void;
   onDelete?: () => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 const PREVIEW_LIMIT = 8;
@@ -129,12 +137,14 @@ export function MatchRuleModal({
   existing,
   categories,
   types,
+  companies,
   settings,
   onClose,
   onSubmit,
   onDelete,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -143,6 +153,7 @@ export function MatchRuleModal({
   const [pattern, setPattern] = useState("");
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [signMode, setSignMode] = useState<SignMode>("any");
   const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
   // The "between" range. Each bound has a magnitude (text) and a
@@ -175,6 +186,7 @@ export function MatchRuleModal({
       setPattern(existing.pattern);
       setDescription(existing.description ?? "");
       setTypeId(existing.typeId ?? null);
+      setCompanyId(existing.companyId ?? null);
       // A rule with both bounds equal collapses to Exact mode (one
       // input). A rule with any other combination of bounds keeps the
       // legacy Range mode. A rule without bounds shows the saved sign
@@ -223,6 +235,7 @@ export function MatchRuleModal({
     setPattern(seedEntry ? seedPatternFromSeed(seedEntry) : "");
     setDescription("");
     setTypeId(null);
+    setCompanyId(null);
     // Seed sign filter from the row the user invoked from: most
     // descriptions are tied to one direction (a refund vs a purchase
     // for the same merchant), so defaulting to the seed's sign keeps
@@ -301,6 +314,7 @@ export function MatchRuleModal({
       pattern,
       description: description.trim() === "" ? undefined : description.trim(),
       typeId,
+      companyId,
       amountSign,
       transferFilter,
       amountMin: rangeInverted ? undefined : amountMin,
@@ -311,6 +325,7 @@ export function MatchRuleModal({
       pattern,
       description,
       typeId,
+      companyId,
       amountSign,
       transferFilter,
       amountMin,
@@ -403,6 +418,7 @@ export function MatchRuleModal({
       pattern: pattern.trim(),
       description: description.trim(),
       typeId,
+      companyId,
       amountSign,
       transferFilter,
       amountMin,
@@ -415,6 +431,7 @@ export function MatchRuleModal({
     pattern,
     description,
     typeId,
+    companyId,
     signMode,
     amountSign,
     transferFilter,
@@ -483,6 +500,16 @@ export function MatchRuleModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">{t("matchRule.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={setCompanyId}
+              onCreate={onCreateCompany}
             />
           </div>
         </div>

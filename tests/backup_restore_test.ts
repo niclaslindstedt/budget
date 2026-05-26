@@ -89,6 +89,7 @@ describe("backup restore — migration pipeline", () => {
       activeSheetId: sheet.id,
       sheets: [sheet],
       accounts: [{ id: accountId, name: "Default" }],
+      companies: [],
       categories: [],
       types: [],
       hiddenPresetTypeIds: [],

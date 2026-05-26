@@ -7,6 +7,7 @@ import type {
   CellValue,
   Column,
   ColumnType,
+  Company,
   EntryType,
   HistoryEntry,
   MatchRule,
@@ -626,6 +627,8 @@ export function synthesizeHistoryRow(
   columns: Column[],
   hints: Readonly<Record<string, MerchantHint>> = {},
   rules: readonly MatchRule[] = [],
+  companies: readonly Company[] = [],
+  types: readonly EntryType[] = [],
 ): Row[] {
   const dateCol = findColumnByType(columns, "date");
   const descCol = findColumnByType(columns, "description");
@@ -654,6 +657,7 @@ export function synthesizeHistoryRow(
         historyEntryId: entry.id,
       };
       if (split.typeId) row.typeId = split.typeId;
+      if (split.companyId) row.companyId = split.companyId;
       // Carry the entry's transfer flag onto every split row so
       // `Settings.hideTransfers` hides them uniformly — the split is
       // just a presentation re-slice, not a re-classification.
@@ -662,45 +666,58 @@ export function synthesizeHistoryRow(
     });
   }
 
-  const { description, typeId } = resolveEntryLabels(entry, hints, rules);
+  const { description, typeId, companyId } = resolveEntryLabels(
+    entry,
+    hints,
+    rules,
+    companies,
+    types,
+  );
   const row: Row = {
     id: `hist:${entry.id}`,
     cells: buildCells(description, entry.amount),
     historyEntryId: entry.id,
   };
   if (typeId) row.typeId = typeId;
+  if (companyId) row.companyId = companyId;
   if (entry.isTransfer) row.isTransfer = true;
   return [row];
 }
 
-// Resolve the effective description and typeId for a non-split history
-// entry by walking the four-step priority chain shared by
-// `synthesizeHistoryRow` and the history-view modal:
+// Resolve the effective description, typeId, and companyId for a
+// non-split history entry by walking the same per-field priority
+// chain shared by `synthesizeHistoryRow` and the history-view modal:
 //   1. per-entry override on the HistoryEntry itself
+//      (`userDescription` / `userTypeId` / `userCompanyId`)
 //   2. matching MatchRule
 //   3. matching MerchantHint (skipped when `entry.hintIgnored`)
-//   4. raw bank text / no type
+//   4. raw bank text / no type / no company
 // `null` on a rule field is distinct from "absent" in the validator
 // but the renderer reads null the same way as undefined here — both
 // mean "no override".
+//
+// The description chain extends with company and type fallbacks so the
+// synthesized cell never shows raw bank text when the user has tagged
+// either side: descriptionOverride → companyName → typeName → bank
+// text. `companies` and `types` are looked up by id; missing lookups
+// fall through to the next step in the chain. Both default to empty
+// arrays so legacy call sites that don't know about companies / types
+// keep the previous "description override or bank text" behaviour.
 export function resolveEntryLabels(
   entry: HistoryEntry,
   hints: Readonly<Record<string, MerchantHint>> = {},
   rules: readonly MatchRule[] = [],
-): { description: string; typeId: string | null } {
+  companies: readonly Company[] = [],
+  types: readonly EntryType[] = [],
+): {
+  description: string;
+  typeId: string | null;
+  companyId: string | null;
+} {
   const rule = findMatchingRule(rules, entry);
   const hint = entry.hintIgnored
     ? undefined
     : hints[normaliseDescription(entry.description)];
-  const description =
-    (entry.userDescription && entry.userDescription.trim() !== ""
-      ? entry.userDescription
-      : null) ??
-    (rule?.description && rule.description.trim() !== ""
-      ? rule.description
-      : null) ??
-    hint?.description ??
-    entry.description;
   const typeId =
     entry.userTypeId ??
     (rule && rule.typeId !== undefined && rule.typeId !== null
@@ -708,7 +725,33 @@ export function resolveEntryLabels(
       : null) ??
     hint?.typeId ??
     null;
-  return { description, typeId };
+  const companyId =
+    entry.userCompanyId ??
+    (rule && rule.companyId !== undefined && rule.companyId !== null
+      ? rule.companyId
+      : null) ??
+    hint?.companyId ??
+    null;
+  const userDescription =
+    (entry.userDescription && entry.userDescription.trim() !== ""
+      ? entry.userDescription
+      : null) ??
+    (rule?.description && rule.description.trim() !== ""
+      ? rule.description
+      : null) ??
+    hint?.description ??
+    null;
+  let description = userDescription;
+  if (description === null && companyId) {
+    const company = companies.find((c) => c.id === companyId);
+    if (company && company.name.trim() !== "") description = company.name;
+  }
+  if (description === null && typeId) {
+    const type = types.find((t) => t.id === typeId);
+    if (type && type.name.trim() !== "") description = type.name;
+  }
+  if (description === null) description = entry.description;
+  return { description, typeId, companyId };
 }
 
 // True when this row should be treated as an inter-account transfer
@@ -739,6 +782,8 @@ export function buildVisibleRows(
   accountsById: ReadonlyMap<string, string>,
   merchantHints: Readonly<Record<string, MerchantHint>> = {},
   matchRules: readonly MatchRule[] = [],
+  companies: readonly Company[] = [],
+  types: readonly EntryType[] = [],
 ): Row[] {
   if (!item.accountId) return [...item.rows];
   const accountTxs = transfersForAccount(transfers, item.accountId);
@@ -753,7 +798,14 @@ export function buildVisibleRows(
   const historyRows = history
     .filter((e) => !e.hidden)
     .flatMap((e) =>
-      synthesizeHistoryRow(e, item.columns, merchantHints, matchRules),
+      synthesizeHistoryRow(
+        e,
+        item.columns,
+        merchantHints,
+        matchRules,
+        companies,
+        types,
+      ),
     );
   return [...item.rows, ...transferRows, ...historyRows];
 }
@@ -985,6 +1037,7 @@ export function mintBudgetRow(
     description: string;
     amount: number;
     typeId?: string | null;
+    companyId?: string | null;
     seriesId?: string;
   },
 ): Row | null {
@@ -998,6 +1051,7 @@ export function mintBudgetRow(
   const row: Row = { id: newId(), cells };
   if (values.seriesId) row.seriesId = values.seriesId;
   if (values.typeId) row.typeId = values.typeId;
+  if (values.companyId) row.companyId = values.companyId;
   return row;
 }
 

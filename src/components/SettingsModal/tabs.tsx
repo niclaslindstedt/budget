@@ -30,6 +30,7 @@ import {
 } from "../../data/constants";
 import type {
   Category,
+  Company,
   CustomTheme,
   CustomThemeColors,
   DateFormat,
@@ -79,6 +80,7 @@ import { ImportExportControls } from "../ImportExportControls";
 import { LanguagePicker } from "../LanguagePicker";
 import { DeleteAccountForm } from "./DeleteAccountForm";
 import { CategoriesAndTypesAdmin } from "./admin";
+import { CompaniesAdmin } from "./CompaniesAdmin";
 
 type CloudId = "dropbox" | "gdrive";
 
@@ -902,6 +904,33 @@ export function CategoriesTab({
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
+      />
+    </Section>
+  );
+}
+
+export function CompaniesTab({
+  data,
+  onCreateCompany,
+  onUpdateCompany,
+  onDeleteCompany,
+}: {
+  data: UserData;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onUpdateCompany: (
+    companyId: string,
+    patch: Partial<Omit<Company, "id">>,
+  ) => void;
+  onDeleteCompany: (companyId: string) => void;
+}) {
+  const t = useT();
+  return (
+    <Section title={t("settings.companiesTab.title")}>
+      <CompaniesAdmin
+        companies={data.companies}
+        onCreateCompany={onCreateCompany}
+        onUpdateCompany={onUpdateCompany}
+        onDeleteCompany={onDeleteCompany}
       />
     </Section>
   );

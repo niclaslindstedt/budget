@@ -62,9 +62,18 @@ export function reapplyPatternsToBudget(
     // carries no typeId), keep whatever the row already had. See the
     // header note — rules add types, they never strip them.
     if (!rule || !rule.typeId) return row;
-    if (rule.typeId === row.typeId) return row;
+    const ruleCompanyId =
+      rule.companyId !== undefined && rule.companyId !== null
+        ? rule.companyId
+        : undefined;
+    const typeNeedsUpdate = rule.typeId !== row.typeId;
+    const companyNeedsUpdate =
+      ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
+    if (!typeNeedsUpdate && !companyNeedsUpdate) return row;
     changed = true;
-    return { ...row, typeId: rule.typeId };
+    const next: Row = { ...row, typeId: rule.typeId };
+    if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
+    return next;
   });
   if (!changed) return item;
   return { ...item, rows: nextRows };
@@ -182,7 +191,13 @@ export function applyMatchRuleOnceToBudget(
   rule: MatchRule,
 ): AccountBudget {
   const ruleTypeId = rule.typeId;
-  if (!ruleTypeId) return item;
+  const ruleCompanyId =
+    rule.companyId !== undefined && rule.companyId !== null
+      ? rule.companyId
+      : undefined;
+  // Bail when the rule has no labels to stamp — both the type and
+  // company are missing.
+  if (!ruleTypeId && ruleCompanyId === undefined) return item;
   const cols = resolveCandidateColumns(item.columns);
   if (cols.descId === undefined) return item;
   let changed = false;
@@ -195,9 +210,20 @@ export function applyMatchRuleOnceToBudget(
     const candidate = candidateFromRow(row, cols);
     if (!candidate) return row;
     if (!findMatchingRuleForCandidate([rule], candidate)) return row;
-    if (row.typeId === ruleTypeId && row.typeIdLocked === true) return row;
+    const typeMatches = ruleTypeId
+      ? row.typeId === ruleTypeId && row.typeIdLocked === true
+      : true;
+    const companyMatches =
+      ruleCompanyId === undefined || row.companyId === ruleCompanyId;
+    if (typeMatches && companyMatches) return row;
     changed = true;
-    return { ...row, typeId: ruleTypeId, typeIdLocked: true };
+    const next: Row = { ...row };
+    if (ruleTypeId) {
+      next.typeId = ruleTypeId;
+      next.typeIdLocked = true;
+    }
+    if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
+    return next;
   });
   if (!changed) return item;
   return { ...item, rows: nextRows };
@@ -223,11 +249,19 @@ export function applyMatchRuleOnceToHistory(
   rule: MatchRule,
 ): Record<string, HistoryEntry[]> {
   const ruleTypeId = rule.typeId ?? undefined;
+  const ruleCompanyId =
+    rule.companyId !== undefined && rule.companyId !== null
+      ? rule.companyId
+      : undefined;
   const ruleDescription =
     typeof rule.description === "string" && rule.description !== ""
       ? rule.description
       : undefined;
-  if (ruleTypeId === undefined && ruleDescription === undefined)
+  if (
+    ruleTypeId === undefined &&
+    ruleCompanyId === undefined &&
+    ruleDescription === undefined
+  )
     return history as Record<string, HistoryEntry[]>;
   let mapChanged = false;
   const out: Record<string, HistoryEntry[]> = {};
@@ -246,6 +280,10 @@ export function applyMatchRuleOnceToHistory(
       let touched = false;
       if (ruleTypeId !== undefined && next.userTypeId !== ruleTypeId) {
         next.userTypeId = ruleTypeId;
+        touched = true;
+      }
+      if (ruleCompanyId !== undefined && next.userCompanyId !== ruleCompanyId) {
+        next.userCompanyId = ruleCompanyId;
         touched = true;
       }
       if (

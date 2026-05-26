@@ -72,6 +72,7 @@ export type ItemAction =
       rowId: string;
       futureDates: string[];
       typeId: string | null;
+      companyId: string | null;
     }
   | {
       type: "editSeries";
@@ -165,14 +166,28 @@ export function hintRecordingsFromBudget(
     const before = prevById.get(row.id);
     const afterType = row.typeId ?? null;
     const beforeType = before?.typeId ?? null;
-    if (afterType === beforeType) continue;
+    const afterCompany = row.companyId ?? null;
+    const beforeCompany = before?.companyId ?? null;
+    const typeChanged = afterType !== beforeType;
+    const companyChanged = afterCompany !== beforeCompany;
+    if (!typeChanged && !companyChanged) continue;
     const desc = row.cells[descId];
     if (typeof desc !== "string" || desc.trim() === "") continue;
     if (afterType !== null) {
-      out.push({ description: desc, typeId: afterType });
+      out.push({
+        description: desc,
+        typeId: afterType,
+        companyId: companyChanged ? afterCompany : undefined,
+      });
     } else if (beforeType !== null) {
       // Type was cleared — drop the hint.
       out.push({ description: desc, typeId: null });
+    } else if (companyChanged && afterCompany !== null) {
+      // Type didn't change but company did. Skip — merchant hints are
+      // keyed off the (type, key) pair and we only stamp company onto
+      // an existing hint via the type-bearing recording. A later type
+      // assignment will fold the company into the hint.
+      continue;
     }
   }
   return out;
@@ -210,6 +225,15 @@ function applyPatch(
       // The edit modal is an explicit user choice — lock the row out
       // of pattern-driven re-labelling, same as the inline type cell.
       next.typeIdLocked = true;
+    }
+  }
+  // Same tri-state contract as typeId: undefined = don't touch,
+  // null = clear, string = set.
+  if (patch.companyId !== undefined) {
+    if (patch.companyId === null) {
+      delete next.companyId;
+    } else {
+      next.companyId = patch.companyId;
     }
   }
   if (cols.dateId && patch.dateShiftDays && patch.dateShiftDays !== 0) {
@@ -253,9 +277,18 @@ export function applyPatternsAfterCellEdit(
     if (!descChanged && !amountChanged) return row;
     const rule = findMatchingRuleForCandidate(rules, candidate);
     if (!rule || !rule.typeId) return row;
-    if (rule.typeId === row.typeId) return row;
+    const ruleCompanyId =
+      rule.companyId !== undefined && rule.companyId !== null
+        ? rule.companyId
+        : undefined;
+    const typeNeedsUpdate = rule.typeId !== row.typeId;
+    const companyNeedsUpdate =
+      ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
+    if (!typeNeedsUpdate && !companyNeedsUpdate) return row;
     changed = true;
-    return { ...row, typeId: rule.typeId };
+    const nextRow: Row = { ...row, typeId: rule.typeId };
+    if (ruleCompanyId !== undefined) nextRow.companyId = ruleCompanyId;
+    return nextRow;
   });
   if (!changed) return next;
   return { ...next, rows: nextRows };
@@ -350,6 +383,7 @@ export function reduceAccountBudget(
           // it through pattern matching.
           row.typeIdLocked = true;
         }
+        if (draft.companyId) row.companyId = draft.companyId;
         // Formula rows carry the canonical id-keyed form so renames of
         // a referenced sheet don't break the formula; the renderer
         // recomputes the amount each pass via the resolver.
@@ -387,6 +421,7 @@ export function reduceAccountBudget(
           row.typeId = action.typeId;
           row.typeIdLocked = true;
         }
+        if (action.companyId) row.companyId = action.companyId;
         return row;
       });
       return {
@@ -401,6 +436,11 @@ export function reduceAccountBudget(
             } else if (action.typeId === null) {
               delete next.typeId;
               delete next.typeIdLocked;
+            }
+            if (action.companyId) {
+              next.companyId = action.companyId;
+            } else if (action.companyId === null) {
+              delete next.companyId;
             }
             return next;
           }),
@@ -475,6 +515,7 @@ export function reduceAccountBudget(
           completed: anchorCompleted,
         });
         if (s.typeId) r.typeId = s.typeId;
+        if (s.companyId) r.companyId = s.companyId;
         return r;
       });
       // No remainder → the anchor is fully absorbed into the splits
@@ -560,6 +601,10 @@ export function reduceAccountBudget(
           if (action.patch.typeId !== undefined) {
             if (action.patch.typeId === null) delete next.typeId;
             else next.typeId = action.patch.typeId;
+          }
+          if (action.patch.companyId !== undefined) {
+            if (action.patch.companyId === null) delete next.companyId;
+            else next.companyId = action.patch.companyId;
           }
           if (action.patch.isTransfer !== undefined) {
             // Only persist `true` — absent means "not a transfer".
@@ -765,6 +810,10 @@ export function reduceItemDispatch(
               description: desc,
               typeId: effectiveAction.typeId,
               description_override: desc,
+              // Fold the company tag into the merchant hint so past
+              // synthesized rows sharing this merchant key adopt it
+              // alongside the description / type overlay.
+              companyId: effectiveAction.companyId ?? undefined,
             });
           }
         }

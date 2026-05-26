@@ -6,6 +6,7 @@ import { bcp47, type Lang } from "../../i18n/locale";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
+  Company,
   EntryType,
   HistoryEntry,
   MatchRule,
@@ -13,6 +14,7 @@ import type {
   Settings,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableTextInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
@@ -45,13 +47,19 @@ type Props = {
   matchRules: readonly MatchRule[];
   types: readonly EntryType[];
   categories: readonly Category[];
+  companies: readonly Company[];
   settings: Settings;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
   onUpdateHistoryEntry: (
     accountId: string,
     entryId: string,
-    patch: { userDescription?: string; userTypeId?: string | null },
+    patch: {
+      userDescription?: string;
+      userTypeId?: string | null;
+      userCompanyId?: string | null;
+    },
   ) => void;
 };
 
@@ -83,13 +91,22 @@ function entryNeedsMetadata(
   entry: HistoryEntry,
   hints: Readonly<Record<string, MerchantHint>>,
   rules: readonly MatchRule[],
+  companies: readonly Company[],
+  types: readonly EntryType[],
 ): boolean {
   if (entry.hidden) return false;
   if (entry.collapsedIntoTransferId) return false;
   if (entry.isTransfer) return false;
   if (entry.splits && entry.splits.length > 0) return false;
-  const resolved = resolveEntryLabels(entry, hints, rules);
-  return resolved.typeId === null || resolved.description === entry.description;
+  const resolved = resolveEntryLabels(entry, hints, rules, companies, types);
+  // The entry still wants a closer look when ANY of the three first-
+  // class fields is missing: no type pinned, no company tagged, OR the
+  // resolved description is still the raw bank text.
+  return (
+    resolved.typeId === null ||
+    resolved.companyId === null ||
+    resolved.description === entry.description
+  );
 }
 
 export function BudgetMetadataModal({
@@ -101,9 +118,11 @@ export function BudgetMetadataModal({
   matchRules,
   types,
   categories,
+  companies,
   settings,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
   onUpdateHistoryEntry,
 }: Props) {
   const t = useT();
@@ -134,7 +153,8 @@ export function BudgetMetadataModal({
   const queue = useMemo(() => {
     const filtered = entries.filter(
       (e) =>
-        !skipped.has(e.id) && entryNeedsMetadata(e, merchantHints, matchRules),
+        !skipped.has(e.id) &&
+        entryNeedsMetadata(e, merchantHints, matchRules, companies, types),
     );
     filtered.sort((a, b) => {
       const monthA = monthKeyOf(a.date);
@@ -145,7 +165,7 @@ export function BudgetMetadataModal({
       return a.id.localeCompare(b.id);
     });
     return filtered;
-  }, [entries, merchantHints, matchRules, skipped]);
+  }, [entries, merchantHints, matchRules, companies, types, skipped]);
 
   const current = queue[0] ?? null;
   const currentMonth = current ? monthKeyOf(current.date) : null;
@@ -158,17 +178,26 @@ export function BudgetMetadataModal({
     for (const e of entries) {
       if (monthKeyOf(e.date) !== currentMonth) continue;
       if (
-        entryNeedsMetadata(e, merchantHints, matchRules) ||
+        entryNeedsMetadata(e, merchantHints, matchRules, companies, types) ||
         completed.has(e.id)
       )
         n += 1;
     }
     return n;
-  }, [entries, merchantHints, matchRules, currentMonth, completed]);
+  }, [
+    entries,
+    merchantHints,
+    matchRules,
+    companies,
+    types,
+    currentMonth,
+    completed,
+  ]);
   const monthIndex = monthTotal > 0 ? monthTotal - monthRemaining + 1 : 0;
 
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Reset the form when the current entry changes — either because the
   // user saved/skipped, or because the modal just opened on a fresh
@@ -176,6 +205,7 @@ export function BudgetMetadataModal({
   useEffect(() => {
     setDescription("");
     setTypeId(null);
+    setCompanyId(null);
   }, [current?.id]);
 
   const handleSkip = useCallback(() => {
@@ -190,10 +220,19 @@ export function BudgetMetadataModal({
   const handleSave = useCallback(() => {
     if (!current || !accountId) return;
     const trimmed = description.trim();
-    const patch: { userDescription?: string; userTypeId?: string | null } = {};
+    const patch: {
+      userDescription?: string;
+      userTypeId?: string | null;
+      userCompanyId?: string | null;
+    } = {};
     if (trimmed !== "") patch.userDescription = trimmed;
     if (typeId !== null) patch.userTypeId = typeId;
-    if (patch.userDescription === undefined && patch.userTypeId === undefined) {
+    if (companyId !== null) patch.userCompanyId = companyId;
+    if (
+      patch.userDescription === undefined &&
+      patch.userTypeId === undefined &&
+      patch.userCompanyId === undefined
+    ) {
       return;
     }
     onUpdateHistoryEntry(accountId, current.id, patch);
@@ -202,10 +241,19 @@ export function BudgetMetadataModal({
       next.add(current.id);
       return next;
     });
-  }, [accountId, current, description, typeId, onUpdateHistoryEntry]);
+  }, [
+    accountId,
+    current,
+    description,
+    typeId,
+    companyId,
+    onUpdateHistoryEntry,
+  ]);
 
   const canSave =
-    !!accountId && !!current && (typeId !== null || description.trim() !== "");
+    !!accountId &&
+    !!current &&
+    (typeId !== null || companyId !== null || description.trim() !== "");
 
   if (!open) return null;
 
@@ -277,6 +325,21 @@ export function BudgetMetadataModal({
                   onCreateCategory={onCreateCategory}
                   amountSign={current.amount < 0 ? "negative" : "positive"}
                 />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("metadata.companyLabel")}
+                </span>
+                <CompanyPicker
+                  variant="field"
+                  companies={companies}
+                  selectedId={companyId}
+                  onSelect={setCompanyId}
+                  onCreate={onCreateCompany}
+                />
+                <span className="text-xs text-muted">
+                  {t("metadata.companyHint")}
+                </span>
               </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-muted">

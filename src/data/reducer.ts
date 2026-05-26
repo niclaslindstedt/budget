@@ -2,6 +2,7 @@ import type {
   Account,
   Category,
   CommonSettings,
+  Company,
   DeviceSettings,
   EntryType,
   EntryTypeKind,
@@ -46,6 +47,28 @@ export type Action =
   | { type: "deleteType"; typeId: string }
   | { type: "setPresetTypeHidden"; presetId: string; hidden: boolean }
   | { type: "setPresetTypeKind"; presetId: string; kind: EntryTypeKind }
+  | { type: "addCompany"; company: Company }
+  | {
+      // Edit a user-defined company by id. Each field in `patch` is
+      // optional; absent fields stay untouched. Companies are name-
+      // only so the only meaningful field is `name`, but the patch
+      // shape mirrors the Category / EntryType actions so a future
+      // surface (notes, address, …) drops in without another reducer
+      // signature.
+      type: "updateCompany";
+      companyId: string;
+      patch: Partial<Omit<Company, "id">>;
+    }
+  | {
+      // Delete a user-defined company. Cascades through every place
+      // that references the id: row.companyId, history.userCompanyId,
+      // history.splits[i].companyId, merchantHints[*].companyId,
+      // matchRules[*].companyId, and renamePatterns[*].suggestedCompanyId
+      // all get the reference dropped so the validator's
+      // referential-integrity guards never trip on a dangling id.
+      type: "deleteCompany";
+      companyId: string;
+    }
   | {
       // Save handler from the SettingsModal. `draft` is the flat
       // effective view the user edited; `scope` is which device
@@ -178,6 +201,11 @@ export type Action =
       description: string;
       amount: number;
       typeId: string | null;
+      // Company stamped on every minted future row and folded into the
+      // merchant-hint when `applyToHistoric` is true so past synthesized
+      // history rows inherit the same tag. `null` means "no company
+      // override" — the row stays untagged.
+      companyId: string | null;
       dates: string[];
       // When false, the merchant hint is not stamped — past entries
       // sharing the merchant key keep their raw bank text. The future
@@ -302,6 +330,7 @@ export type Action =
       patch: {
         userDescription?: string;
         userTypeId?: string | null;
+        userCompanyId?: string | null;
         isTransfer?: boolean;
       };
     }
@@ -381,6 +410,11 @@ export type Action =
       renames: Array<{
         entryId: string;
         userDescription: string;
+        // Optional company learned alongside the description on the
+        // matching `RenamePattern`. Absent when the pattern has none —
+        // the reducer leaves `userCompanyId` on the entry untouched
+        // in that case.
+        userCompanyId?: string;
       }>;
     };
 

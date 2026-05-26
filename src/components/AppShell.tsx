@@ -124,6 +124,7 @@ import type {
   Category,
   CellValue,
   Column,
+  Company,
   EntryType,
   HeaderAction,
   HistoryEntry,
@@ -1127,7 +1128,11 @@ export function AppShell({
     (
       accountId: string,
       entryId: string,
-      patch: { userDescription?: string; userTypeId?: string | null },
+      patch: {
+        userDescription?: string;
+        userTypeId?: string | null;
+        userCompanyId?: string | null;
+      },
     ) =>
       dispatch({
         type: "updateHistoryEntry",
@@ -1198,6 +1203,23 @@ export function AppShell({
       dispatch({ type: "addType", entryType });
       return entryType;
     },
+    [dispatch],
+  );
+  const onCreateCompany = useCallback(
+    (draft: Omit<Company, "id">): Company => {
+      const company: Company = { id: newId(), ...draft };
+      dispatch({ type: "addCompany", company });
+      return company;
+    },
+    [dispatch],
+  );
+  const onUpdateCompany = useCallback(
+    (companyId: string, patch: Partial<Omit<Company, "id">>) =>
+      dispatch({ type: "updateCompany", companyId, patch }),
+    [dispatch],
+  );
+  const onDeleteCompany = useCallback(
+    (companyId: string) => dispatch({ type: "deleteCompany", companyId }),
     [dispatch],
   );
   const onUpdateType = useCallback(
@@ -2362,7 +2384,12 @@ export function AppShell({
     [dispatch, sheetId, itemId, recurringPromoteContext],
   );
   const onConvertToRecurring = useCallback(
-    (rowId: string, futureDates: string[], typeId: string | null) => {
+    (
+      rowId: string,
+      futureDates: string[],
+      typeId: string | null,
+      companyId: string | null,
+    ) => {
       dispatch({
         type: "convertToRecurring",
         sheetId,
@@ -2370,6 +2397,7 @@ export function AppShell({
         rowId,
         futureDates,
         typeId,
+        companyId,
       });
       setEditPrompt(null);
     },
@@ -2697,7 +2725,11 @@ export function AppShell({
   }, [historyEditPrompt, activeItem.accountId, data.history]);
 
   const onSubmitHistoryEdit = useCallback(
-    (patch: { userDescription: string; userTypeId: string | null }) => {
+    (patch: {
+      userDescription: string;
+      userTypeId: string | null;
+      userCompanyId: string | null;
+    }) => {
       const accountId = activeItem.accountId;
       if (!accountId || !historyEditPrompt) return;
       dispatch({
@@ -2721,6 +2753,7 @@ export function AppShell({
       };
       if (draft.description) rule.description = draft.description;
       if (draft.typeId) rule.typeId = draft.typeId;
+      if (draft.companyId) rule.companyId = draft.companyId;
       if (draft.amountSign !== "any") rule.amountSign = draft.amountSign;
       if (draft.transferFilter !== "any")
         rule.transferFilter = draft.transferFilter;
@@ -2864,6 +2897,7 @@ export function AppShell({
     return {
       description: hint.description ?? null,
       typeId: hint.typeId ?? null,
+      companyId: hint.companyId ?? null,
     };
   }, [editPrompt, activeItem.accountId, data.history, data.merchantHints]);
 
@@ -3103,6 +3137,7 @@ export function AppShell({
         description: string;
         amount: number;
         typeId: string | null;
+        companyId: string | null;
         dates: string[];
         applyToHistoric: boolean;
         excludedHistoryEntryIds: readonly string[];
@@ -3118,6 +3153,7 @@ export function AppShell({
         description: promotion.description,
         amount: promotion.amount,
         typeId: promotion.typeId,
+        companyId: promotion.companyId,
         dates: promotion.dates,
         applyToHistoric: promotion.applyToHistoric,
         accountId: activeBudget.accountId,
@@ -3386,8 +3422,10 @@ export function AppShell({
                   data={data}
                   types={allTypesMerged}
                   categories={allCategoriesMerged}
+                  companies={data.companies}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
+                  onCreateCompany={onCreateCompany}
                   accounts={data.accounts}
                   transfers={data.transfers}
                   history={
@@ -3606,6 +3644,7 @@ export function AppShell({
           viewHistoryAccount ? (data.history[viewHistoryAccount.id] ?? []) : []
         }
         types={allTypesMerged}
+        companies={data.companies}
         merchantHints={data.merchantHints}
         matchRules={data.matchRules}
         settings={effectiveSettings}
@@ -3666,6 +3705,7 @@ export function AppShell({
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
+        companies={data.companies}
         settings={effectiveSettings}
         lastSeriesDate={editLastSeriesDate}
         historyHintPrefill={editHistoryHintPrefill}
@@ -3676,6 +3716,7 @@ export function AppShell({
         onPromoteHistory={onPromoteHistory}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompany={onCreateCompany}
       />
       <EditRowModal
         open={editRowPrompt !== null}
@@ -3719,6 +3760,7 @@ export function AppShell({
         existing={matchRuleExisting}
         categories={allCategoriesMerged}
         types={allTypesMerged}
+        companies={data.companies}
         settings={effectiveSettings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
@@ -3727,17 +3769,20 @@ export function AppShell({
         }
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompany={onCreateCompany}
       />
       <HistoryEntryEditModal
         open={historyEditPrompt !== null && historyEditEntry !== null}
         entry={historyEditEntry}
         categories={allCategoriesMerged}
         types={allTypesMerged}
+        companies={data.companies}
         settings={effectiveSettings}
         onClose={() => setHistoryEditPrompt(null)}
         onSubmit={onSubmitHistoryEdit}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompany={onCreateCompany}
       />
       <ApplySeriesEditDialog
         open={pendingSeriesEdit !== null}
@@ -3946,6 +3991,9 @@ export function AppShell({
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
+        onCreateCompany={onCreateCompany}
+        onUpdateCompany={onUpdateCompany}
+        onDeleteCompany={onDeleteCompany}
         onEditMatchRule={onEditMatchRule}
         onMoveMatchRule={onMoveMatchRule}
         onReapplyMatchRules={onReapplyMatchRules}
