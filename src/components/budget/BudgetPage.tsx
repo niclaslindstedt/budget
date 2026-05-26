@@ -150,6 +150,7 @@ type Props = {
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
   onCopyRequest: (row: Row) => void;
+  onSetFiscalMonthShift: (row: Row, shift: -1 | 1 | null) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
   // Inline per-cell write for a synthesized history row. Routed by
   // `BudgetPage` when the user edits the description or type cell on a
@@ -337,6 +338,7 @@ export function BudgetPage({
   onMatchRuleRequest,
   onEditHistoryRequest,
   onCopyRequest,
+  onSetFiscalMonthShift,
   onCorrectionDeleteRequest,
   onUpdateHistoryEntry,
   onReorderColumns,
@@ -1242,6 +1244,7 @@ export function BudgetPage({
                   onMatchRuleRequest={onMatchRuleRequest}
                   onEditHistoryRequest={onEditHistoryRequest}
                   onCopyRequest={onCopyRequest}
+                  onSetFiscalMonthShift={onSetFiscalMonthShift}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}

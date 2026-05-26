@@ -26,6 +26,7 @@ import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
 import { reduceAccounts } from "./reducers/accounts";
 import { reduceHistory } from "./reducers/history";
+import { reduceSeriesMetadata } from "./reducers/series-metadata";
 
 export type Action =
   | ItemAction
@@ -420,6 +421,18 @@ export type Action =
         // in that case.
         userCompanyId?: string;
       }>;
+    }
+  | {
+      // Set / clear the "primary income" flag for a recurring series.
+      // When `isPrimaryIncome` is true, every existing row in the series
+      // is re-scanned and gets its `fiscalMonthShift` recomputed from
+      // `anchorDayOfMonth` so the cascade applies retroactively. When
+      // false, the metadata entry is dropped and every existing row in
+      // the series has its `fiscalMonthShift` cleared.
+      type: "setSeriesPrimaryIncome";
+      seriesId: string;
+      isPrimaryIncome: boolean;
+      anchorDayOfMonth: number | null;
     };
 
 export function reducer(state: UserData, action: Action): UserData {
@@ -436,7 +449,8 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??
     reduceAccounts(state, action) ??
-    reduceHistory(state, action);
+    reduceHistory(state, action) ??
+    reduceSeriesMetadata(state, action);
   if (handled !== null) return handled;
 
   // Item-level dispatch tail. Handles every ItemAction; falls through

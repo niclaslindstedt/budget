@@ -3065,6 +3065,33 @@ export function AppShell({
   const onCopyRequest = useCallback((row: Row) => {
     setMoveCopyPrompt({ kind: "copy", rows: [row] });
   }, []);
+  const onSetFiscalMonthShift = useCallback(
+    (row: Row, shift: -1 | 1 | null) => {
+      dispatch({
+        type: "setRowFiscalMonthShift",
+        sheetId,
+        itemId,
+        rowId: row.id,
+        shift,
+      });
+    },
+    [dispatch, sheetId, itemId],
+  );
+  const onSetSeriesPrimaryIncome = useCallback(
+    (
+      seriesId: string,
+      isPrimaryIncome: boolean,
+      anchorDayOfMonth: number | null,
+    ) => {
+      dispatch({
+        type: "setSeriesPrimaryIncome",
+        seriesId,
+        isPrimaryIncome,
+        anchorDayOfMonth,
+      });
+    },
+    [dispatch],
+  );
 
   const onApplyBulkPatch = useCallback(
     (rowIds: string[], patch: BulkPatch) => {
@@ -3465,6 +3492,7 @@ export function AppShell({
                   onMatchRuleRequest={onMatchRuleRequest}
                   onEditHistoryRequest={onEditHistoryRequest}
                   onCopyRequest={onCopyRequest}
+                  onSetFiscalMonthShift={onSetFiscalMonthShift}
                   onUpdateHistoryEntry={onUpdateHistoryEntry}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
@@ -3733,8 +3761,14 @@ export function AppShell({
         settings={effectiveSettings}
         lastSeriesDate={editRowLastSeriesDate}
         seriesRows={editRowSeriesRows}
+        seriesMetadata={
+          editRowPrompt?.row.seriesId
+            ? data.seriesMetadata[editRowPrompt.row.seriesId]
+            : undefined
+        }
         onClose={() => setEditRowPrompt(null)}
         onSave={onSaveEditRow}
+        onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />

@@ -13,6 +13,7 @@ import type {
   MatchRule,
   MerchantHint,
   Row,
+  SeriesMetadata,
   Sheet,
   SheetGlyph,
   SheetItem,
@@ -123,19 +124,108 @@ export function getMonthKey(
   return `${String(fy).padStart(4, "0")}-${String(fm).padStart(2, "0")}`;
 }
 
+// Shift a fiscal-month key by `delta` months. `+1` → next month; `-1` →
+// previous month. Non-month input (`"undated"`, `""`) is returned
+// unchanged so callers can run the helper over a mixed key set without
+// pre-filtering. Year rolls when crossing the January / December
+// boundary in either direction.
+export function applyMonthShift(monthKey: string, delta: number): string {
+  if (delta === 0) return monthKey;
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return monthKey;
+  let y = Number(monthKey.slice(0, 4));
+  let m = Number(monthKey.slice(5, 7));
+  m += delta;
+  while (m < 1) {
+    m += 12;
+    y -= 1;
+  }
+  while (m > 12) {
+    m -= 12;
+    y += 1;
+  }
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+}
+
+// Group rows into fiscal-month buckets, honouring per-row
+// `fiscalMonthShift` and cascading it to every other row dated the same
+// day. Used by the budget view and the read-only viewer modal so both
+// surfaces agree on which month a row belongs to.
+//
+// Cascade rule: if any row dated `D` carries an explicit shift, every
+// row (regular + synthesized transfer + synthesized history) on date
+// `D` inherits the same shift. When two rows on the same day disagree
+// the first one wins — the user can clear the override on the
+// disagreeing row to resolve. The cascade is computed dynamically here
+// rather than stored on every row, so deleting / editing the anchor
+// row automatically un-cascades the rest.
 export function groupRowsByMonth(
   rows: Row[],
   dateColumnId: string,
   startOfMonth: number = 1,
 ): Map<string, Row[]> {
+  // Pass 1: collect the dynamic shift for every shifted date. First
+  // shift wins on a day; the anchor row is the only place the field is
+  // stored so a same-day disagreement is rare and the picker resolves
+  // it (clear the override on the row you don't want).
+  const shiftByDate = new Map<string, -1 | 1>();
+  for (const row of rows) {
+    const shift = row.fiscalMonthShift;
+    if (shift !== 1 && shift !== -1) continue;
+    const date = row.cells[dateColumnId];
+    if (typeof date !== "string" || date === "") continue;
+    if (!shiftByDate.has(date)) shiftByDate.set(date, shift);
+  }
+  // Pass 2: bucket each row by `baseMonth + shift(date)`.
   const groups = new Map<string, Row[]>();
   for (const row of rows) {
-    const key = getMonthKey(row.cells[dateColumnId], startOfMonth);
+    const dateValue = row.cells[dateColumnId];
+    let key = getMonthKey(dateValue, startOfMonth);
+    if (typeof dateValue === "string" && dateValue !== "") {
+      const cascade = shiftByDate.get(dateValue);
+      if (cascade !== undefined) key = applyMonthShift(key, cascade);
+    }
     const list = groups.get(key);
     if (list) list.push(row);
     else groups.set(key, [row]);
   }
   return groups;
+}
+
+// Decide whether a row that belongs to a primary-income series should
+// carry a `fiscalMonthShift` of `+1`, given the user-configured anchor
+// day-of-month. The shift fires when the row landed in the calendar
+// month immediately preceding its anchor day — i.e. the bank paid out
+// a few days early to clear the weekend / holiday. Returns the
+// computed shift (or `undefined` for "no shift"), so the caller can
+// drop it onto the row directly.
+//
+// Edge cases:
+// - No anchor day set → undefined (the user hasn't told us when
+//   "real" payday is, so we can't decide). The validator drops anchor
+//   days outside 1..31.
+// - Row's day-of-month >= anchor day → undefined (the salary arrived
+//   on or after the configured payday; no shift needed).
+// - Row's day-of-month < anchor day → `+1` (the salary landed earlier
+//   in the same month than the anchor day, so it's the next month's
+//   pay arriving early).
+//
+// The check is intentionally lenient: it doesn't try to verify that
+// the row's anchor day-of-month plus a day delta lines up with the
+// configured rule. The user marked the series as primary income — we
+// trust the flag and the anchor day, and shift whenever the actual day
+// is earlier.
+export function computePrimaryIncomeShift(
+  isoDate: string,
+  metadata: SeriesMetadata | undefined,
+): -1 | 1 | undefined {
+  if (!metadata?.isPrimaryIncome) return undefined;
+  const anchor = metadata.anchorDayOfMonth;
+  if (typeof anchor !== "number" || anchor < 1 || anchor > 31) return undefined;
+  if (isoDate.length < 10) return undefined;
+  const day = Number(isoDate.slice(8, 10));
+  if (!Number.isFinite(day)) return undefined;
+  if (day < anchor) return 1;
+  return undefined;
 }
 
 // ISO date that lands inside the fiscal month `monthKey` given the

@@ -89,6 +89,11 @@ type Props = {
   // the same dispatch path with a one-element rowIds array. Moving a
   // row to another month is done by editing its date cell.
   onCopyRequest: (row: Row) => void;
+  // Manual fiscal-month override for the row. Threaded through to
+  // `RowActionsMenu` so the "Push to next month" / "Push to previous
+  // month" / "Reset month override" entries can dispatch the reducer
+  // action. Optional — surfaces only on user-authored rows.
+  onSetFiscalMonthShift?: (row: Row, shift: -1 | 1 | null) => void;
   onToggleSelect: (rowId: string) => void;
 };
 
@@ -122,6 +127,7 @@ function BudgetRowImpl({
   onMatchRuleRequest,
   onEditHistoryRequest,
   onCopyRequest,
+  onSetFiscalMonthShift,
   onToggleSelect,
 }: Props) {
   const tr = useT();
@@ -392,6 +398,9 @@ function BudgetRowImpl({
           rowDate={col.type === "type" ? rowDateFormatted : undefined}
           rowDateColor={col.type === "type" ? rowDateColor : undefined}
           rowDescription={col.type === "type" ? rowDescription : undefined}
+          fiscalMonthShift={
+            col.type === "date" ? row.fiscalMonthShift : undefined
+          }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />
@@ -479,6 +488,7 @@ function BudgetRowImpl({
               onToggleRowTransfer={onToggleRowTransfer}
               onSplitRequest={onSplitRequest}
               onCopyRequest={onCopyRequest}
+              onSetFiscalMonthShift={onSetFiscalMonthShift}
               onAction={() => setSwiped(false)}
             />
           )}

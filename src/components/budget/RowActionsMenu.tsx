@@ -1,10 +1,13 @@
 import { useCallback, useRef, useState } from "react";
 import {
+  ArrowDownLeft,
+  ArrowUpRight,
   Copy,
   Eye,
   EyeOff,
   MoreHorizontal,
   Repeat,
+  RotateCcw,
   Scissors,
   Tags,
 } from "lucide-react";
@@ -23,6 +26,12 @@ type Props = {
   onToggleRowTransfer?: (row: Row) => void;
   onSplitRequest: (row: Row) => void;
   onCopyRequest: (row: Row) => void;
+  // Manual fiscal-month override. Null clears the override; ±1 sets it.
+  // Hidden on synthesized history / transfer rows — they have no
+  // editable persisted form and the shift would have nothing to attach
+  // to. The handler is responsible for resolving the shift through the
+  // reducer.
+  onSetFiscalMonthShift?: (row: Row, shift: -1 | 1 | null) => void;
   // Fired after picking any menu item so the parent can dismiss its
   // swipe state in the same frame the dropdown closes.
   onAction: () => void;
@@ -52,6 +61,7 @@ export function RowActionsMenu({
   onToggleRowTransfer,
   onSplitRequest,
   onCopyRequest,
+  onSetFiscalMonthShift,
   onAction,
 }: Props) {
   const t = useT();
@@ -128,6 +138,41 @@ export function RowActionsMenu({
       label: t("cell.copy"),
       onClick: () => pick(() => onCopyRequest(row)),
     });
+  }
+
+  // Manual fiscal-month override. Hidden on synthesized rows (history /
+  // transfer) since they have no editable persisted form; the parent
+  // opts in by passing `onSetFiscalMonthShift`. The current state of
+  // `row.fiscalMonthShift` decides which of the three entries appear so
+  // the menu stays compact.
+  if (onSetFiscalMonthShift && !isHistory && !row.transferId) {
+    const shift = row.fiscalMonthShift;
+    if (shift !== 1) {
+      items.push({
+        key: "pushNextMonth",
+        icon: <ArrowUpRight size={16} aria-hidden focusable={false} />,
+        label: t("cell.pushToNextMonth"),
+        title: t("cell.pushToNextMonthTitle"),
+        onClick: () => pick(() => onSetFiscalMonthShift(row, 1)),
+      });
+    }
+    if (shift !== -1) {
+      items.push({
+        key: "pushPrevMonth",
+        icon: <ArrowDownLeft size={16} aria-hidden focusable={false} />,
+        label: t("cell.pushToPrevMonth"),
+        title: t("cell.pushToPrevMonthTitle"),
+        onClick: () => pick(() => onSetFiscalMonthShift(row, -1)),
+      });
+    }
+    if (shift === 1 || shift === -1) {
+      items.push({
+        key: "resetMonthOverride",
+        icon: <RotateCcw size={16} aria-hidden focusable={false} />,
+        label: t("cell.resetMonthOverride"),
+        onClick: () => pick(() => onSetFiscalMonthShift(row, null)),
+      });
+    }
   }
 
   return (

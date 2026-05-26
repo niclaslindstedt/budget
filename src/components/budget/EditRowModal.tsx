@@ -7,6 +7,7 @@ import type {
   Column,
   EntryType,
   Row,
+  SeriesMetadata,
   Settings,
 } from "../../data/types";
 import { useDesktopAutoFocus } from "../../hooks";
@@ -55,8 +56,23 @@ type Props = {
   // under the scope picker so the user can see what they're about to
   // change before pressing Save.
   seriesRows: readonly Row[];
+  // Current persisted metadata for the row's series (or undefined when
+  // the row is one-off). Drives the "primary income" toggle's initial
+  // value. Series-level edits dispatch through `onSetSeriesPrimaryIncome`
+  // and don't ride on `onSave`.
+  seriesMetadata?: SeriesMetadata;
   onClose: () => void;
   onSave: (rowId: string, patch: EditRowPatch, scope: EditRowScope) => void;
+  // Set / clear the primary-income flag for the row's series. Fired
+  // straight from the modal's toggle so the cascade applies immediately
+  // — keeping the rest of the row save independent of this workspace-
+  // level metadata change. `anchorDayOfMonth` is null when the user
+  // turns the toggle off.
+  onSetSeriesPrimaryIncome?: (
+    seriesId: string,
+    isPrimaryIncome: boolean,
+    anchorDayOfMonth: number | null,
+  ) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
@@ -93,8 +109,10 @@ export function EditRowModal({
   settings,
   lastSeriesDate,
   seriesRows,
+  seriesMetadata,
   onClose,
   onSave,
+  onSetSeriesPrimaryIncome,
   onCreateType,
   onCreateCategory,
 }: Props) {
@@ -150,6 +168,15 @@ export function EditRowModal({
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [completed, setCompleted] = useState(initialCompleted);
 
+  // Primary-income toggle state. Initialised from the persisted
+  // metadata so the toggle reflects whatever the user picked last time;
+  // saved straight to the workspace through `onSetSeriesPrimaryIncome`
+  // when the user changes it (no need to wait for the row save).
+  const initialIsPrimary = seriesMetadata?.isPrimaryIncome === true;
+  const initialAnchorDay = seriesMetadata?.anchorDayOfMonth ?? 25;
+  const [isPrimaryIncome, setIsPrimaryIncome] = useState(initialIsPrimary);
+  const [anchorDayText, setAnchorDayText] = useState(String(initialAnchorDay));
+
   const [scopeKind, setScopeKind] = useState<"just-this" | "future" | "all">(
     "just-this",
   );
@@ -174,6 +201,8 @@ export function EditRowModal({
     setDate(initialDate);
     setTypeId(initialTypeId);
     setCompleted(initialCompleted);
+    setIsPrimaryIncome(initialIsPrimary);
+    setAnchorDayText(String(initialAnchorDay));
     setScopeKind("just-this");
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
@@ -481,6 +510,62 @@ export function EditRowModal({
                 {t("editEntry.shiftDaysByHint")}
               </span>
             </label>
+          </fieldset>
+        )}
+
+        {isSeries && onSetSeriesPrimaryIncome && row?.seriesId && (
+          <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
+            <legend className="px-1 text-xs text-muted">
+              {t("editRow.primaryIncomeTitle")}
+            </legend>
+            <Checkbox
+              checked={isPrimaryIncome}
+              onChange={(next) => {
+                setIsPrimaryIncome(next);
+                const day = Number.parseInt(anchorDayText, 10);
+                const dayClamped =
+                  Number.isFinite(day) && day >= 1 && day <= 31 ? day : 25;
+                onSetSeriesPrimaryIncome(
+                  row.seriesId as string,
+                  next,
+                  next ? dayClamped : null,
+                );
+              }}
+              label={t("editRow.primaryIncomeToggle")}
+              className="items-center"
+            />
+            <p className="mt-2 text-xs text-muted">
+              {t("editRow.primaryIncomeHelp")}
+            </p>
+            {isPrimaryIncome && (
+              <label className="mt-3 flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("editRow.primaryIncomeAnchorDay")}
+                </span>
+                <ClearableInput
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={1}
+                  max={31}
+                  value={anchorDayText}
+                  onValueChange={(next) => {
+                    setAnchorDayText(next);
+                    const day = Number.parseInt(next, 10);
+                    if (Number.isFinite(day) && day >= 1 && day <= 31) {
+                      onSetSeriesPrimaryIncome(
+                        row.seriesId as string,
+                        true,
+                        day,
+                      );
+                    }
+                  }}
+                  aria-label={t("editRow.primaryIncomeAnchorDay")}
+                  wrapperClassName="min-w-0"
+                  className="field-input w-24 min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                />
+              </label>
+            )}
           </fieldset>
         )}
       </Modal.Body>

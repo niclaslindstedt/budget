@@ -35,6 +35,15 @@ const cell: CellCatalog = {
   placeholderEllipsis: "…",
   descriptionWith: "Beskrivning: {value}",
   addDescription: "Lägg till beskrivning",
+  pushToNextMonth: "Skjut till nästa budgetmånad",
+  pushToNextMonthTitle:
+    "Behandla posten — och alla andra poster samma dag — som om de tillhörde nästa budgetmånad",
+  pushToPrevMonth: "Skjut till föregående budgetmånad",
+  pushToPrevMonthTitle:
+    "Behandla posten — och alla andra poster samma dag — som om de tillhörde föregående budgetmånad",
+  resetMonthOverride: "Återställ månadsöverstyrning",
+  shiftIndicatorNext: "Skjuten till nästa budgetmånad",
+  shiftIndicatorPrev: "Skjuten till föregående budgetmånad",
 };
 
 export default cell;

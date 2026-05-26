@@ -94,6 +94,7 @@ type Props = {
   onMatchRuleRequest: (row: Row) => void;
   onEditHistoryRequest: (row: Row) => void;
   onCopyRequest: (row: Row) => void;
+  onSetFiscalMonthShift?: (row: Row, shift: -1 | 1 | null) => void;
   onCorrectionDeleteRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
@@ -175,6 +176,7 @@ function MonthTableImpl({
   onMatchRuleRequest,
   onEditHistoryRequest,
   onCopyRequest,
+  onSetFiscalMonthShift,
   onCorrectionDeleteRequest,
   onReorderColumns,
   onToggleSelect,
@@ -520,6 +522,7 @@ function MonthTableImpl({
                           onMatchRuleRequest={onMatchRuleRequest}
                           onEditHistoryRequest={onEditHistoryRequest}
                           onCopyRequest={onCopyRequest}
+                          onSetFiscalMonthShift={onSetFiscalMonthShift}
                           onToggleSelect={onToggleSelect}
                         />
                       ))}
@@ -551,6 +554,7 @@ function MonthTableImpl({
                       onMatchRuleRequest={onMatchRuleRequest}
                       onEditHistoryRequest={onEditHistoryRequest}
                       onCopyRequest={onCopyRequest}
+                      onSetFiscalMonthShift={onSetFiscalMonthShift}
                       onToggleSelect={onToggleSelect}
                     />
                   </Fragment>

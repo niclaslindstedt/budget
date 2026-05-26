@@ -34,6 +34,15 @@ const cell = {
   placeholderEllipsis: "…",
   descriptionWith: "Description: {value}",
   addDescription: "Add description",
+  pushToNextMonth: "Push to next fiscal month",
+  pushToNextMonthTitle:
+    "Treat this entry — and every other entry on the same day — as belonging to the next fiscal month",
+  pushToPrevMonth: "Push to previous fiscal month",
+  pushToPrevMonthTitle:
+    "Treat this entry — and every other entry on the same day — as belonging to the previous fiscal month",
+  resetMonthOverride: "Reset month override",
+  shiftIndicatorNext: "Pushed to next fiscal month",
+  shiftIndicatorPrev: "Pushed to previous fiscal month",
 } as const;
 
 export type CellCatalog = Widen<typeof cell>;

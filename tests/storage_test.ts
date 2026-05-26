@@ -33,7 +33,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 42,
+    version: 43,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -52,6 +52,7 @@ function sampleData(): UserData {
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
+    seriesMetadata: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       device: {
@@ -122,6 +123,7 @@ describe("serializeUserData", () => {
       matchRules: b.matchRules,
       seriesMatchRules: b.seriesMatchRules,
       renamePatterns: b.renamePatterns,
+      seriesMetadata: b.seriesMetadata,
       settings: b.settings,
       version: b.version,
     } as UserData;
@@ -135,7 +137,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 20)).toEqual([
+    expect(topKeys.slice(0, 21)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -150,6 +152,7 @@ describe("serializeUserData", () => {
       "recurringDismissals",
       "renamePatterns",
       "seriesMatchRules",
+      "seriesMetadata",
       "settings",
       "sheets",
       "transferCollapseDismissals",
