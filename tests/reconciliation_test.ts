@@ -8,9 +8,12 @@ import {
   findOrphans,
   findRuleDrivenCandidates,
   inferSeriesRule,
+  nextFiscalMonthStartDate,
+  nextMonthSameDate,
   RECONCILIATION_AMOUNT_FLOOR_CENTS,
   RECONCILIATION_AMOUNT_PCT,
   RECONCILIATION_DATE_LAG_DAYS,
+  seriesHasOccurrenceInNextMonth,
 } from "../src/data/reconciliation";
 import type {
   Column,
@@ -305,5 +308,101 @@ describe("constants", () => {
     expect(RECONCILIATION_DATE_LAG_DAYS).toBe(7);
     expect(RECONCILIATION_AMOUNT_PCT).toBe(0.01);
     expect(RECONCILIATION_AMOUNT_FLOOR_CENTS).toBe(200);
+  });
+});
+
+describe("nextFiscalMonthStartDate", () => {
+  it("returns the first day of the next fiscal month (startOfMonth=25)", () => {
+    expect(nextFiscalMonthStartDate("2026-04", 25)).toBe("2026-05-25");
+  });
+
+  it("collapses to calendar months when startOfMonth=1", () => {
+    expect(nextFiscalMonthStartDate("2026-04", 1)).toBe("2026-05-01");
+  });
+
+  it("rolls December → January of the next year", () => {
+    expect(nextFiscalMonthStartDate("2026-12", 25)).toBe("2027-01-25");
+  });
+
+  it("zero-pads single-digit start days", () => {
+    expect(nextFiscalMonthStartDate("2026-04", 5)).toBe("2026-05-05");
+  });
+
+  it("returns the input unchanged for malformed keys", () => {
+    expect(nextFiscalMonthStartDate("bad", 25)).toBe("bad");
+  });
+});
+
+describe("nextMonthSameDate", () => {
+  it("shifts one calendar month forward, preserving the day", () => {
+    expect(nextMonthSameDate("2026-04-10")).toBe("2026-05-10");
+  });
+
+  it("clamps Jan 31 → Feb 28 in a non-leap year", () => {
+    expect(nextMonthSameDate("2026-01-31")).toBe("2026-02-28");
+  });
+
+  it("clamps Jan 31 → Feb 29 in a leap year", () => {
+    expect(nextMonthSameDate("2028-01-31")).toBe("2028-02-29");
+  });
+
+  it("rolls December → January of the next year", () => {
+    expect(nextMonthSameDate("2026-12-15")).toBe("2027-01-15");
+  });
+
+  it("returns the input unchanged for malformed dates", () => {
+    expect(nextMonthSameDate("bad")).toBe("bad");
+  });
+});
+
+describe("seriesHasOccurrenceInNextMonth", () => {
+  it("returns true when a sibling row lands in the next fiscal month (startOfMonth=25)", () => {
+    // monthKey 2026-04 with startOfMonth=25 spans Apr 25 → May 24.
+    // r1 sits in fiscal April; r2's May 26 lands in fiscal May.
+    const r1 = row({ id: "r1", date: "2026-05-10", seriesId: "rent" });
+    const r2 = row({ id: "r2", date: "2026-05-26", seriesId: "rent" });
+    expect(
+      seriesHasOccurrenceInNextMonth([r1, r2], columns, "rent", "2026-04", 25),
+    ).toBe(true);
+  });
+
+  it("returns false when no sibling lands in the next fiscal month", () => {
+    // Both rows sit inside fiscal April (Apr 25 → May 24 under
+    // startOfMonth=25), so the next-month check should be false.
+    const r1 = row({ id: "r1", date: "2026-04-30", seriesId: "rent" });
+    const r2 = row({ id: "r2", date: "2026-05-10", seriesId: "rent" });
+    expect(
+      seriesHasOccurrenceInNextMonth([r1, r2], columns, "rent", "2026-04", 25),
+    ).toBe(false);
+  });
+
+  it("respects fiscal month boundaries — May 24 (startOfMonth=25) is still fiscal April", () => {
+    const r1 = row({ id: "r1", date: "2026-05-01", seriesId: "rent" });
+    const r2 = row({ id: "r2", date: "2026-05-24", seriesId: "rent" });
+    expect(
+      seriesHasOccurrenceInNextMonth([r1, r2], columns, "rent", "2026-04", 25),
+    ).toBe(false);
+  });
+
+  it("ignores rows in other series", () => {
+    const r1 = row({ id: "r1", date: "2026-05-01", seriesId: "rent" });
+    const other = row({ id: "r2", date: "2026-05-26", seriesId: "utilities" });
+    expect(
+      seriesHasOccurrenceInNextMonth(
+        [r1, other],
+        columns,
+        "rent",
+        "2026-04",
+        25,
+      ),
+    ).toBe(false);
+  });
+
+  it("rolls December → next-year January under calendar months", () => {
+    const r1 = row({ id: "r1", date: "2026-12-15", seriesId: "rent" });
+    const r2 = row({ id: "r2", date: "2027-01-15", seriesId: "rent" });
+    expect(
+      seriesHasOccurrenceInNextMonth([r1, r2], columns, "rent", "2026-12", 1),
+    ).toBe(true);
   });
 });

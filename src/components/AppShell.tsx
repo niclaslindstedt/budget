@@ -111,7 +111,6 @@ import {
   userDataWithSavableRows,
 } from "../data/sheet";
 import { coverageDelta, coveredMonths } from "../data/coverage";
-import { detectPaydayDayOfMonth } from "../data/payday";
 import {
   findCandidates,
   findOrphans,
@@ -230,8 +229,6 @@ type ReconciliationState = {
   newEntries: HistoryEntry[];
   candidates: MatchCandidate[];
   orphans: OrphanRow[];
-  // Day-of-month the orphan move-to picker defaults to.
-  paydayDay: number;
   // Parsed bank file held in memory until commit. Dispatched verbatim
   // as the `importBankHistory` payload when the user clicks Apply or
   // Skip all; dropped on cancel.
@@ -1924,17 +1921,12 @@ export function AppShell({
         return;
       }
 
-      const paydayDay = detectPaydayDayOfMonth(
-        preImportData,
-        preImportData.settings.startOfMonth,
-      );
       setReconciliation({
         accountId,
         preImportData,
         newEntries,
         candidates: allCandidates,
         orphans: allOrphans,
-        paydayDay,
         pendingImport,
       });
     },
@@ -3511,7 +3503,6 @@ export function AppShell({
         newEntries={reconciliation?.newEntries ?? []}
         candidates={reconciliation?.candidates ?? []}
         orphans={reconciliation?.orphans ?? []}
-        paydayDay={reconciliation?.paydayDay ?? data.settings.startOfMonth}
         settings={effectiveSettings}
       />
       <RenamePredictorModal
