@@ -34,7 +34,7 @@ function withItem(rows: Row[]): UserData {
     items: [item],
   };
   return {
-    version: 40,
+    version: 41,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],
@@ -51,6 +51,7 @@ function withItem(rows: Row[]): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
+    renamePatterns: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       device: {

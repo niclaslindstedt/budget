@@ -11,7 +11,7 @@ import type { Category, EntryType, UserData } from "../src/data/types";
 function makeState(categories: Category[], types: EntryType[] = []): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 40,
+    version: 41,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -28,6 +28,7 @@ function makeState(categories: Category[], types: EntryType[] = []): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
+    renamePatterns: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       device: {

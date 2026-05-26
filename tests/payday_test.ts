@@ -53,7 +53,7 @@ function userData(over: Partial<UserData>): UserData {
     ],
   };
   return {
-    version: 40,
+    version: 41,
     sheets: over.sheets ?? [sheet],
     activeSheetId: "s",
     accounts: [{ id: "acc", name: "A" }],
@@ -70,6 +70,7 @@ function userData(over: Partial<UserData>): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: over.seriesMatchRules ?? [],
+    renamePatterns: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       startOfMonth: 1,

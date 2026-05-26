@@ -60,7 +60,7 @@ function workspace(
     items: [item],
   };
   return {
-    version: 40,
+    version: 41,
     sheets: [main, ...extra],
     activeSheetId: "sht_main",
     accounts: [],
@@ -71,6 +71,7 @@ function workspace(
     hiddenPresetCategoryIds: [],
     matchRules: [],
     seriesMatchRules: [],
+    renamePatterns: {},
     transfers: [],
     history: {},
     historyImports: {},

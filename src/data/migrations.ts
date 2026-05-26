@@ -26,7 +26,7 @@ import { clearRawStorage, readRawStorage } from "../storage/local-adapter";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 40 as const;
+export const LATEST_VERSION = 41 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -762,6 +762,17 @@ const migrations: Record<
       history: nextHistory,
     };
   },
+
+  // v40 → v41: introduces `renamePatterns`, the per-account memory
+  // that backs the `RenamePredictorModal` (shown as the last step of
+  // every history import that has suggestions to offer). Each entry
+  // maps a normalised bank description to the user-typed label the
+  // user reached for when relabelling matching entries. Defaults to
+  // an empty record — no patterns are pre-seeded, the store fills as
+  // the user renames history entries via the pen-button modal or the
+  // budget-view quick-rename (both route through the
+  // `updateHistoryEntry` reducer chokepoint). Bare bump.
+  40: (v40) => ({ ...v40, version: 41, renamePatterns: {} }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

@@ -27,6 +27,11 @@ import {
 } from "./pattern-apply";
 import { findRuleDrivenCandidates } from "./reconciliation";
 import { type HintRecording, recordMerchantHints } from "./merchant-hints";
+import {
+  bumpRenamePattern,
+  effectiveDescription,
+  recordRename,
+} from "./rename-patterns";
 import type {
   Account,
   AccountBudget,
@@ -511,6 +516,27 @@ export type Action =
       // state object is returned unchanged so React doesn't re-render
       // dependents pointlessly.
       type: "clearUnseenAchievements";
+    }
+  | {
+      // Apply user-accepted predictions from the `RenamePredictorModal`
+      // — the last step of an import that has rename suggestions to
+      // offer. Each entry in `renames` stamps `userDescription` on the
+      // matching history entry. Distinct from `updateHistoryEntry`:
+      // this action does NOT feed the learning hook (the suggestion
+      // came from an existing learned pattern by definition, so
+      // re-recording would be circular). Instead, the matching
+      // pattern's `hitCount` / `lastUsedAt` get bumped so accepted
+      // predictions float to the top of future rounds. When the user
+      // edits the suggested text inline before accepting — i.e. the
+      // accepted text differs from what the pattern holds — the
+      // accepted text is recorded as a fresh rename so the next import
+      // suggests the edited version.
+      type: "applyImportRenames";
+      accountId: string;
+      renames: Array<{
+        entryId: string;
+        userDescription: string;
+      }>;
     };
 
 // Walk an AccountBudget's before/after rows and collect the
@@ -1759,6 +1785,15 @@ export function reducer(state: UserData, action: Action): UserData {
     return { ...state, matchRules, sheets };
   }
   if (action.type === "updateHistoryEntry") {
+    // Capture the prior entry so the rename-learning hook below can
+    // diff `userDescription` against the previously effective text
+    // (the user override if one was set, otherwise the raw bank
+    // description). Both branches of the chokepoint — the per-entry
+    // pen-button modal and the budget-view quick-rename — route
+    // through this action, so the hook here covers both surfaces.
+    const priorEntry =
+      state.history[action.accountId]?.find((e) => e.id === action.entryId) ??
+      null;
     const history = updateHistoryEntry(
       state.history,
       action.accountId,
@@ -1791,7 +1826,78 @@ export function reducer(state: UserData, action: Action): UserData {
       },
     );
     if (history === state.history) return state;
-    return { ...state, history };
+    // Learn from genuine renames: the new `userDescription` is set,
+    // non-empty, and differs from whatever the row read as before. A
+    // pure type / transfer edit doesn't trip the hook. A blank-out
+    // (clear the override) doesn't trip it either — clears would
+    // teach the predictor to suggest empty strings on future imports.
+    let renamePatterns = state.renamePatterns;
+    if (
+      priorEntry &&
+      action.patch.userDescription !== undefined &&
+      action.patch.userDescription.trim() !== ""
+    ) {
+      const trimmed = action.patch.userDescription.trim();
+      const previousText = effectiveDescription(priorEntry);
+      if (trimmed !== previousText.trim()) {
+        renamePatterns = recordRename(
+          renamePatterns,
+          action.accountId,
+          priorEntry.description,
+          trimmed,
+          Date.now(),
+        );
+      }
+    }
+    if (renamePatterns === state.renamePatterns) {
+      return { ...state, history };
+    }
+    return { ...state, history, renamePatterns };
+  }
+  if (action.type === "applyImportRenames") {
+    if (action.renames.length === 0) return state;
+    const existing = state.history[action.accountId];
+    if (!existing) return state;
+    const renameById = new Map(action.renames.map((r) => [r.entryId, r]));
+    let historyTouched = false;
+    const patched = existing.map((entry) => {
+      const r = renameById.get(entry.id);
+      if (!r) return entry;
+      const trimmed = r.userDescription.trim();
+      if (trimmed === "") return entry;
+      if (entry.userDescription === trimmed) return entry;
+      historyTouched = true;
+      return { ...entry, userDescription: trimmed };
+    });
+    let renamePatterns = state.renamePatterns;
+    const now = Date.now();
+    for (const r of action.renames) {
+      const entry = existing.find((e) => e.id === r.entryId);
+      if (!entry) continue;
+      const trimmed = r.userDescription.trim();
+      if (trimmed === "") continue;
+      // `bumpRenamePattern` falls back to `recordRename` when the
+      // accepted text drifted from what the pattern holds (the user
+      // edited the suggestion before accepting), so an inline edit
+      // becomes a fresh learning event without any branching here.
+      renamePatterns = bumpRenamePattern(
+        renamePatterns,
+        action.accountId,
+        entry.description,
+        trimmed,
+        now,
+      );
+    }
+    if (!historyTouched && renamePatterns === state.renamePatterns) {
+      return state;
+    }
+    return {
+      ...state,
+      history: historyTouched
+        ? { ...state.history, [action.accountId]: patched }
+        : state.history,
+      renamePatterns,
+    };
   }
   if (action.type === "splitHistoryEntry") {
     const history = updateHistoryEntry(

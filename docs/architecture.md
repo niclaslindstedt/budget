@@ -163,6 +163,18 @@ type UserData = {
   // for the matcher and `src/components/accounts/ReconciliationModal.tsx`
   // for the surface that records them.
   seriesMatchRules: SeriesMatchRule[];
+  // Per-account rename memory: "the bank wrote X, the user calls it Y".
+  // Recorded inside the `updateHistoryEntry` reducer chokepoint so the
+  // pen-button history-edit modal AND the budget-view quick-rename both
+  // feed it. Surfaced by the `RenamePredictorModal` as the last step of
+  // every import that has learned renames to offer; accepted suggestions
+  // ride through `applyImportRenames` to land as `userDescription`
+  // overrides on the matching history entries. See
+  // `src/data/rename-patterns.ts` for the pure helpers.
+  renamePatterns: Record<
+    string /* accountId */,
+    Record<string /* normalised description */, RenamePattern>
+  >;
   settings: Settings;
 };
 
@@ -175,6 +187,12 @@ type MerchantHint = {
   // merchant key pick it up so the row shows under the user's
   // label instead of the raw bank text.
   description?: string;
+};
+
+type RenamePattern = {
+  suggestedDescription: string; // user-typed label the next import should suggest
+  hitCount: number; // bumps each time the same rename is repeated
+  lastUsedAt: number; // unix ms of the most recent rename
 };
 
 type EntryType = {

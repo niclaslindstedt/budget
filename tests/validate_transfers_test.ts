@@ -21,7 +21,7 @@ const knownType: EntryType = {
 function workspaceWithTransfers(transfers: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 40,
+    version: 41,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -41,6 +41,7 @@ function workspaceWithTransfers(transfers: unknown[]): unknown {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
+    renamePatterns: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       device: {
@@ -140,7 +141,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 40,
+      version: 41,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -171,6 +172,7 @@ describe("validateUserData — accounts metadata", () => {
       transferCollapseDismissals: [],
       matchRules: [],
       seriesMatchRules: [],
+      renamePatterns: {},
       settings: {
         ...DEFAULT_PERSISTED_SETTINGS,
         device: {
@@ -192,7 +194,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 40,
+      version: 41,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -209,6 +211,7 @@ describe("validateUserData — accounts metadata", () => {
       transferCollapseDismissals: [],
       matchRules: [],
       seriesMatchRules: [],
+      renamePatterns: {},
       settings: {
         ...DEFAULT_PERSISTED_SETTINGS,
         device: {
@@ -227,7 +230,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose typeId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 40,
+      version: 41,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],
@@ -249,6 +252,7 @@ describe("validateUserData — accounts metadata", () => {
       transferCollapseDismissals: ["pair1|pair2"],
       matchRules: [],
       seriesMatchRules: [],
+      renamePatterns: {},
       settings: {
         ...DEFAULT_PERSISTED_SETTINGS,
         device: {

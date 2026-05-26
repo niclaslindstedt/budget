@@ -55,6 +55,7 @@ import type {
   MerchantHint,
   PersistedSettings,
   RadiusPreset,
+  RenamePattern,
   Row,
   SeriesMatchRule,
   Sheet,
@@ -664,6 +665,31 @@ function validateMatchRule(
     delete rule.amountMax;
   }
   return rule;
+}
+
+// Rename-pattern validator. Advisory like `validateMerchantHint`:
+// bogus shapes return null so the loader can skip the entry rather
+// than rejecting the whole file. Empty suggested text would mean
+// "suggest nothing" which is identical to having no pattern at all,
+// so it's treated as unsalvageable too.
+function validateRenamePattern(raw: unknown): RenamePattern | null {
+  if (!isObject(raw)) return null;
+  const { suggestedDescription, hitCount, lastUsedAt } = raw;
+  if (
+    typeof suggestedDescription !== "string" ||
+    suggestedDescription.trim() === ""
+  ) {
+    return null;
+  }
+  if (typeof hitCount !== "number" || !Number.isFinite(hitCount)) return null;
+  if (typeof lastUsedAt !== "number" || !Number.isFinite(lastUsedAt)) {
+    return null;
+  }
+  return {
+    suggestedDescription,
+    hitCount: Math.max(0, Math.floor(hitCount)),
+    lastUsedAt,
+  };
 }
 
 // Series-match-rule validator. Advisory like `validateMatchRule`:
@@ -1401,6 +1427,28 @@ export function validateUserData(raw: unknown): Result<UserData> {
     seriesMatchRules.push(rule);
   }
 
+  // Per-account rename memory. Each account bucket is an independent
+  // record of normalised-bank-description → user-typed label; bogus
+  // entries are silently dropped (the patterns are advisory and
+  // re-learn naturally as the user renames things). Buckets keyed by
+  // an account id that no longer resolves are dropped too — no point
+  // suggesting renames for accounts the user removed.
+  const rawRenamePatterns = isObject(raw.renamePatterns)
+    ? raw.renamePatterns
+    : {};
+  const renamePatterns: Record<string, Record<string, RenamePattern>> = {};
+  for (const [accountId, rawBucket] of Object.entries(rawRenamePatterns)) {
+    if (!seenAccountIds.has(accountId)) continue;
+    if (!isObject(rawBucket)) continue;
+    const bucket: Record<string, RenamePattern> = {};
+    for (const [key, rawPattern] of Object.entries(rawBucket)) {
+      if (typeof key !== "string" || key === "") continue;
+      const pattern = validateRenamePattern(rawPattern);
+      if (pattern) bucket[key] = pattern;
+    }
+    if (Object.keys(bucket).length > 0) renamePatterns[accountId] = bucket;
+  }
+
   // Hide-list allowlists for preset entries. Both arrays are
   // sanitised (duplicates / empty strings stripped) and intersected
   // with the active preset id sets so an entry that no longer matches
@@ -1438,6 +1486,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       transferCollapseDismissals,
       matchRules,
       seriesMatchRules,
+      renamePatterns,
       settings,
     },
   };
