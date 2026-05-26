@@ -15,7 +15,7 @@ import type {
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableTextInput } from "../form";
+import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -448,7 +448,7 @@ export function BudgetMetadataModal({
                 <span className="text-xs text-muted">
                   {t("metadata.descriptionLabel")}
                 </span>
-                <ClearableTextInput
+                <ClearableInput
                   value={description}
                   onValueChange={setDescription}
                   placeholder={

@@ -17,7 +17,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../../utils/format";
-import { Button, SignedAmountInput } from "../form";
+import { Button, ClearableInput, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -334,15 +334,14 @@ export function SplitEntryModal({
                     <span className="text-xs text-muted">
                       {t("splitRow.description")}
                     </span>
-                    <input
+                    <ClearableInput
                       ref={i === 0 ? firstFieldRef : undefined}
-                      type="text"
                       value={s.description}
-                      onChange={(e) =>
-                        updateSplit(s.uiId, { description: e.target.value })
+                      onValueChange={(next) =>
+                        updateSplit(s.uiId, { description: next })
                       }
                       placeholder={t("splitRow.descriptionPlaceholder")}
-                      className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+                      className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
                     />
                   </label>
                   <label className="flex min-w-0 flex-col gap-1">

@@ -9,7 +9,7 @@ import {
 } from "../hooks";
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
-import { Button, ClearableTextInput } from "./form";
+import { Button, ClearableInput } from "./form";
 import { Modal } from "./Modal";
 
 // Single-tier picker for `Company`. Companies are name-only (no
@@ -266,7 +266,7 @@ function CompanyCreator({
       <Modal.Body>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted">{t("company.name")}</span>
-          <ClearableTextInput
+          <ClearableInput
             ref={inputRef}
             value={name}
             onValueChange={setName}

@@ -22,7 +22,7 @@ import {
 import { FloatingPanel } from "../FloatingPanel";
 import { Modal } from "../Modal";
 import { DatePickerModal } from "../DatePickerModal";
-import { Button, Checkbox, ClearableTextInput } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { TypePicker } from "../TypePicker";
 import type { Settings } from "../../data/types";
@@ -280,13 +280,12 @@ export function TransferModal({
                 </div>
               ) : (
                 <>
-                  <input
-                    type="text"
+                  <ClearableInput
                     inputMode="decimal"
                     value={amountText}
-                    onChange={(e) => commitAmount(e.target.value)}
+                    onValueChange={commitAmount}
                     placeholder="0"
-                    className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums text-fg"
+                    className="field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums text-fg"
                   />
                   <span className="text-right text-xs text-muted">
                     {parsedAmount !== null
@@ -308,7 +307,7 @@ export function TransferModal({
             <span className="text-xs text-muted">
               {t("transfer.description")}
             </span>
-            <ClearableTextInput
+            <ClearableInput
               ref={descriptionRef}
               value={description}
               onValueChange={setDescription}

@@ -17,7 +17,7 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { Modal } from "../Modal";
-import { Button, Checkbox } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
 import { RecurrenceForm } from "./RecurrenceForm";
 import { TypePicker } from "../TypePicker";
 
@@ -211,14 +211,13 @@ export function BulkEditModal({
               amount: sharedAmount,
             })}
           >
-            <input
-              type="text"
+            <ClearableInput
               inputMode="decimal"
               value={amountText}
-              onChange={(e) =>
-                setAmountText(normalizeAmountInput(e.target.value, settings))
+              onValueChange={(next) =>
+                setAmountText(normalizeAmountInput(next, settings))
               }
-              className={`field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
+              className={`field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
                 parsedAmount !== null && parsedAmount < 0
                   ? "text-danger"
                   : parsedAmount !== null && parsedAmount > 0

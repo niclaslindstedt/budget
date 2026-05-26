@@ -12,7 +12,7 @@ import type {
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableTextInput } from "../form";
+import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -132,7 +132,7 @@ export function HistoryEntryEditModal({
             <span className="text-xs text-muted">
               {t("editHistory.description")}
             </span>
-            <ClearableTextInput
+            <ClearableInput
               ref={descriptionRef}
               value={description}
               onValueChange={setDescription}

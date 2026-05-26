@@ -5,7 +5,7 @@ import type { Company } from "../../data/types";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useT } from "../../i18n";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { Button, ClearableTextInput } from "../form";
+import { Button, ClearableInput } from "../form";
 
 // Flat rename-list for `UserData.companies`. Add / edit / delete are
 // all the affordances the Companies tab needs today — no presets to
@@ -189,7 +189,7 @@ function CompanyEditor({
         <span className="text-xs text-muted">
           {t("settings.companiesTab.name")}
         </span>
-        <ClearableTextInput
+        <ClearableInput
           ref={inputRef}
           value={name}
           onValueChange={setName}

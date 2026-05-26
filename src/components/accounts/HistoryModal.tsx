@@ -220,7 +220,6 @@ export function HistoryModal({
           value={query}
           onChange={setQuery}
           placeholder={t("history.searchPlaceholder")}
-          clearLabel={t("history.searchClear")}
         />
         {allSortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">

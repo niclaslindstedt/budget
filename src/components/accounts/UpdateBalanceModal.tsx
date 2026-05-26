@@ -11,6 +11,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../../utils/format";
+import { ClearableInput } from "../form";
 import { Modal } from "../Modal";
 
 type Props = {
@@ -69,23 +70,13 @@ export function UpdateBalanceModal({
     setText(formatAmountForInput(currentBalance, accountSettings));
   }, [open, account?.id, currentBalance, accountSettings]);
 
-  // On desktop the input focuses immediately via `useDesktopAutoFocus`
-  // and the seed is selected so the next keystroke replaces it. On
-  // mobile we skip the autoFocus (popping the keyboard during the modal
-  // entrance shoves the field around) and wait for the user to tap the
-  // input themselves; `onFocus` handles the select() there.
+  // On desktop the input focuses immediately via `useDesktopAutoFocus`.
+  // On mobile we skip the autoFocus (popping the keyboard during the
+  // modal entrance shoves the field around) and wait for the user to
+  // tap the input themselves. The inline X button on the field handles
+  // dropping the seeded value when the user wants a fresh start.
   const inputRef = useRef<HTMLInputElement | null>(null);
   useDesktopAutoFocus(inputRef, open && canRecord, account?.id);
-  useEffect(() => {
-    if (!open || !canRecord) return;
-    const id = requestAnimationFrame(() => {
-      const el = inputRef.current;
-      if (el && document.activeElement === el) {
-        el.setSelectionRange(0, el.value.length);
-      }
-    });
-    return () => cancelAnimationFrame(id);
-  }, [open, account?.id, canRecord]);
 
   const parsed = parseAmount(text);
   const delta = parsed !== null ? parsed - currentBalance : null;
@@ -144,13 +135,11 @@ export function UpdateBalanceModal({
         {canRecord && account ? (
           <label className="flex flex-col gap-1">
             <span className="text-muted">{t("updateBalance.newBalance")}</span>
-            <input
+            <ClearableInput
               key={account.id}
               ref={inputRef}
-              type="text"
               inputMode="decimal"
               autoComplete="off"
-              onFocus={(e) => e.currentTarget.select()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -158,9 +147,10 @@ export function UpdateBalanceModal({
                 }
               }}
               value={text}
-              onChange={(e) =>
-                setText(normalizeAmountInput(e.target.value, accountSettings))
+              onValueChange={(next) =>
+                setText(normalizeAmountInput(next, accountSettings))
               }
+              wrapperClassName="w-full"
               className="field-input w-full rounded border border-line bg-surface-2 px-2.5 py-2 text-right font-mono tabular-nums text-fg-bright outline-none focus:border-accent"
             />
           </label>

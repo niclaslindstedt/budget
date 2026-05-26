@@ -5,7 +5,7 @@ import { CATEGORY_COLORS } from "../data/constants";
 import type { CategoryIcon } from "../data/types";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
-import { Button, ClearableTextInput } from "./form";
+import { Button, ClearableInput } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
 
@@ -98,7 +98,7 @@ export function EntityCreatorForm({
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs text-muted">
             <span>{labels.name}</span>
-            <ClearableTextInput
+            <ClearableInput
               ref={nameRef}
               className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
               value={name}

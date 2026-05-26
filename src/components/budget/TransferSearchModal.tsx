@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 
 import type { SearchEntry, SearchMatch, SearchResult } from "../../data/search";
 import { runSearch } from "../../data/search";
@@ -10,6 +10,7 @@ import {
   formatShortDate,
   withCurrency,
 } from "../../utils/format";
+import { ClearableInput } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 
@@ -45,22 +46,17 @@ export function TransferSearchModal({
 
   // Focus the input on every open. The Modal portals into <body> so a
   // ref + autoFocus would race the portal mount; use an effect keyed
-  // on `open` instead.
+  // on `open` instead. The X button on the input handles "drop the
+  // pre-filled value" — no select() needed.
   useEffect(() => {
     if (!open) return;
     const id = window.setTimeout(() => {
       inputRef.current?.focus();
-      inputRef.current?.select();
     }, 0);
     return () => window.clearTimeout(id);
   }, [open]);
 
   const results = useMemo(() => runSearch(index, query), [index, query]);
-
-  function handleClear() {
-    onQueryChange("");
-    inputRef.current?.focus();
-  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && results.length > 0) {
@@ -82,32 +78,19 @@ export function TransferSearchModal({
       />
       <Modal.Body noPadding>
         <div className="border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => onQueryChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t("searchTransaction.placeholder")}
-              aria-label={t("searchTransaction.placeholder")}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 pr-8 text-sm text-fg"
-            />
-            {query !== "" && (
-              <button
-                type="button"
-                onClick={handleClear}
-                aria-label={t("searchTransaction.clear")}
-                title={t("searchTransaction.clear")}
-                className="absolute top-1/2 right-1 inline-flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-              >
-                <X size={14} aria-hidden focusable={false} />
-              </button>
-            )}
-          </div>
+          <ClearableInput
+            ref={inputRef}
+            value={query}
+            onValueChange={onQueryChange}
+            onKeyDown={handleKeyDown}
+            placeholder={t("searchTransaction.placeholder")}
+            aria-label={t("searchTransaction.placeholder")}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            wrapperClassName="w-full"
+            className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+          />
         </div>
         {query.trim() === "" ? (
           <p className="px-4 py-6 text-center text-sm text-muted">

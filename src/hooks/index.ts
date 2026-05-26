@@ -21,6 +21,7 @@ export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
 export { useRefIdentity } from "./useRefIdentity";
 export { useGridRovingTabindex, useRovingTabindex } from "./useRovingTabindex";
 export { suppressScrollHide, useScrollHide } from "./useScrollHide";
+export { useSelectAllOnFocus } from "./useSelectAllOnFocus";
 export { useSheetSwipe } from "./useSheetSwipe";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";

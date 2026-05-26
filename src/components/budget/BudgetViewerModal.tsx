@@ -411,7 +411,6 @@ export function BudgetViewerModal({
             value={query}
             onChange={setQuery}
             placeholder={t("sheet.viewerSearchPlaceholder")}
-            clearLabel={t("sheet.viewerSearchClear")}
           />
         )}
         {hasNoRows ? (

@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import { useRefIdentity } from "../../hooks";
 import { useT } from "../../i18n";
 import type { RenameSuggestion } from "../../data/rename-patterns";
-import { Button, ClearableTextInput } from "../form";
+import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 
 // Last step of every bank-history import that has rename suggestions to
@@ -198,7 +198,7 @@ export function RenamePredictorModal({
                       <span className="text-xs text-muted">
                         {t("renamePredictor.suggested")}
                       </span>
-                      <ClearableTextInput
+                      <ClearableInput
                         value={state.text}
                         onValueChange={(v) => handleEdit(s.entryId, v)}
                         placeholder={t("renamePredictor.suggestedPlaceholder")}

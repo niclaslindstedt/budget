@@ -6,7 +6,7 @@ import { useT } from "../../i18n";
 
 type Props = Omit<
   InputHTMLAttributes<HTMLInputElement>,
-  "type" | "value" | "onChange"
+  "value" | "onChange"
 > & {
   value: string;
   onValueChange: (value: string) => void;
@@ -16,14 +16,17 @@ type Props = Omit<
   wrapperClassName?: string;
 };
 
-// Text input with an inline X button that clears the value in one tap.
-// Pairs with `installSelectOnFocus` skipping plain text inputs: instead
-// of relying on select-all-on-focus to replace a long pre-filled value
-// (which forces the soft keyboard up on mobile), the user taps the X.
-// Numeric inputs keep the select-all behaviour and don't use this
-// component.
-export const ClearableTextInput = forwardRef<HTMLInputElement, Props>(
-  function ClearableTextInput(
+// Text / numeric input with an inline X button that clears the value
+// in one tap. Tapping the X drops a long pre-filled value without
+// dismissing the soft keyboard — the single replacement for the older
+// "select all on focus" pattern across the modal surface. Pass
+// `type` / `inputMode` through to render text, number, decimal, etc.
+//
+// The X is suppressed on `disabled` / `readOnly` and when the value
+// is empty, so the input only carries the affordance when there's
+// something to clear.
+export const ClearableInput = forwardRef<HTMLInputElement, Props>(
+  function ClearableInput(
     {
       value,
       onValueChange,
@@ -31,6 +34,7 @@ export const ClearableTextInput = forwardRef<HTMLInputElement, Props>(
       wrapperClassName,
       disabled,
       readOnly,
+      type = "text",
       ...rest
     },
     ref,
@@ -51,7 +55,7 @@ export const ClearableTextInput = forwardRef<HTMLInputElement, Props>(
       <div className={`relative ${wrapperClassName ?? ""}`.trim()}>
         <input
           ref={setRefs}
-          type="text"
+          type={type}
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
           disabled={disabled}
