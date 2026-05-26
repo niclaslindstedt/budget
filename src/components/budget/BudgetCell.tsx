@@ -85,6 +85,11 @@ type Props = {
   hiddenTransferCount?: number;
   transferExpanded?: boolean;
   onToggleTransferAnchor?: () => void;
+  // Manual fiscal-month override on the row. Only the date cell reads
+  // this — it renders a small ↗ / ↙ glyph next to the date so the
+  // shifted state is visible at a glance. Undefined means "no override,
+  // use computed fiscal month".
+  fiscalMonthShift?: -1 | 1;
   // Sign of the row's amount, derived once by BudgetRow from the
   // amount cell. Only consulted by the `type` column's TypePicker
   // to filter income-only / expense-only types out of the list.
@@ -136,6 +141,7 @@ function CellImpl({
   rowDate,
   rowDateColor,
   rowDescription,
+  fiscalMonthShift,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -229,6 +235,7 @@ function CellImpl({
           rowId={rowId}
           value={value}
           settings={settings}
+          fiscalMonthShift={fiscalMonthShift}
           onChange={onChange}
         />
       );
@@ -679,11 +686,13 @@ function DateCell({
   rowId,
   value,
   settings,
+  fiscalMonthShift,
   onChange,
 }: {
   rowId: string;
   value: CellValue;
   settings: Settings;
+  fiscalMonthShift?: -1 | 1;
   onChange: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -700,6 +709,7 @@ function DateCell({
         iso={iso}
         settings={settings}
         mode="trigger"
+        fiscalMonthShift={fiscalMonthShift}
         onClick={() => setOpen(true)}
       />
       <DatePickerModal

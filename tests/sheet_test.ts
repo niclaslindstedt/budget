@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyMonthShift,
   computeBalances,
+  computePrimaryIncomeShift,
   createDefaultAccountBudget,
   createDefaultSheet,
   currentFiscalMonthKey,
@@ -189,6 +191,147 @@ describe("groupRowsByMonth + sortMonthKeys", () => {
       "undated",
     ]);
     expect(groups.get("2026-05")).toHaveLength(2);
+  });
+
+  it("honours per-row fiscalMonthShift (+1) and cascades to same-day rows", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    // Default startOfMonth=1: Apr 28 is "2026-04". One row carries
+    // fiscalMonthShift=+1, two other rows share its date and ride
+    // along; a separate row on Apr 27 stays put.
+    const rows = [
+      {
+        ...seedRow(dateCol.id, amountCol.id, "2026-04-28", 30000),
+        fiscalMonthShift: 1 as const,
+      },
+      seedRow(dateCol.id, amountCol.id, "2026-04-28", -500),
+      seedRow(dateCol.id, amountCol.id, "2026-04-28", -200),
+      seedRow(dateCol.id, amountCol.id, "2026-04-27", -100),
+    ];
+    const groups = groupRowsByMonth(rows, dateCol.id);
+    expect(groups.get("2026-05")).toHaveLength(3);
+    expect(groups.get("2026-04")).toHaveLength(1);
+  });
+
+  it("rolls the year when shifting December → next January", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    const rows = [
+      {
+        ...seedRow(dateCol.id, amountCol.id, "2026-12-28", 30000),
+        fiscalMonthShift: 1 as const,
+      },
+    ];
+    const groups = groupRowsByMonth(rows, dateCol.id);
+    expect(groups.has("2027-01")).toBe(true);
+    expect(groups.has("2026-12")).toBe(false);
+  });
+
+  it("honours -1 shift", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    const rows = [
+      {
+        ...seedRow(dateCol.id, amountCol.id, "2026-01-03", 100),
+        fiscalMonthShift: -1 as const,
+      },
+    ];
+    const groups = groupRowsByMonth(rows, dateCol.id);
+    expect(groups.has("2025-12")).toBe(true);
+  });
+
+  it("first-wins when two rows on the same day disagree", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    const rows = [
+      {
+        ...seedRow(dateCol.id, amountCol.id, "2026-04-28", 30000),
+        fiscalMonthShift: 1 as const,
+      },
+      {
+        ...seedRow(dateCol.id, amountCol.id, "2026-04-28", -50),
+        fiscalMonthShift: -1 as const,
+      },
+    ];
+    const groups = groupRowsByMonth(rows, dateCol.id);
+    // Both lifted to 2026-05 by the first-wins cascade.
+    expect(groups.get("2026-05")).toHaveLength(2);
+  });
+});
+
+describe("applyMonthShift", () => {
+  it("steps forward by one", () => {
+    expect(applyMonthShift("2026-04", 1)).toBe("2026-05");
+  });
+  it("steps backward by one", () => {
+    expect(applyMonthShift("2026-05", -1)).toBe("2026-04");
+  });
+  it("rolls year forward over December", () => {
+    expect(applyMonthShift("2026-12", 1)).toBe("2027-01");
+  });
+  it("rolls year backward over January", () => {
+    expect(applyMonthShift("2026-01", -1)).toBe("2025-12");
+  });
+  it("returns input unchanged for non-month keys", () => {
+    expect(applyMonthShift("undated", 1)).toBe("undated");
+    expect(applyMonthShift("", -1)).toBe("");
+  });
+  it("returns input unchanged for delta 0", () => {
+    expect(applyMonthShift("2026-04", 0)).toBe("2026-04");
+  });
+});
+
+describe("computePrimaryIncomeShift", () => {
+  it("returns +1 when row date is earlier than the anchor day", () => {
+    expect(
+      computePrimaryIncomeShift("2026-04-22", {
+        isPrimaryIncome: true,
+        anchorDayOfMonth: 25,
+      }),
+    ).toBe(1);
+  });
+
+  it("returns undefined when row date is on the anchor day", () => {
+    expect(
+      computePrimaryIncomeShift("2026-04-25", {
+        isPrimaryIncome: true,
+        anchorDayOfMonth: 25,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined when row date is after the anchor day", () => {
+    expect(
+      computePrimaryIncomeShift("2026-04-28", {
+        isPrimaryIncome: true,
+        anchorDayOfMonth: 25,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined when the series isn't flagged primary income", () => {
+    expect(
+      computePrimaryIncomeShift("2026-04-22", { anchorDayOfMonth: 25 }),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined when no anchor day is set", () => {
+    expect(
+      computePrimaryIncomeShift("2026-04-22", { isPrimaryIncome: true }),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined for a missing or short ISO date", () => {
+    expect(
+      computePrimaryIncomeShift("", {
+        isPrimaryIncome: true,
+        anchorDayOfMonth: 25,
+      }),
+    ).toBeUndefined();
   });
 });
 

@@ -9,7 +9,7 @@ import type { UserData } from "../src/data/types";
 
 function baseState(): UserData {
   return {
-    version: 42,
+    version: 43,
     sheets: [
       {
         id: "s",
@@ -46,6 +46,7 @@ function baseState(): UserData {
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
+    seriesMetadata: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       device: {

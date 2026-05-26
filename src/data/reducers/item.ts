@@ -1,4 +1,5 @@
 import {
+  computePrimaryIncomeShift,
   createEmptyRow,
   defaultCompletedForDate,
   findColumnByType,
@@ -20,6 +21,7 @@ import type {
   CellValue,
   MatchRule,
   Row,
+  SeriesMetadata,
   UserData,
 } from "../types";
 import type {
@@ -145,6 +147,19 @@ export type ItemAction =
       rowId: string;
       splits: SplitSubmission[];
       remainderAmount: number;
+    }
+  | {
+      // Set / clear the manual fiscal-month override on a single row.
+      // `shift === null` clears the field; `1` / `-1` set it. Only the
+      // anchor row stores the override — the grouping pipeline cascades
+      // it to every other row dated the same day. Synthesized transfer /
+      // history rows have read-only ids so the UI hides this action on
+      // them; the reducer ignores no-op writes.
+      type: "setRowFiscalMonthShift";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+      shift: -1 | 1 | null;
     };
 
 // Walk an AccountBudget's before/after rows and collect the
@@ -696,7 +711,67 @@ export function reduceAccountBudget(
         ...item,
         columns: moveColumn(item.columns, action.fromId, action.toId),
       };
+
+    case "setRowFiscalMonthShift": {
+      let changed = false;
+      const rows = item.rows.map((r) => {
+        if (r.id !== action.rowId) return r;
+        const current = r.fiscalMonthShift;
+        if (action.shift === null) {
+          if (current === undefined) return r;
+          const next = { ...r };
+          delete next.fiscalMonthShift;
+          changed = true;
+          return next;
+        }
+        if (current === action.shift) return r;
+        changed = true;
+        return { ...r, fiscalMonthShift: action.shift };
+      });
+      if (!changed) return item;
+      return { ...item, rows };
+    }
   }
+}
+
+// Walk every row in `item` whose `seriesId` is flagged primary-income
+// and re-stamp `fiscalMonthShift` from the row's current date. Rows
+// outside flagged series — and rows in flagged series whose computed
+// shift matches the stored value — fall through with referential
+// identity preserved so the outer dispatch can short-circuit unchanged
+// updates. Cheap by default: bails out before walking the rows when
+// no series carries the primary-income flag.
+function applyPrimaryIncomeShifts(
+  item: AccountBudget,
+  seriesMetadata: Readonly<Record<string, SeriesMetadata>>,
+): AccountBudget {
+  const flaggedSeriesIds = new Set<string>();
+  for (const [seriesId, meta] of Object.entries(seriesMetadata)) {
+    if (meta.isPrimaryIncome) flaggedSeriesIds.add(seriesId);
+  }
+  if (flaggedSeriesIds.size === 0) return item;
+  const dateCol = findColumnByType(item.columns, "date");
+  if (!dateCol) return item;
+  let changed = false;
+  const rows = item.rows.map((row) => {
+    if (!row.seriesId || !flaggedSeriesIds.has(row.seriesId)) return row;
+    const dateValue = row.cells[dateCol.id];
+    if (typeof dateValue !== "string" || dateValue.length < 10) return row;
+    const shift = computePrimaryIncomeShift(
+      dateValue,
+      seriesMetadata[row.seriesId],
+    );
+    if (shift === row.fiscalMonthShift) return row;
+    const next: Row = { ...row };
+    if (shift === undefined) {
+      delete next.fiscalMonthShift;
+    } else {
+      next.fiscalMonthShift = shift;
+    }
+    changed = true;
+    return next;
+  });
+  return changed ? { ...item, rows } : item;
 }
 
 function isItemAction(action: Action): action is ItemAction {
@@ -715,6 +790,7 @@ function isItemAction(action: Action): action is ItemAction {
     case "bulkMakeRecurring":
     case "reorderColumns":
     case "splitRow":
+    case "setRowFiscalMonthShift":
       return true;
     default:
       return false;
@@ -784,7 +860,19 @@ export function reduceItemDispatch(
       // policy without each having to know about matchRules. The
       // hint-recording pass below then sees the post-pattern shape so
       // a freshly auto-assigned type also feeds the merchant memory.
-      const next = applyPatternsAfterCellEdit(item, reduced, state.matchRules);
+      const labelled = applyPatternsAfterCellEdit(
+        item,
+        reduced,
+        state.matchRules,
+      );
+      // Re-stamp `fiscalMonthShift` on every row in a primary-income
+      // series whose date may have just changed. Cheap walk because
+      // the metadata map is small (typically one entry); skips items
+      // entirely when no series is flagged. Done here so adding a row
+      // (`addRowsFromComplex`), editing one (`editSeries`,
+      // `updateCell` on the date column), or promoting candidates all
+      // pick up the cascade without each path repeating the logic.
+      const next = applyPrimaryIncomeShifts(labelled, state.seriesMetadata);
       recordings.push(...hintRecordingsFromBudget(item, next));
       // "Make recurring" should also backfill the user-typed
       // description onto past bank-history entries whose normalised

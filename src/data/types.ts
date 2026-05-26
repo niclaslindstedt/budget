@@ -21,6 +21,15 @@ export type Row = {
   // recurrence. Used to scope "edit / delete all future" operations and
   // is undefined for one-off rows added inline.
   seriesId?: string;
+  // Override the fiscal month this row is grouped into. `+1` lifts the
+  // row into the next fiscal bucket; `-1` drops it into the previous
+  // one. Used when a "great income of the month" lands a few days early
+  // (e.g. payday on the 25th arriving on the 22nd due to a weekend) and
+  // should still count statistically as the next month's income. The
+  // grouping pipeline cascades the shift to every other row dated the
+  // same day so transfers + same-day expenses ride along automatically;
+  // only the anchor row carries the explicit field.
+  fiscalMonthShift?: -1 | 1;
   // Optional reference to a reusable `EntryType` in `UserData.types`.
   // The dedicated `type` column renders the type's glyph (mobile) or
   // glyph + name chip (desktop) in the type's colour; the description
@@ -1013,6 +1022,25 @@ export type SeriesMatchRule = {
   dateLagDays: number;
 };
 
+// Per-series user metadata keyed by `seriesId` in `UserData.seriesMetadata`.
+// Series are not first-class entities (rows share a `seriesId` and the
+// recurrence rule isn't persisted), so this map gives the small set of
+// per-series toggles a home that survives row deletions. Today only the
+// "primary income" path uses it; the shape is open so future per-series
+// settings (color override, ignore-in-stats, …) drop in without another
+// migration.
+//
+// `isPrimaryIncome` flags the user's main salary series so the grouping
+// pipeline knows to push early-arriving occurrences into the next fiscal
+// month. `anchorDayOfMonth` is the "real" payday (the day the salary
+// would land if no holiday shift applied) — `computePrimaryIncomeShift`
+// reads it to decide whether an actual occurrence arrived early enough
+// to warrant the shift.
+export type SeriesMetadata = {
+  isPrimaryIncome?: boolean;
+  anchorDayOfMonth?: number;
+};
+
 // Top-level persisted blob for one signed-in user. Holds everything
 // that user owns: their sheets, the categories they've defined, and
 // their display preferences. The user account itself (id, username,
@@ -1020,7 +1048,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 42;
+  version: 43;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -1114,6 +1142,12 @@ export type UserData = {
   // `updateHistoryEntry` reducer action so any in-app rename feeds the
   // store.
   renamePatterns: Record<string, Record<string, RenamePattern>>;
+  // Per-series toggles keyed by `seriesId`. Today only carries the
+  // "primary income" flag + the anchor day-of-month — see `SeriesMetadata`.
+  // Entries are orphan-tolerant: a series whose rows the user deleted
+  // leaves a harmless entry until it's garbage-collected by a future
+  // cleanup pass.
+  seriesMetadata: Record<string, SeriesMetadata>;
   settings: PersistedSettings;
 };
 

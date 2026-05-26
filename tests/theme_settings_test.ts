@@ -40,6 +40,7 @@ function v30Bucket(extraSettings: Record<string, unknown> = {}): Versioned {
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
+    seriesMetadata: {},
     // The v30 shape has no theme/font fields; the validator fills them
     // in. Tests that need to exercise a specific value pass it here.
     settings: { ...DEFAULT_SETTINGS, ...extraSettings },

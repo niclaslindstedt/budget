@@ -59,6 +59,7 @@ import type {
   RenamePattern,
   Row,
   SeriesMatchRule,
+  SeriesMetadata,
   Sheet,
   SheetGlyph,
   SheetItem,
@@ -213,6 +214,7 @@ function validateRow(
     isTransfer,
     typeIdLocked,
     companyId,
+    fiscalMonthShift,
   } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
@@ -271,6 +273,11 @@ function validateRow(
     // Drop dangling company references silently — a deleted Company
     // shouldn't trap the row. Same contract as `typeId`.
     if (knownCompanyIds.has(companyId)) row.companyId = companyId;
+  }
+  if (fiscalMonthShift !== undefined) {
+    if (fiscalMonthShift !== 1 && fiscalMonthShift !== -1)
+      return fail(`${path}.fiscalMonthShift`, "expected -1 or 1");
+    row.fiscalMonthShift = fiscalMonthShift;
   }
   return { ok: true, value: row };
 }
@@ -1562,6 +1569,20 @@ export function validateUserData(raw: unknown): Result<UserData> {
     raw.presetTypeKindOverrides,
   );
 
+  // Per-series user metadata. Each entry is independent and the values
+  // are advisory toggles — a malformed entry is silently dropped rather
+  // than failing the whole load. Keys are arbitrary series ids (an
+  // orphan-tolerant map, see `SeriesMetadata`); we don't cross-check
+  // against existing rows because the user may flag a series before
+  // adding rows to it, and stale entries are harmless.
+  const rawSeriesMeta = isObject(raw.seriesMetadata) ? raw.seriesMetadata : {};
+  const seriesMetadata: Record<string, SeriesMetadata> = {};
+  for (const [key, value] of Object.entries(rawSeriesMeta)) {
+    if (typeof key !== "string" || key === "") continue;
+    const meta = validateSeriesMetadata(value);
+    if (meta) seriesMetadata[key] = meta;
+  }
+
   const settings = validateSettings(raw.settings);
 
   return {
@@ -1586,9 +1607,21 @@ export function validateUserData(raw: unknown): Result<UserData> {
       matchRules,
       seriesMatchRules,
       renamePatterns,
+      seriesMetadata,
       settings,
     },
   };
+}
+
+function validateSeriesMetadata(raw: unknown): SeriesMetadata | null {
+  if (!isObject(raw)) return null;
+  const out: SeriesMetadata = {};
+  if (raw.isPrimaryIncome === true) out.isPrimaryIncome = true;
+  if (typeof raw.anchorDayOfMonth === "number") {
+    const day = Math.trunc(raw.anchorDayOfMonth);
+    if (day >= 1 && day <= 31) out.anchorDayOfMonth = day;
+  }
+  return out;
 }
 
 // Per-user override map for the `kind` of preset entry types. Keys

@@ -23,7 +23,7 @@ import type {
 function workspace(transfers: Transfer[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 42,
+    version: 43,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -45,6 +45,7 @@ function workspace(transfers: Transfer[] = []): UserData {
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
+    seriesMetadata: {},
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       device: {

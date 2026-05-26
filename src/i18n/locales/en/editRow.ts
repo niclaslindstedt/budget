@@ -17,6 +17,11 @@ const editRow = {
   affectedRowsCountOther: "{n} rows will be updated",
   affectedRowsCurrent: "current",
   completed: "Completed",
+  primaryIncomeTitle: "Primary income",
+  primaryIncomeToggle: "Mark this series as primary income",
+  primaryIncomeHelp:
+    "When the salary lands a few days early (weekend / holiday) it gets pushed into the next fiscal month — together with every other entry on the same day. Set the real payday below so the app can tell early arrivals from on-time ones.",
+  primaryIncomeAnchorDay: "Real payday (day of month)",
 } as const;
 
 export type EditRowCatalog = Widen<typeof editRow>;
