@@ -36,6 +36,7 @@ import {
   ruleMatchesEntry,
 } from "./match-rules";
 import { candidateFromRow, resolveCandidateColumns } from "./row-candidate";
+import { mapAccountBudgets } from "./sheet";
 import type {
   AccountBudget,
   HistoryEntry,
@@ -73,20 +74,9 @@ export function reapplyPatternsToAllSheets(
   sheets: readonly Sheet[],
   rules: readonly MatchRule[],
 ): Sheet[] {
-  let sheetsChanged = false;
-  const next = sheets.map((sheet) => {
-    let itemsChanged = false;
-    const items = sheet.items.map((item) => {
-      if (item.type !== "accountBudget") return item;
-      const updated = reapplyPatternsToBudget(item, rules);
-      if (updated !== item) itemsChanged = true;
-      return updated;
-    });
-    if (!itemsChanged) return sheet;
-    sheetsChanged = true;
-    return { ...sheet, items };
-  });
-  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+  return mapAccountBudgets(sheets, (item) =>
+    reapplyPatternsToBudget(item, rules),
+  );
 }
 
 // Count budget rows whose persisted typeId would be touched by a
@@ -217,20 +207,9 @@ export function applyMatchRuleOnceToAllSheets(
   sheets: readonly Sheet[],
   rule: MatchRule,
 ): Sheet[] {
-  let sheetsChanged = false;
-  const next = sheets.map((sheet) => {
-    let itemsChanged = false;
-    const items = sheet.items.map((item) => {
-      if (item.type !== "accountBudget") return item;
-      const updated = applyMatchRuleOnceToBudget(item, rule);
-      if (updated !== item) itemsChanged = true;
-      return updated;
-    });
-    if (!itemsChanged) return sheet;
-    sheetsChanged = true;
-    return { ...sheet, items };
-  });
-  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+  return mapAccountBudgets(sheets, (item) =>
+    applyMatchRuleOnceToBudget(item, rule),
+  );
 }
 
 // Stamp `userTypeId` (and `userDescription` when set on the rule) on

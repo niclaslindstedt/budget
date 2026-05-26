@@ -1023,3 +1023,29 @@ export function propagateCellInSeries(
       : r,
   );
 }
+
+// Walk every `accountBudget` item in every sheet, calling `fn` to
+// produce a (possibly identical) replacement. Sheets and the outer
+// array preserve referential identity when `fn` returns the same
+// reference everywhere, so reducers can short-circuit a no-op
+// dispatch into a no-op state diff. Non-accountBudget items pass
+// through untouched.
+export function mapAccountBudgets(
+  sheets: readonly Sheet[],
+  fn: (item: AccountBudget) => AccountBudget,
+): Sheet[] {
+  let sheetsChanged = false;
+  const next = sheets.map((sheet) => {
+    let itemsChanged = false;
+    const items = sheet.items.map((item) => {
+      if (item.type !== "accountBudget") return item;
+      const updated = fn(item);
+      if (updated !== item) itemsChanged = true;
+      return updated;
+    });
+    if (!itemsChanged) return sheet;
+    sheetsChanged = true;
+    return { ...sheet, items };
+  });
+  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+}
