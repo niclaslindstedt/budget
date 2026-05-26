@@ -8,7 +8,7 @@ import { findRuleDrivenCandidates } from "../reconciliation";
 import {
   computeOpeningBalanceFromHistory,
   mergeHistory,
-} from "../../storage/bank-parsers";
+} from "../../storage/banks";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
 

@@ -1,20 +1,11 @@
-// Shared helpers for bank-statement parsers.
+// Shared primitives for bank-statement parsers.
 //
-// Each bank module in `bank-*.ts` registers a `BankParser` against the
-// pipeline in `bank-import.ts`. The parsers do superficially different
-// work — Swedbank vs Skandia row layouts, csv vs xlsx — but they all
-// need the same small cell-extraction, header-matching, and string-
-// cleanup primitives. Keeping those primitives in one module here
-// means a fix or extension (e.g. accepting a new amount format) lands
-// in every parser at once.
+// The declarative builders in `define-xlsx.ts` / `define-csv.ts` use
+// these to extract cells, parse Swedish-locale amounts, decode Excel
+// date serials, and match header rows. A fix or extension lands in
+// every parser at once.
 
-import type { Logger } from "../utils/logger";
-import { type BankFile } from "./bank-import";
-import {
-  readFirstSheet,
-  type XlsxCellValue,
-  type XlsxSheet,
-} from "./xlsx-reader";
+import type { XlsxCellValue } from "../xlsx-reader";
 
 // Collapse internal whitespace and trim. Bank exports routinely pad
 // descriptions with double spaces, tabs, or trailing newlines; the
@@ -37,8 +28,8 @@ export function parseSwedishAmount(s: string): number | null {
 }
 
 // Extract a string from an xlsx cell, or `null` if the cell isn't a
-// string. xlsx-reader emits `string | number | boolean | null` so this
-// is just a typed narrow.
+// string. The xlsx-reader emits `string | number | boolean | null` so
+// this is just a typed narrow.
 export function stringCell(v: XlsxCellValue | undefined): string | null {
   return typeof v === "string" ? v : null;
 }
@@ -52,6 +43,20 @@ export function numericCell(v: XlsxCellValue | undefined): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") return parseSwedishAmount(v);
   return null;
+}
+
+// Excel stores dates as serial numbers — the count of days since the
+// epoch Dec 30, 1899 (UTC). For any date past Mar 1, 1900 this lines
+// up with Excel's own display exactly (the 1900-leap-year bug only
+// affects serials < 60, which no bank export emits). Returns `null`
+// for non-numeric or non-finite cells.
+export function excelDateSerialToISO(
+  v: XlsxCellValue | undefined,
+): string | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const ms = Date.UTC(1899, 11, 30) + v * 86400 * 1000;
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms).toISOString().slice(0, 10);
 }
 
 // How to compare a header cell against its expected token. `exact`
@@ -93,20 +98,4 @@ export function findHeaderRow(
     if (rowMatchesHeaders(rows[i], headers, mode)) return i;
   }
   return -1;
-}
-
-// Read the first sheet of an xlsx file, returning `null` (and logging
-// a warning) if the reader throws. Every xlsx-backed parser uses this
-// in its `sniff` step to swallow malformed-archive errors as "not my
-// format" without burying the parse-time failure.
-export async function tryReadFirstSheet(
-  file: BankFile,
-  log: Logger,
-): Promise<XlsxSheet | null> {
-  try {
-    return await readFirstSheet(file.bytes);
-  } catch (err) {
-    log.warn("sniff: readFirstSheet threw — treating as no match", err);
-    return null;
-  }
 }

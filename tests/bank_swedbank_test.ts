@@ -6,8 +6,9 @@ import {
   makeBankFile,
   mergeHistory,
   parseBankFile,
-} from "../src/storage/bank-parsers";
-import { numericCell, readAccountIds } from "../src/storage/bank-swedbank";
+} from "../src/storage/banks";
+import { numericCell } from "../src/storage/banks/helpers";
+import { readAccountIds } from "../src/storage/banks/parsers/swedbank";
 
 import { buildXlsx, type XlsxCell } from "./fixtures/build-xlsx";
 

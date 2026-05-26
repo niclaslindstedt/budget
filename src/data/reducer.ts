@@ -15,7 +15,7 @@ import type {
   UserData,
 } from "./types";
 import type { SheetDraft } from "./action-payloads";
-import type { ParsedBankEntry } from "../storage/bank-parsers";
+import type { ParsedBankEntry } from "../storage/banks";
 import { type ItemAction, reduceItemDispatch } from "./reducers/item";
 import { reduceAchievements } from "./reducers/achievements";
 import { reduceSheets } from "./reducers/sheets";
