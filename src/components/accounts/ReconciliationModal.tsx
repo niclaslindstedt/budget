@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
-import { Scale } from "lucide-react";
+import {
+  Calendar,
+  CalendarDays,
+  Check,
+  HelpCircle,
+  Scale,
+  Trash2,
+} from "lucide-react";
 
 import { findColumnByType } from "../../data/sheet";
 import {
@@ -10,8 +17,10 @@ import {
   seriesHasOccurrenceInNextMonth,
 } from "../../data/reconciliation";
 import { newId } from "../../data/sheet";
+import { allTypes } from "../../data/presets";
 import type {
   Column,
+  EntryType,
   HistoryEntry,
   Row,
   SeriesMatchRule,
@@ -20,7 +29,12 @@ import type {
 } from "../../data/types";
 import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
 import { useLang, useT } from "../../i18n";
-import { formatAmount, formatMonthLabel } from "../../utils/format";
+import {
+  formatAmount,
+  formatMonthLabel,
+  formatShortDate,
+} from "../../utils/format";
+import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 
 type OrphanDecision =
@@ -94,6 +108,18 @@ export function ReconciliationModal({
   const t = useT();
   const lang = useLang();
   const startOfMonth = settings.startOfMonth;
+  // Toggle for the info popover. Replaces the always-visible intro
+  // paragraph — same copy, but now hidden behind a `?` button so the
+  // modal isn't dominated by explanatory prose.
+  const [showInfo, setShowInfo] = useState(false);
+  // Indexed lookup so each row can render the entry type's coloured
+  // glyph next to its description. Resolves preset + user-added types
+  // through `allTypes` so chips match the rest of the app.
+  const typesById = useMemo(() => {
+    const m = new Map<string, EntryType>();
+    for (const type of allTypes(preImportData)) m.set(type.id, type);
+    return m;
+  }, [preImportData]);
   // Lookup tables for rendering. Built from the pre-import snapshot
   // so the modal doesn't have to chase reducer state to find rows.
   const rowsById = useMemo(() => {
@@ -443,74 +469,83 @@ export function ReconciliationModal({
       const showSameDateOption =
         nextSameDate !== rowDate &&
         !(seriesId && seriesHasNextMonthOccurrence(seriesId, o.monthKey));
+      const isKeep = decision.action === "keep";
+      const isDelete = decision.action === "delete";
       const isMoveToStart =
         decision.action === "move" && decision.toDate === nextStartDate;
       const isMoveToSameDate =
         decision.action === "move" && decision.toDate === nextSameDate;
+      const entryType = lookup.row.typeId
+        ? typesById.get(lookup.row.typeId)
+        : undefined;
       return (
         <li
           key={o.rowId}
-          className="flex flex-col gap-1 border-b border-line px-3 py-2 text-sm last:border-b-0"
+          className="flex flex-col gap-1.5 border-b border-line px-3 py-2 text-sm last:border-b-0"
         >
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2">
-            <span className="font-mono text-xs text-muted">{rowDate}</span>
-            <span className="truncate text-fg">
+          <div className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-2">
+            <span className="font-mono text-xs text-muted tabular-nums">
+              {formatShortDate(rowDate, settings.shortDateFormat, lang)}
+            </span>
+            {entryType ? (
+              <span
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded"
+                style={{
+                  backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
+                  color: entryType.color,
+                }}
+                aria-hidden
+              >
+                <CategoryIconGlyph name={entryType.glyph} size={12} />
+              </span>
+            ) : (
+              <span className="h-5 w-5 shrink-0" aria-hidden />
+            )}
+            <span className="truncate text-fg-bright">
               {rowDesc || t("reconciliation.noLabel")}
             </span>
-            <span className="font-mono text-fg">
+            <span className="font-mono text-fg tabular-nums">
               {formatAmount(rowAmount, settings)}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <button
-              type="button"
-              className={`rounded border px-2 py-1 ${
-                decision.action === "keep"
-                  ? "border-accent text-accent"
-                  : "border-line text-muted hover:text-fg"
-              }`}
+          <div className="flex flex-wrap items-center gap-1">
+            <IconButton
+              active={isKeep}
+              tone="success"
+              label={t("reconciliation.keep")}
               onClick={() => setOrphan(o.rowId, { action: "keep" })}
             >
-              {t("reconciliation.keep")}
-            </button>
-            <button
-              type="button"
-              className={`rounded border px-2 py-1 ${
-                decision.action === "delete"
-                  ? "border-danger text-danger"
-                  : "border-line text-muted hover:text-fg"
-              }`}
+              <Check size={14} aria-hidden focusable={false} />
+            </IconButton>
+            <IconButton
+              active={isDelete}
+              tone="danger"
+              label={t("reconciliation.deleteRow")}
               onClick={() => setOrphan(o.rowId, { action: "delete" })}
             >
-              {t("reconciliation.deleteRow")}
-            </button>
-            <button
-              type="button"
-              className={`rounded border px-2 py-1 ${
-                isMoveToStart
-                  ? "border-accent text-accent"
-                  : "border-line text-muted hover:text-fg"
-              }`}
+              <Trash2 size={14} aria-hidden focusable={false} />
+            </IconButton>
+            <IconButton
+              active={isMoveToStart}
+              tone="accent"
+              label={t("reconciliation.moveToNextMonthStart")}
               onClick={() =>
                 setOrphan(o.rowId, { action: "move", toDate: nextStartDate })
               }
             >
-              {t("reconciliation.moveToNextMonthStart")}
-            </button>
+              <Calendar size={14} aria-hidden focusable={false} />
+            </IconButton>
             {showSameDateOption && (
-              <button
-                type="button"
-                className={`rounded border px-2 py-1 ${
-                  isMoveToSameDate
-                    ? "border-accent text-accent"
-                    : "border-line text-muted hover:text-fg"
-                }`}
+              <IconButton
+                active={isMoveToSameDate}
+                tone="accent"
+                label={t("reconciliation.moveToNextMonthSameDate")}
                 onClick={() =>
                   setOrphan(o.rowId, { action: "move", toDate: nextSameDate })
                 }
               >
-                {t("reconciliation.moveToNextMonthSameDate")}
-              </button>
+                <CalendarDays size={14} aria-hidden focusable={false} />
+              </IconButton>
             )}
           </div>
         </li>
@@ -518,11 +553,16 @@ export function ReconciliationModal({
     });
     return (
       <section key={group.monthKey}>
-        <h4 className="border-b border-line bg-surface px-3 py-2 text-xs font-semibold text-fg">
-          {t("reconciliation.monthCoveredHeader", {
-            month: formatMonthLabel(group.monthKey, lang),
-          })}
-        </h4>
+        <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line bg-surface px-3 py-2">
+          <h4 className="text-base font-semibold text-fg-bright">
+            {t("reconciliation.monthCoveredHeader", {
+              month: formatMonthLabel(group.monthKey, lang),
+            })}
+          </h4>
+          <span className="text-xs text-muted">
+            {t("reconciliation.monthCoveredSubtitle")}
+          </span>
+        </header>
         <ul>{items}</ul>
       </section>
     );
@@ -559,30 +599,41 @@ export function ReconciliationModal({
         )}
         {hasOrphans && (
           <section>
-            <h3 className="border-b border-line bg-surface-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              {t("reconciliation.predictionsThatDidntPost")}
-            </h3>
-            <p className="px-3 py-2 text-xs text-muted">
-              {t("reconciliation.orphanHint")}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2">
+              <h3 className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted">
+                {t("reconciliation.predictionsThatDidntPost")}
+              </h3>
               <button
                 type="button"
-                className="rounded border border-line px-2 py-1 text-muted hover:text-fg"
+                onClick={() => setShowInfo((v) => !v)}
+                aria-expanded={showInfo}
+                aria-label={t("reconciliation.infoAria")}
+                title={t("reconciliation.infoAria")}
+                className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded ${
+                  showInfo
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted hover:bg-surface-3 hover:text-fg"
+                }`}
+              >
+                <HelpCircle size={14} aria-hidden focusable={false} />
+              </button>
+              <IconButton
+                tone="success"
+                label={t("reconciliation.bulkKeepAll")}
                 onClick={() => setAllOrphans(() => ({ action: "keep" }))}
               >
-                {t("reconciliation.bulkKeepAll")}
-              </button>
-              <button
-                type="button"
-                className="rounded border border-line px-2 py-1 text-muted hover:text-danger"
+                <Check size={14} aria-hidden focusable={false} />
+              </IconButton>
+              <IconButton
+                tone="danger"
+                label={t("reconciliation.bulkDeleteAll")}
                 onClick={() => setAllOrphans(() => ({ action: "delete" }))}
               >
-                {t("reconciliation.bulkDeleteAll")}
-              </button>
-              <button
-                type="button"
-                className="rounded border border-line px-2 py-1 text-muted hover:text-fg"
+                <Trash2 size={14} aria-hidden focusable={false} />
+              </IconButton>
+              <IconButton
+                tone="accent"
+                label={t("reconciliation.bulkMoveAllToNextMonthStart")}
                 onClick={() =>
                   setAllOrphans((o) => ({
                     action: "move",
@@ -590,9 +641,17 @@ export function ReconciliationModal({
                   }))
                 }
               >
-                {t("reconciliation.bulkMoveAllToNextMonthStart")}
-              </button>
+                <Calendar size={14} aria-hidden focusable={false} />
+              </IconButton>
             </div>
+            {showInfo && (
+              <p
+                role="note"
+                className="border-b border-line bg-surface-3 px-3 py-2 text-xs text-muted"
+              >
+                {t("reconciliation.orphanHint")}
+              </p>
+            )}
             {orphanGroupSections}
           </section>
         )}
@@ -601,14 +660,14 @@ export function ReconciliationModal({
         <button
           type="button"
           onClick={handleSkipAll}
-          className="rounded border border-line px-3 py-2 text-sm text-muted hover:text-fg"
+          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
         >
           {t("reconciliation.skipAll")}
         </button>
         <button
           type="button"
           onClick={handleApply}
-          className="rounded border border-accent bg-accent/10 px-3 py-2 text-sm font-semibold text-accent hover:bg-accent/20"
+          className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent/20"
         >
           {t("reconciliation.apply")}
         </button>
@@ -619,4 +678,52 @@ export function ReconciliationModal({
 
 function candidateKey(c: MatchCandidate): string {
   return `${c.rowId}|${c.historyEntryId}`;
+}
+
+// Compact square icon-button used for the orphan-row decision chips
+// (keep / delete / move) and the bulk-action header. `tone` picks the
+// active-state colour band; the `title` + `aria-label` carry the
+// human-readable copy so the icon-only chrome stays accessible.
+type IconButtonTone = "accent" | "success" | "danger";
+
+function IconButton({
+  active = false,
+  tone,
+  label,
+  onClick,
+  children,
+}: {
+  active?: boolean;
+  tone: IconButtonTone;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const activeClass =
+    tone === "success"
+      ? "border-success bg-success/15 text-success"
+      : tone === "danger"
+        ? "border-danger bg-danger/15 text-danger"
+        : "border-accent bg-accent/15 text-accent";
+  const hoverClass =
+    tone === "success"
+      ? "hover:border-success/60 hover:text-success"
+      : tone === "danger"
+        ? "hover:border-danger/60 hover:text-danger"
+        : "hover:border-accent/60 hover:text-accent";
+  const className = `inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border ${
+    active ? activeClass : `border-line text-muted ${hoverClass}`
+  }`;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={className}
+    >
+      {children}
+    </button>
+  );
 }
