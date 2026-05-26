@@ -6,6 +6,11 @@ import {
   findConflicts,
   type Conflict,
 } from "../../data/conflicts";
+import {
+  firstNonBlank,
+  readNumberCell,
+  readStringCell,
+} from "../../data/row-cells";
 import { findColumnByType } from "../../data/sheet";
 import { useLang, useT } from "../../i18n";
 import { displayCategoryName } from "../../i18n/preset-names";
@@ -84,27 +89,6 @@ type Props = {
 // for ledgers full of mid-size bills.
 const THRESHOLD_PRESETS: ReadonlyArray<number> = [50, 100, 200, 500, 1000];
 
-function firstNonBlank<T>(values: readonly (T | null | undefined)[]): T | null {
-  for (const v of values) {
-    if (v === null || v === undefined) continue;
-    if (typeof v === "string" && v.trim() === "") continue;
-    return v;
-  }
-  return null;
-}
-
-function readDescription(row: Row, descColId: string | null): string {
-  if (!descColId) return "";
-  const v = row.cells[descColId];
-  return typeof v === "string" ? v.trim() : "";
-}
-
-function readAmount(row: Row, amountColId: string | null): number | null {
-  if (!amountColId) return null;
-  const v = row.cells[amountColId];
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-
 export function FindConflictsModal({
   open,
   onClose,
@@ -158,7 +142,7 @@ export function FindConflictsModal({
           historyEntryId: winner.historyEntryId,
         };
         const desc = firstNonBlank(
-          losers.map((l) => readDescription(l, descriptionColumnId)),
+          losers.map((l) => readStringCell(l, descriptionColumnId)),
         );
         if (desc) stamp.userDescription = desc;
         const typeId = firstNonBlank(losers.map((l) => l.typeId));
@@ -177,10 +161,10 @@ export function FindConflictsModal({
         if (typeId) patch.typeId = typeId;
       }
       if (descriptionColumnId) {
-        const winnerDesc = readDescription(winner, descriptionColumnId);
+        const winnerDesc = readStringCell(winner, descriptionColumnId);
         if (winnerDesc === "") {
           const desc = firstNonBlank(
-            losers.map((l) => readDescription(l, descriptionColumnId)),
+            losers.map((l) => readStringCell(l, descriptionColumnId)),
           );
           if (desc) patch.description = desc;
         }
@@ -342,7 +326,7 @@ function ConflictCard({
             typeof row.typeId === "string"
               ? (typesById.get(row.typeId) ?? null)
               : null;
-          const amount = readAmount(row, amountColId);
+          const amount = readNumberCell(row, amountColId);
           const description = descriptionColumnId
             ? (row.cells[descriptionColumnId] ?? "")
             : "";
