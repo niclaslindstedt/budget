@@ -206,7 +206,14 @@ export type CategoryIcon =
   | "palette"
   | "lamp"
   | "bath"
-  | "compass";
+  | "compass"
+  // Status & flags
+  | "circle-help"
+  | "repeat"
+  | "banknote-arrow-down"
+  | "flag"
+  | "shield-alert"
+  | "cloud";
 
 // Broad bucket used for cross-row analysis: Food, Housing, Transport,
 // Entertainment. A category owns a set of `EntryType`s (its concrete
