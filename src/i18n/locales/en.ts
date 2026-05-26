@@ -1156,6 +1156,7 @@ export const en = {
       updateHistoryEntry: "Edited history entry",
       splitHistoryEntry: "Split history entry",
       applyReconciliation: "Applied reconciliation",
+      applyImportRenames: "Applied suggested renames",
       unknown: "Action",
     },
   },
@@ -1235,6 +1236,24 @@ export const en = {
     rowSide: "Predicted",
     confirmTitle: "Apply reconciliation?",
     confirmHint: "{n} rows will be deleted and {m} will be moved.",
+  },
+
+  renamePredictor: {
+    title: "Review suggested renames",
+    intro:
+      "Based on past edits, these new entries can be renamed automatically. Uncheck the ones you want to keep as-is, or edit the suggested text inline.",
+    original: "From bank",
+    suggested: "Rename to",
+    suggestedPlaceholder: "Suggested name",
+    suggestionAria: "Rename suggestion for {description}",
+    acceptAria: "Accept rename for {description}",
+    hitCountOne: "1 prior rename",
+    hitCountOther: "{n} prior renames",
+    cancel: "Cancel import",
+    skip: "Skip renames",
+    commit: "Apply renames",
+    commitCountOne: "Apply 1 rename",
+    commitCountOther: "Apply {n} renames",
   },
 
   matchRule: {

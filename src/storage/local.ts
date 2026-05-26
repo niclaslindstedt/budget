@@ -18,7 +18,7 @@ export function freshUserData(): UserData {
   // data living in their export.
   const sheet = createDefaultSheet("Budget");
   return {
-    version: 40,
+    version: 41,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -35,6 +35,7 @@ export function freshUserData(): UserData {
     transferCollapseDismissals: [],
     matchRules: [],
     seriesMatchRules: [],
+    renamePatterns: {},
     // Auto-detect language and currency from the browser only for
     // genuinely new installs. Existing buckets keep whatever they had
     // (the v26 → v27 migration pinned language to "en"; currency is

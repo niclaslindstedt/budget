@@ -56,6 +56,11 @@ import {
   type ReconciliationApply,
 } from "./accounts/ReconciliationModal";
 import {
+  RenamePredictorModal,
+  type RenameDecision,
+} from "./accounts/RenamePredictorModal";
+import { predictRenames, type RenameSuggestion } from "../data/rename-patterns";
+import {
   MatchRuleModal,
   type MatchRuleDraft,
   type MatchRuleSeed,
@@ -234,6 +239,23 @@ type ReconciliationState = {
     entries: ParsedBankEntry[];
     now: number;
   };
+};
+
+// Rename-predictor modal state. Populated as the last step of every
+// import pipeline that has learned renames to suggest. Holds the
+// staged commit payload so the import is only dispatched when the user
+// commits via Skip / Apply — Cancel drops everything and nothing lands
+// in `state.history`. The reconciliation payload is `null` on the
+// quiet-path branch (no candidates / orphans to triage) and a
+// populated object when we deferred dispatch through
+// `ReconciliationModal`.
+type RenamePredictorState = {
+  accountId: string;
+  suggestions: RenameSuggestion[];
+  pendingImport: ReconciliationState["pendingImport"];
+  pendingReconciliation: {
+    decisions: ReconciliationApply;
+  } | null;
 };
 
 // In-flight recurring-candidate promotion. Captured when the user
@@ -614,6 +636,15 @@ export function AppShell({
   // should triage; cleared on apply / cancel.
   const [reconciliation, setReconciliation] =
     useState<ReconciliationState | null>(null);
+  // Last step of the import pipeline — null = closed. Set after the
+  // reconciliation pass (or the quiet-path skip-reconciliation branch)
+  // when `predictRenames` finds learned mappings for entries the user
+  // is about to import. Cleared on Cancel (drops the staged import) /
+  // Skip (commits without renames) / Apply (commits + stamps the
+  // selected renames). See `commitStagedImport` for the deferred
+  // dispatch payload — both branches converge there.
+  const [renamePredictor, setRenamePredictor] =
+    useState<RenamePredictorState | null>(null);
   // null = closed; otherwise the id of the correction row queued for
   // deletion (set when the user clicks the divider line in the budget
   // view). The ConfirmDialog renders against this state to ask for
@@ -1856,14 +1887,35 @@ export function AppShell({
         now,
       };
 
-      // Quiet path — nothing to triage, commit the import immediately
-      // and skip the modal. Matches the pre-deferred-commit behaviour
-      // when the matcher had no candidates or orphans to show.
+      // Compute rename predictions against the same pre-import
+      // snapshot the rest of the matcher saw. Surfaced as the last
+      // step of the import pipeline by the `RenamePredictorModal` —
+      // see `openRenamePredictorOrCommit` below.
+      const renameSuggestions = predictRenames(
+        preImportData.renamePatterns,
+        accountId,
+        newEntries,
+      );
+
+      // Quiet path — nothing to triage on the reconciliation side.
+      // Commit the import immediately unless we have rename
+      // predictions; if we do, defer through the rename modal so the
+      // user can review them. Matches the pre-deferred-commit
+      // behaviour when neither modal has anything to show.
       if (allCandidates.length === 0 && allOrphans.length === 0) {
-        dispatch({
-          type: "importBankHistory",
+        if (renameSuggestions.length === 0) {
+          dispatch({
+            type: "importBankHistory",
+            accountId,
+            ...pendingImport,
+          });
+          return;
+        }
+        setRenamePredictor({
           accountId,
-          ...pendingImport,
+          suggestions: renameSuggestions,
+          pendingImport,
+          pendingReconciliation: null,
         });
         return;
       }
@@ -1885,38 +1937,118 @@ export function AppShell({
     [data, dispatch, importHistoryAccount],
   );
 
-  const onApplyReconciliation = useCallback(
-    (decisions: ReconciliationApply) => {
-      if (!reconciliation) return;
-      const { accountId, pendingImport } = reconciliation;
-      // Commit the deferred bank-history import first so the
-      // applyReconciliation pass operates on a state that already
-      // contains the new entries (the stamps in `entryOverrides`
-      // target ids that only exist after `importBankHistory`).
+  // Single chokepoint for the deferred-commit pipeline. Called from
+  // both the quiet path (no reconciliation, rename predictor only) and
+  // the reconciliation-then-rename path so the dispatch order — import
+  // first, then applyReconciliation, then applyImportRenames — is
+  // identical in both branches and the rename-pattern bump can find the
+  // entries it needs to refresh.
+  const commitStagedImport = useCallback(
+    (
+      accountId: string,
+      pendingImport: ReconciliationState["pendingImport"],
+      reconciliationDecisions: ReconciliationApply | null,
+      renames: RenameDecision[],
+    ) => {
       dispatch({
         type: "importBankHistory",
         accountId,
         ...pendingImport,
       });
       if (
-        decisions.mergedRowIds.length > 0 ||
-        decisions.entryOverrides.length > 0 ||
-        decisions.seriesRules.length > 0 ||
-        decisions.orphans.length > 0
+        reconciliationDecisions &&
+        (reconciliationDecisions.mergedRowIds.length > 0 ||
+          reconciliationDecisions.entryOverrides.length > 0 ||
+          reconciliationDecisions.seriesRules.length > 0 ||
+          reconciliationDecisions.orphans.length > 0)
       ) {
         dispatch({
           type: "applyReconciliation",
           accountId,
-          mergedRowIds: decisions.mergedRowIds,
-          entryOverrides: decisions.entryOverrides,
-          seriesRules: decisions.seriesRules,
-          orphans: decisions.orphans,
+          mergedRowIds: reconciliationDecisions.mergedRowIds,
+          entryOverrides: reconciliationDecisions.entryOverrides,
+          seriesRules: reconciliationDecisions.seriesRules,
+          orphans: reconciliationDecisions.orphans,
         });
       }
-      setReconciliation(null);
+      if (renames.length > 0) {
+        dispatch({
+          type: "applyImportRenames",
+          accountId,
+          renames: renames.map((r) => ({
+            entryId: r.entryId,
+            userDescription: r.userDescription,
+          })),
+        });
+      }
     },
-    [dispatch, reconciliation],
+    [dispatch],
   );
+
+  const onApplyReconciliation = useCallback(
+    (decisions: ReconciliationApply) => {
+      if (!reconciliation) return;
+      const { accountId, newEntries, pendingImport, preImportData } =
+        reconciliation;
+      // Look up rename predictions against the same pre-import snapshot
+      // the reconciliation modal worked from. Entries the user already
+      // labelled (e.g. via reconciliation `entryOverrides`) are filtered
+      // out inside `predictRenames` — its skip-if-userDescription guard
+      // covers per-entry overrides we'd otherwise re-suggest a rename for.
+      const renameSuggestions = predictRenames(
+        preImportData.renamePatterns,
+        accountId,
+        newEntries,
+      );
+      // Suppress suggestions for entries the reconciliation flow is
+      // about to stamp a userDescription onto — those entries will be
+      // labelled by the merged row's description in a moment, so a
+      // parallel rename suggestion would race the reconciliation stamp.
+      const stampedEntryIds = new Set<string>();
+      for (const o of decisions.entryOverrides) {
+        if (o.userDescription) stampedEntryIds.add(o.historyEntryId);
+      }
+      const filteredSuggestions = renameSuggestions.filter(
+        (s) => !stampedEntryIds.has(s.entryId),
+      );
+      if (filteredSuggestions.length === 0) {
+        commitStagedImport(accountId, pendingImport, decisions, []);
+        setReconciliation(null);
+        return;
+      }
+      setReconciliation(null);
+      setRenamePredictor({
+        accountId,
+        suggestions: filteredSuggestions,
+        pendingImport,
+        pendingReconciliation: { decisions },
+      });
+    },
+    [reconciliation, commitStagedImport],
+  );
+
+  // Apply-predictor handler. Empty `decisions` from the modal means
+  // "Skip" (commit without renames); a non-empty array means "Apply"
+  // (commit with the accepted renames stamped).
+  const onCommitRenamePredictor = useCallback(
+    (decisions: RenameDecision[]) => {
+      if (!renamePredictor) return;
+      commitStagedImport(
+        renamePredictor.accountId,
+        renamePredictor.pendingImport,
+        renamePredictor.pendingReconciliation?.decisions ?? null,
+        decisions,
+      );
+      setRenamePredictor(null);
+    },
+    [renamePredictor, commitStagedImport],
+  );
+
+  // Discard the staged import without dispatching. Wired to the
+  // modal's Cancel button, X, Escape, and click-outside.
+  const onCancelRenamePredictor = useCallback(() => {
+    setRenamePredictor(null);
+  }, []);
 
   // Discard the pending import unread. Wired to the modal's X /
   // Escape / click-outside so dismissing the dialog rolls back to
@@ -3307,6 +3439,12 @@ export function AppShell({
         orphans={reconciliation?.orphans ?? []}
         paydayDay={reconciliation?.paydayDay ?? data.settings.startOfMonth}
         settings={effectiveSettings}
+      />
+      <RenamePredictorModal
+        open={renamePredictor !== null}
+        suggestions={renamePredictor?.suggestions ?? []}
+        onCancel={onCancelRenamePredictor}
+        onCommit={onCommitRenamePredictor}
       />
       <CutAccountHistoryModal
         open={cutHistoryAccount !== null}

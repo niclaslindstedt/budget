@@ -906,6 +906,22 @@ export type MatchRule = {
   amountMax?: number;
 };
 
+// Per-account memory of "the bank wrote X, the user calls it Y".
+// Recorded every time the user types a fresh description over a
+// history entry (`HistoryEntryEditModal` or the budget-view quick-
+// rename — both route through the `updateHistoryEntry` reducer
+// chokepoint). The next bank-history import looks the normalised
+// bank description back up and offers the stored text as a suggested
+// rename in `RenamePredictorModal`. Scope is per-account so the same
+// merchant can carry different user labels in different accounts.
+// See `src/data/rename-patterns.ts` for the pure helpers; the on-disk
+// shape is `Record<accountId, Record<normalisedKey, RenamePattern>>`.
+export type RenamePattern = {
+  suggestedDescription: string;
+  hitCount: number;
+  lastUsedAt: number;
+};
+
 // User-defined rule that auto-reconciles future bank-history entries
 // against rows belonging to a recurring series. Learned at confirm
 // time in the reconciliation modal — when the user merges one
@@ -937,7 +953,7 @@ export type SeriesMatchRule = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 40;
+  version: 41;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -1016,6 +1032,14 @@ export type UserData = {
   // and collapse any predicted row + history entry pair that fits
   // the rule's pattern + amount band + date lag, no modal needed.
   seriesMatchRules: SeriesMatchRule[];
+  // Per-account rename memory. Each entry maps a normalised bank
+  // description to the user-typed label they reach for when relabelling
+  // entries that match it. See `RenamePattern`. Surfaced by the
+  // `RenamePredictorModal` as the last step of every import that has
+  // suggestions to offer; learning happens silently inside the
+  // `updateHistoryEntry` reducer action so any in-app rename feeds the
+  // store.
+  renamePatterns: Record<string, Record<string, RenamePattern>>;
   settings: PersistedSettings;
 };
 

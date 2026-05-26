@@ -101,6 +101,7 @@ describe("backup restore — migration pipeline", () => {
       transferCollapseDismissals: [],
       matchRules: [],
       seriesMatchRules: [],
+      renamePatterns: {},
       settings: { ...DEFAULT_SETTINGS },
     };
     const current = serializeUserData(userData);
