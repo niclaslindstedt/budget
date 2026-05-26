@@ -774,6 +774,7 @@ export const en = {
     hideEmptyMonths: "Hide empty months",
     editSheet: "Edit sheet",
     viewBudget: "Viewing mode",
+    metadataMode: "Metadata mode",
     findConflicts: "Find conflicts",
     moreActions: "Sheet actions",
     moreActionsAria: "Sheet actions for {name}",
@@ -1052,6 +1053,21 @@ export const en = {
       "Renames just this one entry. The bank's record stays untouched " +
       "for reference. To relabel every entry with the same description, " +
       "use the pattern button instead.",
+  },
+
+  metadata: {
+    title: "Metadata mode",
+    progress: "{month} · {index} of {total}",
+    fromBank: "From the bank",
+    typeLabel: "Type",
+    descriptionLabel: "Description",
+    descriptionPlaceholder: "Leave blank to keep the bank's text",
+    descriptionHint: "Blank keeps the bank's text.",
+    skip: "Skip",
+    save: "Save",
+    allCaught: "All caught up.",
+    allCaughtHint:
+      "Every imported entry on this account has a type or a custom description.",
   },
 
   history: {

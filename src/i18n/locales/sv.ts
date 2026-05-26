@@ -768,6 +768,7 @@ export const sv: Catalog = {
     hideEmptyMonths: "Dölj tomma månader",
     editSheet: "Redigera blad",
     viewBudget: "Visningsläge",
+    metadataMode: "Metadataläge",
     findConflicts: "Hitta dubbletter",
     moreActions: "Bladåtgärder",
     moreActionsAria: "Bladåtgärder för {name}",
@@ -1050,6 +1051,21 @@ export const sv: Catalog = {
       "Byter namn på bara denna post. Bankens text lämnas orörd så du " +
       "kan se vad som stod i kontoutdraget. För att etikettera alla " +
       "poster med samma beskrivning, använd mönsterknappen i stället.",
+  },
+
+  metadata: {
+    title: "Metadataläge",
+    progress: "{month} · {index} av {total}",
+    fromBank: "Från banken",
+    typeLabel: "Typ",
+    descriptionLabel: "Beskrivning",
+    descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
+    descriptionHint: "Tomt fält behåller bankens text.",
+    skip: "Hoppa över",
+    save: "Spara",
+    allCaught: "Allt är ifyllt.",
+    allCaughtHint:
+      "Varje importerad post på detta konto har en typ eller en egen beskrivning.",
   },
 
   history: {
