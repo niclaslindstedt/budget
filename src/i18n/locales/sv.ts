@@ -2274,6 +2274,7 @@ export const sv: Catalog = {
     transport: "Transport",
     health: "Hälsa",
     bills: "Räkningar",
+    subscriptions: "Prenumerationer",
     entertainment: "Underhållning",
     savings: "Sparande",
     income: "Inkomst",
@@ -2282,6 +2283,7 @@ export const sv: Catalog = {
     consumption: "Konsumtion",
     travel: "Resor",
     other: "Övrigt",
+    unknown: "Okänt",
   },
 
   presetTypes: {
@@ -2375,6 +2377,13 @@ export const sv: Catalog = {
     tools: "Verktyg",
     stationery: "Kontorsmaterial",
     appliances: "Vitvaror",
+    "digital-services": "Digitala tjänster",
+    unknown: "Okänt",
+    forgotten: "Bortglömt",
+    "unidentified-recurring": "Oidentifierad återkommande",
+    cash: "Kontanter",
+    "needs-review": "Behöver granskas",
+    suspicious: "Misstänkt",
   },
 
   download: {

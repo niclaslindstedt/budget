@@ -1116,6 +1116,12 @@ export const CATEGORY_ICON_NAMES = [
   "lamp",
   "bath",
   "compass",
+  "circle-help",
+  "repeat",
+  "banknote-arrow-down",
+  "flag",
+  "shield-alert",
+  "cloud",
 ] as const;
 
 // Sheets are workspace containers and planners — what's being tracked.
@@ -1212,6 +1218,9 @@ export const CATEGORY_GLYPH_NAMES: readonly CategoryIcon[] = [
   "sparkles",
   "star",
   "tag",
+  "circle-help",
+  "repeat",
+  "cloud",
 ] as const;
 
 // EntryTypes are concrete, frequently-repeating entries: Rent,
@@ -1327,6 +1336,13 @@ export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
   "sparkles",
   "star",
   "tag",
+  // Status & flags
+  "circle-help",
+  "repeat",
+  "banknote-arrow-down",
+  "flag",
+  "shield-alert",
+  "cloud",
 ] as const;
 
 // Built-in entry types aimed at a typical Swedish household — bolån,
@@ -1712,46 +1728,6 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     },
     // Entertainment
     {
-      slug: "music-streaming",
-      name: "Music streaming",
-      color: C[3],
-      glyph: "music",
-      category: "entertainment",
-      kind: "expense",
-    },
-    {
-      slug: "tv-streaming",
-      name: "TV streaming",
-      color: C[0],
-      glyph: "tv",
-      category: "entertainment",
-      kind: "expense",
-    },
-    {
-      slug: "subscription",
-      name: "Subscriptions",
-      color: C[7],
-      glyph: "credit-card",
-      category: "entertainment",
-      kind: "expense",
-    },
-    {
-      slug: "magazines",
-      name: "Magazines",
-      color: C[6],
-      glyph: "book-marked",
-      category: "entertainment",
-      kind: "expense",
-    },
-    {
-      slug: "newspaper",
-      name: "Newspapers",
-      color: C[2],
-      glyph: "newspaper",
-      category: "entertainment",
-      kind: "expense",
-    },
-    {
       slug: "books",
       name: "Books",
       color: C[3],
@@ -1760,18 +1736,10 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       kind: "expense",
     },
     {
-      slug: "audiobooks",
-      name: "Audiobooks",
-      color: C[3],
-      glyph: "book-headphones",
-      category: "entertainment",
-      kind: "expense",
-    },
-    {
       slug: "media",
       name: "Media",
       color: C[6],
-      glyph: "clapperboard",
+      glyph: "book-marked",
       category: "entertainment",
       kind: "expense",
     },
@@ -1854,6 +1822,63 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       color: C[7],
       glyph: "hand-heart",
       category: "bills",
+      kind: "expense",
+    },
+    // Subscriptions
+    {
+      slug: "music-streaming",
+      name: "Music streaming",
+      color: C[3],
+      glyph: "music",
+      category: "subscriptions",
+      kind: "expense",
+    },
+    {
+      slug: "tv-streaming",
+      name: "TV streaming",
+      color: C[0],
+      glyph: "tv",
+      category: "subscriptions",
+      kind: "expense",
+    },
+    {
+      slug: "audiobooks",
+      name: "Audiobooks",
+      color: C[3],
+      glyph: "book-headphones",
+      category: "subscriptions",
+      kind: "expense",
+    },
+    {
+      slug: "magazines",
+      name: "Magazines",
+      color: C[6],
+      glyph: "book-marked",
+      category: "subscriptions",
+      kind: "expense",
+    },
+    {
+      slug: "newspaper",
+      name: "Newspapers",
+      color: C[2],
+      glyph: "newspaper",
+      category: "subscriptions",
+      kind: "expense",
+    },
+    {
+      slug: "digital-services",
+      name: "Digital services",
+      color: C[5],
+      glyph: "cloud",
+      category: "subscriptions",
+      kind: "expense",
+    },
+    {
+      slug: "subscription",
+      name: "Subscriptions",
+      color: C[7],
+      glyph: "credit-card",
+      category: "subscriptions",
       kind: "expense",
     },
     // Income
@@ -2092,6 +2117,49 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "consumption",
       kind: "expense",
     },
+    // Unknown
+    {
+      slug: "unknown",
+      name: "Unknown",
+      color: C[8],
+      glyph: "circle-help",
+      category: "unknown",
+    },
+    {
+      slug: "forgotten",
+      name: "Forgotten",
+      color: C[8],
+      glyph: "hourglass",
+      category: "unknown",
+    },
+    {
+      slug: "unidentified-recurring",
+      name: "Unidentified recurring",
+      color: C[8],
+      glyph: "repeat",
+      category: "unknown",
+    },
+    {
+      slug: "cash",
+      name: "Cash",
+      color: C[8],
+      glyph: "banknote-arrow-down",
+      category: "unknown",
+    },
+    {
+      slug: "needs-review",
+      name: "Needs review",
+      color: C[8],
+      glyph: "flag",
+      category: "unknown",
+    },
+    {
+      slug: "suspicious",
+      name: "Suspicious",
+      color: C[8],
+      glyph: "shield-alert",
+      category: "unknown",
+    },
   ];
   return seeds.map((s) => ({
     id: `preset-type-${s.slug}`,
@@ -2130,6 +2198,12 @@ export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
     { slug: "health", name: "Health", color: C[0], icon: "heart-pulse" },
     { slug: "bills", name: "Bills", color: C[7], icon: "receipt" },
     {
+      slug: "subscriptions",
+      name: "Subscriptions",
+      color: C[5],
+      icon: "repeat",
+    },
+    {
       slug: "entertainment",
       name: "Entertainment",
       color: C[6],
@@ -2147,6 +2221,7 @@ export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
     },
     { slug: "travel", name: "Travel", color: C[4], icon: "plane" },
     { slug: "other", name: "Other", color: C[5], icon: "tag" },
+    { slug: "unknown", name: "Unknown", color: C[8], icon: "circle-help" },
   ];
   return seeds.map((s) => ({
     id: `preset-cat-${s.slug}`,

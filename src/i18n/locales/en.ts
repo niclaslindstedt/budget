@@ -2277,6 +2277,7 @@ export const en = {
     transport: "Transport",
     health: "Health",
     bills: "Bills",
+    subscriptions: "Subscriptions",
     entertainment: "Entertainment",
     savings: "Savings",
     income: "Income",
@@ -2285,6 +2286,7 @@ export const en = {
     consumption: "Consumption",
     travel: "Travel",
     other: "Other",
+    unknown: "Unknown",
   },
 
   // Display names for the built-in entry types shipped in
@@ -2382,6 +2384,13 @@ export const en = {
     tools: "Tools",
     stationery: "Stationery",
     appliances: "Appliances",
+    "digital-services": "Digital services",
+    unknown: "Unknown",
+    forgotten: "Forgotten",
+    "unidentified-recurring": "Unidentified recurring",
+    cash: "Cash",
+    "needs-review": "Needs review",
+    suspicious: "Suspicious",
   },
 
   download: {
