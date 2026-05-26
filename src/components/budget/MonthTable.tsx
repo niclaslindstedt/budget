@@ -346,7 +346,7 @@ function MonthTableImpl({
       </h3>
       <div
         hidden={collapsed}
-        className={`overflow-clip rounded border-x border-b border-line bg-surface ${
+        className={`overflow-clip rounded border border-line bg-surface ${
           selectMode ? "budget-table-selecting" : ""
         }`}
         style={
@@ -387,7 +387,7 @@ function MonthTableImpl({
               {selectMode && (
                 <th
                   scope="col"
-                  className="select-cell border-t border-line bg-surface-3 text-center"
+                  className="select-cell bg-surface-3 text-center"
                   aria-label={t("budget.selectAllInMonth")}
                 >
                   <button
@@ -427,7 +427,7 @@ function MonthTableImpl({
               ))}
               <th
                 scope="col"
-                className="action-cell w-8 border-t border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
+                className="action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
                 aria-label={t("budget.rowActions")}
               >
                 <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">
