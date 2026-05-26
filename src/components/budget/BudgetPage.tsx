@@ -7,7 +7,14 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronUp, Download, Eye, Pencil } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Eye,
+  Pencil,
+} from "lucide-react";
 
 import {
   buildVisibleRows,
@@ -47,6 +54,11 @@ import { ActiveRowProvider } from "../ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 import { BudgetViewerModal } from "./BudgetViewerModal";
+import {
+  FindConflictsModal,
+  type ConflictHistoryStamp,
+  type ConflictUserRowPatch,
+} from "./FindConflictsModal";
 
 type Props = {
   sheet: Sheet;
@@ -142,6 +154,21 @@ type Props = {
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
   onEditSheet: (sheetId: string) => void;
   onDownloadSheet: (sheetId: string) => void;
+  // Find-conflicts modal callbacks. The history-winner path stamps
+  // metadata onto a `HistoryEntry` and deletes the loser rows via
+  // `applyReconciliation`; the user-winner path patches the winner's
+  // blank fields and deletes the losers via `bulkUpdate` /
+  // `updateCell` / `deleteRows`.
+  onMergeConflictIntoHistory: (
+    accountId: string,
+    mergedRowIds: string[],
+    overrides: readonly ConflictHistoryStamp[],
+  ) => void;
+  onMergeConflictUserRows: (
+    winnerId: string,
+    loserIds: string[],
+    patch: ConflictUserRowPatch,
+  ) => void;
   // Full workspace state — needed by the formula resolver so
   // `sheet("<id>", <variable>)` references can look up other sheets'
   // running balances at this row's month.
@@ -291,6 +318,8 @@ export function BudgetPage({
   onToggleSelectMonth,
   onEditSheet,
   onDownloadSheet,
+  onMergeConflictIntoHistory,
+  onMergeConflictUserRows,
   data,
 }: Props) {
   const t = useT();
@@ -528,6 +557,9 @@ export function BudgetPage({
   // Read-only viewer modal, opened from the Eye button next to the
   // sheet title. Local state — closing wipes it, no need to persist.
   const [viewerOpen, setViewerOpen] = useState(false);
+  // Duplicate-finder modal, opened from the title `…` menu. Same
+  // pattern as `viewerOpen` — local state, no persistence.
+  const [conflictsOpen, setConflictsOpen] = useState(false);
 
   // Number of extra historical months past the default 1-month window
   // the user has opted into via "Show more". Resets when the active
@@ -1028,6 +1060,12 @@ export function BudgetPage({
       onClick: () => setViewerOpen(true),
     },
     {
+      key: "conflicts",
+      icon: <AlertTriangle size={16} aria-hidden focusable={false} />,
+      label: t("sheet.findConflicts"),
+      onClick: () => setConflictsOpen(true),
+    },
+    {
       key: "download",
       icon: <Download size={16} aria-hidden focusable={false} />,
       label: t("download.downloadBudget"),
@@ -1148,6 +1186,21 @@ export function BudgetPage({
           balances={balances}
           types={types}
           settings={settings}
+        />
+        <FindConflictsModal
+          open={conflictsOpen}
+          onClose={() => setConflictsOpen(false)}
+          rows={decoratedItem.rows}
+          columns={decoratedItem.columns}
+          types={types}
+          categories={categories}
+          settings={settings}
+          accountId={item.accountId}
+          descriptionColumnId={
+            findColumnByType(decoratedItem.columns, "description")?.id ?? null
+          }
+          onMergeIntoHistory={onMergeConflictIntoHistory}
+          onMergeUserRows={onMergeConflictUserRows}
         />
       </section>
       {showTodayButton &&

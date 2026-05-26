@@ -74,6 +74,10 @@ import { PullToRefreshIndicator } from "./PullToRefreshIndicator";
 import { SaveStateButton } from "./SaveStateButton";
 import { SettingsModal, type SettingsTabId } from "./SettingsModal";
 import { BudgetPage } from "./budget/BudgetPage";
+import type {
+  ConflictHistoryStamp,
+  ConflictUserRowPatch,
+} from "./budget/FindConflictsModal";
 import { ConflictResolutionModal } from "./ConflictResolutionModal";
 import { ReconnectCloudModal } from "./ReconnectCloudModal";
 import { SyncDetailsModal } from "./SyncDetailsModal";
@@ -2058,6 +2062,74 @@ export function AppShell({
     setReconciliation(null);
   }, []);
 
+  // FindConflictsModal — merge a duplicate group whose winner is a
+  // history-backed row. Routes through `applyReconciliation` with
+  // empty `seriesRules` / `orphans`, so the existing blanks-only
+  // stamp on `userDescription` / `userTypeId` applies and the loser
+  // rows are deleted in the same pass. Distinct from
+  // `onApplyReconciliation` above because that one assumes a
+  // deferred `importBankHistory` is pending — here there is none.
+  const onMergeConflictIntoHistory = useCallback(
+    (
+      accountId: string,
+      mergedRowIds: string[],
+      overrides: readonly ConflictHistoryStamp[],
+    ) => {
+      if (mergedRowIds.length === 0 && overrides.length === 0) return;
+      dispatch({
+        type: "applyReconciliation",
+        accountId,
+        mergedRowIds: [...mergedRowIds],
+        entryOverrides: [...overrides],
+        seriesRules: [],
+        orphans: [],
+      });
+      unlockAchievement("doppelganger");
+    },
+    [dispatch],
+  );
+
+  // FindConflictsModal — merge a duplicate group whose winner is a
+  // user-authored row. Three sequential dispatches: fill `typeId` on
+  // the winner via `bulkUpdate` (it already handles the typeId slot),
+  // fill the winner's description cell via `updateCell` when the
+  // patch includes one, then delete the loser rows.
+  const onMergeConflictUserRows = useCallback(
+    (winnerId: string, loserIds: string[], patch: ConflictUserRowPatch) => {
+      if (loserIds.length === 0) return;
+      if (patch.typeId !== undefined) {
+        dispatch({
+          type: "bulkUpdate",
+          sheetId,
+          itemId,
+          rowIds: [winnerId],
+          patch: { typeId: patch.typeId },
+        });
+      }
+      if (patch.description !== undefined) {
+        const descCol = findColumnByType(activeItem.columns, "description");
+        if (descCol) {
+          dispatch({
+            type: "updateCell",
+            sheetId,
+            itemId,
+            rowId: winnerId,
+            columnId: descCol.id,
+            value: patch.description,
+          });
+        }
+      }
+      dispatch({
+        type: "deleteRows",
+        sheetId,
+        itemId,
+        rowIds: loserIds,
+      });
+      unlockAchievement("doppelganger");
+    },
+    [activeItem.columns, dispatch, itemId, sheetId],
+  );
+
   // Balance-correction flow. The Accounts page surfaces a clickable
   // balance per account; clicking opens UpdateBalanceModal, which lets
   // the user assert a new balance and confirms a correction row will
@@ -3305,6 +3377,8 @@ export function AppShell({
                   onToggleSelectMonth={onToggleSelectMonth}
                   onEditSheet={onOpenEditSheet}
                   onDownloadSheet={onOpenDownloadSheet}
+                  onMergeConflictIntoHistory={onMergeConflictIntoHistory}
+                  onMergeConflictUserRows={onMergeConflictUserRows}
                 />
               </>
             )}

@@ -768,6 +768,7 @@ export const sv: Catalog = {
     hideEmptyMonths: "Dölj tomma månader",
     editSheet: "Redigera blad",
     viewBudget: "Visningsläge",
+    findConflicts: "Hitta dubbletter",
     moreActions: "Bladåtgärder",
     moreActionsAria: "Bladåtgärder för {name}",
     viewerEmpty: "Inga poster att visa.",
@@ -1249,6 +1250,29 @@ export const sv: Catalog = {
     commit: "Tillämpa omdöpningar",
     commitCountOne: "Tillämpa 1 omdöpning",
     commitCountOther: "Tillämpa {n} omdöpningar",
+  },
+
+  conflicts: {
+    title: "Hitta dubbletter",
+    intro:
+      "Par på samma datum, samma kategori, med belopp inom 5% av varandra. Mindre summor och kategorin Mat utesluts.",
+    minAmountLabel: "Minsta belopp",
+    minAmountHint: "Dölj par som är mindre än så här.",
+    empty: "Inga dubbletter hittade.",
+    emptyHint: "Sänk minsta belopp för att utvidga sökningen.",
+    foodExcludedHint: "Poster i kategorin Mat utesluts från sökningen.",
+    winnerBadge: "behåll",
+    historyBadge: "bank",
+    untypedLabel: "(ingen typ)",
+    uncategorizedLabel: "(ingen kategori)",
+    merge: "Slå ihop",
+    mergeAria: "Slå ihop {n} dubbletter",
+    mergedOne: "1 dubblett sammanslagen.",
+    mergedOther: "{n} dubbletter sammanslagna.",
+    twoHistoryWarning:
+      "Två bankposter samma dag — troligen en riktig dubbeldebitering. Granska i historikvyn.",
+    countOne: "{n} dubblett",
+    countOther: "{n} dubbletter",
   },
 
   matchRule: {
@@ -2138,6 +2162,12 @@ export const sv: Catalog = {
       twoSidedCoin: {
         name: "Tvåsidigt mynt",
         condition: "Slå ihop ett spegelpar till en enda överföring.",
+      },
+      doppelganger: {
+        name: "Dubbelgångare",
+        condition: "Slå ihop ett dubblettpar från Hitta dubbletter.",
+        learnMore:
+          "Bladrubrikens ⋯-meny → Hitta dubbletter. Letar efter par i den aktiva budgeten med samma datum, samma kategori och ungefär samma belopp och slår ihop dem till en rad — bankposten vinner när en sådan finns, annars behåller raden med tydligare etikett sin plats.",
       },
       cleanSplit: {
         name: "Ren delning",
