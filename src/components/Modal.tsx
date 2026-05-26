@@ -149,7 +149,11 @@ export function Modal({
   //     to the shell itself (`tabIndex={-1}`) so Tab still walks into
   //     the modal even if it has no focusable content.
   //  3. On close, restore focus to the opener if it's still in the
-  //     document.
+  //     document. `preventScroll: true` because we don't want the
+  //     browser's default focus-into-view behaviour to fight the
+  //     scroll-position restore `useBodyScrollLock` does on release —
+  //     the user opened the modal from somewhere, the page should
+  //     land back exactly there.
   useEffect(() => {
     if (!open) return;
     openerRef.current = document.activeElement as HTMLElement | null;
@@ -173,7 +177,7 @@ export function Modal({
       cancelAnimationFrame(raf);
       const opener = openerRef.current;
       if (opener && document.contains(opener)) {
-        opener.focus();
+        opener.focus({ preventScroll: true });
       }
     };
   }, [open]);

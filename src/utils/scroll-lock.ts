@@ -15,8 +15,20 @@ import { useEffect } from "react";
 //    Tab into background buttons and a stray click on the header
 //    icons (or the bottom sheet-tab bar, which lifts itself with
 //    `pointer-events-auto`) can still trigger them.
+//
+// iOS Safari and iOS standalone PWAs do NOT preserve the document's
+// scroll position across `body.overflow = "hidden"` toggles the same
+// way Chrome and Firefox do. The scroll position can snap to 0 the
+// moment we hide overflow — invisible while the modal covers the
+// page, but exposed as a "page jumped to top after Save" the instant
+// the modal closes. We snapshot `scrollY` at acquire time and call
+// `window.scrollTo` on release if it drifted, which lands us back at
+// the exact resting point the user opened the modal from. Chrome
+// keeps the same scrollY across the toggle, so the restore is a
+// no-op there.
 let lockCount = 0;
 let previousOverflow: string | null = null;
+let previousScrollY: number | null = null;
 
 function setBackgroundInert(inert: boolean): void {
   for (const el of document.querySelectorAll<HTMLElement>(
@@ -28,6 +40,7 @@ function setBackgroundInert(inert: boolean): void {
 
 function acquire() {
   if (lockCount === 0) {
+    previousScrollY = window.scrollY;
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     setBackgroundInert(true);
@@ -41,6 +54,14 @@ function release() {
     document.body.style.overflow = previousOverflow ?? "";
     previousOverflow = null;
     setBackgroundInert(false);
+    if (previousScrollY !== null && window.scrollY !== previousScrollY) {
+      // `behavior: "auto"` is the default, but spell it out so a
+      // future global `scroll-behavior: smooth` CSS rule can't slip
+      // an animation between the user pressing Save and the page
+      // landing where they left it.
+      window.scrollTo({ top: previousScrollY, left: 0, behavior: "auto" });
+    }
+    previousScrollY = null;
   }
 }
 
