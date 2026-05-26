@@ -791,6 +791,10 @@ export const en = {
     deselectAllInMonth: "Deselect all rows in month",
     selectAllRowsInMonth: "Select all rows in month",
     historyCoversMonth: "History covers this month",
+    triageInCoveredMonthOne:
+      "1 entry to move or delete — history covers this month",
+    triageInCoveredMonthOther:
+      "{n} entries to move or delete — history covers this month",
     undated: "Undated",
     correctionLine: "balance correction",
     correctionRemoveAria: "Remove balance correction of {amount}",

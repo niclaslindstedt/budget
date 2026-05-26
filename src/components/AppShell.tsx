@@ -637,6 +637,16 @@ export function AppShell({
   // should triage; cleared on apply / cancel.
   const [reconciliation, setReconciliation] =
     useState<ReconciliationState | null>(null);
+  // Retrospective orphan-triage modal state. Null = closed. Populated
+  // when the user taps a covered month's "N entries to move or delete"
+  // footer button in the budget page; cleared on apply / cancel. Same
+  // modal component as the import-time reconciliation, but here the
+  // pendingImport is null because no import is in flight.
+  const [manualTriage, setManualTriage] = useState<{
+    accountId: string;
+    preImportData: UserData;
+    orphans: OrphanRow[];
+  } | null>(null);
   // Last step of the import pipeline — null = closed. Set after the
   // reconciliation pass (or the quiet-path skip-reconciliation branch)
   // when `predictRenames` finds learned mappings for entries the user
@@ -2081,6 +2091,55 @@ export function AppShell({
     [dispatch],
   );
 
+  // BudgetPage MonthTable footer — when the user taps "N entries to
+  // move or delete" on a covered fiscal month, find the orphan rows
+  // for that month and open the reconciliation modal scoped to them.
+  // No import is in flight, so `pendingImport` is null and the apply
+  // handler dispatches `applyReconciliation` directly (no
+  // `importBankHistory`).
+  const onTriageMonth = useCallback(
+    (monthKey: string) => {
+      const accountId = activeItem.accountId;
+      if (!accountId) return;
+      const orphans = findOrphans(
+        activeItem.rows,
+        activeItem.columns,
+        new Set([monthKey]),
+        new Set(),
+        data.settings.startOfMonth,
+      );
+      if (orphans.length === 0) return;
+      // Snapshot the workspace at trigger time so the modal's row
+      // lookups stay stable even if the user keeps editing other
+      // sheets in the background while the modal is open.
+      setManualTriage({
+        accountId,
+        preImportData: data,
+        orphans,
+      });
+    },
+    [activeItem, data],
+  );
+
+  const onApplyManualTriage = useCallback(
+    (decisions: ReconciliationApply) => {
+      if (!manualTriage) return;
+      const { accountId } = manualTriage;
+      if (decisions.orphans.length > 0) {
+        dispatch({
+          type: "applyReconciliation",
+          accountId,
+          mergedRowIds: [],
+          entryOverrides: [],
+          seriesRules: [],
+          orphans: decisions.orphans,
+        });
+      }
+      setManualTriage(null);
+    },
+    [dispatch, manualTriage],
+  );
+
   // FindConflictsModal — merge a duplicate group whose winner is a
   // user-authored row. Three sequential dispatches: fill `typeId` on
   // the winner via `bulkUpdate` (it already handles the typeId slot),
@@ -3371,6 +3430,7 @@ export function AppShell({
                   onDownloadSheet={onOpenDownloadSheet}
                   onMergeConflictIntoHistory={onMergeConflictIntoHistory}
                   onMergeConflictUserRows={onMergeConflictUserRows}
+                  onTriageMonth={onTriageMonth}
                 />
               </>
             )}
@@ -3503,6 +3563,24 @@ export function AppShell({
         newEntries={reconciliation?.newEntries ?? []}
         candidates={reconciliation?.candidates ?? []}
         orphans={reconciliation?.orphans ?? []}
+        settings={effectiveSettings}
+      />
+      {/* Second mount, scoped to the retrospective orphan-triage CTA
+          fired from the budget-page MonthTable footer. Same modal
+          component as the import-time one — just fed an empty
+          `newEntries` / `candidates` so only the orphan section
+          renders, and committed via `onApplyManualTriage` which
+          dispatches `applyReconciliation` standalone (no
+          `importBankHistory` in flight). */}
+      <ReconciliationModal
+        open={manualTriage !== null}
+        onCancel={() => setManualTriage(null)}
+        onApply={onApplyManualTriage}
+        accountId={manualTriage?.accountId ?? ""}
+        preImportData={manualTriage?.preImportData ?? data}
+        newEntries={[]}
+        candidates={[]}
+        orphans={manualTriage?.orphans ?? []}
         settings={effectiveSettings}
       />
       <RenamePredictorModal

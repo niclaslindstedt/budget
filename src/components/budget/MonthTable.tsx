@@ -1,5 +1,11 @@
 import { Fragment, memo, useLayoutEffect, useMemo, useRef } from "react";
-import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Wrench,
+} from "lucide-react";
 
 import { findColumnByType, isTransferRow } from "../../data/sheet";
 import type {
@@ -40,6 +46,17 @@ type Props = {
   // bank has authoritative data there, so a user-added row would
   // double-count.
   covered: boolean;
+  // Count of manual (non-history, non-correction, non-transfer) rows
+  // that sit in this covered month — the orphans the reconciliation
+  // matcher would flag. Used by the footer: a covered month with zero
+  // orphans shows a green "all clear" indicator; one with N orphans
+  // surfaces an orange pressable button that calls `onTriage` to open
+  // the same triage modal the import flow uses.
+  orphanCount: number;
+  // Opens the orphan-triage modal for this month's manual rows. Wired
+  // through from AppShell when `covered && orphanCount > 0`; otherwise
+  // undefined (the green "all clear" indicator is not pressable).
+  onTriage?: () => void;
   // True when the user has opted into hiding inter-account transfers
   // (a `Settings.hideTransfers` mirror). Rows flagged as transfers are
   // filtered out of the rendered tbody when this is on; the running
@@ -138,6 +155,8 @@ function MonthTableImpl({
   balanceChars,
   collapsed,
   covered,
+  orphanCount,
+  onTriage,
   hideTransfers,
   expandedTransferAnchors,
   onToggleTransferAnchor,
@@ -535,9 +554,27 @@ function MonthTableImpl({
                 className="border-r-0 bg-surface-3 p-0"
               >
                 {covered ? (
-                  <div className="px-3 py-1.5 text-xs text-muted">
-                    {t("sheet.historyCoversMonth")}
-                  </div>
+                  orphanCount > 0 && onTriage ? (
+                    <button
+                      type="button"
+                      onClick={onTriage}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-flag hover:bg-flag/10"
+                    >
+                      <AlertTriangle size={14} aria-hidden focusable={false} />
+                      <span>
+                        {orphanCount === 1
+                          ? t("sheet.triageInCoveredMonthOne")
+                          : t("sheet.triageInCoveredMonthOther", {
+                              n: orphanCount,
+                            })}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-success">
+                      <Check size={14} aria-hidden focusable={false} />
+                      <span>{t("sheet.historyCoversMonth")}</span>
+                    </div>
+                  )
                 ) : (
                   <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
                 )}

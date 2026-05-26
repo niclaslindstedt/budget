@@ -33,6 +33,7 @@ import {
   type RowSortContext,
 } from "../../data/sheet";
 import { coveredMonths } from "../../data/coverage";
+import { findOrphans } from "../../data/reconciliation";
 import { resolveEffectiveAmounts } from "../../data/formula-resolve";
 import { useT } from "../../i18n";
 import type {
@@ -171,6 +172,13 @@ type Props = {
     loserIds: string[],
     patch: ConflictUserRowPatch,
   ) => void;
+  // Open the orphan-triage modal for the given fiscal month — fired
+  // from each `MonthTable` footer when the month is fully covered by
+  // bank history but still has manual user rows that need to be moved
+  // or deleted. The handler in AppShell scopes the modal to this
+  // sheet's `accountId` and feeds the modal the orphan list computed
+  // against the same coverage rule the footer used.
+  onTriageMonth: (monthKey: string) => void;
   // Full workspace state — needed by the formula resolver so
   // `sheet("<id>", <variable>)` references can look up other sheets'
   // running balances at this row's month.
@@ -322,6 +330,7 @@ export function BudgetPage({
   onDownloadSheet,
   onMergeConflictIntoHistory,
   onMergeConflictUserRows,
+  onTriageMonth,
   data,
 }: Props) {
   const t = useT();
@@ -408,6 +417,28 @@ export function BudgetPage({
       coveredMonths(history, item.rows, item.columns, settings.startOfMonth),
     [history, item.rows, item.columns, settings.startOfMonth],
   );
+
+  // Per-month count of manual rows sitting inside a covered fiscal
+  // month — those are orphans the bank statement contradicts. Reuses
+  // the same `findOrphans` walk the import-triage flow does so the
+  // footer's count agrees with what the modal will surface. Treats
+  // every covered month as "newly covered" since the budget-page CTA
+  // is always retrospective (no import in flight).
+  const orphanCountByMonth = useMemo(() => {
+    const out = new Map<string, number>();
+    if (coveredSet.size === 0) return out;
+    const orphans = findOrphans(
+      item.rows,
+      item.columns,
+      coveredSet,
+      new Set(),
+      settings.startOfMonth,
+    );
+    for (const o of orphans) {
+      out.set(o.monthKey, (out.get(o.monthKey) ?? 0) + 1);
+    }
+    return out;
+  }, [coveredSet, item.rows, item.columns, settings.startOfMonth]);
 
   // Evaluate every formula row's amount against the merged view (so
   // synthesized transfers and history rows count toward
@@ -1148,6 +1179,13 @@ export function BudgetPage({
                     // when history is authoritative across the entire
                     // fiscal window the section represents.
                     coveredSet.has(monthKey)
+                  }
+                  orphanCount={orphanCountByMonth.get(monthKey) ?? 0}
+                  onTriage={
+                    coveredSet.has(monthKey) &&
+                    (orphanCountByMonth.get(monthKey) ?? 0) > 0
+                      ? () => onTriageMonth(monthKey)
+                      : undefined
                   }
                   onToggleCollapsed={slotToggle}
                   forceMount={monthKey === forceMountMonthKey}

@@ -785,6 +785,10 @@ export const sv: Catalog = {
     deselectAllInMonth: "Avmarkera alla rader i månaden",
     selectAllRowsInMonth: "Markera alla rader i månaden",
     historyCoversMonth: "Historik täcker denna månad",
+    triageInCoveredMonthOne:
+      "1 post att flytta eller ta bort — historik täcker denna månad",
+    triageInCoveredMonthOther:
+      "{n} poster att flytta eller ta bort — historik täcker denna månad",
     undated: "Odaterad",
     correctionLine: "saldokorrigering",
     correctionRemoveAria: "Ta bort saldokorrigering om {amount}",

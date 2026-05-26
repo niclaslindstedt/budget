@@ -211,6 +211,25 @@ describe("findOrphans", () => {
       findOrphans([corr, synth], columns, new Set(["2026-03"]), new Set()),
     ).toHaveLength(0);
   });
+
+  it("works retrospectively against the full coverage set (budget CTA)", () => {
+    // The budget-page footer CTA passes `coveredSet` directly as the
+    // newlyCovered argument with an empty reconciledRowIds — the
+    // helper should still flag any manual row inside a covered month.
+    const manual = row({ id: "m1", date: "2026-04-10" });
+    const reconciled: Row = {
+      ...row({ id: "h1", date: "2026-04-12" }),
+      historyEntryId: "abc",
+    };
+    expect(
+      findOrphans(
+        [manual, reconciled],
+        columns,
+        new Set(["2026-04"]),
+        new Set(),
+      ),
+    ).toEqual([{ rowId: "m1", monthKey: "2026-04" }]);
+  });
 });
 
 describe("inferSeriesRule + expandToSeries", () => {
