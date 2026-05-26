@@ -14,6 +14,7 @@ import {
   Download,
   Eye,
   Pencil,
+  Tags,
 } from "lucide-react";
 
 import {
@@ -53,6 +54,7 @@ import { formatNumber, withCurrency } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import { BudgetMetadataModal } from "./BudgetMetadataModal";
 import { BudgetViewerModal } from "./BudgetViewerModal";
 import {
   FindConflictsModal,
@@ -560,6 +562,10 @@ export function BudgetPage({
   // Duplicate-finder modal, opened from the title `…` menu. Same
   // pattern as `viewerOpen` — local state, no persistence.
   const [conflictsOpen, setConflictsOpen] = useState(false);
+  // Metadata-mode walker, opened from the title `…` menu. Walks
+  // history entries missing a custom description or type, one at a
+  // time. Same local-state pattern as the two flags above.
+  const [metadataOpen, setMetadataOpen] = useState(false);
 
   // Number of extra historical months past the default 1-month window
   // the user has opted into via "Show more". Resets when the active
@@ -1060,6 +1066,12 @@ export function BudgetPage({
       onClick: () => setViewerOpen(true),
     },
     {
+      key: "metadata",
+      icon: <Tags size={16} aria-hidden focusable={false} />,
+      label: t("sheet.metadataMode"),
+      onClick: () => setMetadataOpen(true),
+    },
+    {
       key: "conflicts",
       icon: <AlertTriangle size={16} aria-hidden focusable={false} />,
       label: t("sheet.findConflicts"),
@@ -1201,6 +1213,20 @@ export function BudgetPage({
           }
           onMergeIntoHistory={onMergeConflictIntoHistory}
           onMergeUserRows={onMergeConflictUserRows}
+        />
+        <BudgetMetadataModal
+          open={metadataOpen}
+          onClose={() => setMetadataOpen(false)}
+          accountId={item.accountId}
+          entries={history}
+          merchantHints={merchantHints}
+          matchRules={matchRules}
+          types={types}
+          categories={categories}
+          settings={settings}
+          onCreateType={onCreateType}
+          onCreateCategory={onCreateCategory}
+          onUpdateHistoryEntry={onUpdateHistoryEntry}
         />
       </section>
       {showTodayButton &&
