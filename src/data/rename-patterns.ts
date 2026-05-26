@@ -23,6 +23,7 @@ import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
 } from "./description-normaliser";
+import { bumpHitCount } from "./hit-count";
 import type { HistoryEntry, RenamePattern, UserData } from "./types";
 
 // Map shape persisted at `UserData.renamePatterns[accountId][key]`.
@@ -65,10 +66,10 @@ export function recordRename(
   const existing = accountBucket?.[key];
   const next: RenamePattern = {
     suggestedDescription: trimmed,
-    hitCount:
-      existing && existing.suggestedDescription === trimmed
-        ? existing.hitCount + 1
-        : 1,
+    hitCount: bumpHitCount(
+      existing?.hitCount ?? null,
+      existing?.suggestedDescription === trimmed,
+    ),
     lastUsedAt: now,
   };
   if (
