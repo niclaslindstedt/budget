@@ -164,7 +164,7 @@ import {
   mergeHistory,
   type ParsedBankEntry,
   type ParsedBankFile,
-} from "../storage/bank-parsers";
+} from "../storage/banks";
 import { useUserDataStorage } from "../storage/useUserDataStorage";
 import type { AccountsDownloadPrefs, BudgetDownloadPrefs } from "../data/types";
 import { bcp47, type Lang, type MessageKey, useT } from "../i18n";

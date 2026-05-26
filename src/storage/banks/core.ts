@@ -1,21 +1,22 @@
 // Bank-statement import pipeline. The public surface is small:
 //
-//   - `BankParser` — registry entry describing a bank's file format.
-//   - `parseBankFile(file)` — runs registered parsers' `sniff` checks
-//     in order and delegates to the first match.
+//   - `BankParser` — registry entry with a single `tryParse` method.
+//   - `parseBankFile(file)` — runs registered parsers in order and
+//     returns the first non-null result.
 //   - `mergeHistory(existing, parsed)` — merges parsed entries into
 //     an account's history with content-hash dedup.
 //   - `historyEntryId(...)` — exported so callers can compute the
-//     same hash a parser would (used by promote-to-recurring later).
+//     same hash a parser would.
 //
-// The shape is intentionally generic. The first concrete parser is
-// Skandiabanken's xlsx export, registered in `bank-skandia.ts`. New
-// banks slot in by adding another module and pushing it to the
-// registry.
+// Concrete parsers live in `./parsers/*.ts` and are auto-discovered
+// by `./parsers/index.ts`. Each parser file builds its registration
+// via `defineXlsxParser` / `defineCsvParser` so the per-bank module
+// shrinks to a small declarative spec.
 
-import type { HistoryEntry } from "../data/types";
-import { createLogger } from "../utils/logger";
-import { collapseWhitespace } from "./bank-helpers";
+import type { HistoryEntry } from "../../data/types";
+import { createLogger } from "../../utils/logger";
+import { readFirstSheet, type XlsxSheet } from "../xlsx-reader";
+import { collapseWhitespace } from "./helpers";
 
 const log = createLogger("bank-import");
 
@@ -32,8 +33,8 @@ export type ParsedBankEntry = {
 
 export type ParsedBankFile = {
   // Stable identifier for the parser that produced this result, e.g.
-  // "skandia-xlsx". Persisted on `HistoryImport` so a future
-  // re-parse / migration can see which bank a file came from.
+  // "skandia-xlsx". Persisted on `HistoryImport` so a future re-parse
+  // / migration can see which bank a file came from.
   bankParserId: string;
   // Bank-extracted account identifiers, if present in the file
   // header. The import flow uses these to pre-fill an account's
@@ -46,33 +47,53 @@ export type ParsedBankFile = {
   entries: ParsedBankEntry[];
 };
 
+// One method per parser. `tryParse` returns the parsed file or `null`
+// if this parser doesn't recognise the file (filename extension
+// mismatch, header mismatch, malformed archive). The orchestrator
+// tries each parser in registration order and returns the first
+// non-null result. Throwing is reserved for genuine parse failures
+// once a parser has committed to a file.
 export type BankParser = {
   id: string;
   name: string;
-  // Cheap content sniff. The sniff function may inspect the raw
-  // bytes (for binary formats like xlsx) and a decoded string
-  // (for text formats like csv). Returning `true` commits this
-  // parser to the file.
-  sniff: (file: BankFile) => Promise<boolean> | boolean;
-  parse: (file: BankFile) => Promise<ParsedBankFile>;
+  tryParse: (file: BankFile) => Promise<ParsedBankFile | null>;
 };
 
 export type BankFile = {
   name: string;
   bytes: ArrayBuffer;
   // Lazily-decoded UTF-8 view of `bytes`. Computed once on first
-  // access so the xlsx parsers can skip the decode cost.
+  // access so CSV parsers don't pay the decode cost more than once.
   text(): string;
+  // Memoised xlsx-sheet read. Returns `null` (and logs a warning
+  // once) if `bytes` isn't a valid xlsx archive — so non-xlsx files
+  // don't throw past the parser registry. All xlsx parsers share
+  // the same parsed sheet across `tryParse` invocations, eliminating
+  // the N-times-re-read worst case when several parsers gate on the
+  // `.xlsx` extension.
+  readXlsxSheet(): Promise<XlsxSheet | null>;
 };
 
 export function makeBankFile(name: string, bytes: ArrayBuffer): BankFile {
-  let cached: string | null = null;
+  let textCache: string | null = null;
+  let sheetPromise: Promise<XlsxSheet | null> | null = null;
   return {
     name,
     bytes,
     text() {
-      if (cached === null) cached = new TextDecoder("utf-8").decode(bytes);
-      return cached;
+      if (textCache === null) {
+        textCache = new TextDecoder("utf-8").decode(bytes);
+      }
+      return textCache;
+    },
+    readXlsxSheet() {
+      if (sheetPromise === null) {
+        sheetPromise = readFirstSheet(bytes).catch((err) => {
+          log.warn(`readXlsxSheet: ${name} is not a readable xlsx`, err);
+          return null;
+        });
+      }
+      return sheetPromise;
     },
   };
 }
@@ -92,32 +113,23 @@ export async function parseBankFile(file: BankFile): Promise<ParsedBankFile> {
     `parseBankFile: ${file.name} bytes=${file.bytes.byteLength} parsers=${registry.length}`,
   );
   for (const parser of registry) {
-    const sniffStart = performance.now();
-    let matched = false;
+    const start = performance.now();
+    let result: ParsedBankFile | null;
     try {
-      matched = await parser.sniff(file);
+      result = await parser.tryParse(file);
     } catch (err) {
-      log.warn(`sniff[${parser.id}] threw — treating as no match`, err);
+      const ms = (performance.now() - start).toFixed(0);
+      log.error(`tryParse[${parser.id}]: failed (${ms}ms)`, err);
+      throw err;
     }
-    const sniffMs = (performance.now() - sniffStart).toFixed(0);
-    log.info(
-      `sniff[${parser.id}]: ${matched ? "match" : "skip"} (${sniffMs}ms)`,
-    );
-    if (matched) {
-      const parseStart = performance.now();
-      try {
-        const result = await parser.parse(file);
-        const parseMs = (performance.now() - parseStart).toFixed(0);
-        log.info(
-          `parse[${parser.id}]: ${result.entries.length} entries (${parseMs}ms)`,
-        );
-        return result;
-      } catch (err) {
-        const parseMs = (performance.now() - parseStart).toFixed(0);
-        log.error(`parse[${parser.id}]: failed (${parseMs}ms)`, err);
-        throw err;
-      }
+    const ms = (performance.now() - start).toFixed(0);
+    if (result !== null) {
+      log.info(
+        `tryParse[${parser.id}]: ${result.entries.length} entries (${ms}ms)`,
+      );
+      return result;
     }
+    log.info(`tryParse[${parser.id}]: skip (${ms}ms)`);
   }
   log.error("parseBankFile: no parser matched", {
     name: file.name,
@@ -236,8 +248,6 @@ function computeOpeningBalance<
   T extends { date: string; amount: number; balance?: number },
 >(entries: readonly T[]): number | null {
   if (entries.length === 0) return null;
-  // Entries may arrive in any order; find the one with the earliest
-  // (lex-comparable ISO) date.
   let earliest = entries[0];
   for (let i = 1; i < entries.length; i++) {
     if (entries[i].date < earliest.date) earliest = entries[i];

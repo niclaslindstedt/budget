@@ -7,16 +7,16 @@ import {
   makeBankFile,
   mergeHistory,
   parseBankFile,
-} from "../src/storage/bank-parsers";
+} from "../src/storage/banks";
 import {
   excelDateSerialToISO,
   numericCell,
-} from "../src/storage/bank-norwegian";
+} from "../src/storage/banks/helpers";
 
 import { buildXlsx, type XlsxCell } from "./fixtures/build-xlsx";
 
 // Mirrors the column layout described at the top of
-// src/storage/bank-norwegian.ts. Dates are Excel serial numbers; the
+// src/storage/banks/parsers/norwegian.ts. Dates are Excel serial numbers; the
 // builder writes plain numeric cells (no `t` attribute), which the
 // xlsx-reader returns as numbers — exactly what the bank's real
 // exports look like over the wire.

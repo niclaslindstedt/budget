@@ -5,10 +5,10 @@ import {
   makeBankFile,
   type ParsedBankFile,
   parseBankFile,
-} from "../../storage/bank-parsers";
+} from "../../storage/banks";
 import type { Account, HistoryEntry, Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import { historyEntryId } from "../../storage/bank-parsers";
+import { historyEntryId } from "../../storage/banks";
 import { formatDate, formatShortDate } from "../../utils/format";
 import { Modal } from "../Modal";
 

@@ -5,8 +5,8 @@ import {
   makeBankFile,
   mergeHistory,
   parseBankFile,
-} from "../src/storage/bank-parsers";
-import { parseSwedishAmount } from "../src/storage/bank-ica";
+} from "../src/storage/banks";
+import { parseSwedishAmount } from "../src/storage/banks/helpers";
 
 // Synthetic ICA Banken csv mirroring the shape of a real export:
 // semicolon separator, CRLF line endings, Swedish-locale amounts with

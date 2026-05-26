@@ -6,13 +6,13 @@ import {
   makeBankFile,
   mergeHistory,
   parseBankFile,
-} from "../src/storage/bank-parsers";
-import { parseAccountCell } from "../src/storage/bank-skandia";
+} from "../src/storage/banks";
+import { parseAccountCell } from "../src/storage/banks/parsers/skandia";
 
 import { buildXlsx, type XlsxCell } from "./fixtures/build-xlsx";
 
 // Synthesises a Skandiabanken-shaped xlsx in memory matching the
-// layout described at the top of src/storage/bank-skandia.ts:
+// layout described at the top of src/storage/banks/parsers/skandia.ts:
 //   Row 1: A="Kontonummer",  B="<clearing>-<account>"
 //   Row 2: A="Period",       B="YYYY-MM-DD - YYYY-MM-DD"
 //   Row 3: blank
