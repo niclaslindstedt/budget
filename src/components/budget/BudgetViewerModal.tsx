@@ -239,16 +239,22 @@ export function BudgetViewerModal({
     };
   }, [item.rows, amountCol, balanceCol, balances, settings]);
 
-  // Mobile grid template — one track per rendered column. Date and type
-  // get `auto` so they hug their icon-sized content, description is the
-  // flexible `minmax(0, 1fr)` so it shrinks before the amount + balance
-  // tracks do, and amount + balance are pinned to `Nch + buffer` using
-  // the longest formatted value above. Inline rather than CSS-only
-  // because the type / amount / balance columns are optional — pre-
-  // declaring every variant in styles.css would be brittle.
+  // Mobile grid template — one track per rendered column. Date hugs its
+  // formatted content with `auto`, type is pinned to `40px` so it
+  // reserves the icon-sized column even on rows whose type cell is
+  // empty (each `<tr>` is its own grid in mobile mode, so an `auto`
+  // type track collapses to padding on those rows while the header's
+  // icon track stays wide — producing the visual "no reserved space"
+  // gap between date and description). 40px matches BudgetPage's
+  // narrow-track convention. Description takes the flexible
+  // `minmax(0, 1fr)` so it shrinks before the amount + balance tracks
+  // do, and amount + balance are pinned to `Nch + buffer` using the
+  // longest formatted value above. Inline rather than CSS-only because
+  // the type / amount / balance columns are optional — pre-declaring
+  // every variant in styles.css would be brittle.
   const mobileGridTemplate = useMemo(() => {
     const tracks: string[] = ["auto"]; // date
-    if (typeCol) tracks.push("auto");
+    if (typeCol) tracks.push("40px");
     tracks.push("minmax(0, 1fr)"); // description
     if (amountCol) {
       tracks.push(`minmax(56px, calc(${colWidths.amountChars} * 1ch + 1rem))`);
