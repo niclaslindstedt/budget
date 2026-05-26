@@ -1126,6 +1126,86 @@ body {
       background: var(--surface-2);
       color: var(--fg-bright);
     }
+
+    /* Transfers table — single-button swipe strip (edit only) using the
+       same overlay pattern as the accounts and budget tables, but at
+       half the width since there's only one action. The desktop
+       Actions column keeps the pen icon visible inline; on mobile the
+       swipe gesture surfaces it. */
+    .transfers-table,
+    .transfers-table > thead,
+    .transfers-table > tbody,
+    .transfers-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .transfers-table > thead > tr,
+    .transfers-table > tbody > tr {
+      /* 56 px date · flex description · amount sized to content with a
+         comfortable floor. The action cell sits outside the grid as an
+         absolute overlay so the wrench column doesn't reserve a track
+         on mobile, mirroring the accounts table. */
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) minmax(60px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    .transfers-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .transfers-table th,
+    .transfers-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .transfers-table th > *,
+    .transfers-table td > * {
+      width: 100%;
+    }
+    .transfers-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .transfers-table > tbody > tr.is-swiped > td:not(.transfer-action-cell) {
+      transform: translateX(-64px);
+    }
+    .transfers-table > thead > tr > .transfer-action-cell,
+    .transfers-table > tbody > tr > .transfer-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* 64 px — half the 128 px budget / accounts strip since there's
+         only one button to reveal. Keeps the same ~42 px tap target. */
+      width: 64px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .transfers-table > tbody > tr.is-swiped > .transfer-action-cell {
+      transform: translateX(0);
+    }
+    .transfers-table > tbody > tr > .transfer-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    /* Month-header and empty-state rows span every column, so they
+       need to stay as a single full-width block rather than being
+       placed in the grid. Same approach as `.budget-viewer-fullspan`. */
+    .transfers-table > tbody > tr.transfers-fullspan {
+      display: block;
+      width: 100%;
+    }
+    .transfers-table > tbody > tr.transfers-fullspan > td {
+      display: block;
+      width: 100%;
+    }
   }
 
   /* Budget viewer modal — read-only month-stacked sheet. Mobile borrows

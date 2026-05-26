@@ -1653,6 +1653,7 @@ export const en = {
     historyCountTitle: "Imported transactions",
     newTransfer: "New transfer",
     needTwoAccounts: "Add at least two accounts to record a transfer",
+    editTransferAria: "Edit transfer: {description}",
     unknown: "Unknown",
   },
 

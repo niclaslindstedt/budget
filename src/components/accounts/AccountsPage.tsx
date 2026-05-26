@@ -1,16 +1,7 @@
-import {
-  Fragment,
-  memo,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { Fragment, useEffect, useMemo, type CSSProperties } from "react";
 import {
   AlignLeft,
   ArrowLeftRight,
-  ArrowRight,
   Calendar,
   DollarSign,
   Download,
@@ -19,7 +10,6 @@ import {
   Plus,
   Receipt,
   Tag,
-  Trash2,
   Wallet,
   Wrench,
 } from "lucide-react";
@@ -34,22 +24,13 @@ import type {
   Sheet,
   UserData,
 } from "../../data/types";
-import { readIsStandalone } from "../../hooks/useIsStandalone";
-import { isInSheetSwipeEdgeBand } from "../../hooks/useSheetSwipe";
 import { useLang, useT } from "../../i18n";
 import { bcp47, type Lang } from "../../i18n/locale";
-import { displayCategoryName } from "../../i18n/preset-names";
-import {
-  formatBalance,
-  formatCount,
-  formatShortDate,
-} from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
-import { AccountActionsMenu } from "./AccountActionsMenu";
+import { AccountRow } from "./AccountRow";
+import { TransferRow } from "./TransferRow";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
-import { useClaimActiveRow } from "../useClaimActiveRow";
-import { CategoryIconGlyph } from "../icons";
 
 const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
 
@@ -402,7 +383,7 @@ export function AccountsPage({
             {t("accountsSheet.transfers")}
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="w-full border-collapse text-sm">
+            <table className="transfers-table w-full border-collapse text-sm">
               <thead className="sticky top-[var(--app-header-h)] z-[15] bg-surface-3">
                 <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
                   <th
@@ -473,13 +454,30 @@ export function AccountsPage({
                       </span>
                     </span>
                   </th>
+                  <th
+                    scope="col"
+                    className="transfer-action-cell w-16 px-2 py-1.5"
+                    aria-label={t("sheet.rowActions")}
+                  >
+                    <span className="flex items-center justify-center gap-1.5 md:gap-2">
+                      <Wrench
+                        size={14}
+                        className="shrink-0 text-accent"
+                        aria-hidden
+                        focusable={false}
+                      />
+                      <span className="hidden md:inline">
+                        {t("sheet.actions")}
+                      </span>
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {sortedTransfers.length === 0 && (
-                  <tr>
+                  <tr className="transfers-fullspan">
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-3 py-6 text-center text-xs text-muted"
                     >
                       {t("accountsSheet.noTransfers")}
@@ -490,23 +488,23 @@ export function AccountsPage({
                   const monthNum = monthNumberFromKey(group.monthKey);
                   const monthColor =
                     monthNum !== null ? monthColorVar(monthNum) : undefined;
-                  const colorStyle: CSSProperties | undefined = monthColor
+                  const headerColorStyle: CSSProperties | undefined = monthColor
                     ? { color: monthColor }
                     : undefined;
                   return (
                     <Fragment key={group.monthKey}>
-                      <tr>
+                      <tr className="transfers-fullspan">
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="sticky top-[calc(var(--app-header-h)+28px)] z-[14] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
-                          style={colorStyle}
+                          style={headerColorStyle}
                         >
                           {formatMonth(group.monthKey, lang)}
                         </td>
                       </tr>
                       {group.transfers.map((tx) => {
-                        const from = accountsById.get(tx.fromAccountId);
-                        const to = accountsById.get(tx.toAccountId);
+                        const from = accountsById.get(tx.fromAccountId) ?? null;
+                        const to = accountsById.get(tx.toAccountId) ?? null;
                         const type = tx.typeId
                           ? (typesById.get(tx.typeId) ?? null)
                           : null;
@@ -514,73 +512,16 @@ export function AccountsPage({
                           ? (categoriesById.get(type.categoryId) ?? null)
                           : null;
                         return (
-                          <tr
+                          <TransferRow
                             key={tx.id}
-                            className="cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
-                            onClick={() => onEditTransfer(tx.id)}
-                          >
-                            <td
-                              className="w-14 pr-1 pl-2 py-2 align-middle font-mono text-xs whitespace-nowrap md:w-20 md:px-2"
-                              style={colorStyle}
-                            >
-                              {formatShortDate(
-                                tx.date,
-                                settings.shortDateFormat,
-                                lang,
-                              )}
-                            </td>
-                            <td className="pr-2 pl-1 py-2 align-middle md:px-2">
-                              <span className="block text-fg-bright">
-                                {tx.description}
-                              </span>
-                              {category && (
-                                <span
-                                  className="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs"
-                                  style={{
-                                    color: category.color,
-                                    backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
-                                  }}
-                                >
-                                  {displayCategoryName(category, t)}
-                                </span>
-                              )}
-                              {/* On mobile the dedicated transfer column is
-                                  hidden — fold the from/to summary into the
-                                  description cell instead so the row still
-                                  shows the direction at a glance. */}
-                              <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted md:hidden">
-                                <AccountGlyph account={from ?? null} />
-                                <span className="truncate">
-                                  {from?.name ?? t("accountsSheet.unknown")}
-                                </span>
-                                <ArrowRight
-                                  size={10}
-                                  aria-hidden
-                                  focusable={false}
-                                  className="shrink-0 text-flag"
-                                />
-                                <AccountGlyph account={to ?? null} />
-                                <span className="truncate">
-                                  {to?.name ?? t("accountsSheet.unknown")}
-                                </span>
-                              </span>
-                            </td>
-                            <td className="hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
-                              <span className="inline-flex items-center gap-1.5">
-                                <AccountChip account={from ?? null} />
-                                <ArrowRight
-                                  size={12}
-                                  aria-hidden
-                                  focusable={false}
-                                  className="shrink-0 text-flag"
-                                />
-                                <AccountChip account={to ?? null} />
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 text-right align-middle font-mono tabular-nums whitespace-nowrap text-fg-bright">
-                              {formatBalance(tx.amount, settings)}
-                            </td>
-                          </tr>
+                            transfer={tx}
+                            from={from}
+                            to={to}
+                            category={category}
+                            settings={settings}
+                            monthColor={monthColor}
+                            onEditTransfer={onEditTransfer}
+                          />
                         );
                       })}
                     </Fragment>
@@ -589,7 +530,7 @@ export function AccountsPage({
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4} className="bg-surface-3 p-0">
+                  <td colSpan={5} className="bg-surface-3 p-0">
                     <button
                       type="button"
                       onClick={onCreateTransfer}
@@ -612,305 +553,5 @@ export function AccountsPage({
         </section>
       </section>
     </ActiveRowProvider>
-  );
-}
-
-type AccountRowProps = {
-  account: Account;
-  balance: number;
-  accountSettings: Settings;
-  historyCount: number;
-  canCut: boolean;
-  canUpdateBalance: boolean;
-  onEditAccount: (accountId: string) => void;
-  onDeleteAccount: (accountId: string, name: string) => void;
-  onUpdateBalance: (accountId: string) => void;
-  onImportHistory: (accountId: string) => void;
-  onViewHistory: (accountId: string) => void;
-  onCutHistory: (accountId: string) => void;
-};
-
-const SWIPE_THRESHOLD = 40;
-
-function AccountRowImpl({
-  account,
-  balance,
-  accountSettings,
-  historyCount,
-  canCut,
-  canUpdateBalance,
-  onEditAccount,
-  onDeleteAccount,
-  onUpdateBalance,
-  onImportHistory,
-  onViewHistory,
-  onCutHistory,
-}: AccountRowProps) {
-  const t = useT();
-  const [swiped, setSwiped] = useState(false);
-  const startX = useRef<number | null>(null);
-  const startY = useRef<number | null>(null);
-  const moved = useRef(false);
-
-  // Hook the row into the ActiveRowProvider so a tap elsewhere in the
-  // accounts table only dismisses the swipe — the underlying control
-  // still gets a follow-up tap to fire properly. Mirrors the budget
-  // sheet's BudgetRow wiring.
-  useClaimActiveRow(account.id, swiped, () => setSwiped(false));
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    // In standalone PWA mode, the absolute-edge band belongs to the
-    // document-level sheet-switch gesture (see `useSheetSwipe.ts`).
-    // Leave `startX` null so this row's own swipe-to-reveal stays
-    // disarmed and the two gestures can't fight for the same touch.
-    if (
-      readIsStandalone() &&
-      isInSheetSwipeEdgeBand(t.clientX, window.innerWidth)
-    ) {
-      startX.current = null;
-      startY.current = null;
-      moved.current = false;
-      return;
-    }
-    startX.current = t.clientX;
-    startY.current = t.clientY;
-    moved.current = false;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (startX.current === null || startY.current === null) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX.current;
-    const dy = t.clientY - startY.current;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
-      moved.current = true;
-    }
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (startX.current === null) return;
-    const endX = e.changedTouches[0].clientX;
-    const dx = endX - startX.current;
-    startX.current = null;
-    startY.current = null;
-    if (!moved.current) return;
-    if (dx < -SWIPE_THRESHOLD) setSwiped(true);
-    else if (dx > SWIPE_THRESHOLD) setSwiped(false);
-  };
-
-  const rowClass = [
-    swiped ? "is-swiped" : "",
-    "border-b border-line last:border-b-0 hover:bg-surface-2",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return (
-    <tr
-      className={rowClass}
-      data-row-id={account.id}
-      // Without this marker, the document-level `useSheetSwipe` hook
-      // treats a left-swipe on the row as a sheet-switch gesture and
-      // navigates away before `setSwiped(true)` ever paints — see the
-      // opt-out selector in `src/hooks/useSheetSwipe.ts`. Mirrors the
-      // equivalent attribute on `BudgetRow`.
-      data-swipe-handled
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      <td className="w-10 px-2 py-2 align-middle">
-        <span
-          aria-hidden
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
-          style={{
-            color: account.color,
-            backgroundColor: account.color
-              ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-              : undefined,
-            borderColor: account.color
-              ? `color-mix(in srgb, ${account.color} 55%, transparent)`
-              : undefined,
-          }}
-        >
-          {account.glyph ? (
-            <CategoryIconGlyph name={account.glyph} size={14} />
-          ) : (
-            <Wallet size={14} aria-hidden focusable={false} />
-          )}
-        </span>
-      </td>
-      <td className="px-2 py-2 align-middle">
-        <button
-          type="button"
-          onClick={() => {
-            setSwiped(false);
-            onViewHistory(account.id);
-          }}
-          aria-label={t("accountsSheet.viewHistoryAria", {
-            name: account.name,
-          })}
-          title={
-            historyCount === 0
-              ? t("accountsSheet.noHistoryImported")
-              : t("accountsSheet.viewHistoryEntries", { n: historyCount })
-          }
-          className="cursor-pointer border-0 bg-transparent p-0 text-left text-fg-bright hover:text-accent"
-        >
-          <span className="block font-bold">{account.name}</span>
-          {account.description && (
-            <span className="block text-xs text-muted">
-              {account.description}
-            </span>
-          )}
-        </button>
-      </td>
-      <td className="account-bank-cell hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
-        {account.bank ? <span className="block">{account.bank}</span> : null}
-        {account.clearing || account.accountNumber ? (
-          <span className="block font-mono text-flag">
-            {[account.clearing, account.accountNumber]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-        ) : null}
-        {account.iban && (
-          <span className="block font-mono">{account.iban}</span>
-        )}
-      </td>
-      <td
-        className={`px-2 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
-          balance < 0 ? "text-negative" : "text-positive"
-        }`}
-      >
-        {canUpdateBalance ? (
-          <button
-            type="button"
-            onClick={() => {
-              setSwiped(false);
-              onUpdateBalance(account.id);
-            }}
-            aria-label={t("accountsSheet.updateBalanceAria", {
-              name: account.name,
-            })}
-            title={t("accountsSheet.updateBalanceTitle")}
-            className="cursor-pointer border-0 bg-transparent p-0 text-right font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-          >
-            {formatBalance(balance, accountSettings)}
-          </button>
-        ) : (
-          <span className="font-mono" title={t("account.addBudgetSheetHint")}>
-            {formatBalance(balance, accountSettings)}
-          </span>
-        )}
-      </td>
-      <td className="w-20 px-2 py-2 text-right align-middle">
-        <span
-          title={
-            historyCount === 0
-              ? t("accountsSheet.noHistoryImported")
-              : t("accountsSheet.viewHistoryEntries", { n: historyCount })
-          }
-          className={`block text-right font-mono text-xs tabular-nums ${
-            historyCount === 0 ? "text-muted" : "text-fg"
-          }`}
-        >
-          {formatCount(historyCount, accountSettings)}
-        </span>
-      </td>
-      <td className="account-action-cell w-32 p-0 align-middle">
-        <div className="flex h-full w-full items-stretch justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setSwiped(false);
-              onEditAccount(account.id);
-            }}
-            aria-label={t("accountsSheet.editAccountAria", {
-              name: account.name,
-            })}
-            title={t("accountsSheet.editAccountTitle")}
-            className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-          >
-            <Pencil size={16} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSwiped(false);
-              onDeleteAccount(account.id, account.name);
-            }}
-            aria-label={t("accountsSheet.deleteAccountAria", {
-              name: account.name,
-            })}
-            title={t("accountsSheet.deleteAccountTitle")}
-            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
-          >
-            <Trash2 size={16} aria-hidden focusable={false} />
-          </button>
-          <AccountActionsMenu
-            accountId={account.id}
-            accountName={account.name}
-            canCut={canCut}
-            onViewHistory={onViewHistory}
-            onImportHistory={onImportHistory}
-            onCutHistory={onCutHistory}
-            onAction={() => setSwiped(false)}
-          />
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// Memoised so a swipe / dropdown on one row doesn't re-render every
-// sibling — the parent recomputes balances/maps on each `data` change
-// anyway, so per-row stability is what we'd lose without it.
-const AccountRow = memo(AccountRowImpl);
-
-function AccountChip({ account }: { account: Account | null }) {
-  const t = useT();
-  return (
-    <span className="inline-flex items-center gap-1 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-xs text-fg-bright">
-      <AccountGlyph account={account} size={10} />
-      <span className="truncate">
-        {account?.name ?? t("accountsSheet.unknown")}
-      </span>
-    </span>
-  );
-}
-
-// Colored circle + glyph for an account, with no surrounding chip
-// chrome. Used directly on mobile inside the transfer row's
-// description cell where the dedicated transfer column is hidden —
-// callers wrap it in an sr-only label so the account is still
-// announced. Falls back to a wallet glyph when the account has no
-// custom icon, matching the ACCOUNTS table row.
-function AccountGlyph({
-  account,
-  size = 12,
-}: {
-  account: Account | null;
-  size?: number;
-}) {
-  const circleSize = size + 6;
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-full"
-      style={{
-        width: circleSize,
-        height: circleSize,
-        color: account?.color,
-        backgroundColor: account?.color
-          ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-          : undefined,
-      }}
-    >
-      {account?.glyph ? (
-        <CategoryIconGlyph name={account.glyph} size={size} />
-      ) : (
-        <Wallet size={size} aria-hidden focusable={false} />
-      )}
-    </span>
   );
 }

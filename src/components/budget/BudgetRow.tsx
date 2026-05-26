@@ -1,9 +1,8 @@
-import { memo, useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { findColumnByType, isRowSavable } from "../../data/sheet";
-import { readIsStandalone } from "../../hooks/useIsStandalone";
-import { isInSheetSwipeEdgeBand } from "../../hooks/useSheetSwipe";
+import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
@@ -93,7 +92,6 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
 };
 
-const SWIPE_THRESHOLD = 40;
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 8;
 
@@ -133,10 +131,9 @@ function BudgetRowImpl({
       row.typeId ? (types.find((t) => t.id === row.typeId) ?? null) : null,
     [row.typeId, types],
   );
-  const [swiped, setSwiped] = useState(false);
-  const startX = useRef<number | null>(null);
-  const startY = useRef<number | null>(null);
-  const moved = useRef(false);
+  const { swiped, setSwiped, touchHandlers } = useRowSwipe({
+    disabled: selectMode,
+  });
   // Long-press → open the generic edit-row modal. Same coordinator
   // pattern as `AddRowButton` / `BottomBar`'s sheet tabs: the timer
   // fires after LONG_PRESS_MS and `longPressTriggered` guards the
@@ -207,49 +204,6 @@ function BudgetRowImpl({
   const rowDateMonthNum = isoDate ? monthNumberFromKey(isoDate) : null;
   const rowDateColor =
     rowDateMonthNum !== null ? monthColorVar(rowDateMonthNum) : undefined;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (selectMode) return;
-    const t = e.touches[0];
-    // In standalone PWA mode, a touch that starts at the absolute
-    // screen edge belongs to the document-level sheet-switch gesture
-    // (see `useSheetSwipe.ts`). Leave `startX` null so this row's
-    // own swipe-to-reveal stays disarmed and the two gestures can't
-    // fight for the same touch.
-    if (
-      readIsStandalone() &&
-      isInSheetSwipeEdgeBand(t.clientX, window.innerWidth)
-    ) {
-      startX.current = null;
-      startY.current = null;
-      moved.current = false;
-      return;
-    }
-    startX.current = t.clientX;
-    startY.current = t.clientY;
-    moved.current = false;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (selectMode) return;
-    if (startX.current === null || startY.current === null) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX.current;
-    const dy = t.clientY - startY.current;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
-      moved.current = true;
-    }
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (selectMode) return;
-    if (startX.current === null) return;
-    const endX = e.changedTouches[0].clientX;
-    const dx = endX - startX.current;
-    startX.current = null;
-    startY.current = null;
-    if (!moved.current) return;
-    if (dx < -SWIPE_THRESHOLD) setSwiped(true);
-    else if (dx > SWIPE_THRESHOLD) setSwiped(false);
-  };
 
   // Synthesized rows have their own edit affordances (TransferModal
   // for transfers, the promote flow for history) and balance-
@@ -368,9 +322,7 @@ function BudgetRowImpl({
       data-row-id={row.id}
       data-row-date={isoDate}
       data-swipe-handled
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      {...touchHandlers}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
