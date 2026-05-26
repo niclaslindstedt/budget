@@ -112,8 +112,21 @@ export function BudgetMetadataModal({
   // would mean "never ask again", which is not the intent: skipping
   // is just "not now, ask later".
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
+  // Session-only set of entries the user has already saved in this
+  // modal session. The denominator in "x of y" is otherwise a moving
+  // target — once an entry gets `userTypeId` / `userDescription` it
+  // no longer "needs metadata", so a naive recount would drop the
+  // total in lockstep with the index and the counter would stay
+  // glued at "1 of n-1". Remembering completions keeps the
+  // denominator stable across the walk.
+  const [completed, setCompleted] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   useEffect(() => {
-    if (!open) setSkipped(new Set());
+    if (!open) {
+      setSkipped(new Set());
+      setCompleted(new Set());
+    }
   }, [open]);
 
   // Queue is derived from props every render — saving an entry makes
@@ -144,10 +157,14 @@ export function BudgetMetadataModal({
     let n = 0;
     for (const e of entries) {
       if (monthKeyOf(e.date) !== currentMonth) continue;
-      if (entryNeedsMetadata(e, merchantHints, matchRules)) n += 1;
+      if (
+        entryNeedsMetadata(e, merchantHints, matchRules) ||
+        completed.has(e.id)
+      )
+        n += 1;
     }
     return n;
-  }, [entries, merchantHints, matchRules, currentMonth]);
+  }, [entries, merchantHints, matchRules, currentMonth, completed]);
   const monthIndex = monthTotal > 0 ? monthTotal - monthRemaining + 1 : 0;
 
   const [description, setDescription] = useState("");
@@ -180,6 +197,11 @@ export function BudgetMetadataModal({
       return;
     }
     onUpdateHistoryEntry(accountId, current.id, patch);
+    setCompleted((prev) => {
+      const next = new Set(prev);
+      next.add(current.id);
+      return next;
+    });
   }, [accountId, current, description, typeId, onUpdateHistoryEntry]);
 
   const canSave =
