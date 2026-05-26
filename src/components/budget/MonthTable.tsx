@@ -558,7 +558,7 @@ function MonthTableImpl({
                     <button
                       type="button"
                       onClick={onTriage}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-flag hover:bg-flag/10"
+                      className="flex w-full items-center justify-center gap-2 px-3 py-1.5 text-xs text-flag hover:bg-flag/10"
                     >
                       <AlertTriangle size={14} aria-hidden focusable={false} />
                       <span>
