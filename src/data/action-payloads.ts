@@ -27,6 +27,7 @@ export type SheetDraft = {
 export type BulkPatch = {
   // `undefined` = don't touch; `null` (where applicable) = clear.
   typeId?: string | null;
+  companyId?: string | null;
   amount?: number;
   date?: string;
   // `true` flags every row as an inter-account transfer; `false`
@@ -41,6 +42,8 @@ export type EditPatch = {
   // row falls back to its description as the primary label); a string
   // sets the typeId.
   typeId?: string | null;
+  // Same shape as `typeId`, applied to the row's `companyId`.
+  companyId?: string | null;
   // Signed day-offset applied to every row in the edit scope; lets the
   // user nudge a series whose original anchor day was off by a few
   // days (e.g. recurring landed on day 24 instead of 25). Omitted or
@@ -65,6 +68,9 @@ export type ComplexEntryDraft = {
   // typeId so the cell renders the type's chip in the description
   // column.
   typeId: string | null;
+  // Optional company id stamped on every generated row alongside the
+  // type. `null` (or absent) leaves the row's `companyId` blank.
+  companyId?: string | null;
   dates: string[];
   // Optional formula string in the canonical stored form (any
   // `sheet("…")` reference holds the target's stable id, not its
@@ -80,4 +86,5 @@ export type SplitSubmission = {
   description: string;
   amount: number;
   typeId: string | null;
+  companyId?: string | null;
 };

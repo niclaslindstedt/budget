@@ -17,6 +17,7 @@ function appendSeriesRowsToBudget(
     description: string;
     amount: number;
     typeId: string | null;
+    companyId?: string | null;
   },
 ): Sheet[] {
   const seriesId = action.dates.length > 1 ? newId() : undefined;
@@ -28,6 +29,7 @@ function appendSeriesRowsToBudget(
         description: action.description,
         amount: action.amount,
         typeId: action.typeId,
+        companyId: action.companyId ?? null,
         seriesId,
       });
       if (!row) return item;
@@ -134,6 +136,11 @@ export function reduceRecurring(
           description: action.sourceDescription,
           typeId: action.typeId,
           description_override: action.description,
+          // Fold the company tag into the merchant hint alongside the
+          // type so past synthesized rows sharing the merchant key
+          // adopt it automatically. `undefined` (the field absent on
+          // the action) preserves any existing company on the hint.
+          companyId: action.companyId ?? undefined,
         },
       ],
       action.now,

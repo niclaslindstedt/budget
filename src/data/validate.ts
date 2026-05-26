@@ -38,6 +38,7 @@ import type {
   Column,
   ColumnType,
   CommonSettings,
+  Company,
   CustomTheme,
   CustomThemeColors,
   DateFormat,
@@ -199,6 +200,7 @@ function validateRow(
   path: string,
   knownColumnIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const {
@@ -210,6 +212,7 @@ function validateRow(
     amountFormula,
     isTransfer,
     typeIdLocked,
+    companyId,
   } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
@@ -262,6 +265,13 @@ function validateRow(
       return fail(`${path}.typeIdLocked`, "expected a boolean");
     if (typeIdLocked) row.typeIdLocked = true;
   }
+  if (companyId !== undefined && companyId !== null) {
+    if (typeof companyId !== "string" || companyId === "")
+      return fail(`${path}.companyId`, "expected a non-empty string");
+    // Drop dangling company references silently — a deleted Company
+    // shouldn't trap the row. Same contract as `typeId`.
+    if (knownCompanyIds.has(companyId)) row.companyId = companyId;
+  }
   return { ok: true, value: row };
 }
 
@@ -270,6 +280,7 @@ function validateAccountBudget(
   path: string,
   knownAccountIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Result<AccountBudget> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, type, accountId, columns, rows } = raw;
@@ -312,6 +323,7 @@ function validateAccountBudget(
       `${path}.rows[${i}]`,
       seenColumnIds,
       knownTypeIds,
+      knownCompanyIds,
     );
     if (!r.ok) return r;
     if (seenRowIds.has(r.value.id))
@@ -350,11 +362,18 @@ function validateSheetItem(
   path: string,
   knownAccountIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Result<SheetItem> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const type = (raw as { type?: unknown }).type;
   if (type === "accountBudget") {
-    return validateAccountBudget(raw, path, knownAccountIds, knownTypeIds);
+    return validateAccountBudget(
+      raw,
+      path,
+      knownAccountIds,
+      knownTypeIds,
+      knownCompanyIds,
+    );
   }
   if (type === "accountsView") {
     return validateAccountsView(raw, path);
@@ -367,6 +386,7 @@ function validateSheet(
   path: string,
   knownAccountIds: ReadonlySet<string>,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Result<Sheet> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, name, items } = raw;
@@ -384,6 +404,7 @@ function validateSheet(
       `${path}.items[${i}]`,
       knownAccountIds,
       knownTypeIds,
+      knownCompanyIds,
     );
     if (!r.ok) return r;
     if (seenItemIds.has(r.value.id))
@@ -465,6 +486,7 @@ function validateHistoryEntry(
   raw: unknown,
   path: string,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Result<HistoryEntry> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, description, amount, balance, importedAt } = raw;
@@ -527,6 +549,12 @@ function validateHistoryEntry(
     // `MerchantHint` and `MatchRule`.
     if (knownTypeIds.has(raw.userTypeId)) entry.userTypeId = raw.userTypeId;
   }
+  if (raw.userCompanyId !== undefined && raw.userCompanyId !== null) {
+    if (typeof raw.userCompanyId !== "string" || raw.userCompanyId === "")
+      return fail(`${path}.userCompanyId`, "expected a non-empty string");
+    if (knownCompanyIds.has(raw.userCompanyId))
+      entry.userCompanyId = raw.userCompanyId;
+  }
   if (raw.isTransfer !== undefined) {
     if (typeof raw.isTransfer !== "boolean")
       return fail(`${path}.isTransfer`, "expected a boolean");
@@ -563,6 +591,14 @@ function validateHistoryEntry(
         // Drop dangling type references — same contract as `userTypeId`.
         if (knownTypeIds.has(s.typeId)) split.typeId = s.typeId;
       }
+      if (s.companyId !== undefined && s.companyId !== null) {
+        if (typeof s.companyId !== "string" || s.companyId === "")
+          return fail(
+            `${path}.splits[${i}].companyId`,
+            "expected a non-empty string",
+          );
+        if (knownCompanyIds.has(s.companyId)) split.companyId = s.companyId;
+      }
       splits.push(split);
       sum += s.amount;
     }
@@ -590,9 +626,10 @@ function validateHistoryEntry(
 function validateMerchantHint(
   raw: unknown,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): MerchantHint | null {
   if (!isObject(raw)) return null;
-  const { hitCount, lastUsedAt, typeId, description } = raw;
+  const { hitCount, lastUsedAt, typeId, description, companyId } = raw;
   if (typeof typeId !== "string" || typeId === "") return null;
   if (!knownTypeIds.has(typeId)) return null;
   if (typeof hitCount !== "number" || !Number.isFinite(hitCount)) return null;
@@ -607,6 +644,13 @@ function validateMerchantHint(
   if (typeof description === "string" && description.trim() !== "") {
     hint.description = description;
   }
+  if (
+    typeof companyId === "string" &&
+    companyId !== "" &&
+    knownCompanyIds.has(companyId)
+  ) {
+    hint.companyId = companyId;
+  }
   return hint;
 }
 
@@ -618,6 +662,7 @@ function validateMerchantHint(
 function validateMatchRule(
   raw: unknown,
   knownTypeIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): MatchRule | null {
   if (!isObject(raw)) return null;
   const { id, pattern } = raw;
@@ -635,6 +680,15 @@ function validateMatchRule(
     knownTypeIds.has(raw.typeId)
   ) {
     rule.typeId = raw.typeId;
+  }
+  if (raw.companyId === null) {
+    rule.companyId = null;
+  } else if (
+    typeof raw.companyId === "string" &&
+    raw.companyId !== "" &&
+    knownCompanyIds.has(raw.companyId)
+  ) {
+    rule.companyId = raw.companyId;
   }
   if (
     raw.amountSign === "any" ||
@@ -674,9 +728,13 @@ function validateMatchRule(
 // than rejecting the whole file. Empty suggested text would mean
 // "suggest nothing" which is identical to having no pattern at all,
 // so it's treated as unsalvageable too.
-function validateRenamePattern(raw: unknown): RenamePattern | null {
+function validateRenamePattern(
+  raw: unknown,
+  knownCompanyIds: ReadonlySet<string>,
+): RenamePattern | null {
   if (!isObject(raw)) return null;
-  const { suggestedDescription, hitCount, lastUsedAt } = raw;
+  const { suggestedDescription, hitCount, lastUsedAt, suggestedCompanyId } =
+    raw;
   if (
     typeof suggestedDescription !== "string" ||
     suggestedDescription.trim() === ""
@@ -687,11 +745,19 @@ function validateRenamePattern(raw: unknown): RenamePattern | null {
   if (typeof lastUsedAt !== "number" || !Number.isFinite(lastUsedAt)) {
     return null;
   }
-  return {
+  const pattern: RenamePattern = {
     suggestedDescription,
     hitCount: Math.max(0, Math.floor(hitCount)),
     lastUsedAt,
   };
+  if (
+    typeof suggestedCompanyId === "string" &&
+    suggestedCompanyId !== "" &&
+    knownCompanyIds.has(suggestedCompanyId)
+  ) {
+    pattern.suggestedCompanyId = suggestedCompanyId;
+  }
+  return pattern;
 }
 
 // Series-match-rule validator. Advisory like `validateMatchRule`:
@@ -825,6 +891,16 @@ function validateTransfer(
     tx.completed = raw.completed;
   }
   return { ok: true, value: tx };
+}
+
+function validateCompany(raw: unknown, path: string): Result<Company> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  return { ok: true, value: { id, name } };
 }
 
 function validateCategory(raw: unknown, path: string): Result<Category> {
@@ -1242,6 +1318,19 @@ export function validateUserData(raw: unknown): Result<UserData> {
     accounts.push(r.value);
   }
 
+  const rawCompanies = Array.isArray(raw.companies) ? raw.companies : [];
+  const companies: Company[] = [];
+  const seenCompanyIds = new Set<string>();
+  for (let i = 0; i < rawCompanies.length; i++) {
+    const r = validateCompany(rawCompanies[i], `companies[${i}]`);
+    if (!r.ok) return r;
+    if (seenCompanyIds.has(r.value.id))
+      return fail(`companies[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenCompanyIds.add(r.value.id);
+    companies.push(r.value);
+  }
+  const knownCompanyIds: ReadonlySet<string> = seenCompanyIds;
+
   const rawCategories = Array.isArray(raw.categories) ? raw.categories : [];
   const categories: Category[] = [];
   const seenCategoryIds = new Set<string>();
@@ -1317,6 +1406,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       `sheets[${i}]`,
       seenAccountIds,
       knownTypeIds,
+      knownCompanyIds,
     );
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
@@ -1347,6 +1437,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
         rawEntries[i],
         `history.${accountId}[${i}]`,
         knownTypeIds,
+        knownCompanyIds,
       );
       if (!r.ok) return r;
       if (seenIds.has(r.value.id)) continue;
@@ -1384,7 +1475,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const merchantHints: Record<string, MerchantHint> = {};
   for (const [key, value] of Object.entries(rawHints)) {
     if (typeof key !== "string" || key === "") continue;
-    const hint = validateMerchantHint(value, knownTypeIds);
+    const hint = validateMerchantHint(value, knownTypeIds, knownCompanyIds);
     if (hint) merchantHints[key] = hint;
   }
 
@@ -1405,7 +1496,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const matchRules: MatchRule[] = [];
   const seenRuleIds = new Set<string>();
   for (const rawRule of rawRules) {
-    const rule = validateMatchRule(rawRule, knownTypeIds);
+    const rule = validateMatchRule(rawRule, knownTypeIds, knownCompanyIds);
     if (!rule) continue;
     if (seenRuleIds.has(rule.id)) continue;
     seenRuleIds.add(rule.id);
@@ -1445,7 +1536,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
     const bucket: Record<string, RenamePattern> = {};
     for (const [key, rawPattern] of Object.entries(rawBucket)) {
       if (typeof key !== "string" || key === "") continue;
-      const pattern = validateRenamePattern(rawPattern);
+      const pattern = validateRenamePattern(rawPattern, knownCompanyIds);
       if (pattern) bucket[key] = pattern;
     }
     if (Object.keys(bucket).length > 0) renamePatterns[accountId] = bucket;
@@ -1475,6 +1566,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       sheets,
       activeSheetId,
       accounts,
+      companies,
       categories,
       types,
       hiddenPresetTypeIds,

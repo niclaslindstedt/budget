@@ -33,10 +33,11 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 41,
+    version: 42,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
+    companies: [],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
     types: [],
     hiddenPresetTypeIds: [],
@@ -106,6 +107,7 @@ describe("serializeUserData", () => {
         id: s.id,
       })),
       accounts: b.accounts,
+      companies: b.companies,
       categories: b.categories,
       types: b.types,
       hiddenPresetTypeIds: b.hiddenPresetTypeIds,
@@ -133,10 +135,11 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 19)).toEqual([
+    expect(topKeys.slice(0, 20)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
+      "companies",
       "hiddenPresetCategoryIds",
       "hiddenPresetTypeIds",
       "history",

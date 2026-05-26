@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Building2,
   Hash,
   HardDrive,
   type LucideIcon,
@@ -18,6 +19,7 @@ import { CURRENCY_PRESETS, DEFAULT_SETTINGS } from "../../data/constants";
 import { detectPaydayDayOfMonth } from "../../data/payday";
 import type {
   Category,
+  Company,
   DecimalSeparator,
   EntryType,
   Settings,
@@ -37,6 +39,7 @@ import { Modal } from "../Modal";
 import {
   AppearanceTab,
   CategoriesTab,
+  CompaniesTab,
   DeveloperTab,
   FormatTab,
   GeneralTab,
@@ -157,6 +160,14 @@ type Props = {
     presetId: string,
     kind: "income" | "expense" | "any",
   ) => void;
+  // Company admin — full edit/delete on user-curated entries; no
+  // presets ship so there's no hide-toggle.
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onUpdateCompany: (
+    companyId: string,
+    patch: Partial<Omit<Company, "id">>,
+  ) => void;
+  onDeleteCompany: (companyId: string) => void;
   // Pattern management for the Patterns tab. Opens the existing
   // MatchRuleModal in edit mode. The modal's own danger button handles
   // deletion, so no separate delete callback is needed here.
@@ -181,6 +192,7 @@ export type SettingsTabId =
   | "format"
   | "storage"
   | "categories"
+  | "companies"
   | "patterns"
   | "memory"
   | "developer"
@@ -203,6 +215,7 @@ const TAB_ICONS: Record<TabId, LucideIcon> = {
   format: Hash,
   storage: HardDrive,
   categories: Tag,
+  companies: Building2,
   patterns: Tags,
   memory: SettingsIcon,
   developer: Wrench,
@@ -215,6 +228,7 @@ const BASE_TAB_IDS: readonly TabId[] = [
   "format",
   "storage",
   "categories",
+  "companies",
   "patterns",
   "memory",
 ];
@@ -273,6 +287,9 @@ export function SettingsModal({
   onDeleteType,
   onSetPresetTypeHidden,
   onSetPresetTypeKind,
+  onCreateCompany,
+  onUpdateCompany,
+  onDeleteCompany,
   onEditMatchRule,
   onMoveMatchRule,
   onReapplyMatchRules,
@@ -502,6 +519,14 @@ export function SettingsModal({
                 onDeleteType={onDeleteType}
                 onSetPresetTypeHidden={onSetPresetTypeHidden}
                 onSetPresetTypeKind={onSetPresetTypeKind}
+              />
+            )}
+            {activeTab === "companies" && (
+              <CompaniesTab
+                data={data}
+                onCreateCompany={onCreateCompany}
+                onUpdateCompany={onUpdateCompany}
+                onDeleteCompany={onDeleteCompany}
               />
             )}
             {activeTab === "patterns" && (

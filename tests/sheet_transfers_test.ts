@@ -23,13 +23,14 @@ import type {
 function workspace(transfers: Transfer[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 41,
+    version: 42,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
       { id: "checking-id", name: "Checking" },
       { id: "savings-id", name: "Savings" },
     ],
+    companies: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],

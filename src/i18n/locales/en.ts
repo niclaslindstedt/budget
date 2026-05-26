@@ -369,6 +369,7 @@ export const en = {
       format: "Format",
       storage: "Storage",
       categories: "Categories",
+      companies: "Companies",
       patterns: "Patterns",
       memory: "Memory",
       developer: "Developer",
@@ -637,6 +638,26 @@ export const en = {
       kindAnyTitle: "Shows on both income and expense rows",
       kindIncomeTitle: "Shows only on income rows (positive amount)",
       kindExpenseTitle: "Shows only on expense rows (negative amount)",
+    },
+    companiesTab: {
+      title: "Companies",
+      intro:
+        "Companies are the merchants and organisations your money goes to — Fortum, H&M, the local pizzeria. Tag entries with a company in the entry edit modal so the description column shows who the money went to, even when the row has no description of its own.",
+      empty: "No companies yet. Add one to start tagging entries.",
+      addCompany: "Add company",
+      editCompany: "Edit company",
+      deleteCompany: "Delete company",
+      editLabel: "Edit",
+      deleteLabel: "Delete",
+      name: "Name",
+      namePlaceholder: "H&M",
+      duplicateName: "A company with this name already exists.",
+      addSubmit: "Add",
+      saveSubmit: "Save",
+      cancelSubmit: "Cancel",
+      deleteCompanyTitle: "Delete company",
+      deleteCompanyHint:
+        'Remove "{name}"? Entries tagged with it lose the tag; their description and type are kept intact.',
     },
     patterns: {
       title: "Pattern rules",
@@ -954,6 +975,7 @@ export const en = {
     description: "Description",
     amount: "Amount",
     type: "Type",
+    company: "Company",
     pickType: "Pick a type",
     scope: "Scope",
     scopeJustThis: "Just this entry",
@@ -1050,6 +1072,7 @@ export const en = {
     description: "Description",
     descriptionPlaceholder: "Override the bank's description",
     type: "Type",
+    company: "Company",
     originalDescription: "Original from bank",
     hint:
       "Renames just this one entry. The bank's record stays untouched " +
@@ -1062,6 +1085,8 @@ export const en = {
     progress: "{month} · {index} of {total}",
     fromBank: "From the bank",
     typeLabel: "Type",
+    companyLabel: "Company",
+    companyHint: "Tag the merchant this entry paid.",
     descriptionLabel: "Description",
     descriptionPlaceholder: "Leave blank to keep the bank's text",
     descriptionHint: "Blank keeps the bank's text.",
@@ -1322,6 +1347,7 @@ export const en = {
     labelPlaceholder: "e.g. Groceries",
     type: "Type",
     typeOptional: "Type (optional)",
+    company: "Company (optional)",
     filters: "Filters",
     amountSign: "Amount sign",
     amountLabel: "Amount",
@@ -1702,6 +1728,19 @@ export const en = {
     noTypesInCategory: "No types in this category yet.",
     create: "Create",
     backToCategories: "All categories",
+  },
+
+  company: {
+    pickCompany: "Pick a company",
+    pickCompanyEllipsis: "Pick a company…",
+    addCompany: "Add company",
+    clearCompany: "Clear company",
+    newCompany: "New company",
+    noCompaniesYet: "No companies yet.",
+    name: "Name",
+    namePlaceholder: "H&M",
+    create: "Create",
+    duplicateName: "A company with this name already exists.",
   },
 
   glyph: {

@@ -41,6 +41,10 @@ export type RenameSuggestion = {
   entryId: string;
   originalDescription: string;
   suggestedDescription: string;
+  // Company learned alongside the description. `undefined` when the
+  // user never tagged a company on this merchant key; the modal then
+  // applies only the description on accept.
+  suggestedCompanyId?: string;
   hitCount: number;
   lastUsedAt: number;
 };
@@ -51,11 +55,18 @@ export type RenameSuggestion = {
 // checks cheap. A blank `userDescription` is treated as "no signal";
 // we don't learn from clears so the next import doesn't keep
 // suggesting a stripped override.
+//
+// `companyId` is the user's company assignment at recording time, or
+// `null` when they didn't pick one. Stored verbatim so the predictor
+// can suggest both the description and the company on the next import
+// — `undefined` (`suggestedCompanyId` absent) means "no company was
+// learned for this key".
 export function recordRename(
   patterns: Readonly<RenamePatternStore>,
   accountId: string,
   bankDescription: string,
   userDescription: string,
+  companyId: string | null,
   now: number,
 ): RenamePatternStore {
   const trimmed = userDescription.trim();
@@ -64,6 +75,11 @@ export function recordRename(
   if (!isNormalisedKeyMeaningful(key)) return patterns as RenamePatternStore;
   const accountBucket = patterns[accountId];
   const existing = accountBucket?.[key];
+  // Preserve a prior company learned for this key when the current
+  // rename didn't pin one — clearing the field through the modal
+  // shouldn't unlearn a previously-tagged merchant.
+  const effectiveCompanyId =
+    companyId ?? existing?.suggestedCompanyId ?? undefined;
   const next: RenamePattern = {
     suggestedDescription: trimmed,
     hitCount: bumpHitCount(
@@ -72,11 +88,13 @@ export function recordRename(
     ),
     lastUsedAt: now,
   };
+  if (effectiveCompanyId) next.suggestedCompanyId = effectiveCompanyId;
   if (
     existing &&
     existing.suggestedDescription === next.suggestedDescription &&
     existing.hitCount === next.hitCount &&
-    existing.lastUsedAt === next.lastUsedAt
+    existing.lastUsedAt === next.lastUsedAt &&
+    existing.suggestedCompanyId === next.suggestedCompanyId
   ) {
     return patterns as RenamePatternStore;
   }
@@ -111,7 +129,18 @@ export function bumpRenamePattern(
   const existing = accountBucket?.[key];
   if (!existing) return patterns as RenamePatternStore;
   if (existing.suggestedDescription !== trimmed) {
-    return recordRename(patterns, accountId, bankDescription, trimmed, now);
+    // Drift between the accepted text and the stored suggestion routes
+    // through `recordRename` as a fresh learning event. Pass `null`
+    // for company so the prior company carries forward unchanged (see
+    // `recordRename` — null preserves the learned company).
+    return recordRename(
+      patterns,
+      accountId,
+      bankDescription,
+      trimmed,
+      null,
+      now,
+    );
   }
   return {
     ...patterns,
@@ -154,6 +183,7 @@ export function predictRenames(
       entryId: entry.id,
       originalDescription: entry.description,
       suggestedDescription: pattern.suggestedDescription,
+      suggestedCompanyId: pattern.suggestedCompanyId,
       hitCount: pattern.hitCount,
       lastUsedAt: pattern.lastUsedAt,
     });

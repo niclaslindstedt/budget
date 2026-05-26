@@ -5,11 +5,13 @@ import { useDesktopAutoFocus } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
+  Company,
   EntryType,
   HistoryEntry,
   Settings,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableTextInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
@@ -29,14 +31,17 @@ type Props = {
   entry: HistoryEntry | null;
   categories: readonly Category[];
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
   onClose: () => void;
   onSubmit: (patch: {
     userDescription: string;
     userTypeId: string | null;
+    userCompanyId: string | null;
   }) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 export function HistoryEntryEditModal({
@@ -44,20 +49,24 @@ export function HistoryEntryEditModal({
   entry,
   categories,
   types,
+  companies,
   settings,
   onClose,
   onSubmit,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const lang = useLang();
 
   const initialDescription = entry?.userDescription ?? entry?.description ?? "";
   const initialTypeId = entry?.userTypeId ?? null;
+  const initialCompanyId = entry?.userCompanyId ?? null;
 
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
+  const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!entry, entry?.id);
@@ -66,6 +75,7 @@ export function HistoryEntryEditModal({
     if (!open) return;
     setDescription(initialDescription);
     setTypeId(initialTypeId);
+    setCompanyId(initialCompanyId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry?.id]);
 
@@ -77,8 +87,9 @@ export function HistoryEntryEditModal({
     onSubmit({
       userDescription: description.trim(),
       userTypeId: typeId,
+      userCompanyId: companyId,
     });
-  }, [entry, description, typeId, onSubmit]);
+  }, [entry, description, typeId, companyId, onSubmit]);
 
   if (!open || !entry) return null;
 
@@ -139,6 +150,18 @@ export function HistoryEntryEditModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("editHistory.company")}
+            </span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={setCompanyId}
+              onCreate={onCreateCompany}
             />
           </div>
         </div>

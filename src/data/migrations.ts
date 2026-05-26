@@ -26,7 +26,7 @@ import { clearRawStorage, readRawStorage } from "../storage/local-adapter";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 41 as const;
+export const LATEST_VERSION = 42 as const;
 
 export type Versioned = { version: number; [key: string]: unknown };
 
@@ -773,6 +773,17 @@ const migrations: Record<
   // budget-view quick-rename (both route through the
   // `updateHistoryEntry` reducer chokepoint). Bare bump.
   40: (v40) => ({ ...v40, version: 41, renamePatterns: {} }),
+
+  // v41 → v42: introduces user-curated `companies` (merchants /
+  // organisations a row pays) plus optional `companyId` fields on
+  // `Row`, `HistoryEntry.userCompanyId`, `HistoryEntrySplit.companyId`,
+  // `MerchantHint.companyId`, `MatchRule.companyId`, and
+  // `RenamePattern.suggestedCompanyId`. Defaults to an empty array —
+  // no presets ship; the list fills as the user picks "New company" in
+  // the picker dropdown or adds entries on the Companies settings tab.
+  // Every new field is optional so v41 records pass the v42 validator
+  // unchanged.
+  41: (v41) => ({ ...v41, version: 42, companies: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

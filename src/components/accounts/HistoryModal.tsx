@@ -5,6 +5,7 @@ import { FileText, History } from "lucide-react";
 import { compareDateStrings, resolveEntryLabels } from "../../data/sheet";
 import type {
   Account,
+  Company,
   EntryType,
   HistoryEntry,
   MatchRule,
@@ -52,6 +53,10 @@ type Props = {
   // EntryType registry so resolved typeIds can render their icon and
   // colour, matching the budget view's row chrome.
   types: readonly EntryType[];
+  // User-curated companies — fed through `resolveEntryLabels` so a
+  // history row with no description still resolves to its merchant
+  // name in the description fallback chain.
+  companies: readonly Company[];
   // Merchant-hint store + user match rules — fed through the same
   // priority chain as `synthesizeHistoryRow` so the description and
   // type icon shown here match what the budget view would render for
@@ -74,6 +79,7 @@ export function HistoryModal({
   account,
   entries,
   types,
+  companies,
   merchantHints,
   matchRules,
   settings,
@@ -103,6 +109,8 @@ export function HistoryModal({
           entry,
           merchantHints,
           matchRules,
+          companies,
+          types,
         );
         arr.push({ entry, description, typeId: null });
         continue;
@@ -111,11 +119,13 @@ export function HistoryModal({
         entry,
         merchantHints,
         matchRules,
+        companies,
+        types,
       );
       arr.push({ entry, description, typeId });
     }
     return arr;
-  }, [entries, merchantHints, matchRules]);
+  }, [entries, merchantHints, matchRules, companies, types]);
 
   const allSortedEntries = useMemo(() => {
     const order = settings.transactionSortOrder;

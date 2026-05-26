@@ -27,6 +27,11 @@ export type HintRecording = {
   // key. Undefined means "don't touch"; explicit empty string clears
   // any existing override.
   description_override?: string;
+  // Optional company association the user tagged on the row. Undefined
+  // preserves any existing company on the hint; `null` clears the
+  // company; a string assigns it. Carries through the same merchant-
+  // hint surface as `typeId` so future synthesized rows can inherit it.
+  companyId?: string | null;
 };
 
 // Apply a batch of hint recordings to a state. Returns a new state
@@ -40,6 +45,7 @@ export function recordMerchantHints(
 ): UserData {
   if (recordings.length === 0) return state;
   const knownTypes = new Set(state.types.map((t) => t.id));
+  const knownCompanies = new Set(state.companies.map((c) => c.id));
   let next: Record<string, MerchantHint> | null = null;
   for (const r of recordings) {
     const key = normaliseDescription(r.description);
@@ -72,6 +78,13 @@ export function recordMerchantHints(
       if (existing?.description) hint.description = existing.description;
     } else if (r.description_override.trim() !== "") {
       hint.description = r.description_override;
+    }
+    // companyId: undefined preserves, null clears, string assigns
+    // (when it resolves to a known company).
+    if (r.companyId === undefined) {
+      if (existing?.companyId) hint.companyId = existing.companyId;
+    } else if (r.companyId !== null && knownCompanies.has(r.companyId)) {
+      hint.companyId = r.companyId;
     }
     next[key] = hint;
   }
