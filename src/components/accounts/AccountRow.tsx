@@ -1,0 +1,199 @@
+import { memo } from "react";
+import { Pencil, Trash2, Wallet } from "lucide-react";
+
+import { useRowSwipe } from "../../hooks/useRowSwipe";
+import { useT } from "../../i18n";
+import type { Account, Settings } from "../../data/types";
+import { formatBalance, formatCount } from "../../utils/format";
+import { useClaimActiveRow } from "../useClaimActiveRow";
+import { CategoryIconGlyph } from "../icons";
+import { AccountActionsMenu } from "./AccountActionsMenu";
+
+type Props = {
+  account: Account;
+  balance: number;
+  accountSettings: Settings;
+  historyCount: number;
+  canCut: boolean;
+  canUpdateBalance: boolean;
+  onEditAccount: (accountId: string) => void;
+  onDeleteAccount: (accountId: string, name: string) => void;
+  onUpdateBalance: (accountId: string) => void;
+  onImportHistory: (accountId: string) => void;
+  onViewHistory: (accountId: string) => void;
+  onCutHistory: (accountId: string) => void;
+};
+
+function AccountRowImpl({
+  account,
+  balance,
+  accountSettings,
+  historyCount,
+  canCut,
+  canUpdateBalance,
+  onEditAccount,
+  onDeleteAccount,
+  onUpdateBalance,
+  onImportHistory,
+  onViewHistory,
+  onCutHistory,
+}: Props) {
+  const t = useT();
+  const { swiped, setSwiped, touchHandlers } = useRowSwipe();
+
+  // Hook the row into the ActiveRowProvider so a tap elsewhere in the
+  // accounts table only dismisses the swipe — the underlying control
+  // still gets a follow-up tap to fire properly. Mirrors the budget
+  // sheet's BudgetRow wiring.
+  useClaimActiveRow(account.id, swiped, () => setSwiped(false));
+
+  const rowClass = [
+    swiped ? "is-swiped" : "",
+    "border-b border-line last:border-b-0 hover:bg-surface-2",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <tr
+      className={rowClass}
+      data-row-id={account.id}
+      // Without this marker, the document-level `useSheetSwipe` hook
+      // treats a left-swipe on the row as a sheet-switch gesture and
+      // navigates away before `setSwiped(true)` ever paints — see the
+      // opt-out selector in `src/hooks/useSheetSwipe.ts`. Mirrors the
+      // equivalent attribute on `BudgetRow`.
+      data-swipe-handled
+      {...touchHandlers}
+    >
+      <td className="w-10 px-2 py-2 align-middle">
+        <span
+          aria-hidden
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
+          style={{
+            color: account.color,
+            backgroundColor: account.color
+              ? `color-mix(in srgb, ${account.color} 18%, transparent)`
+              : undefined,
+            borderColor: account.color
+              ? `color-mix(in srgb, ${account.color} 55%, transparent)`
+              : undefined,
+          }}
+        >
+          {account.glyph ? (
+            <CategoryIconGlyph name={account.glyph} size={14} />
+          ) : (
+            <Wallet size={14} aria-hidden focusable={false} />
+          )}
+        </span>
+      </td>
+      <td className="px-2 py-2 align-middle">
+        <span className="block font-bold text-fg-bright">{account.name}</span>
+        {account.description && (
+          <span className="block text-xs text-muted">
+            {account.description}
+          </span>
+        )}
+      </td>
+      <td className="account-bank-cell hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
+        {account.bank ? <span className="block">{account.bank}</span> : null}
+        {account.clearing || account.accountNumber ? (
+          <span className="block font-mono text-flag">
+            {[account.clearing, account.accountNumber]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        ) : null}
+        {account.iban && (
+          <span className="block font-mono">{account.iban}</span>
+        )}
+      </td>
+      <td
+        className={`px-2 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
+          balance < 0 ? "text-negative" : "text-positive"
+        }`}
+      >
+        {canUpdateBalance ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSwiped(false);
+              onUpdateBalance(account.id);
+            }}
+            aria-label={t("accountsSheet.updateBalanceAria", {
+              name: account.name,
+            })}
+            title={t("accountsSheet.updateBalanceTitle")}
+            className="cursor-pointer border-0 bg-transparent p-0 text-right font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            {formatBalance(balance, accountSettings)}
+          </button>
+        ) : (
+          <span className="font-mono" title={t("account.addBudgetSheetHint")}>
+            {formatBalance(balance, accountSettings)}
+          </span>
+        )}
+      </td>
+      <td className="w-20 px-2 py-2 text-right align-middle">
+        <span
+          title={
+            historyCount === 0
+              ? t("accountsSheet.noHistoryImported")
+              : t("accountsSheet.viewHistoryEntries", { n: historyCount })
+          }
+          className={`block text-right font-mono text-xs tabular-nums ${
+            historyCount === 0 ? "text-muted" : "text-fg"
+          }`}
+        >
+          {formatCount(historyCount, accountSettings)}
+        </span>
+      </td>
+      <td className="account-action-cell w-32 p-0 align-middle">
+        <div className="flex h-full w-full items-stretch justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSwiped(false);
+              onEditAccount(account.id);
+            }}
+            aria-label={t("accountsSheet.editAccountAria", {
+              name: account.name,
+            })}
+            title={t("accountsSheet.editAccountTitle")}
+            className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+          >
+            <Pencil size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSwiped(false);
+              onDeleteAccount(account.id, account.name);
+            }}
+            aria-label={t("accountsSheet.deleteAccountAria", {
+              name: account.name,
+            })}
+            title={t("accountsSheet.deleteAccountTitle")}
+            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+          </button>
+          <AccountActionsMenu
+            accountId={account.id}
+            accountName={account.name}
+            canCut={canCut}
+            onViewHistory={onViewHistory}
+            onImportHistory={onImportHistory}
+            onCutHistory={onCutHistory}
+            onAction={() => setSwiped(false)}
+          />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// Memoised so a swipe / dropdown on one row doesn't re-render every
+// sibling — the parent recomputes balances/maps on each `data` change
+// anyway, so per-row stability is what we'd lose without it.
+export const AccountRow = memo(AccountRowImpl);

@@ -1649,6 +1649,7 @@ export const sv: Catalog = {
     newTransfer: "Ny överföring",
     needTwoAccounts:
       "Lägg till minst två konton för att registrera en överföring",
+    editTransferAria: "Redigera överföring: {description}",
     unknown: "Okänd",
   },
 

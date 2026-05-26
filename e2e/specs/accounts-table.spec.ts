@@ -40,8 +40,8 @@ async function createAccount(
   await modal.getByRole("textbox", { name: "Name" }).fill(name);
   await modal.getByRole("button", { name: /^Create/ }).click();
   // Wait for the new row to land — the row exposes multiple buttons
-  // (view-history, edit, delete, more) all keyed off the account name,
-  // so target the edit button for an unambiguous "row exists" probe.
+  // (edit, delete, more) all keyed off the account name, so target
+  // the edit button for an unambiguous "row exists" probe.
   await expect(
     page.getByRole("button", { name: `Edit ${name}`, exact: true }),
   ).toBeVisible();
@@ -69,12 +69,11 @@ test.describe("Accounts table", () => {
     await openAccountsSheet(page);
     await createAccount(page, "Travel fund");
 
-    // The history-count cell is a read-only span (only the name cell
-    // opens the viewer); both cells carry the
+    // The history-count cell is a read-only span; it carries the
     // `accountsSheet.noHistoryImported` title for count=0, so target
-    // the span specifically by its exact "0" text — the name button
-    // renders "Travel fund" and the balance button renders the
-    // currency-suffixed amount.
+    // it specifically by its exact "0" text — the name cell renders
+    // "Travel fund" and the balance button renders the currency-
+    // suffixed amount.
     const row = page.getByRole("row").filter({ hasText: "Travel fund" });
     const historyCell = row.getByText("0", { exact: true });
     await expect(historyCell).toBeVisible();
@@ -101,9 +100,9 @@ test.describe("Accounts table", () => {
 
     await dialog.getByRole("button", { name: "Delete account" }).click();
     // The row is gone — the unambiguous "Edit Cash" pen button no
-    // longer exists. Pair-buttons keyed on the account name (view,
-    // edit, delete, more) all disappear together so a single absent
-    // probe is enough.
+    // longer exists. Sibling buttons keyed on the account name (edit,
+    // delete, more) all disappear together so a single absent probe
+    // is enough.
     await expect(
       page.getByRole("button", { name: "Edit Cash", exact: true }),
     ).not.toBeVisible();
