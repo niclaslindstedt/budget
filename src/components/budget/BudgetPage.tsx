@@ -1166,14 +1166,14 @@ export function BudgetPage({
           {hasMoreHistory &&
             settings.transactionSortOrder === "oldestFirst" && (
               <BudgetMonthSectionToggle
-                label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
+                label={t("budget.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
                 onClick={onShowMoreHistoryClick}
               />
             )}
           {hasHiddenFuture &&
             settings.transactionSortOrder === "newestFirst" && (
               <BudgetMonthSectionToggle
-                label={t("sheet.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
+                label={t("budget.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
                 onClick={onShowMoreFutureClick}
               />
             )}
@@ -1253,14 +1253,14 @@ export function BudgetPage({
           {hasHiddenFuture &&
             settings.transactionSortOrder === "oldestFirst" && (
               <BudgetMonthSectionToggle
-                label={t("sheet.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
+                label={t("budget.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
                 onClick={onShowMoreFutureClick}
               />
             )}
           {hasMoreHistory &&
             settings.transactionSortOrder === "newestFirst" && (
               <BudgetMonthSectionToggle
-                label={t("sheet.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
+                label={t("budget.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
                 onClick={onShowMoreHistoryClick}
               />
             )}

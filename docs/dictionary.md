@@ -136,12 +136,12 @@ The workspace dashboard. Sheet type `"accounts"`. Files live in
 
 ## i18n
 
-| Term                    | Refers to                                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Catalog**             | The English catalogue (`src/i18n/locales/en.ts`) widened into a `Catalog` type that enforces every other language's coverage at compile time. |
-| **Lang** / **language** | `Lang` union in `src/i18n/locale.ts`. Currently `"en" \| "sv"`.                                                                               |
-| **`t()`**               | The lookup function from `useT()`. Autocompletes against the `Catalog` type.                                                                  |
-| **Plural helper**       | `plural()` in `src/i18n/index.ts`. Switches between `...One` / `...Other` keys based on count.                                                |
+| Term                    | Refers to                                                                                                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catalog**             | The English catalogue (composed from per-namespace files under `src/i18n/locales/en/`) widened into a `Catalog` type that enforces every other language's coverage at compile time. |
+| **Lang** / **language** | `Lang` union in `src/i18n/locale.ts`. Currently `"en" \| "sv"`.                                                                                                                     |
+| **`t()`**               | The lookup function from `useT()`. Autocompletes against the `Catalog` type.                                                                                                        |
+| **Plural helper**       | `plural()` in `src/i18n/index.ts`. Switches between `...One` / `...Other` keys based on count.                                                                                      |
 
 ## Workflows / verbs the user might say
 

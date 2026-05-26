@@ -1,0 +1,48 @@
+import type { AccountsSheetCatalog } from "../en/accountsSheet";
+
+const accountsSheet: AccountsSheetCatalog = {
+  title: "Konton",
+  edit: "Redigera {name}",
+  editSheet: "Redigera blad",
+  name: "Namn",
+  bank: "Bank",
+  balance: "Saldo",
+  date: "Datum",
+  description: "Beskrivning",
+  transfer: "Överföring",
+  amount: "Belopp",
+  history: "Historik",
+  addAccount: "Lägg till konto",
+  grandTotal: "Totalt",
+  noAccounts: "Inga konton än. Lägg till ett med knappen nedan.",
+  noTransfers:
+    "Inga överföringar än. Befordra en budgetrad till en överföring, eller använd knappen nedan.",
+  glyphLabel: "Ikon för {name}",
+  transfers: "Överföringar",
+  updateBalanceAria: "Uppdatera saldo för {name}",
+  updateBalanceTitle: "Uppdatera saldo",
+  importHistoryAria: "Importera historik till {name}",
+  importHistoryTitle: "Importera bankhistorik",
+  viewHistoryAria: "Visa historik för {name}",
+  viewTransactionsTitle: "Visa transaktioner",
+  noHistoryImported: "Ingen historik importerad än",
+  viewHistoryEntries: "Visa {n} historikposter",
+  editAccountAria: "Redigera {name}",
+  editAccountTitle: "Redigera konto",
+  deleteAccountAria: "Ta bort {name}",
+  deleteAccountTitle: "Ta bort konto",
+  cutHistoryAria: "Klipp historik för {name}",
+  cutHistoryTitle: "Klipp historik",
+  nothingToCut: "Ingen historik eller transaktioner att klippa",
+  moreActionsAria: "Fler åtgärder för {name}",
+  moreActions: "Fler åtgärder",
+  historyCountHeader: "Transaktioner",
+  historyCountTitle: "Importerade transaktioner",
+  newTransfer: "Ny överföring",
+  needTwoAccounts:
+    "Lägg till minst två konton för att registrera en överföring",
+  editTransferAria: "Redigera överföring: {description}",
+  unknown: "Okänd",
+};
+
+export default accountsSheet;

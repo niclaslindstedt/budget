@@ -292,7 +292,7 @@ export function EditRowModal({
           </label>
           {dateCol && (
             <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-xs text-muted">{t("sheet.date")}</span>
+              <span className="text-xs text-muted">{t("budget.date")}</span>
               <input
                 type="date"
                 value={date}

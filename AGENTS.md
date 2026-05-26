@@ -165,10 +165,13 @@ src/
 │   ├── language-preference.ts # Plaintext localStorage mirror so pre-auth
 │   │                          #   and standalone routes pick up the choice
 │   └── locales/
-│       ├── en.ts              # Canonical English catalog. The `Catalog`
-│       │                      #   type widens this so `sv.ts` is enforced
-│       └── sv.ts              # Swedish; typed against `Catalog` so missing
-│                              #   keys are compile errors
+│       ├── en.ts              # Re-exports the composed catalog from ./en/
+│       ├── sv.ts              # Re-exports the composed catalog from ./sv/
+│       ├── en/                # One file per top-level namespace (common.ts,
+│       │                      #   sheet.ts, budget.ts, accounts.ts, …).
+│       │                      #   index.ts composes them and derives `Catalog`
+│       └── sv/                # Mirrors en/ file-for-file; each module is
+│                              #   typed against its English counterpart
 ├── utils/
 │   ├── date.ts                # `todayIso`, `addMonthsIso` (pure date helpers)
 │   ├── format.ts              # `formatNumber`, `withCurrency`, lang-aware month names
@@ -260,44 +263,42 @@ etc.) and accounts-page helpers (`transactionsForAccount`). The
 runtime is fine — the file is widely imported and the algebra is
 correct — but new page-specific helpers should still go in
 `src/data/<page>.ts`. A follow-up split is recommended once a third
-page lands (savings / loans) to make the entanglement visible. Same
-applies to the `sheet.*` i18n group in
-`src/i18n/locales/en.ts`: the keys are a working mix of sheet-meta
-(`sheet.editSheet`, `sheet.rename`, `sheet.delete`) and
-budget-page-only (`sheet.openingBalance`, `sheet.addRow`,
-`sheet.runningBalance`, etc.). New page-specific strings go under a
-page-named group (`budget.*` if it lands; `accounts.*`); leave
-existing keys alone until the i18n parity check has a reason to move
-them.
+page lands (savings / loans) to make the entanglement visible. The
+`sheet.*` i18n group has been untangled: sheet-meta strings (the chrome
+around every page) live in `src/i18n/locales/{en,sv}/sheet.ts`, and
+budget-page strings (rows, balances, column headers, month strip,
+viewer search, transfer collapse) live in
+`src/i18n/locales/{en,sv}/budget.ts`. New page-specific strings go
+under a page-named group (`budget.*`, `accounts.*`).
 
 ## Where new code goes
 
-| Change                                                         | Location                                                                                                                                                                                                                            |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Budget-page change (rows, cells, modals scoped to the ledger)  | `src/components/budget/`                                                                                                                                                                                                            |
-| Accounts-page change (accounts table, transfers, bank history) | `src/components/accounts/`                                                                                                                                                                                                          |
-| New page type (savings, loans, utility, …)                     | New `src/components/<page>/` dir + new arm in `AppShell.tsx`'s routing switch + new literal in `SheetType` in `src/data/types.ts` + entry in `SHEET_TYPES` in `src/data/constants.ts`. See "Pages and the Sheet abstraction" below. |
-| New universal sheet-level chrome (tab strip, sheet-meta modal) | `src/components/` root — sheet-meta only. Do NOT add anything page-specific here.                                                                                                                                                   |
-| New UI section / page                                          | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                                                                                                                                                               |
-| Reusable React hook                                            | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                                                                                                                                                                     |
-| Persisted-data shape changes                                   | `src/data/` (add types + a migration if needed)                                                                                                                                                                                     |
-| Read/write to `localStorage`                                   | `src/storage/local.ts`                                                                                                                                                                                                              |
-| Export / import file format                                    | `src/storage/file.ts`                                                                                                                                                                                                               |
-| Vite config (base path, plugins)                               | `vite.config.ts`                                                                                                                                                                                                                    |
-| Vite plugin (build-time codegen)                               | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                                                                                                                                                                    |
-| Build-time generated TS                                        | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                                                                                                                                                                      |
-| New persisted storage key                                      | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`                                                                                                                                                      |
-| SEO copy / per-route head                                      | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                                                                                                                                                                        |
-| Site-wide discovery files                                      | `public/robots.txt`, `public/og-default.png` (static). `sitemap.xml` and `llms.txt` are generated at build time from `src/seo/routes.ts` + `src/seo/siteConfig.ts` — edit the routes table, not the output files.                   |
-| PWA manifest / service-worker config                           | `vite.config.ts` (`pwaPlugin()`); `public/` (icons generated from `public/favicon.svg` via `make icons`). See "Service-worker rollout invariants" below.                                                                            |
-| ESLint rules, TS config                                        | `eslint.config.js`, `tsconfig.app.json`                                                                                                                                                                                             |
-| New `make` target                                              | `Makefile` + the README Usage table + `ci.yml`                                                                                                                                                                                      |
-| Changelog fragment (user-affecting PRs)                        | `.changes/unreleased/<unix-ts>-<slug>.md`                                                                                                                                                                                           |
-| Release / changelog tooling                                    | `scripts/release/*.mjs` (collator, extractor, PR check)                                                                                                                                                                             |
-| New user-facing string                                         | `src/i18n/locales/en.ts` (canonical) + `src/i18n/locales/sv.ts` (Swedish). See "Translations" below.                                                                                                                                |
-| New language                                                   | `src/i18n/locale.ts` (`Lang` union, `bcp47`, `detectInitialLanguage`), `src/i18n/locales/<code>.ts`, `src/data/constants.ts` (`SUPPORTED_LANGUAGES`), `src/components/LanguagePicker.tsx` (flag button). See "Translations" below.  |
-| New end-to-end test (common flow)                              | `e2e/specs/<name>.spec.ts` — exercises a user journey through the `/preview/` build. See "End-to-end tests" below.                                                                                                                  |
-| Regression test for a shipped bug                              | `e2e/regression/<slug>.spec.ts` — confirms the bug then locks in the fix. See `e2e/regression/README.md`.                                                                                                                           |
+| Change                                                         | Location                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Budget-page change (rows, cells, modals scoped to the ledger)  | `src/components/budget/`                                                                                                                                                                                                                                                             |
+| Accounts-page change (accounts table, transfers, bank history) | `src/components/accounts/`                                                                                                                                                                                                                                                           |
+| New page type (savings, loans, utility, …)                     | New `src/components/<page>/` dir + new arm in `AppShell.tsx`'s routing switch + new literal in `SheetType` in `src/data/types.ts` + entry in `SHEET_TYPES` in `src/data/constants.ts`. See "Pages and the Sheet abstraction" below.                                                  |
+| New universal sheet-level chrome (tab strip, sheet-meta modal) | `src/components/` root — sheet-meta only. Do NOT add anything page-specific here.                                                                                                                                                                                                    |
+| New UI section / page                                          | `src/components/<Name>.tsx` + wire into `src/App.tsx`                                                                                                                                                                                                                                |
+| Reusable React hook                                            | `src/hooks/<useFoo>.ts` (re-exported from `src/hooks/index.ts`)                                                                                                                                                                                                                      |
+| Persisted-data shape changes                                   | `src/data/` (add types + a migration if needed)                                                                                                                                                                                                                                      |
+| Read/write to `localStorage`                                   | `src/storage/local.ts`                                                                                                                                                                                                                                                               |
+| Export / import file format                                    | `src/storage/file.ts`                                                                                                                                                                                                                                                                |
+| Vite config (base path, plugins)                               | `vite.config.ts`                                                                                                                                                                                                                                                                     |
+| Vite plugin (build-time codegen)                               | `vite/<plugin>.ts` (in `tsconfig.node.json`'s scope, not `src/`)                                                                                                                                                                                                                     |
+| Build-time generated TS                                        | `src/generated/` (gitignored; rebuilt by a `vite/*.ts` plugin)                                                                                                                                                                                                                       |
+| New persisted storage key                                      | Route through `nsKey` / `nsCloudPath` / `nsIdbName` in `src/data/constants.ts`                                                                                                                                                                                                       |
+| SEO copy / per-route head                                      | `src/seo/siteConfig.ts`, `src/seo/routes.ts`                                                                                                                                                                                                                                         |
+| Site-wide discovery files                                      | `public/robots.txt`, `public/og-default.png` (static). `sitemap.xml` and `llms.txt` are generated at build time from `src/seo/routes.ts` + `src/seo/siteConfig.ts` — edit the routes table, not the output files.                                                                    |
+| PWA manifest / service-worker config                           | `vite.config.ts` (`pwaPlugin()`); `public/` (icons generated from `public/favicon.svg` via `make icons`). See "Service-worker rollout invariants" below.                                                                                                                             |
+| ESLint rules, TS config                                        | `eslint.config.js`, `tsconfig.app.json`                                                                                                                                                                                                                                              |
+| New `make` target                                              | `Makefile` + the README Usage table + `ci.yml`                                                                                                                                                                                                                                       |
+| Changelog fragment (user-affecting PRs)                        | `.changes/unreleased/<unix-ts>-<slug>.md`                                                                                                                                                                                                                                            |
+| Release / changelog tooling                                    | `scripts/release/*.mjs` (collator, extractor, PR check)                                                                                                                                                                                                                              |
+| New user-facing string                                         | `src/i18n/locales/en/<namespace>.ts` (canonical) + `src/i18n/locales/sv/<namespace>.ts` (Swedish). See "Translations" below.                                                                                                                                                         |
+| New language                                                   | `src/i18n/locale.ts` (`Lang` union, `bcp47`, `detectInitialLanguage`), `src/i18n/locales/<code>/` directory (one file per namespace, plus `index.ts`), `src/data/constants.ts` (`SUPPORTED_LANGUAGES`), `src/components/LanguagePicker.tsx` (flag button). See "Translations" below. |
+| New end-to-end test (common flow)                              | `e2e/specs/<name>.spec.ts` — exercises a user journey through the `/preview/` build. See "End-to-end tests" below.                                                                                                                                                                   |
+| Regression test for a shipped bug                              | `e2e/regression/<slug>.spec.ts` — confirms the bug then locks in the fix. See `e2e/regression/README.md`.                                                                                                                                                                            |
 
 ## Conventions
 
@@ -379,7 +380,7 @@ them.
 - **No hardcoded user-facing strings.** Every visible string —
   button labels, `placeholder`, `aria-label`, `title`, modal titles,
   toast messages — goes through `t("section.key")` from
-  `useT()`. The two catalogs in `src/i18n/locales/{en,sv}.ts` are
+  `useT()`. The two catalogs under `src/i18n/locales/{en,sv}/` are
   the source of truth; the `Catalog` type widens English so Swedish
   is enforced at compile time. See the "Translations" section below
   for the full workflow. Date / month rendering goes through the
@@ -439,7 +440,7 @@ Conventions:
   re-clicking through the auth screen.
 - Prefer accessible-name selectors (`getByRole`, `getByLabel`) over
   CSS classes or `data-testid` attributes — labels are already
-  in `src/i18n/locales/en.ts` and the suite stays in step with i18n
+  in `src/i18n/locales/en/` and the suite stays in step with i18n
   changes automatically.
 - File stems are `*.spec.ts` (Playwright convention), distinct from
   `*_test.ts` (Vitest). Don't mix the two suites in one folder.
@@ -465,20 +466,20 @@ that aren't in the template comments:
 
 ## Documentation sync points
 
-| If you change …                                                                            | Also update …                                                                                                                 |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `package.json` scripts                                                                     | `Makefile`, `README.md` Usage section                                                                                         |
-| `Makefile` targets                                                                         | `README.md` Usage section, `ci.yml`                                                                                           |
-| `src/` top-level layout                                                                    | `README.md`, this file                                                                                                        |
-| Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` — update the row in the same PR. See "Resolving user vocabulary" above.                                  |
-| Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                            |
-| Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                        |
-| CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below         |
-| `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`               |
-| Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                        |
-| `pwaPlugin()` manifest / scope / `cacheId` semantics                                       | This file (the "Service-worker rollout invariants" section), the inline comments on `pwaPlugin()` in `vite.config.ts`         |
-| `src/i18n/locales/en.ts` shape                                                             | `src/i18n/locales/sv.ts` (compile-time enforced via the `Catalog` type) + `tests/i18n_catalog_test.ts` (runtime parity check) |
-| Custom-theme reach (selectors reading `--radius-*` / `--border-width` / `--density-row-*`) | `src/styles.css` (the rule + comment block at the end) and the "Theming and tokens" bullet in this file                       |
+| If you change …                                                                            | Also update …                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `package.json` scripts                                                                     | `Makefile`, `README.md` Usage section                                                                                                                                                                                          |
+| `Makefile` targets                                                                         | `README.md` Usage section, `ci.yml`                                                                                                                                                                                            |
+| `src/` top-level layout                                                                    | `README.md`, this file                                                                                                                                                                                                         |
+| Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` — update the row in the same PR. See "Resolving user vocabulary" above.                                                                                                                                   |
+| Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                                                                                                                             |
+| Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                                                                                                                         |
+| CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below                                                                                                          |
+| `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`                                                                                                                |
+| Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                                                                                                                         |
+| `pwaPlugin()` manifest / scope / `cacheId` semantics                                       | This file (the "Service-worker rollout invariants" section), the inline comments on `pwaPlugin()` in `vite.config.ts`                                                                                                          |
+| `src/i18n/locales/en/<namespace>.ts` shape                                                 | Matching `src/i18n/locales/sv/<namespace>.ts` (compile-time enforced via the per-namespace `<Ns>Catalog` type, plus the top-level `Catalog` annotation on `sv/index.ts`) + `tests/i18n_catalog_test.ts` (runtime parity check) |
+| Custom-theme reach (selectors reading `--radius-*` / `--border-width` / `--density-row-*`) | `src/styles.css` (the rule + comment block at the end) and the "Theming and tokens" bullet in this file                                                                                                                        |
 
 ## Translations
 
@@ -515,14 +516,18 @@ export function MyComponent() {
 
 ### Adding a new string
 
-1. Add the key to `src/i18n/locales/en.ts` under the most specific
-   existing group (`common`, `settings`, `sheet`, `modal`, etc.).
-   Group new top-level keys by component / feature area, not by
-   visual grouping.
-2. Add the same key to `src/i18n/locales/sv.ts` with the Swedish
-   translation. The `Catalog` type derived from `en.ts` makes
-   `sv.ts` a compile error until you do — `make typecheck` will
-   surface the missing key.
+1. Pick the namespace file under `src/i18n/locales/en/` matching the
+   most specific existing group (`common.ts`, `settings.ts`,
+   `sheet.ts`, `budget.ts`, `modal.ts`, etc.) and add the key there.
+   For a brand-new top-level group, create `src/i18n/locales/en/<name>.ts`
+   (model on an existing namespace file) and register it in
+   `src/i18n/locales/en/index.ts`. Group new top-level keys by
+   component / feature area, not by visual grouping.
+2. Add the same key to the matching `src/i18n/locales/sv/<namespace>.ts`
+   with the Swedish translation. The per-namespace `<Ns>Catalog` type
+   makes the Swedish file a compile error until you do — `make
+typecheck` surfaces the missing key right at the namespace file
+   instead of at the top of the catalog.
 3. Replace the literal in the component with `t("section.key")`.
    Capture `t` once at the top of the component: `const t = useT();`.
 4. The `tests/i18n_catalog_test.ts` parity check is the runtime
@@ -538,9 +543,13 @@ export function MyComponent() {
 2. Mirror the code in `src/data/constants.ts` (`SUPPORTED_LANGUAGES`);
    the validator at `src/data/validate.ts` picks it up via the
    constant.
-3. Create `src/i18n/locales/<code>.ts` exporting an object typed as
-   `Catalog` — TypeScript will then fail the build until every leaf
-   is translated.
+3. Create `src/i18n/locales/<code>/` with one file per namespace
+   (mirror the structure of `src/i18n/locales/en/` file-for-file)
+   plus an `index.ts` composing them and annotated `: Catalog`.
+   Each per-namespace file imports its English counterpart's
+   `<Ns>Catalog` type. TypeScript will fail the build until every
+   leaf is translated, and the per-namespace types localise each
+   error to the file you're editing.
 4. Add a flag SVG + button to `src/components/LanguagePicker.tsx`.
    Inline SVG, not emoji (`🇬🇧`/`🇸🇪`) — the One Dark / One Light
    aesthetic depends on deterministic rendering across OSes, and

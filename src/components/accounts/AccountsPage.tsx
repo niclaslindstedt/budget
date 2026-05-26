@@ -305,7 +305,7 @@ export function AccountsPage({
                   <th
                     scope="col"
                     className="account-action-cell w-32 px-2 py-1.5"
-                    aria-label={t("sheet.rowActions")}
+                    aria-label={t("budget.rowActions")}
                   >
                     <span className="flex items-center justify-center gap-1.5 md:gap-2">
                       <Wrench
@@ -315,7 +315,7 @@ export function AccountsPage({
                         focusable={false}
                       />
                       <span className="hidden md:inline">
-                        {t("sheet.actions")}
+                        {t("budget.actions")}
                       </span>
                     </span>
                   </th>
@@ -457,7 +457,7 @@ export function AccountsPage({
                   <th
                     scope="col"
                     className="transfer-action-cell w-16 px-2 py-1.5"
-                    aria-label={t("sheet.rowActions")}
+                    aria-label={t("budget.rowActions")}
                   >
                     <span className="flex items-center justify-center gap-1.5 md:gap-2">
                       <Wrench
@@ -467,7 +467,7 @@ export function AccountsPage({
                         focusable={false}
                       />
                       <span className="hidden md:inline">
-                        {t("sheet.actions")}
+                        {t("budget.actions")}
                       </span>
                     </span>
                   </th>
