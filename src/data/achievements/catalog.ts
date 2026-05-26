@@ -15,6 +15,7 @@ import {
   Cloud,
   Code2,
   Columns3,
+  Combine,
   CopyCheck,
   Download,
   Eye,
@@ -579,6 +580,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       predicate: (prev, next) =>
         !hasCollapsedTransferPair(prev) && hasCollapsedTransferPair(next),
     },
+  },
+  {
+    id: "doppelganger",
+    tier: "pro",
+    glyph: Combine,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
   },
   {
     id: "cleanSplit",

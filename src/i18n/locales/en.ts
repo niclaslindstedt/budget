@@ -774,6 +774,7 @@ export const en = {
     hideEmptyMonths: "Hide empty months",
     editSheet: "Edit sheet",
     viewBudget: "Viewing mode",
+    findConflicts: "Find conflicts",
     moreActions: "Sheet actions",
     moreActionsAria: "Sheet actions for {name}",
     viewerEmpty: "No entries to display.",
@@ -1254,6 +1255,29 @@ export const en = {
     commit: "Apply renames",
     commitCountOne: "Apply 1 rename",
     commitCountOther: "Apply {n} renames",
+  },
+
+  conflicts: {
+    title: "Find conflicts",
+    intro:
+      "Same-day pairs in the same category with amounts within 5% of each other. Smaller sums and the Food category are skipped.",
+    minAmountLabel: "Minimum amount",
+    minAmountHint: "Hide pairs smaller than this.",
+    empty: "No conflicts found.",
+    emptyHint: "Lower the minimum amount to widen the search.",
+    foodExcludedHint: "Food-category entries are excluded from this scan.",
+    winnerBadge: "keep",
+    historyBadge: "bank",
+    untypedLabel: "(no type)",
+    uncategorizedLabel: "(no category)",
+    merge: "Merge",
+    mergeAria: "Merge {n} duplicates",
+    mergedOne: "Merged 1 duplicate.",
+    mergedOther: "Merged {n} duplicates.",
+    twoHistoryWarning:
+      "Two bank records on the same day — likely a real double charge. Review in the history view.",
+    countOne: "{n} conflict",
+    countOther: "{n} conflicts",
   },
 
   matchRule: {
@@ -2139,6 +2163,12 @@ export const en = {
       twoSidedCoin: {
         name: "Two-Sided Coin",
         condition: "Collapse a mirror pair into a single transfer.",
+      },
+      doppelganger: {
+        name: "Doppelgänger",
+        condition: "Merge a duplicate pair from the Find conflicts modal.",
+        learnMore:
+          "Sheet title ⋯ menu → Find conflicts. Scans the active budget for same-day, same-category, near-equal pairs and folds them into one row — the bank record wins when there is one, otherwise the row with the richer label keeps its place.",
       },
       cleanSplit: {
         name: "Clean Split",
