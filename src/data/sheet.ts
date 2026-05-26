@@ -711,6 +711,13 @@ export function resolveEntryLabels(
   types: readonly EntryType[] = [],
 ): {
   description: string;
+  // The description before the company/type/bank-text fallbacks kick
+  // in — i.e. only the user override, the matching rule, or the
+  // merchant hint. Editors that pre-fill a description input read
+  // this so an entry with only a type set doesn't seed the input
+  // with the type's name (the type-name fallback is a render-time
+  // convenience for the budget tables, not a real user description).
+  userDescription: string | null;
   typeId: string | null;
   companyId: string | null;
 } {
@@ -751,7 +758,7 @@ export function resolveEntryLabels(
     if (type && type.name.trim() !== "") description = type.name;
   }
   if (description === null) description = entry.description;
-  return { description, typeId, companyId };
+  return { description, userDescription, typeId, companyId };
 }
 
 // True when this row should be treated as an inter-account transfer
