@@ -1269,8 +1269,6 @@ export const sv: Catalog = {
     mergeAria: "Slå ihop {n} dubbletter",
     mergedOne: "1 dubblett sammanslagen.",
     mergedOther: "{n} dubbletter sammanslagna.",
-    twoHistoryWarning:
-      "Två bankposter samma dag — troligen en riktig dubbeldebitering. Granska i historikvyn.",
     countOne: "{n} dubblett",
     countOther: "{n} dubbletter",
   },

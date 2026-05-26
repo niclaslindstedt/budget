@@ -390,18 +390,10 @@ function ConflictCard({
         })}
       </ul>
 
-      <footer className="flex items-center gap-2 border-t border-line bg-surface-3 px-3 py-2">
-        {conflict.warning === "twoHistory" ? (
-          <p className="flex-1 text-xs text-danger">
-            {t("conflicts.twoHistoryWarning")}
-          </p>
-        ) : (
-          <span className="flex-1" />
-        )}
+      <footer className="flex items-center justify-end border-t border-line bg-surface-3 px-3 py-2">
         <Button
           variant="primary"
           onClick={() => onMerge(conflict)}
-          disabled={conflict.warning === "twoHistory"}
           aria-label={t("conflicts.mergeAria", { n: conflict.rows.length })}
         >
           <span className="inline-flex items-center gap-1">

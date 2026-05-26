@@ -1274,8 +1274,6 @@ export const en = {
     mergeAria: "Merge {n} duplicates",
     mergedOne: "Merged 1 duplicate.",
     mergedOther: "Merged {n} duplicates.",
-    twoHistoryWarning:
-      "Two bank records on the same day — likely a real double charge. Review in the history view.",
     countOne: "{n} conflict",
     countOther: "{n} conflicts",
   },
