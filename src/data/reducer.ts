@@ -332,6 +332,10 @@ export type Action =
         userTypeId?: string | null;
         userCompanyId?: string | null;
         isTransfer?: boolean;
+        // `true` stamps the "no company applies" flag so metadata
+        // mode stops surfacing the entry over a missing company.
+        // `false` clears it. `undefined` leaves the flag untouched.
+        noCompany?: boolean;
       };
     }
   | {

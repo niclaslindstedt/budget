@@ -1085,6 +1085,8 @@ export const sv: Catalog = {
     typeLabel: "Typ",
     companyLabel: "Företag",
     companyHint: "Tagga företaget som tog emot pengarna.",
+    noCompanyLabel: "Inget företag behövs",
+    noCompanyHint: "Denna post dyker inte upp här igen för att företag saknas.",
     descriptionLabel: "Beskrivning",
     descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
     descriptionHint: "Tomt fält behåller bankens text.",

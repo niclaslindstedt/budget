@@ -51,12 +51,18 @@ export function reduceHistory(
           if (action.patch.isTransfer) next.isTransfer = true;
           else delete next.isTransfer;
         }
+        if (action.patch.noCompany !== undefined) {
+          // Only persist `true` — absent means "company applies".
+          if (action.patch.noCompany) next.noCompany = true;
+          else delete next.noCompany;
+        }
         // Bail if the patch is a no-op so React skips a wasted render.
         if (
           next.userDescription === prev.userDescription &&
           next.userTypeId === prev.userTypeId &&
           next.userCompanyId === prev.userCompanyId &&
-          next.isTransfer === prev.isTransfer
+          next.isTransfer === prev.isTransfer &&
+          next.noCompany === prev.noCompany
         ) {
           return prev;
         }

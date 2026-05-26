@@ -162,6 +162,7 @@ type Props = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      noCompany?: boolean;
     },
   ) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
