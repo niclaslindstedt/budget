@@ -25,6 +25,7 @@ import {
   applyMatchRuleOnceToHistory,
   reapplyPatternsToAllSheets,
 } from "./pattern-apply";
+import { candidateFromRow, resolveCandidateColumns } from "./row-candidate";
 import { findRuleDrivenCandidates } from "./reconciliation";
 import { type HintRecording, recordMerchantHints } from "./merchant-hints";
 import {
@@ -627,34 +628,23 @@ function applyPatternsAfterCellEdit(
   rules: readonly MatchRule[],
 ): AccountBudget {
   if (rules.length === 0) return next;
-  const descId = findColumnByType(next.columns, "description")?.id;
-  const amountId = findColumnByType(next.columns, "amount")?.id;
-  if (!descId && !amountId) return next;
+  const cols = resolveCandidateColumns(next.columns);
+  if (cols.descId === undefined && cols.amountId === undefined) return next;
   const prevById = new Map<string, Row>();
   for (const r of prev.rows) prevById.set(r.id, r);
   let changed = false;
   const nextRows = next.rows.map((row) => {
     if (row.typeIdLocked) return row;
-    // Synthesized rows (transfers, history) never persist here, but
-    // a user-authored row that's still empty has nothing to match.
-    if (descId === undefined) return row;
-    const desc = row.cells[descId];
-    if (typeof desc !== "string" || desc.trim() === "") return row;
+    const candidate = candidateFromRow(row, cols);
+    if (!candidate) return row;
     const before = prevById.get(row.id);
-    const descChanged = !before || before.cells[descId] !== row.cells[descId];
+    const descChanged =
+      cols.descId !== undefined &&
+      (!before || before.cells[cols.descId] !== row.cells[cols.descId]);
     const amountChanged =
-      amountId !== undefined &&
-      (!before || before.cells[amountId] !== row.cells[amountId]);
+      cols.amountId !== undefined &&
+      (!before || before.cells[cols.amountId] !== row.cells[cols.amountId]);
     if (!descChanged && !amountChanged) return row;
-    const amount =
-      amountId !== undefined && typeof row.cells[amountId] === "number"
-        ? (row.cells[amountId] as number)
-        : 0;
-    const candidate = {
-      description: desc,
-      amount,
-      isTransfer: row.isTransfer === true,
-    };
     const rule = findMatchingRuleForCandidate(rules, candidate);
     if (!rule || !rule.typeId) return row;
     if (rule.typeId === row.typeId) return row;
