@@ -58,12 +58,13 @@
   --app-header-h: 53px;
 
   /* Height of the sticky month-name h3 (text-xs line-height 1rem + pt-1
-     + pb-2). The bottom padding intentionally absorbs what used to be a
-     margin so the page-bg covers all the way down to where the column
-     headers stick — otherwise scrolled rows show through the gap.
-     Column headers stick directly below the month header at
-     app-header-h + month-header-h. */
-  --month-header-h: 28px;
+     + pb-1). Padding is symmetric so the title text sits visually
+     centered in the dark band between the page header and the
+     column-header thead. The h3's bg-page-bg covers down to where
+     the column headers stick — otherwise scrolled rows show through
+     the gap. Column headers stick directly below the month header
+     at app-header-h + month-header-h. */
+  --month-header-h: 24px;
 
   /* Height of the sticky column-header thead (ColumnIcon 16px + py-2
      × 2 + the 1px border-b). Pinned just below the month header so the
@@ -592,7 +593,7 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
 @media (min-width: 720px) {
   :root {
     --app-header-h: 69px;
-    --month-header-h: 36px;
+    --month-header-h: 32px;
   }
 }
 
