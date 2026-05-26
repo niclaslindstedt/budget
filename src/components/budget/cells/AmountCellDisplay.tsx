@@ -24,7 +24,7 @@ export function AmountCellDisplay({ value, settings, formula }: Props) {
   const abs = value !== null ? Math.abs(value) : null;
   const body = abs !== null ? formatNumber(abs, settings) : "";
   return (
-    <td className={CELL_BASE} aria-readonly="true">
+    <td className={`${CELL_BASE} cursor-not-allowed`} aria-readonly="true">
       <div className="relative flex items-stretch">
         {/* The +/- glyph stays muted on read-only cells — a colour-matched
            sign reads as a tappable button next to the editable AmountCell,
