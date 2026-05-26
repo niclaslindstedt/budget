@@ -60,22 +60,24 @@ function TransferRowImpl({
       {...touchHandlers}
     >
       <td
-        className="w-14 pr-1 pl-2 py-2 align-middle font-mono text-xs whitespace-nowrap md:w-20 md:px-2"
+        className="w-14 pr-1 pl-2 py-2 align-middle font-mono text-xs whitespace-nowrap md:w-20 md:px-2.5"
         style={colorStyle}
       >
         {formatShortDate(transfer.date, settings.shortDateFormat, lang)}
       </td>
-      <td className="pr-2 pl-1 py-2 align-middle md:px-2">
+      <td className="pr-2 pl-1 py-2 align-middle font-mono md:px-2.5">
         <span className="block text-fg-bright">{transfer.description}</span>
         {category && (
           <span
-            className="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs"
+            className="mt-0.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium"
             style={{
-              color: category.color,
               backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
+              borderColor: `color-mix(in srgb, ${category.color} 55%, transparent)`,
+              color: category.color,
             }}
           >
-            {displayCategoryName(category, t)}
+            <CategoryIconGlyph name={category.icon} size={12} />
+            <span className="truncate">{displayCategoryName(category, t)}</span>
           </span>
         )}
         {/* On mobile the dedicated transfer column is hidden — fold the
@@ -98,7 +100,7 @@ function TransferRowImpl({
           </span>
         </span>
       </td>
-      <td className="hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
+      <td className="hidden px-2.5 py-2 align-middle font-mono text-xs text-muted md:table-cell">
         <span className="inline-flex items-center gap-1.5">
           <AccountChip account={from} />
           <ArrowRight
@@ -110,7 +112,7 @@ function TransferRowImpl({
           <AccountChip account={to} />
         </span>
       </td>
-      <td className="px-2 py-2 text-right align-middle font-mono tabular-nums whitespace-nowrap text-fg-bright">
+      <td className="px-2.5 py-2 text-right align-middle font-mono tabular-nums whitespace-nowrap text-fg-bright">
         {formatBalance(transfer.amount, settings)}
       </td>
       <td className="transfer-action-cell w-16 p-0 align-middle">
@@ -137,13 +139,30 @@ function TransferRowImpl({
 export const TransferRow = memo(TransferRowImpl);
 
 // Pill-shaped account label used in the desktop transfer column.
-// Internal to this file because no other surface needs the chip in
-// the same shape.
+// Mirrors the budget table's readonly type pill (rounded-full, color-
+// mixed bg + border, font-medium label, inline glyph) so accounts and
+// budgets share a single visual vocabulary for "tagged" identifiers.
 function AccountChip({ account }: { account: Account | null }) {
   const t = useT();
+  const color = account?.color;
   return (
-    <span className="inline-flex items-center gap-1 rounded border border-line bg-surface-2 px-1.5 py-0.5 text-xs text-fg-bright">
-      <AccountGlyph account={account} size={10} />
+    <span
+      className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium"
+      style={{
+        backgroundColor: color
+          ? `color-mix(in srgb, ${color} 18%, transparent)`
+          : undefined,
+        borderColor: color
+          ? `color-mix(in srgb, ${color} 55%, transparent)`
+          : "var(--line)",
+        color: color ?? "var(--fg-bright)",
+      }}
+    >
+      {account?.glyph ? (
+        <CategoryIconGlyph name={account.glyph} size={12} />
+      ) : (
+        <Wallet size={12} aria-hidden focusable={false} />
+      )}
       <span className="truncate">
         {account?.name ?? t("accountsSheet.unknown")}
       </span>

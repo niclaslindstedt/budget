@@ -226,16 +226,16 @@ export function AccountsPage({
             {t("accountsSheet.title")}
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="accounts-table w-full border-collapse text-sm">
+            <table className="accounts-table w-full border-collapse text-sm md:text-[13px]">
               <thead>
-                <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
+                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
                   <th
                     scope="col"
-                    className="w-10 px-2 py-1.5 text-center"
+                    className="w-10 px-2.5 py-2 text-center"
                     aria-label={t("accountsSheet.name")}
                   >
                     <Tag
-                      size={14}
+                      size={16}
                       className="inline-block shrink-0 text-accent"
                       aria-hidden
                       focusable={false}
@@ -243,7 +243,7 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2 py-1.5 text-left"
+                    className="px-2.5 py-2 text-left"
                     aria-label={t("accountsSheet.name")}
                   >
                     <span className="hidden md:inline">
@@ -252,12 +252,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="account-bank-cell hidden px-2 py-1.5 text-left md:table-cell"
+                    className="account-bank-cell hidden px-2.5 py-2 text-left md:table-cell"
                     aria-label={t("accountsSheet.bank")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <Landmark
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -269,12 +269,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2 py-1.5 text-right"
+                    className="px-2.5 py-2 text-right"
                     aria-label={t("accountsSheet.balance")}
                   >
                     <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
                       <Wallet
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -286,13 +286,13 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="w-20 px-2 py-1.5 text-right"
+                    className="w-20 px-2.5 py-2 text-right"
                     aria-label={t("accountsSheet.historyCountHeader")}
                     title={t("accountsSheet.historyCountTitle")}
                   >
                     <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
                       <Receipt
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -304,12 +304,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="account-action-cell w-32 px-2 py-1.5"
+                    className="account-action-cell w-32 px-2.5 py-2"
                     aria-label={t("budget.rowActions")}
                   >
                     <span className="flex items-center justify-center gap-1.5 md:gap-2">
                       <Wrench
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -368,7 +368,7 @@ export function AccountsPage({
                       onClick={onCreateAccount}
                       className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
                     >
-                      <Plus size={14} aria-hidden focusable={false} />
+                      <Plus size={16} aria-hidden focusable={false} />
                       {t("accountsSheet.addAccount")}
                     </button>
                   </td>
@@ -383,17 +383,17 @@ export function AccountsPage({
             {t("accountsSheet.transfers")}
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="transfers-table w-full border-collapse text-sm">
+            <table className="transfers-table w-full border-collapse text-sm md:text-[13px]">
               <thead className="sticky top-[var(--app-header-h)] z-[15] bg-surface-3">
-                <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
+                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
                   <th
                     scope="col"
-                    className="w-14 pr-1 pl-2 py-1.5 text-left md:w-20 md:px-2"
+                    className="w-14 pr-1 pl-2 py-2 text-left md:w-20 md:px-2.5"
                     aria-label={t("accountsSheet.date")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <Calendar
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -405,12 +405,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="pr-2 pl-1 py-1.5 text-left md:px-2"
+                    className="pr-2 pl-1 py-2 text-left md:px-2.5"
                     aria-label={t("accountsSheet.description")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <AlignLeft
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -422,12 +422,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-2 py-1.5 text-left md:table-cell"
+                    className="hidden px-2.5 py-2 text-left md:table-cell"
                     aria-label={t("accountsSheet.transfer")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ArrowLeftRight
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -439,12 +439,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2 py-1.5 text-right"
+                    className="px-2.5 py-2 text-right"
                     aria-label={t("accountsSheet.amount")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <DollarSign
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -456,12 +456,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="transfer-action-cell w-16 px-2 py-1.5"
+                    className="transfer-action-cell w-16 px-2.5 py-2"
                     aria-label={t("budget.rowActions")}
                   >
                     <span className="flex items-center justify-center gap-1.5 md:gap-2">
                       <Wrench
-                        size={14}
+                        size={16}
                         className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
@@ -542,7 +542,7 @@ export function AccountsPage({
                       }
                       className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <ArrowLeftRight size={14} aria-hidden focusable={false} />
+                      <ArrowLeftRight size={16} aria-hidden focusable={false} />
                       {t("accountsSheet.newTransfer")}
                     </button>
                   </td>

@@ -66,7 +66,7 @@ function AccountRowImpl({
       data-swipe-handled
       {...touchHandlers}
     >
-      <td className="w-10 px-2 py-2 align-middle">
+      <td className="w-10 px-2.5 py-2 align-middle">
         <span
           aria-hidden
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
@@ -87,29 +87,29 @@ function AccountRowImpl({
           )}
         </span>
       </td>
-      <td className="px-2 py-2 align-middle">
-        <span className="block font-bold text-fg-bright">{account.name}</span>
+      <td className="px-2.5 py-2 align-middle">
+        <span className="block font-mono font-bold text-fg-bright">
+          {account.name}
+        </span>
         {account.description && (
-          <span className="block text-xs text-muted">
+          <span className="block font-mono text-xs text-muted">
             {account.description}
           </span>
         )}
       </td>
-      <td className="account-bank-cell hidden px-2 py-2 align-middle text-xs text-muted md:table-cell">
+      <td className="account-bank-cell hidden px-2.5 py-2 align-middle font-mono text-xs text-muted md:table-cell">
         {account.bank ? <span className="block">{account.bank}</span> : null}
         {account.clearing || account.accountNumber ? (
-          <span className="block font-mono text-flag">
+          <span className="block text-flag">
             {[account.clearing, account.accountNumber]
               .filter(Boolean)
               .join(" · ")}
           </span>
         ) : null}
-        {account.iban && (
-          <span className="block font-mono">{account.iban}</span>
-        )}
+        {account.iban && <span className="block">{account.iban}</span>}
       </td>
       <td
-        className={`px-2 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
+        className={`px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
           balance < 0 ? "text-negative" : "text-positive"
         }`}
       >
@@ -134,7 +134,7 @@ function AccountRowImpl({
           </span>
         )}
       </td>
-      <td className="w-20 px-2 py-2 text-right align-middle">
+      <td className="w-20 px-2.5 py-2 text-right align-middle">
         <span
           title={
             historyCount === 0
