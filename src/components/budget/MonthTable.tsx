@@ -353,6 +353,16 @@ function MonthTableImpl({
           {
             "--amount-col-ch": amountChars,
             "--balance-col-ch": balanceChars,
+            // Mobile amount column buffer. Currency-after swaps the
+            // input's right padding from px-2.5 (0.625rem) to pr-8
+            // (2rem) so the currency overlay has room at right-2;
+            // widen the buffer to match. Otherwise the default
+            // 2.125rem from styles.css mirrors the mirror's natural
+            // pl-6 + px-2.5_right so the column hugs its text.
+            "--amount-col-buffer":
+              settings.showCurrency && settings.currencyPosition === "after"
+                ? "3rem"
+                : undefined,
             // Mobile balance column buffer. Currency-before renders the
             // symbol absolute-positioned at the cell's left edge while
             // the number stays right-aligned, so a tight column collapses

@@ -846,10 +846,14 @@ body {
       /* Amount and balance widths are driven by --amount-col-ch /
          --balance-col-ch, set per-sheet from the longest formatted value
          across every month so each month aligns on the same column
-         widths instead of sizing independently. The amount column needs
-         a 3rem buffer to cover the +/- tap-toggle glyph (w-6 = 1.5rem)
-         plus the body's right-side padding for the currency overlay
-         (pr-8 = 2rem when currency-after). The balance column has no
+         widths instead of sizing independently. The amount column's
+         buffer covers the +/- tap-toggle glyph (w-6 = 1.5rem) on the
+         left plus the breathing room on the right; when currency-after
+         is on, the input swaps its right padding to pr-8 (2rem) for the
+         currency overlay so the buffer widens to 3rem. The 2.125rem
+         default matches the mirror's natural padding (pl-6 +
+         px-2.5_right) so the column hugs the rendered text instead of
+         leaving an unused gap on the right. The balance column has no
          +/- glyph on mobile (sign is conveyed by colour) and no
          tap-toggle, so its buffer drops to 1.5rem — just enough for
          pr-8 net of the currency token already counted in the chars
@@ -859,7 +863,12 @@ body {
          description column gets as much of the row as possible. */
       grid-template-columns:
         40px minmax(0, 1fr) 40px
-        minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
+        minmax(
+          64px,
+          calc(
+            var(--amount-col-ch, 7) * 1ch + var(--amount-col-buffer, 2.125rem)
+          )
+        )
         minmax(
           40px,
           calc(
@@ -876,7 +885,12 @@ body {
     .budget-table.is-selecting > tbody > tr {
       grid-template-columns:
         30px 40px minmax(0, 1fr) 40px
-        minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 3rem))
+        minmax(
+          64px,
+          calc(
+            var(--amount-col-ch, 7) * 1ch + var(--amount-col-buffer, 2.125rem)
+          )
+        )
         minmax(
           40px,
           calc(
