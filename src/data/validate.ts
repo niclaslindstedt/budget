@@ -512,9 +512,11 @@ function validateHistoryEntry(
       return fail(`${path}.userDescription`, "expected a string");
     // Empty / whitespace-only is normalised to "no override" so a
     // returning user can clear the field through the modal without the
-    // synthesized row falling back to an empty label.
-    const trimmed = raw.userDescription.trim();
-    if (trimmed !== "") entry.userDescription = trimmed;
+    // synthesized row falling back to an empty label. Non-empty values
+    // round-trip as-is so a trailing space the user typed survives a
+    // reload.
+    if (raw.userDescription.trim() !== "")
+      entry.userDescription = raw.userDescription;
   }
   if (raw.userTypeId !== undefined && raw.userTypeId !== null) {
     if (typeof raw.userTypeId !== "string" || raw.userTypeId === "")
