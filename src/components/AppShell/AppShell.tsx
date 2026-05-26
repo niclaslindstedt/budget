@@ -7,99 +7,99 @@ import {
   useState,
 } from "react";
 
-import { AccountModal, type AccountDraft } from "./accounts/AccountModal";
-import { ActionHistoryModal } from "./ActionHistoryModal";
-import { UpdateBalanceModal } from "./accounts/UpdateBalanceModal";
-import { AccountsPage } from "./accounts/AccountsPage";
-import { CutAccountHistoryModal } from "./accounts/CutAccountHistoryModal";
-import { ApplySeriesEditDialog } from "./budget/ApplySeriesEditDialog";
-import { DeleteRecurringDialog } from "./budget/DeleteRecurringDialog";
-import { AppLoading } from "./AppLoading";
-import { ChangelogModal } from "./ChangelogModal";
-import { BottomBar } from "./BottomBar";
-import { BulkEditModal, type BulkPatch } from "./budget/BulkEditModal";
-import { SheetModal, type SheetDraft } from "./SheetModal";
-import { TransferSearchModal } from "./budget/TransferSearchModal";
+import { AccountModal, type AccountDraft } from "../accounts/AccountModal";
+import { ActionHistoryModal } from "../ActionHistoryModal";
+import { UpdateBalanceModal } from "../accounts/UpdateBalanceModal";
+import { AccountsPage } from "../accounts/AccountsPage";
+import { CutAccountHistoryModal } from "../accounts/CutAccountHistoryModal";
+import { ApplySeriesEditDialog } from "../budget/ApplySeriesEditDialog";
+import { DeleteRecurringDialog } from "../budget/DeleteRecurringDialog";
+import { AppLoading } from "../AppLoading";
+import { ChangelogModal } from "../ChangelogModal";
+import { BottomBar } from "../BottomBar";
+import { BulkEditModal, type BulkPatch } from "../budget/BulkEditModal";
+import { SheetModal, type SheetDraft } from "../SheetModal";
+import { TransferSearchModal } from "../budget/TransferSearchModal";
 import {
   TransferModal,
   type TransferDraft,
   type TransferModalRequest,
-} from "./accounts/TransferModal";
+} from "../accounts/TransferModal";
 import {
   ComplexEntryModal,
   type ComplexEntryDraft,
   type ComplexEntrySeed,
-} from "./budget/ComplexEntryModal";
-import { ConfirmDialog, type ConfirmAction } from "./ConfirmDialog";
+} from "../budget/ComplexEntryModal";
+import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import {
   EditEntryModal,
   type EditPatch,
   type EditScope,
   type HistoryMatchPreview,
   type HistoryPromotePrefill,
-} from "./budget/EditEntryModal";
+} from "../budget/EditEntryModal";
 import {
   EditRowModal,
   type EditRowPatch,
   type EditRowScope,
-} from "./budget/EditRowModal";
+} from "../budget/EditRowModal";
 import {
   SplitEntryModal,
   type SplitSubmission,
-} from "./budget/SplitEntryModal";
-import { DownloadModal, type DownloadConfig } from "./DownloadModal";
-import { HistoryEntryEditModal } from "./accounts/HistoryEntryEditModal";
-import { HistoryModal } from "./accounts/HistoryModal";
-import { ImportHistoryModal } from "./accounts/ImportHistoryModal";
+} from "../budget/SplitEntryModal";
+import { DownloadModal, type DownloadConfig } from "../DownloadModal";
+import { HistoryEntryEditModal } from "../accounts/HistoryEntryEditModal";
+import { HistoryModal } from "../accounts/HistoryModal";
+import { ImportHistoryModal } from "../accounts/ImportHistoryModal";
 import {
   ReconciliationModal,
   type ReconciliationApply,
-} from "./accounts/ReconciliationModal";
+} from "../accounts/ReconciliationModal";
 import {
   RenamePredictorModal,
   type RenameDecision,
-} from "./accounts/RenamePredictorModal";
-import { predictRenames, type RenameSuggestion } from "../data/rename-patterns";
+} from "../accounts/RenamePredictorModal";
+import { predictRenames } from "../../data/rename-patterns";
 import {
   MatchRuleModal,
   type MatchRuleDraft,
   type MatchRuleSeed,
-} from "./budget/MatchRuleModal";
-import { MoveCopyModal } from "./budget/MoveCopyModal";
-import { AchievementUnlockModal } from "./AchievementUnlockModal";
-import { AchievementsModal } from "./AchievementsModal";
-import { HeaderMenu } from "./HeaderMenu";
-import { HeaderStar } from "./HeaderStar";
-import { PullToRefreshIndicator } from "./PullToRefreshIndicator";
-import { SaveStateButton } from "./SaveStateButton";
-import { SettingsModal, type SettingsTabId } from "./SettingsModal";
-import { BudgetPage } from "./budget/BudgetPage";
+} from "../budget/MatchRuleModal";
+import { MoveCopyModal } from "../budget/MoveCopyModal";
+import { AchievementUnlockModal } from "../AchievementUnlockModal";
+import { AchievementsModal } from "../AchievementsModal";
+import { HeaderMenu } from "../HeaderMenu";
+import { HeaderStar } from "../HeaderStar";
+import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
+import { SaveStateButton } from "../SaveStateButton";
+import { SettingsModal, type SettingsTabId } from "../SettingsModal";
+import { BudgetPage } from "../budget/BudgetPage";
 import type {
   ConflictHistoryStamp,
   ConflictUserRowPatch,
-} from "./budget/FindConflictsModal";
-import { ConflictResolutionModal } from "./ConflictResolutionModal";
-import { ReconnectCloudModal } from "./ReconnectCloudModal";
-import { SyncDetailsModal } from "./SyncDetailsModal";
-import { SyncStatus } from "./SyncStatus";
+} from "../budget/FindConflictsModal";
+import { ConflictResolutionModal } from "../ConflictResolutionModal";
+import { ReconnectCloudModal } from "../ReconnectCloudModal";
+import { SyncDetailsModal } from "../SyncDetailsModal";
+import { SyncStatus } from "../SyncStatus";
 import {
   buildBudgetExportRows,
   CSV_MIME_TYPE,
   exportRowsToTable,
   rowsToCsv,
-} from "../data/budget-export";
+} from "../../data/budget-export";
 import {
   buildAccountsExport,
   JSON_MIME_TYPE,
   serializeAccountsExport,
-} from "../data/accounts-export";
-import { findMatchingRule, ruleMatchesEntry } from "../data/match-rules";
+} from "../../data/accounts-export";
+import { findMatchingRule, ruleMatchesEntry } from "../../data/match-rules";
 import {
   countRowsAffectedByReapply,
   reapplyPatternsToAllSheets,
-} from "../data/pattern-apply";
-import { allCategories, allTypes } from "../data/presets";
-import { buildSearchIndex, type SearchEntry } from "../data/search";
+} from "../../data/pattern-apply";
+import { allCategories, allTypes } from "../../data/presets";
+import { buildSearchIndex, type SearchEntry } from "../../data/search";
 import {
   accountBalance,
   createDefaultSheet,
@@ -109,15 +109,15 @@ import {
   isRowSavable,
   newId,
   userDataWithSavableRows,
-} from "../data/sheet";
-import { coverageDelta, coveredMonths } from "../data/coverage";
+} from "../../data/sheet";
+import { coverageDelta, coveredMonths } from "../../data/coverage";
 import {
   findCandidates,
   findOrphans,
   findRuleDrivenCandidates,
   type MatchCandidate,
   type OrphanRow,
-} from "../data/reconciliation";
+} from "../../data/reconciliation";
 import type {
   Account,
   AccountBudget,
@@ -136,38 +136,37 @@ import type {
   StoredUser,
   Transfer,
   UserData,
-} from "../data/types";
-import { normaliseDescription } from "../data/description-normaliser";
-import { RecurringCandidatesPanel } from "./budget/RecurringCandidatesPanel";
-import { TransferCollapseModal } from "./accounts/TransferCollapseModal";
-import type { RecurringCandidate } from "../data/recurring-detection";
+} from "../../data/types";
+import { normaliseDescription } from "../../data/description-normaliser";
+import { RecurringCandidatesPanel } from "../budget/RecurringCandidatesPanel";
+import { TransferCollapseModal } from "../accounts/TransferCollapseModal";
+import type { RecurringCandidate } from "../../data/recurring-detection";
 import {
   detectTransferCandidates,
   hasCollapsedHistory,
   type TransferCandidate,
-} from "../data/transfer-collapse";
+} from "../../data/transfer-collapse";
 import {
   type RecurrenceRule,
   shiftRuleStartToFuture,
-} from "../data/recurrence";
-import { reducer } from "../data/reducer";
+} from "../../data/recurrence";
+import { reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
   useAchievementWatcher,
-} from "../data/achievements";
-import type { StorageAdapter } from "../storage/adapter";
+} from "../../data/achievements";
+import type { StorageAdapter } from "../../storage/adapter";
 import {
   type BackendId,
   type EncryptionMode,
-} from "../storage/backend-preference";
-import {
-  mergeHistory,
-  type ParsedBankEntry,
-  type ParsedBankFile,
-} from "../storage/banks";
-import { useUserDataStorage } from "../storage/useUserDataStorage";
-import type { AccountsDownloadPrefs, BudgetDownloadPrefs } from "../data/types";
-import { bcp47, type Lang, type MessageKey, useT } from "../i18n";
+} from "../../storage/backend-preference";
+import { mergeHistory, type ParsedBankFile } from "../../storage/banks";
+import { useUserDataStorage } from "../../storage/useUserDataStorage";
+import type {
+  AccountsDownloadPrefs,
+  BudgetDownloadPrefs,
+} from "../../data/types";
+import { bcp47, type Lang, type MessageKey, useT } from "../../i18n";
 import {
   useChangelogAutoOpen,
   useEffectiveSettings,
@@ -179,97 +178,32 @@ import {
   useTheme,
   useToast,
   suppressScrollHide,
-} from "../hooks";
-import { writeLanguagePreference } from "../i18n/language-preference";
-import { todayIso } from "../utils/date";
+} from "../../hooks";
+import { writeLanguagePreference } from "../../i18n/language-preference";
+import { todayIso } from "../../utils/date";
 import {
   slugifyFilename,
   todayStamp,
   triggerDownload,
-} from "../utils/download";
-import { formatNumber, withCurrency } from "../utils/format";
-import { createLogger } from "../utils/logger";
-import { buildXlsx, XLSX_MIME_TYPE } from "../utils/xlsx";
-import { budgetExportFormats } from "../utils/xlsx-format";
+} from "../../utils/download";
+import { formatNumber, withCurrency } from "../../utils/format";
+import { createLogger } from "../../utils/logger";
+import { buildXlsx, XLSX_MIME_TYPE } from "../../utils/xlsx";
+import { budgetExportFormats } from "../../utils/xlsx-format";
+import type {
+  BulkDeletePrompt,
+  DeletePrompt,
+  EditPrompt,
+  EditRowPrompt,
+  MoveCopyPrompt,
+  PendingSeriesEdit,
+  ReconciliationState,
+  RecurringPromoteContext,
+  RenamePredictorState,
+  SplitPrompt,
+} from "./types";
 
 const log = createLogger("match-rules");
-
-type DeletePrompt = { kind: "delete"; row: Row };
-type EditPrompt = { kind: "edit"; row: Row };
-type EditRowPrompt = { kind: "edit-row"; row: Row };
-type SplitPrompt = { kind: "split"; row: Row };
-type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
-type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
-type PendingSeriesEdit = {
-  rowId: string;
-  columnId: string;
-  // Pre-snapshotted so the dialog renders without re-deriving from
-  // possibly-stale row state if the user kept editing elsewhere.
-  fieldLabel: string;
-  anchorDate: string;
-  lastSeriesDate: string | null;
-  value: CellValue;
-};
-
-// Reconciliation modal state, populated after the user picks a bank
-// file but BEFORE the import is committed to `state.history`. The
-// modal is the commit gate: Apply / Skip-all dispatch the deferred
-// `importBankHistory`, X / Escape / click-outside discard the parsed
-// file unread. Snapshotted from the pre-import data + parsed entries
-// so the modal doesn't have to chase the reducer to reproduce the
-// matcher's view of the world.
-type ReconciliationState = {
-  accountId: string;
-  // For rendering: pre-import data so the modal can look up row /
-  // entry shapes from a stable reference even if the user keeps
-  // working in the background.
-  preImportData: UserData;
-  // Entries that WILL be added when the import commits (i.e. the
-  // freshly parsed rows minus those that dedup against the existing
-  // history). Computed once so the matcher view stays stable across
-  // background edits.
-  newEntries: HistoryEntry[];
-  candidates: MatchCandidate[];
-  orphans: OrphanRow[];
-  // Parsed bank file held in memory until commit. Dispatched verbatim
-  // as the `importBankHistory` payload when the user clicks Apply or
-  // Skip all; dropped on cancel.
-  pendingImport: {
-    bankParserId: string;
-    bankClearing?: string;
-    bankAccountNumber?: string;
-    filename: string;
-    entries: ParsedBankEntry[];
-    now: number;
-  };
-};
-
-// Rename-predictor modal state. Populated as the last step of every
-// import pipeline that has learned renames to suggest. Holds the
-// staged commit payload so the import is only dispatched when the user
-// commits via Skip / Apply — Cancel drops everything and nothing lands
-// in `state.history`. The reconciliation payload is `null` on the
-// quiet-path branch (no candidates / orphans to triage) and a
-// populated object when we deferred dispatch through
-// `ReconciliationModal`.
-type RenamePredictorState = {
-  accountId: string;
-  suggestions: RenameSuggestion[];
-  pendingImport: ReconciliationState["pendingImport"];
-  pendingReconciliation: {
-    decisions: ReconciliationApply;
-  } | null;
-};
-
-// In-flight recurring-candidate promotion. Captured when the user
-// clicks Promote on the recurring-candidate panel and consumed by
-// the ComplexEntryModal's submit so the dispatcher knows the
-// candidate key to mark as consumed and the raw bank text for the
-// merchant-hint key.
-type RecurringPromoteContext = {
-  key: string;
-  sourceDescription: string;
-};
 
 type AppShellProps = {
   adapter: StorageAdapter;
