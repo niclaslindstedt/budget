@@ -19,10 +19,20 @@
 //   matches regardless of the other side's category. Only two rows
 //   that BOTH carry a *different* set category are excluded.
 //
-// Excluded by construction: rows in the Food category (the user opted
-// out of grocery noise), synthesized transfer halves (`transferId`),
-// balance-correction rows (`isCorrection`), undated rows, rows whose
-// `|amount|` falls under the modal's user-tunable threshold.
+// Excluded by construction:
+//
+//   - Rows in the Food category — opting out of grocery noise.
+//   - Synthesized transfer halves (`transferId`).
+//   - Balance-correction rows (`isCorrection`).
+//   - Undated rows, rows whose `|amount|` falls under the modal's
+//     user-tunable threshold.
+//   - **Groups consisting of two or more bank-history rows.** Bank
+//     statements are the source of truth; two real bank entries on
+//     the same day are not duplicates of each other, they're a
+//     genuine double charge (or two real postings that happened to
+//     land close). A history row paired with a user-authored row is
+//     still a valid candidate — the history row wins and the user
+//     row's metadata stamps onto it.
 //
 // Pure: no React, no storage. Consumed by `FindConflictsModal` in
 // `src/components/budget/`.
@@ -41,8 +51,6 @@ export const CONFLICT_DEFAULT_MIN_AMOUNT = 200;
 // excluding, extend this list and document the reasoning here.
 export const EXCLUDED_CATEGORY_IDS: ReadonlyArray<string> = ["preset-cat-food"];
 
-export type ConflictWarning = "twoHistory";
-
 export type Conflict = {
   // Stable per-group id derived from `${date}|${winnerId}` so the
   // modal can key React lists by it without remounting when the group
@@ -56,7 +64,6 @@ export type Conflict = {
   categoryId: string | null;
   rows: readonly Row[];
   winnerId: string;
-  warning: ConflictWarning | null;
 };
 
 export type FindConflictsOptions = {
@@ -125,15 +132,12 @@ function metadataScore(row: Row, descColId: string | null): number {
 // modal can highlight the would-be-kept row before the user clicks
 // merge.
 //
-//   1. If exactly one row carries `historyEntryId`, it wins. Bank
-//      records are authoritative — the user's parallel manual entry
-//      is the one we want to fold into the history's metadata.
-//   2. If multiple history rows are in the group, pick the one
-//      whose `|amount|` is closest to the group's median. The modal
-//      also flags `warning: "twoHistory"` so the user can review
-//      manually instead of auto-merging — multiple bank rows on the
-//      same day usually mean a real double charge, not a duplicate.
-//   3. Otherwise — all user-authored rows — pick the one with the
+//   1. If a row carries `historyEntryId`, it wins. Bank records are
+//      authoritative — the user's parallel manual entry is the one
+//      we fold into the history entry's metadata. Detector
+//      guarantees at most one history row per group (groups with
+//      two or more are excluded outright), so this is unambiguous.
+//   2. Otherwise — all user-authored rows — pick the one with the
 //      highest metadata score. Ties go to the lowest `id` lex.
 export function pickWinner(
   rows: readonly Row[],
@@ -142,35 +146,8 @@ export function pickWinner(
   if (rows.length === 0) {
     throw new Error("pickWinner: empty group");
   }
-  const history = rows.filter((r) => typeof r.historyEntryId === "string");
-  if (history.length === 1) return history[0];
-  if (history.length > 1) {
-    const amountColId = findColumnByType(columns, "amount")?.id;
-    if (amountColId) {
-      const magnitudes = history
-        .map((r) => r.cells[amountColId])
-        .filter((v): v is number => typeof v === "number")
-        .map((n) => Math.abs(n))
-        .sort((a, b) => a - b);
-      const median =
-        magnitudes.length > 0
-          ? magnitudes[Math.floor(magnitudes.length / 2)]
-          : 0;
-      const sorted = [...history].sort((a, b) => {
-        const av = a.cells[amountColId];
-        const bv = b.cells[amountColId];
-        const an =
-          typeof av === "number" ? Math.abs(Math.abs(av) - median) : Infinity;
-        const bn =
-          typeof bv === "number" ? Math.abs(Math.abs(bv) - median) : Infinity;
-        if (an !== bn) return an - bn;
-        return a.id.localeCompare(b.id);
-      });
-      return sorted[0];
-    }
-    // Amount column missing — fall back to lex id order.
-    return [...history].sort((a, b) => a.id.localeCompare(b.id))[0];
-  }
+  const history = rows.find((r) => typeof r.historyEntryId === "string");
+  if (history) return history;
   const descColId = findColumnByType(columns, "description")?.id ?? null;
   return [...rows].sort((a, b) => {
     const sb = metadataScore(b, descColId);
@@ -246,6 +223,19 @@ export function findConflicts(
         if (!withinPct(seed.amount, candidate.amount, CONFLICT_AMOUNT_PCT)) {
           continue;
         }
+        // Bank-history rows are the source of truth — two of them on
+        // the same day are not duplicates of each other, they're a
+        // genuine double charge. Refuse to add a second history row
+        // to a group that already contains one. (Mirrored at the
+        // seed level by `pickWinner`'s single-history assumption.)
+        const candidateIsHistory =
+          typeof candidate.row.historyEntryId === "string";
+        if (
+          candidateIsHistory &&
+          group.some((g) => typeof g.row.historyEntryId === "string")
+        ) {
+          continue;
+        }
         // Category compatibility must hold against EVERY existing
         // group member — the predicate isn't transitive when one
         // side is null.
@@ -264,16 +254,12 @@ export function findConflicts(
         group.find((e) => e.categoryId !== null)?.categoryId ?? null;
       const groupRows = group.map((e) => e.row);
       const winner = pickWinner(groupRows, columns);
-      const historyCount = groupRows.filter(
-        (r) => typeof r.historyEntryId === "string",
-      ).length;
       out.push({
         id: `${date}|${winner.id}`,
         date,
         categoryId: displayCat,
         rows: groupRows,
         winnerId: winner.id,
-        warning: historyCount >= 2 ? "twoHistory" : null,
       });
     }
   }

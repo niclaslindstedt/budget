@@ -184,7 +184,10 @@ describe("findConflicts", () => {
     expect(out[0].rows.map((r) => r.id).sort()).toEqual(["r1", "r2", "r3"]);
   });
 
-  it("flags two-history-row groups with a warning", () => {
+  it("never pairs two bank-history rows with each other", () => {
+    // Bank statements are the source of truth — two history rows on
+    // the same day for similar amounts are a real double charge,
+    // not a duplicate.
     const r1 = row({
       id: "r1",
       typeId: "type-bill",
@@ -197,9 +200,36 @@ describe("findConflicts", () => {
       amount: -500,
       historyEntryId: "h2",
     });
-    const out = findConflicts([r1, r2], defaults);
+    expect(findConflicts([r1, r2], defaults)).toEqual([]);
+  });
+
+  it("pairs one bank-history row with a user row even when another history row sits nearby", () => {
+    // Two bank rows can't pair with each other, but each bank row
+    // can still pair with the user-authored row — the user row is
+    // the actual duplicate.
+    const userRow = row({ id: "u", typeId: "type-bill", amount: -500 });
+    const histA = row({
+      id: "ha",
+      typeId: "type-bill",
+      amount: -500,
+      historyEntryId: "ea",
+    });
+    const histB = row({
+      id: "hb",
+      typeId: "type-bill",
+      amount: -510,
+      historyEntryId: "eb",
+    });
+    const out = findConflicts([userRow, histA, histB], defaults);
+    // Greedy clustering — the first valid pair claims the user row;
+    // the remaining bank row is left alone.
     expect(out).toHaveLength(1);
-    expect(out[0].warning).toBe("twoHistory");
+    expect(out[0].rows).toHaveLength(2);
+    const ids = out[0].rows.map((r) => r.id).sort();
+    expect(ids).toContain("u");
+    // The user row was paired with one of the two history rows —
+    // either is acceptable.
+    expect(ids.some((id) => id === "ha" || id === "hb")).toBe(true);
   });
 
   it("returns [] when the date column is missing", () => {
@@ -268,25 +298,21 @@ describe("pickWinner", () => {
     expect(pickWinner([a, b], columns).id).toBe("aaa");
   });
 
-  it("picks the median-closest history row when several are bank-backed", () => {
-    const lowBank = row({
+  it("returns the history row over any number of user rows", () => {
+    const u1 = row({ id: "u1", typeId: "type-bill", amount: -500 });
+    const u2 = row({
+      id: "u2",
+      typeId: "type-bill",
+      amount: -500,
+      description: "rich label",
+      seriesId: "s",
+    });
+    const h = row({
       id: "h1",
       typeId: "type-bill",
-      amount: -900,
+      amount: -500,
       historyEntryId: "e1",
     });
-    const midBank = row({
-      id: "h2",
-      typeId: "type-bill",
-      amount: -1000,
-      historyEntryId: "e2",
-    });
-    const highBank = row({
-      id: "h3",
-      typeId: "type-bill",
-      amount: -1100,
-      historyEntryId: "e3",
-    });
-    expect(pickWinner([lowBank, midBank, highBank], columns).id).toBe("h2");
+    expect(pickWinner([u1, u2, h], columns).id).toBe("h1");
   });
 });
