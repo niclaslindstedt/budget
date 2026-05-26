@@ -1,20 +1,10 @@
 import {
-  DEFAULT_CATEGORY_ID,
-  PRESET_CATEGORY_IDS,
-  PRESET_ENTRY_TYPE_IDS,
-} from "./constants";
-import {
   findColumnByType,
   mintBudgetRow,
   newId,
   updateAccountBudget,
   updateHistoryEntry,
 } from "./sheet";
-import {
-  applyMatchRuleOnceToAllSheets,
-  applyMatchRuleOnceToHistory,
-  reapplyPatternsToAllSheets,
-} from "./pattern-apply";
 import { findRuleDrivenCandidates } from "./reconciliation";
 import { recordMerchantHints } from "./merchant-hints";
 import {
@@ -39,7 +29,6 @@ import type {
   Transfer,
   UserData,
 } from "./types";
-import { applyDeviceSettingPatch, applySettingsDraft } from "./settings";
 import type { SheetDraft } from "./action-payloads";
 import {
   computeOpeningBalanceFromHistory,
@@ -48,6 +37,10 @@ import {
 } from "../storage/bank-parsers";
 import { type ItemAction, reduceItemDispatch } from "./reducers/item";
 import { reduceAchievements } from "./reducers/achievements";
+import { reduceSheets } from "./reducers/sheets";
+import { reduceSettings } from "./reducers/settings";
+import { reduceCategoriesAndTypes } from "./reducers/categories-and-types";
+import { reduceMatchRules } from "./reducers/match-rules";
 
 export type Action =
   | ItemAction
@@ -446,178 +439,14 @@ export function reducer(state: UserData, action: Action): UserData {
 
   // Domain sub-reducers — each returns the next state when it handles
   // the action, or null to defer to the next reducer in the chain.
-  const handled = reduceAchievements(state, action);
+  const handled =
+    reduceAchievements(state, action) ??
+    reduceSheets(state, action) ??
+    reduceSettings(state, action) ??
+    reduceCategoriesAndTypes(state, action) ??
+    reduceMatchRules(state, action);
   if (handled !== null) return handled;
 
-  if (action.type === "addCategory") {
-    return { ...state, categories: [...state.categories, action.category] };
-  }
-  if (action.type === "updateCategory") {
-    // Presets are immutable — Settings hides the Edit button for them
-    // and the action is a no-op if the id somehow targets a preset.
-    if (PRESET_CATEGORY_IDS.has(action.categoryId)) return state;
-    return {
-      ...state,
-      categories: state.categories.map((c) =>
-        c.id === action.categoryId ? { ...c, ...action.patch } : c,
-      ),
-    };
-  }
-  if (action.type === "deleteCategory") {
-    // Deleting a category cascades through the types that lived under
-    // it: every user-added type with a matching `categoryId` is
-    // reassigned to the catch-all "Other" category so rows that
-    // referenced those types stay valid. Presets are immutable, same
-    // as updateCategory.
-    if (PRESET_CATEGORY_IDS.has(action.categoryId)) return state;
-    const id = action.categoryId;
-    return {
-      ...state,
-      categories: state.categories.filter((c) => c.id !== id),
-      types: state.types.map((t) =>
-        t.categoryId === id ? { ...t, categoryId: DEFAULT_CATEGORY_ID } : t,
-      ),
-    };
-  }
-  if (action.type === "setPresetCategoryHidden") {
-    if (!PRESET_CATEGORY_IDS.has(action.presetId)) return state;
-    const current = state.hiddenPresetCategoryIds;
-    const isHidden = current.includes(action.presetId);
-    if (action.hidden === isHidden) return state;
-    return {
-      ...state,
-      hiddenPresetCategoryIds: action.hidden
-        ? [...current, action.presetId]
-        : current.filter((id) => id !== action.presetId),
-    };
-  }
-  if (action.type === "addType") {
-    return { ...state, types: [...state.types, action.entryType] };
-  }
-  if (action.type === "updateType") {
-    if (PRESET_ENTRY_TYPE_IDS.has(action.typeId)) return state;
-    return {
-      ...state,
-      types: state.types.map((t) =>
-        t.id === action.typeId ? { ...t, ...action.patch } : t,
-      ),
-    };
-  }
-  if (action.type === "deleteType") {
-    // Deleting a type cascades: every row's `typeId`, every merchant
-    // hint's `typeId`, and every match rule's `typeId` that referenced
-    // it gets the reference dropped. Presets are hide-only.
-    if (PRESET_ENTRY_TYPE_IDS.has(action.typeId)) return state;
-    const id = action.typeId;
-    return {
-      ...state,
-      types: state.types.filter((t) => t.id !== id),
-      sheets: state.sheets.map((sheet) => ({
-        ...sheet,
-        items: sheet.items.map((item) => {
-          if (item.type !== "accountBudget") return item;
-          return {
-            ...item,
-            rows: item.rows.map((r) => {
-              if (r.typeId !== id) return r;
-              const { typeId: _drop, ...rest } = r;
-              void _drop;
-              return rest;
-            }),
-          };
-        }),
-      })),
-      // Hints whose typeId points at the deleted type lose their only
-      // actionable field — drop the entry entirely. The next time the
-      // user assigns a type to a row matching the same merchant key,
-      // a fresh hint will land here.
-      merchantHints: Object.fromEntries(
-        Object.entries(state.merchantHints).filter(
-          ([, hint]) => hint.typeId !== id,
-        ),
-      ),
-      matchRules: state.matchRules.map((rule) =>
-        rule.typeId === id ? { ...rule, typeId: null } : rule,
-      ),
-    };
-  }
-  if (action.type === "setPresetTypeHidden") {
-    if (!PRESET_ENTRY_TYPE_IDS.has(action.presetId)) return state;
-    const current = state.hiddenPresetTypeIds;
-    const isHidden = current.includes(action.presetId);
-    if (action.hidden === isHidden) return state;
-    return {
-      ...state,
-      hiddenPresetTypeIds: action.hidden
-        ? [...current, action.presetId]
-        : current.filter((id) => id !== action.presetId),
-    };
-  }
-  if (action.type === "setPresetTypeKind") {
-    if (!PRESET_ENTRY_TYPE_IDS.has(action.presetId)) return state;
-    const current = state.presetTypeKindOverrides;
-    if (current[action.presetId] === action.kind) return state;
-    const next = { ...current, [action.presetId]: action.kind };
-    return { ...state, presetTypeKindOverrides: next };
-  }
-  if (action.type === "updateSettings") {
-    // Achievements and the unseen queue have their own dispatch path
-    // (`recordAchievementUnlock` / `clearUnseenAchievements`). Preserve
-    // them across a settings replacement so a concurrent unlock that
-    // landed in the reducer between the caller capturing `settings`
-    // and the dispatch firing isn't silently overwritten. This applies
-    // to the SettingsModal save (whose draft was seeded from `settings`
-    // on open) and to `useChangelogAutoOpen`, which captures
-    // `settingsRef.current` on mount before the achievement-watcher
-    // gets a chance to drain its bus.
-    //
-    // `applySettingsDraft` splits the flat editing surface back into
-    // the bucketed `PersistedSettings` shape: common keys land at the
-    // top level; device-scoped keys land in the scope the user edited
-    // from, leaving the opposite scope untouched.
-    const split = applySettingsDraft(
-      state.settings,
-      action.scope,
-      action.draft,
-    );
-    return {
-      ...state,
-      settings: {
-        ...split,
-        achievements: state.settings.achievements,
-        unseenAchievements: state.settings.unseenAchievements,
-      },
-    };
-  }
-  if (action.type === "updateDeviceSettings") {
-    return {
-      ...state,
-      settings: applyDeviceSettingPatch(
-        state.settings,
-        action.scope,
-        action.patch,
-      ),
-    };
-  }
-  if (action.type === "updateCommonSettings") {
-    // Defensive: never let a common-scope patch clobber the
-    // achievement state (which has its own dispatch path) or the
-    // device bucket. Stripping the keys here is cheaper than relying
-    // on every caller to remember the contract.
-    const patch = action.patch as Partial<CommonSettings> & {
-      achievements?: unknown;
-      unseenAchievements?: unknown;
-    };
-    const allowed: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(patch)) {
-      if (key === "achievements" || key === "unseenAchievements") continue;
-      allowed[key] = value;
-    }
-    return {
-      ...state,
-      settings: { ...state.settings, ...allowed },
-    };
-  }
   if (action.type === "createAccount") {
     return { ...state, accounts: [...state.accounts, action.account] };
   }
@@ -1073,72 +902,6 @@ export function reducer(state: UserData, action: Action): UserData {
     if (state.transferCollapseDismissals.length === 0) return state;
     return { ...state, transferCollapseDismissals: [] };
   }
-  if (action.type === "clearMerchantHints") {
-    if (Object.keys(state.merchantHints).length === 0) return state;
-    return { ...state, merchantHints: {} };
-  }
-  if (action.type === "createMatchRule") {
-    // Append, not prepend: rules earlier in the array win, and a
-    // fresh rule should defer to whatever the user already set up
-    // unless they reorder. The Patterns tab's up/down buttons go
-    // through `moveMatchRule` to promote a new rule above its
-    // current shadower.
-    const matchRules = [...state.matchRules, action.rule];
-    // Walk every budget row and re-evaluate against the new ruleset
-    // so a freshly authored pattern catches up the rows that were
-    // sitting unlabelled because no rule matched when they were
-    // first typed. History entries don't need this — they're matched
-    // at render time via `findMatchingRule` so they pick up new
-    // rules automatically. `typeIdLocked` rows are skipped so the
-    // user's manual choices stay sticky.
-    const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
-    return { ...state, matchRules, sheets };
-  }
-  if (action.type === "updateMatchRule") {
-    const idx = state.matchRules.findIndex((r) => r.id === action.rule.id);
-    if (idx < 0) return state;
-    const matchRules = state.matchRules.slice();
-    matchRules[idx] = action.rule;
-    // Same retroactive re-evaluation as `createMatchRule` — editing a
-    // rule's pattern, type, or filters should immediately re-label
-    // every budget row the new shape now wins (or loses) against.
-    const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
-    return { ...state, matchRules, sheets };
-  }
-  if (action.type === "reapplyMatchRules") {
-    const sheets = reapplyPatternsToAllSheets(state.sheets, state.matchRules);
-    if (sheets === state.sheets) return state;
-    return { ...state, sheets };
-  }
-  if (action.type === "applyMatchRuleOnce") {
-    const sheets = applyMatchRuleOnceToAllSheets(state.sheets, action.rule);
-    const history = applyMatchRuleOnceToHistory(state.history, action.rule);
-    if (sheets === state.sheets && history === state.history) return state;
-    return { ...state, sheets, history };
-  }
-  if (action.type === "deleteMatchRule") {
-    const next = state.matchRules.filter((r) => r.id !== action.ruleId);
-    if (next.length === state.matchRules.length) return state;
-    return { ...state, matchRules: next };
-  }
-  if (action.type === "moveMatchRule") {
-    const idx = state.matchRules.findIndex((r) => r.id === action.ruleId);
-    if (idx < 0) return state;
-    const swapWith = action.direction === "up" ? idx - 1 : idx + 1;
-    if (swapWith < 0 || swapWith >= state.matchRules.length) return state;
-    const matchRules = state.matchRules.slice();
-    [matchRules[idx], matchRules[swapWith]] = [
-      matchRules[swapWith],
-      matchRules[idx],
-    ];
-    // Same retroactive re-evaluation as create / update / delete: the
-    // reorder changes which rule wins for every row whose previous
-    // winner moved relative to a sibling that also matched. typeIdLocked
-    // rows are skipped inside reapplyPatternsToAllSheets so manual picks
-    // stay sticky.
-    const sheets = reapplyPatternsToAllSheets(state.sheets, matchRules);
-    return { ...state, matchRules, sheets };
-  }
   if (action.type === "updateHistoryEntry") {
     // Capture the prior entry so the rename-learning hook below can
     // diff `userDescription` against the previously effective text
@@ -1375,59 +1138,6 @@ export function reducer(state: UserData, action: Action): UserData {
         action.seriesRules.length > 0
           ? [...state.seriesMatchRules, ...action.seriesRules]
           : state.seriesMatchRules,
-    };
-  }
-  if (action.type === "renameSheet") {
-    return {
-      ...state,
-      sheets: state.sheets.map((sheet) =>
-        sheet.id === action.sheetId ? { ...sheet, name: action.name } : sheet,
-      ),
-    };
-  }
-  if (action.type === "addSheet") {
-    // New sheets become the active sheet so the user lands on the
-    // empty ledger they just created instead of having to chase down
-    // its tab.
-    return {
-      ...state,
-      sheets: [...state.sheets, action.sheet],
-      activeSheetId: action.sheet.id,
-    };
-  }
-  if (action.type === "updateSheetMeta") {
-    return {
-      ...state,
-      sheets: state.sheets.map((sheet) =>
-        sheet.id === action.sheetId ? { ...sheet, ...action.meta } : sheet,
-      ),
-    };
-  }
-  if (action.type === "deleteSheet") {
-    // Guard against deleting the only sheet — the UI never offers it
-    // but the reducer enforces it too so an externally dispatched
-    // action can't strand the user with an empty workspace.
-    if (state.sheets.length <= 1) return state;
-    const nextSheets = state.sheets.filter((s) => s.id !== action.sheetId);
-    const nextActive =
-      state.activeSheetId === action.sheetId
-        ? nextSheets[0].id
-        : state.activeSheetId;
-    return { ...state, sheets: nextSheets, activeSheetId: nextActive };
-  }
-  if (action.type === "selectSheet") {
-    if (!state.sheets.some((s) => s.id === action.sheetId)) return state;
-    return { ...state, activeSheetId: action.sheetId };
-  }
-  if (action.type === "setItemAccount") {
-    return {
-      ...state,
-      sheets: updateAccountBudget(
-        state.sheets,
-        action.sheetId,
-        action.itemId,
-        (item) => ({ ...item, accountId: action.accountId }),
-      ),
     };
   }
   // Item-level dispatch tail. Handles every ItemAction; falls through
