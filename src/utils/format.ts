@@ -280,6 +280,16 @@ export function formatDate(
   }
 }
 
+// Month-key (`YYYY-MM`) rendered as "MMM YYYY" in the active language
+// — used as the header for orphan groups in the reconciliation modal.
+export function formatMonthLabel(monthKey: string, lang?: Lang): string {
+  if (typeof monthKey !== "string" || monthKey.length < 7) return "";
+  const y = monthKey.slice(0, 4);
+  const monthNum = Number(monthKey.slice(5, 7));
+  if (!Number.isFinite(monthNum)) return "";
+  return `${monthShort(lang, monthNum)} ${y}`;
+}
+
 // Day-only rendering for the mobile cell — month is conveyed by the
 // per-month colour applied to the cell text, so the digits stay
 // compact enough to share a row with description + amount + balance.

@@ -33,7 +33,7 @@ import type { Column, HistoryEntry, Row } from "./types";
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
 
-function monthFirstDay(monthKey: string, startOfMonth: number): string {
+export function monthFirstDay(monthKey: string, startOfMonth: number): string {
   return `${monthKey}-${String(startOfMonth).padStart(2, "0")}`;
 }
 

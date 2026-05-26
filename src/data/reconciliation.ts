@@ -21,6 +21,7 @@
 // `App.tsx` and by `synthesizeHistoryRow` to short-circuit when a
 // `SeriesMatchRule` already covers the pair.
 
+import { monthFirstDay } from "./coverage";
 import { compilePattern } from "./match-rules";
 import { findColumnByType, getMonthKey } from "./sheet";
 import type { Column, HistoryEntry, Row, SeriesMatchRule } from "./types";
@@ -401,4 +402,78 @@ export function findRuleDrivenCandidates(
     out.push(c);
   }
   return out;
+}
+
+// First day of the fiscal month *after* `monthKey`. The orphan UI
+// uses this as its "Move to next month start" quick-pick: a row in
+// fiscal "2026-04" with startOfMonth=25 lands on 2026-05-25.
+export function nextFiscalMonthStartDate(
+  monthKey: string,
+  startOfMonth: number,
+): string {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return monthKey;
+  let y = Number(monthKey.slice(0, 4));
+  let m = Number(monthKey.slice(5, 7)) + 1;
+  if (m > 12) {
+    m = 1;
+    y += 1;
+  }
+  const nextKey = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+  return monthFirstDay(nextKey, startOfMonth);
+}
+
+// Shift `rowDateIso` one calendar month forward, clamping the day to
+// the target month's length so 2026-01-31 → 2026-02-28. Calendar
+// math, not fiscal — this preserves the row's "same date" intuition
+// even when the user runs a non-default `startOfMonth`.
+export function nextMonthSameDate(rowDateIso: string): string {
+  if (rowDateIso.length < 10) return rowDateIso;
+  const y = Number(rowDateIso.slice(0, 4));
+  const m = Number(rowDateIso.slice(5, 7));
+  const d = Number(rowDateIso.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return rowDateIso;
+  }
+  let ny = y;
+  let nm = m + 1;
+  if (nm > 12) {
+    nm = 1;
+    ny += 1;
+  }
+  // Clamp the day to the target month's last calendar day. `Date.UTC`
+  // with day=0 rolls back to the previous month's last day, so
+  // passing `nm` (1-based) here yields the length of month `nm`.
+  const lastDay = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
+  const nd = Math.min(d, lastDay);
+  return `${String(ny).padStart(4, "0")}-${String(nm).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
+}
+
+// True iff any other row in `seriesId` has a date whose fiscal month
+// equals the one *after* `monthKey`. Used to suppress the "Move to
+// next month, same date" orphan quick-pick when it would collide
+// with an existing series occurrence in the destination month.
+export function seriesHasOccurrenceInNextMonth(
+  rows: readonly Row[],
+  columns: readonly Column[],
+  seriesId: string,
+  monthKey: string,
+  startOfMonth: number,
+): boolean {
+  const dateCol = findColumnByType(columns, "date");
+  if (!dateCol) return false;
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return false;
+  let y = Number(monthKey.slice(0, 4));
+  let m = Number(monthKey.slice(5, 7)) + 1;
+  if (m > 12) {
+    m = 1;
+    y += 1;
+  }
+  const targetKey = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+  for (const r of rows) {
+    if (r.seriesId !== seriesId) continue;
+    const cell = r.cells[dateCol.id];
+    if (typeof cell !== "string") continue;
+    if (getMonthKey(cell, startOfMonth) === targetKey) return true;
+  }
+  return false;
 }
