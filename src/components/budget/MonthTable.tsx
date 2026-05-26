@@ -334,7 +334,7 @@ function MonthTableImpl({
               ? t("sheet.expandMonth", { month: monthLabel })
               : t("sheet.collapseMonth", { month: monthLabel })
           }
-          className="flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent pt-1 pb-2 pl-2 text-left text-[inherit] font-bold tracking-wider uppercase hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:pt-1.5 md:pb-3.5 md:pl-3"
+          className="flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent pt-1 pb-1 pl-2 text-left text-[inherit] font-bold tracking-wider uppercase hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:pt-2 md:pb-2 md:pl-3"
         >
           {collapsed ? (
             <ChevronRight size={14} aria-hidden focusable={false} />
