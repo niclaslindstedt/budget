@@ -17,10 +17,7 @@ export function readStringCell(row: Row, colId: string | null): string {
 
 // Finite number value from a single cell. Returns null when the
 // column id is null or missing, or the cell is not a finite number.
-export function readNumberCell(
-  row: Row,
-  colId: string | null,
-): number | null {
+export function readNumberCell(row: Row, colId: string | null): number | null {
   if (!colId) return null;
   const v = row.cells[colId];
   return typeof v === "number" && Number.isFinite(v) ? v : null;
