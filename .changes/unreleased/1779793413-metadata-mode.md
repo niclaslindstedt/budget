@@ -5,7 +5,13 @@ type: Added
 Metadata mode: the budget title `…` menu now offers a focused walk
 through the imported entries that still need annotation. One entry at
 a time, biggest absolute amount first, newest month first. Shows the
-raw bank line read-only and lets you pick a type, optionally write a
-custom description, and move on. Built for the spare-minute case on
-mobile — entries covered by a match rule or a merchant hint are skipped
-so only the genuinely unknown ones surface.
+raw bank line read-only and lets you pick a type, tag a company,
+optionally write a custom description, and move on. The form
+pre-populates with whatever is already resolved for the entry (from
+rules, hints, or per-entry overrides) so you see existing metadata
+and can edit it instead of typing it again — Save only commits what
+you actually changed. A "No company needed" toggle marks entries
+where tagging a merchant doesn't apply (salary, internal transfers,
+…) so they stop surfacing here over a missing company. Built for the
+spare-minute case on mobile — entries covered by a match rule or a
+merchant hint are skipped so only the genuinely unknown ones surface.

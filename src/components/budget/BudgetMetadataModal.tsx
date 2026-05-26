@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tags } from "lucide-react";
 
 import { resolveEntryLabels } from "../../data/sheet";
@@ -59,6 +59,7 @@ type Props = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      noCompany?: boolean;
     },
   ) => void;
 };
@@ -99,12 +100,15 @@ function entryNeedsMetadata(
   if (entry.isTransfer) return false;
   if (entry.splits && entry.splits.length > 0) return false;
   const resolved = resolveEntryLabels(entry, hints, rules, companies, types);
-  // The entry still wants a closer look when ANY of the three first-
+  // The entry still wants a closer look when any of the three first-
   // class fields is missing: no type pinned, no company tagged, OR the
-  // resolved description is still the raw bank text.
+  // resolved description is still the raw bank text. `entry.noCompany`
+  // exempts the entry from the company check — set from the "No
+  // company needed" toggle in the modal for entries where tagging a
+  // merchant doesn't apply (e.g. salary, internal transfers).
   return (
     resolved.typeId === null ||
-    resolved.companyId === null ||
+    (resolved.companyId === null && !entry.noCompany) ||
     resolved.description === entry.description
   );
 }
@@ -198,14 +202,65 @@ export function BudgetMetadataModal({
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [noCompany, setNoCompany] = useState(false);
+  // Snapshot of the values the form was pre-populated with, so the
+  // save handler only stamps per-entry overrides for fields the user
+  // actually changed. Otherwise "review and Save" on a rule-resolved
+  // entry would silently lock the rule's values into per-entry
+  // overrides — fine until the rule changes and this entry refuses
+  // to follow.
+  const initialRef = useRef({
+    description: "",
+    typeId: null as string | null,
+    companyId: null as string | null,
+    noCompany: false,
+  });
 
-  // Reset the form when the current entry changes — either because the
-  // user saved/skipped, or because the modal just opened on a fresh
-  // first entry.
+  // Pre-populate the form with whatever is already resolved for the
+  // current entry so the user sees existing metadata (and can edit
+  // it) instead of a blank form. The description field is left blank
+  // when the resolved description still equals the raw bank text —
+  // the placeholder shows the bank text and a save with blank keeps
+  // the fallthrough behaviour. Resets when the current entry id
+  // changes (save / skip moves on; modal open lands on entry #1).
+  // Re-initialising mid-edit when an unrelated prop (companies,
+  // types, …) updates would discard the user's in-progress input —
+  // the closure here captures the latest values at run time, which
+  // is precisely when the effect re-runs (entry change).
   useEffect(() => {
-    setDescription("");
-    setTypeId(null);
-    setCompanyId(null);
+    if (!current) {
+      setDescription("");
+      setTypeId(null);
+      setCompanyId(null);
+      setNoCompany(false);
+      initialRef.current = {
+        description: "",
+        typeId: null,
+        companyId: null,
+        noCompany: false,
+      };
+      return;
+    }
+    const resolved = resolveEntryLabels(
+      current,
+      merchantHints,
+      matchRules,
+      companies,
+      types,
+    );
+    const initDescription =
+      resolved.description !== current.description ? resolved.description : "";
+    setDescription(initDescription);
+    setTypeId(resolved.typeId);
+    setCompanyId(resolved.companyId);
+    setNoCompany(current.noCompany ?? false);
+    initialRef.current = {
+      description: initDescription,
+      typeId: resolved.typeId,
+      companyId: resolved.companyId,
+      noCompany: current.noCompany ?? false,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
   const handleSkip = useCallback(() => {
@@ -220,18 +275,34 @@ export function BudgetMetadataModal({
   const handleSave = useCallback(() => {
     if (!current || !accountId) return;
     const trimmed = description.trim();
+    const initial = initialRef.current;
     const patch: {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      noCompany?: boolean;
     } = {};
-    if (trimmed !== "") patch.userDescription = trimmed;
-    if (typeId !== null) patch.userTypeId = typeId;
-    if (companyId !== null) patch.userCompanyId = companyId;
+    if (trimmed !== initial.description.trim()) {
+      patch.userDescription = trimmed;
+    }
+    if (typeId !== initial.typeId) {
+      patch.userTypeId = typeId;
+    }
+    if (companyId !== initial.companyId) {
+      patch.userCompanyId = companyId;
+    }
+    // Setting a company implicitly clears the "no company" flag — the
+    // user changed their mind and tagged a merchant after all.
+    if (companyId !== null && current.noCompany) {
+      patch.noCompany = false;
+    } else if (noCompany !== initial.noCompany) {
+      patch.noCompany = noCompany;
+    }
     if (
       patch.userDescription === undefined &&
       patch.userTypeId === undefined &&
-      patch.userCompanyId === undefined
+      patch.userCompanyId === undefined &&
+      patch.noCompany === undefined
     ) {
       return;
     }
@@ -247,13 +318,17 @@ export function BudgetMetadataModal({
     description,
     typeId,
     companyId,
+    noCompany,
     onUpdateHistoryEntry,
   ]);
 
-  const canSave =
-    !!accountId &&
+  const dirty =
     !!current &&
-    (typeId !== null || companyId !== null || description.trim() !== "");
+    (description.trim() !== initialRef.current.description.trim() ||
+      typeId !== initialRef.current.typeId ||
+      companyId !== initialRef.current.companyId ||
+      noCompany !== initialRef.current.noCompany);
+  const canSave = !!accountId && !!current && dirty;
 
   if (!open) return null;
 
@@ -334,11 +409,34 @@ export function BudgetMetadataModal({
                   variant="field"
                   companies={companies}
                   selectedId={companyId}
-                  onSelect={setCompanyId}
+                  onSelect={(id) => {
+                    setCompanyId(id);
+                    // Picking a company contradicts "no company
+                    // needed" — clear the opt-out so the checkbox
+                    // mirrors reality.
+                    if (id !== null) setNoCompany(false);
+                  }}
                   onCreate={onCreateCompany}
                 />
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    checked={noCompany}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      setNoCompany(next);
+                      // Checking the opt-out clears any company
+                      // pick; unchecking leaves the picker as-is.
+                      if (next) setCompanyId(null);
+                    }}
+                    className="h-3.5 w-3.5 cursor-pointer"
+                  />
+                  {t("metadata.noCompanyLabel")}
+                </label>
                 <span className="text-xs text-muted">
-                  {t("metadata.companyHint")}
+                  {noCompany
+                    ? t("metadata.noCompanyHint")
+                    : t("metadata.companyHint")}
                 </span>
               </div>
               <label className="flex flex-col gap-1">

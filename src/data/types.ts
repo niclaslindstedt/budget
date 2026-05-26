@@ -423,6 +423,12 @@ export type HistoryEntry = {
   // when set; only the hint step is suppressed. Independent of
   // `hidden` — the row still renders, it just keeps its bank text.
   hintIgnored?: boolean;
+  // True when the user has declared this entry doesn't need a company
+  // tag. Read only by `BudgetMetadataModal`'s "needs metadata" check —
+  // an entry with this flag set won't surface in metadata mode just
+  // because `userCompanyId` is absent. Doesn't affect rendering: a
+  // future per-entry company tag still resolves normally.
+  noCompany?: boolean;
   // User-defined split of this bank entry into multiple categorised
   // parts. When present and non-empty, the synthesizer emits one row
   // per split in place of the entry's single row; the splits' signed

@@ -565,6 +565,11 @@ function validateHistoryEntry(
       return fail(`${path}.hintIgnored`, "expected a boolean");
     if (raw.hintIgnored) entry.hintIgnored = true;
   }
+  if (raw.noCompany !== undefined) {
+    if (typeof raw.noCompany !== "boolean")
+      return fail(`${path}.noCompany`, "expected a boolean");
+    if (raw.noCompany) entry.noCompany = true;
+  }
   if (raw.splits !== undefined) {
     if (!Array.isArray(raw.splits))
       return fail(`${path}.splits`, "expected an array");

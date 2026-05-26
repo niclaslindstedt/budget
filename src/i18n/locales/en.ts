@@ -1087,6 +1087,9 @@ export const en = {
     typeLabel: "Type",
     companyLabel: "Company",
     companyHint: "Tag the merchant this entry paid.",
+    noCompanyLabel: "No company needed",
+    noCompanyHint:
+      "This entry won't surface here again over a missing company.",
     descriptionLabel: "Description",
     descriptionPlaceholder: "Leave blank to keep the bank's text",
     descriptionHint: "Blank keeps the bank's text.",

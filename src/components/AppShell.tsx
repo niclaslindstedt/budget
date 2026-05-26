@@ -1132,6 +1132,7 @@ export function AppShell({
         userDescription?: string;
         userTypeId?: string | null;
         userCompanyId?: string | null;
+        noCompany?: boolean;
       },
     ) =>
       dispatch({
