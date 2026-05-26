@@ -248,8 +248,13 @@ export function BudgetMetadataModal({
       companies,
       types,
     );
-    const initDescription =
-      resolved.description !== current.description ? resolved.description : "";
+    // Pre-fill only with a real user-level description (override,
+    // rule, or merchant hint). The company / type / bank-text
+    // fallbacks in `resolved.description` are render-time conveniences
+    // for the budget tables — seeding the input with a type name
+    // would push that string into `userDescription` on save and
+    // permanently freeze the fallback as an override.
+    const initDescription = resolved.userDescription ?? "";
     setDescription(initDescription);
     setTypeId(resolved.typeId);
     setCompanyId(resolved.companyId);
