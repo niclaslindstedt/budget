@@ -2366,7 +2366,6 @@ export const sv: Catalog = {
     hobby: "Hobbyer",
     accessories: "Accessoarer",
     "personal-care": "Personlig vård",
-    travel: "Resa",
     hotel: "Hotell",
     experiences: "Upplevelser",
     electronics: "Elektronik",

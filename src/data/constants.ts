@@ -2018,14 +2018,6 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       kind: "expense",
     },
     {
-      slug: "travel",
-      name: "Travel",
-      color: C[4],
-      glyph: "plane",
-      category: "travel",
-      kind: "expense",
-    },
-    {
       slug: "hotel",
       name: "Hotel",
       color: C[4],

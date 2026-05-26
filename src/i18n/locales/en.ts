@@ -2373,7 +2373,6 @@ export const en = {
     hobby: "Hobbies",
     accessories: "Accessories",
     "personal-care": "Personal care",
-    travel: "Travel",
     hotel: "Hotel",
     experiences: "Experiences",
     electronics: "Electronics",
