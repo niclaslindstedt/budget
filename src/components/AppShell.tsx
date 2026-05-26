@@ -13,6 +13,7 @@ import { UpdateBalanceModal } from "./accounts/UpdateBalanceModal";
 import { AccountsPage } from "./accounts/AccountsPage";
 import { CutAccountHistoryModal } from "./accounts/CutAccountHistoryModal";
 import { ApplySeriesEditDialog } from "./budget/ApplySeriesEditDialog";
+import { DeleteRecurringDialog } from "./budget/DeleteRecurringDialog";
 import { AppLoading } from "./AppLoading";
 import { ChangelogModal } from "./ChangelogModal";
 import { BottomBar } from "./BottomBar";
@@ -98,7 +99,6 @@ import {
   getMonthKey,
   isRowSavable,
   newId,
-  rowsInSeriesFrom,
   userDataWithSavableRows,
 } from "../data/sheet";
 import { coverageDelta, coveredMonths } from "../data/coverage";
@@ -2339,6 +2339,12 @@ export function AppShell({
     if (!row?.seriesId || !dateCol) return null;
     return getLastSeriesDate(activeItem.rows, row.seriesId, dateCol.id);
   }, [editRowPrompt, activeItem.rows, dateCol]);
+  // And for the delete-recurring scope picker.
+  const deleteLastSeriesDate = useMemo<string | null>(() => {
+    const row = deletePrompt?.row;
+    if (!row?.seriesId || !dateCol) return null;
+    return getLastSeriesDate(activeItem.rows, row.seriesId, dateCol.id);
+  }, [deletePrompt, activeItem.rows, dateCol]);
   // Every row in the active prompt's series, fed to the modal so the
   // affected-rows preview can render under the scope picker.
   const editRowSeriesRows = useMemo<readonly Row[]>(() => {
@@ -2653,48 +2659,37 @@ export function AppShell({
     return matches;
   }, [editPrompt, activeItem.accountId, activeItem.columns, data.history]);
 
+  // Series rows are handled by `DeleteRecurringDialog` (which owns its
+  // own scope picker, optional date bound, and button labels). This
+  // memo only feeds `ConfirmDialog` for the single-row fallback path
+  // (one-off rows, or series rows on a sheet with no date column).
   const deleteActions: ConfirmAction[] = useMemo(() => {
     if (!deletePrompt) return [];
     const row = deletePrompt.row;
-    if (!row.seriesId || !dateCol) {
-      return [
-        {
-          label: t("app.deleteThisRow"),
-          tone: "danger",
-          onSelect: () => {
-            dispatch({
-              type: "deleteRows",
-              sheetId,
-              itemId,
-              rowIds: [row.id],
-            });
-            setDeletePrompt(null);
-          },
-        },
-      ];
-    }
-    const futureIds = rowsInSeriesFrom(activeItem.rows, row, dateCol.id).map(
-      (r) => r.id,
-    );
     return [
       {
-        label: t("app.justThisOne"),
+        label: t("app.deleteThisRow"),
         tone: "danger",
         onSelect: () => {
-          dispatch({ type: "deleteRows", sheetId, itemId, rowIds: [row.id] });
-          setDeletePrompt(null);
-        },
-      },
-      {
-        label: t("app.thisAndAllFuture", { n: futureIds.length }),
-        tone: "danger",
-        onSelect: () => {
-          dispatch({ type: "deleteRows", sheetId, itemId, rowIds: futureIds });
+          dispatch({
+            type: "deleteRows",
+            sheetId,
+            itemId,
+            rowIds: [row.id],
+          });
           setDeletePrompt(null);
         },
       },
     ];
-  }, [deletePrompt, activeItem.rows, dateCol, dispatch, sheetId, itemId, t]);
+  }, [deletePrompt, dispatch, sheetId, itemId, t]);
+
+  const onDeleteRecurringRows = useCallback(
+    (rowIds: string[]) => {
+      dispatch({ type: "deleteRows", sheetId, itemId, rowIds });
+      setDeletePrompt(null);
+    },
+    [dispatch, sheetId, itemId],
+  );
 
   const bulkDeleteActions: ConfirmAction[] = useMemo(() => {
     if (!bulkDeletePrompt) return [];
@@ -3493,19 +3488,28 @@ export function AppShell({
         onSubmit={handleMoveCopySubmit}
       />
       <ConfirmDialog
-        open={deletePrompt !== null}
-        title={
-          deletePrompt?.row.seriesId
-            ? t("confirm.deleteRecurring")
-            : t("confirm.deleteRow")
+        open={
+          deletePrompt !== null &&
+          !(deletePrompt.row.seriesId && dateCol !== undefined)
         }
-        description={
-          deletePrompt?.row.seriesId
-            ? t("confirm.deleteRecurringHint")
-            : t("confirm.deleteRowHint")
-        }
+        title={t("confirm.deleteRow")}
+        description={t("confirm.deleteRowHint")}
         actions={deleteActions}
         onCancel={() => setDeletePrompt(null)}
+      />
+      <DeleteRecurringDialog
+        open={
+          deletePrompt !== null &&
+          !!deletePrompt.row.seriesId &&
+          dateCol !== undefined
+        }
+        row={deletePrompt?.row ?? null}
+        rows={activeItem.rows}
+        dateColumnId={dateCol?.id ?? null}
+        lastSeriesDate={deleteLastSeriesDate}
+        settings={effectiveSettings}
+        onCancel={() => setDeletePrompt(null)}
+        onDelete={onDeleteRecurringRows}
       />
       <ConfirmDialog
         open={bulkDeletePrompt !== null}

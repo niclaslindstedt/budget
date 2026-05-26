@@ -162,6 +162,7 @@ export const sv: Catalog = {
     deleteThisRow: "Ta bort denna rad",
     justThisOne: "Bara denna",
     thisAndAllFuture: "Denna och alla framtida ({n})",
+    thisAndAllThrough: "Denna och alla t.o.m. {date} ({n})",
     deleteRows: "Ta bort {n} rader",
     deleteRowOne: "Ta bort {n} rad",
     removeCorrection: "Ta bort korrigering",
@@ -851,6 +852,7 @@ export const sv: Catalog = {
     deleteRecurring: "Ta bort återkommande post",
     deleteRecurringHint:
       "Denna post är en del av en återkommande serie. Hur mycket ska tas bort?",
+    deleteRecurringStopAfter: "Stoppa efter ett datum",
     deleteRowHint: "Raden tas bort permanent.",
     deleteSelectedHintOne: "{n} rad tas bort permanent.",
     deleteSelectedHintOther: "{n} rader tas bort permanent.",
