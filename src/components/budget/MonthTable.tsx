@@ -568,9 +568,9 @@ function MonthTableImpl({
                     <button
                       type="button"
                       onClick={onTriage}
-                      className="flex w-full items-center justify-center gap-2 px-3 py-1.5 text-xs text-flag hover:bg-flag/10"
+                      className="flex w-full cursor-pointer select-none items-center justify-center gap-2 py-3 text-flag hover:bg-flag/10 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-flag"
                     >
-                      <AlertTriangle size={14} aria-hidden focusable={false} />
+                      <AlertTriangle size={22} aria-hidden focusable={false} />
                       <span>
                         {orphanCount === 1
                           ? t("sheet.triageInCoveredMonthOne")
