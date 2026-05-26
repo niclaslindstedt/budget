@@ -6,6 +6,10 @@
 //
 // Also asserts every leaf is a non-empty string, so a placeholder
 // `""` someone left during translation surfaces in the test output.
+//
+// The catalogs are composed from per-namespace files under
+// src/i18n/locales/{en,sv}/; this test walks the assembled objects so
+// the shape it sees is identical to what the runtime sees.
 
 import { describe, expect, it } from "vitest";
 
