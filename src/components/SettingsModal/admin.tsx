@@ -39,7 +39,7 @@ import { CategoryChip, CategoryCreator } from "../CategoryPicker";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { FloatingPanel } from "../FloatingPanel";
-import { ClearableTextInput } from "../form";
+import { ClearableInput } from "../form";
 import { GlyphGrid } from "../GlyphGrid";
 import { TypeChip } from "../TypePicker";
 
@@ -560,7 +560,7 @@ function CategoryEditor({
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.name")}</span>
-        <ClearableTextInput
+        <ClearableInput
           // Dedicated single-purpose category editor — landing focus
           // on the name field is the expected UX in this modal context.
           // eslint-disable-next-line jsx-a11y/no-autofocus
@@ -649,7 +649,7 @@ function TypeEditor({
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.name")}</span>
-        <ClearableTextInput
+        <ClearableInput
           // Dedicated single-purpose type editor — landing focus on
           // the name field is the expected UX in this modal context.
           // eslint-disable-next-line jsx-a11y/no-autofocus

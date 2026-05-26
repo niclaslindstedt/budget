@@ -8,6 +8,7 @@ import {
   isIsoDate,
   type RecurrenceRule,
 } from "../../data/recurrence";
+import { ClearableInput } from "../form";
 
 type Mode = "once" | "dates" | "everyNDays" | "monthly";
 
@@ -379,12 +380,12 @@ export function RecurrenceForm({
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
               <span>{t("recurrenceForm.everyNDaysLabel")}</span>
-              <input
+              <ClearableInput
                 type="number"
                 min={1}
                 value={everyNDays}
-                onChange={(e) => setEveryNDays(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
+                onValueChange={setEveryNDays}
+                className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
@@ -427,34 +428,35 @@ export function RecurrenceForm({
                 ))}
                 <label className="inline-flex items-center gap-1 text-xs text-muted">
                   <span>{t("recurrenceForm.cadenceEveryN")}</span>
-                  <input
+                  <ClearableInput
                     type="number"
                     min={1}
                     value={monthlyStride}
-                    onChange={(e) => setMonthlyStride(e.target.value)}
-                    className="field-input w-14 rounded border border-line bg-surface px-2 py-1 text-right font-mono text-sm text-meta tabular-nums"
+                    onValueChange={setMonthlyStride}
+                    wrapperClassName="w-14"
+                    className="field-input w-full rounded border border-line bg-surface px-2 py-1 text-right font-mono text-sm text-meta tabular-nums"
                   />
                 </label>
               </div>
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
               <span>{t("recurrenceForm.dayOfMonth")}</span>
-              <input
+              <ClearableInput
                 type="number"
                 min={1}
                 max={31}
                 value={monthlyDay}
-                onChange={(e) => setMonthlyDay(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
+                onValueChange={setMonthlyDay}
+                className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
               <span>{t("recurrenceForm.offsetDays")}</span>
-              <input
+              <ClearableInput
                 type="number"
                 value={monthlyOffset}
-                onChange={(e) => setMonthlyOffset(e.target.value)}
-                className="field-input rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
+                onValueChange={setMonthlyOffset}
+                className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
                 placeholder="-2"
               />
             </label>

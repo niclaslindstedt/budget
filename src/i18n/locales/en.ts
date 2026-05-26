@@ -801,7 +801,6 @@ export const en = {
     moreActionsAria: "Sheet actions for {name}",
     viewerEmpty: "No entries to display.",
     viewerSearchPlaceholder: "Search this sheet",
-    viewerSearchClear: "Clear search",
     viewerSearchNoResults: "No entries match the search.",
     showEarlierMonths: "Show {n} earlier months",
     showFutureMonths: "Show {n} future months",
@@ -1125,7 +1124,6 @@ export const en = {
     balance: "Balance",
     type: "Type",
     searchPlaceholder: "Search history",
-    searchClear: "Clear search",
     searchNoResults: "No entries match the search.",
   },
 
@@ -1133,7 +1131,6 @@ export const en = {
     open: "Search transactions",
     title: "Search transactions",
     placeholder: "Search by description, type, category, or amount",
-    clear: "Clear search",
     emptyHint: "Start typing to search across every sheet.",
     noResults: "No matching transactions",
     resultAria: "Open {description} on {sheet}",

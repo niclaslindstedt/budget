@@ -1,4 +1,5 @@
-import { Minus, Plus } from "lucide-react";
+import { useRef } from "react";
+import { Minus, Plus, X } from "lucide-react";
 
 import type { Settings } from "../../data/types";
 import { useT } from "../../i18n";
@@ -56,6 +57,9 @@ export function SignedAmountInput({
         : "text-positive"
       : "text-fg";
 
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const canClear = value.length > 0 && !disabled;
+
   function handleChange(next: string) {
     const stripped = next.replace(/-/g, "");
     onValueChange(normalizeAmountInput(stripped, settings));
@@ -84,6 +88,7 @@ export function SignedAmountInput({
         )}
       </button>
       <input
+        ref={inputRef}
         type="text"
         inputMode="decimal"
         value={value}
@@ -91,8 +96,25 @@ export function SignedAmountInput({
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel}
-        className={`field-input ${inputWidthClass} rounded border border-line ${bgClass} ${paddingClass} pr-2 pl-7 text-right font-mono text-sm tabular-nums ${tone}${disabled ? " cursor-not-allowed" : ""}`}
+        className={`field-input ${inputWidthClass} rounded border border-line ${bgClass} ${paddingClass} ${canClear ? "pr-7" : "pr-2"} pl-7 text-right font-mono text-sm tabular-nums ${tone}${disabled ? " cursor-not-allowed" : ""}`}
       />
+      {canClear && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={t("common.clear")}
+          // Keep focus on the input so the soft keyboard stays up.
+          onMouseDown={(e) => e.preventDefault()}
+          onTouchStart={(e) => e.preventDefault()}
+          onClick={() => {
+            onValueChange("");
+            inputRef.current?.focus();
+          }}
+          className="absolute top-1/2 right-1.5 z-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
+        >
+          <X size={14} aria-hidden focusable={false} />
+        </button>
+      )}
     </div>
   );
 }

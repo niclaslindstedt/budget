@@ -795,7 +795,6 @@ export const sv: Catalog = {
     moreActionsAria: "Bladåtgärder för {name}",
     viewerEmpty: "Inga poster att visa.",
     viewerSearchPlaceholder: "Sök i detta blad",
-    viewerSearchClear: "Rensa sökning",
     viewerSearchNoResults: "Inga poster matchar sökningen.",
     showEarlierMonths: "Visa {n} tidigare månader",
     showFutureMonths: "Visa {n} framtida månader",
@@ -1123,7 +1122,6 @@ export const sv: Catalog = {
     balance: "Saldo",
     type: "Typ",
     searchPlaceholder: "Sök i historik",
-    searchClear: "Rensa sökning",
     searchNoResults: "Inga poster matchar sökningen.",
   },
 
@@ -1131,7 +1129,6 @@ export const sv: Catalog = {
     open: "Sök transaktioner",
     title: "Sök transaktioner",
     placeholder: "Sök efter beskrivning, typ, kategori eller belopp",
-    clear: "Rensa sökning",
     emptyHint: "Börja skriva för att söka i alla blad.",
     noResults: "Inga matchande transaktioner",
     resultAria: "Öppna {description} i {sheet}",

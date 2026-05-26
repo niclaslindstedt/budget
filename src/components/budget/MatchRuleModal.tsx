@@ -22,7 +22,7 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableTextInput, SignedAmountInput } from "../form";
+import { Button, ClearableInput, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -470,7 +470,7 @@ export function MatchRuleModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">{t("matchRule.pattern")}</span>
-            <ClearableTextInput
+            <ClearableInput
               ref={patternRef}
               value={pattern}
               onValueChange={setPattern}
@@ -483,7 +483,7 @@ export function MatchRuleModal({
             <span className="text-xs text-muted">
               {t("matchRule.descriptionOptional")}
             </span>
-            <ClearableTextInput
+            <ClearableInput
               value={description}
               onValueChange={setDescription}
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"

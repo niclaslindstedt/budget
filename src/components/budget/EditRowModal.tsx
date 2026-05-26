@@ -20,7 +20,7 @@ import {
 import {
   Checkbox,
   Button,
-  ClearableTextInput,
+  ClearableInput,
   Radio,
   RadioGroup,
   SignedAmountInput,
@@ -283,7 +283,7 @@ export function EditRowModal({
             <span className="text-xs text-muted">
               {t("editEntry.description")}
             </span>
-            <ClearableTextInput
+            <ClearableInput
               ref={descriptionRef}
               value={description}
               onValueChange={setDescription}
@@ -467,14 +467,15 @@ export function EditRowModal({
               <span className="text-xs text-muted">
                 {t("editEntry.shiftDaysBy")}
               </span>
-              <input
+              <ClearableInput
                 type="number"
                 inputMode="numeric"
                 step={1}
                 value={shiftDaysText}
-                onChange={(e) => setShiftDaysText(e.target.value)}
+                onValueChange={setShiftDaysText}
                 aria-label={t("editEntry.shiftDaysBy")}
-                className="field-input min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                wrapperClassName="min-w-0"
+                className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               />
               <span className="text-xs text-muted">
                 {t("editEntry.shiftDaysByHint")}

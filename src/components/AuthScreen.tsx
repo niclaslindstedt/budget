@@ -11,7 +11,7 @@ import {
 import type { StoredUser } from "../data/types";
 import { useT } from "../i18n";
 import { findUserByUsername } from "../storage/users";
-import { Checkbox, ClearableTextInput } from "./form";
+import { Checkbox, ClearableInput } from "./form";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -301,7 +301,7 @@ function SignInForm({
 
       <label className="flex flex-col gap-1">
         <span className="text-xs text-muted">{t("auth.username")}</span>
-        <ClearableTextInput
+        <ClearableInput
           id="budget-username"
           name="username"
           autoComplete="username"
@@ -456,7 +456,7 @@ function SignUpForm({
 
       <label className="flex flex-col gap-1">
         <span className="text-xs text-muted">{t("auth.username")}</span>
-        <ClearableTextInput
+        <ClearableInput
           id="budget-new-username"
           name="username"
           autoComplete="username"

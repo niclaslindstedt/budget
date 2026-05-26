@@ -22,6 +22,7 @@ export { useRefIdentity } from "./useRefIdentity";
 export { useGridRovingTabindex, useRovingTabindex } from "./useRovingTabindex";
 export { type RowSwipe, useRowSwipe } from "./useRowSwipe";
 export { suppressScrollHide, useScrollHide } from "./useScrollHide";
+export { useSelectAllOnFocus } from "./useSelectAllOnFocus";
 export { useSheetSwipe } from "./useSheetSwipe";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";

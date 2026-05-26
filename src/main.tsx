@@ -19,16 +19,10 @@ import "@fontsource/source-serif-4/400.css";
 import "@fontsource/source-serif-4/700.css";
 import "@fontsource/opendyslexic/400.css";
 import "@fontsource/opendyslexic/700.css";
-import { installFocusDiagnostic } from "./utils/focus-diagnostic";
-import { installSelectOnFocus } from "./utils/select-on-focus";
-
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element #root not found in index.html");
 }
-
-installFocusDiagnostic();
-installSelectOnFocus();
 
 // Trivial path-based switch. The build emits `dist/privacy/index.html`
 // (see `vite.config.ts`) so GitHub Pages serves the same SPA at

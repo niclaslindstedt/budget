@@ -72,7 +72,7 @@ const storageTabLog = createLogger("settings-storage");
 import {
   Button,
   Checkbox,
-  ClearableTextInput,
+  ClearableInput,
   type SelectOption,
   SelectPicker,
 } from "../form";
@@ -430,7 +430,7 @@ export function FormatTab({
         {showCustomCurrency && (
           <>
             <Field label={t("settings.format.currencyToken")}>
-              <ClearableTextInput
+              <ClearableInput
                 value={draft.currency}
                 onValueChange={(v) => onUpdate("currency", v)}
                 maxLength={6}

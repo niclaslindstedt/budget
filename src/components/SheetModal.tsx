@@ -13,7 +13,7 @@ import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
-import { Button, ClearableTextInput } from "./form";
+import { Button, ClearableInput, ClearableTextarea } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
@@ -154,7 +154,7 @@ export function SheetModal({
             </div>
             <label className="flex flex-1 flex-col gap-1.5">
               <span className="text-xs text-muted">{t("sheetModal.name")}</span>
-              <ClearableTextInput
+              <ClearableInput
                 ref={nameRef}
                 value={name}
                 onValueChange={setName}
@@ -203,7 +203,7 @@ export function SheetModal({
                     <span className="text-xs text-muted">
                       {t("sheetModal.newAccountName")}
                     </span>
-                    <ClearableTextInput
+                    <ClearableInput
                       ref={newAccountInputRef}
                       value={newAccountName}
                       onValueChange={setNewAccountName}
@@ -267,12 +267,13 @@ export function SheetModal({
             <span className="text-xs text-muted">
               {t("sheetModal.description")}
             </span>
-            <textarea
+            <ClearableTextarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onValueChange={setDescription}
               rows={2}
               placeholder={t("sheetModal.descriptionPlaceholder")}
-              className="field-input resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              wrapperClassName="w-full"
+              className="field-input w-full resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
         </div>

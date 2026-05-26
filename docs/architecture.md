@@ -85,8 +85,7 @@ src/
 │   ├── backup-metadata.ts         # derive BackupMetadata from UserData + filename helper
 │   └── file.ts                    # JSON file codec: serialize + parse
 ├── utils/
-│   ├── format.ts                  # currency / amount / date formatting helpers
-│   └── select-on-focus.ts         # global focus handler — select-all on focus
+│   └── format.ts                  # currency / amount / date formatting helpers
 └── seo/
     ├── siteConfig.ts              # SITE_URL, SITE_NAME, AUTHOR, OG defaults
     └── routes.ts                  # per-route <title> / description / JSON-LD

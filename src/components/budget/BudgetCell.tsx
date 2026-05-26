@@ -22,7 +22,8 @@ import {
   parseAmount,
   withCurrency,
 } from "../../utils/format";
-import type { FloatingPlacement } from "../../hooks";
+import { useSelectAllOnFocus, type FloatingPlacement } from "../../hooks";
+import { ClearableTextarea } from "../form";
 import { plural, useT } from "../../i18n";
 import { displayTypeName } from "../../i18n/preset-names";
 import { useClaimActiveRow } from "../useClaimActiveRow";
@@ -528,10 +529,14 @@ function AmountCell({
   // the edit actually changed anything before bubbling a commit signal.
   const focusValueRef = useRef<number | null>(externalNumber);
   useClaimActiveRow(rowId, focused, () => inputRef.current?.blur());
+  // In-row amount editor: too narrow for an inline X clear button, so
+  // keep the "tap to select all" behaviour the rest of the app drops.
+  const onFocusSelectAll = useSelectAllOnFocus<HTMLInputElement>();
 
-  function handleFocus() {
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     setFocused(true);
     focusValueRef.current = externalNumber;
+    onFocusSelectAll(e);
   }
 
   function handleBlur() {
@@ -839,10 +844,14 @@ function DesktopDescriptionEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const focusValueRef = useRef<string>(value);
   useClaimActiveRow(rowId, focused, () => textareaRef.current?.blur());
+  // In-row description editor: keep tap-to-select-all since the column
+  // is too narrow for an inline X clear button.
+  const onFocusSelectAll = useSelectAllOnFocus<HTMLTextAreaElement>();
 
-  function handleFocus() {
+  function handleFocus(e: React.FocusEvent<HTMLTextAreaElement>) {
     setFocused(true);
     focusValueRef.current = value;
+    onFocusSelectAll(e);
   }
 
   function handleBlur() {
@@ -978,10 +987,10 @@ function DescriptionPopover({
         rowId={rowId}
         arrow="up"
       >
-        <textarea
+        <ClearableTextarea
           ref={textareaRef}
           value={draft}
-          onChange={(e) => handleDraftChange(e.target.value)}
+          onValueChange={handleDraftChange}
           onKeyDown={(e) => {
             if (
               e.key === "Enter" &&
@@ -994,6 +1003,7 @@ function DescriptionPopover({
           }}
           placeholder={t("cell.descriptionPlaceholder")}
           rows={1}
+          wrapperClassName="w-full"
           className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
         />
       </FloatingPanel>
