@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { FileText, History } from "lucide-react";
+import { History } from "lucide-react";
 
 import { compareDateStrings, resolveEntryLabels } from "../../data/sheet";
 import type {
@@ -14,7 +14,12 @@ import type {
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { bcp47, type Lang } from "../../i18n/locale";
-import { formatBalance, formatShortDate } from "../../utils/format";
+import {
+  formatBalance,
+  formatNumber,
+  formatShortDate,
+  withCurrency,
+} from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
@@ -165,15 +170,6 @@ export function HistoryModal({
     });
   }, [allSortedEntries, query, typesById, accountSettings]);
 
-  // The description column wraps with break-words to fit narrow phone
-  // screens, which can mangle a long memo into a tower of two- or
-  // three-letter fragments. Tapping a description opens a read-only
-  // viewer that gives the text room to breathe.
-  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
-  useEffect(() => {
-    if (!open) setSelectedEntry(null);
-  }, [open]);
-
   // Walk the sorted (newest-first) entries and emit one group per
   // `YYYY-MM` so the table can drop a colored month-marker row between
   // groups. Sequential entries that share a month stay together.
@@ -202,6 +198,58 @@ export function HistoryModal({
     () => filteredEntries.some((e) => e.typeId !== null),
     [filteredEntries],
   );
+
+  // Compute the longest formatted amount and balance across every
+  // entry so the mobile grid template can pin those columns to a width
+  // that fits the worst case. Without this, table-auto sizing lets a
+  // long bank-text description squeeze the right-aligned balance
+  // column until its trailing "K" / currency suffix is clipped by the
+  // modal body's `overflow-x-hidden`. Mirrors `BudgetViewerModal`'s
+  // `colWidths` memo.
+  const colWidths = useMemo(() => {
+    let amountChars = 0;
+    let balanceChars = 0;
+    for (const r of filteredEntries) {
+      const fullAmount = withCurrency(
+        formatNumber(Math.abs(r.entry.amount), accountSettings, {
+          alwaysTwoFractionDigits: true,
+        }),
+        accountSettings,
+      );
+      if (fullAmount.length > amountChars) amountChars = fullAmount.length;
+      if (r.entry.balance !== undefined) {
+        const fullBalance = withCurrency(
+          formatNumber(Math.abs(r.entry.balance), accountSettings, {
+            alwaysTwoFractionDigits: true,
+          }),
+          accountSettings,
+        );
+        if (fullBalance.length > balanceChars)
+          balanceChars = fullBalance.length;
+      }
+    }
+    return {
+      amountChars: Math.max(amountChars, 4),
+      balanceChars: Math.max(balanceChars, 4),
+    };
+  }, [filteredEntries, accountSettings]);
+
+  // Mobile grid template — one track per rendered column. Date hugs
+  // its content with `auto`, type is pinned to a 40px icon track when
+  // present, description gets the flexible `minmax(0, 1fr)` so it
+  // shrinks before the amount + balance tracks, and amount + balance
+  // are pinned to `Nch + buffer` using the longest formatted value.
+  const mobileGridTemplate = useMemo(() => {
+    const tracks: string[] = ["auto"];
+    if (hasAnyType) tracks.push("40px");
+    tracks.push("minmax(0, 1fr)");
+    tracks.push(`minmax(56px, calc(${colWidths.amountChars} * 1ch + 1rem))`);
+    if (hasAnyBalance) {
+      tracks.push(`minmax(56px, calc(${colWidths.balanceChars} * 1ch + 1rem))`);
+    }
+    return tracks.join(" ");
+  }, [hasAnyType, hasAnyBalance, colWidths]);
+
   return (
     <Modal
       open={open && account !== null}
@@ -231,7 +279,14 @@ export function HistoryModal({
             {t("history.searchNoResults")}
           </p>
         ) : (
-          <table className="w-full border-collapse text-sm">
+          <table
+            className="budget-viewer-table w-full border-collapse text-sm"
+            style={
+              {
+                "--viewer-row-template": mobileGridTemplate,
+              } as CSSProperties
+            }
+          >
             {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
                 where scrolled rows would otherwise bleed through above the
                 sticky band. Mirrors the `.budget-table > thead` trick. */}
@@ -310,7 +365,7 @@ export function HistoryModal({
                   3 + (hasAnyType ? 1 : 0) + (hasAnyBalance ? 1 : 0);
                 return (
                   <Fragment key={group.monthKey}>
-                    <tr>
+                    <tr className="budget-viewer-fullspan">
                       {/* Sticky on the `<td>` (not the `<tr>` — Chrome
                           ignores sticky on rows) so the month label
                           pins below the column-header band until the
@@ -373,14 +428,8 @@ export function HistoryModal({
                               ) : null}
                             </td>
                           )}
-                          <td className="align-top text-muted md:pl-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedEntry(e)}
-                              className="block w-full cursor-pointer px-2 py-1.5 text-left break-words hover:text-fg"
-                            >
-                              {r.description}
-                            </button>
+                          <td className="px-2 py-1.5 align-top text-muted break-words md:pl-4">
+                            {r.description}
                           </td>
                           <td
                             className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
@@ -406,44 +455,6 @@ export function HistoryModal({
           </table>
         )}
       </Modal.Body>
-
-      <Modal
-        open={open && account !== null && selectedEntry !== null}
-        onClose={() => setSelectedEntry(null)}
-        labelledBy="history-description-title"
-        size="max-w-md"
-        scrollableBody={false}
-        centered
-      >
-        <Modal.Header
-          icon={<FileText size={14} aria-hidden focusable={false} />}
-          title={t("history.description")}
-          onClose={() => setSelectedEntry(null)}
-        />
-        {selectedEntry && (
-          <div className="flex flex-col gap-3 px-4 py-3">
-            <div className="flex items-center justify-between gap-3 text-xs text-muted">
-              <span className="font-mono whitespace-nowrap">
-                {formatShortDate(
-                  selectedEntry.date,
-                  settings.shortDateFormat,
-                  lang,
-                )}
-              </span>
-              <span
-                className={`font-mono tabular-nums whitespace-nowrap ${
-                  selectedEntry.amount < 0 ? "text-negative" : "text-positive"
-                }`}
-              >
-                {formatBalance(selectedEntry.amount, accountSettings)}
-              </span>
-            </div>
-            <p className="text-sm break-words whitespace-pre-wrap text-fg">
-              {selectedEntry.description}
-            </p>
-          </div>
-        )}
-      </Modal>
     </Modal>
   );
 }
