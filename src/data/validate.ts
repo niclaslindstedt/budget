@@ -56,6 +56,7 @@ import type {
   MerchantHint,
   PersistedSettings,
   RadiusPreset,
+  PrimaryIncomeMerchant,
   RenamePattern,
   Row,
   SeriesMatchRule,
@@ -576,6 +577,11 @@ function validateHistoryEntry(
     if (typeof raw.noCompany !== "boolean")
       return fail(`${path}.noCompany`, "expected a boolean");
     if (raw.noCompany) entry.noCompany = true;
+  }
+  if (raw.fiscalMonthShift !== undefined) {
+    if (raw.fiscalMonthShift !== 1 && raw.fiscalMonthShift !== -1)
+      return fail(`${path}.fiscalMonthShift`, "expected -1 or 1");
+    entry.fiscalMonthShift = raw.fiscalMonthShift;
   }
   if (raw.splits !== undefined) {
     if (!Array.isArray(raw.splits))
@@ -1583,6 +1589,22 @@ export function validateUserData(raw: unknown): Result<UserData> {
     if (meta) seriesMetadata[key] = meta;
   }
 
+  // Learned primary-income merchant rules. Dedup by `key` (first wins)
+  // so a hand-edited file can't trap the loader with two contradictory
+  // rules on the same merchant.
+  const rawPrimaryMerchants = Array.isArray(raw.primaryIncomeMerchants)
+    ? raw.primaryIncomeMerchants
+    : [];
+  const primaryIncomeMerchants: PrimaryIncomeMerchant[] = [];
+  const seenPrimaryKeys = new Set<string>();
+  for (const rawMerchant of rawPrimaryMerchants) {
+    const merchant = validatePrimaryIncomeMerchant(rawMerchant);
+    if (!merchant) continue;
+    if (seenPrimaryKeys.has(merchant.key)) continue;
+    seenPrimaryKeys.add(merchant.key);
+    primaryIncomeMerchants.push(merchant);
+  }
+
   const settings = validateSettings(raw.settings);
 
   return {
@@ -1608,9 +1630,21 @@ export function validateUserData(raw: unknown): Result<UserData> {
       seriesMatchRules,
       renamePatterns,
       seriesMetadata,
+      primaryIncomeMerchants,
       settings,
     },
   };
+}
+
+function validatePrimaryIncomeMerchant(
+  raw: unknown,
+): PrimaryIncomeMerchant | null {
+  if (!isObject(raw)) return null;
+  if (typeof raw.key !== "string" || raw.key === "") return null;
+  if (typeof raw.anchorDayOfMonth !== "number") return null;
+  const day = Math.trunc(raw.anchorDayOfMonth);
+  if (day < 1 || day > 31) return null;
+  return { key: raw.key, anchorDayOfMonth: day };
 }
 
 function validateSeriesMetadata(raw: unknown): SeriesMetadata | null {

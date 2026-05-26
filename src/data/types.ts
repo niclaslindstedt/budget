@@ -392,6 +392,14 @@ export type HistoryEntry = {
   balance?: number;
   importedAt: number;
   hidden?: boolean;
+  // Optional fiscal-month override for this entry. Mirrors
+  // `Row.fiscalMonthShift` — auto-set by the primary-income matcher
+  // when the entry's date is earlier than the matching merchant's
+  // anchor day, or set manually from the row-actions menu on the
+  // synthesized history row. `synthesizeHistoryRow` propagates it to
+  // the synthesized Row so the grouping pipeline's same-day cascade
+  // sees it identically to a user-authored row.
+  fiscalMonthShift?: -1 | 1;
   collapsedIntoTransferId?: string;
   // True when the user has flagged this bank row as an inter-account
   // transfer (set via the history-entry edit modal). The synthesized
@@ -1041,6 +1049,21 @@ export type SeriesMetadata = {
   anchorDayOfMonth?: number;
 };
 
+// One learned "this bank pattern is my salary" rule. Stored as an
+// array on `UserData.primaryIncomeMerchants` so a job switch (or a
+// secondary income stream from a different bank) just appends a new
+// entry instead of overwriting the existing one. `key` is the
+// normalised description (`normaliseDescription(entry.description)`)
+// so cosmetic bank variations collapse to a single rule; `anchorDayOfMonth`
+// is the "real" payday for that source — 25 for one job, 27 for
+// another, etc. — and entries dated earlier in the month get
+// `fiscalMonthShift = 1` stamped on them so the salary still counts
+// toward the next fiscal month.
+export type PrimaryIncomeMerchant = {
+  key: string;
+  anchorDayOfMonth: number;
+};
+
 // Top-level persisted blob for one signed-in user. Holds everything
 // that user owns: their sheets, the categories they've defined, and
 // their display preferences. The user account itself (id, username,
@@ -1048,7 +1071,7 @@ export type SeriesMetadata = {
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 43;
+  version: 44;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -1148,6 +1171,13 @@ export type UserData = {
   // leaves a harmless entry until it's garbage-collected by a future
   // cleanup pass.
   seriesMetadata: Record<string, SeriesMetadata>;
+  // Learned primary-income rules keyed off the normalised bank
+  // description. Each entry stamps `fiscalMonthShift = 1` on matching
+  // history entries that arrived earlier than the configured payday.
+  // Held as an array so the user can accumulate multiple sources (a
+  // job switch keeps the old key tagged for historical entries and
+  // adds the new bank's pattern alongside).
+  primaryIncomeMerchants: PrimaryIncomeMerchant[];
   settings: PersistedSettings;
 };
 
