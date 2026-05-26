@@ -172,6 +172,7 @@ export const en = {
     deleteThisRow: "Delete this row",
     justThisOne: "Just this one",
     thisAndAllFuture: "This and all future ({n})",
+    thisAndAllThrough: "This and all through {date} ({n})",
     deleteRows: "Delete {n} rows",
     deleteRowOne: "Delete {n} row",
     removeCorrection: "Remove correction",
@@ -856,6 +857,7 @@ export const en = {
     deleteRecurring: "Delete recurring entry",
     deleteRecurringHint:
       "This entry is part of a recurring series. How much should be removed?",
+    deleteRecurringStopAfter: "Stop after a date",
     deleteRowHint: "This row will be permanently removed.",
     deleteSelectedHintOne: "{n} row will be permanently removed.",
     deleteSelectedHintOther: "{n} rows will be permanently removed.",
