@@ -60,7 +60,7 @@ export function HistoryEntryEditModal({
   const t = useT();
   const lang = useLang();
 
-  const initialDescription = entry?.userDescription ?? entry?.description ?? "";
+  const initialDescription = entry?.userDescription ?? "";
   const initialTypeId = entry?.userTypeId ?? null;
   const initialCompanyId = entry?.userCompanyId ?? null;
 
