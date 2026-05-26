@@ -37,6 +37,7 @@
 // Pure: no React, no storage. Consumed by `FindConflictsModal` in
 // `src/components/budget/`.
 
+import { readStringCell } from "./row-cells";
 import { findColumnByType } from "./sheet";
 import type { Column, EntryType, Row } from "./types";
 
@@ -104,12 +105,6 @@ type BucketEntry = {
   categoryId: string | null;
 };
 
-function describeBlank(row: Row, descColId: string | null): string {
-  if (!descColId) return "";
-  const v = row.cells[descColId];
-  return typeof v === "string" ? v.trim() : "";
-}
-
 // Score a user-authored row by how much curated metadata it carries.
 // Used to pick the winner among an all-user-rows group:
 //
@@ -123,7 +118,7 @@ function describeBlank(row: Row, descColId: string | null): string {
 function metadataScore(row: Row, descColId: string | null): number {
   let score = 0;
   if (typeof row.typeId === "string" && row.typeId !== "") score += 2;
-  if (describeBlank(row, descColId) !== "") score += 1;
+  if (readStringCell(row, descColId) !== "") score += 1;
   if (typeof row.seriesId === "string" && row.seriesId !== "") score += 1;
   return score;
 }

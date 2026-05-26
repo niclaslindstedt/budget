@@ -35,7 +35,8 @@ import {
   findMatchingRuleForCandidate,
   ruleMatchesEntry,
 } from "./match-rules";
-import { findColumnByType } from "./sheet";
+import { candidateFromRow, resolveCandidateColumns } from "./row-candidate";
+import { mapAccountBudgets } from "./sheet";
 import type {
   AccountBudget,
   HistoryEntry,
@@ -49,23 +50,13 @@ export function reapplyPatternsToBudget(
   rules: readonly MatchRule[],
 ): AccountBudget {
   if (rules.length === 0) return item;
-  const descId = findColumnByType(item.columns, "description")?.id;
-  if (descId === undefined) return item;
-  const amountId = findColumnByType(item.columns, "amount")?.id;
+  const cols = resolveCandidateColumns(item.columns);
+  if (cols.descId === undefined) return item;
   let changed = false;
   const nextRows = item.rows.map((row) => {
     if (row.typeIdLocked) return row;
-    const desc = row.cells[descId];
-    if (typeof desc !== "string" || desc.trim() === "") return row;
-    const amount =
-      amountId !== undefined && typeof row.cells[amountId] === "number"
-        ? (row.cells[amountId] as number)
-        : 0;
-    const candidate = {
-      description: desc,
-      amount,
-      isTransfer: row.isTransfer === true,
-    };
+    const candidate = candidateFromRow(row, cols);
+    if (!candidate) return row;
     const rule = findMatchingRuleForCandidate(rules, candidate);
     // Additive only: if no rule wins (or the winning rule itself
     // carries no typeId), keep whatever the row already had. See the
@@ -83,20 +74,9 @@ export function reapplyPatternsToAllSheets(
   sheets: readonly Sheet[],
   rules: readonly MatchRule[],
 ): Sheet[] {
-  let sheetsChanged = false;
-  const next = sheets.map((sheet) => {
-    let itemsChanged = false;
-    const items = sheet.items.map((item) => {
-      if (item.type !== "accountBudget") return item;
-      const updated = reapplyPatternsToBudget(item, rules);
-      if (updated !== item) itemsChanged = true;
-      return updated;
-    });
-    if (!itemsChanged) return sheet;
-    sheetsChanged = true;
-    return { ...sheet, items };
-  });
-  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+  return mapAccountBudgets(sheets, (item) =>
+    reapplyPatternsToBudget(item, rules),
+  );
 }
 
 // Count budget rows whose persisted typeId would be touched by a
@@ -161,22 +141,12 @@ export function countRuleHitsOnSheets(
   for (const sheet of sheets) {
     for (const item of sheet.items) {
       if (item.type !== "accountBudget") continue;
-      const descId = findColumnByType(item.columns, "description")?.id;
-      if (descId === undefined) continue;
-      const amountId = findColumnByType(item.columns, "amount")?.id;
+      const cols = resolveCandidateColumns(item.columns);
+      if (cols.descId === undefined) continue;
       for (const row of item.rows) {
         if (row.typeIdLocked) continue;
-        const desc = row.cells[descId];
-        if (typeof desc !== "string" || desc.trim() === "") continue;
-        const amount =
-          amountId !== undefined && typeof row.cells[amountId] === "number"
-            ? (row.cells[amountId] as number)
-            : 0;
-        const candidate = {
-          description: desc,
-          amount,
-          isTransfer: row.isTransfer === true,
-        };
+        const candidate = candidateFromRow(row, cols);
+        if (!candidate) continue;
         const winning = findMatchingRuleForCandidate(rules, candidate);
         if (!winning) continue;
         counts.set(winning.id, (counts.get(winning.id) ?? 0) + 1);
@@ -213,9 +183,8 @@ export function applyMatchRuleOnceToBudget(
 ): AccountBudget {
   const ruleTypeId = rule.typeId;
   if (!ruleTypeId) return item;
-  const descId = findColumnByType(item.columns, "description")?.id;
-  if (descId === undefined) return item;
-  const amountId = findColumnByType(item.columns, "amount")?.id;
+  const cols = resolveCandidateColumns(item.columns);
+  if (cols.descId === undefined) return item;
   let changed = false;
   // Locked rows are NOT skipped — `typeIdLocked` exists to protect
   // against automatic sweeps (a new saved rule, "Reapply all"), not
@@ -223,17 +192,8 @@ export function applyMatchRuleOnceToBudget(
   // is a deliberate action, so the user expects locked rows to be
   // relabelled the same as any other manual pick would relabel them.
   const nextRows = item.rows.map((row) => {
-    const desc = row.cells[descId];
-    if (typeof desc !== "string" || desc.trim() === "") return row;
-    const amount =
-      amountId !== undefined && typeof row.cells[amountId] === "number"
-        ? (row.cells[amountId] as number)
-        : 0;
-    const candidate = {
-      description: desc,
-      amount,
-      isTransfer: row.isTransfer === true,
-    };
+    const candidate = candidateFromRow(row, cols);
+    if (!candidate) return row;
     if (!findMatchingRuleForCandidate([rule], candidate)) return row;
     if (row.typeId === ruleTypeId && row.typeIdLocked === true) return row;
     changed = true;
@@ -247,20 +207,9 @@ export function applyMatchRuleOnceToAllSheets(
   sheets: readonly Sheet[],
   rule: MatchRule,
 ): Sheet[] {
-  let sheetsChanged = false;
-  const next = sheets.map((sheet) => {
-    let itemsChanged = false;
-    const items = sheet.items.map((item) => {
-      if (item.type !== "accountBudget") return item;
-      const updated = applyMatchRuleOnceToBudget(item, rule);
-      if (updated !== item) itemsChanged = true;
-      return updated;
-    });
-    if (!itemsChanged) return sheet;
-    sheetsChanged = true;
-    return { ...sheet, items };
-  });
-  return sheetsChanged ? (next as Sheet[]) : (sheets as Sheet[]);
+  return mapAccountBudgets(sheets, (item) =>
+    applyMatchRuleOnceToBudget(item, rule),
+  );
 }
 
 // Stamp `userTypeId` (and `userDescription` when set on the rule) on

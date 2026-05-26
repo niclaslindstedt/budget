@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 
+import { useRefIdentity } from "../../hooks";
 import { useT } from "../../i18n";
 import type { RenameSuggestion } from "../../data/rename-patterns";
 import { Button, ClearableTextInput } from "../form";
@@ -225,18 +226,4 @@ export function RenamePredictorModal({
       </Modal.Footer>
     </Modal>
   );
-}
-
-// Tracks whether the input reference identity changed since the last
-// render. Used by the modal to resync local row state when a fresh
-// `suggestions` list replaces the previous one. Pure pattern — no
-// effects, so the state sync runs synchronously during render and
-// React batches it into the same paint as the props change.
-function useRefIdentity<T>(value: T): { changed: boolean } {
-  const [previous, setPrevious] = useState<T>(value);
-  if (previous !== value) {
-    setPrevious(value);
-    return { changed: true };
-  }
-  return { changed: false };
 }

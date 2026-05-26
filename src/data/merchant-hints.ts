@@ -14,6 +14,7 @@ import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
 } from "./description-normaliser";
+import { bumpHitCount } from "./hit-count";
 import type { MerchantHint, UserData } from "./types";
 
 export type HintRecording = {
@@ -59,7 +60,10 @@ export function recordMerchantHints(
     if (next === null) next = { ...state.merchantHints };
     const hint: MerchantHint = {
       typeId: r.typeId,
-      hitCount: (existing?.typeId === r.typeId ? existing.hitCount : 0) + 1,
+      hitCount: bumpHitCount(
+        existing?.hitCount ?? null,
+        existing?.typeId === r.typeId,
+      ),
       lastUsedAt: now,
     };
     // description_override: undefined preserves, empty string clears,
