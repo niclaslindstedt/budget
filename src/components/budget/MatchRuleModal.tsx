@@ -5,6 +5,7 @@ import { compilePattern, ruleMatchesEntry } from "../../data/match-rules";
 import { derivePatternFromDescription } from "../../data/pattern-derive";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useLang, useT } from "../../i18n";
+import { todayIso } from "../../utils/date";
 import { createLogger } from "../../utils/logger";
 import type {
   Category,
@@ -333,6 +334,38 @@ export function MatchRuleModal({
     [matches, seedEntry],
   );
 
+  // Walk the preview rows and intersperse year-header rows so a list
+  // that crosses calendar years stays legible — the per-row date is
+  // short ("25/5") and otherwise hides the year. Headers are only
+  // emitted for past years; current-year rows render bare since the
+  // year is the user's implicit default.
+  const previewItems = useMemo<
+    Array<
+      { kind: "year"; year: number } | { kind: "entry"; entry: HistoryEntry }
+    >
+  >(() => {
+    const items: Array<
+      { kind: "year"; year: number } | { kind: "entry"; entry: HistoryEntry }
+    > = [];
+    const currentYear = Number(todayIso().slice(0, 4));
+    let lastSeenYear: number | null = null;
+    for (const e of shownMatches) {
+      const entryYear = Number(e.date.slice(0, 4));
+      if (
+        Number.isFinite(entryYear) &&
+        entryYear < currentYear &&
+        entryYear !== lastSeenYear
+      ) {
+        items.push({ kind: "year", year: entryYear });
+      }
+      items.push({ kind: "entry", entry: e });
+      if (Number.isFinite(entryYear)) {
+        lastSeenYear = entryYear;
+      }
+    }
+    return items;
+  }, [shownMatches]);
+
   const exactBlank = isExactMode && amountExact === undefined;
   const canSave =
     pattern.trim().length > 0 &&
@@ -587,28 +620,45 @@ export function MatchRuleModal({
               </p>
             ) : (
               <ul className="divide-y divide-line text-xs">
-                {shownMatches.map((e) => (
-                  <li
-                    key={e.id}
-                    className={`flex items-baseline gap-2 px-3 py-1.5 ${
-                      seedEntry && e.id === seedEntry.id ? "bg-surface-3" : ""
-                    }`}
-                  >
-                    <span className="w-12 font-mono text-muted">
-                      {formatShortDate(e.date, settings.shortDateFormat, lang)}
-                    </span>
-                    <span className="flex-1 truncate text-fg">
-                      {e.description}
-                    </span>
-                    <span
-                      className={`shrink-0 font-mono tabular-nums ${
-                        e.amount < 0 ? "text-negative" : "text-positive"
+                {previewItems.map((item) =>
+                  item.kind === "year" ? (
+                    <li
+                      key={`year-${item.year}`}
+                      className="bg-surface-3 px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted"
+                    >
+                      {item.year}
+                    </li>
+                  ) : (
+                    <li
+                      key={item.entry.id}
+                      className={`flex items-baseline gap-2 px-3 py-1.5 ${
+                        seedEntry && item.entry.id === seedEntry.id
+                          ? "bg-surface-3"
+                          : ""
                       }`}
                     >
-                      {formatBalance(e.amount, settings)}
-                    </span>
-                  </li>
-                ))}
+                      <span className="w-12 font-mono text-muted">
+                        {formatShortDate(
+                          item.entry.date,
+                          settings.shortDateFormat,
+                          lang,
+                        )}
+                      </span>
+                      <span className="flex-1 truncate text-fg">
+                        {item.entry.description}
+                      </span>
+                      <span
+                        className={`shrink-0 font-mono tabular-nums ${
+                          item.entry.amount < 0
+                            ? "text-negative"
+                            : "text-positive"
+                        }`}
+                      >
+                        {formatBalance(item.entry.amount, settings)}
+                      </span>
+                    </li>
+                  ),
+                )}
               </ul>
             )}
           </div>
