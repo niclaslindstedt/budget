@@ -1128,9 +1128,10 @@ body {
     }
   }
 
-  /* Budget viewer modal — read-only month-stacked sheet. Mobile borrows
-     the same display:block + per-row CSS grid trick as `.budget-table`
-     so the date / type / amount / balance columns get explicit tracks
+  /* Read-only month-stacked tables — `BudgetViewerModal` and
+     `HistoryModal` both opt into this class. Mobile borrows the same
+     display:block + per-row CSS grid trick as `.budget-table` so the
+     date / type / amount / balance columns get explicit tracks
      instead of fighting the description for space. Without this, the
      modal's `overflow-x-hidden` body silently clips the rightmost
      column (the running balance) once a long description pushes the
