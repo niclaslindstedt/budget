@@ -1766,9 +1766,15 @@ export function reducer(state: UserData, action: Action): UserData {
       (prev) => {
         const next: HistoryEntry = { ...prev };
         if (action.patch.userDescription !== undefined) {
-          const trimmed = action.patch.userDescription.trim();
-          if (trimmed === "") delete next.userDescription;
-          else next.userDescription = trimmed;
+          // Whitespace-only collapses to "no override" so the user can
+          // clear the field through the modal without the synthesized
+          // row falling back to an empty label. Otherwise persist the
+          // raw value — trimming here would strip a trailing space the
+          // moment the user typed it, leaving the controlled textarea
+          // looking like the keystroke never landed.
+          const raw = action.patch.userDescription;
+          if (raw.trim() === "") delete next.userDescription;
+          else next.userDescription = raw;
         }
         if (action.patch.userTypeId !== undefined) {
           if (action.patch.userTypeId === null) delete next.userTypeId;
