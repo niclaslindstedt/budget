@@ -10,4 +10,5 @@ gets pushed into the next fiscal month so the budget statistics for
 shows a small ↗ arrow when an override is active. A new row-actions
 menu entry — **Push to next fiscal month** / **Push to previous
 fiscal month** — lets you nudge any single entry by hand when the
-automatic detection doesn't apply.
+automatic detection doesn't apply. Flagging your first primary
+income series also unlocks the **Early Bird** achievement.
