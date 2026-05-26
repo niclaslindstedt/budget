@@ -410,16 +410,16 @@ export function BudgetViewerModal({
           <ModalSearchBar
             value={query}
             onChange={setQuery}
-            placeholder={t("sheet.viewerSearchPlaceholder")}
+            placeholder={t("budget.viewerSearchPlaceholder")}
           />
         )}
         {hasNoRows ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
-            {t("sheet.viewerEmpty")}
+            {t("budget.viewerEmpty")}
           </p>
         ) : visibleRows.length === 0 && query.trim() !== "" ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
-            {t("sheet.viewerSearchNoResults")}
+            {t("budget.viewerSearchNoResults")}
           </p>
         ) : (
           <table
@@ -438,7 +438,7 @@ export function BudgetViewerModal({
                 <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-2 md:text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon type="date" className="shrink-0 text-accent" />
-                    <span className="hidden md:inline">{t("sheet.date")}</span>
+                    <span className="hidden md:inline">{t("budget.date")}</span>
                   </span>
                 </th>
                 {typeCol && (
@@ -449,7 +449,7 @@ export function BudgetViewerModal({
                         className="shrink-0 text-accent"
                       />
                       <span className="hidden md:inline">
-                        {t("sheet.type")}
+                        {t("budget.type")}
                       </span>
                     </span>
                   </th>
@@ -461,7 +461,7 @@ export function BudgetViewerModal({
                       className="shrink-0 text-accent"
                     />
                     <span className="hidden md:inline">
-                      {t("sheet.description")}
+                      {t("budget.description")}
                     </span>
                   </span>
                 </th>
@@ -473,7 +473,7 @@ export function BudgetViewerModal({
                         className="shrink-0 text-accent"
                       />
                       <span className="hidden md:inline">
-                        {t("sheet.amount")}
+                        {t("budget.amount")}
                       </span>
                     </span>
                   </th>
@@ -486,7 +486,7 @@ export function BudgetViewerModal({
                         className="shrink-0 text-accent"
                       />
                       <span className="hidden md:inline">
-                        {t("sheet.balance")}
+                        {t("budget.balance")}
                       </span>
                     </span>
                   </th>
@@ -497,7 +497,7 @@ export function BudgetViewerModal({
               {hasHiddenFuture &&
                 settings.transactionSortOrder === "newestFirst" && (
                   <ShowFutureEntriesRow
-                    label={t("sheet.showFutureMonths", {
+                    label={t("budget.showFutureMonths", {
                       n: FUTURE_PAGE_SIZE,
                     })}
                     onClick={onShowMoreFutureClick}
@@ -537,7 +537,7 @@ export function BudgetViewerModal({
                         className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
                         style={colorStyle}
                       >
-                        {formatMonth(monthKey, lang, t("sheet.undated"))}
+                        {formatMonth(monthKey, lang, t("budget.undated"))}
                       </td>
                     </tr>
                     {rows.length === 0 ? (
@@ -546,11 +546,11 @@ export function BudgetViewerModal({
                           colSpan={colSpan}
                           className="px-2 py-1.5 text-center text-xs italic text-muted"
                         >
-                          {t("sheet.monthEmpty", {
+                          {t("budget.monthEmpty", {
                             month: formatMonth(
                               monthKey,
                               lang,
-                              t("sheet.undated"),
+                              t("budget.undated"),
                             ),
                           })}
                         </td>
@@ -564,7 +564,7 @@ export function BudgetViewerModal({
                             amountCol={amountCol?.id}
                             colSpan={colSpan}
                             settings={settings}
-                            correctionLabel={t("sheet.correctionLine")}
+                            correctionLabel={t("budget.correctionLine")}
                           />
                         ) : (
                           <ViewerRow
@@ -591,7 +591,7 @@ export function BudgetViewerModal({
               {hasHiddenFuture &&
                 settings.transactionSortOrder === "oldestFirst" && (
                   <ShowFutureEntriesRow
-                    label={t("sheet.showFutureMonths", {
+                    label={t("budget.showFutureMonths", {
                       n: FUTURE_PAGE_SIZE,
                     })}
                     onClick={onShowMoreFutureClick}

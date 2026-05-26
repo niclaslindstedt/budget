@@ -1476,8 +1476,8 @@ export function AppShell({
             includeFuture: config.includeFuture,
           });
           const currencySuffix = data.settings.currency.trim();
-          const amountHeader = t("sheet.amount");
-          const balanceHeader = t("sheet.balance");
+          const amountHeader = t("budget.amount");
+          const balanceHeader = t("budget.balance");
           // CSV headers carry the currency in parentheses so the
           // column is self-describing once it leaves the app; XLSX
           // encodes the symbol inside each cell's number format
@@ -1491,10 +1491,10 @@ export function AppShell({
               ? `${balanceHeader} (${currencySuffix})`
               : balanceHeader;
           const baseHeaders = {
-            date: t("sheet.date"),
-            type: t("sheet.type"),
-            category: t("sheet.category"),
-            description: t("sheet.description"),
+            date: t("budget.date"),
+            type: t("budget.type"),
+            category: t("budget.category"),
+            description: t("budget.description"),
           };
           if (config.format === "csv") {
             const table = exportRowsToTable(rows, {

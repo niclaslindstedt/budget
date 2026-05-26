@@ -115,7 +115,7 @@ function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
 }
 
 function formatMonth(key: string, lang: Lang, t: TFunction): string {
-  if (key === "undated") return t("sheet.undated");
+  if (key === "undated") return t("budget.undated");
   const [y, m] = key.split("-").map(Number);
   if (!y || !m) return key;
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
@@ -331,8 +331,8 @@ function MonthTableImpl({
           aria-expanded={!collapsed}
           aria-label={
             collapsed
-              ? t("sheet.expandMonth", { month: monthLabel })
-              : t("sheet.collapseMonth", { month: monthLabel })
+              ? t("budget.expandMonth", { month: monthLabel })
+              : t("budget.collapseMonth", { month: monthLabel })
           }
           className="flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent pt-1 pb-1 pl-2 text-left text-[inherit] font-bold tracking-wider uppercase hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:pt-2 md:pb-2 md:pl-3"
         >
@@ -388,7 +388,7 @@ function MonthTableImpl({
                 <th
                   scope="col"
                   className="select-cell border-t border-line bg-surface-3 text-center"
-                  aria-label={t("sheet.selectAllInMonth")}
+                  aria-label={t("budget.selectAllInMonth")}
                 >
                   <button
                     type="button"
@@ -399,8 +399,8 @@ function MonthTableImpl({
                     className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-muted disabled:opacity-30"
                     aria-label={
                       allSelected
-                        ? t("sheet.deselectAllInMonth")
-                        : t("sheet.selectAllRowsInMonth")
+                        ? t("budget.deselectAllInMonth")
+                        : t("budget.selectAllRowsInMonth")
                     }
                     aria-pressed={allSelected}
                   >
@@ -428,7 +428,7 @@ function MonthTableImpl({
               <th
                 scope="col"
                 className="action-cell w-8 border-t border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
-                aria-label={t("sheet.rowActions")}
+                aria-label={t("budget.rowActions")}
               >
                 <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">
                   <Wrench
@@ -438,7 +438,7 @@ function MonthTableImpl({
                     focusable={false}
                   />
                   <span className="column-header-label hidden md:inline">
-                    {t("sheet.actions")}
+                    {t("budget.actions")}
                   </span>
                 </span>
               </th>
@@ -573,8 +573,8 @@ function MonthTableImpl({
                       <AlertTriangle size={22} aria-hidden focusable={false} />
                       <span>
                         {orphanCount === 1
-                          ? t("sheet.triageInCoveredMonthOne")
-                          : t("sheet.triageInCoveredMonthOther", {
+                          ? t("budget.triageInCoveredMonthOne")
+                          : t("budget.triageInCoveredMonthOther", {
                               n: orphanCount,
                             })}
                       </span>
@@ -582,7 +582,7 @@ function MonthTableImpl({
                   ) : (
                     <div className="flex w-full select-none items-center justify-center gap-2 py-3 text-success">
                       <Check size={22} aria-hidden focusable={false} />
-                      <span>{t("sheet.historyCoversMonth")}</span>
+                      <span>{t("budget.historyCoversMonth")}</span>
                     </div>
                   )
                 ) : (
@@ -633,7 +633,7 @@ function CorrectionLine({
         <button
           type="button"
           onClick={onClick}
-          aria-label={t("sheet.correctionRemoveAria", {
+          aria-label={t("budget.correctionRemoveAria", {
             amount: `${sign}${magnitude}`,
           })}
           title={t("app.removeBalanceCorrection")}
@@ -641,7 +641,7 @@ function CorrectionLine({
         >
           <span aria-hidden className="h-px flex-1 bg-line" />
           <span className="whitespace-nowrap">
-            {t("sheet.correctionLine")}{" "}
+            {t("budget.correctionLine")}{" "}
             <span className={`font-mono tabular-nums ${amountClass}`}>
               {sign}
               {magnitude}

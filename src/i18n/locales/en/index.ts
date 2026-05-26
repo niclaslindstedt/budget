@@ -22,6 +22,7 @@ import backend from "./backend";
 import settings from "./settings";
 import sheetTabs from "./sheetTabs";
 import sheet from "./sheet";
+import budget from "./budget";
 import cell from "./cell";
 import addRow from "./addRow";
 import modal from "./modal";
@@ -89,6 +90,7 @@ export const en = {
   settings,
   sheetTabs,
   sheet,
+  budget,
   cell,
   addRow,
   modal,

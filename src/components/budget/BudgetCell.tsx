@@ -406,14 +406,14 @@ function BalanceCell({
               }}
               aria-label={plural(
                 t,
-                "sheet.hiddenTransferOne",
-                "sheet.hiddenTransferOther",
+                "budget.hiddenTransferOne",
+                "budget.hiddenTransferOther",
                 hiddenTransferCount,
               )}
               title={
                 transferExpanded
-                  ? t("sheet.collapseHiddenTransfers")
-                  : t("sheet.expandHiddenTransfers")
+                  ? t("budget.collapseHiddenTransfers")
+                  : t("budget.expandHiddenTransfers")
               }
               aria-expanded={transferExpanded}
               className="cursor-pointer border-0 bg-transparent p-0 font-mono tabular-nums whitespace-pre italic underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
