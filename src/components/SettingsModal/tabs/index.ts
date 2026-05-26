@@ -1,0 +1,10 @@
+export { AppearanceTab } from "./appearance";
+export { CategoriesTab } from "./categories";
+export { CompaniesTab } from "./companies";
+export { DeveloperTab } from "./developer";
+export { FormatTab } from "./format";
+export { GeneralTab } from "./general";
+export { LogsTab } from "./logs";
+export { MemoryTab } from "./memory";
+export { PatternsTab } from "./patterns";
+export { StorageTab } from "./storage";
