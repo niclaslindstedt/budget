@@ -9,6 +9,7 @@ import {
   Brain,
   Calculator,
   Calendar,
+  CalendarArrowUp,
   CalendarClock,
   CalendarCog,
   Check,
@@ -156,6 +157,8 @@ const hasReorderedColumns = (s: UserData) =>
           "completed",
         ]),
   );
+const hasPrimaryIncomeSeries = (s: UserData) =>
+  Object.values(s.seriesMetadata).some((m) => m.isPrimaryIncome === true);
 const hasMultipartItem = (s: UserData) =>
   eachAccountBudget(s, (i) => {
     const corrections = i.rows.filter((r) => r.isCorrection).length;
@@ -390,6 +393,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       predicate: (prev, next) =>
         !hasRecurringRow(prev) && hasRecurringRow(next),
+    },
+  },
+  {
+    id: "earlyBird",
+    tier: "intermediate",
+    glyph: CalendarArrowUp,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      predicate: (prev, next) =>
+        !hasPrimaryIncomeSeries(prev) && hasPrimaryIncomeSeries(next),
     },
   },
   {

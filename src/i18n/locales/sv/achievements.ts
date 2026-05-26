@@ -167,6 +167,13 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Lön, hyra, Spotify, gym. Förhandsvisningen visar de tio nästa förekomsterna innan du sparar så du kan dubbelkolla mönstret.",
     },
+    earlyBird: {
+      name: "Tidig fågel",
+      condition:
+        "Markera en återkommande serie som primär inkomst så att en tidig lön ändå räknas till nästa budgetmånad.",
+      learnMore:
+        "När den 25:e infaller på en helg eller röd dag och banken betalar ut några dagar tidigare flyttas raden (och alla överföringar och utgifter samma dag) till nästa budgetmånad — så att april inte plötsligt suger åt sig majlönen. Ange ordinarie lönedag en gång så tillämpas kaskaden retroaktivt på varje förekomst i serien.",
+    },
     secondDraft: {
       name: "Andra utkastet",
       condition: "Redigera en återkommande serie.",
