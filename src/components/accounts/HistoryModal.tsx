@@ -2,7 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { History } from "lucide-react";
 
-import { compareDateStrings, resolveEntryLabels } from "../../data/sheet";
+import { resolveEntryLabels } from "../../data/budget-synthesis";
+import { compareDateStrings } from "../../data/fiscal-month";
 import type {
   Account,
   Company,

@@ -23,7 +23,8 @@
 
 import { monthFirstDay } from "./coverage";
 import { compilePattern } from "./match-rules";
-import { findColumnByType, getMonthKey } from "./sheet";
+import { getMonthKey } from "./fiscal-month";
+import { findColumnByType } from "./sheet";
 import type { Column, HistoryEntry, Row, SeriesMatchRule } from "./types";
 
 export const RECONCILIATION_DATE_LAG_DAYS = 7;

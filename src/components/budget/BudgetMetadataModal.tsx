@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tags } from "lucide-react";
 
-import { resolveEntryLabels } from "../../data/sheet";
+import { resolveEntryLabels } from "../../data/budget-synthesis";
 import { bcp47, type Lang } from "../../i18n/locale";
 import { useLang, useT } from "../../i18n";
 import type {

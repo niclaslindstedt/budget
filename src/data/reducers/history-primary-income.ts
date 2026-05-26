@@ -1,8 +1,6 @@
 import { normaliseDescription } from "../description-normaliser";
-import {
-  computePrimaryIncomeShiftForHistory,
-  updateHistoryEntry,
-} from "../sheet";
+import { computePrimaryIncomeShiftForHistory } from "../fiscal-month";
+import { updateHistoryEntry } from "../sheet";
 import type { Action } from "../reducer";
 import type { HistoryEntry, PrimaryIncomeMerchant, UserData } from "../types";
 

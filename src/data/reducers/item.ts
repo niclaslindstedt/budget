@@ -1,15 +1,16 @@
 import {
-  computePrimaryIncomeShift,
-  createEmptyRow,
   defaultCompletedForDate,
+  propagateCellInSeries,
+  rowsInSeriesFrom,
+} from "../budget-rows";
+import { computePrimaryIncomeShift, shiftIsoToMonth } from "../fiscal-month";
+import {
+  createEmptyRow,
   findColumnByType,
   getStandardColumns,
   mapRowsByIds,
   moveColumn,
   newId,
-  propagateCellInSeries,
-  rowsInSeriesFrom,
-  shiftIsoToMonth,
   updateAccountBudget,
 } from "../sheet";
 import { findMatchingRuleForCandidate } from "../match-rules";
