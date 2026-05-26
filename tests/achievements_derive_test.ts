@@ -108,6 +108,16 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("groundhogDay");
   });
 
+  it("fires earlyBird when a series is flagged primary income", () => {
+    const prev = withItem([{ id: "r1", cells: {}, seriesId: "s1" }]);
+    const next = withItem([{ id: "r1", cells: {}, seriesId: "s1" }]);
+    next.seriesMetadata = {
+      s1: { isPrimaryIncome: true, anchorDayOfMonth: 25 },
+    };
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("earlyBird");
+  });
+
   it("fires spellbinder when a row gains an amount formula", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([

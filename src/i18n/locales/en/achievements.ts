@@ -167,6 +167,13 @@ const achievements = {
       learnMore:
         "Salary, rent, Spotify, gym. The preview shows the next ten occurrences before you save so you can sanity-check the pattern.",
     },
+    earlyBird: {
+      name: "Early Bird",
+      condition:
+        "Mark a recurring series as your primary income so an early-arriving paycheck still counts toward the next fiscal month.",
+      learnMore:
+        "When the 25th lands on a weekend or holiday and the bank pays out a few days early, the row (plus every transfer and expense dated the same day) shifts into the next fiscal month — so April doesn't accidentally absorb May's salary. Set the real payday once and the cascade applies retroactively to every occurrence in the series.",
+    },
     secondDraft: {
       name: "Second Draft",
       condition: "Edit a recurring series.",
