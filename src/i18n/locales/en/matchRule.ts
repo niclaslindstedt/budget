@@ -1,0 +1,73 @@
+import type { Widen } from "./_widen";
+
+const matchRule = {
+  title: "Pattern rule",
+  titleEdit: "Edit pattern rule",
+  titleLabelByPattern: "Label by pattern",
+  intro:
+    "Label every history entry whose description matches this pattern. Applies to past entries and future imports.",
+  introWild: "for any run of characters and",
+  introOne: "for a single character; matching is case-insensitive.",
+  pattern: "Pattern",
+  patternHint:
+    "Use * to match any run of characters. Wrap with *…* for substring matching.",
+  patternPlaceholder: "*App Store*",
+  descriptionOptional: "Description (optional)",
+  descriptionPlaceholder: "Leave blank to keep the bank's text",
+  label: "Label",
+  labelPlaceholder: "e.g. Groceries",
+  type: "Type",
+  typeOptional: "Type (optional)",
+  company: "Company (optional)",
+  filters: "Filters",
+  amountSign: "Amount sign",
+  amountLabel: "Amount",
+  amountAny: "Any",
+  amountPositive: "Positive",
+  amountNegative: "Negative",
+  amountExact: "Exact",
+  amountRange: "Range",
+  amountFrom: "From",
+  amountTo: "To",
+  amountFromAria: "Amount from",
+  amountToAria: "Amount to",
+  amountExactPlaceholder: "Amount",
+  amountExactAria: "Exact amount",
+  amountExactValue: "Exactly {amount}",
+  amountRangeBoth: "{min} to {max}",
+  amountRangeMinOnly: "≥ {min}",
+  amountRangeMaxOnly: "≤ {max}",
+  rangeInvertedHint: '"From" must be less than or equal to "To".',
+  amountToLabel: "to",
+  amountMin: "Min",
+  amountMax: "Max",
+  transferFilter: "Transfers",
+  transferAny: "Any",
+  transferExclude: "Exclude",
+  transferOnly: "Only",
+  transferExcludeFull: "Skip transfers",
+  transferOnlyFull: "Only transfers",
+  preview: "Preview",
+  matchesOne: "{n} match",
+  matchesOther: "{n} matches",
+  showingFirst: " (showing first {n})",
+  typePatternToPreview: "Type a pattern to preview matches.",
+  noHistoryMatches: "No history entries match.",
+  create: "Create rule",
+  update: "Update rule",
+  delete: "Delete rule",
+  deleteConfirmTitle: "Delete pattern rule?",
+  deleteConfirmHint:
+    "Existing history rows that the rule relabelled will revert to their bank description.",
+  labelMatchesCount: "Label {n}",
+  labelMatchesOnceCount: "Label {n} (don't save)",
+  savePattern: "Save pattern",
+  savePatternHintOn:
+    "Keeps the rule so future imports get the same label automatically.",
+  savePatternHintOff:
+    "Applies the labels once to existing matches and discards the rule. Use for one-off bulk-labelling of merchants you'll never see again.",
+} as const;
+
+export type MatchRuleCatalog = Widen<typeof matchRule>;
+
+export default matchRule;
