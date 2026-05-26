@@ -52,6 +52,7 @@ import type {
   Transfer,
   UserData,
 } from "../../data/types";
+import { suppressScrollHide } from "../../hooks";
 import { formatNumber, withCurrency } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { MonthTable } from "./MonthTable";
@@ -786,6 +787,12 @@ export function BudgetPage({
   const scrollTargetRef = useRef<HTMLDivElement | null>(null);
   const lastScrolledKey = useRef<string | null>(null);
   const scrollToToday = (behavior: ScrollBehavior) => {
+    // Tell the BottomBar's hide-on-scroll hook to ignore the scroll
+    // events we're about to fire — without this the initial jump to
+    // today reads as a fast user scroll-down and the bar slides off
+    // for a beat before the polling refine settles. AccountsPage's
+    // mount-time scroll lands at the TOP_BAND so it never hit this.
+    suppressScrollHide();
     const target = scrollTargetRef.current;
     // First pass: today's row may already be mounted (the user is on
     // or near the current month). Trust it only when its month is
@@ -1028,6 +1035,10 @@ export function BudgetPage({
       if (!row) return;
       const reduceMotion =
         document.documentElement.dataset.reduceMotion === "true";
+      // Same rationale as `scrollToToday`: the BottomBar's
+      // hide-on-scroll hook would otherwise read this programmatic
+      // scroll-into-view as a user fling.
+      suppressScrollHide();
       row.scrollIntoView({
         block: "center",
         behavior: reduceMotion ? "auto" : "smooth",
