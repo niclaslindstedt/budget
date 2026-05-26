@@ -2749,6 +2749,25 @@ export function AppShell({
     [dispatch, activeItem.accountId, historyEditPrompt],
   );
 
+  const onSetHistoryEntryPrimaryIncome = useCallback(
+    (
+      entryId: string,
+      isPrimaryIncome: boolean,
+      anchorDayOfMonth: number | null,
+    ) => {
+      const accountId = activeItem.accountId;
+      if (!accountId) return;
+      dispatch({
+        type: "setHistoryEntryPrimaryIncome",
+        accountId,
+        entryId,
+        isPrimaryIncome,
+        anchorDayOfMonth,
+      });
+    },
+    [dispatch, activeItem.accountId],
+  );
+
   const onSubmitMatchRule = useCallback(
     (draft: MatchRuleDraft) => {
       const existingId =
@@ -3818,8 +3837,10 @@ export function AppShell({
         types={allTypesMerged}
         companies={data.companies}
         settings={effectiveSettings}
+        primaryIncomeMerchants={data.primaryIncomeMerchants}
         onClose={() => setHistoryEditPrompt(null)}
         onSubmit={onSubmitHistoryEdit}
+        onSetPrimaryIncome={onSetHistoryEntryPrimaryIncome}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}

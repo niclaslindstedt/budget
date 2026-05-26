@@ -104,6 +104,7 @@ describe("backup restore — migration pipeline", () => {
       seriesMatchRules: [],
       renamePatterns: {},
       seriesMetadata: {},
+      primaryIncomeMerchants: [],
       settings: { ...DEFAULT_SETTINGS },
     };
     const current = serializeUserData(userData);

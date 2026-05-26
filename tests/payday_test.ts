@@ -53,7 +53,7 @@ function userData(over: Partial<UserData>): UserData {
     ],
   };
   return {
-    version: 43,
+    version: 44,
     sheets: over.sheets ?? [sheet],
     activeSheetId: "s",
     accounts: [{ id: "acc", name: "A" }],
@@ -73,6 +73,7 @@ function userData(over: Partial<UserData>): UserData {
     seriesMatchRules: over.seriesMatchRules ?? [],
     renamePatterns: {},
     seriesMetadata: {},
+    primaryIncomeMerchants: [],
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
       startOfMonth: 1,

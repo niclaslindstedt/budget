@@ -12,6 +12,7 @@ import type {
   HistoryEntry,
   MatchRule,
   MerchantHint,
+  PrimaryIncomeMerchant,
   Row,
   SeriesMetadata,
   Sheet,
@@ -219,7 +220,30 @@ export function computePrimaryIncomeShift(
   metadata: SeriesMetadata | undefined,
 ): -1 | 1 | undefined {
   if (!metadata?.isPrimaryIncome) return undefined;
-  const anchor = metadata.anchorDayOfMonth;
+  return shiftFromAnchor(isoDate, metadata.anchorDayOfMonth);
+}
+
+// Twin of `computePrimaryIncomeShift` for bank-imported history
+// entries. Walks the `primaryIncomeMerchants` array for one whose
+// `key` matches the entry's normalised description; when found,
+// applies the same "date earlier than anchor" rule. `normaliseKey`
+// is the pre-computed normalised description, threaded by callers
+// that already paid for it.
+export function computePrimaryIncomeShiftForHistory(
+  normalisedKey: string,
+  isoDate: string,
+  merchants: readonly PrimaryIncomeMerchant[],
+): -1 | 1 | undefined {
+  if (merchants.length === 0 || normalisedKey === "") return undefined;
+  const match = merchants.find((m) => m.key === normalisedKey);
+  if (!match) return undefined;
+  return shiftFromAnchor(isoDate, match.anchorDayOfMonth);
+}
+
+function shiftFromAnchor(
+  isoDate: string,
+  anchor: number | undefined,
+): -1 | 1 | undefined {
   if (typeof anchor !== "number" || anchor < 1 || anchor > 31) return undefined;
   if (isoDate.length < 10) return undefined;
   const day = Number(isoDate.slice(8, 10));
@@ -752,6 +776,10 @@ export function synthesizeHistoryRow(
       // `Settings.hideTransfers` hides them uniformly — the split is
       // just a presentation re-slice, not a re-classification.
       if (entry.isTransfer) row.isTransfer = true;
+      // Same for the fiscal-month shift — every split inherits it so
+      // the grouping pipeline keeps the splits together.
+      if (entry.fiscalMonthShift !== undefined)
+        row.fiscalMonthShift = entry.fiscalMonthShift;
       return row;
     });
   }
@@ -771,6 +799,8 @@ export function synthesizeHistoryRow(
   if (typeId) row.typeId = typeId;
   if (companyId) row.companyId = companyId;
   if (entry.isTransfer) row.isTransfer = true;
+  if (entry.fiscalMonthShift !== undefined)
+    row.fiscalMonthShift = entry.fiscalMonthShift;
   return [row];
 }
 

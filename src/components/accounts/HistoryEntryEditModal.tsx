@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
+import { normaliseDescription } from "../../data/description-normaliser";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import type {
@@ -8,11 +9,12 @@ import type {
   Company,
   EntryType,
   HistoryEntry,
+  PrimaryIncomeMerchant,
   Settings,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableInput } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -33,12 +35,23 @@ type Props = {
   types: readonly EntryType[];
   companies: readonly Company[];
   settings: Settings;
+  primaryIncomeMerchants: readonly PrimaryIncomeMerchant[];
   onClose: () => void;
   onSubmit: (patch: {
     userDescription: string;
     userTypeId: string | null;
     userCompanyId: string | null;
   }) => void;
+  // Toggle the primary-income flag for the merchant this entry
+  // represents. The reducer captures the entry's normalised
+  // description as the key and walks every other entry that matches
+  // to stamp / clear the cascade. Fired straight from the toggle so
+  // the change applies independently of the row's main save.
+  onSetPrimaryIncome: (
+    entryId: string,
+    isPrimaryIncome: boolean,
+    anchorDayOfMonth: number | null,
+  ) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -51,8 +64,10 @@ export function HistoryEntryEditModal({
   types,
   companies,
   settings,
+  primaryIncomeMerchants,
   onClose,
   onSubmit,
+  onSetPrimaryIncome,
   onCreateType,
   onCreateCategory,
   onCreateCompany,
@@ -64,9 +79,23 @@ export function HistoryEntryEditModal({
   const initialTypeId = entry?.userTypeId ?? null;
   const initialCompanyId = entry?.userCompanyId ?? null;
 
+  // Resolve the persisted primary-income flag for this entry's
+  // normalised description. Anchor day falls back to the user's
+  // configured `startOfMonth` so a first-time toggle picks a sensible
+  // default without prompting.
+  const entryKey = entry ? normaliseDescription(entry.description) : "";
+  const matchedMerchant = primaryIncomeMerchants.find(
+    (m) => m.key === entryKey,
+  );
+  const initialIsPrimary = matchedMerchant !== undefined;
+  const initialAnchorDay =
+    matchedMerchant?.anchorDayOfMonth ?? settings.startOfMonth;
+
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const [isPrimaryIncome, setIsPrimaryIncome] = useState(initialIsPrimary);
+  const [anchorDayText, setAnchorDayText] = useState(String(initialAnchorDay));
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!entry, entry?.id);
@@ -76,6 +105,8 @@ export function HistoryEntryEditModal({
     setDescription(initialDescription);
     setTypeId(initialTypeId);
     setCompanyId(initialCompanyId);
+    setIsPrimaryIncome(initialIsPrimary);
+    setAnchorDayText(String(initialAnchorDay));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry?.id]);
 
@@ -165,6 +196,55 @@ export function HistoryEntryEditModal({
             />
           </div>
         </div>
+        {entry && entry.amount > 0 && entryKey !== "" && (
+          <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
+            <legend className="px-1 text-xs text-muted">
+              {t("editHistory.primaryIncomeTitle")}
+            </legend>
+            <Checkbox
+              checked={isPrimaryIncome}
+              onChange={(next) => {
+                setIsPrimaryIncome(next);
+                const day = Number.parseInt(anchorDayText, 10);
+                const dayClamped =
+                  Number.isFinite(day) && day >= 1 && day <= 31
+                    ? day
+                    : settings.startOfMonth;
+                onSetPrimaryIncome(entry.id, next, next ? dayClamped : null);
+              }}
+              label={t("editHistory.primaryIncomeToggle")}
+              className="items-center"
+            />
+            <p className="mt-2 text-xs text-muted">
+              {t("editHistory.primaryIncomeHelp")}
+            </p>
+            {isPrimaryIncome && (
+              <label className="mt-3 flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("editHistory.primaryIncomeAnchorDay")}
+                </span>
+                <ClearableInput
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={1}
+                  max={31}
+                  value={anchorDayText}
+                  onValueChange={(next) => {
+                    setAnchorDayText(next);
+                    const day = Number.parseInt(next, 10);
+                    if (Number.isFinite(day) && day >= 1 && day <= 31) {
+                      onSetPrimaryIncome(entry.id, true, day);
+                    }
+                  }}
+                  aria-label={t("editHistory.primaryIncomeAnchorDay")}
+                  wrapperClassName="min-w-0"
+                  className="field-input w-24 min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                />
+              </label>
+            )}
+          </fieldset>
+        )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onClose}>

@@ -249,6 +249,13 @@ export function EditRowModal({
       : negative
         ? -Math.abs(parsedAbs)
         : Math.abs(parsedAbs);
+  // Whether this row reads as income — drives the gate on the
+  // primary-income toggle below. A row is income when its sign toggle
+  // says positive OR when its typeId resolves to a `kind: "income"`
+  // type. An already-flagged series stays visible even on a negative
+  // amount so the user can clear the flag without flipping the sign.
+  const selectedType = typeId ? types.find((tt) => tt.id === typeId) : null;
+  const isIncomeRow = !negative || selectedType?.kind === "income";
   // The picker filter follows the +/- toggle (and the parsed value
   // when present) so flipping the sign immediately changes which
   // types are offered.
@@ -513,61 +520,64 @@ export function EditRowModal({
           </fieldset>
         )}
 
-        {isSeries && onSetSeriesPrimaryIncome && row?.seriesId && (
-          <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
-            <legend className="px-1 text-xs text-muted">
-              {t("editRow.primaryIncomeTitle")}
-            </legend>
-            <Checkbox
-              checked={isPrimaryIncome}
-              onChange={(next) => {
-                setIsPrimaryIncome(next);
-                const day = Number.parseInt(anchorDayText, 10);
-                const dayClamped =
-                  Number.isFinite(day) && day >= 1 && day <= 31 ? day : 25;
-                onSetSeriesPrimaryIncome(
-                  row.seriesId as string,
-                  next,
-                  next ? dayClamped : null,
-                );
-              }}
-              label={t("editRow.primaryIncomeToggle")}
-              className="items-center"
-            />
-            <p className="mt-2 text-xs text-muted">
-              {t("editRow.primaryIncomeHelp")}
-            </p>
-            {isPrimaryIncome && (
-              <label className="mt-3 flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("editRow.primaryIncomeAnchorDay")}
-                </span>
-                <ClearableInput
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  max={31}
-                  value={anchorDayText}
-                  onValueChange={(next) => {
-                    setAnchorDayText(next);
-                    const day = Number.parseInt(next, 10);
-                    if (Number.isFinite(day) && day >= 1 && day <= 31) {
-                      onSetSeriesPrimaryIncome(
-                        row.seriesId as string,
-                        true,
-                        day,
-                      );
-                    }
-                  }}
-                  aria-label={t("editRow.primaryIncomeAnchorDay")}
-                  wrapperClassName="min-w-0"
-                  className="field-input w-24 min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                />
-              </label>
-            )}
-          </fieldset>
-        )}
+        {isSeries &&
+          onSetSeriesPrimaryIncome &&
+          row?.seriesId &&
+          (isIncomeRow || isPrimaryIncome) && (
+            <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
+              <legend className="px-1 text-xs text-muted">
+                {t("editRow.primaryIncomeTitle")}
+              </legend>
+              <Checkbox
+                checked={isPrimaryIncome}
+                onChange={(next) => {
+                  setIsPrimaryIncome(next);
+                  const day = Number.parseInt(anchorDayText, 10);
+                  const dayClamped =
+                    Number.isFinite(day) && day >= 1 && day <= 31 ? day : 25;
+                  onSetSeriesPrimaryIncome(
+                    row.seriesId as string,
+                    next,
+                    next ? dayClamped : null,
+                  );
+                }}
+                label={t("editRow.primaryIncomeToggle")}
+                className="items-center"
+              />
+              <p className="mt-2 text-xs text-muted">
+                {t("editRow.primaryIncomeHelp")}
+              </p>
+              {isPrimaryIncome && (
+                <label className="mt-3 flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("editRow.primaryIncomeAnchorDay")}
+                  </span>
+                  <ClearableInput
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={1}
+                    max={31}
+                    value={anchorDayText}
+                    onValueChange={(next) => {
+                      setAnchorDayText(next);
+                      const day = Number.parseInt(next, 10);
+                      if (Number.isFinite(day) && day >= 1 && day <= 31) {
+                        onSetSeriesPrimaryIncome(
+                          row.seriesId as string,
+                          true,
+                          day,
+                        );
+                      }
+                    }}
+                    aria-label={t("editRow.primaryIncomeAnchorDay")}
+                    wrapperClassName="min-w-0"
+                    className="field-input w-24 min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                  />
+                </label>
+              )}
+            </fieldset>
+          )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onClose}>

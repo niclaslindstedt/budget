@@ -27,6 +27,7 @@ import { reduceRecurring } from "./reducers/recurring";
 import { reduceAccounts } from "./reducers/accounts";
 import { reduceHistory } from "./reducers/history";
 import { reduceSeriesMetadata } from "./reducers/series-metadata";
+import { reduceHistoryPrimaryIncome } from "./reducers/history-primary-income";
 
 export type Action =
   | ItemAction
@@ -433,6 +434,38 @@ export type Action =
       seriesId: string;
       isPrimaryIncome: boolean;
       anchorDayOfMonth: number | null;
+    }
+  | {
+      // Manual per-entry fiscal-month override for a bank-imported
+      // history entry. Mirrors `setRowFiscalMonthShift` but routes
+      // through `UserData.history` (the source of truth for synthesized
+      // history rows). `shift === null` clears the field.
+      type: "setHistoryEntryFiscalMonthShift";
+      accountId: string;
+      entryId: string;
+      shift: -1 | 1 | null;
+    }
+  | {
+      // Toggle the "primary income" flag for the merchant a history
+      // entry represents (keyed by the normalised description). When
+      // true, the merchant is recorded in `UserData.primaryIncomeMerchants`
+      // with `anchorDayOfMonth` and every existing history entry whose
+      // normalised description matches the key gets `fiscalMonthShift`
+      // recomputed against that anchor. When false, the merchant is
+      // dropped and the shift is cleared on every matching entry.
+      type: "setHistoryEntryPrimaryIncome";
+      accountId: string;
+      entryId: string;
+      isPrimaryIncome: boolean;
+      anchorDayOfMonth: number | null;
+    }
+  | {
+      // Drop one learned primary-income merchant outright. Clears the
+      // auto-stamped `fiscalMonthShift` on every matching entry across
+      // every account. Used by the settings management surface when the
+      // user wants to retire an old job's pattern after switching.
+      type: "removePrimaryIncomeMerchant";
+      key: string;
     };
 
 export function reducer(state: UserData, action: Action): UserData {
@@ -450,7 +483,8 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceRecurring(state, action) ??
     reduceAccounts(state, action) ??
     reduceHistory(state, action) ??
-    reduceSeriesMetadata(state, action);
+    reduceSeriesMetadata(state, action) ??
+    reduceHistoryPrimaryIncome(state, action);
   if (handled !== null) return handled;
 
   // Item-level dispatch tail. Handles every ItemAction; falls through
