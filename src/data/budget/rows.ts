@@ -223,11 +223,16 @@ export function computeBalances(
   return result;
 }
 
-// A row only earns a slot in persisted storage once it carries the
-// fields the sheet exists to record: a description and an amount.
-// Rows that are blank or half-filled stay in memory while the user is
-// editing them but never reach `localStorage`, so a refresh discards
-// transient placeholders instead of resurrecting them.
+// A row earns a slot in persisted storage once it carries any
+// user-meaningful field: a description, an amount, a typeId, or a
+// companyId. Rows with nothing but the column defaults (date +
+// completed) stay in memory while the user is editing them but never
+// reach `localStorage`, so a refresh discards transient placeholders
+// without resurrecting them. Crucially, a row that was savable and
+// then had one critical field cleared (e.g. the user removed the
+// description but the amount is still there) stays savable — the
+// cleared field persists as the user authored it, instead of the row
+// silently vanishing from storage.
 export function isRowSavable(row: Row, columns: Column[]): boolean {
   const { descCol, amountCol } = getStandardColumns(columns);
   if (!descCol || !amountCol) return true;
@@ -237,7 +242,12 @@ export function isRowSavable(row: Row, columns: Column[]): boolean {
   const hasAmount =
     typeof row.cells[amountCol.id] === "number" ||
     typeof row.amountFormula === "string";
-  return hasText(row.cells[descCol.id]) && hasAmount;
+  return (
+    hasText(row.cells[descCol.id]) ||
+    hasAmount ||
+    typeof row.typeId === "string" ||
+    typeof row.companyId === "string"
+  );
 }
 
 // True when the row has one of description/amount but not both — the

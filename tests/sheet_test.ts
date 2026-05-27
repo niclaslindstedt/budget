@@ -680,7 +680,7 @@ describe("isRowSavable / isRowHalfDone", () => {
     return { id: "r", cells };
   }
 
-  it("savable requires both description and amount", () => {
+  it("savable when description and amount are both set", () => {
     expect(
       isRowSavable(
         row({ [descCol.id]: "Rent", [amountCol.id]: 100 }),
@@ -698,13 +698,16 @@ describe("isRowSavable / isRowHalfDone", () => {
     ).toBe(true);
   });
 
-  it("whitespace-only description doesn't count as filled", () => {
+  it("whitespace-only description still counts as savable when an amount is present", () => {
+    // The amount alone earns a slot in storage — once the user has
+    // committed an amount the row's not a transient placeholder, even
+    // if the description is empty/whitespace.
     expect(
       isRowSavable(
         row({ [descCol.id]: "   ", [amountCol.id]: 5 }),
         sheet.columns,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("a fully empty row is neither savable nor half-done", () => {
@@ -713,16 +716,21 @@ describe("isRowSavable / isRowHalfDone", () => {
     expect(isRowHalfDone(r, sheet.columns)).toBe(false);
   });
 
-  it("description-only is half-done", () => {
+  it("description-only is savable but still half-done", () => {
     const r = row({ [descCol.id]: "Coffee" });
-    expect(isRowSavable(r, sheet.columns)).toBe(false);
+    expect(isRowSavable(r, sheet.columns)).toBe(true);
     expect(isRowHalfDone(r, sheet.columns)).toBe(true);
   });
 
-  it("amount-only is half-done", () => {
+  it("amount-only is savable but still half-done", () => {
     const r = row({ [amountCol.id]: -12 });
-    expect(isRowSavable(r, sheet.columns)).toBe(false);
+    expect(isRowSavable(r, sheet.columns)).toBe(true);
     expect(isRowHalfDone(r, sheet.columns)).toBe(true);
+  });
+
+  it("a typeId-only row is savable so a tag survives clearing description+amount", () => {
+    const r: Row = { id: "r", cells: {}, typeId: "type-1" };
+    expect(isRowSavable(r, sheet.columns)).toBe(true);
   });
 
   it("a complete row is not half-done", () => {
@@ -759,10 +767,17 @@ describe("userDataWithSavableRows / userDataHasHalfDoneRows", () => {
     };
   }
 
-  it("filters out half-done and empty rows from the snapshot", () => {
+  it("strips only the fully empty placeholder rows from the snapshot", () => {
+    // Half-done rows (one of description/amount) carry meaningful user
+    // input and are kept — refreshing the page shouldn't silently
+    // discard a description the user just typed. Only the row with no
+    // user-meaningful field at all gets stripped.
     const { data } = build();
     const filtered = userDataWithSavableRows(data);
-    expect(firstAB(filtered).rows.map((r) => r.id)).toEqual(["complete"]);
+    expect(firstAB(filtered).rows.map((r) => r.id)).toEqual([
+      "complete",
+      "half",
+    ]);
   });
 
   it("does not mutate the input data", () => {
