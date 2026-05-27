@@ -2,17 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { History } from "lucide-react";
 
-import { resolveEntryLabels } from "../../data/budget/synthesis";
 import { compareDateStrings } from "../../data/fiscal-month";
-import type {
-  Account,
-  Company,
-  EntryType,
-  HistoryEntry,
-  MatchRule,
-  MerchantHint,
-  Settings,
-} from "../../data/types";
+import type { Account, HistoryEntry, Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { bcp47, type Lang } from "../../i18n/locale";
 import {
@@ -21,8 +12,7 @@ import {
   formatShortDate,
   withCurrency,
 } from "../../utils/format";
-import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
-import { CategoryIconGlyph, ColumnIcon } from "../icons";
+import { ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
 
@@ -46,109 +36,38 @@ function formatMonth(key: string, lang: Lang): string {
   return monthFormatFor(lang).format(new Date(y, m - 1, 1));
 }
 
-type ResolvedEntry = {
-  entry: HistoryEntry;
-  description: string;
-  typeId: string | null;
-};
-
 type Props = {
   open: boolean;
   account: Account | null;
   entries: readonly HistoryEntry[];
-  // EntryType registry so resolved typeIds can render their icon and
-  // colour, matching the budget view's row chrome.
-  types: readonly EntryType[];
-  // User-curated companies — fed through `resolveEntryLabels` so a
-  // history row with no description still resolves to its merchant
-  // name in the description fallback chain.
-  companies: readonly Company[];
-  // Merchant-hint store + user match rules — fed through the same
-  // priority chain as `synthesizeHistoryRow` so the description and
-  // type icon shown here match what the budget view would render for
-  // the same bank entry.
-  merchantHints: Readonly<Record<string, MerchantHint>>;
-  matchRules: readonly MatchRule[];
   settings: Settings;
   onCancel: () => void;
 };
 
-// Read-only viewer for an account's imported history. Mirrors the
-// budget view's chrome: TYPE column with the resolved category icon,
-// month dividers tinted by the per-month pastel, sticky thead, and
-// the same date / amount / balance formatting. The search bar at the
-// top filters rows in place against description, type name, and the
-// amount text — and scrolls away with the content so the table claims
-// the full viewport once the user is reading.
+// Read-only viewer for an account's imported history. Renders as a
+// plain bank statement: only the raw bank-statement fields the
+// import carried (date, bank description, amount, balance) — no
+// resolved type, no user-curated description override, no per-month
+// or amount coloring. User-curated metadata (types, merchant hints,
+// renames) belongs to the budget view; this is the unmodified bank
+// statement.
 export function HistoryModal({
   open,
   account,
   entries,
-  types,
-  companies,
-  merchantHints,
-  matchRules,
   settings,
   onCancel,
 }: Props) {
   const t = useT();
   const lang = useLang();
 
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const ty of types) m.set(ty.id, ty);
-    return m;
-  }, [types]);
-
-  const companiesById = useMemo(() => {
-    const m = new Map<string, Company>();
-    for (const c of companies) m.set(c.id, c);
-    return m;
-  }, [companies]);
-
-  // Resolve once per (entries, hints, rules) so the search filter
-  // below can match against the labels users actually see rather
-  // than the raw bank text.
-  const resolved = useMemo<ResolvedEntry[]>(() => {
-    const arr: ResolvedEntry[] = [];
-    for (const entry of entries) {
-      // Split entries have no single typeId — leave it null so the
-      // icon column stays blank rather than picking an arbitrary
-      // split's type. Description still flows through the override
-      // chain so the user's label (if any) shows here.
-      if (entry.splits && entry.splits.length > 0) {
-        const { description } = resolveEntryLabels(
-          entry,
-          merchantHints,
-          matchRules,
-          companiesById,
-          typesById,
-        );
-        arr.push({ entry, description, typeId: null });
-        continue;
-      }
-      const { description, typeId } = resolveEntryLabels(
-        entry,
-        merchantHints,
-        matchRules,
-        companiesById,
-        typesById,
-      );
-      arr.push({ entry, description, typeId });
-    }
-    return arr;
-  }, [entries, merchantHints, matchRules, companiesById, typesById]);
-
   const allSortedEntries = useMemo(() => {
     const order = settings.transactionSortOrder;
-    return [...resolved].sort((a, b) =>
-      compareDateStrings(a.entry.date, b.entry.date, order),
+    return [...entries].sort((a, b) =>
+      compareDateStrings(a.date, b.date, order),
     );
-  }, [resolved, settings.transactionSortOrder]);
+  }, [entries, settings.transactionSortOrder]);
 
-  // In-place filter against description, resolved type name, and the
-  // formatted amount text so a search like "550" or "amazon" or "rent"
-  // narrows the table without leaving the modal.
   const [query, setQuery] = useState("");
   useEffect(() => {
     if (!open) setQuery("");
@@ -163,27 +82,19 @@ export function HistoryModal({
   const filteredEntries = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q === "") return allSortedEntries;
-    return allSortedEntries.filter((r) => {
-      if (r.description.toLowerCase().includes(q)) return true;
-      if (r.entry.description.toLowerCase().includes(q)) return true;
-      const type = r.typeId ? typesById.get(r.typeId) : null;
-      if (type && type.name.toLowerCase().includes(q)) return true;
-      if (
-        formatBalance(r.entry.amount, accountSettings).toLowerCase().includes(q)
-      )
+    return allSortedEntries.filter((e) => {
+      if (e.description.toLowerCase().includes(q)) return true;
+      if (formatBalance(e.amount, accountSettings).toLowerCase().includes(q))
         return true;
-      if (r.entry.date.includes(q)) return true;
+      if (e.date.includes(q)) return true;
       return false;
     });
-  }, [allSortedEntries, query, typesById, accountSettings]);
+  }, [allSortedEntries, query, accountSettings]);
 
-  // Walk the sorted (newest-first) entries and emit one group per
-  // `YYYY-MM` so the table can drop a colored month-marker row between
-  // groups. Sequential entries that share a month stay together.
   const groups = useMemo(() => {
-    const result: { monthKey: string; entries: ResolvedEntry[] }[] = [];
+    const result: { monthKey: string; entries: HistoryEntry[] }[] = [];
     for (const e of filteredEntries) {
-      const key = e.entry.date.slice(0, 7);
+      const key = e.date.slice(0, 7);
       const last = result[result.length - 1];
       if (last && last.monthKey === key) last.entries.push(e);
       else result.push({ monthKey: key, entries: [e] });
@@ -195,38 +106,24 @@ export function HistoryModal({
   // entry carries one, we collapse the Balance column to zero width so
   // the table doesn't leave a visible empty stripe.
   const hasAnyBalance = useMemo(
-    () => filteredEntries.some((e) => e.entry.balance !== undefined),
-    [filteredEntries],
-  );
-  // Show the TYPE column only when at least one entry resolves to a
-  // known type — credit-card-only accounts that have never been
-  // categorised stay narrower without an empty icon column.
-  const hasAnyType = useMemo(
-    () => filteredEntries.some((e) => e.typeId !== null),
+    () => filteredEntries.some((e) => e.balance !== undefined),
     [filteredEntries],
   );
 
-  // Compute the longest formatted amount and balance across every
-  // entry so the mobile grid template can pin those columns to a width
-  // that fits the worst case. Without this, table-auto sizing lets a
-  // long bank-text description squeeze the right-aligned balance
-  // column until its trailing "K" / currency suffix is clipped by the
-  // modal body's `overflow-x-hidden`. Mirrors `BudgetViewerModal`'s
-  // `colWidths` memo.
   const colWidths = useMemo(() => {
     let amountChars = 0;
     let balanceChars = 0;
-    for (const r of filteredEntries) {
+    for (const e of filteredEntries) {
       const fullAmount = withCurrency(
-        formatNumber(Math.abs(r.entry.amount), accountSettings, {
+        formatNumber(Math.abs(e.amount), accountSettings, {
           alwaysTwoFractionDigits: true,
         }),
         accountSettings,
       );
       if (fullAmount.length > amountChars) amountChars = fullAmount.length;
-      if (r.entry.balance !== undefined) {
+      if (e.balance !== undefined) {
         const fullBalance = withCurrency(
-          formatNumber(Math.abs(r.entry.balance), accountSettings, {
+          formatNumber(Math.abs(e.balance), accountSettings, {
             alwaysTwoFractionDigits: true,
           }),
           accountSettings,
@@ -241,21 +138,15 @@ export function HistoryModal({
     };
   }, [filteredEntries, accountSettings]);
 
-  // Mobile grid template — one track per rendered column. Date hugs
-  // its content with `auto`, type is pinned to a 40px icon track when
-  // present, description gets the flexible `minmax(0, 1fr)` so it
-  // shrinks before the amount + balance tracks, and amount + balance
-  // are pinned to `Nch + buffer` using the longest formatted value.
   const mobileGridTemplate = useMemo(() => {
     const tracks: string[] = ["auto"];
-    if (hasAnyType) tracks.push("40px");
     tracks.push("minmax(0, 1fr)");
     tracks.push(`minmax(56px, calc(${colWidths.amountChars} * 1ch + 1rem))`);
     if (hasAnyBalance) {
       tracks.push(`minmax(56px, calc(${colWidths.balanceChars} * 1ch + 1rem))`);
     }
     return tracks.join(" ");
-  }, [hasAnyType, hasAnyBalance, colWidths]);
+  }, [hasAnyBalance, colWidths]);
 
   return (
     <Modal
@@ -303,30 +194,17 @@ export function HistoryModal({
               <tr className="border-b border-line">
                 <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-2 md:text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon type="date" className="shrink-0 text-accent" />
+                    <ColumnIcon type="date" className="shrink-0 text-muted" />
                     <span className="hidden md:inline">
                       {t("history.date")}
                     </span>
                   </span>
                 </th>
-                {hasAnyType && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-1 md:text-left">
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <ColumnIcon
-                        type="type"
-                        className="shrink-0 text-accent"
-                      />
-                      <span className="hidden md:inline">
-                        {t("history.type")}
-                      </span>
-                    </span>
-                  </th>
-                )}
                 <th className="px-2 pt-2.5 pb-1.5 text-left md:w-full md:pl-4">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
-                      className="shrink-0 text-accent"
+                      className="shrink-0 text-muted"
                     />
                     <span className="hidden md:inline">
                       {t("history.description")}
@@ -335,10 +213,7 @@ export function HistoryModal({
                 </th>
                 <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:px-2">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon
-                      type="amount"
-                      className="shrink-0 text-accent"
-                    />
+                    <ColumnIcon type="amount" className="shrink-0 text-muted" />
                     <span className="hidden md:inline">
                       {t("history.amount")}
                     </span>
@@ -349,7 +224,7 @@ export function HistoryModal({
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
-                        className="shrink-0 text-accent"
+                        className="shrink-0 text-muted"
                       />
                       <span className="hidden md:inline">
                         {t("history.balance")}
@@ -361,99 +236,50 @@ export function HistoryModal({
             </thead>
             <tbody>
               {groups.map((group) => {
-                const monthNum = monthNumberFromKey(group.monthKey);
-                const monthColor =
-                  monthNum !== null ? monthColorVar(monthNum) : undefined;
-                const colorStyle: CSSProperties | undefined = monthColor
-                  ? { color: monthColor }
-                  : undefined;
-                const colSpan =
-                  3 + (hasAnyType ? 1 : 0) + (hasAnyBalance ? 1 : 0);
+                const colSpan = 3 + (hasAnyBalance ? 1 : 0);
                 return (
                   <Fragment key={group.monthKey}>
                     <tr className="budget-viewer-fullspan">
                       {/* Sticky on the `<td>` (not the `<tr>` — Chrome
                           ignores sticky on rows) so the month label
                           pins below the column-header band until the
-                          next group's marker pushes it out. `top: 32px`
-                          matches the thead's measured height after the
-                          `pt-2.5 pb-1.5` padding; `z-[9]` sits one notch
-                          below the thead so the two bands paint cleanly
-                          when they overlap. Mirrors the same pattern
-                          used in BudgetViewerModal. */}
+                          next group's marker pushes it out. */}
                       <td
                         colSpan={colSpan}
-                        className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
-                        style={colorStyle}
+                        className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase text-muted"
                       >
                         {formatMonth(group.monthKey, lang)}
                       </td>
                     </tr>
-                    {group.entries.map((r) => {
-                      const e = r.entry;
-                      const type = r.typeId
-                        ? (typesById.get(r.typeId) ?? null)
-                        : null;
-                      return (
-                        <tr
-                          key={e.id}
-                          className={`border-b border-line last:border-b-0 ${
-                            e.hidden ? "opacity-50" : ""
-                          }`}
-                        >
-                          <td
-                            className="px-1 py-1.5 align-top font-mono text-xs font-bold whitespace-nowrap md:px-2 md:font-normal"
-                            style={colorStyle}
-                          >
-                            {formatShortDate(
-                              e.date,
-                              settings.shortDateFormat,
-                              lang,
-                            )}
-                          </td>
-                          {hasAnyType && (
-                            <td className="px-1 py-1.5 text-center align-top md:px-1 md:text-left">
-                              {type ? (
-                                <span
-                                  className="inline-flex max-w-full items-center gap-1.5 rounded-full px-1.5 py-0.5 text-xs"
-                                  style={{
-                                    backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
-                                    color: type.color,
-                                  }}
-                                  title={type.name}
-                                >
-                                  <CategoryIconGlyph
-                                    name={type.glyph}
-                                    size={14}
-                                    className="shrink-0"
-                                  />
-                                  <span className="hidden truncate md:inline">
-                                    {type.name}
-                                  </span>
-                                </span>
-                              ) : null}
-                            </td>
+                    {group.entries.map((e) => (
+                      <tr
+                        key={e.id}
+                        className={`border-b border-line last:border-b-0 ${
+                          e.hidden ? "opacity-50" : ""
+                        }`}
+                      >
+                        <td className="px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap text-muted md:px-2">
+                          {formatShortDate(
+                            e.date,
+                            settings.shortDateFormat,
+                            lang,
                           )}
-                          <td className="px-2 py-1.5 align-top text-muted break-words md:pl-4">
-                            {r.description}
+                        </td>
+                        <td className="px-2 py-1.5 align-top break-words md:pl-4">
+                          {e.description}
+                        </td>
+                        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2">
+                          {formatBalance(e.amount, accountSettings)}
+                        </td>
+                        {hasAnyBalance && (
+                          <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
+                            {e.balance !== undefined
+                              ? formatBalance(e.balance, accountSettings)
+                              : ""}
                           </td>
-                          <td
-                            className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
-                              e.amount < 0 ? "text-negative" : "text-positive"
-                            }`}
-                          >
-                            {formatBalance(e.amount, accountSettings)}
-                          </td>
-                          {hasAnyBalance && (
-                            <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
-                              {e.balance !== undefined
-                                ? formatBalance(e.balance, accountSettings)
-                                : ""}
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
+                        )}
+                      </tr>
+                    ))}
                   </Fragment>
                 );
               })}
