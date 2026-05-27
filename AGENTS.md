@@ -141,9 +141,13 @@ src/
 │   ├── sheet.ts            # universal sheet primitives (newId, factories,
 │   │                       #   column + sheet-tree traversal)
 │   ├── fiscal-month.ts     # fiscal-month + ISO date math
-│   ├── budget-rows.ts      # budget-row algebra (sort, balances, series, …)
-│   ├── budget-synthesis.ts # synthesized rows (transfers, history)
-│   └── accounts-balance.ts # account-level aggregation
+│   ├── budget/
+│   │   ├── rows.ts             # budget-row algebra (sort, balances, series, …)
+│   │   ├── synthesis.ts        # synthesized rows (transfers, history)
+│   │   └── export.ts           # CSV/XLSX export builder
+│   └── accounts/
+│       ├── balance.ts          # account-level aggregation
+│       └── export.ts           # accounts JSON export builder
 ├── hooks/
 │   ├── useChangelogAutoOpen.ts # gate the "What's new" popup per APP_VERSION
 │   ├── useEscapeKey.ts          # close-on-Escape listener
@@ -362,9 +366,9 @@ slot in):
    variant in `src/data/types.ts` plus a factory in `src/data/sheet.ts`
    so `createDefaultSheet` can seed it. Use the existing `AccountBudget`
    / `AccountsView` shapes as the template.
-6. New page-specific data helpers go in `src/data/<page>.ts` —
-   matches the existing `budget-export.ts` / `accounts-export.ts`
-   pattern. Do not pile new budget-only or accounts-only helpers
+6. New page-specific data helpers go in `src/data/<page>/<name>.ts` —
+   matches the existing `src/data/budget/` and `src/data/accounts/`
+   directories. Do not pile new budget-only or accounts-only helpers
    into `src/data/sheet.ts`.
 
 **Data-layer module map.** `src/data/sheet.ts` now holds only universal
@@ -381,21 +385,26 @@ in sibling modules:
   `computePrimaryIncomeShift`, `fiscalMonthSeedIso`,
   `currentFiscalMonthKey`, `previousMonthKey`, `nextMonthKey`,
   `sortMonthKeys`, `shiftIsoToMonth`, `compareDateStrings`).
-- `src/data/budget-rows.ts` — budget-row algebra (`sortRowsByDate` +
+- `src/data/budget/rows.ts` — budget-row algebra (`sortRowsByDate` +
   `RowSortContext`, `reverseRowsByDay`, `computeBalances`,
   `isRowSavable` / `isRowHalfDone` and the `userData*` wrappers,
   `rowsInSeriesFrom`, `getLastSeriesDate`, `defaultCompletedForDate`,
   `mintBudgetRow`, `propagateCellInSeries`, `buildVisibleRows`).
-- `src/data/budget-synthesis.ts` — synthesized rows shown in the
+- `src/data/budget/synthesis.ts` — synthesized rows shown in the
   budget table without touching storage (`transfersForAccount`,
   `synthesizeTransferRow`, `synthesizeHistoryRow`, `resolveEntryLabels`,
   `isTransferRow`).
-- `src/data/accounts-balance.ts` — account-level aggregation
-  (`accountBalance`).
+- `src/data/budget/export.ts` — CSV / XLSX export builder for an
+  `AccountBudget` (`buildBudgetExportRows`, `exportRowsToTable`,
+  `rowsToCsv`).
+- `src/data/accounts/balance.ts` — account-level aggregation
+  (`accountBalance`, `computeAccountBalances`).
+- `src/data/accounts/export.ts` — JSON export builder for the accounts
+  sheet (`buildAccountsExport`).
 
 New page-specific data helpers continue to land in
-`src/data/<page>-*.ts` (matching the existing `budget-export.ts` /
-`accounts-export.ts` pattern). Do not pile new budget-only or
+`src/data/<page>/<name>.ts` (matching the existing `src/data/budget/`
+and `src/data/accounts/` directories). Do not pile new budget-only or
 accounts-only helpers into `src/data/sheet.ts`.
 
 The `sheet.*` i18n group has been untangled along the same axis:

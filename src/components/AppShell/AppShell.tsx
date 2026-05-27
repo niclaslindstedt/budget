@@ -76,7 +76,7 @@ import { ReconnectCloudModal } from "../ReconnectCloudModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
 import { SyncStatus } from "../SyncStatus";
 import { allCategories, allTypes } from "../../data/presets";
-import { isRowSavable, userDataWithSavableRows } from "../../data/budget-rows";
+import { isRowSavable, userDataWithSavableRows } from "../../data/budget/rows";
 import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,

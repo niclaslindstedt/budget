@@ -5,7 +5,7 @@ import type {
   HistoryPromotePrefill,
 } from "../../budget/EditEntryModal";
 import type { SplitSubmission } from "../../budget/SplitEntryModal";
-import { getLastSeriesDate } from "../../../data/budget-rows";
+import { getLastSeriesDate } from "../../../data/budget/rows";
 import { normaliseDescription } from "../../../data/description-normaliser";
 import { findColumnByType } from "../../../data/sheet";
 import type {

@@ -6,9 +6,9 @@
 // tools can consume the list without dealing with the budget app's
 // wider schema.
 
-import type { Lang } from "../i18n/locale";
-import { formatDate } from "../utils/format";
-import { findColumnByType } from "./sheet";
+import type { Lang } from "../../i18n/locale";
+import { formatDate } from "../../utils/format";
+import { findColumnByType } from "../sheet";
 import type {
   Account,
   DateFormat,
@@ -16,7 +16,7 @@ import type {
   HistoryEntrySplit,
   Sheet,
   Transfer,
-} from "./types";
+} from "../types";
 
 // Numeric values land in the JSON via `JSON.stringify`, so any
 // floating-point drift in the source (251.92999999999998) leaks

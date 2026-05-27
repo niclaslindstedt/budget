@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { AccountDraft } from "../../accounts/AccountModal";
 import type { ConfirmAction } from "../../ConfirmDialog";
-import { accountBalance } from "../../../data/accounts-balance";
+import { accountBalance } from "../../../data/accounts/balance";
 import type { Action } from "../../../data/reducer";
 import { newId } from "../../../data/sheet";
 import type { Account, UserData } from "../../../data/types";

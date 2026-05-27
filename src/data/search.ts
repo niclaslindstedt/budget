@@ -1,5 +1,5 @@
 import { allCategories, allTypes } from "./presets";
-import { buildVisibleRows } from "./budget-rows";
+import { buildVisibleRows } from "./budget/rows";
 import { findColumnByType } from "./sheet";
 import type {
   AccountBudget,

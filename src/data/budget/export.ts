@@ -4,17 +4,13 @@
 // user sees in `BudgetPage`, with the same merge of authored rows +
 // transfers + history entries and the same running balance.
 
-import {
-  computeBalances,
-  sortRowsByDate,
-  type RowSortContext,
-} from "./budget-rows";
+import { computeBalances, sortRowsByDate, type RowSortContext } from "./rows";
 import {
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
-} from "./budget-synthesis";
-import { findColumnByType } from "./sheet";
+} from "./synthesis";
+import { findColumnByType } from "../sheet";
 import type {
   AccountBudget,
   Category,
@@ -24,7 +20,7 @@ import type {
   MerchantHint,
   Row,
   Transfer,
-} from "./types";
+} from "../types";
 
 export type ExportRow = {
   date: string;

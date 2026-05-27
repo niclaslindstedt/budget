@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAccountsExport,
   serializeAccountsExport,
-} from "../src/data/accounts-export";
+} from "../src/data/accounts/export";
 import type { Account, HistoryEntry, Sheet, Transfer } from "../src/data/types";
 
 const ACC_A: Account = {

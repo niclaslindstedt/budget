@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { allCategories, allTypes } from "../../data/presets";
-import { computeAccountBalances } from "../../data/accounts-balance";
+import { computeAccountBalances } from "../../data/accounts/balance";
 import { compareDateStrings } from "../../data/fiscal-month";
 import type {
   Account,

@@ -2,7 +2,7 @@ import {
   defaultCompletedForDate,
   propagateCellInSeries,
   rowsInSeriesFrom,
-} from "../../budget-rows";
+} from "../../budget/rows";
 import { shiftIsoToMonth } from "../../fiscal-month";
 import {
   createEmptyRow,
