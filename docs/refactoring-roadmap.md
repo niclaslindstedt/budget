@@ -194,17 +194,17 @@ new sheet type, but feature work can ship through them.
   import order at the entry point because `@layer components` rules
   consume colour vars declared in `@theme`.
 
-- **`budget/formula.ts` (680 lines) parser/evaluator entanglement** —
-  tokenizer + parser + evaluator share a module with no abstraction
-  boundary. Adding a function (`min`, `max`, `loanPayment`) touches
-  tokenizer, parser, evaluator. Cross-sheet variables resolved
-  late: a typo on a variable name is a runtime error, not a parse
-  error. **Severity: 6.**
-  - Plan: split into `budget/formula-tokenizer.ts`,
-    `budget/formula-parser.ts`, `budget/formula-ast.ts`,
-    `budget/formula-evaluator.ts`. Introduce a function registry so
-    new sheet types register their own functions (`loanPayment(rate,
-years, principal)`).
+- **`budget/formula.ts` function registry** — the tokenizer / parser
+  / evaluator file split landed 2026-05 (see Landed); what remains
+  of the original severity-6 candidate is the function-registry idea
+  so new sheet types can register their own functions
+  (`loanPayment(rate, years, principal)`). Deferred until a concrete
+  non-budget sheet type with custom-formula needs lands — premature
+  today because every existing function (`min`, `max`, `clamp`,
+  `abs`, `round`, `categoryTotal`, `typeTotal`, `sheet`) is budget-
+  scoped and the registry would have nothing to register against.
+  **Severity: 3** — re-rate when the first loan/savings flavour
+  needs a domain-specific function.
 
 - **`AccountReconciliationModal.tsx` (729 lines) state machine in `useState`s** —
   the orphan-decision flow is tracked by ~6 parallel `useState`
@@ -372,6 +372,26 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`budget/formula.ts` tokenizer / parser / evaluator file split**
+  (2026-05): the 702-line `src/data/budget/formula.ts` split into
+  four sibling modules along the seams the file's own comment
+  headers already advertised — `formula-ast.ts` (FormulaNode +
+  Parse/Eval result types), `formula-tokenizer.ts` (Token / OpToken
+  - `tokenize`), `formula-parser.ts` (Parser class + cached
+    `parseFormula`), and `formula-evaluator.ts` (MonthAggregates,
+    FormulaContext, `evaluateFormula`, `FORMULA_FUNCTION_NAMES`).
+    The original `formula.ts` shrank to a public-barrel facade that
+    re-exports the runtime types and entry points plus owns the two
+    concerns that sit outside the tokenize→parse→eval pipeline (the
+    name↔id transforms `formulaToDisplay` / `formulaToStored` and the
+    editor's `FORMULA_VARIABLES` / `FORMULA_FUNCTIONS` suggestion
+    tables). All seven external call sites
+    (`BudgetComplexEntryModal`, `BudgetFormulaInput`,
+    `BudgetFormulaVariableHelper`, `formula-resolve`, and the two
+    test files) continue to import from `data/budget/formula` —
+    unchanged. The function-registry half of the original plan stays
+    pending (rated down to 3) until a concrete non-budget sheet type
+    needs to register its own functions.
 - **`AppShell.tsx` prop signature bundled** (2026-05): the 28
   individual props passed from `App.tsx` to `<AppShell>` (adapter +
   per-backend connection flags + encryption / cloud-offline state +
