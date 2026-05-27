@@ -376,6 +376,15 @@ export function BudgetPage({
     for (const t of types) m.set(t.id, t);
     return m;
   }, [types]);
+  // Id-indexed companies map, threaded through to every `BudgetRow` so
+  // the description cell can resolve `row.companyId` in O(1) and render
+  // a white pill (Building2 + company name) when the row has no
+  // user-authored description. Same lift rationale as `typesById`.
+  const companiesById = useMemo(() => {
+    const m = new Map<string, Company>();
+    for (const c of companies) m.set(c.id, c);
+    return m;
+  }, [companies]);
   const sortContext = useMemo<RowSortContext | undefined>(() => {
     const descCol = findColumnByType(item.columns, "description");
     const amountCol = findColumnByType(item.columns, "amount");
@@ -1213,6 +1222,7 @@ export function BudgetPage({
                   balances={balances}
                   types={types}
                   typesById={typesById}
+                  companiesById={companiesById}
                   categories={categories}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
