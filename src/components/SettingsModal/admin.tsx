@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -548,64 +548,16 @@ function CategoryEditor({
   onSubmit: (draft: Omit<Category, "id">) => void;
 }) {
   const t = useT();
-  const [name, setName] = useState(initial?.name ?? "");
-  const [color, setColor] = useState<string>(
-    initial?.color ?? CATEGORY_COLORS[0],
-  );
-  const [icon, setIcon] = useState<CategoryIcon>(initial?.icon ?? "tag");
-
-  function handleSubmit() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmit({ name: trimmed, color, icon });
-  }
-
   return (
-    <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("settings.categoriesTab.name")}</span>
-        <ClearableInput
-          // Dedicated single-purpose category editor — landing focus
-          // on the name field is the expected UX in this modal context.
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
-          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-          value={name}
-          onValueChange={setName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder={t("settings.categoriesTab.categoryNamePlaceholder")}
-        />
-      </label>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("settings.categoriesTab.color")}</span>
-        <ColorPalette
-          colors={CATEGORY_COLORS}
-          value={color}
-          onChange={setColor}
-          size={5}
-        />
-      </div>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("settings.categoriesTab.icon")}</span>
-        <GlyphGrid
-          icons={CATEGORY_GLYPH_NAMES}
-          value={icon}
-          onChange={setIcon}
-          tintColor={color}
-        />
-      </div>
-      <EditorButtons
-        submitLabel={submitLabel}
-        disabled={!name.trim()}
-        onCancel={onCancel}
-        onSubmit={handleSubmit}
-      />
-    </div>
+    <EntityForm
+      initial={initial}
+      glyphNames={CATEGORY_GLYPH_NAMES}
+      namePlaceholder={t("settings.categoriesTab.categoryNamePlaceholder")}
+      iconLabel={t("settings.categoriesTab.icon")}
+      submitLabel={submitLabel}
+      onCancel={onCancel}
+      onSubmit={onSubmit}
+    />
   );
 }
 
@@ -627,49 +579,33 @@ function TypeEditor({
   onSubmit: (draft: Omit<EntryType, "id">) => void;
 }) {
   const t = useT();
-  const [name, setName] = useState(initial?.name ?? "");
-  const [color, setColor] = useState<string>(
-    initial?.color ?? CATEGORY_COLORS[0],
-  );
-  const [glyph, setGlyph] = useState<CategoryIcon>(initial?.glyph ?? "tag");
   const [categoryId, setCategoryId] = useState<string>(
     initial?.categoryId ?? initialCategoryId ?? DEFAULT_CATEGORY_ID,
   );
   const [kind, setKind] = useState<EntryTypeKind>(initial?.kind ?? "any");
 
-  function handleSubmit() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmit({
-      name: trimmed,
-      color,
-      glyph,
-      categoryId,
-      ...(kind === "any" ? {} : { kind }),
-    });
-  }
-
   return (
-    <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("settings.categoriesTab.name")}</span>
-        <ClearableInput
-          // Dedicated single-purpose type editor — landing focus on
-          // the name field is the expected UX in this modal context.
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
-          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-          value={name}
-          onValueChange={setName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder={t("settings.categoriesTab.typeNamePlaceholder")}
-        />
-      </label>
+    <EntityForm
+      initial={
+        initial
+          ? { name: initial.name, color: initial.color, icon: initial.glyph }
+          : null
+      }
+      glyphNames={TYPE_GLYPH_NAMES}
+      namePlaceholder={t("settings.categoriesTab.typeNamePlaceholder")}
+      iconLabel={t("type.glyph")}
+      submitLabel={submitLabel}
+      onCancel={onCancel}
+      onSubmit={({ name, color, icon }) =>
+        onSubmit({
+          name,
+          color,
+          glyph: icon,
+          categoryId,
+          ...(kind === "any" ? {} : { kind }),
+        })
+      }
+    >
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("type.category")}</span>
         <CategoryDropdown
@@ -686,6 +622,74 @@ function TypeEditor({
           {t("settings.categoriesTab.kindHint")}
         </span>
       </div>
+    </EntityForm>
+  );
+}
+
+// Shared form chrome for the category and type editors. Both share a
+// "name + colour + icon" trio with EditorButtons; the type editor
+// inserts a category dropdown and kind toggle between the name and
+// colour fields via `children`. New preset admins (loan types, savings
+// goals, …) compose around this same trio rather than duplicating the
+// field-state plumbing.
+function EntityForm({
+  initial,
+  glyphNames,
+  namePlaceholder,
+  iconLabel,
+  submitLabel,
+  onCancel,
+  onSubmit,
+  children,
+}: {
+  initial: { name?: string; color?: string; icon?: CategoryIcon } | null;
+  glyphNames: readonly CategoryIcon[];
+  namePlaceholder: string;
+  iconLabel: string;
+  submitLabel: string;
+  onCancel: () => void;
+  onSubmit: (values: {
+    name: string;
+    color: string;
+    icon: CategoryIcon;
+  }) => void;
+  children?: ReactNode;
+}) {
+  const t = useT();
+  const [name, setName] = useState(initial?.name ?? "");
+  const [color, setColor] = useState<string>(
+    initial?.color ?? CATEGORY_COLORS[0],
+  );
+  const [icon, setIcon] = useState<CategoryIcon>(initial?.icon ?? "tag");
+
+  function handleSubmit() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    onSubmit({ name: trimmed, color, icon });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        <span>{t("settings.categoriesTab.name")}</span>
+        <ClearableInput
+          // Dedicated single-purpose editor — landing focus on the
+          // name field is the expected UX in this modal context.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
+          value={name}
+          onValueChange={setName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          placeholder={namePlaceholder}
+        />
+      </label>
+      {children}
       <div className="flex flex-col gap-1 text-xs text-muted">
         <span>{t("settings.categoriesTab.color")}</span>
         <ColorPalette
@@ -696,11 +700,11 @@ function TypeEditor({
         />
       </div>
       <div className="flex flex-col gap-1 text-xs text-muted">
-        <span>{t("type.glyph")}</span>
+        <span>{iconLabel}</span>
         <GlyphGrid
-          icons={TYPE_GLYPH_NAMES}
-          value={glyph}
-          onChange={setGlyph}
+          icons={glyphNames}
+          value={icon}
+          onChange={setIcon}
           tintColor={color}
         />
       </div>
