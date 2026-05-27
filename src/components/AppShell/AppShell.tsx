@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  type CorrectionDeletePrompt,
-  type DeletePrompt,
-  type EditPrompt,
-  type EditRowPrompt,
-  type PendingSeriesEdit,
-  type SplitPrompt,
-  headerActionDescription,
-} from "./types";
+import { headerActionDescription } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
+import { useAchievementsModal } from "./hooks/useAchievementsModal";
 import { useAppearanceProjection } from "./hooks/useAppearanceProjection";
 import { useBulkSelection } from "./hooks/useBulkSelection";
 import { useChangelogState } from "./hooks/useChangelogState";
 import { useComplexEntry } from "./hooks/useComplexEntry";
+import { useDeletePrompts } from "./hooks/useDeletePrompts";
+import { useEditPrompts } from "./hooks/useEditPrompts";
 import { useSearchModal } from "./hooks/useSearchModal";
+import { useSettingsModal } from "./hooks/useSettingsModal";
 import { useSyncAutoOpens } from "./hooks/useSyncAutoOpens";
 import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
@@ -72,7 +68,7 @@ import { HeaderMenu } from "../HeaderMenu";
 import { HeaderStar } from "../HeaderStar";
 import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
-import { SettingsModal, type SettingsTabId } from "../SettingsModal";
+import { SettingsModal } from "../SettingsModal";
 import { BudgetPage } from "../budget/BudgetPage";
 import { ConflictResolutionModal } from "../ConflictResolutionModal";
 import { ReconnectCloudModal } from "../ReconnectCloudModal";
@@ -236,8 +232,12 @@ export function AppShell({
   // off again the moment the adapter replaces state with the
   // persisted bucket.
   useAchievementWatcher(data, dispatch, status.kind !== "loading");
-  const [achievementsModalOpen, setAchievementsModalOpen] = useState(false);
-  const [achievementsListOpen, setAchievementsListOpen] = useState(false);
+  const {
+    achievementsModalOpen,
+    setAchievementsModalOpen,
+    achievementsListOpen,
+    setAchievementsListOpen,
+  } = useAchievementsModal();
   // Mirror in-memory data into the App-owned ref so the cloud-link
   // conflict path can upload the latest budget. Updated on every render
   // because both data changes and ref-identity changes (after a sign-
@@ -245,38 +245,14 @@ export function AppShell({
   useEffect(() => {
     currentDataRef.current = data;
   }, [currentDataRef, data]);
-  const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
-  const [editPrompt, setEditPrompt] = useState<EditPrompt | null>(null);
-  // Generic row editor — opens on long-press or the pen action button.
-  // Distinct from `editPrompt`, which drives `EditEntryModal` (the
-  // recurring promote / series editor).
-  const [editRowPrompt, setEditRowPrompt] = useState<EditRowPrompt | null>(
-    null,
-  );
-  // Split-entry modal state. Opens when the scissors action button is
-  // clicked. Cleared on save / cancel and self-clears when the row it
-  // targets disappears (e.g. via an undo or a concurrent edit).
-  const [splitPrompt, setSplitPrompt] = useState<SplitPrompt | null>(null);
-  // Captures the most recent inline edit on a recurring row so the user
-  // can choose to fan the change out to every following entry in the
-  // series. `null` while no prompt is pending.
-  const [pendingSeriesEdit, setPendingSeriesEdit] =
-    useState<PendingSeriesEdit | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  // Pre-selected tab when SettingsModal next transitions open — used by
-  // launchers (e.g. the storage-size warning) that should land the user
-  // on a specific section. Cleared back to undefined right after the
-  // modal opens so a subsequent menu-driven open lands on General.
-  const [settingsInitialTab, setSettingsInitialTab] = useState<
-    SettingsTabId | undefined
-  >(undefined);
-  // Live preview of the Appearance settings while the SettingsModal is
-  // open — the modal pushes its draft up here on every edit so the user
-  // can see the theme / font / shape choice applied to the running app
-  // before committing. Cleared back to null on close, so cancelling
-  // reverts to the persisted settings without the modal having to
-  // restore anything itself.
-  const [previewSettings, setPreviewSettings] = useState<Settings | null>(null);
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    settingsInitialTab,
+    setSettingsInitialTab,
+    previewSettings,
+    setPreviewSettings,
+  } = useSettingsModal();
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   const {
     searchOpen,
@@ -305,15 +281,14 @@ export function AppShell({
     toast,
   });
   // Account ids for the import-history and view-history modals.
-  const [correctionDeletePrompt, setCorrectionDeletePrompt] =
-    useState<CorrectionDeletePrompt | null>(null);
-  // null = closed; otherwise the history entry the user invoked the
-  // per-entry edit modal from (the pen button on a history row).
-  // Resolved fresh each render so a concurrent re-import / delete
-  // can't strand a stale snapshot in state.
-  const [historyEditPrompt, setHistoryEditPrompt] = useState<{
-    entryId: string;
-  } | null>(null);
+  const {
+    deletePrompt,
+    setDeletePrompt,
+    correctionDeletePrompt,
+    setCorrectionDeletePrompt,
+    historyEditPrompt,
+    setHistoryEditPrompt,
+  } = useDeletePrompts();
   // null = closed; otherwise the sheet the user is downloading. The
 
   const activeSheet =
@@ -344,6 +319,21 @@ export function AppShell({
 
   const sheetId = activeSheet.id;
   const itemId = activeItem.id;
+
+  const {
+    editPrompt,
+    setEditPrompt,
+    editRowPrompt,
+    setEditRowPrompt,
+    splitPrompt,
+    setSplitPrompt,
+    pendingSeriesEdit,
+    setPendingSeriesEdit,
+  } = useEditPrompts({
+    activeRows: activeItem.rows,
+    activeAccountId: activeItem.accountId,
+    history: data.history,
+  });
 
   // Usage count for each EntryType, summed across every budget in the
   // workspace. Feeds the TypePicker's "most used first" sort so the
@@ -455,7 +445,7 @@ export function AppShell({
         value,
       });
     },
-    [activeItem.rows, activeItem.columns],
+    [activeItem.rows, activeItem.columns, setPendingSeriesEdit],
   );
   const onApplyPendingToFuture = useCallback(
     (untilIso: string | null) => {
@@ -471,47 +461,12 @@ export function AppShell({
       });
       setPendingSeriesEdit(null);
     },
-    [dispatch, pendingSeriesEdit, sheetId, itemId],
+    [dispatch, pendingSeriesEdit, sheetId, itemId, setPendingSeriesEdit],
   );
   const onDismissPendingSeriesEdit = useCallback(() => {
     setPendingSeriesEdit(null);
-  }, []);
+  }, [setPendingSeriesEdit]);
 
-  // Drop the pending prompt if the row vanishes (sheet switch, delete,
-  // import) so a stale prompt can't fan out a no-longer-relevant edit.
-  useEffect(() => {
-    if (!pendingSeriesEdit) return;
-    const exists = activeItem.rows.some(
-      (r) => r.id === pendingSeriesEdit.rowId,
-    );
-    if (!exists) setPendingSeriesEdit(null);
-  }, [pendingSeriesEdit, activeItem.rows]);
-  // Same guard for the generic edit-row modal: if the row vanishes
-  // while the modal is open the user would be staring at a stale
-  // snapshot, so close it.
-  useEffect(() => {
-    if (!editRowPrompt) return;
-    const exists = activeItem.rows.some((r) => r.id === editRowPrompt.row.id);
-    if (!exists) setEditRowPrompt(null);
-  }, [editRowPrompt, activeItem.rows]);
-  // Same guard for the split modal. History rows aren't in
-  // `activeItem.rows` (they're synthesized from `UserData.history`), so
-  // their existence is verified against the active account's history
-  // entries instead.
-  useEffect(() => {
-    if (!splitPrompt) return;
-    if (splitPrompt.row.historyEntryId) {
-      const entries =
-        (activeItem.accountId && data.history[activeItem.accountId]) || [];
-      const exists = entries.some(
-        (e) => e.id === splitPrompt.row.historyEntryId,
-      );
-      if (!exists) setSplitPrompt(null);
-      return;
-    }
-    const exists = activeItem.rows.some((r) => r.id === splitPrompt.row.id);
-    if (!exists) setSplitPrompt(null);
-  }, [splitPrompt, activeItem.rows, activeItem.accountId, data.history]);
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
@@ -548,33 +503,45 @@ export function AppShell({
       }
       setDeletePrompt({ kind: "delete", row });
     },
-    [activeItem.columns, dispatch, sheetId, itemId],
+    [activeItem.columns, dispatch, sheetId, itemId, setDeletePrompt],
   );
-  const onEditRequest = useCallback((row: Row) => {
-    setEditPrompt({ kind: "edit", row });
-  }, []);
-  const onEditRowRequest = useCallback((row: Row) => {
-    // Synthesized rows (transfer / history) and balance-correction
-    // rows have their own edit flows; the row component already
-    // suppresses the long-press and the pen button on them, but guard
-    // here too so a stray dispatch never opens the modal on a row it
-    // can't meaningfully edit.
-    if (row.transferId || row.historyEntryId || row.isCorrection) return;
-    setEditRowPrompt({ kind: "edit-row", row });
-  }, []);
-  const onSplitRequest = useCallback((row: Row) => {
-    // Transfers have their own edit modal, correction rows are
-    // display-only — splitting either of those is meaningless. History
-    // rows are allowed: splitting a bank entry writes a `splits` array
-    // on the underlying `HistoryEntry`, which the synthesizer fans out
-    // into multiple rows on the next render.
-    if (row.transferId || row.isCorrection) return;
-    setSplitPrompt({ kind: "split", row });
-  }, []);
-  const onEditHistoryRequest = useCallback((row: Row) => {
-    if (!row.historyEntryId) return;
-    setHistoryEditPrompt({ entryId: row.historyEntryId });
-  }, []);
+  const onEditRequest = useCallback(
+    (row: Row) => {
+      setEditPrompt({ kind: "edit", row });
+    },
+    [setEditPrompt],
+  );
+  const onEditRowRequest = useCallback(
+    (row: Row) => {
+      // Synthesized rows (transfer / history) and balance-correction
+      // rows have their own edit flows; the row component already
+      // suppresses the long-press and the pen button on them, but guard
+      // here too so a stray dispatch never opens the modal on a row it
+      // can't meaningfully edit.
+      if (row.transferId || row.historyEntryId || row.isCorrection) return;
+      setEditRowPrompt({ kind: "edit-row", row });
+    },
+    [setEditRowPrompt],
+  );
+  const onSplitRequest = useCallback(
+    (row: Row) => {
+      // Transfers have their own edit modal, correction rows are
+      // display-only — splitting either of those is meaningless. History
+      // rows are allowed: splitting a bank entry writes a `splits` array
+      // on the underlying `HistoryEntry`, which the synthesizer fans out
+      // into multiple rows on the next render.
+      if (row.transferId || row.isCorrection) return;
+      setSplitPrompt({ kind: "split", row });
+    },
+    [setSplitPrompt],
+  );
+  const onEditHistoryRequest = useCallback(
+    (row: Row) => {
+      if (!row.historyEntryId) return;
+      setHistoryEditPrompt({ entryId: row.historyEntryId });
+    },
+    [setHistoryEditPrompt],
+  );
   const onUpdateHistoryEntry = useCallback(
     (
       accountId: string,
@@ -616,7 +583,7 @@ export function AppShell({
         deltaText,
       });
     },
-    [activeItem, sheetId, effectiveSettings],
+    [activeItem, sheetId, effectiveSettings, setCorrectionDeletePrompt],
   );
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
@@ -783,7 +750,7 @@ export function AppShell({
     sheetId,
     itemId,
     dispatch,
-    closeEditPrompt: useCallback(() => setEditPrompt(null), []),
+    closeEditPrompt: useCallback(() => setEditPrompt(null), [setEditPrompt]),
   });
 
   const onConvertToRecurring = useCallback(
@@ -804,7 +771,7 @@ export function AppShell({
       });
       setEditPrompt(null);
     },
-    [dispatch, sheetId, itemId],
+    [dispatch, sheetId, itemId, setEditPrompt],
   );
   const onEditSeries = useCallback(
     (rowId: string, patch: EditPatch, scope: EditScope) => {
@@ -812,7 +779,7 @@ export function AppShell({
       dispatch({ type: "editSeries", sheetId, itemId, rowId, patch, scope });
       setEditPrompt(null);
     },
-    [dispatch, sheetId, itemId],
+    [dispatch, sheetId, itemId, setEditPrompt],
   );
   const onSplitSubmit = useCallback(
     (rowId: string, splits: SplitSubmission[], remainderAmount: number) => {
@@ -874,6 +841,7 @@ export function AppShell({
       splitPrompt,
       activeItem.accountId,
       data.history,
+      setSplitPrompt,
     ],
   );
   // Drop a history entry's persisted split decomposition. The
@@ -896,7 +864,7 @@ export function AppShell({
       splits: [],
     });
     setSplitPrompt(null);
-  }, [dispatch, splitPrompt, activeItem.accountId]);
+  }, [dispatch, splitPrompt, activeItem.accountId, setSplitPrompt]);
   const onSaveEditRow = useCallback(
     (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
       // Description / amount / category / type are series-wide fields —
@@ -952,7 +920,14 @@ export function AppShell({
       }
       setEditRowPrompt(null);
     },
-    [activeItem.columns, activeItem.rows, dispatch, sheetId, itemId],
+    [
+      activeItem.columns,
+      activeItem.rows,
+      dispatch,
+      sheetId,
+      itemId,
+      setEditRowPrompt,
+    ],
   );
 
   const dateCol = useMemo(
@@ -1084,7 +1059,7 @@ export function AppShell({
       });
       setHistoryEditPrompt(null);
     },
-    [dispatch, activeItem.accountId, historyEditPrompt],
+    [dispatch, activeItem.accountId, historyEditPrompt, setHistoryEditPrompt],
   );
 
   const onSetHistoryEntryPrimaryIncome = useCallback(
@@ -1198,14 +1173,14 @@ export function AppShell({
         },
       },
     ];
-  }, [deletePrompt, dispatch, sheetId, itemId, t]);
+  }, [deletePrompt, dispatch, sheetId, itemId, t, setDeletePrompt]);
 
   const onDeleteRecurringRows = useCallback(
     (rowIds: string[]) => {
       dispatch({ type: "deleteRows", sheetId, itemId, rowIds });
       setDeletePrompt(null);
     },
-    [dispatch, sheetId, itemId],
+    [dispatch, sheetId, itemId, setDeletePrompt],
   );
 
   const correctionDeleteActions: ConfirmAction[] = useMemo(() => {
@@ -1226,7 +1201,7 @@ export function AppShell({
         },
       },
     ];
-  }, [correctionDeletePrompt, dispatch, t]);
+  }, [correctionDeletePrompt, dispatch, t, setCorrectionDeletePrompt]);
 
   const onSetFiscalMonthShift = useCallback(
     (row: Row, shift: -1 | 1 | null) => {
