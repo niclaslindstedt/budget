@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sigma } from "lucide-react";
 
-import { formulaToStored, parseFormula } from "../../data/formula";
+import { formulaToStored, parseFormula } from "../../data/budget/formula";
 import type { RecurrenceRule } from "../../data/recurrence";
 import type { Category, EntryType, Settings, Sheet } from "../../data/types";
 import { useT } from "../../i18n";

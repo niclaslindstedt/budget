@@ -21,7 +21,7 @@
 // resolving — the parser packs the trailing path into a trailing
 // string argument so both forms share the same evaluator shape.
 
-import type { Sheet } from "./types";
+import type { Sheet } from "../types";
 
 // ---------- AST ----------
 

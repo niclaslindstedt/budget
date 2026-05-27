@@ -2,7 +2,7 @@ import {
   applyMatchRuleOnceToAllSheets,
   applyMatchRuleOnceToHistory,
   reapplyPatternsToAllSheets,
-} from "../pattern-apply";
+} from "../budget/pattern-apply";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
 

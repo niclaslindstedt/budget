@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { ChevronDown, ChevronUp, Pencil, RefreshCw } from "lucide-react";
 
-import { countRuleHitsOnSheets } from "../../../data/pattern-apply";
+import { countRuleHitsOnSheets } from "../../../data/budget/pattern-apply";
 import { allCategories, allTypes } from "../../../data/presets";
 import type { MatchRule, Settings, UserData } from "../../../data/types";
 import { type TFunction, useT } from "../../../i18n";

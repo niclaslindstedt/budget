@@ -8,7 +8,7 @@ import { findMatchingRule, ruleMatchesEntry } from "../../../data/match-rules";
 import {
   countRowsAffectedByReapply,
   reapplyPatternsToAllSheets,
-} from "../../../data/pattern-apply";
+} from "../../../data/budget/pattern-apply";
 import type { Action } from "../../../data/reducer";
 import { findColumnByType, newId } from "../../../data/sheet";
 import type {

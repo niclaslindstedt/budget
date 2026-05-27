@@ -34,16 +34,16 @@ import {
   findMatchingRule,
   findMatchingRuleForCandidate,
   ruleMatchesEntry,
-} from "./match-rules";
-import { candidateFromRow, resolveCandidateColumns } from "./row-candidate";
-import { mapAccountBudgets } from "./sheet";
+} from "../match-rules";
+import { candidateFromRow, resolveCandidateColumns } from "../row-candidate";
+import { mapAccountBudgets } from "../sheet";
 import type {
   AccountBudget,
   HistoryEntry,
   MatchRule,
   Row,
   Sheet,
-} from "./types";
+} from "../types";
 
 export function reapplyPatternsToBudget(
   item: AccountBudget,

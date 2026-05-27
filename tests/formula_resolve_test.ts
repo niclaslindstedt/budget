@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveEffectiveAmounts } from "../src/data/formula-resolve";
+import { resolveEffectiveAmounts } from "../src/data/budget/formula-resolve";
 import type {
   AccountBudget,
   Column,

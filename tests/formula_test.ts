@@ -5,8 +5,11 @@ import {
   formulaToDisplay,
   formulaToStored,
   parseFormula,
-} from "../src/data/formula";
-import type { FormulaContext, MonthAggregates } from "../src/data/formula";
+} from "../src/data/budget/formula";
+import type {
+  FormulaContext,
+  MonthAggregates,
+} from "../src/data/budget/formula";
 import type { Sheet } from "../src/data/types";
 
 function emptyMonth(

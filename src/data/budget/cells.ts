@@ -4,7 +4,7 @@
 // cells the same way; the readers here keep that contract in one
 // place and let `conflicts.ts`' own scoring drop a near-twin.
 
-import type { Row } from "./types";
+import type { Row } from "../types";
 
 // Trimmed string value from a single cell. Returns "" when the
 // column id is null or missing, or the cell is not a string. Trimming

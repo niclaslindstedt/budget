@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { detectTransferCandidates } from "../src/data/transfer-collapse";
+import { detectTransferCandidates } from "../src/data/accounts/transfer-collapse";
 import type { HistoryEntry } from "../src/data/types";
 
 let counter = 0;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
-import { countRuleHitsOnSheets } from "../src/data/pattern-apply";
+import { countRuleHitsOnSheets } from "../src/data/budget/pattern-apply";
 import { reducer } from "../src/data/reducer";
 import { createDefaultSheet, findColumnByType, newId } from "../src/data/sheet";
 import type {

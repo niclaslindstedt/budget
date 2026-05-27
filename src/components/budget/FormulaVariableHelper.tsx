@@ -1,7 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { FORMULA_FUNCTIONS, FORMULA_VARIABLES } from "../../data/formula";
+import {
+  FORMULA_FUNCTIONS,
+  FORMULA_VARIABLES,
+} from "../../data/budget/formula";
 import type { FloatingPlacement } from "../../hooks";
 import type { Sheet } from "../../data/types";
 import { useT } from "../../i18n";

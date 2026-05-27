@@ -5,7 +5,10 @@ import {
   useRef,
 } from "react";
 
-import { FORMULA_FUNCTION_NAMES, FORMULA_VARIABLES } from "../../data/formula";
+import {
+  FORMULA_FUNCTION_NAMES,
+  FORMULA_VARIABLES,
+} from "../../data/budget/formula";
 
 // Imperative handle so the parent (ComplexEntryModal) can splice a
 // token in at the caret when the user picks one from the "Variables"

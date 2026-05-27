@@ -9,8 +9,8 @@
 // dismissal allowlist, emits a list of candidate pairs. The actual
 // collapse / dismiss / undo lives in the reducer.
 
-import { normaliseDescription } from "./description-normaliser";
-import type { HistoryEntry } from "./types";
+import { normaliseDescription } from "../description-normaliser";
+import type { HistoryEntry } from "../types";
 
 export type TransferCandidate = {
   // Stable pair id — concatenation of the two HistoryEntry ids in

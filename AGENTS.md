@@ -371,41 +371,29 @@ slot in):
    directories. Do not pile new budget-only or accounts-only helpers
    into `src/data/sheet.ts`.
 
-**Data-layer module map.** `src/data/sheet.ts` now holds only universal
-sheet primitives — `newId`, `createDefaultSheet` /
-`createDefaultAccountBudget` / `createDefaultAccountsView`,
-`findColumnByType`, `moveColumn`, `createEmptyRow`, `getStandardColumns`,
-and the identity-preserving sheet-tree traversal helpers
-(`updateAccountBudget`, `mapAccountBudgets`, `mapRowsByIds`,
-`updateHistoryEntry`). Page-specific and domain-specific helpers live
-in sibling modules:
+**Data-layer module map — rules of placement.** The inventory of
+modules under `src/data/` (which file owns which helper) lives in
+`docs/architecture.md` because it's a maintenance burden that grows
+with every relocation. The rules an agent has to honour when adding
+or moving data-layer code are:
 
-- `src/data/fiscal-month.ts` — fiscal-month and ISO date math
-  (`getMonthKey`, `applyMonthShift`, `groupRowsByMonth`,
-  `computePrimaryIncomeShift`, `fiscalMonthSeedIso`,
-  `currentFiscalMonthKey`, `previousMonthKey`, `nextMonthKey`,
-  `sortMonthKeys`, `shiftIsoToMonth`, `compareDateStrings`).
-- `src/data/budget/rows.ts` — budget-row algebra (`sortRowsByDate` +
-  `RowSortContext`, `reverseRowsByDay`, `computeBalances`,
-  `isRowSavable` / `isRowHalfDone` and the `userData*` wrappers,
-  `rowsInSeriesFrom`, `getLastSeriesDate`, `defaultCompletedForDate`,
-  `mintBudgetRow`, `propagateCellInSeries`, `buildVisibleRows`).
-- `src/data/budget/synthesis.ts` — synthesized rows shown in the
-  budget table without touching storage (`transfersForAccount`,
-  `synthesizeTransferRow`, `synthesizeHistoryRow`, `resolveEntryLabels`,
-  `isTransferRow`).
-- `src/data/budget/export.ts` — CSV / XLSX export builder for an
-  `AccountBudget` (`buildBudgetExportRows`, `exportRowsToTable`,
-  `rowsToCsv`).
-- `src/data/accounts/balance.ts` — account-level aggregation
-  (`accountBalance`, `computeAccountBalances`).
-- `src/data/accounts/export.ts` — JSON export builder for the accounts
-  sheet (`buildAccountsExport`).
+- `src/data/sheet.ts` holds only universal sheet primitives that
+  every page consumes (`newId`, the `createDefault*` factories,
+  column helpers, sheet-tree traversal). Do **not** pile new
+  budget-only or accounts-only helpers in here.
+- Budget-only helpers go under `src/data/budget/`; accounts-only
+  helpers under `src/data/accounts/`. New page types follow the
+  same pattern (`src/data/<page>/<helper>.ts`).
+- A handful of modules live at `src/data/` root because they cross
+  the page boundary (history-vs-budget reconciliation, recurrence
+  helpers shared with the universal date picker, description→typeId
+  hints recorded by multiple reducers, candidate-row plumbing
+  consumed by both pattern-apply and the item reducer). Keep
+  cross-page modules at root rather than forcing one page to reach
+  into another's directory.
 
-New page-specific data helpers continue to land in
-`src/data/<page>/<name>.ts` (matching the existing `src/data/budget/`
-and `src/data/accounts/` directories). Do not pile new budget-only or
-accounts-only helpers into `src/data/sheet.ts`.
+When you add a new file under `src/data/`, update the inventory in
+`docs/architecture.md` in the same PR so it doesn't rot.
 
 The `sheet.*` i18n group has been untangled along the same axis:
 sheet-meta strings (the chrome around every page) live in
@@ -618,6 +606,7 @@ that aren't in the template comments:
 | Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` — update the row in the same PR. See "Resolving user vocabulary" above.                                                                                                                                   |
 | Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                                                                                                                             |
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                                                                                                                         |
+| Adding or moving a file under `src/data/`                                                  | The data-layer inventory in `docs/architecture.md` (`## Today` tree + per-file descriptions)                                                                                                                                   |
 | CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below                                                                                                          |
 | `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants.ts`                                                                                                                |
 | Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                                                                                                                         |
