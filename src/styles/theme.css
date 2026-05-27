@@ -1,0 +1,216 @@
+/* Tailwind v4 theme tokens + :root custom-property defaults + base
+   <html> / <body> typography reset. Imported by ../styles.css.
+
+   The :root defaults define the entire CSS custom-property surface the
+   rest of the cascade reads. Palette files override the colour subset;
+   media queries here adjust sticky-header heights per breakpoint.
+
+   AGENTS.md "Theming and tokens" is the single source of truth for which
+   tokens exist and what the surface is allowed to read. */
+
+@theme {
+  --breakpoint-md: 720px;
+}
+/* Palette inspired by One Dark / One Light. A monospaced face plus a few
+   syntax-style accents (green for completion, cyan for dates, yellow for
+   numbers, red for negatives, blue for links) give the sheet a quietly
+   technical feel without dressing the UI up as a terminal — chrome like
+   modals and form labels should read as plain UI, not as a CLI. Default
+   is dark; `prefers-color-scheme: light` rebinds the variables and every
+   Tailwind utility resolved through `@theme inline` follows. */
+@theme inline {
+  --color-page-bg: var(--page-bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-fg-bright: var(--fg-bright);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-meta: var(--meta);
+  --color-link: var(--link);
+  --color-path: var(--path);
+  --color-flag: var(--flag);
+  --color-pipe: var(--pipe);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-line: var(--line);
+  --font-mono:
+    "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --font-ui:
+    ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  /* User-facing UI font-size multiplier. Set by the Settings panel
+     ("Text size") and applied to BOTH the html root font-size (so
+     every `rem`-based Tailwind utility — `text-xs`, `text-sm`,
+     `text-base`, etc. — scales) and the body's absolute pixel
+     `font-size` (so body-inherited content with no explicit text-*
+     class scales too). `html` uses `calc(100% * var(--app-font-scale))`
+     so at scale 1 it stays at the browser default and there's no
+     visual regression; only the multiplied values diverge.
+     Defaults to 1 here so a fresh page (before React has read the
+     user's settings) renders at the canonical size and a brief
+     post-login re-scale is the only transition. */
+  --app-font-scale: 1;
+
+  /* Height of the sticky page header — pt-2 + h-9 button + pb-2 + 1px
+     border. Month-name headers stick just below this. The md override
+     accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
+  --app-header-h: 53px;
+
+  /* Height of the sticky month-name h3 (text-xs line-height 1rem + pt-1
+     + pb-1). Padding is symmetric so the title text sits visually
+     centered in the dark band between the page header and the
+     column-header thead. The h3's bg-page-bg covers down to where
+     the column headers stick — otherwise scrolled rows show through
+     the gap. Column headers stick directly below the month header
+     at app-header-h + month-header-h. */
+  --month-header-h: 24px;
+
+  /* Height of the sticky column-header thead (ColumnIcon 16px + py-2
+     × 2 + the 1px border-b). Pinned just below the month header so the
+     full sticky stack lands at app-header-h + month-header-h +
+     column-header-h. Used by the up-direction Today pill to sit
+     INSIDE the data rather than overlap the chrome. */
+  --column-header-h: 33px;
+
+  /* Corner-radius scale. Tailwind v4 resolves `rounded-sm` / `rounded-md`
+     / `rounded-lg` through these vars by default; the bare `rounded`
+     utility (used ~300× across the codebase) is remapped to
+     `var(--radius-sm)` by the unlayered overrides at the bottom of
+     this file. Defaults match Tailwind's so Light / Dark themes render
+     identically; flipping into a Custom theme then walks the whole
+     surface at once. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+
+  /* Row-padding driven by the density preset on Custom themes.
+     Defaults match the existing visual rhythm; reach is still narrow
+     (just `.field-input` vertical padding) — density bites less than
+     the radius / border-width controls. */
+  --density-row-py: 0.375rem;
+  --density-row-px: 0.5rem;
+
+  /* Border thickness. The bare Tailwind `.border` / `.border-{t,r,b,l}`
+     utilities are remapped to this var by the unlayered overrides at
+     the bottom of this file, so chrome that combines `border
+     border-line` with no explicit width follows the user's choice.
+     `.border-2` / `.border-0` stay literal — they're deliberate
+     accent or no-border choices, not theme-driven. */
+  --border-width: 1px;
+
+  /* Active webfont stack. Inline-set by React when
+     `settings.fontFamily` changes; the body's `font-family` reads
+     through this variable so the whole UI swaps in one place. The
+     default mirrors the historical mono stack so a fresh page
+     (before React has read settings) keeps the JetBrains-Mono look. */
+  --app-font-family:
+    "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* Bottom offset for the floating prompt stack mounted by
+     `LanguageRoot` (Toast viewport, UpdateToast, InstallPrompt).
+     Defaults to a small safe-area-only inset so the stack sits flush
+     near the screen edge on routes that don't render a BottomBar
+     (pre-auth landing, `/privacy/`, `/system/`) and on mobile
+     viewports where an open modal `display: none`'s the bar. The
+     `body:has([data-bottom-bar])` rules below promote it to sit
+     above the bar (4rem mobile / 5rem sm+) when the budget shell is
+     mounted and the bar is visible. */
+  --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+
+  /* Rendered height of the BottomBar when mounted, including the
+     safe-area inset. Used by the down-direction "Today" pill in
+     `BudgetPage` so it sits 0.5 rem above the bar — the same gap
+     the up-direction pill has below the sticky headers. Falls back
+     to the safe-area inset only on routes that don't render a bar.
+     The values mirror BottomBar's own padding stack:
+       pt + h-8 content + pb + 1px border-top
+     so the bar's top edge resolves exactly here. */
+  --bottom-bar-h: env(safe-area-inset-bottom);
+}
+
+/* Reduce-motion guard. Applied by the runtime when
+   `settings.theme === "custom"` AND `customTheme.reduceMotion` is
+   true (the hook writes `data-reduce-motion="true"` on `<html>`).
+   High specificity + `!important` so per-component transition rules
+   can't accidentally win — bypassing this would silently override
+   the user's accessibility choice. */
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  transition-duration: 0ms !important;
+  animation-duration: 0ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+@media (min-width: 720px) {
+  :root {
+    --app-header-h: 69px;
+    --month-header-h: 32px;
+  }
+}
+
+html {
+  color-scheme: light dark;
+  /* Scale the root font-size so every `rem`-based dimension (Tailwind
+     text utilities, modal sizing, sticky-header offsets) follows the
+     user's "Text size" preference. `100%` resolves to the browser
+     default (typically 16px) so scale 1 is a no-op visually; non-1
+     values scale the whole UI proportionally. */
+  font-size: calc(100% * var(--app-font-scale));
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  background: var(--page-bg);
+  color: var(--fg);
+  /* `svh` is the chrome-excluded inner box on iOS 26 Safari with the
+     floating Liquid Glass address bar. Using it as the page-level
+     floor means a short page (e.g. an empty budget with one month and
+     no rows) is exactly the visible viewport — no extra dvh-svh band
+     the user can scroll into to find empty page background. Pages
+     whose content is taller than svh still grow the body to fit, so
+     scrolling real content behind the translucent bar (and letting it
+     tint with that content) keeps working. Older iOS without a
+     floating bar reports dvh ≈ svh ≈ lvh so this stays inert. */
+  min-height: 100svh;
+  /* Suppress Chrome Android's built-in pull-to-refresh so the
+     in-app `usePullToRefresh` gesture isn't double-triggered when the
+     user pulls from the top while the address bar is visible.
+     `contain` is the gentler of the two options — bounce overscroll
+     inside scrollable children still works, only the chain to the
+     browser chrome is blocked. iOS Safari and standalone-PWA Chrome
+     don't expose a native pull-to-refresh so this is a no-op there. */
+  overscroll-behavior-y: contain;
+}
+
+body {
+  /* `--app-font-family` is set by the React `useTheme` hook from
+     `settings.fontFamily`; defaults to the historical JetBrains-Mono
+     stack so a pre-mount render stays coherent. */
+  font-family: var(--app-font-family);
+  /* Mobile default — bumped up for legibility and to avoid iOS focus-zoom.
+     Multiplied by `--app-font-scale` so body-inherited content (anything
+     without an explicit Tailwind `text-*` class) scales alongside the
+     `rem`-based UI; the html root carries the same multiplier for
+     `rem` resolution. */
+  font-size: calc(15.5px * var(--app-font-scale));
+  line-height: 1.55;
+}
+
+@media (min-width: 640px) {
+  body {
+    font-size: calc(13.5px * var(--app-font-scale));
+  }
+}
