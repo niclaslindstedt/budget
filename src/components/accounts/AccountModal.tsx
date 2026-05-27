@@ -6,7 +6,12 @@ import type { Account, CategoryIcon } from "../../data/types";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useT } from "../../i18n";
 import { ColorPalette } from "../ColorPalette";
-import { Button, ClearableInput, ClearableTextarea } from "../form";
+import {
+  Button,
+  ClearableInput,
+  ClearableTextarea,
+  FormSection,
+} from "../form";
 import { GlyphPicker } from "../GlyphPicker";
 import { Modal } from "../Modal";
 import { CategoryIconGlyph } from "../icons";
@@ -130,8 +135,11 @@ export function AccountModal({
                 <CategoryIconGlyph name="wallet" size={22} />
               )}
             </div>
-            <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("account.name")}</span>
+            <FormSection
+              as="label"
+              className="min-w-0 flex-1"
+              label={t("account.name")}
+            >
               <ClearableInput
                 value={name}
                 onValueChange={setName}
@@ -146,13 +154,10 @@ export function AccountModal({
                 placeholder={t("account.namePlaceholder")}
                 ref={nameRef}
               />
-            </label>
+            </FormSection>
           </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("account.description")}
-            </span>
+          <FormSection as="label" label={t("account.description")}>
             <ClearableTextarea
               value={description}
               onValueChange={setDescription}
@@ -161,10 +166,9 @@ export function AccountModal({
               wrapperClassName="w-full min-w-0"
               className="field-input w-full min-w-0 resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
-          </label>
+          </FormSection>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("account.glyph")}</span>
+          <FormSection label={t("account.glyph")}>
             <GlyphPicker
               value={glyph}
               onChange={setGlyph}
@@ -172,19 +176,17 @@ export function AccountModal({
               icons={ACCOUNT_GLYPH_NAMES}
               tintColor={color}
             />
-          </div>
+          </FormSection>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("account.color")}</span>
+          <FormSection label={t("account.color")}>
             <ColorPalette
               colors={SHEET_COLORS}
               value={color}
               onChange={setColor}
             />
-          </div>
+          </FormSection>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("account.bank")}</span>
+          <FormSection label={t("account.bank")}>
             <ClearableInput
               value={bank}
               onValueChange={setBank}
@@ -192,13 +194,14 @@ export function AccountModal({
               wrapperClassName="w-full min-w-0"
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
-          </div>
+          </FormSection>
 
           <div className="grid grid-cols-[1fr_2fr] gap-2">
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">
-                {t("account.clearing")}
-              </span>
+            <FormSection
+              as="label"
+              className="min-w-0"
+              label={t("account.clearing")}
+            >
               <ClearableInput
                 value={clearing}
                 onValueChange={setClearing}
@@ -206,11 +209,12 @@ export function AccountModal({
                 wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
-            </label>
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">
-                {t("account.accountNumber")}
-              </span>
+            </FormSection>
+            <FormSection
+              as="label"
+              className="min-w-0"
+              label={t("account.accountNumber")}
+            >
               <ClearableInput
                 value={accountNumber}
                 onValueChange={setAccountNumber}
@@ -218,12 +222,15 @@ export function AccountModal({
                 wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
-            </label>
+            </FormSection>
           </div>
 
           <div className="grid grid-cols-[2fr_1fr] gap-2">
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("account.iban")}</span>
+            <FormSection
+              as="label"
+              className="min-w-0"
+              label={t("account.iban")}
+            >
               <ClearableInput
                 value={iban}
                 onValueChange={setIban}
@@ -231,9 +238,12 @@ export function AccountModal({
                 wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
-            </label>
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("account.bic")}</span>
+            </FormSection>
+            <FormSection
+              as="label"
+              className="min-w-0"
+              label={t("account.bic")}
+            >
               <ClearableInput
                 value={bic}
                 onValueChange={setBic}
@@ -241,13 +251,10 @@ export function AccountModal({
                 wrapperClassName="w-full min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               />
-            </label>
+            </FormSection>
           </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("account.currencyOverride")}
-            </span>
+          <FormSection as="label" label={t("account.currencyOverride")}>
             <ClearableInput
               value={currency}
               onValueChange={setCurrency}
@@ -258,7 +265,7 @@ export function AccountModal({
             <span className="text-xs text-muted">
               {t("account.currencyOverrideHint")}
             </span>
-          </label>
+          </FormSection>
 
           {!hasDetails && (
             <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">

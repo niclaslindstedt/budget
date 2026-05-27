@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
@@ -13,7 +13,7 @@ import type {
   Row,
   Settings,
 } from "../../data/types";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import {
   formatAmount,
@@ -250,8 +250,7 @@ export function EditEntryModal({
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
 
-  useEffect(() => {
-    if (!open) return;
+  useResetOnOpen(open, row?.id, () => {
     setDescription(initialDescription);
     setAmount(initialAmountText);
     setNegative(initialNegative);
@@ -269,8 +268,7 @@ export function EditEntryModal({
         (historyMatches ?? []).filter((m) => m.hintIgnored).map((m) => m.id),
       ),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, row?.id]);
+  });
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, dates: string[]) => {

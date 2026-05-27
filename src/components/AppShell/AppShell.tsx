@@ -9,6 +9,8 @@ import { useChangelogState } from "./hooks/useChangelogState";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
 import { useEditPrompts } from "./hooks/useEditPrompts";
+import { useHistoryEntryActions } from "./hooks/useHistoryEntryActions";
+import { useRowMutations } from "./hooks/useRowMutations";
 import { useSearchModal } from "./hooks/useSearchModal";
 import { useSettingsModal } from "./hooks/useSettingsModal";
 import { useSyncAutoOpens } from "./hooks/useSyncAutoOpens";
@@ -78,7 +80,6 @@ import { isRowSavable, userDataWithSavableRows } from "../../data/budget-rows";
 import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
-  CellValue,
   HistoryEntrySplit,
   Row,
   Settings,
@@ -391,55 +392,22 @@ export function AppShell({
     onSignOut,
   });
 
-  const onUpdateCell = useCallback(
-    (rowId: string, columnId: string, value: CellValue) =>
-      dispatch({
-        type: "updateCell",
-        sheetId,
-        itemId,
-        rowId,
-        columnId,
-        value,
-      }),
-    [dispatch, sheetId, itemId],
-  );
-  const onCommitCell = useCallback(
-    (rowId: string, columnId: string, value: CellValue) => {
-      const row = activeItem.rows.find((r) => r.id === rowId);
-      if (!row?.seriesId) return;
-      const col = activeItem.columns.find((c) => c.id === columnId);
-      // Only propagate fields that make sense across every occurrence —
-      // date and completed are inherently per-occurrence, balance is
-      // computed.
-      if (!col || (col.type !== "description" && col.type !== "amount")) {
-        return;
-      }
-      const dateCol = findColumnByType(activeItem.columns, "date");
-      const anchorDate =
-        dateCol && typeof row.cells[dateCol.id] === "string"
-          ? (row.cells[dateCol.id] as string)
-          : "";
-      let lastSeriesDate: string | null = null;
-      if (dateCol) {
-        const seriesDates = activeItem.rows
-          .filter((r) => r.seriesId === row.seriesId)
-          .map((r) => r.cells[dateCol.id])
-          .filter((d): d is string => typeof d === "string");
-        if (seriesDates.length > 0) {
-          lastSeriesDate = seriesDates.sort().at(-1) ?? null;
-        }
-      }
-      setPendingSeriesEdit({
-        rowId,
-        columnId,
-        fieldLabel: col.label,
-        anchorDate,
-        lastSeriesDate,
-        value,
-      });
-    },
-    [activeItem.rows, activeItem.columns, setPendingSeriesEdit],
-  );
+  const {
+    onUpdateCell,
+    onCommitCell,
+    onSetFiscalMonthShift,
+    onSetSeriesPrimaryIncome,
+    onClearMerchantHints,
+    onClearRecurringDismissals,
+    onClearTransferDismissals,
+  } = useRowMutations({
+    sheetId,
+    itemId,
+    activeRows: activeItem.rows,
+    activeColumns: activeItem.columns,
+    setPendingSeriesEdit,
+    dispatch,
+  });
   const onApplyPendingToFuture = useCallback(
     (untilIso: string | null) => {
       if (!pendingSeriesEdit) return;
@@ -998,43 +966,13 @@ export function AppShell({
     onReapplyMatchRules,
   } = useMatchRuleUi({ data, activeItem, dispatch, toast });
 
-  const onSubmitHistoryEdit = useCallback(
-    (patch: {
-      userDescription: string;
-      userTypeId: string | null;
-      userCompanyId: string | null;
-    }) => {
-      const accountId = activeItem.accountId;
-      if (!accountId || !historyEditPrompt) return;
-      dispatch({
-        type: "updateHistoryEntry",
-        accountId,
-        entryId: historyEditPrompt.entryId,
-        patch,
-      });
-      setHistoryEditPrompt(null);
-    },
-    [dispatch, activeItem.accountId, historyEditPrompt, setHistoryEditPrompt],
-  );
-
-  const onSetHistoryEntryPrimaryIncome = useCallback(
-    (
-      entryId: string,
-      isPrimaryIncome: boolean,
-      anchorDayOfMonth: number | null,
-    ) => {
-      const accountId = activeItem.accountId;
-      if (!accountId) return;
-      dispatch({
-        type: "setHistoryEntryPrimaryIncome",
-        accountId,
-        entryId,
-        isPrimaryIncome,
-        anchorDayOfMonth,
-      });
-    },
-    [dispatch, activeItem.accountId],
-  );
+  const { onSubmitHistoryEdit, onSetHistoryEntryPrimaryIncome } =
+    useHistoryEntryActions({
+      activeAccountId: activeItem.accountId,
+      historyEditPrompt,
+      dispatch,
+      setHistoryEditPrompt,
+    });
 
   // Series rows are handled by `DeleteRecurringDialog` (which owns its
   // own scope picker, optional date bound, and button labels). This
@@ -1088,57 +1026,6 @@ export function AppShell({
     ];
   }, [correctionDeletePrompt, dispatch, t, setCorrectionDeletePrompt]);
 
-  const onSetFiscalMonthShift = useCallback(
-    (row: Row, shift: -1 | 1 | null) => {
-      dispatch({
-        type: "setRowFiscalMonthShift",
-        sheetId,
-        itemId,
-        rowId: row.id,
-        shift,
-      });
-    },
-    [dispatch, sheetId, itemId],
-  );
-  const onSetSeriesPrimaryIncome = useCallback(
-    (
-      seriesId: string,
-      isPrimaryIncome: boolean,
-      anchorDayOfMonth: number | null,
-    ) => {
-      dispatch({
-        type: "setSeriesPrimaryIncome",
-        seriesId,
-        isPrimaryIncome,
-        anchorDayOfMonth,
-      });
-    },
-    [dispatch],
-  );
-
-  // Recurring-candidate promote / dismiss. Promote opens the complex-
-  // entry modal pre-seeded with the detected description, amount, and
-  // cadence so the user can adjust before committing — submit then
-  // dispatches `promoteRecurringCandidate`, which mints the series
-  // rows, records a merchant hint against the candidate's bank text,
-  // and consumes the candidate by adding its key to
-  // `recurringDismissals` (so the panel drops it). Dismiss persists
-  // the key directly without minting anything.
-  // Settings clear-all handlers for the merchant-hint memory and the
-  // two dismissal allowlists. Each dispatches a single action; the
-  // reducer no-ops when the collection is already empty.
-  const onClearMerchantHints = useCallback(
-    () => dispatch({ type: "clearMerchantHints" }),
-    [dispatch],
-  );
-  const onClearRecurringDismissals = useCallback(
-    () => dispatch({ type: "clearRecurringDismissals" }),
-    [dispatch],
-  );
-  const onClearTransferDismissals = useCallback(
-    () => dispatch({ type: "clearTransferDismissals" }),
-    [dispatch],
-  );
   return (
     // The BottomBar is `position: sticky; bottom: 0` in browser
     // mode (so the AddRow at the foot of the last month ends its

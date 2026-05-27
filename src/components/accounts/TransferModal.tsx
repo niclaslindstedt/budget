@@ -22,7 +22,7 @@ import {
 import { FloatingPanel } from "../FloatingPanel";
 import { Modal } from "../Modal";
 import { DatePickerModal } from "../DatePickerModal";
-import { Button, Checkbox, ClearableInput } from "../form";
+import { Button, Checkbox, ClearableInput, FormSection } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { TypePicker } from "../TypePicker";
 import type { Settings } from "../../data/types";
@@ -244,8 +244,7 @@ export function TransferModal({
             </p>
           )}
           <div className="grid grid-cols-[1fr_2fr] gap-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transfer.date")}</span>
+            <FormSection as="label" label={t("transfer.date")}>
               {isImported ? (
                 <div className="field-input rounded border border-line bg-surface px-2 py-1.5 text-left font-mono text-sm text-fg-bright">
                   {formatDate(date, settings.dateFormat, settings.language) ||
@@ -266,9 +265,8 @@ export function TransferModal({
                 onClose={() => setDatePickerOpen(false)}
                 onSelect={(next) => setDate(next ?? "")}
               />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transfer.amount")}</span>
+            </FormSection>
+            <FormSection as="label" label={t("transfer.amount")}>
               {isImported ? (
                 <div className="field-input rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm tabular-nums text-fg-bright">
                   {parsedAmount !== null
@@ -300,13 +298,10 @@ export function TransferModal({
                   </span>
                 </>
               )}
-            </label>
+            </FormSection>
           </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("transfer.description")}
-            </span>
+          <FormSection as="label" label={t("transfer.description")}>
             <ClearableInput
               ref={descriptionRef}
               value={description}
@@ -320,12 +315,11 @@ export function TransferModal({
               placeholder={t("transfer.descriptionPlaceholder")}
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
-          </label>
+          </FormSection>
 
           <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
             <span className="text-xs text-muted">{t("transfer.transfer")}</span>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transfer.from")}</span>
+            <FormSection label={t("transfer.from")}>
               {lockedFromId !== null ? (
                 <LockedAccountChip account={fromAccount} direction="from" />
               ) : (
@@ -342,7 +336,7 @@ export function TransferModal({
                   }}
                 />
               )}
-            </div>
+            </FormSection>
             {lockedFromId === null && lockedToId === null && (
               <div className="flex justify-center">
                 <button
@@ -355,8 +349,7 @@ export function TransferModal({
                 </button>
               </div>
             )}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("transfer.to")}</span>
+            <FormSection label={t("transfer.to")}>
               {lockedToId !== null ? (
                 <LockedAccountChip account={toAccount} direction="to" />
               ) : (
@@ -373,7 +366,7 @@ export function TransferModal({
                   }}
                 />
               )}
-            </div>
+            </FormSection>
             {fromAccountId && toAccountId && fromAccountId === toAccountId && (
               <p className="text-xs text-danger">
                 {t("transfer.needTwoAccounts")}
@@ -381,8 +374,7 @@ export function TransferModal({
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("transfer.type")}</span>
+          <FormSection label={t("transfer.type")}>
             <TypePicker
               types={types}
               categories={categories}
@@ -392,7 +384,7 @@ export function TransferModal({
               onCreateCategory={onCreateCategory}
               variant="field"
             />
-          </div>
+          </FormSection>
 
           {/* The Mark-as-done checkbox is redundant for imported pairs:
               the bank already records the movement, so the transfer is

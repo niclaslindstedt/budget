@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import { sortRowsByDate } from "../../data/budget-rows";
@@ -11,7 +11,7 @@ import type {
   SeriesMetadata,
   Settings,
 } from "../../data/types";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import {
   formatAmount,
@@ -194,8 +194,7 @@ export function EditRowModal({
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
 
-  useEffect(() => {
-    if (!open) return;
+  useResetOnOpen(open, row?.id, () => {
     setDescription(initialDescription);
     setAmount(initialAmountText);
     setNegative(initialNegative);
@@ -208,8 +207,7 @@ export function EditRowModal({
     setUntilEnabled(false);
     setUntilDate(lastSeriesDate ?? initialDate ?? "");
     setShiftDaysText("0");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, row?.id]);
+  });
 
   // Rows that the chosen scope will touch. Recomputed on every render
   // — the source list, the anchor date, and the optional "until" date
