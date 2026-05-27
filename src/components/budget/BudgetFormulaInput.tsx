@@ -10,7 +10,7 @@ import {
   FORMULA_VARIABLES,
 } from "../../data/budget/formula";
 
-// Imperative handle so the parent (ComplexEntryModal) can splice a
+// Imperative handle so the parent (BudgetComplexEntryModal) can splice a
 // token in at the caret when the user picks one from the "Variables"
 // dropdown — same UX as the previous plain <input>, just routed
 // through this component's caret-aware insert helper instead of
@@ -328,8 +328,8 @@ function setCaretAtOffset(root: HTMLElement, target: number): void {
   place(root, children.length);
 }
 
-export const FormulaInput = forwardRef<FormulaInputHandle, Props>(
-  function FormulaInput(
+export const BudgetFormulaInput = forwardRef<FormulaInputHandle, Props>(
+  function BudgetFormulaInput(
     { value, onChange, placeholder, className, ariaLabel },
     ref,
   ) {

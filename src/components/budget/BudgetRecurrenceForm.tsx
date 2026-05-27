@@ -147,7 +147,7 @@ function initialStateFor(
   }
 }
 
-export function RecurrenceForm({
+export function BudgetRecurrenceForm({
   seedDate: rawSeed,
   resetKey,
   includeOnce = true,

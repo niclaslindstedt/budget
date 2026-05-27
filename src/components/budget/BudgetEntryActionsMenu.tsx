@@ -52,7 +52,7 @@ type MenuItem = {
   onClick: () => void;
 };
 
-export function RowActionsMenu({
+export function BudgetEntryActionsMenu({
   row,
   isHistory,
   isSeries,

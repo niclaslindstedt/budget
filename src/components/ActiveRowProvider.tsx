@@ -21,7 +21,7 @@ import {
 // Listeners are installed once at mount and read live from the
 // registration ref. Earlier versions gated installation on a state
 // flag, which left a render-cycle window where the second tap (e.g.
-// AddRowButton) could slip through before the effect re-ran.
+// BudgetAddEntryButton) could slip through before the effect re-ran.
 
 type Registration = {
   token: number;
@@ -46,7 +46,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
   // pointerdown above, but by the time the trailing mousedown/click
   // arrives the registrations are already empty, so the handler would
   // otherwise let them through and the click would fire on whatever
-  // button the tap landed on (e.g. AddRowButton). Latching this flag
+  // button the tap landed on (e.g. BudgetAddEntryButton). Latching this flag
   // keeps the rest of the sequence suppressed until it clears itself.
   const dismissTrailingRef = useRef(false);
   const dismissTrailingTimerRef = useRef<number | null>(null);
@@ -183,7 +183,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
       // Inside the sheet but outside the active row → block the React
       // tree from seeing the event. stopImmediatePropagation at document
       // capture phase prevents any later listener (including React's at
-      // the root) from running, so the AddRowButton's onPointerDown
+      // the root) from running, so the BudgetAddEntryButton's onPointerDown
       // long-press timer never starts and other buttons' onClick never
       // fires. preventDefault on mousedown blocks the browser's focus
       // shift to the tapped element — without it, tapping another row's
@@ -218,7 +218,7 @@ export function ActiveRowProvider({ children }: { children: ReactNode }) {
   // The coordinator handle is reference-stable across renders: `activate`
   // and `deactivate` are useCallback-memoized, so subscribers that only
   // need to register a row don't re-render when `hasActive` flips. Only
-  // the AddRowButton subscribes to `hasActive` and pays for its updates.
+  // the BudgetAddEntryButton subscribes to `hasActive` and pays for its updates.
   const coordinator = useMemo(
     () => ({ activate, deactivate }),
     [activate, deactivate],

@@ -11,7 +11,7 @@ import { useActiveRowCoordinator } from "./useActiveRow";
 // **Every interactive element that opens inside a page row (budget,
 // accounts, future page types) must call this hook** — cell inputs,
 // popovers, pickers, swipe handles, all of them. Without it the
-// AddRowButton won't grey itself out while you're editing, and a stray
+// BudgetAddEntryButton won't grey itself out while you're editing, and a stray
 // tap on it (or on another row's button) will fire its action instead
 // of just dismissing yours. Forgetting this hook is the canonical
 // cause of the "tap got eaten / tap added a stray row" family of bugs;
@@ -29,7 +29,7 @@ import { useActiveRowCoordinator } from "./useActiveRow";
 //   exactly with the user's tap.
 // - Registration runs in a layout effect so it lands before paint;
 //   if it ran in `useEffect`, the popover/picker would be on screen
-//   for a paint cycle before the AddRowButton learned about it, and
+//   for a paint cycle before the BudgetAddEntryButton learned about it, and
 //   a tap during that gap would slip through.
 // - Callers pass plain inline arrow functions; no memoisation
 //   needed.

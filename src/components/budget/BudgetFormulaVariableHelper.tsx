@@ -60,7 +60,7 @@ const SHEET_PROPS: ReadonlyArray<{
 
 type Props = {
   // Receives the literal token to splice into the formula. The parent
-  // (ComplexEntryModal) handles caret placement and focus restoration.
+  // (BudgetComplexEntryModal) handles caret placement and focus restoration.
   onInsert: (text: string) => void;
   // Every sheet in the workspace. The dropdown surfaces a per-sheet
   // section so the user can pick `sheet("Wife", endOfMonthBalance)`
@@ -73,7 +73,7 @@ type Props = {
   currentSheetId: string | null;
 };
 
-export function FormulaVariableHelper({
+export function BudgetFormulaVariableHelper({
   onInsert,
   sheets,
   currentSheetId,
@@ -181,7 +181,7 @@ function SheetSection({
         {t("formula.sheetSectionPrefix")} {sheet.name}
       </li>
       {SHEET_PROPS.map((p) => {
-        // Display-form formula (sheet name, not id). ComplexEntryModal
+        // Display-form formula (sheet name, not id). BudgetComplexEntryModal
         // rewrites this to the stable id on submit via
         // `formulaToStored` — same path as a hand-typed reference, so
         // a rename of the target sheet stays safe.

@@ -25,7 +25,7 @@ import { TypePicker } from "../TypePicker";
 // "Metadata mode" — a focused walk through the history entries that
 // still need a custom description or a type. Reached from the budget
 // page's `…` menu. One entry at a time, biggest absolute amount first,
-// newest month first. Mirror-image of `FindConflictsModal`'s
+// newest month first. Mirror-image of `BudgetFindConflictsModal`'s
 // step-through cleanup pattern but scoped to per-entry annotation
 // rather than de-duplication.
 //

@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import type {
   ComplexEntryDraft,
   ComplexEntrySeed,
-} from "../../budget/ComplexEntryModal";
+} from "../../budget/BudgetComplexEntryModal";
 import type { Action } from "../../../data/reducer";
 import {
   type RecurrenceRule,
@@ -19,24 +19,24 @@ type Params = {
   sheetId: string;
   itemId: string;
   dispatch: (action: Action) => void;
-  // Closes the EditEntryModal after a successful history-row promotion
+  // Closes the BudgetEditEntryModal after a successful history-row promotion
   // so the user lands back on the budget page with the new series in
   // view.
   closeEditPrompt: () => void;
 };
 
 type Result = {
-  // ComplexEntryModal state
+  // BudgetComplexEntryModal state
   complexOpen: boolean;
   setComplexOpen: (open: boolean) => void;
   complexSeedDate: string;
-  // Pre-fill payload for the ComplexEntryModal. `null` keeps the
+  // Pre-fill payload for the BudgetComplexEntryModal. `null` keeps the
   // modal's existing blank-form behaviour for the budget add-row
   // button; a populated seed comes from the recurring-candidate
   // promote flow.
   complexSeed: ComplexEntrySeed | null;
   setComplexSeed: (next: ComplexEntrySeed | null) => void;
-  // Promote-flow context. When set, the ComplexEntryModal's submit
+  // Promote-flow context. When set, the BudgetComplexEntryModal's submit
   // dispatches `promoteRecurringCandidate` (instead of
   // `addRowsFromComplex`) so the candidate is consumed and the
   // merchant hint is recorded against the original bank text.
@@ -68,7 +68,7 @@ type Result = {
   ) => void;
 };
 
-// ComplexEntryModal + recurring-candidate promote / dismiss + history-
+// BudgetComplexEntryModal + recurring-candidate promote / dismiss + history-
 // row promote. All three flows seed the same modal via `complexSeed`
 // and `recurringPromoteContext`; submit dispatches either
 // `addRowsFromComplex` (plain add) or `promoteRecurringCandidate`

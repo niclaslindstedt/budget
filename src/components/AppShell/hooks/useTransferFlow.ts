@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   TransferDraft,
   TransferModalRequest,
-} from "../../accounts/TransferModal";
+} from "../../accounts/AccountTransferModal";
 import type { ConfirmAction } from "../../ConfirmDialog";
 import type { Action } from "../../../data/reducer";
 import { newId } from "../../../data/sheet";
@@ -28,7 +28,7 @@ type Params = {
 
 type Result = {
   // Transfer modal — null = closed; otherwise the request describes
-  // the mode (promote / create / edit). The TransferModal seeds
+  // the mode (promote / create / edit). The AccountTransferModal seeds
   // itself from the request.
   transferRequest: TransferModalRequest | null;
   setTransferRequest: (next: TransferModalRequest | null) => void;
@@ -47,7 +47,7 @@ type Result = {
   uncollapseActions: ConfirmAction[];
   onUncollapseTransfer: (transferId: string) => void;
 
-  // TransferCollapseModal. Open is driven by the user (a button on
+  // AccountTransferCollapseModal. Open is driven by the user (a button on
   // the Accounts page) and auto-opens after an import when new
   // candidates are detected.
   transferModalOpen: boolean;

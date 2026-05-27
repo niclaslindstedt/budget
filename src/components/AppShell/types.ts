@@ -1,4 +1,4 @@
-import type { ReconciliationApply } from "../accounts/ReconciliationModal";
+import type { ReconciliationApply } from "../accounts/AccountReconciliationModal";
 import type { RenameSuggestion } from "../../data/rename-patterns";
 import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
 import type { ParsedBankEntry } from "../../storage/banks";
@@ -124,7 +124,7 @@ export type ReconciliationState = {
 // in `state.history`. The reconciliation payload is `null` on the
 // quiet-path branch (no candidates / orphans to triage) and a
 // populated object when we deferred dispatch through
-// `ReconciliationModal`.
+// `AccountReconciliationModal`.
 export type RenamePredictorState = {
   accountId: string;
   suggestions: RenameSuggestion[];
@@ -136,7 +136,7 @@ export type RenamePredictorState = {
 
 // In-flight recurring-candidate promotion. Captured when the user
 // clicks Promote on the recurring-candidate panel and consumed by
-// the ComplexEntryModal's submit so the dispatcher knows the
+// the BudgetComplexEntryModal's submit so the dispatcher knows the
 // candidate key to mark as consumed and the raw bank text for the
 // merchant-hint key.
 export type RecurringPromoteContext = {

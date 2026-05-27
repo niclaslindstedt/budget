@@ -1,5 +1,5 @@
 // Tiny expression language for `Row.amountFormula` — the dynamic-amount
-// feature on the ComplexEntryModal. The whole pipeline lives here:
+// feature on the BudgetComplexEntryModal. The whole pipeline lives here:
 // tokenize → parse → evaluate, plus the name ↔ id transforms used to
 // keep cross-sheet references stable across renames.
 //

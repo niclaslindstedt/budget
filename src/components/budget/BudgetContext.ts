@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 import type { Category, Company, EntryType, Settings } from "../../data/types";
 
 // Cross-cutting taxonomy + settings used by every node in the
-// budget-page subtree (MonthTable → BudgetRow → BudgetCell, plus the
+// budget-page subtree (BudgetMonthTable → BudgetRow → BudgetCell, plus the
 // in-cell pickers that need to mint new entry types / categories /
 // companies inline). Threading these through props was a 50-prop hop
 // per component; consuming them through context lets each leaf reach

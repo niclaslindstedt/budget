@@ -10,7 +10,7 @@ type Props = {
 
 const DRAG_MIME = "application/x-budget-column";
 
-export function ColumnHeader({ column, onReorder }: Props) {
+export function BudgetColumnHeader({ column, onReorder }: Props) {
   const [dragOver, setDragOver] = useState(false);
 
   return (

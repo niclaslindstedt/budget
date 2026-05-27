@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 
-import type { ReconciliationApply } from "../../accounts/ReconciliationModal";
-import type { RenameDecision } from "../../accounts/RenamePredictorModal";
+import type { ReconciliationApply } from "../../accounts/AccountReconciliationModal";
+import type { RenameDecision } from "../../accounts/AccountRenamePredictorModal";
 import type {
   ConflictHistoryStamp,
   ConflictUserRowPatch,
-} from "../../budget/FindConflictsModal";
+} from "../../budget/BudgetFindConflictsModal";
 import { unlock as unlockAchievement } from "../../../data/achievements";
 import { coverageDelta, coveredMonths } from "../../../data/coverage";
 import {
@@ -81,7 +81,7 @@ type Result = {
   onCommitRenamePredictor: (decisions: RenameDecision[]) => void;
   onCancelRenamePredictor: () => void;
 
-  // FindConflictsModal hooks.
+  // BudgetFindConflictsModal hooks.
   onMergeConflictIntoHistory: (
     accountId: string,
     mergedRowIds: string[],
@@ -105,8 +105,8 @@ type Result = {
 //     → applyReconciliation → applyImportRenames) holds for both the
 //     reconciliation-then-rename path and the quiet path.
 //   - Manual orphan triage (`onTriageMonth`) reuses the same
-//     ReconciliationModal scoped to a single month's orphan rows.
-//   - The `onMergeConflict*` handlers wire FindConflictsModal merges
+//     AccountReconciliationModal scoped to a single month's orphan rows.
+//   - The `onMergeConflict*` handlers wire BudgetFindConflictsModal merges
 //     back through `applyReconciliation` (history winner) or three
 //     sequential reducer dispatches (user-row winner).
 export function useImportFlow({
@@ -282,7 +282,7 @@ export function useImportFlow({
 
       // Compute rename predictions against the same pre-import
       // snapshot the rest of the matcher saw. Surfaced as the last
-      // step of the import pipeline by the `RenamePredictorModal`.
+      // step of the import pipeline by the `AccountRenamePredictorModal`.
       const renameSuggestions = predictRenames(
         preImportData.renamePatterns,
         accountId,
@@ -446,7 +446,7 @@ export function useImportFlow({
     setReconciliation(null);
   }, []);
 
-  // FindConflictsModal — merge a duplicate group whose winner is a
+  // BudgetFindConflictsModal — merge a duplicate group whose winner is a
   // history-backed row. Routes through `applyReconciliation` with
   // empty `seriesRules` / `orphans`, so the existing blanks-only
   // stamp on `userDescription` / `userTypeId` applies and the loser
@@ -473,7 +473,7 @@ export function useImportFlow({
     [dispatch],
   );
 
-  // BudgetPage MonthTable footer — when the user taps "N entries to
+  // BudgetPage BudgetMonthTable footer — when the user taps "N entries to
   // move or delete" on a covered fiscal month, find the orphan rows
   // for that month and open the reconciliation modal scoped to them.
   // No import is in flight, so `pendingImport` is null and the apply
@@ -522,7 +522,7 @@ export function useImportFlow({
     [dispatch, manualTriage],
   );
 
-  // FindConflictsModal — merge a duplicate group whose winner is a
+  // BudgetFindConflictsModal — merge a duplicate group whose winner is a
   // user-authored row. Three sequential dispatches: fill `typeId` on
   // the winner via `bulkUpdate` (it already handles the typeId slot),
   // fill the winner's description cell via `updateCell` when the

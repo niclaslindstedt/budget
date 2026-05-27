@@ -31,7 +31,7 @@ import {
   RadioGroup,
   SignedAmountInput,
 } from "../form";
-import { RecurrenceForm } from "./RecurrenceForm";
+import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
 import { TypePicker } from "../TypePicker";
 
 type Props = {
@@ -129,7 +129,7 @@ export type HistoryPromotion = {
 export type { EditPatch, EditScope } from "../../data/action-payloads";
 import type { EditPatch, EditScope } from "../../data/action-payloads";
 
-export function EditEntryModal({
+export function BudgetEditEntryModal({
   open,
   row,
   columns,
@@ -538,7 +538,7 @@ export function EditEntryModal({
               </label>
             </div>
             <div className="mt-4">
-              <RecurrenceForm
+              <BudgetRecurrenceForm
                 seedDate={historySeedDate}
                 resetKey={recurrenceResetKey}
                 includeOnce={false}
@@ -655,7 +655,7 @@ export function EditEntryModal({
                 onCreate={onCreateCompany}
               />
             </div>
-            <RecurrenceForm
+            <BudgetRecurrenceForm
               seedDate={initialDate}
               resetKey={recurrenceResetKey}
               includeOnce={false}

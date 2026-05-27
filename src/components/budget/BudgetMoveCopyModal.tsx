@@ -34,7 +34,7 @@ function monthKey(y: number, m: number): string {
   return `${y}-${String(m).padStart(2, "0")}`;
 }
 
-export function MoveCopyModal({
+export function BudgetMoveCopyModal({
   open,
   mode,
   rows,

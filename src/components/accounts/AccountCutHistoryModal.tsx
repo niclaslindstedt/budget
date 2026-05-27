@@ -20,7 +20,7 @@ type Props = {
 // every transfer dated strictly before `cutoffDate`. Used
 // when an account's purpose has changed (e.g. a private account turning
 // into a shared one) and the pre-cutoff stuff is no longer relevant.
-export function CutAccountHistoryModal({
+export function AccountCutHistoryModal({
   open,
   account,
   history,

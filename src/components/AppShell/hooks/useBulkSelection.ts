@@ -5,7 +5,7 @@ import { getMonthKey } from "../../../data/fiscal-month";
 import type { Action } from "../../../data/reducer";
 import type { AccountBudget, Column, Row } from "../../../data/types";
 import type { ConfirmAction } from "../../ConfirmDialog";
-import type { BulkPatch } from "../../budget/BulkEditModal";
+import type { BulkPatch } from "../../budget/BudgetBulkEditModal";
 import { useT } from "../../../i18n";
 import type { useToast } from "../../../hooks";
 import type { BulkDeletePrompt, MoveCopyPrompt } from "../types";
@@ -108,7 +108,7 @@ export function useBulkSelection({
     [activeItem.rows, selectedIds],
   );
 
-  // Source-month set fed to MoveCopyModal so the user can't pick a no-op
+  // Source-month set fed to BudgetMoveCopyModal so the user can't pick a no-op
   // target. Driven by whichever rows the modal is currently acting on:
   // the bulk selection when the prompt was opened from the bulk-select
   // toolbar, the single row when opened from the row's swipe-menu …

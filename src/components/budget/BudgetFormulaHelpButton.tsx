@@ -15,7 +15,7 @@ const PLACEMENT: FloatingPlacement = {
 };
 
 // Static reference content for the formula language.
-export function FormulaHelpButton() {
+export function BudgetFormulaHelpButton() {
   const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);

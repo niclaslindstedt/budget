@@ -25,7 +25,7 @@ type Props = {
   onApplyToFuture: (untilIso: string | null) => void;
 };
 
-export function ApplySeriesEditDialog({
+export function BudgetApplySeriesDialog({
   open,
   fieldLabel,
   anchorDate,

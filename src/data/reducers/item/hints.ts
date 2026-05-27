@@ -70,7 +70,7 @@ export function applyPatch(
     // carried `amountFormula`, treat that as "replace the formula
     // with this literal" so the visible value matches what the user
     // just typed. Re-editing the formula itself goes through the
-    // ComplexEntryModal (delete + re-add for v1).
+    // BudgetComplexEntryModal (delete + re-add for v1).
     if (next.amountFormula !== undefined) delete next.amountFormula;
   }
   // `undefined` means "don't touch"; explicit `null` clears the type

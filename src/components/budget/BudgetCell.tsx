@@ -77,7 +77,7 @@ type Props = {
   // becomes read-only (the value comes from the formula resolver) and
   // surfaces a small `fx` glyph so the user can tell at a glance that
   // the number isn't a literal entry. Editing the formula goes
-  // through the ComplexEntryModal, not inline.
+  // through the BudgetComplexEntryModal, not inline.
   hasFormula?: boolean;
   // Number of hidden transfer rows that immediately precede this row
   // in chronological order. Only meaningful on the `balance` column —
@@ -277,7 +277,7 @@ function CellImpl({
       // Formula rows: the amount is computed at render time, so the
       // editable inline input would be misleading. Use the read-only
       // display variant with an `fx` chip to signal the source.
-      // Editing the formula goes through the ComplexEntryModal.
+      // Editing the formula goes through the BudgetComplexEntryModal.
       if (hasFormula) {
         return (
           <AmountCellDisplay

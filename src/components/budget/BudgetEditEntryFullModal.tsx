@@ -33,11 +33,11 @@ import { TypePicker } from "../TypePicker";
 
 // Generic editor for a single budget row. Opened by long-pressing a row
 // or pressing the pen action button. Edits date, description, amount,
-// type, and completed in one place — separate from `EditEntryModal`,
+// type, and completed in one place — separate from `BudgetEditEntryModal`,
 // which owns the recurring-series promote flow.
 //
 // For rows that are part of a recurring series, a scope picker mirrors
-// `EditEntryModal`'s "just this" / "this and all future" toggle. The
+// `BudgetEditEntryModal`'s "just this" / "this and all future" toggle. The
 // scope only applies to the series-wide fields (description, amount,
 // type) — date and completed are inherently per-occurrence and always
 // land on the anchor row regardless of scope.
@@ -102,7 +102,7 @@ export type EditRowScope =
   // occurrences would silently rewrite history.
   | { kind: "all" };
 
-export function EditRowModal({
+export function BudgetEditEntryFullModal({
   open,
   row,
   columns,

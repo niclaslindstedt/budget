@@ -29,7 +29,7 @@ import { useLang, useT } from "../../i18n";
 import { formatYearMonth } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AccountRow } from "./AccountRow";
-import { TransferRow } from "./TransferRow";
+import { AccountTransferRow } from "./AccountTransferRow";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 
@@ -500,7 +500,7 @@ export function AccountsPage({
                           ? (categoriesById.get(type.categoryId) ?? null)
                           : null;
                         return (
-                          <TransferRow
+                          <AccountTransferRow
                             key={tx.id}
                             transfer={tx}
                             from={from}

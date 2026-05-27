@@ -94,7 +94,7 @@ type Props = {
 //   same date" (hidden when the row is part of a recurring series
 //   whose next-month occurrence already exists) — plus delete /
 //   keep. Bulk header buttons set every row's decision at once.
-export function ReconciliationModal({
+export function AccountReconciliationModal({
   open,
   onCancel,
   onApply,

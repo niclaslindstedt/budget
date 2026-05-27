@@ -43,7 +43,7 @@ type Props = {
   suggestions: readonly RenameSuggestion[];
   // The user closed the dialog without committing (Cancel button, X,
   // Escape, click-outside). Caller drops the staged import unread —
-  // matches `ReconciliationModal.onCancel`.
+  // matches `AccountReconciliationModal.onCancel`.
   onCancel: () => void;
   // "Commit the import; here are the renames I want applied". An
   // empty array means "Skip" (commit without renames); a non-empty
@@ -51,7 +51,7 @@ type Props = {
   onCommit: (decisions: RenameDecision[]) => void;
 };
 
-export function RenamePredictorModal({
+export function AccountRenamePredictorModal({
   open,
   suggestions,
   onCancel,

@@ -164,7 +164,7 @@ type Props = {
   ) => void;
   onDeleteCompany: (companyId: string) => void;
   // Pattern management for the Patterns tab. Opens the existing
-  // MatchRuleModal in edit mode. The modal's own danger button handles
+  // BudgetMatchRuleModal in edit mode. The modal's own danger button handles
   // deletion, so no separate delete callback is needed here.
   onEditMatchRule: (ruleId: string) => void;
   // Reorder a rule in `data.matchRules`. Earlier in the array = higher

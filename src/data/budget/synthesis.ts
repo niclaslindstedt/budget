@@ -30,7 +30,7 @@ export function transfersForAccount(
 }
 
 // Synthesize a Row that represents one side of a transfer so the
-// existing MonthTable + BudgetRow + Cell pipeline can render it without
+// existing BudgetMonthTable + BudgetRow + Cell pipeline can render it without
 // special-casing. The cells are keyed by the budget's column ids so the
 // row drops straight into the existing grid. Marker fields
 // (`transferId`, `peerAccountId`, `peerAccountName`) flag the
@@ -302,7 +302,7 @@ export function isTransferRow(row: Row): boolean {
 
 // Walk `rows` and, when `hideTransfers` is on, group every run of
 // hidden transfer rows under the next visible anchor row's id. The
-// returned map powers MonthTable's expand-toggle icon: a non-empty
+// returned map powers BudgetMonthTable's expand-toggle icon: a non-empty
 // run on an anchor means at least one hidden transfer contributed to
 // its running-balance step. With `hideTransfers` off (or no transfers
 // to hide), the map is empty so the anchor renders normally.

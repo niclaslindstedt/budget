@@ -356,7 +356,7 @@ function SheetTab({
 }) {
   const t = useT();
   // Long-press / right-click both open the edit modal. Mirrors the
-  // AddRowButton pattern: a timer fires after LONG_PRESS_MS and a
+  // BudgetAddEntryButton pattern: a timer fires after LONG_PRESS_MS and a
   // `triggered` flag guards the trailing click so the tap doesn't
   // also fire a sheet switch.
   const timer = useRef<number | null>(null);

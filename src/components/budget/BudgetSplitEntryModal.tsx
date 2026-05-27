@@ -100,7 +100,7 @@ function makeEmptySplit(negative: boolean): SplitDraft {
   };
 }
 
-export function SplitEntryModal({
+export function BudgetSplitEntryModal({
   open,
   row,
   columns,

@@ -278,7 +278,7 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   },
 
   // v40 → v41: introduces `renamePatterns`, the per-account memory
-  // that backs the `RenamePredictorModal` (shown as the last step of
+  // that backs the `AccountRenamePredictorModal` (shown as the last step of
   // every history import that has suggestions to offer). Each entry
   // maps a normalised bank description to the user-typed label the
   // user reached for when relabelling matching entries. Defaults to

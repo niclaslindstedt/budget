@@ -91,7 +91,7 @@ export type Row = {
   // canonical id-keyed form — any `sheet("…")` reference holds the
   // target sheet's id, not its mutable display name, so renames don't
   // break formulas. The amount column becomes read-only for rows that
-  // carry a formula; editing flows through the ComplexEntryModal.
+  // carry a formula; editing flows through the BudgetComplexEntryModal.
   // Evaluation order is "literal rows first, then formula rows in the
   // order they appear in `item.rows`"; a row's own contribution is
   // excluded from its own variables to avoid self-reference.

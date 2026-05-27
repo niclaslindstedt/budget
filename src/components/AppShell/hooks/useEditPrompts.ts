@@ -21,10 +21,10 @@ type Params = {
 };
 
 type Result = {
-  // Recurring-series / promote entry editor (EditEntryModal).
+  // Recurring-series / promote entry editor (BudgetEditEntryModal).
   editPrompt: EditPrompt | null;
   setEditPrompt: (next: EditPrompt | null) => void;
-  // Generic row editor (EditRowModal) — opens on long-press or the
+  // Generic row editor (BudgetEditEntryFullModal) — opens on long-press or the
   // pen action button. Distinct from `editPrompt`.
   editRowPrompt: EditRowPrompt | null;
   setEditRowPrompt: (next: EditRowPrompt | null) => void;

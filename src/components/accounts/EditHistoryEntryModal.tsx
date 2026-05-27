@@ -58,7 +58,7 @@ type Props = {
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
-export function HistoryEntryEditModal({
+export function EditHistoryEntryModal({
   open,
   entry,
   categories,

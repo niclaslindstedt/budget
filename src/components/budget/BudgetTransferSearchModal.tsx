@@ -32,7 +32,7 @@ type Props = {
 // instead slide a window centred on the match (see `windowedHit`).
 const SNIPPET_MAX = 80;
 
-export function TransferSearchModal({
+export function BudgetTransferSearchModal({
   open,
   onClose,
   query,
