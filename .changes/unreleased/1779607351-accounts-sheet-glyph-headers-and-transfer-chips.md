@@ -18,6 +18,6 @@ against the description to free up room for the description text,
 and each transfer row's `from → to` summary picks up the coloured
 account glyphs from the accounts list alongside the account names,
 so source and destination are recognisable at a glance. The
-transfer header's `↔` glyph and label stack under the description
-glyph on mobile so the from/to chips have a matching label above
-them rather than appearing without a column header.
+transfer header's `↔` glyph sits next to the description glyph on
+mobile (no label, matching the other column headers) so the from/to
+chips have a matching companion icon in the row above them.
