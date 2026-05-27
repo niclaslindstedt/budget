@@ -1440,10 +1440,6 @@ export function AppShell({
         entries={
           viewHistoryAccount ? (data.history[viewHistoryAccount.id] ?? []) : []
         }
-        types={allTypesMerged}
-        companies={data.companies}
-        merchantHints={data.merchantHints}
-        matchRules={data.matchRules}
         settings={effectiveSettings}
         onCancel={() => setViewHistoryForId(null)}
       />
