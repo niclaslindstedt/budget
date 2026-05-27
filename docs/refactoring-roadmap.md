@@ -72,23 +72,6 @@ to **Pending** with a rating.
 
 ### Severity 9–10 — architectural blockers
 
-- **`src/data/forecasting/` is documented but does not exist** —
-  `AGENTS.md` ("Forecasting and planners") and `docs/architecture.md`
-  both promise pure functions in `src/data/forecasting/` consumed by
-  sheet-type components. The directory was never created. The
-  scenario / prognosis / loans sheet types each need forecast
-  primitives (compound, amortise, schedule, seasonal-average); the
-  budget page also already does ad-hoc projection inside
-  `budget-rows.ts` that belongs in this module. **Severity: 9.**
-  - Shape: create `src/data/forecasting/` with one file per pure
-    primitive (`compound.ts`, `amortise.ts`, `schedule.ts`, …) plus
-    an `index.ts` re-exporting them. Pure functions only, no React,
-    no IO. Tests next to each primitive under
-    `tests/forecasting/<name>_test.ts`.
-  - Risk: low — additive. The danger is the opposite, landing the
-    new sheet types first and embedding forecasting logic inside
-    those component trees where it'll be impossible to reuse.
-
 - **`useUserDataStorage.ts` (1139 lines) is a god hook** — the
   persistence engine of the app. Braids load / save / conflict
   resolution / shrink-warning / undo-redo with nine parallel `useRef`
@@ -534,6 +517,27 @@ EntryType) => boolean` prop so callers customise; default to
 ---
 
 ## Investigated and skipped
+
+- **`src/data/forecasting/` directory creation** (2026-05): the
+  candidate was rated severity 9 on the premise that
+  `src/data/budget/rows.ts` already contained "ad-hoc projection"
+  logic that needed extracting into shared forecast primitives. On
+  re-verification, that premise doesn't hold. `rows.ts` (478 lines)
+  holds row sorting, running-balance computation, savability
+  validation, transfer/history synthesis, series helpers, and a
+  row-minter — none of which are financial primitives like
+  compound interest, amortization, schedule generation, or
+  seasonal-average. The named primitives (`compound.ts`,
+  `amortise.ts`, `schedule.ts`, `seasonal-average.ts`) have zero
+  call sites today; creating them now would be a speculative
+  abstraction. `AGENTS.md`'s "Forecasting and planners" bullet
+  and the `forecasting/ # TBD` line in `docs/architecture.md`
+  are vision-document signposts for the feature wave, not
+  observed-smell signals. Re-create this candidate when the
+  first concrete loan/savings/scenario sheet type lands and the
+  work to extract becomes concrete (the first sheet type can
+  drop its primitive into `src/data/forecasting/` at that point,
+  establishing the directory with a real call site).
 
 - **Modal form-init pattern (full `useModalFormInit<T>`)**: the
   reset-on-open `useEffect` boilerplate has been hoisted (see
