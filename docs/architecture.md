@@ -67,13 +67,17 @@ src/
 │   │                     # column + sheet-tree traversal helpers)
 │   ├── fiscal-month.ts   # fiscal-month + ISO date math (getMonthKey,
 │   │                     # groupRowsByMonth, previous/nextMonthKey, …)
-│   ├── budget-rows.ts    # budget-row algebra (sortRowsByDate,
-│   │                     # computeBalances, isRowSavable, buildVisibleRows,
-│   │                     # mintBudgetRow, propagateCellInSeries, …)
-│   ├── budget-synthesis.ts  # synthesized rows (transfersForAccount,
-│   │                     # synthesizeTransferRow, synthesizeHistoryRow,
-│   │                     # resolveEntryLabels, isTransferRow)
-│   ├── accounts-balance.ts  # account-level aggregation (accountBalance)
+│   ├── budget/
+│   │   ├── rows.ts       # budget-row algebra (sortRowsByDate,
+│   │   │                 # computeBalances, isRowSavable, buildVisibleRows,
+│   │   │                 # mintBudgetRow, propagateCellInSeries, …)
+│   │   ├── synthesis.ts  # synthesized rows (transfersForAccount,
+│   │   │                 # synthesizeTransferRow, synthesizeHistoryRow,
+│   │   │                 # resolveEntryLabels, isTransferRow)
+│   │   └── export.ts     # CSV/XLSX export builder for an AccountBudget
+│   ├── accounts/
+│   │   ├── balance.ts    # account-level aggregation (accountBalance)
+│   │   └── export.ts     # JSON export builder for the accounts sheet
 │   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
 │   ├── migrations.ts     # forward-only schema migration runner
 │   └── validate.ts       # boundary validator: unknown → Result<UserData>

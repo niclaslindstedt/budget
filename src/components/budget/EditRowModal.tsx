@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { sortRowsByDate } from "../../data/budget-rows";
+import { sortRowsByDate } from "../../data/budget/rows";
 import { findColumnByType } from "../../data/sheet";
 import type {
   Category,

@@ -7,7 +7,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { isTransferRow } from "../../data/budget-synthesis";
+import { isTransferRow } from "../../data/budget/synthesis";
 import { findColumnByType } from "../../data/sheet";
 import type {
   Category,

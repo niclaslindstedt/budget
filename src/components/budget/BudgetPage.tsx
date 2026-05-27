@@ -23,7 +23,7 @@ import {
   reverseRowsByDay,
   sortRowsByDate,
   type RowSortContext,
-} from "../../data/budget-rows";
+} from "../../data/budget/rows";
 import {
   currentFiscalMonthKey,
   fiscalMonthSeedIso,

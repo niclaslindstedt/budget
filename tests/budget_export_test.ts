@@ -4,8 +4,8 @@ import {
   buildBudgetExportRows,
   exportRowsToTable,
   rowsToCsv,
-} from "../src/data/budget-export";
-import { computeBalances } from "../src/data/budget-rows";
+} from "../src/data/budget/export";
+import { computeBalances } from "../src/data/budget/rows";
 import {
   createDefaultAccountBudget,
   findColumnByType,

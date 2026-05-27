@@ -4,13 +4,13 @@ import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import {
   accountBalance,
   computeAccountBalances,
-} from "../src/data/accounts-balance";
-import { userDataWithSavableRows } from "../src/data/budget-rows";
+} from "../src/data/accounts/balance";
+import { userDataWithSavableRows } from "../src/data/budget/rows";
 import {
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
-} from "../src/data/budget-synthesis";
+} from "../src/data/budget/synthesis";
 import { createDefaultSheet } from "../src/data/sheet";
 import type {
   AccountBudget,

@@ -13,7 +13,7 @@
 
 import { evaluateFormula, parseFormula } from "./formula";
 import type { FormulaContext, MonthAggregates } from "./formula";
-import { sortRowsByDate, type RowSortContext } from "./budget-rows";
+import { sortRowsByDate, type RowSortContext } from "./budget/rows";
 import { getMonthKey, previousMonthKey } from "./fiscal-month";
 import { findColumnByType } from "./sheet";
 import { allTypes } from "./presets";

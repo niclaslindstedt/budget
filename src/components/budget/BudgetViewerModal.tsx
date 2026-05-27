@@ -14,8 +14,8 @@ import {
   reverseRowsByDay,
   sortRowsByDate,
   type RowSortContext,
-} from "../../data/budget-rows";
-import { isTransferRow } from "../../data/budget-synthesis";
+} from "../../data/budget/rows";
+import { isTransferRow } from "../../data/budget/synthesis";
 import {
   currentFiscalMonthKey,
   groupRowsByMonth,

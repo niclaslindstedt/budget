@@ -1,4 +1,4 @@
-import { mintBudgetRow } from "../budget-rows";
+import { mintBudgetRow } from "../budget/rows";
 import { newId, updateAccountBudget } from "../sheet";
 import { recordMerchantHints } from "../merchant-hints";
 import type { Action } from "../reducer";

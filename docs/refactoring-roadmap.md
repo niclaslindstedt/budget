@@ -109,28 +109,38 @@ to **Pending** with a rating.
     "reducer split first, hook extraction as a consumer" still
     stands.
 
-- **Budget-specific logic in the universal data layer** —
-  `src/data/budget-rows.ts` (478), `row-cells.ts`, `formula.ts`
-  (680), `formula-resolve.ts` (477), `budget-synthesis.ts` (291),
-  `reconciliation.ts` (546), `pattern-apply.ts` (308),
-  `pattern-derive.ts`, `recurrence.ts`, `recurring-detection.ts`
-  (292), `row-candidate.ts`, `merchant-hints.ts`,
-  `transfer-collapse.ts` — all sit at the `src/data/` root but are
-  hard-coupled to `AccountBudget` row schema. New sheet types
-  (savings rows have probability fields; loans have schedules) will
-  either copy this code or branch every callsite on `item.type`.
-  **Severity: 9.**
-  - Plan: introduce `src/data/budget/` and move budget-only modules
-    under it. Mirror with `src/data/accounts/` for the few accounts-
-    specific helpers currently at root. Leave only the universal
-    primitives (`sheet.ts`, `types/`, `fiscal-month.ts`,
-    `validate/`, `migrations/`, `reducer.ts`, `reducers/`,
-    `constants.ts`, `presets.ts`, `themes.ts`, `settings.ts`,
-    `achievements/`) at the root. The data-module map in `AGENTS.md`
-    must be updated in the same PR.
+- **Budget-specific logic in the universal data layer** — the
+  unprefixed budget-only modules `row-cells.ts` (38), `formula.ts`
+  (680), `formula-resolve.ts` (477), `reconciliation.ts` (546),
+  `pattern-apply.ts` (308), `pattern-derive.ts` (102),
+  `recurrence.ts` (219), `recurring-detection.ts` (292),
+  `row-candidate.ts` (46), `merchant-hints.ts` (106),
+  `transfer-collapse.ts` (251) — all sit at the `src/data/` root
+  but are hard-coupled to `AccountBudget` row schema. New sheet
+  types (savings rows have probability fields; loans have
+  schedules) will either copy this code or branch every callsite
+  on `item.type`. **Severity: 9.**
+  - Step 1 done (2026-05): `src/data/budget/` and
+    `src/data/accounts/` directories now exist. The already-prefixed
+    `budget-rows.ts` / `budget-synthesis.ts` / `budget-export.ts`
+    moved into `src/data/budget/`; `accounts-balance.ts` /
+    `accounts-export.ts` moved into `src/data/accounts/`.
+  - Step 2 (this row): move the unprefixed budget-only modules
+    listed above into `src/data/budget/`. Drop the `-` separators
+    when relocating (`row-cells.ts` → `budget/cells.ts`,
+    `reconciliation.ts` → `budget/reconciliation.ts`,
+    `pattern-apply.ts` → `budget/pattern-apply.ts`, …). Leave only
+    the universal primitives (`sheet.ts`, `types/`,
+    `fiscal-month.ts`, `validate/`, `migrations/`, `reducer.ts`,
+    `reducers/`, `constants.ts`, `presets.ts`, `themes.ts`,
+    `settings.ts`, `achievements/`) at the root. The data-module
+    map in `AGENTS.md` must be updated in the same PR.
   - Risk: medium — pure module relocation, but ~50 import paths
     update. Best landed as a sequence of small per-module moves
-    each in their own commit, not one mega-PR.
+    each in their own commit, not one mega-PR. Some candidates
+    here (`recurrence.ts`, `merchant-hints.ts`) cross the
+    accounts boundary — re-verify before moving and consider
+    keeping at root if both pages depend on them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
@@ -439,10 +449,10 @@ EntryType) => boolean` prop so callers customise; default to
 
 ### Easy wins (mechanical, land regardless of rating)
 
-- Move budget-only modules under `src/data/budget/` and
-  accounts-only ones under `src/data/accounts/` (folds into the
-  severity-9 item above; the directory move itself is the easy
-  part).
+- Move the remaining unprefixed budget-only modules under
+  `src/data/budget/` (folds into the severity-9 item above; the
+  directory move itself is the easy part). The prefix-rename pass
+  already landed; what's left is the naming-judgment pass.
 
 - Replace remaining native-looking patterns: scan for any new
   `<select>` / `<option>` introduced since the last sweep (AGENTS
@@ -525,6 +535,17 @@ EntryType) => boolean` prop so callers customise; default to
   the file). The call-site shape
   (`t("achievements.catalog.firstSteps.name")`) is unchanged — the
   index spreads `shell` and nests `catalog`.
+- **`src/data/budget/` + `src/data/accounts/` directories created**
+  (2026-05): step 1 of the severity-9 "Budget-specific logic in the
+  universal data layer" item. The already-prefixed `budget-rows.ts` /
+  `budget-synthesis.ts` / `budget-export.ts` moved to
+  `src/data/budget/{rows,synthesis,export}.ts`; `accounts-balance.ts` /
+  `accounts-export.ts` moved to `src/data/accounts/{balance,export}.ts`.
+  17 importers updated. The data-module map in `AGENTS.md` and the tree
+  diagram in `docs/architecture.md` were updated in the same PR. The
+  remaining unprefixed budget-only modules (`row-cells.ts`, `formula.ts`,
+  `reconciliation.ts`, …) stay at root and are tracked as step 2 in the
+  severity-9 row.
 
 ---
 

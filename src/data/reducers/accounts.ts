@@ -1,4 +1,4 @@
-import { mintBudgetRow } from "../budget-rows";
+import { mintBudgetRow } from "../budget/rows";
 import { normaliseDescription } from "../description-normaliser";
 import { computePrimaryIncomeShiftForHistory } from "../fiscal-month";
 import { findColumnByType, newId, updateAccountBudget } from "../sheet";

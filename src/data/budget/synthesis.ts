@@ -1,6 +1,6 @@
-import { normaliseDescription } from "./description-normaliser";
-import { findMatchingRule } from "./match-rules";
-import { findColumnByType, getStandardColumns } from "./sheet";
+import { normaliseDescription } from "../description-normaliser";
+import { findMatchingRule } from "../match-rules";
+import { findColumnByType, getStandardColumns } from "../sheet";
 import type {
   CellValue,
   Column,
@@ -11,7 +11,7 @@ import type {
   MerchantHint,
   Row,
   Transfer,
-} from "./types";
+} from "../types";
 
 // Every transfer with `accountId` on either end, ordered by date.
 // Both incoming and outgoing transfers are included — callers
