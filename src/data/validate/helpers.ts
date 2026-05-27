@@ -80,6 +80,24 @@ export function fail(path: string, msg: string): Result<never> {
   return { ok: false, error: `${path}: ${msg}` };
 }
 
+// Soft-recovering string-enum validator. Collapses the recurring
+// `typeof raw.x === "string" && SET.has(raw.x as T) ? raw.x : default`
+// triple-check at every persisted-shape boundary. The fallback keeps
+// reload paths working when an export carries a value the running
+// build doesn't recognise (older release ↔ newer release, hand edit,
+// future preset) — a previously-validated bucket reloads instead of
+// silently overwriting cloud data with a fresh budget.
+export function validateEnum<T extends string>(
+  value: unknown,
+  allowed: ReadonlySet<T>,
+  fallback: T,
+): T {
+  if (typeof value === "string" && allowed.has(value as T)) {
+    return value as T;
+  }
+  return fallback;
+}
+
 export function sanitizeStringArray(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();

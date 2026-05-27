@@ -6,7 +6,13 @@ import type {
   Company,
   EntryType,
 } from "../types";
-import { CATEGORY_ICONS, fail, isObject, type Result } from "./helpers";
+import {
+  CATEGORY_ICONS,
+  fail,
+  isObject,
+  type Result,
+  validateEnum,
+} from "./helpers";
 
 export function validateAccount(raw: unknown, path: string): Result<Account> {
   if (!isObject(raw)) return fail(path, "expected an object");
@@ -68,10 +74,7 @@ export function validateCategory(raw: unknown, path: string): Result<Category> {
   // the whole file (an unknown name typically means a glyph removed
   // in a newer build, or one added in a newer build than this one
   // knows about). This mirrors `validateSheet` above.
-  const safeIcon: CategoryIcon =
-    typeof icon === "string" && CATEGORY_ICONS.has(icon as CategoryIcon)
-      ? (icon as CategoryIcon)
-      : DEFAULT_SHEET_GLYPH;
+  const safeIcon = validateEnum(icon, CATEGORY_ICONS, DEFAULT_SHEET_GLYPH);
   return {
     ok: true,
     value: { id, name, color, icon: safeIcon },
@@ -96,10 +99,7 @@ export function validateEntryType(
   // in a newer build, or one added in a newer build than this one
   // knows about; previously this `fail` cascaded into a fresh-budget
   // fallback that could overwrite the user's data on next save.
-  const safeGlyph: CategoryIcon =
-    typeof glyph === "string" && CATEGORY_ICONS.has(glyph as CategoryIcon)
-      ? (glyph as CategoryIcon)
-      : DEFAULT_SHEET_GLYPH;
+  const safeGlyph = validateEnum(glyph, CATEGORY_ICONS, DEFAULT_SHEET_GLYPH);
   if (typeof categoryId !== "string" || categoryId === "")
     return fail(`${path}.categoryId`, "expected a non-empty string");
   if (!knownCategoryIds.has(categoryId))

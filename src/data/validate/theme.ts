@@ -3,19 +3,14 @@ import {
   DEFAULT_CUSTOM_THEME,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,
 } from "../themes";
-import type {
-  BorderWidthPreset,
-  CustomTheme,
-  CustomThemeColors,
-  DensityPreset,
-  RadiusPreset,
-} from "../types";
+import type { CustomTheme, CustomThemeColors } from "../types";
 import {
   BORDER_WIDTH_SET,
   DENSITY_SET,
   RADIUS_SET,
   isHexColor,
   isObject,
+  validateEnum,
 } from "./helpers";
 
 // Soft-recovering custom-theme colour validator. Each slot falls back
@@ -34,20 +29,21 @@ export function validateCustomThemeColors(raw: unknown): CustomThemeColors {
 
 export function validateCustomTheme(raw: unknown): CustomTheme {
   if (!isObject(raw)) return { ...DEFAULT_CUSTOM_THEME };
-  const radius: RadiusPreset =
-    typeof raw.radius === "string" && RADIUS_SET.has(raw.radius as RadiusPreset)
-      ? (raw.radius as RadiusPreset)
-      : DEFAULT_CUSTOM_THEME.radius;
-  const density: DensityPreset =
-    typeof raw.density === "string" &&
-    DENSITY_SET.has(raw.density as DensityPreset)
-      ? (raw.density as DensityPreset)
-      : DEFAULT_CUSTOM_THEME.density;
-  const borderWidth: BorderWidthPreset =
-    typeof raw.borderWidth === "string" &&
-    BORDER_WIDTH_SET.has(raw.borderWidth as BorderWidthPreset)
-      ? (raw.borderWidth as BorderWidthPreset)
-      : DEFAULT_CUSTOM_THEME.borderWidth;
+  const radius = validateEnum(
+    raw.radius,
+    RADIUS_SET,
+    DEFAULT_CUSTOM_THEME.radius,
+  );
+  const density = validateEnum(
+    raw.density,
+    DENSITY_SET,
+    DEFAULT_CUSTOM_THEME.density,
+  );
+  const borderWidth = validateEnum(
+    raw.borderWidth,
+    BORDER_WIDTH_SET,
+    DEFAULT_CUSTOM_THEME.borderWidth,
+  );
   const reduceMotion =
     typeof raw.reduceMotion === "boolean"
       ? raw.reduceMotion
