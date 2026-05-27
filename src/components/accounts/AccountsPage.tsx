@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { allCategories, allTypes } from "../../data/presets";
-import { accountBalance } from "../../data/accounts-balance";
+import { computeAccountBalances } from "../../data/accounts-balance";
 import { compareDateStrings } from "../../data/fiscal-month";
 import type {
   Account,
@@ -100,15 +100,11 @@ export function AccountsPage({
 }: Props) {
   const t = useT();
   const lang = useLang();
-  // Pre-compute every account's balance once per render. The helper
-  // walks every budget item in the workspace plus every transfer,
-  // so doing it inside a map() would be O(accounts²) on every keystroke
-  // — pulling it out keeps balances cheap as the dataset grows.
-  const balances = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const a of data.accounts) m.set(a.id, accountBalance(data, a.id));
-    return m;
-  }, [data]);
+  // Pre-compute every account's balance once per render. The batched
+  // helper walks the sheet tree / transfer log / history once and
+  // distributes amounts to each account's running total, replacing the
+  // earlier per-account call that was O(accounts²) over the workspace.
+  const balances = useMemo(() => computeAccountBalances(data), [data]);
   // Which accounts have at least one AccountBudget pointing at them.
   // Only those balances are clickable — the "update balance" flow needs
   // a budget to drop the correction row into. Computed alongside
