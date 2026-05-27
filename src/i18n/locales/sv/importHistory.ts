@@ -25,7 +25,6 @@ const importHistory: ImportHistoryCatalog = {
   duplicatesSkipped: "Dubbletter överhoppade",
   openingBalance: "Ingående saldo",
   confirm: "Importera",
-  cancel: "Avbryt",
   parseError: "Kunde inte läsa den här filen.",
   unknownBank: "Kunde inte identifiera banken.",
   pickParser: "Välj bankformat",

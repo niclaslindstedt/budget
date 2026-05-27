@@ -342,7 +342,7 @@ export function BudgetComplexEntryModal({
           {t("common.cancel")}
         </Button>
         <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit}>
-          {submitVerb ?? t("complex.addVerb")}{" "}
+          {submitVerb ?? t("common.add")}{" "}
           {dates.length > 0
             ? dates.length === 1
               ? t("complex.rowOne", { n: dates.length })

@@ -552,7 +552,7 @@ export function BudgetMetadataModal({
                     : "cursor-not-allowed opacity-50 hover:bg-accent/10"
                 }
               >
-                {t("metadata.save")}
+                {t("common.save")}
               </Button>
             </div>
           </>

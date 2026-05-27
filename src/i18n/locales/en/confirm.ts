@@ -2,7 +2,6 @@ import type { Widen } from "./_widen";
 
 const confirm = {
   title: "Are you sure?",
-  cancel: "Cancel",
   confirm: "Confirm",
   confirmDelete: "Yes, delete",
   confirmDiscard: "Yes, discard",

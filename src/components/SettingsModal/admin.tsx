@@ -163,7 +163,7 @@ export function CategoriesAndTypesAdmin({
               >
                 <CategoryEditor
                   initial={cat}
-                  submitLabel={t("settings.categoriesTab.saveSubmit")}
+                  submitLabel={t("common.save")}
                   onCancel={() => setEditingCategoryId(null)}
                   onSubmit={(draft) => {
                     onUpdateCategory(cat.id, draft);
@@ -248,7 +248,7 @@ export function CategoriesAndTypesAdmin({
                       type="button"
                       onClick={() => setEditingCategoryId(cat.id)}
                       aria-label={t("settings.categoriesTab.editCategory")}
-                      title={t("settings.categoriesTab.editLabel")}
+                      title={t("common.edit")}
                       className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
                     >
                       <Pencil size={13} aria-hidden focusable={false} />
@@ -257,7 +257,7 @@ export function CategoriesAndTypesAdmin({
                       type="button"
                       onClick={() => setPendingDeleteCategoryId(cat.id)}
                       aria-label={t("settings.categoriesTab.deleteCategory")}
-                      title={t("settings.categoriesTab.deleteLabel")}
+                      title={t("common.delete")}
                       className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-danger hover:text-danger"
                     >
                       <Trash2 size={13} aria-hidden focusable={false} />
@@ -288,7 +288,7 @@ export function CategoriesAndTypesAdmin({
         <div className="rounded border border-line bg-surface-2 p-2">
           <CategoryEditor
             initial={null}
-            submitLabel={t("settings.categoriesTab.addSubmit")}
+            submitLabel={t("common.add")}
             onCancel={() => setCreatingCategory(false)}
             onSubmit={(draft) => {
               onCreateCategory(draft);
@@ -318,7 +318,7 @@ export function CategoriesAndTypesAdmin({
         }
         actions={[
           {
-            label: t("settings.categoriesTab.deleteLabel"),
+            label: t("common.delete"),
             tone: "danger",
             onSelect: () => {
               if (pendingDeleteCategoryId) {
@@ -389,7 +389,7 @@ function TypesSection({
                     initial={ty}
                     categories={allCategories}
                     onCreateCategory={onCreateCategory}
-                    submitLabel={t("settings.categoriesTab.saveSubmit")}
+                    submitLabel={t("common.save")}
                     onCancel={() => setEditingId(null)}
                     onSubmit={(draft) => {
                       onUpdate(ty.id, draft);
@@ -461,7 +461,7 @@ function TypesSection({
                         type="button"
                         onClick={() => setEditingId(ty.id)}
                         aria-label={t("settings.categoriesTab.editType")}
-                        title={t("settings.categoriesTab.editLabel")}
+                        title={t("common.edit")}
                         className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
                       >
                         <Pencil size={13} aria-hidden focusable={false} />
@@ -470,7 +470,7 @@ function TypesSection({
                         type="button"
                         onClick={() => setPendingDeleteId(ty.id)}
                         aria-label={t("settings.categoriesTab.deleteType")}
-                        title={t("settings.categoriesTab.deleteLabel")}
+                        title={t("common.delete")}
                         className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-danger hover:text-danger"
                       >
                         <Trash2 size={13} aria-hidden focusable={false} />
@@ -490,7 +490,7 @@ function TypesSection({
             initialCategoryId={category.id}
             categories={allCategories}
             onCreateCategory={onCreateCategory}
-            submitLabel={t("settings.categoriesTab.addSubmit")}
+            submitLabel={t("common.add")}
             onCancel={() => setCreating(false)}
             onSubmit={(draft) => {
               onCreate(draft);
@@ -522,7 +522,7 @@ function TypesSection({
         }
         actions={[
           {
-            label: t("settings.categoriesTab.deleteLabel"),
+            label: t("common.delete"),
             tone: "danger",
             onSelect: () => {
               if (pendingDeleteId) onDelete(pendingDeleteId);
@@ -934,7 +934,7 @@ function EditorButtons({
         className="inline-flex cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
       >
         <X size={12} aria-hidden focusable={false} />
-        {t("settings.categoriesTab.cancelSubmit")}
+        {t("common.cancel")}
       </button>
       <button
         type="button"

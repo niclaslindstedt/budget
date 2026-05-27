@@ -174,7 +174,7 @@ export function BottomBar({
                 onClick={onBulkEdit}
                 disabled={bulkDisabled}
                 ariaLabel={t("bulkBar.editSelected")}
-                title={t("bulkBar.edit")}
+                title={t("common.edit")}
               />
               <BulkButton
                 tone="text-meta"
@@ -198,7 +198,7 @@ export function BottomBar({
                 onClick={onBulkDelete}
                 disabled={bulkDisabled}
                 ariaLabel={t("bulkBar.deleteSelected")}
-                title={t("bulkBar.delete")}
+                title={t("common.delete")}
               />
               <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
               <BulkButton
@@ -206,7 +206,7 @@ export function BottomBar({
                 icon={<X size={16} aria-hidden focusable={false} />}
                 onClick={onBulkCancel}
                 ariaLabel={t("bulkBar.cancelSelection")}
-                title={t("bulkBar.cancel")}
+                title={t("common.cancel")}
               />
             </>
           ) : (

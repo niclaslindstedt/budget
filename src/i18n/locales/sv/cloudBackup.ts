@@ -11,7 +11,6 @@ const cloudBackup: CloudBackupCatalog = {
   restoreTitle: "Återställ från säkerhetskopia?",
   restoreHint:
     "Den aktuella budgeten ersätts med denna ögonblicksbild. Din nuvarande fil sparas som en automatisk säkerhetskopia först.",
-  delete: "Ta bort",
   deleteAria: "Ta bort {filename}",
   deleteTitle: "Ta bort den här säkerhetskopian?",
   deleteHint:

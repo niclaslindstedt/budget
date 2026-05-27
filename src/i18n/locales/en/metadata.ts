@@ -13,7 +13,6 @@ const metadata = {
   descriptionPlaceholder: "Leave blank to keep the bank's text",
   descriptionHint: "Blank keeps the bank's text.",
   skip: "Skip",
-  save: "Save",
   needsTypePrompt: "Pick a type to save.",
   needsCompanyPrompt:
     'Pick a company — or check "No company needed" — to save.',

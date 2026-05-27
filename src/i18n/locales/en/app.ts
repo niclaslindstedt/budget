@@ -13,7 +13,6 @@ const app = {
   selectRows: "Select rows",
   exitSelectMode: "Exit select mode",
   selectShort: "Select",
-  cancelShort: "Cancel",
   undo: "Undo",
   undoShort: "Undo (⌘Z)",
   redo: "Redo",

@@ -7,7 +7,6 @@ const reconciliation: ReconciliationCatalog = {
   probableMatches: "Troliga matchningar",
   predictionsThatDidntPost: "Förutsägelser som inte bokfördes",
   skipAll: "Hoppa över alla",
-  apply: "Använd",
   noLabel: "(ingen etikett)",
   applyToSeries: "Använd för hela serien",
   seriesRuleQueued: "Serieregel köad",

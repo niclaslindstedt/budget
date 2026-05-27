@@ -669,7 +669,7 @@ export function AccountReconciliationModal({
           onClick={handleApply}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent/20"
         >
-          {t("reconciliation.apply")}
+          {t("common.apply")}
         </button>
       </Modal.Footer>
     </Modal>

@@ -1,20 +1,20 @@
 import type { Widen } from "./_widen";
 
 const editRow = {
-  title: "Edit row",
-  titleRecurring: "Edit recurring row",
+  title: "Edit entry",
+  titleRecurring: "Edit recurring entry",
   scope: "Scope",
   scopeApplyTo: "Apply to",
-  scopeJustThis: "Just this row",
-  scopeJustThisDate: "Only this row ({date})",
-  scopeThisAndFuture: "This row and all future",
-  scopeAll: "All rows in the series",
+  scopeJustThis: "Just this entry",
+  scopeJustThisDate: "Only this entry ({date})",
+  scopeThisAndFuture: "This entry and all future",
+  scopeAll: "All entries in the series",
   scopeAllAmountDisabled:
     "Amount stays locked under this scope — changing it would rewrite past, already-reconciled entries.",
   scopeAlwaysJustThis: "Date and completed always apply to this row only.",
   affectedRows: "Affected rows",
-  affectedRowsCountOne: "{n} row will be updated",
-  affectedRowsCountOther: "{n} rows will be updated",
+  affectedRowsCountOne: "{n} entry will be updated",
+  affectedRowsCountOther: "{n} entries will be updated",
   affectedRowsCurrent: "current",
   completed: "Completed",
   primaryIncomeTitle: "Primary income",
