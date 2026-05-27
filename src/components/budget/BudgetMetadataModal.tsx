@@ -92,8 +92,8 @@ function entryNeedsMetadata(
   entry: HistoryEntry,
   hints: Readonly<Record<string, MerchantHint>>,
   rules: readonly MatchRule[],
-  companies: readonly Company[],
-  types: readonly EntryType[],
+  companies: ReadonlyMap<string, Company>,
+  types: ReadonlyMap<string, EntryType>,
 ): boolean {
   if (entry.hidden) return false;
   if (entry.collapsedIntoTransferId) return false;
@@ -152,13 +152,36 @@ export function BudgetMetadataModal({
     }
   }, [open]);
 
+  // Build id-indexed maps for companies and types once per (companies,
+  // types) change. The metadata walk calls `resolveEntryLabels` once
+  // per entry inside two filter loops (`queue`, `monthTotal`); building
+  // the maps at the loop boundary avoids the per-entry linear array
+  // scans that the resolver's company-name / type-name fallbacks would
+  // otherwise repeat.
+  const companiesById = useMemo(() => {
+    const m = new Map<string, Company>();
+    for (const c of companies) m.set(c.id, c);
+    return m;
+  }, [companies]);
+  const typesById = useMemo(() => {
+    const m = new Map<string, EntryType>();
+    for (const t of types) m.set(t.id, t);
+    return m;
+  }, [types]);
+
   // Queue is derived from props every render — saving an entry makes
   // it resolve and fall out naturally on the next render.
   const queue = useMemo(() => {
     const filtered = entries.filter(
       (e) =>
         !skipped.has(e.id) &&
-        entryNeedsMetadata(e, merchantHints, matchRules, companies, types),
+        entryNeedsMetadata(
+          e,
+          merchantHints,
+          matchRules,
+          companiesById,
+          typesById,
+        ),
     );
     filtered.sort((a, b) => {
       const monthA = monthKeyOf(a.date);
@@ -169,7 +192,7 @@ export function BudgetMetadataModal({
       return a.id.localeCompare(b.id);
     });
     return filtered;
-  }, [entries, merchantHints, matchRules, companies, types, skipped]);
+  }, [entries, merchantHints, matchRules, companiesById, typesById, skipped]);
 
   const current = queue[0] ?? null;
   const currentMonth = current ? monthKeyOf(current.date) : null;
@@ -182,7 +205,13 @@ export function BudgetMetadataModal({
     for (const e of entries) {
       if (monthKeyOf(e.date) !== currentMonth) continue;
       if (
-        entryNeedsMetadata(e, merchantHints, matchRules, companies, types) ||
+        entryNeedsMetadata(
+          e,
+          merchantHints,
+          matchRules,
+          companiesById,
+          typesById,
+        ) ||
         completed.has(e.id)
       )
         n += 1;
@@ -192,8 +221,8 @@ export function BudgetMetadataModal({
     entries,
     merchantHints,
     matchRules,
-    companies,
-    types,
+    companiesById,
+    typesById,
     currentMonth,
     completed,
   ]);
@@ -245,8 +274,8 @@ export function BudgetMetadataModal({
       current,
       merchantHints,
       matchRules,
-      companies,
-      types,
+      companiesById,
+      typesById,
     );
     // Pre-fill only with a real user-level description (override,
     // rule, or merchant hint). The company / type / bank-text

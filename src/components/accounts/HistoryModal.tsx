@@ -100,6 +100,12 @@ export function HistoryModal({
     return m;
   }, [types]);
 
+  const companiesById = useMemo(() => {
+    const m = new Map<string, Company>();
+    for (const c of companies) m.set(c.id, c);
+    return m;
+  }, [companies]);
+
   // Resolve once per (entries, hints, rules) so the search filter
   // below can match against the labels users actually see rather
   // than the raw bank text.
@@ -115,8 +121,8 @@ export function HistoryModal({
           entry,
           merchantHints,
           matchRules,
-          companies,
-          types,
+          companiesById,
+          typesById,
         );
         arr.push({ entry, description, typeId: null });
         continue;
@@ -125,13 +131,13 @@ export function HistoryModal({
         entry,
         merchantHints,
         matchRules,
-        companies,
-        types,
+        companiesById,
+        typesById,
       );
       arr.push({ entry, description, typeId });
     }
     return arr;
-  }, [entries, merchantHints, matchRules, companies, types]);
+  }, [entries, merchantHints, matchRules, companiesById, typesById]);
 
   const allSortedEntries = useMemo(() => {
     const order = settings.transactionSortOrder;

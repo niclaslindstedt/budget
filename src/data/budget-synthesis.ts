@@ -103,13 +103,46 @@ export function synthesizeTransferRow(
 // description + signed amount + typeId. The splits' signed amounts
 // are guaranteed by the validator to sum to `entry.amount`, so the
 // account's running balance stays anchored to the bank's total.
+const EMPTY_COMPANIES_MAP: ReadonlyMap<string, Company> = new Map();
+const EMPTY_TYPES_MAP: ReadonlyMap<string, EntryType> = new Map();
+
+function asCompaniesById(
+  companies: readonly Company[] | ReadonlyMap<string, Company>,
+): ReadonlyMap<string, Company> {
+  if (companies instanceof Map) return companies;
+  if (Array.isArray(companies)) {
+    if (companies.length === 0) return EMPTY_COMPANIES_MAP;
+    const m = new Map<string, Company>();
+    for (const c of companies) m.set(c.id, c);
+    return m;
+  }
+  return EMPTY_COMPANIES_MAP;
+}
+
+function asTypesById(
+  types: readonly EntryType[] | ReadonlyMap<string, EntryType>,
+): ReadonlyMap<string, EntryType> {
+  if (types instanceof Map) return types;
+  if (Array.isArray(types)) {
+    if (types.length === 0) return EMPTY_TYPES_MAP;
+    const m = new Map<string, EntryType>();
+    for (const t of types) m.set(t.id, t);
+    return m;
+  }
+  return EMPTY_TYPES_MAP;
+}
+
 export function synthesizeHistoryRow(
   entry: HistoryEntry,
   columns: Column[],
   hints: Readonly<Record<string, MerchantHint>> = {},
   rules: readonly MatchRule[] = [],
-  companies: readonly Company[] = [],
-  types: readonly EntryType[] = [],
+  companies:
+    | readonly Company[]
+    | ReadonlyMap<string, Company> = EMPTY_COMPANIES_MAP,
+  types:
+    | readonly EntryType[]
+    | ReadonlyMap<string, EntryType> = EMPTY_TYPES_MAP,
 ): Row[] {
   const dateCol = findColumnByType(columns, "date");
   const descCol = findColumnByType(columns, "description");
@@ -194,8 +227,12 @@ export function resolveEntryLabels(
   entry: HistoryEntry,
   hints: Readonly<Record<string, MerchantHint>> = {},
   rules: readonly MatchRule[] = [],
-  companies: readonly Company[] = [],
-  types: readonly EntryType[] = [],
+  companies:
+    | readonly Company[]
+    | ReadonlyMap<string, Company> = EMPTY_COMPANIES_MAP,
+  types:
+    | readonly EntryType[]
+    | ReadonlyMap<string, EntryType> = EMPTY_TYPES_MAP,
 ): {
   description: string;
   // The description before the company/type/bank-text fallbacks kick
@@ -237,11 +274,11 @@ export function resolveEntryLabels(
     null;
   let description = userDescription;
   if (description === null && companyId) {
-    const company = companies.find((c) => c.id === companyId);
+    const company = asCompaniesById(companies).get(companyId);
     if (company && company.name.trim() !== "") description = company.name;
   }
   if (description === null && typeId) {
-    const type = types.find((t) => t.id === typeId);
+    const type = asTypesById(types).get(typeId);
     if (type && type.name.trim() !== "") description = type.name;
   }
   if (description === null) description = entry.description;

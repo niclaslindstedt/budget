@@ -318,6 +318,13 @@ export function buildVisibleRows(
       accountsById,
     ),
   );
+  // Build id-indexed maps once per call so the per-entry fallbacks in
+  // `resolveEntryLabels` (company/type-name description) don't scan the
+  // arrays linearly for every synthesized history row.
+  const companiesById = new Map<string, Company>();
+  for (const c of companies) companiesById.set(c.id, c);
+  const typesById = new Map<string, EntryType>();
+  for (const t of types) typesById.set(t.id, t);
   const historyRows = history
     .filter((e) => !e.hidden)
     .flatMap((e) =>
@@ -326,8 +333,8 @@ export function buildVisibleRows(
         item.columns,
         merchantHints,
         matchRules,
-        companies,
-        types,
+        companiesById,
+        typesById,
       ),
     );
   return [...item.rows, ...transferRows, ...historyRows];

@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef } from "react";
+import { memo, useRef } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { isRowSavable } from "../../data/budget-rows";
@@ -24,6 +24,11 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   types: readonly EntryType[];
+  // Id-indexed view of `types` for O(1) lookup of `row.typeId`. Lifted
+  // to BudgetPage so the map reference is stable across rows; a per-
+  // row `useMemo` keyed on the `types` array would invalidate every
+  // row's entry-type cache whenever a single type is added or edited.
+  typesById: ReadonlyMap<string, EntryType>;
   categories: readonly Category[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -106,6 +111,7 @@ function BudgetRowImpl({
   columns,
   balances,
   types,
+  typesById,
   categories,
   onCreateType,
   onCreateCategory,
@@ -133,11 +139,9 @@ function BudgetRowImpl({
 }: Props) {
   const tr = useT();
   const lang = useLang();
-  const entryType = useMemo<EntryType | null>(
-    () =>
-      row.typeId ? (types.find((t) => t.id === row.typeId) ?? null) : null,
-    [row.typeId, types],
-  );
+  const entryType: EntryType | null = row.typeId
+    ? (typesById.get(row.typeId) ?? null)
+    : null;
   const { swiped, setSwiped, touchHandlers } = useRowSwipe({
     disabled: selectMode,
   });
