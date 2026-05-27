@@ -45,6 +45,7 @@ export function DescriptionCell({
   value,
   isRecurring,
   entryType,
+  placeholder,
   onChange,
   onCommit,
 }: {
@@ -52,11 +53,18 @@ export function DescriptionCell({
   value: string;
   isRecurring: boolean;
   entryType: EntryType | null;
+  // When set, `value` is a fallback (company / type / bank text) rather
+  // than a user-authored description. The trigger renders in italic +
+  // glyph color and the inline editor opens with an empty textarea +
+  // this string as the input placeholder. Supplied by `synthesizeHistoryRow`
+  // via `Row.descriptionPlaceholder`.
+  placeholder?: string;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
   const t = useT();
   const typeLabel = entryType ? displayTypeName(entryType, t) : "";
+  const isFallback = placeholder !== undefined;
   return (
     <td
       className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
@@ -73,21 +81,30 @@ export function DescriptionCell({
       <DescriptionPopover
         rowId={rowId}
         value={value}
+        editValue={isFallback ? "" : value}
+        placeholder={placeholder}
         onChange={onChange}
         onCommit={onCommit}
         renderTrigger={({ ref, onClick, open, displayValue }) => {
           const hasValue = displayValue.length > 0;
+          // The fallback styling (italic + glyph color) applies whenever
+          // the cell is showing a calculated value, even when the popover
+          // is closed and `displayValue` is non-empty. Without
+          // `isFallback`, the trigger reverts to the regular non-italic
+          // style as soon as the popover closes — which is misleading
+          // because the row still has no user-authored description.
+          const styleAsFallback = isFallback || !hasValue;
           return entryType ? (
             <button
               ref={ref}
               type="button"
               onClick={onClick}
               className={`flex h-full min-h-9 w-full cursor-pointer items-center border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-                hasValue
-                  ? "justify-start text-left"
-                  : "justify-center text-xs font-medium italic"
+                styleAsFallback
+                  ? "justify-center text-xs font-medium italic"
+                  : "justify-start text-left"
               }`}
-              style={hasValue ? undefined : { color: entryType.color }}
+              style={styleAsFallback ? { color: entryType.color } : undefined}
               aria-haspopup="dialog"
               aria-expanded={open}
               aria-label={
@@ -231,12 +248,25 @@ const DESCRIPTION_POPOVER_PLACEMENT: FloatingPlacement = {
 function DescriptionPopover({
   rowId,
   value,
+  editValue,
+  placeholder,
   onChange,
   onCommit,
   renderTrigger,
 }: {
   rowId: string;
   value: string;
+  // The value the editor should start from on open. Defaults to `value`
+  // for regular rows, but synthesized history rows whose description is
+  // a fallback (no userDescription set) pass `""` here so the textarea
+  // opens empty rather than pre-filled with the fallback text the user
+  // never authored.
+  editValue: string;
+  // Optional override for the textarea's placeholder. Synthesized
+  // history rows pass the raw bank text so the user sees the statement
+  // memo they're about to override; absent, the generic
+  // `cell.descriptionPlaceholder` ("Description") is used.
+  placeholder?: string;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   renderTrigger: (ctx: {
@@ -254,24 +284,24 @@ function DescriptionPopover({
   // would otherwise refill from the bank's raw description via
   // `resolveEntryLabels`, making the original text "come back" while
   // the user is still editing.
-  const [draft, setDraft] = useState<string>(value);
+  const [draft, setDraft] = useState<string>(editValue);
   // Snapshot the value at popover-open time so we only emit a commit
   // when the user actually changed the description before closing.
-  const openValueRef = useRef<string>(value);
+  const openValueRef = useRef<string>(editValue);
   const wasOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Keep the draft synced from `value` while the popover is closed so
-  // external updates land cleanly on the next open.
+  // Keep the draft synced from `editValue` while the popover is closed
+  // so external updates land cleanly on the next open.
   useEffect(() => {
-    if (!open) setDraft(value);
-  }, [open, value]);
+    if (!open) setDraft(editValue);
+  }, [open, editValue]);
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      openValueRef.current = value;
-      setDraft(value);
+      openValueRef.current = editValue;
+      setDraft(editValue);
     } else if (!open && wasOpenRef.current) {
       if (onCommit && draft !== openValueRef.current) onCommit(draft);
     }
@@ -318,7 +348,7 @@ function DescriptionPopover({
               setOpen(false);
             }
           }}
-          placeholder={t("cell.descriptionPlaceholder")}
+          placeholder={placeholder ?? t("cell.descriptionPlaceholder")}
           rows={1}
           wrapperClassName="w-full"
           className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"

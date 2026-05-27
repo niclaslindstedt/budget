@@ -184,13 +184,8 @@ export function synthesizeHistoryRow(
     });
   }
 
-  const { description, typeId, companyId } = resolveEntryLabels(
-    entry,
-    hints,
-    rules,
-    companies,
-    types,
-  );
+  const { description, userDescription, typeId, companyId } =
+    resolveEntryLabels(entry, hints, rules, companies, types);
   const row: Row = {
     id: `hist:${entry.id}`,
     cells: buildCells(description, entry.amount),
@@ -201,6 +196,11 @@ export function synthesizeHistoryRow(
   if (entry.isTransfer) row.isTransfer = true;
   if (entry.fiscalMonthShift !== undefined)
     row.fiscalMonthShift = entry.fiscalMonthShift;
+  // The resolved description is a fallback (company / type / bank
+  // text) rather than a real user override. Flag the row so the
+  // description cell can render it in italic + glyph color and open
+  // its inline editor empty + with the bank text as the placeholder.
+  if (userDescription === null) row.descriptionPlaceholder = entry.description;
   return [row];
 }
 
