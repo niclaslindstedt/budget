@@ -299,3 +299,34 @@ export function resolveEntryLabels(
 export function isTransferRow(row: Row): boolean {
   return row.peerAccountId !== undefined || row.isTransfer === true;
 }
+
+// Walk `rows` and, when `hideTransfers` is on, group every run of
+// hidden transfer rows under the next visible anchor row's id. The
+// returned map powers MonthTable's expand-toggle icon: a non-empty
+// run on an anchor means at least one hidden transfer contributed to
+// its running-balance step. With `hideTransfers` off (or no transfers
+// to hide), the map is empty so the anchor renders normally.
+//
+// Correction rows render as full-width dividers and never count as
+// transfers — they break a hidden run so it doesn't leak past the
+// divider into the next concrete row. Hidden rows trailing the last
+// visible anchor are dropped: there's no balance row in this month to
+// attach the icon to. The amounts still feed the running balance via
+// `computeBalances`; they just don't surface an expand affordance.
+export function collectHiddenTransfersByAnchor(
+  rows: readonly Row[],
+  hideTransfers: boolean,
+): Map<string, Row[]> {
+  const map = new Map<string, Row[]>();
+  if (!hideTransfers) return map;
+  let buffer: Row[] = [];
+  for (const r of rows) {
+    if (!r.isCorrection && isTransferRow(r)) {
+      buffer.push(r);
+    } else if (buffer.length > 0) {
+      map.set(r.id, buffer);
+      buffer = [];
+    }
+  }
+  return map;
+}

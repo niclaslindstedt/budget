@@ -48,6 +48,13 @@ type Props = {
   // a row has been labelled "Salary" we don't drop it from the
   // picker just because the user is reconsidering the sign.
   amountSign?: "positive" | "negative" | "any";
+  // Generic predicate over the type list. Takes precedence over
+  // `amountSign` so future sheet types (loans, savings) can supply
+  // their own filter shape without the picker hardcoding every
+  // variant. The currently-selected type bypasses the predicate so
+  // an already-labelled row keeps its chip visible while the user
+  // reconsiders.
+  filterFn?: (type: EntryType) => boolean;
   // When rendered inside a sheet row, the row's date + description
   // are surfaced in a small header above the listbox so the user
   // keeps that context visible while picking — the dropdown
@@ -79,6 +86,7 @@ export function TypePicker({
   onCreate,
   onCreateCategory,
   amountSign,
+  filterFn,
   rowDate,
   rowDateColor,
   rowDescription,
@@ -109,8 +117,13 @@ export function TypePicker({
   // (positive → income context, negative → expense context), drop
   // types whose `kind` points the wrong way. The currently-selected
   // type bypasses the filter so an already-labelled row keeps its
-  // chip visible while the user reconsiders.
+  // chip visible while the user reconsiders. A caller-supplied
+  // `filterFn` overrides the sign-based default so non-budget sheets
+  // can express their own semantics.
   const availableTypes = useMemo(() => {
+    if (filterFn) {
+      return types.filter((ty) => ty.id === selectedId || filterFn(ty));
+    }
     if (amountSign === "positive") {
       return types.filter(
         (ty) => ty.id === selectedId || ty.kind !== "expense",
@@ -120,7 +133,7 @@ export function TypePicker({
       return types.filter((ty) => ty.id === selectedId || ty.kind !== "income");
     }
     return types;
-  }, [types, amountSign, selectedId]);
+  }, [types, amountSign, filterFn, selectedId]);
 
   // Categories that have at least one available type. The selected
   // type's category is always kept so the back-tap target never
