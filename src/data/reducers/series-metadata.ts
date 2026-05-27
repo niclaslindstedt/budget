@@ -1,4 +1,5 @@
-import { computePrimaryIncomeShift, findColumnByType } from "../sheet";
+import { computePrimaryIncomeShift } from "../fiscal-month";
+import { findColumnByType } from "../sheet";
 import type { Action } from "../reducer";
 import type { Row, SeriesMetadata, UserData } from "../types";
 

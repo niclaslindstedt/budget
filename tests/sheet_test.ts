@@ -1,34 +1,38 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyMonthShift,
   computeBalances,
-  computePrimaryIncomeShift,
-  createDefaultAccountBudget,
-  createDefaultSheet,
-  currentFiscalMonthKey,
   defaultCompletedForDate,
-  findColumnByType,
-  fiscalMonthSeedIso,
-  getMonthKey,
-  getStandardColumns,
-  groupRowsByMonth,
   isRowHalfDone,
   isRowSavable,
-  mapRowsByIds,
   mintBudgetRow,
-  moveColumn,
-  previousMonthKey,
   propagateCellInSeries,
   rowsInSeriesFrom,
-  shiftIsoToMonth,
-  sortMonthKeys,
   sortRowsByDate,
-  synthesizeHistoryRow,
-  updateAccountBudget,
-  updateHistoryEntry,
   userDataHasHalfDoneRows,
   userDataWithSavableRows,
+} from "../src/data/budget-rows";
+import { synthesizeHistoryRow } from "../src/data/budget-synthesis";
+import {
+  applyMonthShift,
+  computePrimaryIncomeShift,
+  currentFiscalMonthKey,
+  fiscalMonthSeedIso,
+  getMonthKey,
+  groupRowsByMonth,
+  previousMonthKey,
+  shiftIsoToMonth,
+  sortMonthKeys,
+} from "../src/data/fiscal-month";
+import {
+  createDefaultAccountBudget,
+  createDefaultSheet,
+  findColumnByType,
+  getStandardColumns,
+  mapRowsByIds,
+  moveColumn,
+  updateAccountBudget,
+  updateHistoryEntry,
 } from "../src/data/sheet";
 import type {
   AccountBudget,

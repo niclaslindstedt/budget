@@ -63,7 +63,17 @@ src/
 │   │                     # Settings, StoredUser, UsersFile, …
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, USERS_KEY,
 │   │                     # userDataKey(), DEFAULT_SETTINGS, palette, icon list
-│   ├── sheet.ts          # pure helpers (group, sort, balances, reorder)
+│   ├── sheet.ts          # universal sheet primitives (newId, factories,
+│   │                     # column + sheet-tree traversal helpers)
+│   ├── fiscal-month.ts   # fiscal-month + ISO date math (getMonthKey,
+│   │                     # groupRowsByMonth, previous/nextMonthKey, …)
+│   ├── budget-rows.ts    # budget-row algebra (sortRowsByDate,
+│   │                     # computeBalances, isRowSavable, buildVisibleRows,
+│   │                     # mintBudgetRow, propagateCellInSeries, …)
+│   ├── budget-synthesis.ts  # synthesized rows (transfersForAccount,
+│   │                     # synthesizeTransferRow, synthesizeHistoryRow,
+│   │                     # resolveEntryLabels, isTransferRow)
+│   ├── accounts-balance.ts  # account-level aggregation (accountBalance)
 │   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
 │   ├── migrations.ts     # forward-only schema migration runner
 │   └── validate.ts       # boundary validator: unknown → Result<UserData>

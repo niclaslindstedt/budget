@@ -28,7 +28,8 @@
 //   history + that account's rows. The caller is responsible for
 //   pairing them up.
 
-import { findColumnByType, getMonthKey } from "./sheet";
+import { getMonthKey } from "./fiscal-month";
+import { findColumnByType } from "./sheet";
 import type { Column, HistoryEntry, Row } from "./types";
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;

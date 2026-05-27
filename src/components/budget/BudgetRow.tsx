@@ -1,7 +1,8 @@
 import { memo, useMemo, useRef } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
-import { findColumnByType, isRowSavable } from "../../data/sheet";
+import { isRowSavable } from "../../data/budget-rows";
+import { findColumnByType } from "../../data/sheet";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import type {

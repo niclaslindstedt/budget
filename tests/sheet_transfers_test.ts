@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
+import { accountBalance } from "../src/data/accounts-balance";
+import { userDataWithSavableRows } from "../src/data/budget-rows";
 import {
-  accountBalance,
-  createDefaultSheet,
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
-  userDataWithSavableRows,
-} from "../src/data/sheet";
+} from "../src/data/budget-synthesis";
+import { createDefaultSheet } from "../src/data/sheet";
 import type {
   AccountBudget,
   HistoryEntry,

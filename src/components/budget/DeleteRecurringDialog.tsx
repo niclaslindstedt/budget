@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader } from "lucide-react";
 
-import { rowsInSeriesFrom } from "../../data/sheet";
+import { rowsInSeriesFrom } from "../../data/budget-rows";
 import type { Row, Settings } from "../../data/types";
 import { useT } from "../../i18n";
 import { formatDate } from "../../utils/format";

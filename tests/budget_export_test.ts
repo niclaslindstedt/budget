@@ -5,8 +5,8 @@ import {
   exportRowsToTable,
   rowsToCsv,
 } from "../src/data/budget-export";
+import { computeBalances } from "../src/data/budget-rows";
 import {
-  computeBalances,
   createDefaultAccountBudget,
   findColumnByType,
 } from "../src/data/sheet";

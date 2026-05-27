@@ -136,9 +136,14 @@ src/
 │       ├── ReconciliationModal.tsx (post-import flow)
 │       └── TransferCollapseModal.tsx (cross-account pair collapse)
 ├── data/
-│   ├── types.ts          # Budget, Sheet, Column, Row, CellValue
-│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY
-│   └── sheet.ts          # pure helpers (group, sort, balances, reorder)
+│   ├── types.ts            # Budget, Sheet, Column, Row, CellValue
+│   ├── constants.ts        # MAX_COLUMN_CHARS, STORAGE_KEY
+│   ├── sheet.ts            # universal sheet primitives (newId, factories,
+│   │                       #   column + sheet-tree traversal)
+│   ├── fiscal-month.ts     # fiscal-month + ISO date math
+│   ├── budget-rows.ts      # budget-row algebra (sort, balances, series, …)
+│   ├── budget-synthesis.ts # synthesized rows (transfers, history)
+│   └── accounts-balance.ts # account-level aggregation
 ├── hooks/
 │   ├── useChangelogAutoOpen.ts # gate the "What's new" popup per APP_VERSION
 │   ├── useEscapeKey.ts          # close-on-Escape listener
@@ -256,20 +261,44 @@ slot in):
    pattern. Do not pile new budget-only or accounts-only helpers
    into `src/data/sheet.ts`.
 
-**Known gap (not yet refactored):** `src/data/sheet.ts` still mixes
-universal sheet factories with budget-row algebra
-(`buildVisibleRows`, `synthesizeTransactionRow`, `computeBalances`,
-etc.) and accounts-page helpers (`transactionsForAccount`). The
-runtime is fine — the file is widely imported and the algebra is
-correct — but new page-specific helpers should still go in
-`src/data/<page>.ts`. A follow-up split is recommended once a third
-page lands (savings / loans) to make the entanglement visible. The
-`sheet.*` i18n group has been untangled: sheet-meta strings (the chrome
-around every page) live in `src/i18n/locales/{en,sv}/sheet.ts`, and
-budget-page strings (rows, balances, column headers, month strip,
-viewer search, transfer collapse) live in
-`src/i18n/locales/{en,sv}/budget.ts`. New page-specific strings go
-under a page-named group (`budget.*`, `accounts.*`).
+**Data-layer module map.** `src/data/sheet.ts` now holds only universal
+sheet primitives — `newId`, `createDefaultSheet` /
+`createDefaultAccountBudget` / `createDefaultAccountsView`,
+`findColumnByType`, `moveColumn`, `createEmptyRow`, `getStandardColumns`,
+and the identity-preserving sheet-tree traversal helpers
+(`updateAccountBudget`, `mapAccountBudgets`, `mapRowsByIds`,
+`updateHistoryEntry`). Page-specific and domain-specific helpers live
+in sibling modules:
+
+- `src/data/fiscal-month.ts` — fiscal-month and ISO date math
+  (`getMonthKey`, `applyMonthShift`, `groupRowsByMonth`,
+  `computePrimaryIncomeShift`, `fiscalMonthSeedIso`,
+  `currentFiscalMonthKey`, `previousMonthKey`, `nextMonthKey`,
+  `sortMonthKeys`, `shiftIsoToMonth`, `compareDateStrings`).
+- `src/data/budget-rows.ts` — budget-row algebra (`sortRowsByDate` +
+  `RowSortContext`, `reverseRowsByDay`, `computeBalances`,
+  `isRowSavable` / `isRowHalfDone` and the `userData*` wrappers,
+  `rowsInSeriesFrom`, `getLastSeriesDate`, `defaultCompletedForDate`,
+  `mintBudgetRow`, `propagateCellInSeries`, `buildVisibleRows`).
+- `src/data/budget-synthesis.ts` — synthesized rows shown in the
+  budget table without touching storage (`transfersForAccount`,
+  `synthesizeTransferRow`, `synthesizeHistoryRow`, `resolveEntryLabels`,
+  `isTransferRow`).
+- `src/data/accounts-balance.ts` — account-level aggregation
+  (`accountBalance`).
+
+New page-specific data helpers continue to land in
+`src/data/<page>-*.ts` (matching the existing `budget-export.ts` /
+`accounts-export.ts` pattern). Do not pile new budget-only or
+accounts-only helpers into `src/data/sheet.ts`.
+
+The `sheet.*` i18n group has been untangled along the same axis:
+sheet-meta strings (the chrome around every page) live in
+`src/i18n/locales/{en,sv}/sheet.ts`, and budget-page strings (rows,
+balances, column headers, month strip, viewer search, transfer
+collapse) live in `src/i18n/locales/{en,sv}/budget.ts`. New
+page-specific strings go under a page-named group (`budget.*`,
+`accounts.*`).
 
 ## Where new code goes
 
