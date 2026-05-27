@@ -296,14 +296,6 @@ T | null` for "explicitly cleared by the user, distinct from
     never set"). Sweep `accounts.ts`, `settings.ts`, `rules.ts`
     once and stamp the validator to enforce.
 
-- **Text-field trim + validate duplicated across ~10 form
-  components** — `EntityCreatorForm`, `SheetModal`, `CompanyPicker`,
-  `AuthScreen`, `MatchRuleModal` each implement
-  `name.trim().length > 0 && …` inline; some also lowercase for
-  duplicate-detection. **Severity: 5.**
-  - Plan: extract `normalizeName(text)` / `normalizeOptional(text)`
-    in `src/data/normalize.ts`. Adopt at the existing sites.
-
 ### Severity 3–4 — nits with leverage
 
 - **OAuth refresh logic duplicated across dropbox/gdrive
@@ -348,12 +340,6 @@ EntryType) => boolean` prop so callers customise; default to
   - Plan: extract a `BackupManager` that accepts an adapter and
     drives the lifecycle. IDB skips backup operations cleanly.
 
-- **`StorageAdapter.backups` is an optional field — no capability
-  sniffer** — UI checks `adapter.backups !== undefined`. Adding a
-  React Native backend would repeat the check. **Severity: 3.**
-  Easy win: add an `adapter.capabilities` set returning
-  `Set<"backups" | "watch" | "saveSync">`; UI gates on that.
-
 - **Bank parser registry is global, no capability flags** — a
   React Native target can't unbundle parsers that depend on
   binary-decompression libs. **Severity: 4.** Defer until a target
@@ -366,11 +352,13 @@ EntryType) => boolean` prop so callers customise; default to
   see stale content. **Severity: 3.** Easy win: derive the
   `<noscript>` body from `routes.ts` exclusively.
 
-- **Inline `parseFloat` / `Number.parseInt` / `new Date(…)` at ~30
-  call sites** — no shared `parseDecimal(text, lang)` /
-  `parseInt32(text)` helpers. If thousands-separator support lands
-  ("1 234,56" SV vs "1,234.56" EN), every site changes. **Severity: 4.** Easy win: extract `src/utils/parse.ts` with the two helpers
-  and adopt at the sites currently using inline parses.
+- **Inline `parseFloat` / `new Date(…)` at remaining sites** —
+  `parseInt32` landed 2026-05 (see Landed) and was adopted at the
+  shift-day / anchor-day parsers; the remaining `parseFloat` and
+  `new Date(...)` sites are CSS-value parsing and date construction
+  that don't share the user-input parsing shape `parseDecimal` would
+  cover. Re-rate if thousands-separator support lands and an actual
+  `parseDecimal(text, lang)` use case appears. **Severity: 3.**
 
 ### Easy wins (mechanical, land regardless of rating)
 
@@ -387,18 +375,41 @@ EntryType) => boolean` prop so callers customise; default to
   surrounding file is otherwise touched. No batch PR — opportunistic
   drive-by.
 
-- Add `adapter.capabilities` set (see severity-3 item).
-
-- Extract `parseDecimal` / `parseInt32` helpers and adopt at the
-  ~30 inline call sites (severity-4 item).
-
-- Extract `normalizeName` / `normalizeOptional` helpers and adopt
-  at the ~10 form-component sites (severity-5 item).
-
 ---
 
 ## Landed
 
+- **`normalizeName` / `normalizeOptional` helpers** (2026-05): the
+  recurring `name.trim().length > 0` + `text.trim() === "" ? undefined : text.trim()`
+  patterns collapsed onto two helpers in `src/data/normalize.ts`.
+  Adopted at `EntityCreatorForm`, `SheetModal` (sheet name + inline
+  new-account name), `AccountModal`, `TransferModal`, and
+  `MatchRuleModal` (the `normalizeOptional` site). `CompanyPicker` /
+  `CompaniesAdmin` kept their inline trim because the surrounding
+  shape is `name.trim().toLowerCase()` for duplicate detection — a
+  different concern.
+- **`parseInt32(text): number | null` helper** (2026-05): the
+  recurring `Number.parseInt(text, 10)` followed by `Number.isFinite`
+  check collapsed onto a `parseInt32` helper in `src/utils/parse.ts`.
+  Adopted at the four shift-day / anchor-day parsers in
+  `EditEntryModal`, `EditRowModal`, and `HistoryEntryEditModal`. The
+  remaining inline `Number.parseInt` sites (`xlsx-reader.ts`,
+  `semver.ts`) parse internal data, not user input — left inline so
+  the call site retains its specific validation.
+- **`StorageAdapter.capabilities` set** (2026-05): added
+  `readonly capabilities: ReadonlySet<AdapterCapability>` to the
+  adapter interface so UI surfaces gate on capability rather than
+  `Boolean(adapter.backups)` checks. `SettingsModal` now reads
+  `adapter?.capabilities.has("backups")` for the backup-button gate.
+  `encrypting-adapter` and `cloud-mirror` forward the inner set
+  minus `loadSync` (decryption / mirror reads are async); the four
+  base adapters declare their own (IDB has no capabilities, folder /
+  dropbox / gdrive each declare `backups`). The capability set
+  duplicates the optional-field shape on purpose — a new backend can
+  read one set instead of enumerating each optional field. Internal
+  storage code keeps the existing optional-chain pattern
+  (`adapter.loadSync?.()`, `adapter.watch?.(...)`) because the
+  chained call already covers the missing case.
 - **Shared `formatYearMonth(monthKey, lang)` helper** (2026-05): the
   duplicated `monthFormatCache` + `monthFormatFor` + `formatMonth`
   trio (one copy per file) collapsed onto a single
