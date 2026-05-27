@@ -119,27 +119,79 @@ export function findCandidates(
   const amountCol = findColumnByType(columns, "amount");
   if (!dateCol || !amountCol) return [];
 
+  // Project rows once: filter out the categorically ineligible ones
+  // (correction / synthesized) and cache `(date, amount, absCents)` so
+  // the inner loop only sees minted candidates. Then sort by
+  // `absCents` and binary-search the tolerance band per entry, so a
+  // 1000-row × 1000-entry import drops from O(E × R) ≈ 1e6 pair
+  // checks to O((E + R) log R + E × band) ≈ a few × 1e4.
+  type Projected = {
+    row: Row;
+    date: string;
+    amount: number;
+    absCents: number;
+  };
+  const projected: Projected[] = [];
+  for (const row of rows) {
+    if (row.isCorrection) continue;
+    if (row.historyEntryId) continue;
+    if (row.transferId) continue;
+    const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
+    if (!ra) continue;
+    projected.push({
+      row,
+      date: ra.date,
+      amount: ra.amount,
+      absCents: Math.round(Math.abs(ra.amount) * 100),
+    });
+  }
+  projected.sort((a, b) => a.absCents - b.absCents);
+  const absCentsArr = new Array<number>(projected.length);
+  for (let i = 0; i < projected.length; i += 1) {
+    absCentsArr[i] = projected[i].absCents;
+  }
+  // First index where `absCentsArr[i] >= value`.
+  function lowerBound(value: number): number {
+    let lo = 0;
+    let hi = absCentsArr.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (absCentsArr[mid] < value) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
+
   const pool: MatchCandidate[] = [];
   for (const entry of newEntries) {
     if (entry.hidden) continue;
     if (entry.collapsedIntoTransferId !== undefined) continue;
-    for (const row of rows) {
-      if (row.isCorrection) continue;
-      if (row.historyEntryId) continue;
-      if (row.transferId) continue;
-      const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
-      if (!ra) continue;
-      if (!sameSign(entry.amount, ra.amount)) continue;
-      const lag = daysBetween(entry.date, ra.date);
+    const entryAbsCents = Math.round(Math.abs(entry.amount) * 100);
+    // `amountsWithinTolerance` allows delta <= max(200, max(eAbs,
+    // rAbs) × 1%) cents. The worst case the row side can imply is a
+    // bound proportional to rAbs itself: solving `rAbs - eAbs <=
+    // rAbs × 0.01` gives `rAbs <= eAbs / 0.99`. Use a slightly looser
+    // pct (1.02 %) to absorb rounding without falsely excluding any
+    // row near the band edge — the original predicate still runs
+    // below, so the binary-search range is only a coarse pre-filter.
+    const pctBand = Math.ceil(entryAbsCents * 0.0102);
+    const band = Math.max(RECONCILIATION_AMOUNT_FLOOR_CENTS, pctBand);
+    const lo = lowerBound(Math.max(0, entryAbsCents - band));
+    const hi = lowerBound(entryAbsCents + band + 1);
+    for (let i = lo; i < hi; i += 1) {
+      const p = projected[i];
+      if (!sameSign(entry.amount, p.amount)) continue;
+      const lag = daysBetween(entry.date, p.date);
       if (!Number.isFinite(lag)) continue;
       if (lag < 0 || lag > RECONCILIATION_DATE_LAG_DAYS) continue;
-      if (!amountsWithinTolerance(entry.amount, ra.amount)) continue;
+      if (!amountsWithinTolerance(entry.amount, p.amount)) continue;
+      const row = p.row;
       const amountDelta = Math.abs(
-        Math.round(entry.amount * 100) - Math.round(ra.amount * 100),
+        Math.round(entry.amount * 100) - Math.round(p.amount * 100),
       );
       const halfFloor = RECONCILIATION_AMOUNT_FLOOR_CENTS / 2;
       const halfPct =
-        (Math.max(Math.abs(entry.amount), Math.abs(ra.amount)) *
+        (Math.max(Math.abs(entry.amount), Math.abs(p.amount)) *
           RECONCILIATION_AMOUNT_PCT *
           100) /
         2;
@@ -349,6 +401,22 @@ export function findRuleDrivenCandidates(
     }
   });
 
+  // Index rows by `seriesId` so each (rule, entry) pair only walks
+  // rows belonging to that rule's series instead of the entire row
+  // list. Filters that would always be true for series-bound rows
+  // (isCorrection / historyEntryId / transferId) are applied once
+  // during indexing rather than per inner iteration.
+  const rowsBySeries = new Map<string, Row[]>();
+  for (const row of rows) {
+    if (row.isCorrection) continue;
+    if (row.historyEntryId) continue;
+    if (row.transferId) continue;
+    if (typeof row.seriesId !== "string" || row.seriesId === "") continue;
+    const list = rowsBySeries.get(row.seriesId);
+    if (list) list.push(row);
+    else rowsBySeries.set(row.seriesId, [row]);
+  }
+
   const pool: MatchCandidate[] = [];
   for (const entry of newEntries) {
     if (entry.hidden) continue;
@@ -356,11 +424,9 @@ export function findRuleDrivenCandidates(
     for (const c of compiled) {
       if (!c) continue;
       if (!c.re.test(entry.description)) continue;
-      for (const row of rows) {
-        if (row.isCorrection) continue;
-        if (row.historyEntryId) continue;
-        if (row.transferId) continue;
-        if (row.seriesId !== c.rule.seriesId) continue;
+      const seriesRows = rowsBySeries.get(c.rule.seriesId);
+      if (!seriesRows) continue;
+      for (const row of seriesRows) {
         const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
         if (!ra) continue;
         if (!sameSign(entry.amount, ra.amount)) continue;

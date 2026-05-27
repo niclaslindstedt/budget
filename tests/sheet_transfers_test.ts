@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
-import { accountBalance } from "../src/data/accounts-balance";
+import {
+  accountBalance,
+  computeAccountBalances,
+} from "../src/data/accounts-balance";
 import { userDataWithSavableRows } from "../src/data/budget-rows";
 import {
   synthesizeHistoryRow,
@@ -496,5 +499,106 @@ describe("accountBalance", () => {
       ],
     };
     expect(accountBalance(data, "checking-id", TODAY)).toBe(70);
+  });
+});
+
+describe("computeAccountBalances", () => {
+  const TODAY = "2026-05-31";
+
+  it("matches accountBalance for every account in one pass", () => {
+    // Multi-account workspace mixing opening balances, anchored
+    // history, post-anchor amounts, budget rows, and transfers — the
+    // four contribution paths `accountBalance` has to thread together.
+    const data = workspace([
+      {
+        id: "t1",
+        date: "2026-05-10",
+        description: "Move",
+        amount: 250,
+        fromAccountId: "checking-id",
+        toAccountId: "savings-id",
+      },
+      {
+        id: "t2",
+        date: "2026-05-20",
+        description: "Back",
+        amount: 75,
+        fromAccountId: "savings-id",
+        toAccountId: "checking-id",
+      },
+      {
+        id: "t-future",
+        date: "2026-12-01",
+        description: "Future",
+        amount: 999,
+        fromAccountId: "checking-id",
+        toAccountId: "savings-id",
+      },
+    ]);
+    data.accounts = data.accounts.map((a) =>
+      a.id === "savings-id" ? { ...a, openingBalance: 1_000 } : a,
+    );
+    data.history = {
+      "checking-id": [
+        {
+          id: "h1",
+          date: "2026-05-01",
+          description: "Anchor",
+          amount: -100,
+          balance: 5_000,
+          importedAt: 0,
+        },
+        {
+          id: "h2",
+          date: "2026-05-15",
+          description: "Post",
+          amount: -50,
+          importedAt: 0,
+        },
+        {
+          id: "h-future",
+          date: "2026-06-15",
+          description: "Future",
+          amount: -999,
+          importedAt: 0,
+        },
+      ],
+    };
+    const item = data.sheets[0].items[0] as AccountBudget;
+    const amountCol = item.columns.find((c) => c.type === "amount")!;
+    const dateCol = item.columns.find((c) => c.type === "date")!;
+    item.rows = [
+      {
+        id: "r1",
+        cells: { [dateCol.id]: "2026-05-12", [amountCol.id]: -40 },
+      },
+      {
+        id: "r-future",
+        cells: { [dateCol.id]: "2026-07-01", [amountCol.id]: -9_999 },
+      },
+    ];
+
+    const balances = computeAccountBalances(data, TODAY);
+    expect(balances.get("checking-id")).toBe(
+      accountBalance(data, "checking-id", TODAY),
+    );
+    expect(balances.get("savings-id")).toBe(
+      accountBalance(data, "savings-id", TODAY),
+    );
+    // Sanity check the concrete numbers so a regression that breaks
+    // both helpers in the same direction can't slip through.
+    // Checking: anchor 5_000, post-anchor history -50, post-anchor
+    // budget row -40, post-anchor outgoing transfer -250, post-anchor
+    // incoming transfer +75 = 4_735.
+    expect(balances.get("checking-id")).toBe(4_735);
+    // Savings: opening 1_000 + incoming 250 - outgoing 75 = 1_175.
+    expect(balances.get("savings-id")).toBe(1_175);
+  });
+
+  it("returns 0-defaults for accounts with no history, rows, or transfers", () => {
+    const data = workspace();
+    const balances = computeAccountBalances(data, TODAY);
+    expect(balances.get("checking-id")).toBe(0);
+    expect(balances.get("savings-id")).toBe(0);
   });
 });
