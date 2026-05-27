@@ -56,8 +56,8 @@ export function DescriptionCell({
   entryType: EntryType | null;
   // Resolved Company for `row.companyId`. When the cell is in fallback
   // mode (no user-authored description) and a company is set, the
-  // trigger renders a white pill with the company glyph + name instead
-  // of the type-name / bank-text fallback.
+  // trigger renders an outlined pill with the company glyph + name
+  // instead of the type-name / bank-text fallback.
   company: Company | null;
   // When set, `value` is a fallback (company / type / bank text) rather
   // than a user-authored description. The trigger renders the
@@ -369,17 +369,17 @@ function DescriptionPopover({
   );
 }
 
-// White pill with the company glyph + name, shown inside the
+// Outlined pill with the company glyph + name, shown inside the
 // description cell when the row has a `companyId` but no user-authored
 // description. Uses theme tokens so the pill stays high-contrast in
 // both dark (white-on-dark) and light (dark-on-light) themes.
 function CompanyPill({ name }: { name: string }) {
   return (
     <span
-      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full px-2 py-0.5 font-medium"
+      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
       style={{
-        backgroundColor: "var(--fg-bright)",
-        color: "var(--page-bg)",
+        borderColor: "var(--fg-bright)",
+        color: "var(--fg-bright)",
       }}
     >
       <Building2 size={12} aria-hidden focusable={false} className="shrink-0" />

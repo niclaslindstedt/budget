@@ -378,7 +378,7 @@ export function BudgetPage({
   }, [types]);
   // Id-indexed companies map, threaded through to every `BudgetRow` so
   // the description cell can resolve `row.companyId` in O(1) and render
-  // a white pill (Building2 + company name) when the row has no
+  // an outlined pill (Building2 + company name) when the row has no
   // user-authored description. Same lift rationale as `typesById`.
   const companiesById = useMemo(() => {
     const m = new Map<string, Company>();

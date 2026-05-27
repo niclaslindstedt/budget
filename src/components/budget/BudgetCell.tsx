@@ -35,8 +35,8 @@ type Props = {
   // glyph) with the description tucked into a popover behind it.
   entryType?: EntryType | null;
   // Resolved Company for `row.companyId`. The description cell renders
-  // a white pill (Building2 glyph + company name) when this is set and
-  // the row has no user-authored description — replacing the
+  // an outlined pill (Building2 glyph + company name) when this is set
+  // and the row has no user-authored description — replacing the
   // type-name / bank-text fallback.
   company?: Company | null;
   // Selectable entry types + categories, threaded through for the `type`
