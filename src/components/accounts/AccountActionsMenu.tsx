@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Download, MoreHorizontal, Receipt, Scissors } from "lucide-react";
+import { Download, MoreHorizontal, Scale, Scissors } from "lucide-react";
 
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
@@ -9,7 +9,8 @@ type Props = {
   accountId: string;
   accountName: string;
   canCut: boolean;
-  onViewHistory: (accountId: string) => void;
+  canUpdateBalance: boolean;
+  onUpdateBalance: (accountId: string) => void;
   onImportHistory: (accountId: string) => void;
   onCutHistory: (accountId: string) => void;
   // Fired after picking any menu item so the parent can dismiss its
@@ -42,7 +43,8 @@ export function AccountActionsMenu({
   accountId,
   accountName,
   canCut,
-  onViewHistory,
+  canUpdateBalance,
+  onUpdateBalance,
   onImportHistory,
   onCutHistory,
   onAction,
@@ -60,10 +62,12 @@ export function AccountActionsMenu({
 
   const items: MenuItem[] = [
     {
-      key: "view",
-      icon: <Receipt size={16} aria-hidden focusable={false} />,
-      label: t("accountsSheet.viewTransactionsTitle"),
-      onClick: () => pick(() => onViewHistory(accountId)),
+      key: "balance",
+      icon: <Scale size={16} aria-hidden focusable={false} />,
+      label: t("accountsSheet.updateBalanceTitle"),
+      disabled: !canUpdateBalance,
+      title: canUpdateBalance ? undefined : t("account.addBudgetSheetHint"),
+      onClick: () => pick(() => onUpdateBalance(accountId)),
     },
     {
       key: "import",
@@ -91,7 +95,10 @@ export function AccountActionsMenu({
         title={t("accountsSheet.moreActions")}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
       >
         <MoreHorizontal size={16} aria-hidden focusable={false} />
       </button>
