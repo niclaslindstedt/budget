@@ -303,12 +303,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     history: data.history,
   });
 
-  // Usage count for each EntryType, summed across every budget in the
-  // workspace. Feeds the TypePicker's "most used first" sort so the
-  // dropdown floats popular labels to the top, like a country picker's
-  // common-locales section. Walking every row on every render is cheap
-  // because the workspace is small (a few thousand rows at most) and
-  // `data` is referentially stable between edits.
   // Merged category / type lists exposed to every picker, renderer,
   // and resolver. Built-in `PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES`
   // come first (minus the ones the user has hidden via Settings),
@@ -316,8 +310,28 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // `data.types`. Computing them once here keeps the merge rules in
   // one place — pickers downstream stay unaware of the preset / user
   // split.
-  const allCategoriesMerged = useMemo(() => allCategories(data), [data]);
-  const allTypesMerged = useMemo(() => allTypes(data), [data]);
+  //
+  // The dependency list is narrowed to the sub-fields `allTypes` /
+  // `allCategories` actually consume so a cell-edit (which only flips
+  // `data.sheets`) doesn't mint fresh arrays here. Without that, the
+  // new references propagate to `BudgetPage`'s `types` / `categories`
+  // props and silently invalidate every downstream memo — including
+  // `buildSynthesizedRows`, which is meant to skip across keystrokes
+  // (see the comment in BudgetPage near that useMemo). The result was
+  // every history entry re-synthesized + every match rule re-tested
+  // on every keystroke; for a budget with a few thousand history
+  // entries and a handful of rules that was the dominant cost of
+  // typing in a cell.
+  const allCategoriesMerged = useMemo(
+    () => allCategories(data),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.hiddenPresetCategoryIds, data.categories],
+  );
+  const allTypesMerged = useMemo(
+    () => allTypes(data),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.hiddenPresetTypeIds, data.presetTypeKindOverrides, data.types],
+  );
 
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
