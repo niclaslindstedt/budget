@@ -2,8 +2,8 @@ import {
   defaultCompletedForDate,
   propagateCellInSeries,
   rowsInSeriesFrom,
-} from "../budget-rows";
-import { computePrimaryIncomeShift, shiftIsoToMonth } from "../fiscal-month";
+} from "../../budget-rows";
+import { shiftIsoToMonth } from "../../fiscal-month";
 import {
   createEmptyRow,
   findColumnByType,
@@ -12,303 +12,21 @@ import {
   moveColumn,
   newId,
   updateAccountBudget,
-} from "../sheet";
-import { findMatchingRuleForCandidate } from "../match-rules";
-import { candidateFromRow, resolveCandidateColumns } from "../row-candidate";
-import { type HintRecording, recordMerchantHints } from "../merchant-hints";
-import { nextUncoveredDate } from "../coverage";
-import type {
-  AccountBudget,
-  CellValue,
-  MatchRule,
-  Row,
-  SeriesMetadata,
-  UserData,
-} from "../types";
-import type {
-  BulkPatch,
-  ComplexEntryDraft,
-  EditPatch,
-  EditScope,
-  SplitSubmission,
-} from "../action-payloads";
-import type { Action } from "../reducer";
-import { addDaysIso } from "../../utils/date";
+} from "../../sheet";
+import { type HintRecording, recordMerchantHints } from "../../merchant-hints";
+import { nextUncoveredDate } from "../../coverage";
+import type { AccountBudget, Row, UserData } from "../../types";
+import type { Action } from "../../reducer";
+import type { ItemAction } from "./actions";
+import {
+  applyPatch,
+  applyPatternsAfterCellEdit,
+  hintRecordingsFromBudget,
+} from "./hints";
+import { applyPrimaryIncomeShifts } from "./primary-income";
 
-// Every item-level action carries both `sheetId` (so the dispatcher can
-// find the right sheet quickly) and `itemId` (so a sheet that grows to
-// hold multiple items can target the right one). Today the UI only
-// renders one AccountBudget per sheet, so `itemId` always resolves to
-// the same value, but plumbing it through now means future multi-item
-// support drops in without another reducer rewrite.
-export type ItemAction =
-  | {
-      type: "updateCell";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      columnId: string;
-      value: CellValue;
-    }
-  | {
-      // Flip a budget row's `isTransfer` flag. The synthesized
-      // transfer and history row variants set their transfer status
-      // through other paths (`peerAccountId` and
-      // `HistoryEntry.isTransfer` respectively) — this action only
-      // touches user-authored rows that live in `item.rows`.
-      type: "toggleRowTransfer";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-    }
-  | { type: "addRow"; sheetId: string; itemId: string; date: string }
-  | {
-      type: "addRowsFromComplex";
-      sheetId: string;
-      itemId: string;
-      draft: ComplexEntryDraft;
-    }
-  | {
-      type: "convertToRecurring";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      futureDates: string[];
-      typeId: string | null;
-      companyId: string | null;
-    }
-  | {
-      type: "editSeries";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      patch: EditPatch;
-      scope: EditScope;
-    }
-  | {
-      type: "propagateCellToFuture";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      columnId: string;
-      value: CellValue;
-      untilIso: string | null;
-    }
-  | {
-      type: "deleteRows";
-      sheetId: string;
-      itemId: string;
-      rowIds: string[];
-    }
-  | {
-      type: "bulkUpdate";
-      sheetId: string;
-      itemId: string;
-      rowIds: string[];
-      patch: BulkPatch;
-    }
-  | {
-      type: "bulkShiftToMonth";
-      sheetId: string;
-      itemId: string;
-      rowIds: string[];
-      targetMonth: string;
-    }
-  | {
-      type: "bulkCopyToMonths";
-      sheetId: string;
-      itemId: string;
-      rowIds: string[];
-      targetMonths: string[];
-    }
-  | {
-      type: "bulkMakeRecurring";
-      sheetId: string;
-      itemId: string;
-      rowIds: string[];
-      futureDates: string[];
-    }
-  | {
-      type: "reorderColumns";
-      sheetId: string;
-      itemId: string;
-      fromId: string;
-      toId: string;
-    }
-  | {
-      // Replace `rowId` with `splits` (one new row per split) at the
-      // original's position in `item.rows`. When `remainderAmount` is
-      // non-zero, the original row is pushed to the END of `item.rows`
-      // with its amount swapped for `remainderAmount` (preserving
-      // description / typeId / seriesId / completed / date); when it's
-      // zero, the original is removed entirely.
-      type: "splitRow";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      splits: SplitSubmission[];
-      remainderAmount: number;
-    }
-  | {
-      // Set / clear the manual fiscal-month override on a single row.
-      // `shift === null` clears the field; `1` / `-1` set it. Only the
-      // anchor row stores the override — the grouping pipeline cascades
-      // it to every other row dated the same day. Synthesized transfer /
-      // history rows have read-only ids so the UI hides this action on
-      // them; the reducer ignores no-op writes.
-      type: "setRowFiscalMonthShift";
-      sheetId: string;
-      itemId: string;
-      rowId: string;
-      shift: -1 | 1 | null;
-    };
-
-// Walk an AccountBudget's before/after rows and collect the
-// description+typeId pairs that need to be folded into the merchant-
-// hint store. Anything that newly carries a string typeId (or whose
-// typeId changed) counts; rows whose typeId was cleared emit a
-// recording with `typeId: null` so `recordMerchantHints` can drop
-// the stale hint.
-export function hintRecordingsFromBudget(
-  prev: AccountBudget,
-  next: AccountBudget,
-): HintRecording[] {
-  const descId = findColumnByType(next.columns, "description")?.id;
-  if (!descId) return [];
-  const prevById = new Map<string, Row>();
-  for (const r of prev.rows) prevById.set(r.id, r);
-  const out: HintRecording[] = [];
-  for (const row of next.rows) {
-    const before = prevById.get(row.id);
-    const afterType = row.typeId ?? null;
-    const beforeType = before?.typeId ?? null;
-    const afterCompany = row.companyId ?? null;
-    const beforeCompany = before?.companyId ?? null;
-    const typeChanged = afterType !== beforeType;
-    const companyChanged = afterCompany !== beforeCompany;
-    if (!typeChanged && !companyChanged) continue;
-    const desc = row.cells[descId];
-    if (typeof desc !== "string" || desc.trim() === "") continue;
-    if (afterType !== null) {
-      out.push({
-        description: desc,
-        typeId: afterType,
-        companyId: companyChanged ? afterCompany : undefined,
-      });
-    } else if (beforeType !== null) {
-      // Type was cleared — drop the hint.
-      out.push({ description: desc, typeId: null });
-    } else if (companyChanged && afterCompany !== null) {
-      // Type didn't change but company did. Skip — merchant hints are
-      // keyed off the (type, key) pair and we only stamp company onto
-      // an existing hint via the type-bearing recording. A later type
-      // assignment will fold the company into the hint.
-      continue;
-    }
-  }
-  return out;
-}
-
-function applyPatch(
-  row: Row,
-  patch: EditPatch,
-  cols: {
-    descId?: string;
-    amountId?: string;
-    dateId?: string;
-  },
-): Row {
-  const next: Row = { ...row, cells: { ...row.cells } };
-  if (cols.descId) next.cells[cols.descId] = patch.description;
-  if (cols.amountId && patch.amount !== null) {
-    next.cells[cols.amountId] = patch.amount;
-    // The edit modals don't speak formula yet (v1 limitation); when
-    // the user retypes a literal amount on a row that previously
-    // carried `amountFormula`, treat that as "replace the formula
-    // with this literal" so the visible value matches what the user
-    // just typed. Re-editing the formula itself goes through the
-    // ComplexEntryModal (delete + re-add for v1).
-    if (next.amountFormula !== undefined) delete next.amountFormula;
-  }
-  // `undefined` means "don't touch"; explicit `null` clears the type
-  // and the row falls back to its description as the primary label.
-  if (patch.typeId !== undefined) {
-    if (patch.typeId === null) {
-      delete next.typeId;
-      delete next.typeIdLocked;
-    } else {
-      next.typeId = patch.typeId;
-      // The edit modal is an explicit user choice — lock the row out
-      // of pattern-driven re-labelling, same as the inline type cell.
-      next.typeIdLocked = true;
-    }
-  }
-  // Same tri-state contract as typeId: undefined = don't touch,
-  // null = clear, string = set.
-  if (patch.companyId !== undefined) {
-    if (patch.companyId === null) {
-      delete next.companyId;
-    } else {
-      next.companyId = patch.companyId;
-    }
-  }
-  if (cols.dateId && patch.dateShiftDays && patch.dateShiftDays !== 0) {
-    const cur = next.cells[cols.dateId];
-    if (typeof cur === "string" && cur !== "") {
-      next.cells[cols.dateId] = addDaysIso(cur, patch.dateShiftDays);
-    }
-  }
-  return next;
-}
-
-// Walk the diff between prev and next; for any row whose description
-// or amount changed and that isn't locked to a manual type, look up
-// the first rule that matches the new shape and write the rule's
-// typeId onto the row. Additive only — see the header note in
-// `pattern-apply.ts`: when no rule wins, the row's existing typeId
-// is preserved. Returns next unchanged when no row moves
-// (referentially identical so the outer reducer can short-circuit).
-export function applyPatternsAfterCellEdit(
-  prev: AccountBudget,
-  next: AccountBudget,
-  rules: readonly MatchRule[],
-): AccountBudget {
-  if (rules.length === 0) return next;
-  const cols = resolveCandidateColumns(next.columns);
-  if (cols.descId === undefined && cols.amountId === undefined) return next;
-  const prevById = new Map<string, Row>();
-  for (const r of prev.rows) prevById.set(r.id, r);
-  let changed = false;
-  const nextRows = next.rows.map((row) => {
-    if (row.typeIdLocked) return row;
-    const candidate = candidateFromRow(row, cols);
-    if (!candidate) return row;
-    const before = prevById.get(row.id);
-    const descChanged =
-      cols.descId !== undefined &&
-      (!before || before.cells[cols.descId] !== row.cells[cols.descId]);
-    const amountChanged =
-      cols.amountId !== undefined &&
-      (!before || before.cells[cols.amountId] !== row.cells[cols.amountId]);
-    if (!descChanged && !amountChanged) return row;
-    const rule = findMatchingRuleForCandidate(rules, candidate);
-    if (!rule || !rule.typeId) return row;
-    const ruleCompanyId =
-      rule.companyId !== undefined && rule.companyId !== null
-        ? rule.companyId
-        : undefined;
-    const typeNeedsUpdate = rule.typeId !== row.typeId;
-    const companyNeedsUpdate =
-      ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
-    if (!typeNeedsUpdate && !companyNeedsUpdate) return row;
-    changed = true;
-    const nextRow: Row = { ...row, typeId: rule.typeId };
-    if (ruleCompanyId !== undefined) nextRow.companyId = ruleCompanyId;
-    return nextRow;
-  });
-  if (!changed) return next;
-  return { ...next, rows: nextRows };
-}
+export type { ItemAction } from "./actions";
+export { applyPatternsAfterCellEdit, hintRecordingsFromBudget } from "./hints";
 
 export function reduceAccountBudget(
   item: AccountBudget,
@@ -733,46 +451,6 @@ export function reduceAccountBudget(
       return { ...item, rows };
     }
   }
-}
-
-// Walk every row in `item` whose `seriesId` is flagged primary-income
-// and re-stamp `fiscalMonthShift` from the row's current date. Rows
-// outside flagged series — and rows in flagged series whose computed
-// shift matches the stored value — fall through with referential
-// identity preserved so the outer dispatch can short-circuit unchanged
-// updates. Cheap by default: bails out before walking the rows when
-// no series carries the primary-income flag.
-function applyPrimaryIncomeShifts(
-  item: AccountBudget,
-  seriesMetadata: Readonly<Record<string, SeriesMetadata>>,
-): AccountBudget {
-  const flaggedSeriesIds = new Set<string>();
-  for (const [seriesId, meta] of Object.entries(seriesMetadata)) {
-    if (meta.isPrimaryIncome) flaggedSeriesIds.add(seriesId);
-  }
-  if (flaggedSeriesIds.size === 0) return item;
-  const dateCol = findColumnByType(item.columns, "date");
-  if (!dateCol) return item;
-  let changed = false;
-  const rows = item.rows.map((row) => {
-    if (!row.seriesId || !flaggedSeriesIds.has(row.seriesId)) return row;
-    const dateValue = row.cells[dateCol.id];
-    if (typeof dateValue !== "string" || dateValue.length < 10) return row;
-    const shift = computePrimaryIncomeShift(
-      dateValue,
-      seriesMetadata[row.seriesId],
-    );
-    if (shift === row.fiscalMonthShift) return row;
-    const next: Row = { ...row };
-    if (shift === undefined) {
-      delete next.fiscalMonthShift;
-    } else {
-      next.fiscalMonthShift = shift;
-    }
-    changed = true;
-    return next;
-  });
-  return changed ? { ...item, rows } : item;
 }
 
 function isItemAction(action: Action): action is ItemAction {

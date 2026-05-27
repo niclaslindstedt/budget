@@ -1,0 +1,195 @@
+// Master allowlist of glyph names used anywhere in the app. The picker
+// grids for sheets, accounts, categories, and types each render a
+// curated subset of this union (see `*_GLYPH_NAMES` in
+// `data/constants.ts`) so the user sees relevant choices in each
+// context, but the persisted data model accepts any value from the
+// full union. That keeps cross-context moves (an icon used for a
+// category today, promoted to a sheet glyph tomorrow) free.
+export type CategoryIcon =
+  // Originals — kept first to preserve existing display order in
+  // contexts that still iterate the full allowlist.
+  | "tag"
+  | "home"
+  | "car"
+  | "shopping-bag"
+  | "shopping-cart"
+  | "utensils"
+  | "coffee"
+  | "pizza"
+  | "heart"
+  | "gift"
+  | "music"
+  | "film"
+  | "plane"
+  | "hotel"
+  | "package"
+  | "hand-heart"
+  | "briefcase"
+  | "graduation-cap"
+  | "stethoscope"
+  | "pill"
+  | "receipt"
+  | "banknote"
+  | "credit-card"
+  | "piggy-bank"
+  | "wallet"
+  | "zap"
+  | "sparkles"
+  | "star"
+  // Food & drink
+  | "cookie"
+  | "cake"
+  | "ice-cream"
+  | "beer"
+  | "wine"
+  | "hand-platter"
+  | "cooking-pot"
+  // Transport
+  | "bus"
+  | "train"
+  | "bike"
+  | "fuel"
+  | "car-front"
+  // Home & utilities
+  | "bed"
+  | "sofa"
+  | "lightbulb"
+  | "droplet"
+  | "flame"
+  | "wifi"
+  | "key"
+  | "wrench"
+  | "hammer"
+  | "brush-cleaning"
+  | "trash-2"
+  | "sprout"
+  | "umbrella"
+  | "paint-roller"
+  | "washing-machine"
+  // Tech & gadgets
+  | "smartphone"
+  | "laptop"
+  | "headphones"
+  | "camera"
+  | "tv"
+  // Lifestyle
+  | "shirt"
+  | "scissors"
+  | "ticket"
+  | "gamepad-2"
+  | "book-open"
+  | "dumbbell"
+  | "dog"
+  | "cat"
+  | "paw-print"
+  | "tree-pine"
+  | "baby"
+  | "toy-brick"
+  | "school"
+  | "trophy"
+  | "pencil"
+  | "dice-5"
+  | "book-headphones"
+  | "hourglass"
+  // Health
+  | "heart-pulse"
+  | "shield-plus"
+  | "glasses"
+  | "brain"
+  // Money & finance
+  | "coins"
+  | "hand-coins"
+  | "landmark"
+  | "building-2"
+  | "vault"
+  | "gem"
+  | "bitcoin"
+  | "scale"
+  | "trending-up"
+  | "line-chart"
+  | "pie-chart"
+  | "calendar-days"
+  | "globe"
+  | "arrow-down-circle"
+  | "arrow-up-circle"
+  | "percent"
+  // Print, media & arts
+  | "newspaper"
+  | "book-marked"
+  | "clapperboard"
+  | "palette"
+  | "lamp"
+  | "bath"
+  | "compass"
+  // Status & flags
+  | "circle-help"
+  | "repeat"
+  | "banknote-arrow-down"
+  | "flag"
+  | "shield-alert"
+  | "cloud";
+
+// Broad bucket used for cross-row analysis: Food, Housing, Transport,
+// Entertainment. A category owns a set of `EntryType`s (its concrete
+// children) — every type belongs to exactly one category, and a row's
+// category is derived through `row.typeId → type.categoryId`. The
+// category itself is never selected directly on a row; rows pick a
+// type and the category follows.
+export type Category = {
+  id: string;
+  name: string;
+  color: string;
+  icon: CategoryIcon;
+};
+
+// Whether an EntryType belongs on the income side, the expense side,
+// or works for either direction. Drives the `TypePicker` filter so
+// "Salary" disappears when the user enters a negative amount and
+// "Groceries" disappears on a positive one. `any` is the implicit
+// default for user-created types (and for any preset that fits both
+// directions) — when `kind` is missing, the type is offered in every
+// sign context.
+export type EntryTypeKind = "income" | "expense" | "any";
+
+// Reusable label assigned to a row to describe what kind of entry it
+// is — "Mortgage", "Groceries", "Restaurant", "Salary". Sits between
+// the free-text description (which is specific to the row) and the
+// category (which groups across rows for statistical analysis). Every
+// type belongs to exactly one `Category` via `categoryId`; the
+// category is derived through that link rather than stored on the row.
+// The type's glyph and color replace the per-row `glyph` field that
+// used to live on `Row`: now every row that shares a type also shares
+// a visual identity, so the picker is the single source of truth for
+// what a row looks like.
+//
+// `kind` narrows the picker so income-only entries (Salary, Bonus,
+// Barnbidrag) never surface on a negative-amount row and expense-only
+// entries never surface on a positive one. Absent on a type means
+// "fits either direction". For preset types the default `kind` is
+// hard-coded; the per-user override lives in
+// `UserData.presetTypeKindOverrides`.
+export type EntryType = {
+  id: string;
+  name: string;
+  color: string;
+  glyph: CategoryIcon;
+  categoryId: string;
+  kind?: EntryTypeKind;
+};
+
+// A merchant / organisation a row's money flows to (or from). Sits in
+// `UserData.companies`; rows reference it through `Row.companyId`. The
+// model is intentionally minimal — name only — so the Companies tab in
+// Settings is a flat rename-list and analysis grows on top later. No
+// presets ship: companies are entirely user-curated and grown through
+// the inline create rows on `CompanyPicker`.
+//
+// The display fallback chain in the budget cell reads
+// description → company name → type name → bank text, so a row paying
+// H&M for sunglasses shows "Sunglasses" (description), a row paying
+// H&M with no description shows "H&M" (company), and a row paying H&M
+// with neither shows "Accessories" (type).
+export type Company = {
+  id: string;
+  name: string;
+};
