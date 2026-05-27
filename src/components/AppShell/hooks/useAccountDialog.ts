@@ -51,11 +51,7 @@ type Result = {
 // Workspace-level Account CRUD + balance-correction. The matching
 // per-history flows (import / view / cut) live separately in the
 // import flow hook because they share the reconciliation pipeline.
-export function useAccountDialog({
-  data,
-  dispatch,
-  toast,
-}: Params): Result {
+export function useAccountDialog({ data, dispatch, toast }: Params): Result {
   const t = useT();
   const [accountModal, setAccountModal] = useState<AccountModalState | null>(
     null,

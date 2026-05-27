@@ -17,10 +17,7 @@ type Result = {
   onDeleteCategory: (categoryId: string) => void;
   onSetPresetCategoryHidden: (presetId: string, hidden: boolean) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
-  onUpdateType: (
-    typeId: string,
-    patch: Partial<Omit<EntryType, "id">>,
-  ) => void;
+  onUpdateType: (typeId: string, patch: Partial<Omit<EntryType, "id">>) => void;
   onDeleteType: (typeId: string) => void;
   onSetPresetTypeHidden: (presetId: string, hidden: boolean) => void;
   onSetPresetTypeKind: (

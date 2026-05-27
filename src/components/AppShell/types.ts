@@ -137,4 +137,3 @@ export function headerActionDescription(
   }
   return t(`settings.headerAction.${action.kind}`);
 }
-

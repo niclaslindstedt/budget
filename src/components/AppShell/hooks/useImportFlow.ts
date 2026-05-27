@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
-import type {
-  ReconciliationApply,
-} from "../../accounts/ReconciliationModal";
+import type { ReconciliationApply } from "../../accounts/ReconciliationModal";
 import type { RenameDecision } from "../../accounts/RenamePredictorModal";
 import type {
   ConflictHistoryStamp,
