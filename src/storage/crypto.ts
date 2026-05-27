@@ -10,6 +10,8 @@
 // parameters are stored on the envelope so future iteration bumps can
 // be honored without breaking older blobs.
 
+import { safeJsonParse } from "../utils/json";
+
 const ENVELOPE_TAG = "budget.encrypted.v1" as const;
 const DEFAULT_ITERATIONS = 600_000;
 const KEY_LENGTH_BITS = 256;
@@ -130,12 +132,7 @@ export async function decryptEnvelope(
 }
 
 export function parseEnvelope(text: string): Envelope | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return null;
-  }
+  const parsed = safeJsonParse(text);
   if (
     typeof parsed === "object" &&
     parsed !== null &&

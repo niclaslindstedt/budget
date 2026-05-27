@@ -315,10 +315,9 @@ T | null` for "explicitly cleared by the user, distinct from
   third OAuth backend (e.g. iCloud Drive) lands.
 
 - **`BudgetViewerModal.tsx` (816 lines) inline search filter**
-  duplicates ~200 lines from `TransferSearchModal.tsx`. Module-scope
-  `monthFormatCache` doesn't invalidate on language change.
-  **Severity: 4.** Easy seam: extract `<RowSearchForm>`; move
-  `monthFormatCache` into `useMonthFormatter(lang)`.
+  duplicates ~200 lines from `TransferSearchModal.tsx`. **Severity: 4.**
+  Easy seam: extract `<RowSearchForm>`. (The `monthFormatCache`
+  consolidation half of this item landed 2026-05 — see Landed.)
 
 - **`MonthTable.tsx` orphan-count + transfer-visibility logic
   scattered** — orphan rendering coordinates between AppShell,
@@ -388,13 +387,7 @@ EntryType) => boolean` prop so callers customise; default to
   surrounding file is otherwise touched. No batch PR — opportunistic
   drive-by.
 
-- Extract `parseAndValidate<T>` JSON helper and adopt at the ~9
-  sites (see severity-4 item above).
-
 - Add `adapter.capabilities` set (see severity-3 item).
-
-- Move `monthFormatCache` to `useMonthFormatter(lang)` hook
-  (severity-4 item).
 
 - Extract `parseDecimal` / `parseInt32` helpers and adopt at the
   ~30 inline call sites (severity-4 item).
@@ -406,6 +399,40 @@ EntryType) => boolean` prop so callers customise; default to
 
 ## Landed
 
+- **Shared `formatYearMonth(monthKey, lang)` helper** (2026-05): the
+  duplicated `monthFormatCache` + `monthFormatFor` + `formatMonth`
+  trio (one copy per file) collapsed onto a single
+  `formatYearMonth(monthKey, lang)` in `src/utils/format.ts`. Six
+  call sites — `MonthTable`, `BudgetViewerModal`,
+  `BudgetMetadataModal`, `MoveCopyModal` (year-month half;
+  short-month formatter stays inline), `HistoryModal`, `AccountsPage` —
+  now share one Lang-keyed `Intl.DateTimeFormat` cache. The
+  surrounding wrappers (`formatMonth(key, lang, t)` in MonthTable
+  with the "undated" branch, `formatMonth(key, lang, undatedLabel)`
+  in BudgetViewerModal) stay where they are because each one's
+  pre-call branch differs.
+- **`safeJsonParse<T>(text)` helper** (2026-05): the recurring
+  `let parsed: unknown; try { parsed = JSON.parse(raw); } catch { return X; }`
+  boilerplate collapsed onto a `safeJsonParse<T>(text): T | null`
+  helper in `src/utils/json.ts`. Adopted at the 7 sites where the
+  catch was unconditional (no error logging or message detail to
+  preserve): `backup-index.ts`, `session.ts`, `users.ts`, `crypto.ts`,
+  two `migrations/modern.ts` legacy readers, and `logger.ts`'s
+  ring-buffer rehydration. Skipped at `file.ts` (the user-facing
+  parse error message needs the `(err as Error).message` detail),
+  `idb-adapter.ts`, and `dropbox-adapter.ts` (the catch logs a
+  diagnostic warning that's useful for debugging).
+- **`useResetOnOpen` adoption at three more modals** (2026-05):
+  `AccountModal`, `SplitEntryModal`, and `HistoryEntryEditModal`
+  switched from the manual `useEffect(() => { if (!open) return; ... }, [open, X])`
+  pattern to the shared `useResetOnOpen(open, key, fn)` hook
+  (previously used by `EditEntryModal` + `EditRowModal`).
+  `MatchRuleModal`, `BulkEditModal`, `ComplexEntryModal`,
+  `TransferModal`, and `UpdateBalanceModal` weren't migrated because
+  each one's reset-on-open effect carries a `settings` (or similar)
+  prop in its dep array — preserving that semantic would require
+  combining the keys into a composite resetKey, which obscures more
+  than the hook saves.
 - **`constants.ts` taxonomy / theme split** (2026-05): preset
   categories / entry types now live in `src/data/presets.ts`, theme
   presets in `src/data/themes.ts`.

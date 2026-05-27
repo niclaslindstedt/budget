@@ -1,5 +1,5 @@
 import type { DateFormat, Settings, ShortDateFormat } from "../data/types";
-import type { Lang } from "../i18n/locale";
+import { bcp47, type Lang } from "../i18n/locale";
 
 // Shared formatting + parsing helpers driven by the user's settings.
 // `formatAmount` / `formatBalance` handle display (thousands grouping,
@@ -278,6 +278,27 @@ export function formatDate(
     case "D MMM YYYY":
       return `${dayNum} ${monthShort(lang, monthNum)} ${y}`;
   }
+}
+
+// Month-key (`YYYY-MM`) rendered as "MMMM YYYY" via `Intl.DateTimeFormat`
+// in the active language — the long-form header used by every page that
+// groups rows or history entries by month (MonthTable, BudgetViewerModal,
+// BudgetMetadataModal, MoveCopyModal, HistoryModal, AccountsPage).
+// Returns the input unchanged for non-parsable keys so callers can drop
+// the result in unconditionally.
+const yearMonthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
+export function formatYearMonth(monthKey: string, lang: Lang): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  if (!y || !m) return monthKey;
+  let fmt = yearMonthFormatCache.get(lang);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(bcp47(lang), {
+      month: "long",
+      year: "numeric",
+    });
+    yearMonthFormatCache.set(lang, fmt);
+  }
+  return fmt.format(new Date(y, m - 1, 1));
 }
 
 // Month-key (`YYYY-MM`) rendered as "MMM YYYY" in the active language

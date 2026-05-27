@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, Split, Trash2 } from "lucide-react";
 
 import { findColumnByType } from "../../data/sheet";
@@ -9,7 +9,7 @@ import type {
   Row,
   Settings,
 } from "../../data/types";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import {
   formatAmountForInput,
@@ -174,11 +174,9 @@ export function SplitEntryModal({
   // doesn't leak in. Resetting on `open` alone would skip the case
   // where the user closes and re-opens against the same row, hence the
   // row id dependency.
-  useEffect(() => {
-    if (!open) return;
+  useResetOnOpen(open, row?.id, () => {
     setSplits(seedSplits());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, row?.id]);
+  });
 
   if (!open || !row) return null;
 

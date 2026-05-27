@@ -5,36 +5,16 @@ import { History } from "lucide-react";
 import { compareDateStrings } from "../../data/fiscal-month";
 import type { Account, HistoryEntry, Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import { bcp47, type Lang } from "../../i18n/locale";
 import {
   formatBalance,
   formatNumber,
   formatShortDate,
+  formatYearMonth,
   withCurrency,
 } from "../../utils/format";
 import { ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
-
-const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
-
-function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
-  let f = monthFormatCache.get(lang);
-  if (!f) {
-    f = new Intl.DateTimeFormat(bcp47(lang), {
-      month: "long",
-      year: "numeric",
-    });
-    monthFormatCache.set(lang, f);
-  }
-  return f;
-}
-
-function formatMonth(key: string, lang: Lang): string {
-  const [y, m] = key.split("-").map(Number);
-  if (!y || !m) return key;
-  return monthFormatFor(lang).format(new Date(y, m - 1, 1));
-}
 
 type Props = {
   open: boolean;
@@ -248,7 +228,7 @@ export function HistoryModal({
                         colSpan={colSpan}
                         className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase text-muted"
                       >
-                        {formatMonth(group.monthKey, lang)}
+                        {formatYearMonth(group.monthKey, lang)}
                       </td>
                     </tr>
                     {group.entries.map((e) => (

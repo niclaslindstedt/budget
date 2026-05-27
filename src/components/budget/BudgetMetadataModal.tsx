@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tags } from "lucide-react";
 
 import { resolveEntryLabels } from "../../data/budget/synthesis";
-import { bcp47, type Lang } from "../../i18n/locale";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
@@ -13,7 +12,11 @@ import type {
   MerchantHint,
   Settings,
 } from "../../data/types";
-import { formatBalance, formatShortDate } from "../../utils/format";
+import {
+  formatBalance,
+  formatShortDate,
+  formatYearMonth,
+} from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
@@ -63,26 +66,6 @@ type Props = {
     },
   ) => void;
 };
-
-const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
-
-function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
-  let fmt = monthFormatCache.get(lang);
-  if (!fmt) {
-    fmt = new Intl.DateTimeFormat(bcp47(lang), {
-      month: "long",
-      year: "numeric",
-    });
-    monthFormatCache.set(lang, fmt);
-  }
-  return fmt;
-}
-
-function formatMonthKey(key: string, lang: Lang): string {
-  const [y, m] = key.split("-").map(Number);
-  if (!y || !m) return key;
-  return monthFormatFor(lang).format(new Date(y, m - 1, 1));
-}
 
 function monthKeyOf(iso: string): string {
   return iso.slice(0, 7);
@@ -431,7 +414,7 @@ export function BudgetMetadataModal({
           <>
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
               {t("metadata.progress", {
-                month: formatMonthKey(currentMonth ?? "", lang),
+                month: formatYearMonth(currentMonth ?? "", lang),
                 index: monthIndex,
                 total: monthTotal,
               })}

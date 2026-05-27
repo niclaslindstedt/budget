@@ -20,8 +20,12 @@ import type {
 } from "../../data/types";
 import { useNearViewport } from "../../hooks";
 import { type TFunction, useLang, useT } from "../../i18n";
-import { bcp47, type Lang } from "../../i18n/locale";
-import { formatNumber, withCurrency } from "../../utils/format";
+import { type Lang } from "../../i18n/locale";
+import {
+  formatNumber,
+  formatYearMonth,
+  withCurrency,
+} from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
 import { ColumnHeader } from "./ColumnHeader";
@@ -123,25 +127,9 @@ type Props = {
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
 };
 
-const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
-
-function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
-  let fmt = monthFormatCache.get(lang);
-  if (!fmt) {
-    fmt = new Intl.DateTimeFormat(bcp47(lang), {
-      month: "long",
-      year: "numeric",
-    });
-    monthFormatCache.set(lang, fmt);
-  }
-  return fmt;
-}
-
 function formatMonth(key: string, lang: Lang, t: TFunction): string {
   if (key === "undated") return t("budget.undated");
-  const [y, m] = key.split("-").map(Number);
-  if (!y || !m) return key;
-  return monthFormatFor(lang).format(new Date(y, m - 1, 1));
+  return formatYearMonth(key, lang);
 }
 
 // Cold-start fallback for the placeholder height when a month has
