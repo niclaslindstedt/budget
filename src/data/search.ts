@@ -31,6 +31,13 @@ export type SearchEntry = {
   typeName: string;
   categoryName: string;
   amount: number | null;
+  // Pre-lowercased mirrors of the three searchable string fields.
+  // `runSearch` previously lowercased every haystack on every
+  // keystroke; hoisting the work into `buildSearchIndex` collapses
+  // the per-keystroke cost to a plain `indexOf` on the cached form.
+  descriptionLc: string;
+  typeNameLc: string;
+  categoryNameLc: string;
 };
 
 // Where the match landed and the offset / length inside the matched
@@ -97,6 +104,8 @@ export function buildSearchIndex(data: UserData): SearchEntry[] {
         const type =
           row.typeId !== undefined ? typesById.get(row.typeId) : undefined;
         const category = type ? categoriesById.get(type.categoryId) : undefined;
+        const typeName = type?.name ?? "";
+        const categoryName = category?.name ?? "";
         entries.push({
           sheetId: sheet.id,
           sheetName: sheet.name,
@@ -106,9 +115,12 @@ export function buildSearchIndex(data: UserData): SearchEntry[] {
           rowId: row.id,
           iso,
           description,
-          typeName: type?.name ?? "",
-          categoryName: category?.name ?? "",
+          typeName,
+          categoryName,
           amount,
+          descriptionLc: description.toLowerCase(),
+          typeNameLc: typeName.toLowerCase(),
+          categoryNameLc: categoryName.toLowerCase(),
         });
       }
     }
@@ -172,28 +184,35 @@ export function runSearch(
   type Scored = { result: SearchResult; score: number };
   const scored: Scored[] = [];
 
+  // Pull the lowercase haystacks out of an array literal once per
+  // iteration. The previous loop body lowercased every haystack on
+  // every keystroke; `buildSearchIndex` now caches the lc forms so
+  // each text-match check collapses to a plain `indexOf`.
+  const TEXT_FIELDS: {
+    name: "description" | "typeName" | "categoryName";
+    lcKey: "descriptionLc" | "typeNameLc" | "categoryNameLc";
+  }[] = [
+    { name: "description", lcKey: "descriptionLc" },
+    { name: "typeName", lcKey: "typeNameLc" },
+    { name: "categoryName", lcKey: "categoryNameLc" },
+  ];
   for (const entry of index) {
     let best: { match: SearchMatch; score: number } | null = null;
 
     // Text matches first — find earliest hit across fields, weighted
     // by field priority.
-    const fields: ("description" | "typeName" | "categoryName")[] = [
-      "description",
-      "typeName",
-      "categoryName",
-    ];
-    for (const field of fields) {
-      const haystack = entry[field];
-      if (haystack === "") continue;
-      const idx = haystack.toLowerCase().indexOf(needle);
+    for (const field of TEXT_FIELDS) {
+      const haystackLc = entry[field.lcKey];
+      if (haystackLc === "") continue;
+      const idx = haystackLc.indexOf(needle);
       if (idx === -1) continue;
       // Score: field weight (×1000 so it dominates) + position inside
       // the field. Earlier matches and higher-priority fields rank
       // first; ties break on insertion order via stable sort.
-      const score = FIELD_WEIGHT[field] * 1000 + idx;
+      const score = FIELD_WEIGHT[field.name] * 1000 + idx;
       if (best === null || score < best.score) {
         best = {
-          match: { field, start: idx, end: idx + needle.length },
+          match: { field: field.name, start: idx, end: idx + needle.length },
           score,
         };
       }

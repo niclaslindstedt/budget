@@ -213,3 +213,27 @@ describe("nextUncoveredDate — fiscal months (startOfMonth=25)", () => {
     );
   });
 });
+
+// Asymptotic guard: `coveredMonths` used to scan the full history
+// array for each fiscal-month window (up to 144). The optimised path
+// hoists min/max once so 10000 entries × 144 months runs in O(N + M).
+describe("coveredMonths — asymptotic check", () => {
+  it("walks 10000 history entries across a year of months in well under a second", () => {
+    const h: HistoryEntry[] = [];
+    for (let i = 0; i < 10000; i += 1) {
+      const month = String((i % 12) + 1).padStart(2, "0");
+      const day = String((i % 27) + 1).padStart(2, "0");
+      h.push(hist(`e_${i}`, `2026-${month}-${day}`));
+    }
+    const t0 = performance.now();
+    const out = coveredMonths(h, [], columns, 1);
+    const elapsed = performance.now() - t0;
+    // Every fiscal month from Feb..Nov is bracketed (entries on either
+    // side); Jan has no entry before it (only after), so the "no user
+    // rows" branch still flips it on. Dec is the last month — nothing
+    // after, so it falls out.
+    expect(out.has("2026-06")).toBe(true);
+    expect(out.has("2026-12")).toBe(false);
+    expect(elapsed).toBeLessThan(100);
+  });
+});
