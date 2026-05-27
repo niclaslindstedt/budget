@@ -7,6 +7,7 @@ import {
   SHEET_COLORS,
   SHEET_GLYPH_NAMES,
 } from "../data/constants";
+import { normalizeName } from "../data/normalize";
 import {
   SHEET_TYPE_REGISTRY,
   getSheetTypeDescriptor,
@@ -97,10 +98,10 @@ export function SheetModal({
     if (creatingAccount) newAccountInputRef.current?.focus();
   }, [creatingAccount]);
 
-  const trimmedNewAccount = newAccountName.trim();
+  const trimmedName = normalizeName(name);
+  const trimmedNewAccount = normalizeName(newAccountName);
   const canSave =
-    name.trim().length > 0 &&
-    (!creatingAccount || trimmedNewAccount.length > 0);
+    trimmedName !== null && (!creatingAccount || trimmedNewAccount !== null);
   const selectedType = getSheetTypeDescriptor(type);
 
   function handleAccountChange(value: string) {
@@ -119,17 +120,18 @@ export function SheetModal({
   }
 
   function handleSave() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    if (trimmedName === null) return;
     onSave({
-      name: trimmed,
+      name: trimmedName,
       type,
       glyph,
       color,
       description: description.trim(),
       accountId: creatingAccount ? null : accountId,
       newAccountName:
-        creatingAccount && trimmedNewAccount ? trimmedNewAccount : null,
+        creatingAccount && trimmedNewAccount !== null
+          ? trimmedNewAccount
+          : null,
     });
     onClose();
   }

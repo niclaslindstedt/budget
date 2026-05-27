@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 
 import { CATEGORY_COLORS } from "../data/constants";
+import { normalizeName } from "../data/normalize";
 import type { CategoryIcon } from "../data/types";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
@@ -80,11 +81,12 @@ export function EntityCreatorForm({
     nameRef.current?.focus();
   }, []);
 
-  const canSubmit = name.trim().length > 0 && extrasValid;
+  const trimmedName = normalizeName(name);
+  const canSubmit = trimmedName !== null && extrasValid;
 
   function handleSubmit() {
-    if (!canSubmit) return;
-    onSubmit({ name: name.trim(), color, glyph });
+    if (trimmedName === null || !extrasValid) return;
+    onSubmit({ name: trimmedName, color, glyph });
   }
 
   return (

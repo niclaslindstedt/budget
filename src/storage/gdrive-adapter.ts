@@ -597,6 +597,7 @@ export function createGdriveAdapter(
     id: "gdrive",
     label: "Google Drive",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
+    capabilities: new Set(["backups"]),
     backups,
     load,
     save,

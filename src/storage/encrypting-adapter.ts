@@ -1,5 +1,10 @@
 import { createLogger } from "../utils/logger";
-import type { BackupOps, Snapshot, StorageAdapter } from "./adapter";
+import type {
+  AdapterCapability,
+  BackupOps,
+  Snapshot,
+  StorageAdapter,
+} from "./adapter";
 import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto";
 
 const log = createLogger("encrypt");
@@ -62,10 +67,17 @@ export function withEncryption(
       }
     : undefined;
 
+  // Forward every inner capability except `loadSync` — decryption is
+  // async even when the inner backend can serve bytes synchronously,
+  // so this wrapper never implements the sync fast path.
+  const capabilities = new Set<AdapterCapability>(inner.capabilities);
+  capabilities.delete("loadSync");
+
   return {
     id: inner.id,
     label: `${inner.label} (encrypted)`,
     saveDebounceMs: inner.saveDebounceMs,
+    capabilities,
     backups: wrappedBackups,
 
     // The hook hands us plaintext bytes here; the inner cache (in

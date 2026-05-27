@@ -19,6 +19,7 @@ import {
   formatShortDate,
   parseAmount,
 } from "../../utils/format";
+import { parseInt32 } from "../../utils/parse";
 import {
   Checkbox,
   Button,
@@ -273,8 +274,8 @@ export function EditRowModal({
     setNegative((s) => !s);
   }
 
-  const parsedShiftDays = Number.parseInt(shiftDaysText, 10);
-  const shiftDays = Number.isFinite(parsedShiftDays) ? parsedShiftDays : 0;
+  const parsedShiftDays = parseInt32(shiftDaysText);
+  const shiftDays = parsedShiftDays ?? 0;
 
   function handleSave() {
     if (!row) return;
@@ -531,9 +532,9 @@ export function EditRowModal({
                 checked={isPrimaryIncome}
                 onChange={(next) => {
                   setIsPrimaryIncome(next);
-                  const day = Number.parseInt(anchorDayText, 10);
+                  const day = parseInt32(anchorDayText);
                   const dayClamped =
-                    Number.isFinite(day) && day >= 1 && day <= 31 ? day : 25;
+                    day !== null && day >= 1 && day <= 31 ? day : 25;
                   onSetSeriesPrimaryIncome(
                     row.seriesId as string,
                     next,
@@ -560,8 +561,8 @@ export function EditRowModal({
                     value={anchorDayText}
                     onValueChange={(next) => {
                       setAnchorDayText(next);
-                      const day = Number.parseInt(next, 10);
-                      if (Number.isFinite(day) && day >= 1 && day <= 31) {
+                      const day = parseInt32(next);
+                      if (day !== null && day >= 1 && day <= 31) {
                         onSetSeriesPrimaryIncome(
                           row.seriesId as string,
                           true,

@@ -27,6 +27,25 @@ export type Snapshot = {
   offline?: boolean;
 };
 
+// Optional-feature tags advertised by each adapter so UI surfaces can
+// gate on capability rather than `adapter.foo !== undefined` checks.
+// New backends (React Native, iCloud Drive, …) only have to fill in
+// the set — UI code that already reads `capabilities.has(...)` keeps
+// working without per-backend conditionals at the call site.
+export type AdapterCapability =
+  // `loadSync()` is implemented — bytes can be served before the
+  // first paint.
+  | "loadSync"
+  // `watch()` is implemented — adapter delivers out-of-band remote
+  // change events.
+  | "watch"
+  // `markSynced()` is implemented — caller can stamp the inner
+  // mirror with a freshly-resolved remote snapshot.
+  | "markSynced"
+  // `backups` is implemented — sibling timestamped backups can be
+  // listed, created, read, and removed.
+  | "backups";
+
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
   // last-used adapter) can be keyed per backend.
@@ -34,6 +53,14 @@ export type StorageAdapter = {
 
   // Human-readable label for the future settings UI.
   readonly label: string;
+
+  // Set of optional-feature tags this adapter supports. Mirrors the
+  // optional fields below — having `backups` here implies `backups`
+  // is non-undefined, etc. UI surfaces gate on
+  // `capabilities.has("backups")` rather than `Boolean(adapter.backups)`
+  // so a new backend that drops or adds a capability slots in by
+  // editing one set.
+  readonly capabilities: ReadonlySet<AdapterCapability>;
 
   // Optional synchronous fast path. localStorage can return data
   // before the first paint; cloud adapters cannot. Implementing this

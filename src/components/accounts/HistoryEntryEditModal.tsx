@@ -13,6 +13,7 @@ import type {
   Settings,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
@@ -203,9 +204,9 @@ export function HistoryEntryEditModal({
               checked={isPrimaryIncome}
               onChange={(next) => {
                 setIsPrimaryIncome(next);
-                const day = Number.parseInt(anchorDayText, 10);
+                const day = parseInt32(anchorDayText);
                 const dayClamped =
-                  Number.isFinite(day) && day >= 1 && day <= 31
+                  day !== null && day >= 1 && day <= 31
                     ? day
                     : settings.startOfMonth;
                 onSetPrimaryIncome(entry.id, next, next ? dayClamped : null);
@@ -230,8 +231,8 @@ export function HistoryEntryEditModal({
                   value={anchorDayText}
                   onValueChange={(next) => {
                     setAnchorDayText(next);
-                    const day = Number.parseInt(next, 10);
-                    if (Number.isFinite(day) && day >= 1 && day <= 31) {
+                    const day = parseInt32(next);
+                    if (day !== null && day >= 1 && day <= 31) {
                       onSetPrimaryIncome(entry.id, true, day);
                     }
                   }}

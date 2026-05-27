@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wand2 } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../../data/match-rules";
+import { normalizeOptional } from "../../data/normalize";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useLang, useT } from "../../i18n";
@@ -317,7 +318,7 @@ export function MatchRuleModal({
     () => ({
       id: existing?.id ?? "preview",
       pattern,
-      description: description.trim() === "" ? undefined : description.trim(),
+      description: normalizeOptional(description),
       typeId,
       companyId,
       amountSign,

@@ -378,6 +378,7 @@ export function createDropboxAdapter(
     id: "dropbox",
     label: "Dropbox",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
+    capabilities: new Set(["backups"]),
     backups,
 
     load: () => loadFromDropbox(),
