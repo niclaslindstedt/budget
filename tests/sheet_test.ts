@@ -920,6 +920,36 @@ describe("synthesizeHistoryRow", () => {
     expect(row.cells[descId]).toBe("User override");
     expect(row.typeId).toBe("user-type");
   });
+
+  it("flags the bank text as the description placeholder when no user override resolved", () => {
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, []);
+    // No userDescription / rule.description / hint.description — the
+    // cell value falls back to the raw bank text, and the cell tree
+    // reads `descriptionPlaceholder` to render the fallback in italic
+    // + glyph color and seed the inline editor empty + with the bank
+    // text as the placeholder.
+    expect(row.descriptionPlaceholder).toBe("APP STORE APL*Z123");
+  });
+
+  it("omits the description placeholder when a user override resolved", () => {
+    const entry: HistoryEntry = {
+      ...baseEntry,
+      userDescription: "User override",
+    };
+    const [row] = synthesizeHistoryRow(entry, item.columns, {}, []);
+    expect(row.descriptionPlaceholder).toBeUndefined();
+  });
+
+  it("omits the description placeholder when a rule resolves the description", () => {
+    const rule: MatchRule = {
+      id: "r1",
+      pattern: "*App Store*",
+      description: "App Store",
+      typeId: "type-1",
+    };
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
+    expect(row.descriptionPlaceholder).toBeUndefined();
+  });
 });
 
 describe("defaultCompletedForDate", () => {

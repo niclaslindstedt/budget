@@ -63,6 +63,18 @@ export type Row = {
   // renderer reads it to disable inline editing and surface a
   // "promote to recurring" action in place of the usual edit dialog.
   historyEntryId?: string;
+  // Runtime-only marker populated by `synthesizeHistoryRow` when the
+  // resolved description in `cells[descColumnId]` is a fallback
+  // (company / type / bank text) — i.e. the underlying HistoryEntry
+  // has no userDescription / rule.description / hint.description
+  // override. Carries the raw bank text so the description cell can
+  // (a) render the fallback in italic + glyph color, signalling that
+  // the row has no user-authored description, and (b) seed the inline
+  // editor with an empty textarea + this string as the placeholder
+  // when the user opens it to type a real description. Undefined on
+  // every other row (regular budget rows, transfers, splits, and
+  // history rows whose underlying entry already has an override).
+  descriptionPlaceholder?: string;
   // Optional dynamic amount: a small formula string whose evaluation
   // produces this row's effective amount at render time. When set, it
   // overrides the numeric value in `cells[amountColumnId]` (which is

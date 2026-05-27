@@ -55,6 +55,13 @@ type Props = {
   // no peer name. The action column hides edit/delete buttons too,
   // gated upstream in BudgetRow.
   isHistory?: boolean;
+  // Threaded from `Row.descriptionPlaceholder`. When set, the
+  // resolved description in `value` is a fallback (company / type /
+  // bank text) rather than a real user override — `DescriptionCell`
+  // renders it in italic + glyph color and seeds its inline editor
+  // empty + with this string as the placeholder. Only meaningful on
+  // synthesized history rows; ignored by every other column.
+  descriptionPlaceholder?: string;
   // True when the row carries an `amountFormula`. The amount cell
   // becomes read-only (the value comes from the formula resolver) and
   // surfaces a small `fx` glyph so the user can tell at a glance that
@@ -126,6 +133,7 @@ function CellImpl({
   rowDateColor,
   rowDescription,
   fiscalMonthShift,
+  descriptionPlaceholder,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -189,6 +197,7 @@ function CellImpl({
               value={typeof value === "string" ? value : ""}
               isRecurring={false}
               entryType={entryType ?? null}
+              placeholder={descriptionPlaceholder}
               onChange={onChange}
               onCommit={onCommit}
             />

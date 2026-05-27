@@ -406,6 +406,9 @@ function BudgetRowImpl({
           fiscalMonthShift={
             col.type === "date" ? row.fiscalMonthShift : undefined
           }
+          descriptionPlaceholder={
+            col.type === "description" ? row.descriptionPlaceholder : undefined
+          }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />
