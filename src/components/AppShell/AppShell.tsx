@@ -80,7 +80,11 @@ import { ReconnectCloudModal } from "../ReconnectCloudModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
 import { SyncStatus } from "../SyncStatus";
 import { allCategories, allTypes } from "../../data/presets/merge";
-import { isRowSavable, userDataWithSavableRows } from "../../data/budget/rows";
+import {
+  isRowSavable,
+  userDataHasUnsavableRows,
+  userDataWithSavableRows,
+} from "../../data/budget/rows";
 import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
@@ -171,6 +175,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     reload,
   } = useUserDataStorage(adapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
+    hasUnsavableContent: userDataHasUnsavableRows,
     userId: user.id,
   });
   // Pull-to-refresh wiring. Listens for a downward drag from the top
