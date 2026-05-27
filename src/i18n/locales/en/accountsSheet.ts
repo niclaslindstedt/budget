@@ -24,7 +24,6 @@ const accountsSheet = {
   importHistoryAria: "Import history into {name}",
   importHistoryTitle: "Import bank history",
   viewHistoryAria: "View history for {name}",
-  viewTransactionsTitle: "View transactions",
   noHistoryImported: "No history imported yet",
   viewHistoryEntries: "View {n} history entries",
   editAccountAria: "Edit {name}",

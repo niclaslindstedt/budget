@@ -24,7 +24,6 @@ const accountsSheet: AccountsSheetCatalog = {
   importHistoryAria: "Importera historik till {name}",
   importHistoryTitle: "Importera bankhistorik",
   viewHistoryAria: "Visa historik för {name}",
-  viewTransactionsTitle: "Visa transaktioner",
   noHistoryImported: "Ingen historik importerad än",
   viewHistoryEntries: "Visa {n} historikposter",
   editAccountAria: "Redigera {name}",

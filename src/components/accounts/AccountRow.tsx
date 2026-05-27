@@ -49,10 +49,24 @@ function AccountRowImpl({
 
   const rowClass = [
     swiped ? "is-swiped" : "",
-    "border-b border-line last:border-b-0 hover:bg-surface-2",
+    "cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2",
   ]
     .filter(Boolean)
     .join(" ");
+
+  // A tap on the row body opens the read-only history viewer; a tap on
+  // the revealed action strip is intercepted by each button's own
+  // handler (which stops propagation), so only "empty" row taps make
+  // it here. When the row is swiped, the same tap retracts the swipe
+  // instead — matches the mobile expectation that tapping the row
+  // body dismisses the revealed actions before doing anything else.
+  const onRowClick = () => {
+    if (swiped) {
+      setSwiped(false);
+      return;
+    }
+    onViewHistory(account.id);
+  };
 
   return (
     <tr
@@ -64,6 +78,8 @@ function AccountRowImpl({
       // opt-out selector in `src/hooks/useSheetSwipe.ts`. Mirrors the
       // equivalent attribute on `BudgetRow`.
       data-swipe-handled
+      onClick={onRowClick}
+      aria-label={t("accountsSheet.viewHistoryAria", { name: account.name })}
       {...touchHandlers}
     >
       <td className="w-10 px-2.5 py-2 align-middle">
@@ -116,7 +132,8 @@ function AccountRowImpl({
         {canUpdateBalance ? (
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setSwiped(false);
               onUpdateBalance(account.id);
             }}
@@ -152,7 +169,8 @@ function AccountRowImpl({
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setSwiped(false);
               onEditAccount(account.id);
             }}
@@ -166,7 +184,8 @@ function AccountRowImpl({
           </button>
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setSwiped(false);
               onDeleteAccount(account.id, account.name);
             }}
@@ -182,7 +201,6 @@ function AccountRowImpl({
             accountId={account.id}
             accountName={account.name}
             canCut={canCut}
-            onViewHistory={onViewHistory}
             onImportHistory={onImportHistory}
             onCutHistory={onCutHistory}
             onAction={() => setSwiped(false)}
