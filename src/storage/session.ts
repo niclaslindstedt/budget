@@ -12,7 +12,7 @@
 // default below applies before the user's settings have loaded (e.g.
 // the very first `saveSession` on sign-in).
 
-import { nsKey } from "../data/constants";
+import { nsKey } from "../data/constants/storage";
 import { safeJsonParse } from "../utils/json";
 
 const SESSION_KEY = nsKey("budget.session.v1");

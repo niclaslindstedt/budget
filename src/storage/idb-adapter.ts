@@ -1,4 +1,8 @@
-import { cloudMirrorKey, nsIdbName, userDataKey } from "../data/constants";
+import {
+  cloudMirrorKey,
+  nsIdbName,
+  userDataKey,
+} from "../data/constants/storage";
 import { createLogger } from "../utils/logger";
 import type { Snapshot, StorageAdapter } from "./adapter";
 import type { CloudMirrorState, CloudMirrorStorage } from "./cloud-mirror";

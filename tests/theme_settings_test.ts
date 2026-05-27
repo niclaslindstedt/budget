@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_SETTINGS } from "../src/data/constants/defaults";
 import {
   DEFAULT_CUSTOM_THEME,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,

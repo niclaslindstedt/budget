@@ -11,7 +11,7 @@ import {
   FolderLinkDialog,
 } from "./components/CloudLinkDialog";
 import { unlock } from "./data/achievements";
-import { STORAGE_KEY } from "./data/constants";
+import { STORAGE_KEY } from "./data/constants/storage";
 import type { StoredUser, UserData } from "./data/types";
 import { type AuthState, readBootAuth } from "./storage/boot-auth";
 import { clearCloudOfflineMode } from "./storage/backend-preference";

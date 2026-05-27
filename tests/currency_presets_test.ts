@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { CURRENCY_PRESETS, REGION_TO_CURRENCY_ID } from "../src/data/constants";
+import {
+  CURRENCY_PRESETS,
+  REGION_TO_CURRENCY_ID,
+} from "../src/data/constants/currency";
 import { detectInitialCurrency } from "../src/i18n/locale";
 
 describe("CURRENCY_PRESETS", () => {

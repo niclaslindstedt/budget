@@ -240,14 +240,6 @@ new sheet type, but feature work can ship through them.
     move pattern derivation into a `usePatternDerivation(seed)`
     hook accepting `{description, amount}`.
 
-- **`constants.ts` (883 lines) god module** — storage namespacing,
-  app defaults, currency / locale maps, font / session presets all
-  in one file. Adding a new sheet type's defaults forces editing
-  this file. **Severity: 5.**
-  - Plan: split into `storage-constants.ts`, `app-defaults.ts`,
-    `i18n-constants.ts`, `currency-constants.ts`. Each validator
-    imports from the matching constants module.
-
 - **`useStorageBackend.ts` token state machine entangled with
   adapter selection** — token refresh, OAuth completion, and
   adapter rebuilds share state. A future "Reauth dialog" can't
@@ -362,6 +354,24 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`src/data/constants/` topical split** (2026-05): the 859-line
+  `src/data/constants.ts` split into five sibling modules under
+  `src/data/constants/` — `storage.ts` (namespacing helpers +
+  `STORAGE_KEY` / `USERS_KEY` / `userDataKey` / `cloudMirrorKey` /
+  device-local dev-mode + log keys + password params + `DEFAULT_USERNAME`),
+  `defaults.ts` (`DEFAULT_SETTINGS` + persisted / device defaults +
+  download prefs + `DEFAULT_RECURRENCE_MONTHS`), `format.ts`
+  (`MAX_COLUMN_CHARS`, font-scale + session-timeout bounds/presets,
+  `DATE_FORMATS` / `SHORT_DATE_FORMATS`), `currency.ts`
+  (`SUPPORTED_LANGUAGES`, `CURRENCY_PRESETS`, `REGION_TO_CURRENCY_ID`),
+  and `taxonomy.ts` (`CATEGORY_COLORS` / `SHEET_COLORS` /
+  `DEFAULT_SHEET_GLYPH` / `DEFAULT_SHEET_COLOR` + the four glyph
+  allowlists). All 47 importers (across `src/` and `tests/`) updated
+  to point at the matching submodule — no barrel left behind, mirroring
+  the `src/data/presets/` precedent. Pure refactor: typecheck +
+  lint + 838 tests pass; the cross-references in `AGENTS.md`,
+  `docs/architecture.md`, and `.agent/skills/update-docs/SKILL.md`
+  followed in the same PR.
 - **`styles.css` topical split into `src/styles/`** (2026-05): the
   1665-line `src/styles.css` split into five sibling modules under
   `src/styles/` plus a thin entry barrel — `theme.css` (Tailwind v4

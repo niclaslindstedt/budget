@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_SETTINGS } from "../src/data/constants/defaults";
 import { LATEST_VERSION } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { UserData } from "../src/data/types";

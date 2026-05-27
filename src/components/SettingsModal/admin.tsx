@@ -19,7 +19,7 @@ import {
   CATEGORY_COLORS,
   CATEGORY_GLYPH_NAMES,
   TYPE_GLYPH_NAMES,
-} from "../../data/constants";
+} from "../../data/constants/taxonomy";
 import {
   DEFAULT_CATEGORY_ID,
   PRESET_CATEGORIES,

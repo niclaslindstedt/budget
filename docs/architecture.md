@@ -61,8 +61,17 @@ src/
 ├── data/
 │   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget,
 │   │                     # Settings, StoredUser, UsersFile, …
-│   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, USERS_KEY,
-│   │                     # userDataKey(), DEFAULT_SETTINGS, palette, icon list
+│   ├── constants/        # topical constants — one file per group:
+│   │   ├── storage.ts    # STORAGE_KEY, USERS_KEY, userDataKey,
+│   │   │                 # nsKey/nsCloudPath/nsIdbName, password params
+│   │   ├── defaults.ts   # DEFAULT_SETTINGS, DEFAULT_PERSISTED_SETTINGS,
+│   │   │                 # device defaults, download prefs, recurrence horizon
+│   │   ├── format.ts     # MAX_COLUMN_CHARS, font-scale + session-timeout
+│   │   │                 # bounds/presets, DATE_FORMATS, SHORT_DATE_FORMATS
+│   │   ├── currency.ts   # SUPPORTED_LANGUAGES, CURRENCY_PRESETS,
+│   │   │                 # REGION_TO_CURRENCY_ID
+│   │   └── taxonomy.ts   # CATEGORY_COLORS, SHEET_COLORS, glyph allowlists
+│   │                     # (CATEGORY_ICON_NAMES, SHEET_GLYPH_NAMES, …)
 │   ├── sheet.ts          # universal sheet primitives (newId,
 │   │                     # createDefaultSheet, column + sheet-tree
 │   │                     # traversal helpers)

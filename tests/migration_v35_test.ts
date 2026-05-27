@@ -9,7 +9,7 @@ import {
   DEFAULT_DOWNLOAD_ACCOUNTS,
   DEFAULT_DOWNLOAD_BUDGET,
   DEFAULT_SETTINGS,
-} from "../src/data/constants";
+} from "../src/data/constants/defaults";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { validateUserData } from "../src/data/validate";
 

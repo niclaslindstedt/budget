@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { DEFAULT_USERNAME, USERS_KEY } from "../src/data/constants";
+import { DEFAULT_USERNAME, USERS_KEY } from "../src/data/constants/storage";
 import {
   clearUsersFile,
   createDefaultUser,

@@ -9,7 +9,7 @@
 // flag is the user-facing equivalent) so existing references continue
 // to resolve.
 
-import { CATEGORY_COLORS } from "../constants";
+import { CATEGORY_COLORS } from "../constants/taxonomy";
 import type { Category, CategoryIcon } from "../types";
 
 export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {

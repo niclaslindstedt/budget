@@ -1,4 +1,4 @@
-import { nsKey } from "../data/constants";
+import { nsKey } from "../data/constants/storage";
 import {
   clearRawStorage,
   readRawStorage,

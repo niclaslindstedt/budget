@@ -4,7 +4,7 @@ import {
   PASSWORD_HASH_ITERATIONS,
   PASSWORD_SALT_BYTES,
   USERS_KEY,
-} from "../data/constants";
+} from "../data/constants/storage";
 import { newId } from "../data/sheet";
 import type { StoredUser, UsersFile } from "../data/types";
 import { safeJsonParse } from "../utils/json";

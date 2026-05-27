@@ -3,7 +3,10 @@
 // Intl APIs expect. Kept tiny and standalone so format helpers can
 // import it without dragging React or the catalog modules in.
 
-import { CURRENCY_PRESETS, REGION_TO_CURRENCY_ID } from "../data/constants";
+import {
+  CURRENCY_PRESETS,
+  REGION_TO_CURRENCY_ID,
+} from "../data/constants/currency";
 import type { Settings } from "../data/types";
 
 export type Lang = "en" | "sv";

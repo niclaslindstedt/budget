@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ChevronDown, Repeat } from "lucide-react";
 
-import { CATEGORY_ICON_NAMES } from "../data/constants";
+import { CATEGORY_ICON_NAMES } from "../data/constants/taxonomy";
 import type { CategoryIcon } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";

@@ -3,11 +3,11 @@
 // surfaces — recent readers rarely need to scan them. Anything from
 // v31 forward lives in `./modern.ts`.
 
+import { DEFAULT_SETTINGS } from "../constants/defaults";
 import {
-  DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
-} from "../constants";
+} from "../constants/taxonomy";
 import { DEFAULT_CATEGORY_ID } from "../presets/categories";
 import { PRESET_ENTRY_TYPES, createSeedEntryTypes } from "../presets/types";
 import { newId } from "../sheet";
@@ -302,7 +302,7 @@ export const LEGACY_MIGRATIONS: MigrationTable = {
 
   // v19 → v20: introduces built-in preset entry types and preset
   // categories (`PRESET_ENTRY_TYPES`, `PRESET_CATEGORIES` in
-  // `data/constants.ts`) plus per-user hide lists for each.
+  // `data/presets/`) plus per-user hide lists for each.
   // Existing user-added types and categories are kept as-is; the
   // migration just initialises both hide arrays as empty so every
   // preset shows up until the user toggles one off from

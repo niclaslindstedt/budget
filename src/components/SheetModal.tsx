@@ -6,7 +6,7 @@ import {
   DEFAULT_SHEET_GLYPH,
   SHEET_COLORS,
   SHEET_GLYPH_NAMES,
-} from "../data/constants";
+} from "../data/constants/taxonomy";
 import { normalizeName } from "../data/normalize";
 import {
   SHEET_TYPE_REGISTRY,

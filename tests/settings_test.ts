@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
 import {
   applyDeviceSettingPatch,
   applySettingsDraft,

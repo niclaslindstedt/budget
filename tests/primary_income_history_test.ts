@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
 import { reducer } from "../src/data/reducer";
 import type { HistoryEntry, UserData } from "../src/data/types";
 

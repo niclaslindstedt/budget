@@ -1,8 +1,5 @@
-import {
-  CATEGORY_ICON_NAMES,
-  DATE_FORMATS,
-  SHORT_DATE_FORMATS,
-} from "../constants";
+import { CATEGORY_ICON_NAMES } from "../constants/taxonomy";
+import { DATE_FORMATS, SHORT_DATE_FORMATS } from "../constants/format";
 import {
   BORDER_WIDTH_PRESETS,
   DENSITY_PRESETS,

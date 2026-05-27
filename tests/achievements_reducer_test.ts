@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PERSISTED_SETTINGS,
   DEFAULT_SETTINGS,
-} from "../src/data/constants";
+} from "../src/data/constants/defaults";
 import { reducer } from "../src/data/reducer";
 import type { UserData } from "../src/data/types";
 

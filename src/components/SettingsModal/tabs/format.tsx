@@ -1,8 +1,8 @@
+import { CURRENCY_PRESETS } from "../../../data/constants/currency";
 import {
-  CURRENCY_PRESETS,
   DATE_FORMATS,
   SHORT_DATE_FORMATS,
-} from "../../../data/constants";
+} from "../../../data/constants/format";
 import type {
   DateFormat,
   DecimalSeparator,

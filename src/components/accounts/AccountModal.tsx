@@ -1,7 +1,10 @@
 import { useRef, useState } from "react";
 import { Trash2, Wallet } from "lucide-react";
 
-import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../../data/constants";
+import {
+  ACCOUNT_GLYPH_NAMES,
+  SHEET_COLORS,
+} from "../../data/constants/taxonomy";
 import { normalizeName } from "../../data/normalize";
 import type { Account, CategoryIcon } from "../../data/types";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";

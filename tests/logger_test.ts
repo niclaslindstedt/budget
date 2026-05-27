@@ -136,7 +136,7 @@ describe("logger", () => {
 
   it("caps the buffer at the ring-buffer limit", async () => {
     const { createLogger, getLogs } = await loadLogger();
-    const { MAX_LOG_ENTRIES } = await import("../src/data/constants");
+    const { MAX_LOG_ENTRIES } = await import("../src/data/constants/storage");
     const log = createLogger("scope");
     // Push more than the cap; the oldest entries should fall off.
     for (let i = 0; i < MAX_LOG_ENTRIES + 50; i += 1) {
