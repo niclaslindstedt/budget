@@ -95,6 +95,12 @@ export function applyPatch(
       next.companyId = patch.companyId;
     }
   }
+  // Only persist `true` — absent means "not a transfer". `false`
+  // explicitly clears the flag.
+  if (patch.isTransfer !== undefined) {
+    if (patch.isTransfer) next.isTransfer = true;
+    else delete next.isTransfer;
+  }
   if (cols.dateId && patch.dateShiftDays && patch.dateShiftDays !== 0) {
     const cur = next.cells[cols.dateId];
     if (typeof cur === "string" && cur !== "") {

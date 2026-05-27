@@ -17,6 +17,7 @@ const editRow = {
   affectedRowsCountOther: "{n} entries will be updated",
   affectedRowsCurrent: "current",
   completed: "Completed",
+  isTransfer: "Mark as transfer",
   primaryIncomeTitle: "Primary income",
   primaryIncomeToggle: "Mark this series as primary income",
   primaryIncomeHelp:

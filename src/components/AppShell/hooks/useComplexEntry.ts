@@ -143,6 +143,8 @@ export function useComplexEntry({
         description: candidate.description,
         amount: candidate.suggestedAmount,
         typeId,
+        companyId: null,
+        isTransfer: false,
         rule: shifted,
       });
       setComplexOpen(true);

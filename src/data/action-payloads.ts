@@ -44,6 +44,10 @@ export type EditPatch = {
   typeId?: string | null;
   // Same shape as `typeId`, applied to the row's `companyId`.
   companyId?: string | null;
+  // `undefined` = don't touch; `true` flags every row in scope as an
+  // inter-account transfer (so `hideTransfers` can suppress it);
+  // `false` clears the flag.
+  isTransfer?: boolean;
   // Signed day-offset applied to every row in the edit scope; lets the
   // user nudge a series whose original anchor day was off by a few
   // days (e.g. recurring landed on day 24 instead of 25). Omitted or
@@ -71,6 +75,9 @@ export type ComplexEntryDraft = {
   // Optional company id stamped on every generated row alongside the
   // type. `null` (or absent) leaves the row's `companyId` blank.
   companyId?: string | null;
+  // When true, every generated row is flagged as an inter-account
+  // transfer so the `hideTransfers` setting can suppress it.
+  isTransfer?: boolean;
   dates: string[];
   // Optional formula string in the canonical stored form (any
   // `sheet("…")` reference holds the target's stable id, not its

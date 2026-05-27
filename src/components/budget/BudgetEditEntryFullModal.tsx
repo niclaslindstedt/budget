@@ -6,6 +6,7 @@ import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
   Column,
+  Company,
   EntryType,
   Row,
   SeriesMetadata,
@@ -28,6 +29,7 @@ import {
   RadioGroup,
   SignedAmountInput,
 } from "../form";
+import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -48,6 +50,7 @@ type Props = {
   columns: Column[];
   categories: readonly Category[];
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
   // Last ISO date in the same series — defaults the "until" picker
   // when the user picks the future scope. `null` for one-off rows.
@@ -77,6 +80,7 @@ type Props = {
   ) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 export type EditRowPatch = {
@@ -86,6 +90,12 @@ export type EditRowPatch = {
   amount: number | null;
   date: string;
   typeId: string | null;
+  // `undefined` = don't touch the row's company; `null` = clear it;
+  // a string sets the companyId.
+  companyId: string | null | undefined;
+  // `undefined` = don't touch; `true` flags the row as an inter-
+  // account transfer; `false` clears the flag.
+  isTransfer: boolean | undefined;
   completed: boolean;
   // Signed day-offset applied to every row in the chosen series
   // scope. Lets the user nudge a recurring series whose anchor day
@@ -108,6 +118,7 @@ export function BudgetEditEntryFullModal({
   columns,
   categories,
   types,
+  companies,
   settings,
   lastSeriesDate,
   seriesRows,
@@ -117,6 +128,7 @@ export function BudgetEditEntryFullModal({
   onSetSeriesPrimaryIncome,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -156,6 +168,8 @@ export function BudgetEditEntryFullModal({
       ? (row.cells[dateCol.id] as string)
       : "";
   const initialTypeId = row?.typeId ?? null;
+  const initialCompanyId = row?.companyId ?? null;
+  const initialIsTransfer = row?.isTransfer === true;
   const initialCompleted =
     completedCol && row && typeof row.cells[completedCol.id] === "boolean"
       ? (row.cells[completedCol.id] as boolean)
@@ -168,6 +182,8 @@ export function BudgetEditEntryFullModal({
   const [negative, setNegative] = useState(initialNegative);
   const [date, setDate] = useState(initialDate);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
+  const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const [isTransfer, setIsTransfer] = useState(initialIsTransfer);
   const [completed, setCompleted] = useState(initialCompleted);
 
   // Primary-income toggle state. Initialised from the persisted
@@ -201,6 +217,8 @@ export function BudgetEditEntryFullModal({
     setNegative(initialNegative);
     setDate(initialDate);
     setTypeId(initialTypeId);
+    setCompanyId(initialCompanyId);
+    setIsTransfer(initialIsTransfer);
     setCompleted(initialCompleted);
     setIsPrimaryIncome(initialIsPrimary);
     setAnchorDayText(String(initialAnchorDay));
@@ -283,6 +301,8 @@ export function BudgetEditEntryFullModal({
     // in the UI so the user can see why, but force-null it here too
     // in case anything ever bypasses the disabled state.
     const patchAmount = scopeKind === "all" ? null : parsedAmount;
+    const companyTouched = companyId !== initialCompanyId;
+    const transferTouched = isTransfer !== initialIsTransfer;
     onSave(
       row.id,
       {
@@ -290,6 +310,8 @@ export function BudgetEditEntryFullModal({
         amount: patchAmount,
         date,
         typeId,
+        companyId: companyTouched ? companyId : undefined,
+        isTransfer: transferTouched ? isTransfer : undefined,
         completed,
         dateShiftDays: shiftDays,
       },
@@ -369,6 +391,24 @@ export function BudgetEditEntryFullModal({
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               amountSign={pickerSign}
+            />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("editEntry.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={setCompanyId}
+              onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="col-span-2">
+            <Checkbox
+              checked={isTransfer}
+              onChange={setIsTransfer}
+              label={t("editRow.isTransfer")}
+              className="items-center"
             />
           </div>
           {completedCol && (

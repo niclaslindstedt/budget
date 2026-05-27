@@ -8,6 +8,8 @@ const complex: ComplexCatalog = {
   amount: "Belopp",
   amountPlaceholder: "1200",
   type: "Typ",
+  company: "Företag",
+  isTransfer: "Markera som överföring",
   pickType: "Välj en typ",
   schedule: "Schema",
   once: "Engångs",

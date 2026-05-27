@@ -845,6 +845,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           description: patch.description,
           amount: patch.amount,
           typeId: patch.typeId,
+          companyId: patch.companyId,
+          isTransfer: patch.isTransfer,
           dateShiftDays:
             patch.dateShiftDays !== 0 ? patch.dateShiftDays : undefined,
         },
@@ -1442,6 +1444,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         initialDate={complexSeedDate}
         categories={allCategoriesMerged}
         types={allTypesMerged}
+        companies={data.companies}
         settings={effectiveSettings}
         sheets={data.sheets}
         currentSheetId={activeSheet.id}
@@ -1460,6 +1463,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreate={onComplexSubmit}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompany={onCreateCompany}
       />
       <BudgetEditEntryModal
         open={editPrompt !== null}
@@ -1486,6 +1490,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         columns={activeItem.columns}
         categories={allCategoriesMerged}
         types={allTypesMerged}
+        companies={data.companies}
         settings={effectiveSettings}
         lastSeriesDate={editRowLastSeriesDate}
         seriesRows={editRowSeriesRows}
@@ -1499,6 +1504,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompany={onCreateCompany}
       />
       <BudgetSplitEntryModal
         open={splitPrompt !== null}
