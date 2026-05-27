@@ -4,13 +4,15 @@
 // v31 forward lives in `./modern.ts`.
 
 import {
-  DEFAULT_CATEGORY_ID,
   DEFAULT_SETTINGS,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
+} from "../constants";
+import {
+  DEFAULT_CATEGORY_ID,
   PRESET_ENTRY_TYPES,
   createSeedEntryTypes,
-} from "../constants";
+} from "../presets";
 import { newId } from "../sheet";
 import { isObj, type MigrationTable, type Versioned } from "./shared";
 

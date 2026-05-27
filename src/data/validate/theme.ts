@@ -2,7 +2,7 @@ import {
   COLOR_KEYS,
   DEFAULT_CUSTOM_THEME,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,
-} from "../constants";
+} from "../themes";
 import type {
   BorderWidthPreset,
   CustomTheme,

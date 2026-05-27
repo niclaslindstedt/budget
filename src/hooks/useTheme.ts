@@ -23,7 +23,7 @@ import {
   COLOR_KEYS,
   COLOR_KEY_TO_CSS_VAR,
   FONT_FAMILIES,
-} from "../data/constants";
+} from "../data/themes";
 import type {
   BorderWidthPreset,
   DensityPreset,

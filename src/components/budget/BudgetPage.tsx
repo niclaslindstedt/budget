@@ -57,6 +57,7 @@ import type {
 import { suppressScrollHide } from "../../hooks";
 import { formatNumber, withCurrency } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
+import { useBudgetLayoutState } from "./hooks/useBudgetLayoutState";
 import { MonthTable } from "./MonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 import { BudgetMetadataModal } from "./BudgetMetadataModal";
@@ -636,79 +637,25 @@ export function BudgetPage({
   // references across renders.
   const today = useMemo(() => todayIso(), []);
 
-  // Read-only viewer modal, opened from the Eye button next to the
-  // sheet title. Local state — closing wipes it, no need to persist.
-  const [viewerOpen, setViewerOpen] = useState(false);
-  // Duplicate-finder modal, opened from the title `…` menu. Same
-  // pattern as `viewerOpen` — local state, no persistence.
-  const [conflictsOpen, setConflictsOpen] = useState(false);
-  // Metadata-mode walker, opened from the title `…` menu. Walks
-  // history entries missing a custom description or type, one at a
-  // time. Same local-state pattern as the two flags above.
-  const [metadataOpen, setMetadataOpen] = useState(false);
-
-  // Number of extra historical months past the default 1-month window
-  // the user has opted into via "Show more". Resets when the active
-  // sheet changes so switching budgets starts each one collapsed.
-  const [extraHistory, setExtraHistory] = useState(0);
-  useEffect(() => {
-    setExtraHistory(0);
-  }, [sheet.id]);
-
-  // Incremental reveal for future-dated months. Sheet view defaults to
-  // showing `futureEntryMonths` ahead when `showFutureEntries` is on
-  // (zero ahead otherwise); anything past that cutoff is hidden behind
-  // an in-sheet "Show 3 future months" button that steps the cutoff
-  // forward by `FUTURE_PAGE_SIZE` each click — mirroring the
-  // "Show 3 earlier months" pagination. Local state so a sheet switch
-  // resets the reveal — preferences live in Settings, not here.
-  const [extraFuture, setExtraFuture] = useState(0);
-  useEffect(() => {
-    setExtraFuture(0);
-  }, [sheet.id]);
-
-  // Per-month collapsed state. Local to the component so it stays
-  // session-only — collapsing a month is a quick navigation aid, not a
-  // persistent preference. Resets when the active sheet changes.
-  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(
-    () => new Set(),
-  );
-  useEffect(() => {
-    setCollapsedMonths(new Set());
-  }, [sheet.id]);
-  const toggleCollapsed = useCallback((monthKey: string) => {
-    setCollapsedMonths((prev) => {
-      const next = new Set(prev);
-      if (next.has(monthKey)) next.delete(monthKey);
-      else next.add(monthKey);
-      return next;
-    });
-  }, []);
-
-  // Per-row expansion state for the "show hidden transfers" affordance
-  // on balance cells. Keyed by the *anchor* row id (the visible row
-  // whose balance icon was clicked) so each balance step controls its
-  // own reveal. Session-only — closing and re-opening the sheet
-  // collapses every expansion. Resets when the active sheet changes.
-  const [expandedTransferAnchors, setExpandedTransferAnchors] = useState<
-    Set<string>
-  >(() => new Set());
-  useEffect(() => {
-    setExpandedTransferAnchors(new Set());
-  }, [sheet.id]);
-  const toggleTransferAnchor = useCallback((rowId: string) => {
-    setExpandedTransferAnchors((prev) => {
-      const next = new Set(prev);
-      if (next.has(rowId)) next.delete(rowId);
-      else next.add(rowId);
-      return next;
-    });
-  }, []);
-  // When the hide-transfers setting flips off, the expansion state has
-  // nothing to act on; clear it so re-enabling later starts clean.
-  useEffect(() => {
-    if (!settings.hideTransfers) setExpandedTransferAnchors(new Set());
-  }, [settings.hideTransfers]);
+  const {
+    viewerOpen,
+    setViewerOpen,
+    conflictsOpen,
+    setConflictsOpen,
+    metadataOpen,
+    setMetadataOpen,
+    extraHistory,
+    setExtraHistory,
+    extraFuture,
+    setExtraFuture,
+    collapsedMonths,
+    toggleCollapsed,
+    expandedTransferAnchors,
+    toggleTransferAnchor,
+  } = useBudgetLayoutState({
+    sheetId: sheet.id,
+    hideTransfers: settings.hideTransfers,
+  });
 
   const oldestVisibleMonth = useMemo(() => {
     let key = currentMonth;

@@ -1,5 +1,6 @@
 import { useRef, useState, type TouchEvent } from "react";
 
+import { dominantAxis, TOUCH_AXIS_ARM_PX } from "./touch-gestures";
 import { readIsStandalone } from "./useIsStandalone";
 import { isInSheetSwipeEdgeBand } from "./useSheetSwipe";
 
@@ -12,7 +13,6 @@ import { isInSheetSwipeEdgeBand } from "./useSheetSwipe";
 // level sheet-switch gesture (see `useSheetSwipe.ts`) so the two
 // can't fight for the same touch.
 const SWIPE_THRESHOLD = 40;
-const SWIPE_ARM_PX = 10;
 
 type Options = {
   // Disable the gesture without unmounting — `BudgetRow` uses this
@@ -60,7 +60,7 @@ export function useRowSwipe(options: Options = {}): RowSwipe {
     const t = e.touches[0];
     const dx = t.clientX - startX.current;
     const dy = t.clientY - startY.current;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_ARM_PX) {
+    if (dominantAxis(dx, dy, TOUCH_AXIS_ARM_PX) === "horizontal") {
       moved.current = true;
     }
   };

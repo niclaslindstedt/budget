@@ -1,13 +1,15 @@
 import {
-  BORDER_WIDTH_PRESETS,
   CATEGORY_ICON_NAMES,
   DATE_FORMATS,
+  SHORT_DATE_FORMATS,
+} from "../constants";
+import {
+  BORDER_WIDTH_PRESETS,
   DENSITY_PRESETS,
   FONT_FAMILIES,
   RADIUS_PRESETS,
-  SHORT_DATE_FORMATS,
   THEMES,
-} from "../constants";
+} from "../themes";
 import type {
   BorderWidthPreset,
   CategoryIcon,

@@ -2,7 +2,7 @@ import {
   DEFAULT_CATEGORY_ID,
   PRESET_CATEGORY_IDS,
   PRESET_ENTRY_TYPE_IDS,
-} from "../constants";
+} from "../presets";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
 
