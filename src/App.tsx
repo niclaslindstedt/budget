@@ -2,6 +2,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { AuthScreen } from "./components/AuthScreen";
 import { AppShell } from "./components/AppShell";
+import type {
+  AppShellAuth,
+  AppShellStorage,
+} from "./components/AppShell/types";
 import {
   CloudLinkDialog,
   FolderLinkDialog,
@@ -280,38 +284,45 @@ export function App() {
     (u) => !u.isDefault && u.id !== auth.user.id,
   );
 
+  const authBundle: AppShellAuth = {
+    user: auth.user,
+    password: auth.password,
+    hasOtherUsers: otherRealUsers.length > 0,
+    getEncryptionPassword: () => passwordRef.current,
+    onSignOut: handleSignOut,
+    onSwitchUser: handleSwitchUser,
+    onCreateAccount: handleStartCreateAccountFromMenu,
+    onDeleteAccount: handleDeleteAccount,
+  };
+  const storageBundle: AppShellStorage = {
+    adapter,
+    backend,
+    encryption,
+    cloudOfflineMode,
+    dropboxConnected,
+    gdriveConnected,
+    folderConnected,
+    folderAvailable: isFolderBackendAvailable(),
+    folderReconnectNeeded,
+    onConnectDropbox: storage.connectDropbox,
+    onDisconnectDropbox: storage.disconnectDropbox,
+    onConnectGdrive: storage.connectGdrive,
+    onDisconnectGdrive: storage.disconnectGdrive,
+    onReconnectCloud: storage.reconnectCloud,
+    onConnectFolder: storage.connectFolder,
+    onReconnectFolder: storage.reconnectFolder,
+    onDisconnectFolder: storage.disconnectFolder,
+    onSelectBrowser: storage.selectBrowser,
+    onSetEncryption: storage.setEncryption,
+    onSetCloudOfflineMode: storage.setCloudOfflineMode,
+  };
+
   return (
     <>
       <AppShell
-        adapter={adapter}
-        user={auth.user}
-        password={auth.password}
-        hasOtherUsers={otherRealUsers.length > 0}
-        backend={backend}
-        dropboxConnected={dropboxConnected}
-        gdriveConnected={gdriveConnected}
-        folderConnected={folderConnected}
-        folderAvailable={isFolderBackendAvailable()}
-        folderReconnectNeeded={folderReconnectNeeded}
-        encryption={encryption}
-        cloudOfflineMode={cloudOfflineMode}
-        getEncryptionPassword={() => passwordRef.current}
+        auth={authBundle}
+        storage={storageBundle}
         currentDataRef={currentDataRef}
-        onSignOut={handleSignOut}
-        onSwitchUser={handleSwitchUser}
-        onCreateAccount={handleStartCreateAccountFromMenu}
-        onDeleteAccount={handleDeleteAccount}
-        onConnectDropbox={storage.connectDropbox}
-        onDisconnectDropbox={storage.disconnectDropbox}
-        onConnectGdrive={storage.connectGdrive}
-        onDisconnectGdrive={storage.disconnectGdrive}
-        onReconnectCloud={storage.reconnectCloud}
-        onConnectFolder={storage.connectFolder}
-        onReconnectFolder={storage.reconnectFolder}
-        onDisconnectFolder={storage.disconnectFolder}
-        onSelectBrowser={storage.selectBrowser}
-        onSetEncryption={storage.setEncryption}
-        onSetCloudOfflineMode={storage.setCloudOfflineMode}
       />
       <CloudLinkDialog
         pending={pendingCloudLink}

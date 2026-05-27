@@ -2,15 +2,69 @@ import type { ReconciliationApply } from "../accounts/ReconciliationModal";
 import type { RenameSuggestion } from "../../data/rename-patterns";
 import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
 import type { ParsedBankEntry } from "../../storage/banks";
+import type { StorageAdapter } from "../../storage/adapter";
+import type {
+  BackendId,
+  EncryptionMode,
+} from "../../storage/backend-preference";
 import type {
   CellValue,
   HeaderAction,
   HistoryEntry,
   Row,
   Sheet,
+  StoredUser,
   UserData,
 } from "../../data/types";
 import type { useT } from "../../i18n";
+
+// Auth-shaped slice of the AppShell prop boundary. Bundled together
+// so App.tsx forwards one object instead of threading eight individual
+// props through (every new auth callback or per-user flag would otherwise
+// widen the AppShell signature).
+export type AppShellAuth = {
+  user: StoredUser;
+  // The active user's password — handed to the idle tracker so it can
+  // re-stamp `sessionStorage` with the user's chosen TTL on each tick.
+  password: string;
+  hasOtherUsers: boolean;
+  // Returns the active user's password — used by the export flow to
+  // wrap downloaded files in the same envelope shape the storage
+  // adapter uses.
+  getEncryptionPassword: () => string | null;
+  onSignOut: () => void;
+  onSwitchUser: () => void;
+  onCreateAccount: () => void;
+  onDeleteAccount: (password: string) => Promise<void>;
+};
+
+// Storage / backend slice of the AppShell prop boundary. Bundled so
+// the adapter + per-backend connection flags + every backend callback
+// flow as one object instead of ~20 individual props. New backends
+// (or new per-backend toggles) extend the bundle rather than the
+// AppShell signature.
+export type AppShellStorage = {
+  adapter: StorageAdapter;
+  backend: BackendId;
+  encryption: EncryptionMode;
+  cloudOfflineMode: boolean;
+  dropboxConnected: boolean;
+  gdriveConnected: boolean;
+  folderConnected: boolean;
+  folderAvailable: boolean;
+  folderReconnectNeeded: boolean;
+  onConnectDropbox: () => void;
+  onDisconnectDropbox: () => void;
+  onConnectGdrive: () => Promise<void>;
+  onDisconnectGdrive: () => void;
+  onReconnectCloud: () => Promise<void>;
+  onConnectFolder: () => void;
+  onReconnectFolder: () => void;
+  onDisconnectFolder: () => void;
+  onSelectBrowser: () => void;
+  onSetEncryption: (mode: EncryptionMode) => void;
+  onSetCloudOfflineMode: (on: boolean) => void;
+};
 
 export type DeletePrompt = { kind: "delete"; row: Row };
 export type EditPrompt = { kind: "edit"; row: Row };

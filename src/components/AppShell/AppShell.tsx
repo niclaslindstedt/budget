@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { headerActionDescription } from "./types";
+import {
+  type AppShellAuth,
+  type AppShellStorage,
+  headerActionDescription,
+} from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
 import { useAchievementsModal } from "./hooks/useAchievementsModal";
 import { useAppearanceProjection } from "./hooks/useAppearanceProjection";
@@ -83,7 +87,6 @@ import type {
   HistoryEntrySplit,
   Row,
   Settings,
-  StoredUser,
   UserData,
 } from "../../data/types";
 import { RecurringCandidatesPanel } from "../budget/RecurringCandidatesPanel";
@@ -93,11 +96,6 @@ import {
   unlock as unlockAchievement,
   useAchievementWatcher,
 } from "../../data/achievements";
-import type { StorageAdapter } from "../../storage/adapter";
-import {
-  type BackendId,
-  type EncryptionMode,
-} from "../../storage/backend-preference";
 import { useUserDataStorage } from "../../storage/useUserDataStorage";
 import { useT } from "../../i18n";
 import {
@@ -109,77 +107,48 @@ import {
 } from "../../hooks";
 import { formatNumber, withCurrency } from "../../utils/format";
 type AppShellProps = {
-  adapter: StorageAdapter;
-  user: StoredUser;
-  // The active user's password — handed to the idle tracker so it can
-  // re-stamp `sessionStorage` with the user's chosen TTL on each tick.
-  password: string;
-  hasOtherUsers: boolean;
-  backend: BackendId;
-  dropboxConnected: boolean;
-  gdriveConnected: boolean;
-  folderConnected: boolean;
-  folderAvailable: boolean;
-  folderReconnectNeeded: boolean;
-  encryption: EncryptionMode;
-  cloudOfflineMode: boolean;
-  // Returns the active user's password — used by the export flow to
-  // wrap downloaded files in the same envelope shape the storage
-  // adapter uses.
-  getEncryptionPassword: () => string | null;
+  auth: AppShellAuth;
+  storage: AppShellStorage;
   // App owns this ref and reads it from the cloud-link conflict path
   // when the user picks "replace with current budget"; AppShell's
   // job is to keep it pointed at whatever `useUserDataStorage` is
   // showing on screen so the upload reflects the latest in-memory edits.
   currentDataRef: React.MutableRefObject<UserData | null>;
-  onSignOut: () => void;
-  onSwitchUser: () => void;
-  onCreateAccount: () => void;
-  onDeleteAccount: (password: string) => Promise<void>;
-  onConnectDropbox: () => void;
-  onDisconnectDropbox: () => void;
-  onConnectGdrive: () => Promise<void>;
-  onDisconnectGdrive: () => void;
-  onReconnectCloud: () => Promise<void>;
-  onConnectFolder: () => void;
-  onReconnectFolder: () => void;
-  onDisconnectFolder: () => void;
-  onSelectBrowser: () => void;
-  onSetEncryption: (mode: EncryptionMode) => void;
-  onSetCloudOfflineMode: (on: boolean) => void;
 };
 
-export function AppShell({
-  adapter,
-  user,
-  password,
-  hasOtherUsers,
-  backend,
-  dropboxConnected,
-  gdriveConnected,
-  folderConnected,
-  folderAvailable,
-  folderReconnectNeeded,
-  encryption,
-  cloudOfflineMode,
-  getEncryptionPassword,
-  currentDataRef,
-  onSignOut,
-  onSwitchUser,
-  onCreateAccount,
-  onDeleteAccount,
-  onConnectDropbox,
-  onDisconnectDropbox,
-  onConnectGdrive,
-  onDisconnectGdrive,
-  onReconnectCloud,
-  onConnectFolder,
-  onReconnectFolder,
-  onDisconnectFolder,
-  onSelectBrowser,
-  onSetEncryption,
-  onSetCloudOfflineMode,
-}: AppShellProps) {
+export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
+  const {
+    user,
+    password,
+    hasOtherUsers,
+    getEncryptionPassword,
+    onSignOut,
+    onSwitchUser,
+    onCreateAccount,
+    onDeleteAccount,
+  } = auth;
+  const {
+    adapter,
+    backend,
+    encryption,
+    cloudOfflineMode,
+    dropboxConnected,
+    gdriveConnected,
+    folderConnected,
+    folderAvailable,
+    folderReconnectNeeded,
+    onConnectDropbox,
+    onDisconnectDropbox,
+    onConnectGdrive,
+    onDisconnectGdrive,
+    onReconnectCloud,
+    onConnectFolder,
+    onReconnectFolder,
+    onDisconnectFolder,
+    onSelectBrowser,
+    onSetEncryption,
+    onSetCloudOfflineMode,
+  } = storage;
   const t = useT();
   const toast = useToast();
   const {
