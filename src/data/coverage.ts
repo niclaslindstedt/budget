@@ -92,18 +92,47 @@ export function isMonthCovered(
   startOfMonth: number = 1,
 ): boolean {
   if (!MONTH_KEY_RE.test(monthKey)) return false;
-  const firstDay = monthFirstDay(monthKey, startOfMonth);
-  const lastDay = monthLastDay(monthKey, startOfMonth);
-  let hasAfter = false;
-  let hasBefore = false;
+  const range = computeHistoryDateRange(history);
+  return isMonthCoveredWithRange(
+    monthKey,
+    range,
+    userRowsInMonth,
+    startOfMonth,
+  );
+}
+
+type HistoryDateRange = { min: string; max: string };
+
+// Earliest / latest non-hidden, fully-dated history entry. The pair
+// is everything `isMonthCovered`'s bracketing rule needs — once it's
+// in hand, each month check is `min < firstDay` / `max > lastDay`,
+// so `coveredMonths` can walk up to 144 months at O(1) per month
+// instead of re-scanning the whole history array each iteration.
+function computeHistoryDateRange(
+  history: readonly HistoryEntry[],
+): HistoryDateRange {
+  let min = "";
+  let max = "";
   for (const h of history) {
     if (h.hidden) continue;
     if (h.date.length < 10) continue;
-    if (h.date > lastDay) hasAfter = true;
-    if (h.date < firstDay) hasBefore = true;
-    if (hasAfter && hasBefore) break;
+    if (min === "" || h.date < min) min = h.date;
+    if (h.date > max) max = h.date;
   }
+  return { min, max };
+}
+
+function isMonthCoveredWithRange(
+  monthKey: string,
+  range: HistoryDateRange,
+  userRowsInMonth: readonly Row[],
+  startOfMonth: number,
+): boolean {
+  const firstDay = monthFirstDay(monthKey, startOfMonth);
+  const lastDay = monthLastDay(monthKey, startOfMonth);
+  const hasAfter = range.max !== "" && range.max > lastDay;
   if (!hasAfter) return false;
+  const hasBefore = range.min !== "" && range.min < firstDay;
   if (hasBefore) return true;
   return userRowsInMonth.length === 0;
 }
@@ -124,15 +153,12 @@ export function coveredMonths(
 
   // Range of dates we care about: from the earliest of (history,
   // user rows) to the latest history date. Months earlier are only
-  // covered when there's an entry past them AND no user rows.
-  let earliestDate = "";
-  let latestHistoryDate = "";
-  for (const h of history) {
-    if (h.hidden) continue;
-    if (h.date.length < 10) continue;
-    if (earliestDate === "" || h.date < earliestDate) earliestDate = h.date;
-    if (h.date > latestHistoryDate) latestHistoryDate = h.date;
-  }
+  // covered when there's an entry past them AND no user rows. The
+  // computed `range` is reused below so each per-month coverage check
+  // is O(1) instead of re-scanning every history entry.
+  const range = computeHistoryDateRange(history);
+  let earliestDate = range.min;
+  const latestHistoryDate = range.max;
   if (earliestDate === "" || latestHistoryDate === "") return out;
 
   const rowsByMonth = indexUserRowsByMonth(rows, columns, startOfMonth);
@@ -163,7 +189,13 @@ export function coveredMonths(
   // worst case O(144) regardless of input size.
   for (let i = 0; i < 12 * 12; i++) {
     if (
-      isMonthCovered(cur, history, rowsByMonth.get(cur) ?? [], startOfMonth)
+      MONTH_KEY_RE.test(cur) &&
+      isMonthCoveredWithRange(
+        cur,
+        range,
+        rowsByMonth.get(cur) ?? [],
+        startOfMonth,
+      )
     ) {
       out.add(cur);
     }
