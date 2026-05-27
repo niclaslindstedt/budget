@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { History } from "lucide-react";
 
@@ -214,56 +214,56 @@ export function HistoryModal({
                 )}
               </tr>
             </thead>
-            <tbody>
-              {groups.map((group) => {
-                const colSpan = 3 + (hasAnyBalance ? 1 : 0);
-                return (
-                  <Fragment key={group.monthKey}>
-                    <tr className="budget-viewer-fullspan">
-                      {/* Sticky on the `<td>` (not the `<tr>` — Chrome
-                          ignores sticky on rows) so the month label
-                          pins below the column-header band until the
-                          next group's marker pushes it out. */}
-                      <td
-                        colSpan={colSpan}
-                        className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase text-muted"
-                      >
+            {/* One <tbody> per month so each month-header tr's
+                sticky containing block ends at the next month — gives
+                the natural slide-off-as-next-arrives behaviour without
+                stacking every label at the same offset. */}
+            {groups.map((group) => {
+              const colSpan = 3 + (hasAnyBalance ? 1 : 0);
+              return (
+                <tbody key={group.monthKey}>
+                  <tr className="budget-viewer-fullspan budget-viewer-month-header">
+                    <td
+                      colSpan={colSpan}
+                      className="border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase text-muted"
+                    >
+                      <span className="flex h-7 items-center">
                         {formatYearMonth(group.monthKey, lang)}
-                      </td>
-                    </tr>
-                    {group.entries.map((e) => (
-                      <tr
-                        key={e.id}
-                        className={`border-b border-line last:border-b-0 ${
-                          e.hidden ? "opacity-50" : ""
-                        }`}
-                      >
-                        <td className="px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap text-muted md:px-2">
-                          {formatShortDate(
-                            e.date,
-                            settings.shortDateFormat,
-                            lang,
-                          )}
-                        </td>
-                        <td className="px-2 py-1.5 align-top break-words md:pl-4">
-                          {e.description}
-                        </td>
-                        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2">
-                          {formatBalance(e.amount, accountSettings)}
-                        </td>
-                        {hasAnyBalance && (
-                          <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
-                            {e.balance !== undefined
-                              ? formatBalance(e.balance, accountSettings)
-                              : ""}
-                          </td>
+                      </span>
+                    </td>
+                  </tr>
+                  {group.entries.map((e) => (
+                    <tr
+                      key={e.id}
+                      className={`border-b border-line last:border-b-0 ${
+                        e.hidden ? "opacity-50" : ""
+                      }`}
+                    >
+                      <td className="px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap text-muted md:px-2">
+                        {formatShortDate(
+                          e.date,
+                          settings.shortDateFormat,
+                          lang,
                         )}
-                      </tr>
-                    ))}
-                  </Fragment>
-                );
-              })}
-            </tbody>
+                      </td>
+                      <td className="px-2 py-1.5 align-top break-words md:pl-4">
+                        {e.description}
+                      </td>
+                      <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2">
+                        {formatBalance(e.amount, accountSettings)}
+                      </td>
+                      {hasAnyBalance && (
+                        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
+                          {e.balance !== undefined
+                            ? formatBalance(e.balance, accountSettings)
+                            : ""}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              );
+            })}
           </table>
         )}
       </Modal.Body>
