@@ -59,17 +59,37 @@ export function HistoryModal({
         : settings,
     [account, settings],
   );
+  // Lowercase the searchable fields once per (entries, settings) change.
+  // Without this, every keystroke in the search bar walked the full
+  // list re-lowercasing each description and re-running `formatBalance`
+  // (an `Intl.NumberFormat` call) per entry — a multi-year account
+  // with thousands of entries did thousands of Intl format calls per
+  // keystroke. The cached haystacks reduce per-keystroke work to a
+  // plain `indexOf`.
+  const indexedEntries = useMemo(
+    () =>
+      allSortedEntries.map((entry) => ({
+        entry,
+        descriptionLc: entry.description.toLowerCase(),
+        amountLc: formatBalance(entry.amount, accountSettings).toLowerCase(),
+      })),
+    [allSortedEntries, accountSettings],
+  );
   const filteredEntries = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q === "") return allSortedEntries;
-    return allSortedEntries.filter((e) => {
-      if (e.description.toLowerCase().includes(q)) return true;
-      if (formatBalance(e.amount, accountSettings).toLowerCase().includes(q))
-        return true;
-      if (e.date.includes(q)) return true;
-      return false;
-    });
-  }, [allSortedEntries, query, accountSettings]);
+    const out: HistoryEntry[] = [];
+    for (const indexed of indexedEntries) {
+      if (
+        indexed.descriptionLc.includes(q) ||
+        indexed.amountLc.includes(q) ||
+        indexed.entry.date.includes(q)
+      ) {
+        out.push(indexed.entry);
+      }
+    }
+    return out;
+  }, [allSortedEntries, indexedEntries, query]);
 
   const groups = useMemo(() => {
     const result: { monthKey: string; entries: HistoryEntry[] }[] = [];

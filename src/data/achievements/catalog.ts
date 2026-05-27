@@ -140,23 +140,26 @@ const hasUserHistoryOverride = (s: UserData) =>
         (typeof e.userDescription === "string" && e.userDescription !== ""),
     ),
   );
+// Default column order is date / description / type / amount /
+// balance / completed. Anything else (different length, or a
+// different type at any position) is a user reorder.
+const DEFAULT_COLUMN_ORDER: readonly string[] = [
+  "date",
+  "description",
+  "type",
+  "amount",
+  "balance",
+  "completed",
+];
 const hasReorderedColumns = (s: UserData) =>
-  eachAccountBudget(
-    s,
-    (i) =>
-      i.columns.length > 0 &&
-      // Default column order is date / description / amount / balance /
-      // completed. Anything else is a user reorder.
-      JSON.stringify(i.columns.map((c) => c.type)) !==
-        JSON.stringify([
-          "date",
-          "description",
-          "type",
-          "amount",
-          "balance",
-          "completed",
-        ]),
-  );
+  eachAccountBudget(s, (i) => {
+    if (i.columns.length === 0) return false;
+    if (i.columns.length !== DEFAULT_COLUMN_ORDER.length) return true;
+    for (let k = 0; k < DEFAULT_COLUMN_ORDER.length; k += 1) {
+      if (i.columns[k].type !== DEFAULT_COLUMN_ORDER[k]) return true;
+    }
+    return false;
+  });
 const hasPrimaryIncomeSeries = (s: UserData) =>
   Object.values(s.seriesMetadata).some((m) => m.isPrimaryIncome === true);
 const hasMultipartItem = (s: UserData) =>
@@ -202,6 +205,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasAnyUserRow(prev) && hasAnyUserRow(next),
     },
   },
@@ -219,6 +223,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasTypedRow(prev) && hasTypedRow(next),
     },
   },
@@ -229,6 +234,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) =>
         !hasCompletedRow(prev) && hasCompletedRow(next),
     },
@@ -253,6 +259,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.hiddenPresetCategoryIds, s.hiddenPresetTypeIds],
       predicate: (prev, next) =>
         !hasHiddenPreset(prev) && hasHiddenPreset(next),
     },
@@ -271,6 +278,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.theme === "system" && next.settings.theme !== "system",
     },
@@ -301,6 +309,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: MousePointerClick,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       // `headerAction` is device-scoped in v35 — the user might pick a
       // different shortcut on mobile than on desktop. Either side
       // diverging from the default fires the achievement; checking
@@ -323,6 +332,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.accounts],
       predicate: (prev, next) => !hasAccount(prev) && hasAccount(next),
     },
   },
@@ -333,6 +343,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasLinkedSheet(prev) && hasLinkedSheet(next),
     },
   },
@@ -343,6 +354,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.startOfMonth !== next.settings.startOfMonth,
     },
@@ -354,6 +366,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) =>
         !hasMultipleSheetTabs(prev) && hasMultipleSheetTabs(next),
     },
@@ -371,6 +384,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.transfers],
       predicate: (prev, next) => !hasTransfer(prev) && hasTransfer(next),
     },
   },
@@ -381,6 +395,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasTransferRow(prev) && hasTransferRow(next),
     },
   },
@@ -391,6 +406,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) =>
         !hasRecurringRow(prev) && hasRecurringRow(next),
     },
@@ -402,6 +418,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.seriesMetadata],
       predicate: (prev, next) =>
         !hasPrimaryIncomeSeries(prev) && hasPrimaryIncomeSeries(next),
     },
@@ -419,6 +436,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.categories],
       predicate: (prev, next) =>
         !hasUserCategory(prev) && hasUserCategory(next),
     },
@@ -430,6 +448,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.types],
       predicate: (prev, next) => !hasUserType(prev) && hasUserType(next),
     },
   },
@@ -459,6 +478,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasCorrection(prev) && hasCorrection(next),
     },
   },
@@ -474,6 +494,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Hash,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.decimalSeparator !== next.settings.decimalSeparator ||
         prev.settings.thousandsSeparator !== next.settings.thousandsSeparator ||
@@ -493,6 +514,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Columns3,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) =>
         !hasReorderedColumns(prev) && hasReorderedColumns(next),
     },
@@ -503,6 +525,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: BookOpen,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.language !== next.settings.language,
     },
@@ -513,6 +536,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: EyeOff,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         !prev.settings.hideTransfers && next.settings.hideTransfers,
     },
@@ -534,6 +558,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.historyImports],
       predicate: (prev, next) =>
         !hasHistoryImport(prev) && hasHistoryImport(next),
     },
@@ -551,6 +576,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.history],
       predicate: (prev, next) =>
         !hasUserHistoryOverride(prev) && hasUserHistoryOverride(next),
     },
@@ -562,6 +588,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.matchRules],
       predicate: (prev, next) => !hasMatchRule(prev) && hasMatchRule(next),
     },
   },
@@ -571,6 +598,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Brain,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.merchantHints],
       predicate: (prev, next) =>
         !hasMerchantHint(prev) && hasMerchantHint(next),
     },
@@ -581,6 +609,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: GitMerge,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.seriesMatchRules],
       predicate: (prev, next) =>
         !hasSeriesMatchRule(prev) && hasSeriesMatchRule(next),
     },
@@ -591,6 +620,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Merge,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.history],
       predicate: (prev, next) =>
         !hasCollapsedTransferPair(prev) && hasCollapsedTransferPair(next),
     },
@@ -608,6 +638,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Split,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.history],
       predicate: (prev, next) =>
         !hasSplitHistoryEntry(prev) && hasSplitHistoryEntry(next),
     },
@@ -650,6 +681,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: LockKeyhole,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.sessionTimeoutMinutes !==
         next.settings.sessionTimeoutMinutes,
@@ -691,6 +723,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasFormulaRow(prev) && hasFormulaRow(next),
     },
   },
@@ -742,6 +775,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Palette,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.theme !== "custom" && next.settings.theme === "custom",
     },
@@ -752,6 +786,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: TypeIcon,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         prev.settings.fontFamily !== next.settings.fontFamily,
     },
@@ -762,6 +797,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Accessibility,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings],
       predicate: (prev, next) =>
         !prev.settings.customTheme.reduceMotion &&
         next.settings.customTheme.reduceMotion,
@@ -799,6 +835,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: {
       kind: "derived",
+      slices: (s) => [s.settings.achievements],
       predicate: (prev, next) => {
         // Avoid self-reference (the watcher hands us the unlock-derived
         // state) by counting against the catalog length minus one (for

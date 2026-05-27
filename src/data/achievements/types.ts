@@ -30,7 +30,19 @@ export const TIER_POINTS: Record<AchievementTier, number> = {
 //   bus stores it until the watcher in AppShell is ready to
 //   dispatch it through the reducer.
 export type Trigger =
-  | { kind: "derived"; predicate: (prev: UserData, next: UserData) => boolean }
+  | {
+      kind: "derived";
+      predicate: (prev: UserData, next: UserData) => boolean;
+      // Optional slice extractor. When provided, `deriveUnlocks`
+      // invokes the predicate only when at least one returned
+      // reference differs between prev and next. Reducers preserve
+      // referential identity on slices they didn't touch, so a cell-
+      // edit dispatch (only `sheets` moves) skips every history /
+      // transfer / settings predicate without running it. Each slice
+      // listed must be one the predicate actually reads — otherwise
+      // a relevant change would be silently filtered out.
+      slices?: (state: UserData) => readonly unknown[];
+    }
   | { kind: "manual" };
 
 export type Achievement = {
