@@ -27,8 +27,11 @@ test.describe("Type picker scroll does not trigger pull-to-refresh", () => {
       .first()
       .click();
     const lastRow = page.locator("tbody tr").last();
-    await lastRow.locator("textarea").first().fill("Coffee");
-    await page.keyboard.press("Tab");
+    // Description cell drives both viewports through the portalled
+    // `DescriptionPopover`; fill via the trigger + popover textarea.
+    await lastRow.getByRole("button", { name: "Add description" }).click();
+    await page.getByPlaceholder("Description").fill("Coffee");
+    await page.keyboard.press("Escape");
 
     // Open the type picker via the chip in the type column.
     await lastRow.getByRole("button", { name: "Add type" }).first().click();

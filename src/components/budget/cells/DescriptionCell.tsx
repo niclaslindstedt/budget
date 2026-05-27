@@ -8,45 +8,25 @@ import {
 } from "lucide-react";
 
 import type { CellValue, Company, EntryType } from "../../../data/types";
-import { type FloatingPlacement, useSelectAllOnFocus } from "../../../hooks";
+import type { FloatingPlacement } from "../../../hooks";
 import { ClearableTextarea } from "../../form";
 import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
 import { CompanyPicker } from "../../CompanyPicker";
-import { useClaimActiveRow } from "../../useClaimActiveRow";
-import { DismissBackdrop } from "../../DismissBackdrop";
 import { FloatingPanel } from "../../FloatingPanel";
-import { CELL_BASE, INPUT_BASE } from "./constants";
+import { CELL_BASE } from "./constants";
 
-// Enter in an inline description textarea commits the value (by
-// blurring — `handleBlur` snapshots and bubbles the commit). Shift +
-// Enter still inserts a newline so multi-line descriptions remain
-// possible. The IME-composing guard avoids stealing the Enter that
-// confirms an Asian-input candidate.
-function handleDescriptionCommitKey(
-  event: React.KeyboardEvent<HTMLTextAreaElement>,
-) {
-  if (
-    event.key === "Enter" &&
-    !event.shiftKey &&
-    !event.nativeEvent.isComposing
-  ) {
-    event.preventDefault();
-    event.currentTarget.blur();
-  }
-}
-
-// Typed rows reclaim the narrow mobile description column for the
-// type's name (plain text in the type's colour) — a clearer
-// identifier than the bank's memo at a glance. Desktop keeps the
-// description inline since the dedicated type column already
-// carries the chip + name there. Both branches render the same
-// `DesktopDescriptionEditor` + `DescriptionPopover` tree so that a
-// reducer-driven type flip mid-edit (pattern auto-categorisation
-// assigning `typeId` after a matching description lands) reconciles
-// without unmounting the textarea — otherwise the keystroke that
-// completed the match (often a trailing space) is lost along with
-// focus.
+// Both mobile and desktop drive the description cell through the same
+// `DescriptionPopover` trigger: it owns the type-name / company-pill /
+// bank-text fallback rendering, surfaces the inline `CompanyPicker`
+// for tagging the row's merchant, and shows the read-only bank-memo
+// line beneath the textarea so the user can edit the description,
+// re-tag the company, and keep sight of the original statement memo
+// from one place. The trigger sits inside `<td>` so a reducer-driven
+// type flip mid-edit (pattern auto-categorisation assigning `typeId`
+// after a matching description lands) reconciles without unmounting
+// the popover — otherwise the keystroke that completed the match
+// (often a trailing space) is lost along with focus.
 export function DescriptionCell({
   rowId,
   value,
@@ -70,9 +50,8 @@ export function DescriptionCell({
   // trigger renders an outlined pill with the company glyph + name
   // instead of the type-name / bank-text fallback. When BOTH a
   // user-authored description AND a company are set, the trigger
-  // (and the desktop textarea) renders a small `Building2` glyph
-  // before the description as a low-key indicator that the row is
-  // tagged to a merchant.
+  // renders a small `Building2` glyph before the description as a
+  // low-key indicator that the row is tagged to a merchant.
   company: Company | null;
   // Full company list — surfaced by the description popover's inline
   // `CompanyPicker` so the user can tag (or change) the row's company
@@ -82,8 +61,8 @@ export function DescriptionCell({
   // When set, `value` is a fallback (company / type / bank text) rather
   // than a user-authored description. The trigger renders the
   // appropriate fallback (company pill, type-coloured name, or "…")
-  // and the inline editor opens with an empty textarea + this string
-  // as the input placeholder. Supplied by `synthesizeHistoryRow` via
+  // and the popover's textarea opens empty with this string as the
+  // input placeholder. Supplied by `synthesizeHistoryRow` via
   // `Row.descriptionPlaceholder`.
   placeholder?: string;
   // Raw bank memo for history rows whose visible description is a
@@ -113,14 +92,6 @@ export function DescriptionCell({
         isRecurring ? "text-flag" : "text-fg"
       }`}
     >
-      <DesktopDescriptionEditor
-        rowId={rowId}
-        value={value}
-        isRecurring={isRecurring}
-        company={company}
-        onChange={onChange}
-        onCommit={onCommit}
-      />
       <DescriptionPopover
         rowId={rowId}
         value={value}
@@ -175,10 +146,10 @@ export function DescriptionCell({
               ref={ref}
               type="button"
               onClick={onClick}
-              className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
+              className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 ${
                 hasContent
                   ? "justify-start text-left"
-                  : "justify-center text-center"
+                  : "justify-center text-center md:justify-start md:text-left"
               } ${isRecurring ? "text-flag" : hasContent ? "text-fg" : "text-muted"}`}
               aria-haspopup="dialog"
               aria-expanded={open}
@@ -225,100 +196,6 @@ export function DescriptionCell({
   );
 }
 
-// Desktop branch of the description cell, shared by the Plain and
-// Typed variants. Snapshots the value on focus so blur only emits a
-// commit when the text actually changed — avoids prompting after a
-// no-op click in.
-function DesktopDescriptionEditor({
-  rowId,
-  value,
-  isRecurring,
-  company,
-  onChange,
-  onCommit,
-}: {
-  rowId: string;
-  value: string;
-  isRecurring: boolean;
-  // Resolved Company for `row.companyId`. When set together with a
-  // user-authored description, the editor renders a small Building2
-  // glyph at the leading edge of the textarea row — same low-key
-  // tagged-merchant indicator the mobile trigger surfaces. No glyph
-  // when the description is empty (the description cell already has
-  // its own fallback chain for the company-only state).
-  company: Company | null;
-  onChange: (value: CellValue) => void;
-  onCommit?: (value: CellValue) => void;
-}) {
-  const t = useT();
-  const [focused, setFocused] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const focusValueRef = useRef<string>(value);
-  useClaimActiveRow(rowId, focused, () => textareaRef.current?.blur());
-  // In-row description editor: keep tap-to-select-all since the column
-  // is too narrow for an inline X clear button.
-  const onFocusSelectAll = useSelectAllOnFocus<HTMLTextAreaElement>();
-
-  function handleFocus(e: React.FocusEvent<HTMLTextAreaElement>) {
-    setFocused(true);
-    focusValueRef.current = value;
-    onFocusSelectAll(e);
-  }
-
-  function handleBlur() {
-    setFocused(false);
-    if (!onCommit) return;
-    if (value !== focusValueRef.current) onCommit(value);
-  }
-
-  const showCompanyGlyph = !!company && value.length > 0;
-
-  return (
-    <div
-      className={`relative hidden md:flex md:items-start ${
-        focused ? "z-[60]" : ""
-      }`}
-    >
-      {focused && (
-        <DismissBackdrop onDismiss={() => textareaRef.current?.blur()} />
-      )}
-      {isRecurring && (
-        <span
-          aria-label={t("cell.recurring")}
-          title={t("cell.recurring")}
-          className="flex shrink-0 items-center pt-2 pl-2 text-flag"
-        >
-          <Repeat size={12} aria-hidden focusable={false} />
-        </span>
-      )}
-      {showCompanyGlyph && (
-        <span
-          aria-label={company!.name}
-          title={company!.name}
-          className={`flex shrink-0 items-center pt-2 ${
-            isRecurring ? "pl-1" : "pl-2"
-          }`}
-        >
-          <Building2 size={12} aria-hidden focusable={false} />
-        </span>
-      )}
-      <textarea
-        ref={textareaRef}
-        className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-          isRecurring || showCompanyGlyph ? "pl-1.5" : ""
-        }`}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleDescriptionCommitKey}
-        rows={1}
-        placeholder={t("cell.placeholderEllipsis")}
-      />
-    </div>
-  );
-}
-
 // Document-coord position so the popover scrolls with the trigger row
 // when iOS shifts the page up to fit the on-screen keyboard. `position:
 // fixed` stays anchored to the layout viewport — which iOS moves out
@@ -330,11 +207,12 @@ const DESCRIPTION_POPOVER_PLACEMENT: FloatingPlacement = {
   coordinateSpace: "document",
 };
 
-// Mobile description popover shared by the Plain and Typed cells.
-// The two cells differ only in the trigger button (recurring icon /
-// "…" vs the type's name in the type's colour), so callers pass the
-// trigger via `renderTrigger` and the popover owns the open state,
-// the commit-on-close hook, and the textarea editor.
+// Description popover shared by every viewport. The cells differ
+// only in the trigger button (recurring icon / "…" vs the type's
+// name in the type's colour vs the company pill), so callers pass
+// the trigger via `renderTrigger` and the popover owns the open
+// state, the commit-on-close hook, the textarea editor, the
+// CompanyPicker, and the read-only bank-memo line.
 function DescriptionPopover({
   rowId,
   value,

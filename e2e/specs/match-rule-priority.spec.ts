@@ -27,10 +27,14 @@ async function addRow(
   // description and amount before either cell commits — once both
   // commit the row re-sorts, but we've already captured the input
   // refs so `.last()` is still pointing at it.
+  //
+  // Description goes through the portalled `DescriptionPopover` on
+  // every viewport — click the row's trigger, fill the popover's
+  // textarea, then dismiss it before falling through to the amount.
   const newRow = tbody.locator("tr").last();
-  const desc = newRow.locator("textarea").first();
-  await desc.fill(description);
-  await desc.blur();
+  await newRow.getByRole("button", { name: "Add description" }).click();
+  await page.getByPlaceholder("Description").fill(description);
+  await page.keyboard.press("Escape");
   const amt = newRow.locator("input[inputmode='decimal']").first();
   await amt.fill(amount);
   await amt.blur();

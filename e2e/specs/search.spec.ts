@@ -17,8 +17,11 @@ test.describe("Transaction search", () => {
       .first()
       .click();
     const lastRow = page.locator("tbody tr").last();
-    await lastRow.locator("textarea").first().fill(description);
-    await page.keyboard.press("Tab");
+    // The description cell now opens its rich popover on every
+    // viewport — fill via the portalled textarea, not an inline one.
+    await lastRow.getByRole("button", { name: "Add description" }).click();
+    await page.getByPlaceholder("Description").fill(description);
+    await page.keyboard.press("Escape");
     await lastRow.locator("input[inputmode='decimal']").first().fill(amount);
     await page.keyboard.press("Tab");
   }
