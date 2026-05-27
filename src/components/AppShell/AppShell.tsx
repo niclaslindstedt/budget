@@ -522,6 +522,38 @@ export function AppShell({
       }),
     [dispatch],
   );
+  // Row-level company writer fired by the description popover's inline
+  // CompanyPicker. Routes synthesized history rows through
+  // `updateHistoryEntry` (clearing `noCompany` on assignment so the
+  // metadata walkthrough's "needs attention" filter releases the
+  // entry) and falls through to a single-row `bulkUpdate` for
+  // user-authored budget rows.
+  const onSetRowCompany = useCallback(
+    (row: Row, companyId: string | null) => {
+      if (row.historyEntryId && activeItem.accountId) {
+        const patch: {
+          userCompanyId: string | null;
+          noCompany?: boolean;
+        } = { userCompanyId: companyId };
+        if (companyId !== null) patch.noCompany = false;
+        dispatch({
+          type: "updateHistoryEntry",
+          accountId: activeItem.accountId,
+          entryId: row.historyEntryId,
+          patch,
+        });
+        return;
+      }
+      dispatch({
+        type: "bulkUpdate",
+        sheetId,
+        itemId,
+        rowIds: [row.id],
+        patch: { companyId },
+      });
+    },
+    [dispatch, sheetId, itemId, activeItem.accountId],
+  );
   const onCorrectionDeleteRequest = useCallback(
     (row: Row) => {
       // Pre-format the signed delta so the prompt reads naturally even
@@ -1233,6 +1265,7 @@ export function AppShell({
                   onMergeConflictIntoHistory={onMergeConflictIntoHistory}
                   onMergeConflictUserRows={onMergeConflictUserRows}
                   onTriageMonth={onTriageMonth}
+                  onSetRowCompany={onSetRowCompany}
                 />
               </>
             )}

@@ -170,6 +170,11 @@ type Props = {
       noCompany?: boolean;
     },
   ) => void;
+  // Row-level company writer surfaced by the description popover's
+  // inline `CompanyPicker`. Defined at AppShell level so it can route
+  // budget rows through `bulkUpdate` and history rows through
+  // `updateHistoryEntry` (with `noCompany` cleared on assignment).
+  onSetRowCompany: (row: Row, companyId: string | null) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -352,6 +357,7 @@ export function BudgetPage({
   onMergeConflictIntoHistory,
   onMergeConflictUserRows,
   onTriageMonth,
+  onSetRowCompany,
   data,
 }: Props) {
   const t = useT();
@@ -1190,9 +1196,12 @@ export function BudgetPage({
                   types={types}
                   typesById={typesById}
                   companiesById={companiesById}
+                  companies={companies}
                   categories={categories}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
+                  onCreateCompany={onCreateCompany}
+                  onSetRowCompany={onSetRowCompany}
                   settings={settings}
                   selectMode={selectMode}
                   selectedIds={selectedIds}
