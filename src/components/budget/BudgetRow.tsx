@@ -31,7 +31,7 @@ type Props = {
   // row's entry-type cache whenever a single type is added or edited.
   typesById: ReadonlyMap<string, EntryType>;
   // Id-indexed view of the user's companies. Looked up here by
-  // `row.companyId` so the description cell can render a white pill
+  // `row.companyId` so the description cell can render an outlined pill
   // with the company glyph + name when the row has no user-authored
   // description. Lifted to page level for the same O(1) lookup +
   // stable reference reasons as `typesById`.
