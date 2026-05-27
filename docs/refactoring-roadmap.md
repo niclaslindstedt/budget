@@ -159,14 +159,18 @@ to **Pending** with a rating.
   consume the context, drop the threaded props to ~5. **Severity:
   7** (folds into the above; same PR).
 
-- **`SettingsModal/admin.tsx` (944 lines) duplicated category/type
-  editors** — `CategoryEditor` and `TypeEditor` both re-implement
-  form-state + validation + colour/glyph picker. Adding a new sheet
-  type's preset admin (loan types, savings goals) would duplicate
-  this again. **Severity: 7.**
-  - Plan: extract `<EntityForm>` shared between the two (and used
-    by any future preset admin). Move section-expansion state into
-    a single `useAdminUIState()` hook.
+- **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
+  half of the previous duplicated-editor item; the `<EntityForm>`
+  half landed in 2026-05 (see Landed). What's left: the
+  `creating` / `editingId` / `pendingDeleteId` triple-`useState`
+  pattern appears verbatim in both `CategoriesAndTypesAdmin` (with
+  a `Category` suffix) and `TypesSection` (without). Adding a new
+  preset admin (loan types, savings goals) would re-derive it.
+  **Severity: 4.** Easy win when a third call site materialises;
+  premature at two — the pattern is three `useState` lines, not a
+  whole sub-machine, so a hook today would obscure more than it
+  consolidates. Re-rate up if a `<LoanTypeAdmin>` lands and the
+  pattern shows up a third time.
 
 - **Hardcoded user-facing strings in chrome** — sample sweep found
   `SheetModal.tsx:348` and `:365` ("No account") rendering plain
@@ -498,6 +502,23 @@ EntryType) => boolean` prop so callers customise; default to
   duplicated in `AGENTS.md` was consolidated into
   `docs/architecture.md` in the same PR, leaving AGENTS.md with
   just the placement rules.
+- **`SettingsModal/admin.tsx` `<EntityForm>` extraction** (2026-05):
+  the duplicated `CategoryEditor` / `TypeEditor` form-state + name
+  - colour + icon + EditorButtons trio collapsed onto a shared
+    `<EntityForm>` helper (local to `admin.tsx`, ~85 lines). Both
+    editors became thin composers: `CategoryEditor` is 24 lines
+    (passes its own `onSubmit` through directly); `TypeEditor` is 63
+    lines (manages its own `categoryId` + `kind` state, slots the
+    category dropdown + kind toggle between name and colour via
+    `children`, maps the form's `icon` field onto the `EntryType.glyph`
+    output shape). Same field order, same validation gate, same i18n
+    keys — pure refactor with no user-visible delta. Net file size
+    is unchanged (946 → 950 lines) because the shared helper carries
+    its own type signature, but the duplication is gone. The
+    `useAdminUIState()` half of the original plan stays in Pending
+    (rated down to 4) until a third preset admin appears — extracting
+    a hook for a two-call-site triple-`useState` pattern would
+    obscure more than it consolidates.
 - **`presets.ts` data / logic split** (2026-05): the 1080-line
   `src/data/presets.ts` split into three files under
   `src/data/presets/` — `types.ts` (PRESET_ENTRY_TYPES + entry-type
