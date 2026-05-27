@@ -80,14 +80,13 @@ function TransferRowImpl({
             <span className="truncate">{displayCategoryName(category, t)}</span>
           </span>
         )}
-        {/* On mobile the dedicated transfer column is hidden — fold the
-            from/to summary into the description cell instead so the
-            row still shows the direction at a glance. */}
-        <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted md:hidden">
+      </td>
+      <td className="px-1 py-2 align-middle font-mono text-xs text-muted md:px-2.5">
+        {/* Mobile keeps the column tight: just the coloured glyph
+            circles + arrow. Desktop swaps in the full pilled chip so
+            the from/to account names are visible at a glance. */}
+        <span className="inline-flex items-center gap-1 md:hidden">
           <AccountGlyph account={from} />
-          <span className="truncate">
-            {from?.name ?? t("accountsSheet.unknown")}
-          </span>
           <ArrowRight
             size={10}
             aria-hidden
@@ -95,13 +94,8 @@ function TransferRowImpl({
             className="shrink-0 text-flag"
           />
           <AccountGlyph account={to} />
-          <span className="truncate">
-            {to?.name ?? t("accountsSheet.unknown")}
-          </span>
         </span>
-      </td>
-      <td className="hidden px-2.5 py-2 align-middle font-mono text-xs text-muted md:table-cell">
-        <span className="inline-flex items-center gap-1.5">
+        <span className="hidden items-center gap-1.5 md:inline-flex">
           <AccountChip account={from} />
           <ArrowRight
             size={12}
@@ -138,6 +132,42 @@ function TransferRowImpl({
 // Memoised so a swipe on one row doesn't re-render every sibling.
 export const AccountTransferRow = memo(TransferRowImpl);
 
+// Colored circle + glyph for an account, with no surrounding chip
+// chrome. Used on mobile in the transfer column where there's no room
+// for the full account name — the pair of glyphs + arrow keeps the
+// column narrow so the description doesn't have to wrap. Falls back
+// to a wallet glyph when the account has no custom icon, matching
+// the ACCOUNTS table row.
+function AccountGlyph({
+  account,
+  size = 14,
+}: {
+  account: Account | null;
+  size?: number;
+}) {
+  const circleSize = size + 6;
+  return (
+    <span
+      aria-hidden
+      className="inline-flex shrink-0 items-center justify-center rounded-full"
+      style={{
+        width: circleSize,
+        height: circleSize,
+        color: account?.color,
+        backgroundColor: account?.color
+          ? `color-mix(in srgb, ${account.color} 18%, transparent)`
+          : undefined,
+      }}
+    >
+      {account?.glyph ? (
+        <CategoryIconGlyph name={account.glyph} size={size} />
+      ) : (
+        <Wallet size={size} aria-hidden focusable={false} />
+      )}
+    </span>
+  );
+}
+
 // Pill-shaped account label used in the desktop transfer column.
 // Mirrors the budget table's readonly type pill (rounded-full, color-
 // mixed bg + border, font-medium label, inline glyph) so accounts and
@@ -166,41 +196,6 @@ function AccountChip({ account }: { account: Account | null }) {
       <span className="truncate">
         {account?.name ?? t("accountsSheet.unknown")}
       </span>
-    </span>
-  );
-}
-
-// Colored circle + glyph for an account, with no surrounding chip
-// chrome. Used directly on mobile inside the transfer row's
-// description cell where the dedicated transfer column is hidden.
-// Falls back to a wallet glyph when the account has no custom icon,
-// matching the ACCOUNTS table row.
-function AccountGlyph({
-  account,
-  size = 12,
-}: {
-  account: Account | null;
-  size?: number;
-}) {
-  const circleSize = size + 6;
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-full"
-      style={{
-        width: circleSize,
-        height: circleSize,
-        color: account?.color,
-        backgroundColor: account?.color
-          ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-          : undefined,
-      }}
-    >
-      {account?.glyph ? (
-        <CategoryIconGlyph name={account.glyph} size={size} />
-      ) : (
-        <Wallet size={size} aria-hidden focusable={false} />
-      )}
     </span>
   );
 }

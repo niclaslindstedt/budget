@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, type CSSProperties } from "react";
 import {
   AlignLeft,
   ArrowLeftRight,
@@ -395,22 +395,11 @@ export function AccountsPage({
                       <span className="hidden md:inline">
                         {t("accountsSheet.description")}
                       </span>
-                      {/* The dedicated transfer column is hidden on
-                          mobile and its from→to chips fold into the
-                          description cell — mirror that with a
-                          companion glyph next to the description so
-                          the header shape matches the row's flow. */}
-                      <ArrowLeftRight
-                        size={14}
-                        className="shrink-0 text-accent md:hidden"
-                        aria-hidden
-                        focusable={false}
-                      />
                     </span>
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-2.5 py-2 text-left md:table-cell"
+                    className="px-1 py-2 text-left md:px-2.5"
                     aria-label={t("accountsSheet.transfer")}
                   >
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -461,8 +450,8 @@ export function AccountsPage({
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {sortedTransfers.length === 0 && (
+              {sortedTransfers.length === 0 && (
+                <tbody>
                   <tr className="transfers-fullspan">
                     <td
                       colSpan={5}
@@ -471,51 +460,59 @@ export function AccountsPage({
                       {t("accountsSheet.noTransfers")}
                     </td>
                   </tr>
-                )}
-                {transferGroups.map((group) => {
-                  const monthNum = monthNumberFromKey(group.monthKey);
-                  const monthColor =
-                    monthNum !== null ? monthColorVar(monthNum) : undefined;
-                  const headerColorStyle: CSSProperties | undefined = monthColor
-                    ? { color: monthColor }
-                    : undefined;
-                  return (
-                    <Fragment key={group.monthKey}>
-                      <tr className="transfers-fullspan">
-                        <td
-                          colSpan={5}
-                          className="sticky top-[calc(var(--app-header-h)+28px)] z-[14] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
-                          style={headerColorStyle}
-                        >
+                </tbody>
+              )}
+              {/* One <tbody> per month so each month-header row's
+                  sticky containing block ends at the next month — gives
+                  the natural "push the previous label off" behaviour
+                  without manually managing z-index. A single shared
+                  tbody would keep all month headers stuck at the same
+                  offset, overlapping each other instead of pushing. */}
+              {transferGroups.map((group) => {
+                const monthNum = monthNumberFromKey(group.monthKey);
+                const monthColor =
+                  monthNum !== null ? monthColorVar(monthNum) : undefined;
+                const headerColorStyle: CSSProperties | undefined = monthColor
+                  ? { color: monthColor }
+                  : undefined;
+                return (
+                  <tbody key={group.monthKey}>
+                    <tr className="transfers-fullspan transfers-month-header">
+                      <td
+                        colSpan={5}
+                        className="border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase"
+                        style={headerColorStyle}
+                      >
+                        <span className="flex h-7 items-center">
                           {formatYearMonth(group.monthKey, lang)}
-                        </td>
-                      </tr>
-                      {group.transfers.map((tx) => {
-                        const from = accountsById.get(tx.fromAccountId) ?? null;
-                        const to = accountsById.get(tx.toAccountId) ?? null;
-                        const type = tx.typeId
-                          ? (typesById.get(tx.typeId) ?? null)
-                          : null;
-                        const category = type
-                          ? (categoriesById.get(type.categoryId) ?? null)
-                          : null;
-                        return (
-                          <AccountTransferRow
-                            key={tx.id}
-                            transfer={tx}
-                            from={from}
-                            to={to}
-                            category={category}
-                            settings={settings}
-                            monthColor={monthColor}
-                            onEditTransfer={onEditTransfer}
-                          />
-                        );
-                      })}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
+                        </span>
+                      </td>
+                    </tr>
+                    {group.transfers.map((tx) => {
+                      const from = accountsById.get(tx.fromAccountId) ?? null;
+                      const to = accountsById.get(tx.toAccountId) ?? null;
+                      const type = tx.typeId
+                        ? (typesById.get(tx.typeId) ?? null)
+                        : null;
+                      const category = type
+                        ? (categoriesById.get(type.categoryId) ?? null)
+                        : null;
+                      return (
+                        <AccountTransferRow
+                          key={tx.id}
+                          transfer={tx}
+                          from={from}
+                          to={to}
+                          category={category}
+                          settings={settings}
+                          monthColor={monthColor}
+                          onEditTransfer={onEditTransfer}
+                        />
+                      );
+                    })}
+                  </tbody>
+                );
+              })}
               <tfoot>
                 <tr>
                   <td colSpan={5} className="bg-surface-3 p-0">

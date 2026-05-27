@@ -1142,12 +1142,16 @@ body {
     }
     .transfers-table > thead > tr,
     .transfers-table > tbody > tr {
-      /* 56 px date · flex description · amount sized to content with a
-         comfortable floor. The action cell sits outside the grid as an
-         absolute overlay so the wrench column doesn't reserve a track
-         on mobile, mirroring the accounts table. */
+      /* 56 px date · flex description · transfer chips sized to
+         content · amount sized to content with a comfortable floor.
+         The action cell sits outside the grid as an absolute overlay
+         so the wrench column doesn't reserve a track on mobile,
+         mirroring the accounts table. */
       display: grid;
-      grid-template-columns: 56px minmax(0, 1fr) minmax(60px, max-content);
+      grid-template-columns: 56px minmax(0, 1fr) minmax(0, max-content) minmax(
+          60px,
+          max-content
+        );
       position: relative;
       overflow: hidden;
     }
@@ -1198,15 +1202,49 @@ body {
     }
     /* Month-header and empty-state rows span every column, so they
        need to stay as a single full-width block rather than being
-       placed in the grid. Same approach as `.budget-viewer-fullspan`. */
+       placed in the grid. Same approach as `.budget-viewer-fullspan`.
+       Override the swipe-strip's `overflow: hidden` back to visible
+       so a sticky `.transfers-month-header` can actually pin past its
+       own row — `overflow: hidden` would trap sticky inside the tr. */
     .transfers-table > tbody > tr.transfers-fullspan {
       display: block;
       width: 100%;
+      overflow: visible;
     }
     .transfers-table > tbody > tr.transfers-fullspan > td {
       display: block;
       width: 100%;
     }
+  }
+
+  /* Month-header rows pin below the sticky app header + column-header
+     thead while the rows for that month scroll past underneath. Each
+     month sits in its own <tbody>, so the sticky's containing block
+     ends at the next month's tbody — that's what gives the "previous
+     label gets pushed off as the next one arrives" feel without
+     wrangling z-index manually. The `.transfers-month-header` selector
+     applies at every breakpoint (the table is a real HTML table on
+     desktop and a per-row CSS grid on mobile); modern browsers
+     support `position: sticky` on `<tr>` in both modes. The -1px
+     overlap closes a subpixel-rounded hairline between the sticky
+     bands, same trick as `.budget-table > thead`. */
+  .transfers-table > tbody > tr.transfers-month-header {
+    position: sticky;
+    top: calc(var(--app-header-h) + var(--column-header-h) - 1px);
+    z-index: 14;
+  }
+
+  /* Same pattern for `BudgetViewerModal` and `HistoryModal` — the
+     month-stacked tables that share the `.budget-viewer-table` class.
+     These live inside a `Modal.Body` (`overflow-y-auto`), so the
+     sticky offset is measured from the modal's scrollport — the
+     thead itself sticks at `top: -1px` and is ~32 px tall, so the
+     month header sits flush directly below it. The -1px overlap
+     mirrors the transfers-month-header rule. */
+  .budget-viewer-table > tbody > tr.budget-viewer-month-header {
+    position: sticky;
+    top: 31px;
+    z-index: 9;
   }
 
   /* Read-only month-stacked tables — `BudgetViewerModal` and

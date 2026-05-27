@@ -1,5 +1,4 @@
 import {
-  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -492,9 +491,9 @@ export function BudgetViewerModal({
                 )}
               </tr>
             </thead>
-            <tbody>
-              {hasHiddenFuture &&
-                settings.transactionSortOrder === "newestFirst" && (
+            {hasHiddenFuture &&
+              settings.transactionSortOrder === "newestFirst" && (
+                <tbody>
                   <ShowFutureEntriesRow
                     label={t("budget.showFutureMonths", {
                       n: FUTURE_PAGE_SIZE,
@@ -507,88 +506,98 @@ export function BudgetViewerModal({
                       (balanceCol ? 1 : 0)
                     }
                   />
-                )}
-              {renderedMonths.map((monthKey) => {
-                const monthNum = monthNumberFromKey(monthKey);
-                const monthColor =
-                  monthNum !== null ? monthColorVar(monthNum) : undefined;
-                const colorStyle: CSSProperties | undefined = monthColor
-                  ? { color: monthColor }
-                  : undefined;
-                const rows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
-                const colSpan =
-                  2 +
-                  (typeCol ? 1 : 0) +
-                  (amountCol ? 1 : 0) +
-                  (balanceCol ? 1 : 0);
-                return (
-                  <Fragment key={monthKey}>
-                    <tr
-                      className="budget-viewer-fullspan"
-                      ref={
-                        monthKey === currentMonth
-                          ? currentMonthHeaderRef
-                          : undefined
-                      }
+                </tbody>
+              )}
+            {/* One <tbody> per month so each month-header tr's sticky
+                containing block ends at the next month — that's what
+                makes the previous label slide off as the next month's
+                label arrives. A single shared tbody would keep every
+                month-header pinned at the same offset, stacking them on
+                top of each other. */}
+            {renderedMonths.map((monthKey) => {
+              const monthNum = monthNumberFromKey(monthKey);
+              const monthColor =
+                monthNum !== null ? monthColorVar(monthNum) : undefined;
+              const colorStyle: CSSProperties | undefined = monthColor
+                ? { color: monthColor }
+                : undefined;
+              const rows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
+              const colSpan =
+                2 +
+                (typeCol ? 1 : 0) +
+                (amountCol ? 1 : 0) +
+                (balanceCol ? 1 : 0);
+              return (
+                <tbody key={monthKey}>
+                  <tr
+                    className="budget-viewer-fullspan budget-viewer-month-header"
+                    ref={
+                      monthKey === currentMonth
+                        ? currentMonthHeaderRef
+                        : undefined
+                    }
+                  >
+                    <td
+                      colSpan={colSpan}
+                      className="border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase"
+                      style={colorStyle}
                     >
+                      <span className="flex h-7 items-center">
+                        {formatMonth(monthKey, lang, t("budget.undated"))}
+                      </span>
+                    </td>
+                  </tr>
+                  {rows.length === 0 ? (
+                    <tr className="budget-viewer-fullspan border-b border-line">
                       <td
                         colSpan={colSpan}
-                        className="sticky top-[32px] z-[9] border-b border-line bg-surface-2 px-2 py-1 text-xs font-bold tracking-wider uppercase"
-                        style={colorStyle}
+                        className="px-2 py-1.5 text-center text-xs italic text-muted"
                       >
-                        {formatMonth(monthKey, lang, t("budget.undated"))}
+                        {t("budget.monthEmpty", {
+                          month: formatMonth(
+                            monthKey,
+                            lang,
+                            t("budget.undated"),
+                          ),
+                        })}
                       </td>
                     </tr>
-                    {rows.length === 0 ? (
-                      <tr className="budget-viewer-fullspan border-b border-line">
-                        <td
+                  ) : (
+                    rows.map((row) =>
+                      row.isCorrection ? (
+                        <CorrectionRow
+                          key={row.id}
+                          row={row}
+                          amountCol={amountCol?.id}
                           colSpan={colSpan}
-                          className="px-2 py-1.5 text-center text-xs italic text-muted"
-                        >
-                          {t("budget.monthEmpty", {
-                            month: formatMonth(
-                              monthKey,
-                              lang,
-                              t("budget.undated"),
-                            ),
-                          })}
-                        </td>
-                      </tr>
-                    ) : (
-                      rows.map((row) =>
-                        row.isCorrection ? (
-                          <CorrectionRow
-                            key={row.id}
-                            row={row}
-                            amountCol={amountCol?.id}
-                            colSpan={colSpan}
-                            settings={settings}
-                            correctionLabel={t("budget.correctionLine")}
-                          />
-                        ) : (
-                          <ViewerRow
-                            key={row.id}
-                            row={row}
-                            dateColId={dateCol?.id}
-                            descColId={descCol?.id}
-                            amountColId={amountCol?.id}
-                            balanceColId={balanceCol?.id}
-                            typeColId={typeCol?.id}
-                            completedColId={completedCol?.id}
-                            typesById={typesById}
-                            balances={balances}
-                            settings={settings}
-                            lang={lang}
-                            monthColor={monthColor}
-                          />
-                        ),
-                      )
-                    )}
-                  </Fragment>
-                );
-              })}
-              {hasHiddenFuture &&
-                settings.transactionSortOrder === "oldestFirst" && (
+                          settings={settings}
+                          correctionLabel={t("budget.correctionLine")}
+                        />
+                      ) : (
+                        <ViewerRow
+                          key={row.id}
+                          row={row}
+                          dateColId={dateCol?.id}
+                          descColId={descCol?.id}
+                          amountColId={amountCol?.id}
+                          balanceColId={balanceCol?.id}
+                          typeColId={typeCol?.id}
+                          completedColId={completedCol?.id}
+                          typesById={typesById}
+                          balances={balances}
+                          settings={settings}
+                          lang={lang}
+                          monthColor={monthColor}
+                        />
+                      ),
+                    )
+                  )}
+                </tbody>
+              );
+            })}
+            {hasHiddenFuture &&
+              settings.transactionSortOrder === "oldestFirst" && (
+                <tbody>
                   <ShowFutureEntriesRow
                     label={t("budget.showFutureMonths", {
                       n: FUTURE_PAGE_SIZE,
@@ -601,8 +610,8 @@ export function BudgetViewerModal({
                       (balanceCol ? 1 : 0)
                     }
                   />
-                )}
-            </tbody>
+                </tbody>
+              )}
           </table>
         )}
       </Modal.Body>
