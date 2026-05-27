@@ -129,27 +129,12 @@ function AccountRowImpl({
           balance < 0 ? "text-negative" : "text-positive"
         }`}
       >
-        {canUpdateBalance ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSwiped(false);
-              onUpdateBalance(account.id);
-            }}
-            aria-label={t("accountsSheet.updateBalanceAria", {
-              name: account.name,
-            })}
-            title={t("accountsSheet.updateBalanceTitle")}
-            className="cursor-pointer border-0 bg-transparent p-0 text-right font-mono tabular-nums text-inherit hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-          >
-            {formatBalance(balance, accountSettings)}
-          </button>
-        ) : (
-          <span className="font-mono" title={t("account.addBudgetSheetHint")}>
-            {formatBalance(balance, accountSettings)}
-          </span>
-        )}
+        <span
+          className="font-mono"
+          title={canUpdateBalance ? undefined : t("account.addBudgetSheetHint")}
+        >
+          {formatBalance(balance, accountSettings)}
+        </span>
       </td>
       <td className="w-20 px-2.5 py-2 text-right align-middle">
         <span
@@ -201,6 +186,8 @@ function AccountRowImpl({
             accountId={account.id}
             accountName={account.name}
             canCut={canCut}
+            canUpdateBalance={canUpdateBalance}
+            onUpdateBalance={onUpdateBalance}
             onImportHistory={onImportHistory}
             onCutHistory={onCutHistory}
             onAction={() => setSwiped(false)}

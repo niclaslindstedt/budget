@@ -19,7 +19,6 @@ const accountsSheet: AccountsSheetCatalog = {
     "Inga överföringar än. Befordra en budgetrad till en överföring, eller använd knappen nedan.",
   glyphLabel: "Ikon för {name}",
   transfers: "Överföringar",
-  updateBalanceAria: "Uppdatera saldo för {name}",
   updateBalanceTitle: "Uppdatera saldo",
   importHistoryAria: "Importera historik till {name}",
   importHistoryTitle: "Importera bankhistorik",

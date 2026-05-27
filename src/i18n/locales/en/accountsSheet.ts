@@ -19,7 +19,6 @@ const accountsSheet = {
     "No transfers yet. Promote a budget row to a transfer, or use the button below.",
   glyphLabel: "{name} icon",
   transfers: "Transfers",
-  updateBalanceAria: "Update balance for {name}",
   updateBalanceTitle: "Update balance",
   importHistoryAria: "Import history into {name}",
   importHistoryTitle: "Import bank history",
