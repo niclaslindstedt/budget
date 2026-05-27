@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import { normaliseDescription } from "../../data/description-normaliser";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
@@ -100,15 +100,13 @@ export function HistoryEntryEditModal({
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!entry, entry?.id);
 
-  useEffect(() => {
-    if (!open) return;
+  useResetOnOpen(open, entry?.id, () => {
     setDescription(initialDescription);
     setTypeId(initialTypeId);
     setCompanyId(initialCompanyId);
     setIsPrimaryIncome(initialIsPrimary);
     setAnchorDayText(String(initialAnchorDay));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, entry?.id]);
+  });
 
   const handleSubmit = useCallback(() => {
     if (!entry) return;

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Copy, Move } from "lucide-react";
 import type { Row } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { bcp47, type Lang } from "../../i18n/locale";
+import { formatYearMonth } from "../../utils/format";
 import { Button } from "../form";
 import { Modal } from "../Modal";
 
@@ -19,25 +20,12 @@ type Props = {
 };
 
 const monthCache = new Map<Lang, Intl.DateTimeFormat>();
-const yearMonthCache = new Map<Lang, Intl.DateTimeFormat>();
 
 function monthFmt(lang: Lang): Intl.DateTimeFormat {
   let f = monthCache.get(lang);
   if (!f) {
     f = new Intl.DateTimeFormat(bcp47(lang), { month: "short" });
     monthCache.set(lang, f);
-  }
-  return f;
-}
-
-function yearMonthFmt(lang: Lang): Intl.DateTimeFormat {
-  let f = yearMonthCache.get(lang);
-  if (!f) {
-    f = new Intl.DateTimeFormat(bcp47(lang), {
-      month: "long",
-      year: "numeric",
-    });
-    yearMonthCache.set(lang, f);
   }
   return f;
 }
@@ -181,17 +169,14 @@ export function MoveCopyModal({
           <div className="mt-4 rounded border border-line bg-surface-3 p-3 text-xs">
             <div className="mb-1 text-muted">{t("moveCopy.targets")}</div>
             <div className="flex flex-wrap gap-1.5">
-              {[...selected].sort().map((k) => {
-                const [y, m] = k.split("-").map(Number);
-                return (
-                  <span
-                    key={k}
-                    className="rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-path"
-                  >
-                    {yearMonthFmt(lang).format(new Date(y, m - 1, 1))}
-                  </span>
-                );
-              })}
+              {[...selected].sort().map((k) => (
+                <span
+                  key={k}
+                  className="rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-path"
+                >
+                  {formatYearMonth(k, lang)}
+                </span>
+              ))}
             </div>
           </div>
         )}

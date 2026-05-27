@@ -31,11 +31,12 @@ import type {
   Sheet,
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import { bcp47, type Lang } from "../../i18n/locale";
+import { type Lang } from "../../i18n/locale";
 import {
   formatNumber,
   formatRunningBalance,
   formatShortDate,
+  formatYearMonth,
   withCurrency,
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
@@ -59,25 +60,9 @@ type Props = {
   settings: Settings;
 };
 
-const monthFormatCache = new Map<Lang, Intl.DateTimeFormat>();
-
-function monthFormatFor(lang: Lang): Intl.DateTimeFormat {
-  let f = monthFormatCache.get(lang);
-  if (!f) {
-    f = new Intl.DateTimeFormat(bcp47(lang), {
-      month: "long",
-      year: "numeric",
-    });
-    monthFormatCache.set(lang, f);
-  }
-  return f;
-}
-
 function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
   if (key === "undated") return undatedLabel;
-  const [y, m] = key.split("-").map(Number);
-  if (!y || !m) return key;
-  return monthFormatFor(lang).format(new Date(y, m - 1, 1));
+  return formatYearMonth(key, lang);
 }
 
 const EMPTY_ROWS: Row[] = [];

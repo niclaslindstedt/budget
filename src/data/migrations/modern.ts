@@ -13,6 +13,7 @@ import {
 } from "../constants";
 import { DEVICE_SCOPED_KEYS } from "../settings";
 import { clearRawStorage, readRawStorage } from "../../storage/local-adapter";
+import { safeJsonParse } from "../../utils/json";
 import { isObj, type MigrationTable, type Versioned } from "./shared";
 
 export const MODERN_MIGRATIONS: MigrationTable = {
@@ -346,19 +347,15 @@ function readLegacyBudgetDownloadPrefs(
   userId: string,
 ): { format: "csv" | "xlsx"; includeHistory: boolean } | null {
   const raw = readRawStorage(legacyBudgetDownloadKey(userId));
-  if (raw === null) return null;
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return {
-      format: parsed.format === "xlsx" ? "xlsx" : "csv",
-      includeHistory:
-        typeof parsed.includeHistory === "boolean"
-          ? parsed.includeHistory
-          : DEFAULT_DOWNLOAD_BUDGET.includeHistory,
-    };
-  } catch {
-    return null;
-  }
+  const parsed = safeJsonParse<Record<string, unknown>>(raw);
+  if (parsed === null) return null;
+  return {
+    format: parsed.format === "xlsx" ? "xlsx" : "csv",
+    includeHistory:
+      typeof parsed.includeHistory === "boolean"
+        ? parsed.includeHistory
+        : DEFAULT_DOWNLOAD_BUDGET.includeHistory,
+  };
 }
 
 function clearLegacyBudgetDownloadPrefs(userId: string): void {
@@ -374,29 +371,25 @@ function readLegacyAccountsDownloadPrefs(userId: string): {
   includeFutureEntries: boolean;
 } | null {
   const raw = readRawStorage(legacyAccountsDownloadKey(userId));
-  if (raw === null) return null;
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return {
-      accountInfo: toBoolRecord(parsed.accountInfo),
-      accountTransactions: toBoolRecord(parsed.accountTransactions),
-      accountSelected: toBoolRecord(parsed.accountSelected),
-      includeTransactions:
-        typeof parsed.includeTransactions === "boolean"
-          ? parsed.includeTransactions
-          : DEFAULT_DOWNLOAD_ACCOUNTS.includeTransactions,
-      includeUnconfirmed:
-        typeof parsed.includeUnconfirmed === "boolean"
-          ? parsed.includeUnconfirmed
-          : DEFAULT_DOWNLOAD_ACCOUNTS.includeUnconfirmed,
-      includeFutureEntries:
-        typeof parsed.includeFutureEntries === "boolean"
-          ? parsed.includeFutureEntries
-          : DEFAULT_DOWNLOAD_ACCOUNTS.includeFutureEntries,
-    };
-  } catch {
-    return null;
-  }
+  const parsed = safeJsonParse<Record<string, unknown>>(raw);
+  if (parsed === null) return null;
+  return {
+    accountInfo: toBoolRecord(parsed.accountInfo),
+    accountTransactions: toBoolRecord(parsed.accountTransactions),
+    accountSelected: toBoolRecord(parsed.accountSelected),
+    includeTransactions:
+      typeof parsed.includeTransactions === "boolean"
+        ? parsed.includeTransactions
+        : DEFAULT_DOWNLOAD_ACCOUNTS.includeTransactions,
+    includeUnconfirmed:
+      typeof parsed.includeUnconfirmed === "boolean"
+        ? parsed.includeUnconfirmed
+        : DEFAULT_DOWNLOAD_ACCOUNTS.includeUnconfirmed,
+    includeFutureEntries:
+      typeof parsed.includeFutureEntries === "boolean"
+        ? parsed.includeFutureEntries
+        : DEFAULT_DOWNLOAD_ACCOUNTS.includeFutureEntries,
+  };
 }
 
 function clearLegacyAccountsDownloadPrefs(userId: string): void {

@@ -1,3 +1,4 @@
+import { safeJsonParse } from "../utils/json";
 import type { BackupMetadata } from "./adapter";
 
 // Pretty-printed JSON manifest of every backup the user has taken,
@@ -23,13 +24,7 @@ type IndexEnvelope = {
 // the backup file itself is still on disk and a fresh `create` call
 // rebuilds the index around it.
 export function parseBackupIndex(raw: string | null): BackupMetadata[] {
-  if (raw === null || raw.trim() === "") return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  const parsed = safeJsonParse(raw?.trim() || null);
   if (typeof parsed !== "object" || parsed === null) return [];
   const envelope = parsed as Partial<IndexEnvelope>;
   if (!Array.isArray(envelope.entries)) return [];

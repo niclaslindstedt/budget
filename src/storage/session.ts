@@ -13,6 +13,7 @@
 // the very first `saveSession` on sign-in).
 
 import { nsKey } from "../data/constants";
+import { safeJsonParse } from "../utils/json";
 
 const SESSION_KEY = nsKey("budget.session.v1");
 
@@ -35,13 +36,7 @@ function isSession(value: unknown): value is Session {
 }
 
 export function parseSession(raw: string | null): Session | null {
-  if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  const parsed = safeJsonParse(raw);
   if (!isSession(parsed)) return null;
   if (Date.now() >= parsed.expiresAt) return null;
   return parsed;

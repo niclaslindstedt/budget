@@ -7,6 +7,7 @@ import {
 } from "../data/constants";
 import { newId } from "../data/sheet";
 import type { StoredUser, UsersFile } from "../data/types";
+import { safeJsonParse } from "../utils/json";
 
 // Account registry stored at `budget.users.v1`. The file is plain
 // JSON: usernames are not secret, and the password hash carries its
@@ -170,13 +171,7 @@ function isStoredUser(value: unknown): value is StoredUser {
 }
 
 export function parseUsersFile(raw: string | null): UsersFile {
-  if (!raw) return { ...EMPTY };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { ...EMPTY };
-  }
+  const parsed = safeJsonParse(raw);
   if (typeof parsed !== "object" || parsed === null) return { ...EMPTY };
   const obj = parsed as Record<string, unknown>;
   const usersRaw = Array.isArray(obj.users) ? obj.users : [];

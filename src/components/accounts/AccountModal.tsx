@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Trash2, Wallet } from "lucide-react";
 
 import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../../data/constants";
 import type { Account, CategoryIcon } from "../../data/types";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { ColorPalette } from "../ColorPalette";
 import {
@@ -67,8 +67,7 @@ export function AccountModal({
   const nameRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(nameRef, open);
 
-  useEffect(() => {
-    if (!open) return;
+  useResetOnOpen(open, account?.id ?? null, () => {
     setName(account?.name ?? "");
     setDescription(account?.description ?? "");
     setGlyph(account?.glyph ?? null);
@@ -79,7 +78,7 @@ export function AccountModal({
     setIban(account?.iban ?? "");
     setBic(account?.bic ?? "");
     setCurrency(account?.currency ?? "");
-  }, [open, account]);
+  });
 
   const canSave = name.trim().length > 0;
 

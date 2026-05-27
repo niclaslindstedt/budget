@@ -24,6 +24,7 @@
 
 import { CAPTURE_LOGS_KEY, LOGS_KEY, MAX_LOG_ENTRIES } from "../data/constants";
 import { IS_PREVIEW } from "./build-env";
+import { safeJsonParse } from "./json";
 
 export type LogLevel = "info" | "warn" | "error";
 
@@ -272,18 +273,12 @@ export function subscribeToLogs(cb: () => void): () => void {
 // failing the whole load. Runs once because module bodies are
 // cached.
 (function rehydrate(): void {
-  const raw = safeReadLocal(LOGS_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return;
-    for (const item of parsed) {
-      if (isLogEntry(item)) buffer.push(item);
-    }
-    if (buffer.length > MAX_LOG_ENTRIES) {
-      buffer.splice(0, buffer.length - MAX_LOG_ENTRIES);
-    }
-  } catch {
-    // Corrupted persistence — drop it on the floor.
+  const parsed = safeJsonParse(safeReadLocal(LOGS_KEY));
+  if (!Array.isArray(parsed)) return;
+  for (const item of parsed) {
+    if (isLogEntry(item)) buffer.push(item);
+  }
+  if (buffer.length > MAX_LOG_ENTRIES) {
+    buffer.splice(0, buffer.length - MAX_LOG_ENTRIES);
   }
 })();
