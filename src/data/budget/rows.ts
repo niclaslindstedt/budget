@@ -308,6 +308,20 @@ export function userDataHasHalfDoneRows(data: UserData): boolean {
   );
 }
 
+// Mirror of `userDataWithSavableRows`'s strip predicate. The storage
+// hook's `dirty` flag uses this to detect "in-memory has rows the
+// auto-save would omit" without paying for a full JSON serialize of
+// the entire UserData on every render.
+export function userDataHasUnsavableRows(data: UserData): boolean {
+  return data.sheets.some((s) =>
+    s.items.some(
+      (item) =>
+        item.type === "accountBudget" &&
+        item.rows.some((r) => !isRowSavable(r, item.columns)),
+    ),
+  );
+}
+
 // Synthesize the transfer + history rows for an account budget — the
 // projected, non-persisted rows the budget view interleaves with
 // `item.rows`. Split out from `buildVisibleRows` so callers (today

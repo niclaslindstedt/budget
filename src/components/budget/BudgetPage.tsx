@@ -55,7 +55,7 @@ import type {
   UserData,
 } from "../../data/types";
 import { suppressScrollHide } from "../../hooks";
-import { formatNumber, withCurrency } from "../../utils/format";
+import { widestFormattedAmount } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
@@ -631,29 +631,31 @@ export function BudgetPage({
   // sized with `max-content` end up different widths per month. Compute
   // the longest formatted value across the whole block here and pass it
   // down so every month aligns on the same column widths.
+  //
+  // `widestFormattedAmount` bucketizes by formatter tier and formats
+  // at most one candidate per bucket, so the only per-row cost left is
+  // a `Math.abs` + comparison — orders of magnitude cheaper than the
+  // prior "format every row" walk when the budget has thousands of
+  // rows and balances.
   const colWidths = useMemo(() => {
     const amountCol = findColumnByType(decoratedItem.columns, "amount");
     const balanceCol = findColumnByType(decoratedItem.columns, "balance");
     let amountChars = 0;
     let balanceChars = 0;
     if (amountCol) {
-      for (const row of decoratedItem.rows) {
-        const v = row.cells[amountCol.id];
-        if (typeof v !== "number") continue;
-        const body = formatNumber(Math.abs(v), settings);
-        const full = withCurrency(body, settings);
-        if (full.length > amountChars) amountChars = full.length;
+      function* amountValues() {
+        for (const row of decoratedItem.rows) {
+          const v = row.cells[amountCol!.id];
+          if (typeof v === "number") yield v;
+        }
       }
+      amountChars = widestFormattedAmount(amountValues(), settings);
     }
     if (balanceCol) {
-      for (const b of balances.values()) {
-        const body = formatNumber(Math.abs(b), settings, {
-          alwaysTwoFractionDigits: true,
-          alwaysAbbreviate: settings.alwaysAbbreviateBalance,
-        });
-        const full = withCurrency(body, settings);
-        if (full.length > balanceChars) balanceChars = full.length;
-      }
+      balanceChars = widestFormattedAmount(balances.values(), settings, {
+        alwaysTwoFractionDigits: true,
+        alwaysAbbreviate: settings.alwaysAbbreviateBalance,
+      });
     }
     return { amountChars, balanceChars };
   }, [decoratedItem.rows, decoratedItem.columns, balances, settings]);

@@ -162,6 +162,53 @@ export function formatAmount(n: number, settings: Settings): string {
   return withCurrency(formatNumber(n, settings), settings);
 }
 
+// Widest `formatNumber + withCurrency` length across `values`, computed
+// with at most three `formatNumber` calls instead of one per value.
+//
+// `formatNumber`'s output length is monotonic in `|v|` within each
+// branch of its own internal switch — the non-abbreviated path grows
+// in lockstep with magnitude, and the abbreviation path stays
+// monotonic inside each "K" / "M" tier (the K → M boundary at 1_000_000
+// is where length can shrink, so we keep the two tiers as separate
+// buckets). Bucketing every value into {below-threshold, K-tier,
+// M-tier} and then formatting only each bucket's max-abs is enough to
+// find the widest string — and the savings dominate for the column-
+// width pass `BudgetPage` runs on every render, where N can reach the
+// thousands.
+export function widestFormattedAmount(
+  values: Iterable<number>,
+  settings: Settings,
+  opts: FormatNumberOpts = {},
+): number {
+  let maxBelowThreshold = -Infinity;
+  let maxKTier = -Infinity;
+  let maxMTier = -Infinity;
+  for (const v of values) {
+    const abs = Math.abs(v);
+    if (!Number.isFinite(abs)) continue;
+    if (abs >= 1_000_000) {
+      if (abs > maxMTier) maxMTier = abs;
+    } else if (abs >= ABBREVIATE_THRESHOLD) {
+      if (abs > maxKTier) maxKTier = abs;
+    } else if (abs > maxBelowThreshold) {
+      maxBelowThreshold = abs;
+    }
+  }
+  let widest = 0;
+  const consider = (candidate: number) => {
+    if (candidate === -Infinity) return;
+    const length = withCurrency(
+      formatNumber(candidate, settings, opts),
+      settings,
+    ).length;
+    if (length > widest) widest = length;
+  };
+  consider(maxBelowThreshold);
+  consider(maxKTier);
+  consider(maxMTier);
+  return widest;
+}
+
 // Plain integer with the user's thousands separator. Used for counts
 // (history entries, transaction tallies) so they group consistently
 // with the balance column instead of falling back to the browser's

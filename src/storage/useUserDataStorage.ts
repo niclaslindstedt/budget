@@ -110,6 +110,15 @@ export type UserDataStorageOptions = {
   // `saveNow` deliberately bypasses this — a user clicking the save
   // button is asking for the in-memory state as-is.
   beforeSerialize?: (data: UserData) => UserData;
+  // True iff `beforeSerialize` would strip content (so the on-disk
+  // snapshot ends up shorter than `data`). Drives the post-save tail
+  // of the `dirty` flag — without it, dirty falls back to plain
+  // reference equality, which would read "clean" right after a save
+  // even when transient rows still sit in memory waiting to be filled.
+  // Hooked up in AppShell to a O(N) sheet walk (one boolean per row);
+  // cheaper than the alternative of re-serializing the full UserData
+  // tree on every render to spot stripped rows by comparing bytes.
+  hasUnsavableContent?: (data: UserData) => boolean;
   // Active user id. Forwarded into the migration chain so the v34 →
   // v35 step can absorb that user's per-user device-local
   // localStorage values (`budget.download.budget.<userId>`,
@@ -366,7 +375,7 @@ function initialHistoryState(seed: UserData): HistoryState {
 export function useUserDataStorage<Action extends { type: string }>(
   adapter: StorageAdapter,
   reducer: Reducer<UserData, Action>,
-  { beforeSerialize, userId }: UserDataStorageOptions = {},
+  { beforeSerialize, hasUnsavableContent, userId }: UserDataStorageOptions = {},
 ): UserDataStorage<Action> {
   // Stable migration context for every `readUserDataFromText` /
   // `tryReadUserDataFromText` call this hook makes. Pinned to the
@@ -401,11 +410,16 @@ export function useUserDataStorage<Action extends { type: string }>(
   // into the same vocabulary instead of constructing `SaveStatus`
   // objects inline at ~30 different sites.
   const [status, dispatchStatus] = useReducer(statusReducer, initial[0].status);
-  // Last bytes successfully written to (or loaded from) storage.
-  // Drives the `dirty` flag below.
-  const [lastSavedText, setLastSavedText] = useState<string | null>(() => {
+  // The in-memory `UserData` reference that corresponds to the last
+  // bytes successfully written to (or loaded from) storage. Drives the
+  // `dirty` flag below via reference equality — every reducer action
+  // produces a fresh top-level reference, so `data !== lastSavedData`
+  // catches edits in O(1) without re-serializing the whole tree.
+  const [lastSavedData, setLastSavedData] = useState<UserData | null>(() => {
     const snap = adapter.loadSync?.() ?? null;
-    return snap?.text ?? null;
+    if (!snap) return null;
+    const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
+    return parsed.status === "parse-failed" ? null : parsed.data;
   });
 
   // Track the last snapshot we either loaded or successfully saved.
@@ -566,9 +580,18 @@ export function useUserDataStorage<Action extends { type: string }>(
   // and the lastSnapshot bookkeeping in one place. The
   // `isStale` predicate lets a debounced caller bail out if the
   // effect was cleaned up while the request was in flight.
+  // `savedData` is the in-memory `UserData` reference that produced
+  // `text` — passed through so the success branch can stamp it as
+  // `lastSavedData` for the ref-equality `dirty` check. The two
+  // arguments stay paired at every call site (always
+  // `serializeUserData(D) + D`), so threading them together is the
+  // simplest way to keep the dirty-tracking in sync without bolting
+  // a parallel "what data did we just save" channel onto the adapter
+  // contract.
   const performSave = useCallback(
     (
       text: string,
+      savedData: UserData,
       isStale: () => boolean,
       {
         skipShrinkCheck = false,
@@ -648,7 +671,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           // effect" rule the ConflictError branch below already
           // follows.
           lastSnapshot.current = next;
-          setLastSavedText(next.text);
+          setLastSavedData(savedData);
           if (isStale()) {
             log.info(
               `save ok but stale (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
@@ -770,7 +793,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           : ({ data: freshUserData(), status: "fresh" } as const);
         setData(parsed.data);
         resetHistory(parsed.data);
-        setLastSavedText(snap?.text ?? null);
+        setLastSavedData(snap ? parsed.data : null);
         if (parsed.status === "parse-failed") {
           dispatchStatus({ kind: "parse-error", message: parsed.error });
         } else {
@@ -816,7 +839,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
           setData(parsed.data);
           resetHistory(parsed.data);
-          setLastSavedText(snap.text);
+          setLastSavedData(parsed.data);
           if (parsed.status === "parse-failed") {
             // Real bytes came back from the adapter but this build
             // can't parse them. The autosave guard refuses to write
@@ -846,7 +869,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           // more time with the gate finally open — that pass picks up
           // every change since mount and writes them out as the
           // user's first persisted snapshot.
-          setLastSavedText(null);
+          setLastSavedData(null);
           dispatchStatus({ kind: "idle" });
           setData((prev) => ({ ...prev }));
         } else {
@@ -858,7 +881,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           const fresh = freshUserData();
           setData(fresh);
           resetHistory(fresh);
-          setLastSavedText(null);
+          setLastSavedData(null);
           dispatchStatus({ kind: "idle" });
         }
       })
@@ -888,7 +911,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           skipNextSave.current = true;
           setData(local);
           resetHistory(local);
-          setLastSavedText(localText ?? null);
+          setLastSavedData(localText ? local : null);
           dispatchStatus({ kind: "conflict", local, remote });
           return;
         }
@@ -964,7 +987,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       }
       const transform = beforeSerializeRef.current;
       const text = serializeUserData(transform ? transform(data) : data);
-      await performSave(text, () => cancelled);
+      await performSave(text, data, () => cancelled);
     }
 
     return () => {
@@ -1011,7 +1034,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       pendingTimerRef.current = null;
     }
     const text = serializeUserData(data);
-    void performSave(text, () => false);
+    void performSave(text, data, () => false);
   }, [adapter, data, performSave, status]);
 
   // Conflict resolution. The hook stashed `err.remote` in
@@ -1034,7 +1057,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     // as baseRev so the cloud accepts the overwrite cleanly, and
     // its `save-start` dispatch flips status out of "conflict" so
     // the modal closes.
-    void performSave(text, () => false, { ignoreBailStatus: true });
+    void performSave(text, data, () => false, { ignoreBailStatus: true });
   }, [data, performSave]);
 
   // Resolution for the shrink safeguard. "Confirm" re-enters the
@@ -1048,8 +1071,13 @@ export function useUserDataStorage<Action extends { type: string }>(
       `shrink resolve: confirm — pushing ${status.newBytes} bytes over ${status.prevBytes} [${adapter.id}]`,
     );
     const { pendingText } = status;
-    void performSave(pendingText, () => false, { skipShrinkCheck: true });
-  }, [adapter, performSave, status]);
+    // The `pendingText` was serialized from a prior render's `data`; the
+    // shrink modal blocks edits, so the current `data` is the same
+    // reference. Passing it as the saved-data ref keeps `dirty` accurate
+    // after the confirm — the user is opting in to "what's in memory is
+    // what's on disk".
+    void performSave(pendingText, data, () => false, { skipShrinkCheck: true });
+  }, [adapter, data, performSave, status]);
 
   const discardShrinkSave = useCallback(() => {
     if (status.kind !== "shrink-warning") return;
@@ -1062,7 +1090,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       skipNextSave.current = true;
       setData(parsed.data);
       resetHistory(parsed.data);
-      setLastSavedText(snap.text);
+      setLastSavedData(parsed.data);
       if (parsed.status === "parse-failed") {
         dispatchStatus({ kind: "parse-error", message: parsed.error });
       } else {
@@ -1086,7 +1114,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     skipNextSave.current = true;
     setData(remote);
     resetHistory(remote);
-    setLastSavedText(remoteText);
+    setLastSavedData(remote);
     dispatchStatus({ kind: "idle" });
     // Tell the adapter chain that the bytes we're now showing are
     // the authoritative ones — without this the cloud-mirror cache
@@ -1131,7 +1159,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       statusRef.current.kind !== "saving"
     ) {
       log.info(`reload: flushing dirty state before pull [${adapter.id}]`);
-      await performSave(currentText, () => false);
+      await performSave(currentText, data, () => false);
       if (isBailStatus(statusRef.current)) {
         log.info(
           `reload aborted — status=${statusRef.current.kind} after pre-flush save`,
@@ -1159,7 +1187,7 @@ export function useUserDataStorage<Action extends { type: string }>(
         : ({ data: freshUserData(), status: "fresh" } as const);
       setData(parsed.data);
       resetHistory(parsed.data);
-      setLastSavedText(snap?.text ?? null);
+      setLastSavedData(snap ? parsed.data : null);
       if (parsed.status === "parse-failed") {
         dispatchStatus({ kind: "parse-error", message: parsed.error });
       } else if (snap?.offline) {
@@ -1213,7 +1241,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
       setData(parsed.data);
       resetHistory(parsed.data);
-      setLastSavedText(snap.text);
+      setLastSavedData(parsed.data);
       if (parsed.status === "parse-failed") {
         dispatchStatus({ kind: "parse-error", message: parsed.error });
       } else if (snap.offline) {
@@ -1228,8 +1256,24 @@ export function useUserDataStorage<Action extends { type: string }>(
     };
   }, [adapter, resetHistory, migrationCtx]);
 
-  const currentText = useMemo(() => serializeUserData(data), [data]);
-  const dirty = lastSavedText !== null && currentText !== lastSavedText;
+  // Ref-equality dirty check. Every reducer action produces a new
+  // top-level `UserData` reference, so `data !== lastSavedData` is the
+  // O(1) flag that "edits happened since the last load or save".
+  // Previously this re-serialized the whole tree on every render via a
+  // string-equality compare — for a budget with a few MB of JSON and
+  // the sorted-keys replacer in `serializeUserData`, that was the
+  // dominant cost of every keystroke. With the ref check the only
+  // O(N) work left is the optional `hasUnsavableContent` walk, which
+  // a `beforeSerialize` caller passes in to capture the "in-memory
+  // has rows the autosave would strip" case the prior implementation
+  // got for free via the byte comparison.
+  const dirty = useMemo(() => {
+    if (lastSavedData === null) return false;
+    if (data === lastSavedData) {
+      return hasUnsavableContent ? hasUnsavableContent(data) : false;
+    }
+    return true;
+  }, [data, lastSavedData, hasUnsavableContent]);
 
   // Surface the timeline as metadata-only so consumers don't hold
   // refs to internal `UserData` snapshots. Re-derived whenever
