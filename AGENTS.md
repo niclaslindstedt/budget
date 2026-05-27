@@ -924,3 +924,25 @@ they should run — upstream fixes first, downstream mirrors last;
 `sync-oss-spec` always runs last to catch residual violations,
 and the `maintenance` umbrella reflects the same order in its own
 registry.
+
+## Known refactoring opportunities
+
+Notes left from a 2026-05 readability sweep. Each line is a discrete
+follow-up — none are urgent, all improve discoverability or make a
+specific feature easier to extend. Pick one at a time; do not bundle.
+
+- **`AppShell.tsx` (2079 lines): extract _correlated_ modal-state hooks** into `AppShell/hooks/` — `useDeletePrompts` (delete + correction-delete + history-edit), `useEditPrompts` (entry / row / split / series-edit), `useAchievementsModal` (modal + list + coordinator effect), `useSettingsModal` (open + initialTab + previewSettings). Independent booleans like `actionHistoryOpen` / `searchOpen` stay inline — centralising 16 unrelated toggles into one orchestrator adds indirection without reducing complexity.
+- **`BudgetCell.tsx` (now 554 lines): finish the cell split** by extracting `DateCell` + `ReadonlyDateCell` → `cells/DateCell.tsx`, `TypePickerCell` + `ReadonlyTypeCell` → `cells/TypeCell.tsx`, and `ReadonlyCompletedCell` → `cells/CompletedCell.tsx`. Should leave BudgetCell.tsx as a ~200-line dispatcher.
+- **`BudgetPage.tsx` (1386 lines)**: extract per-page sessionStorage-hydrated layout state (`collapsedMonths`, `expandedTransferAnchors`, `extraHistory`, `extraFuture`, `viewerOpen`, `conflictsOpen`, `metadataOpen`) into a `useBudgetLayoutState(key)` hook in `components/budget/hooks/`. Do this after the rest of the BudgetCell split so cell context lands first.
+- **`useStorageBackend.ts` (1256 lines)**: split into `useDropboxAuth`, `useGdriveAuth`, `useFolderHandle`, leaving the main hook as an orchestrator. Each sub-hook becomes <300 lines and testable in isolation. Storage hot path — needs its own test plan in the PR.
+- **`useUserDataStorage.ts` (1104 lines)**: extract `useConflictResolution` and `useDeviceAuth` hooks to leave a leaner main hook.
+- **`migrations.ts` (1232 lines)**: split into `migrations/legacy.ts` (v1–v30) and `migrations/modern.ts` (v31–v44), composed at module load. Keeps recent migrations scannable; makes the legacy chain droppable after a future v2.0 major bump.
+- **`styles.css` (1604 lines)**: break into imported sub-files — `_theme-vars.css`, `_tailwind-overrides.css`, `_components.css`, `_utilities.css` — and audit for unused rules via DevTools coverage. CSS split is a distinct skill from TS module splits.
+- **Cloud-adapter helpers (Dropbox 494 + GDrive 796)**: the parallel 4xx semantics differ more than they look (Dropbox uses 409 for path-not-found, GDrive uses 412 for If-Match conflicts) — only the bearer-header construction is genuinely shared. Extract a small `cloud-adapter-helpers.ts` for that, not a unified error classifier.
+- **Modal form-init pattern**: `EditEntryModal` (722), `EditRowModal` (593), `BudgetMetadataModal` (486) all repeat the "snapshot initial value on open → useEffect to pre-populate → reset-on-close" boilerplate. Extract `useModalFormInit<T>({ initialValue, fields })` that returns `{ values, setters, reset, dirty }`. New abstraction — design pass first.
+- **Step-through modal pattern**: `ReconciliationModal` (729), `HistoryModal`, `HistoryEntryEditModal`, `BudgetMetadataModal` all walk a queue with skip / save / next + progress counters. Extract `useSteppingModal({ entries, filter, getProgress })`.
+- **Touch-gesture base hook**: `usePullToRefresh`, `useRowSwipe`, `useSheetSwipe` duplicate touch-tracking refs and axis-discrimination logic. Extract `useTouchGesture(orientation, thresholdPx, onGesture)` so each gesture only declares its own state machine. New abstraction — design pass first.
+- **`hasOpenModal` / `hasOpenFloatingPanel` duplication**: same DOM-query helpers are inlined in `usePullToRefresh.ts:65` and `useSheetSwipe.ts:69`. Extract a `hooks/dom-queries.ts` so the modal/portal selectors stay in one place.
+- **`SettingsModal.tsx` (812 lines)**: the `tabs/` folder is already in place but the root modal owns tab routing, footer buttons, and dirty-state tracking. Move tab definitions to a registry array `{ id, label, icon, Component }` so adding a new tab is one entry, not a touch on the root.
+- **i18n namespace split**: `i18n/locales/en/settings.ts` (387 lines) and `achievements.ts` (402 lines) are flat objects covering many tabs / tiers. Split each into per-tab / per-tier files inside a sibling folder and compose them in the namespace's `index.ts`. Mirror in `sv/`.
+- **`types.ts` / `validate.ts` follow-ups**: now that the domain split has landed, consider hoisting the recurring "make a Set from a constant, check membership, cast" pattern (used 8+ times in `validate/`) into `createEnumValidator<T>` in `validate/helpers.ts` — and wrap the 10+ try-catch fallback sites in a `softValidate<T>(value, default, schema)` helper.
