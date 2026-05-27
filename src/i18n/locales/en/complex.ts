@@ -8,6 +8,8 @@ const complex = {
   amount: "Amount",
   amountPlaceholder: "1200",
   type: "Type",
+  company: "Company",
+  isTransfer: "Mark as transfer",
   pickType: "Pick a type",
   schedule: "Schedule",
   once: "Once",

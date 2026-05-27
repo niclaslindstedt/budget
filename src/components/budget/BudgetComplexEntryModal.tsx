@@ -3,10 +3,16 @@ import { Sigma } from "lucide-react";
 
 import { formulaToStored, parseFormula } from "../../data/budget/formula";
 import type { RecurrenceRule } from "../../data/recurrence";
-import type { Category, EntryType, Settings, Sheet } from "../../data/types";
+import type {
+  Category,
+  Company,
+  EntryType,
+  Settings,
+  Sheet,
+} from "../../data/types";
 import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
-import { Button, ClearableInput, SignedAmountInput } from "../form";
+import { Button, Checkbox, ClearableInput, SignedAmountInput } from "../form";
 import { BudgetFormulaHelpButton } from "./BudgetFormulaHelpButton";
 import {
   BudgetFormulaInput,
@@ -15,6 +21,7 @@ import {
 import { BudgetFormulaVariableHelper } from "./BudgetFormulaVariableHelper";
 import { Modal } from "../Modal";
 import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
+import { CompanyPicker } from "../CompanyPicker";
 import { TypePicker } from "../TypePicker";
 
 type Props = {
@@ -22,6 +29,7 @@ type Props = {
   initialDate: string;
   categories: Category[];
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
   // All sheets in the workspace. Used by the formula editor's
   // autocomplete (sheet name suggestions) and the name ↔ id transform
@@ -50,6 +58,7 @@ type Props = {
   onCreate: (entries: ComplexEntryDraft) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 export type ComplexEntrySeed = {
@@ -57,6 +66,8 @@ export type ComplexEntrySeed = {
   // Signed: negative seeds the sign toggle as "−"; positive as "+".
   amount: number;
   typeId: string | null;
+  companyId: string | null;
+  isTransfer: boolean;
   rule: import("../../data/recurrence").RecurrenceRule | null;
 };
 
@@ -68,6 +79,7 @@ export function BudgetComplexEntryModal({
   initialDate,
   categories,
   types,
+  companies,
   settings,
   sheets,
   currentSheetId,
@@ -78,12 +90,15 @@ export function BudgetComplexEntryModal({
   onCreate,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
   const [typeId, setTypeId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isTransfer, setIsTransfer] = useState(false);
   const [dates, setDates] = useState<string[]>([]);
   // fx mode swaps the numeric amount input for a formula textarea
   // (`endOfMonthBalance - 5000`, `sheet("Wife", endOfMonthBalance)`, …).
@@ -110,11 +125,15 @@ export function BudgetComplexEntryModal({
       );
       setNegative(seed.amount < 0);
       setTypeId(seed.typeId);
+      setCompanyId(seed.companyId);
+      setIsTransfer(seed.isTransfer);
     } else {
       setDescription("");
       setAmountText("");
       setNegative(true);
       setTypeId(null);
+      setCompanyId(null);
+      setIsTransfer(false);
     }
     setDates([]);
     setFormulaMode(false);
@@ -180,6 +199,8 @@ export function BudgetComplexEntryModal({
         // future cache write could put a best-effort preview here.
         amount: 0,
         typeId,
+        companyId,
+        isTransfer,
         dates,
         amountFormula: stored.formula,
       });
@@ -190,6 +211,8 @@ export function BudgetComplexEntryModal({
       description: description.trim(),
       amount: parsedAmount,
       typeId,
+      companyId,
+      isTransfer,
       dates,
     });
   }
@@ -321,6 +344,24 @@ export function BudgetComplexEntryModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("complex.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={setCompanyId}
+              onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Checkbox
+              checked={isTransfer}
+              onChange={setIsTransfer}
+              label={t("complex.isTransfer")}
+              className="items-center"
             />
           </div>
         </div>

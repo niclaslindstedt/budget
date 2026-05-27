@@ -18,6 +18,7 @@ const editRow: EditRowCatalog = {
   affectedRowsCountOther: "{n} poster uppdateras",
   affectedRowsCurrent: "aktuell",
   completed: "Klar",
+  isTransfer: "Markera som överföring",
   primaryIncomeTitle: "Primär inkomst",
   primaryIncomeToggle: "Markera serien som primär inkomst",
   primaryIncomeHelp:
