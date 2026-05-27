@@ -14,6 +14,9 @@ const metadata = {
   descriptionHint: "Blank keeps the bank's text.",
   skip: "Skip",
   save: "Save",
+  needsTypePrompt: "Pick a type to save.",
+  needsCompanyPrompt:
+    'Pick a company — or check "No company needed" — to save.',
   allCaught: "All caught up.",
   allCaughtHint:
     "Every imported entry on this account has a type or a custom description.",

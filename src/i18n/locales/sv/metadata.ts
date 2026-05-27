@@ -14,6 +14,9 @@ const metadata: MetadataCatalog = {
   descriptionHint: "Tomt fält behåller bankens text.",
   skip: "Hoppa över",
   save: "Spara",
+  needsTypePrompt: "Välj en typ för att spara.",
+  needsCompanyPrompt:
+    'Välj ett företag — eller bocka i "Inget företag behövs" — för att spara.',
   allCaught: "Allt är ifyllt.",
   allCaughtHint:
     "Varje importerad post på detta konto har en typ eller en egen beskrivning.",
