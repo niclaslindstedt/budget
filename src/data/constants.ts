@@ -9,7 +9,6 @@ import type {
   PersistedSettings,
   Settings,
   SheetGlyph,
-  SheetType,
   ShortDateFormat,
 } from "./types";
 
@@ -506,29 +505,6 @@ export const SHEET_COLORS: readonly string[] = CATEGORY_COLORS;
 // well even at the tiny size used in the bottom tab bar.
 export const DEFAULT_SHEET_GLYPH: SheetGlyph = "wallet";
 export const DEFAULT_SHEET_COLOR: string = SHEET_COLORS[5];
-
-// Display metadata for each sheet flavour. Today only `budget` is
-// implemented; planners (loan, savings, parental-leave, …) join the
-// list as their UIs land.
-export const SHEET_TYPES: readonly {
-  id: SheetType;
-  label: string;
-  description: string;
-  glyph: SheetGlyph;
-}[] = [
-  {
-    id: "budget",
-    label: "Budget",
-    description: "Track money in and out, month by month.",
-    glyph: "wallet",
-  },
-  {
-    id: "accounts",
-    label: "Accounts",
-    description: "Manage accounts and transfers between them.",
-    glyph: "piggy-bank",
-  },
-];
 
 // Horizon used when a recurring entry has no explicit end date. Twelve
 // months is enough to populate the next year's planning view without

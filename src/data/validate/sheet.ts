@@ -1,4 +1,5 @@
 import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "../constants";
+import { SHEET_TYPE_IDS } from "../sheet-types";
 import type {
   AccountBudget,
   AccountsView,
@@ -8,7 +9,6 @@ import type {
   Row,
   Sheet,
   SheetItem,
-  SheetType,
 } from "../types";
 import {
   CATEGORY_ICONS,
@@ -26,11 +26,6 @@ const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
   "amount",
   "balance",
   "completed",
-]);
-
-const SHEET_TYPES: ReadonlySet<SheetType> = new Set<SheetType>([
-  "budget",
-  "accounts",
 ]);
 
 export function validateColumn(raw: unknown, path: string): Result<Column> {
@@ -272,7 +267,7 @@ export function validateSheet(
   // Display metadata. Soft-recovers each field to a sane default if
   // missing or bogus — these are cosmetic, so a typo'd glyph name
   // shouldn't lock the user out of an otherwise-valid sheet.
-  const type = validateEnum(raw.type, SHEET_TYPES, "budget");
+  const type = validateEnum(raw.type, SHEET_TYPE_IDS, "budget");
   const glyph = validateEnum(raw.glyph, CATEGORY_ICONS, DEFAULT_SHEET_GLYPH);
   const color =
     typeof raw.color === "string" && raw.color.length > 0

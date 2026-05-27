@@ -6,8 +6,11 @@ import {
   DEFAULT_SHEET_GLYPH,
   SHEET_COLORS,
   SHEET_GLYPH_NAMES,
-  SHEET_TYPES,
 } from "../data/constants";
+import {
+  SHEET_TYPE_REGISTRY,
+  getSheetTypeDescriptor,
+} from "../data/sheet-types";
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
 import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
@@ -98,7 +101,7 @@ export function SheetModal({
   const canSave =
     name.trim().length > 0 &&
     (!creatingAccount || trimmedNewAccount.length > 0);
-  const selectedType = SHEET_TYPES.find((t) => t.id === type) ?? SHEET_TYPES[0];
+  const selectedType = getSheetTypeDescriptor(type);
 
   function handleAccountChange(value: string) {
     if (value === NEW_ACCOUNT_SENTINEL) {
@@ -453,7 +456,7 @@ function TypePicker({
   onPick: (next: SheetType) => void;
 }) {
   const triggerRef = useRef<HTMLDivElement>(null);
-  const selected = SHEET_TYPES.find((t) => t.id === value) ?? SHEET_TYPES[0];
+  const selected = getSheetTypeDescriptor(value);
 
   return (
     <div ref={triggerRef} className="relative">
@@ -482,7 +485,7 @@ function TypePicker({
         placement={SHEET_TYPE_PICKER_PLACEMENT}
       >
         <ul role="listbox" className="overflow-hidden py-1">
-          {SHEET_TYPES.map((opt) => {
+          {SHEET_TYPE_REGISTRY.map((opt) => {
             const isSelected = opt.id === value;
             // Singleton enforcement: only one Accounts sheet can exist
             // per workspace. Once one is in place, the option greys out
