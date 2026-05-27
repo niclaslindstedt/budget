@@ -135,8 +135,15 @@ export function reduceHistory(
     });
     let renamePatterns = state.renamePatterns;
     const now = Date.now();
+    // Index the (pre-patch) history once by id so each rename's
+    // bank-description lookup is O(1). The previous per-rename
+    // `existing.find(...)` made the loop O(H × K) — a 100-rename import
+    // against 10k stored entries blew through 1M scans before the bump
+    // pass even ran.
+    const entryById = new Map<string, HistoryEntry>();
+    for (const e of existing) entryById.set(e.id, e);
     for (const r of action.renames) {
-      const entry = existing.find((e) => e.id === r.entryId);
+      const entry = entryById.get(r.entryId);
       if (!entry) continue;
       const trimmed = r.userDescription.trim();
       if (trimmed === "") continue;

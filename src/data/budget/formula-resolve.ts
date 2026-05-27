@@ -141,19 +141,70 @@ export function resolveEffectiveAmounts(
   }
   const resolvedFormulas: Array<{ sortedIdx: number; value: number }> = [];
 
+  // Per-resolve caches. Many formulas in one budget can reference the
+  // same `sheet("Wife", endOfMonthBalance)` from the same month — the
+  // bare cross-sheet helper re-walks the target item's rows twice on
+  // every call plus does `data.sheets.find` / `data.accounts.find`
+  // each time. Caching at this scope drops F × O(N) re-walks to a
+  // single O(N) per (sheetId, monthKey) the resolver actually
+  // needs, and routes the id lookups through O(1) Maps.
+  const sheetsById = new Map<string, Sheet>();
+  for (const s of data.sheets) sheetsById.set(s.id, s);
+  const accountsById = new Map<string, number>();
+  for (const a of data.accounts) {
+    accountsById.set(a.id, a.openingBalance ?? 0);
+  }
+  const crossSheetAggCache = new Map<string, MonthAggregates | null>();
+  const crossSheetItemCache = new Map<string, AccountBudget | null>();
+  const crossSheetOpeningCache = new Map<string, number>();
+
   const lookupSheet = (
     targetSheetId: string,
     prop: string,
     monthKey: string,
   ): number | null => {
-    return crossSheetLookup(
-      data,
-      targetSheetId,
-      prop,
-      monthKey,
-      startOfMonth,
-      typesById,
-    );
+    const aggKey = `${targetSheetId}|${monthKey}`;
+    let agg = crossSheetAggCache.get(aggKey);
+    if (agg === undefined) {
+      let item = crossSheetItemCache.get(targetSheetId);
+      if (item === undefined) {
+        const sheet = sheetsById.get(targetSheetId);
+        item = sheet ? firstBudgetItem(sheet) : null;
+        crossSheetItemCache.set(targetSheetId, item);
+      }
+      if (!item) {
+        crossSheetAggCache.set(aggKey, null);
+        return null;
+      }
+      let opening = crossSheetOpeningCache.get(targetSheetId);
+      if (opening === undefined) {
+        opening = item.accountId ? (accountsById.get(item.accountId) ?? 0) : 0;
+        crossSheetOpeningCache.set(targetSheetId, opening);
+      }
+      agg = aggregateCrossSheetMonth(
+        item,
+        monthKey,
+        opening,
+        startOfMonth,
+        typesById,
+      );
+      crossSheetAggCache.set(aggKey, agg);
+    }
+    if (!agg) return null;
+    switch (prop) {
+      case "endOfMonthBalance":
+        return agg.openingBalance + agg.net;
+      case "openingBalance":
+        return agg.openingBalance;
+      case "income":
+        return agg.income;
+      case "expenses":
+        return agg.expenses;
+      case "net":
+        return agg.net;
+      default:
+        throw new Error(`Unknown sheet property "${prop}"`);
+    }
   };
 
   for (const row of item.rows) {
@@ -319,35 +370,43 @@ function emptyMutable(openingBalance: number): MutableMonthAggregates {
   };
 }
 
-// Build a MonthAggregates from the budget's rows for the given fiscal
-// month, reading effective amounts from `amounts`. `excludeRowId`
-// drops the named row from every aggregate so a formula row doesn't
-// reference itself.
-function aggregateMonth(
+// Cross-sheet aggregate for one (sheet, month) pair. v1 forward-only:
+// formula rows on the referenced sheet are treated as literal 0 so a
+// cycle through `sheet("…")` can never form. A future v2 could resolve
+// recursively with a visited-set.
+//
+// Inline form of the literal-pre-pass + `aggregateMonth` chain the
+// caller used to do — folding both into one walk halves the row-scan
+// work, and the result is cached per (sheetId, monthKey) by the
+// resolver so F formulas referencing the same sheet/month run a single
+// scan instead of F.
+function aggregateCrossSheetMonth(
   item: AccountBudget,
   monthKey: string,
-  amounts: ReadonlyMap<string, number>,
   openingBalance: number,
-  excludeRowId: string | null,
   startOfMonth: number,
   typesById: ReadonlyMap<string, EntryType>,
-): MonthAggregates {
+): MonthAggregates | null {
   const dateCol = findColumnByType(item.columns, "date");
-  if (!dateCol) return emptyAggregates(openingBalance);
-
-  // Sum literals (and resolved formulas) in every month strictly
-  // before `monthKey` to get the opening balance for `monthKey`.
+  const amountCol = findColumnByType(item.columns, "amount");
+  if (!dateCol || !amountCol) return null;
   let opening = openingBalance;
   let income = 0;
   let expenses = 0;
   let uncategorized = 0;
   const byCategory = new Map<string, number>();
   const byType = new Map<string, number>();
-
   for (const row of item.rows) {
-    if (excludeRowId !== null && row.id === excludeRowId) continue;
+    // v1 cycle-avoidance: formula rows on the referenced sheet
+    // contribute 0.
+    let amount: number;
+    if (row.amountFormula) {
+      amount = 0;
+    } else {
+      const raw = row.cells[amountCol.id];
+      amount = typeof raw === "number" ? raw : Number(raw) || 0;
+    }
     const rowMonth = getMonthKey(row.cells[dateCol.id], startOfMonth);
-    const amount = amounts.get(row.id) ?? 0;
     if (rowMonth < monthKey) {
       opening += amount;
       continue;
@@ -355,10 +414,6 @@ function aggregateMonth(
     if (rowMonth !== monthKey) continue;
     if (amount > 0) income += amount;
     else if (amount < 0) expenses += amount;
-    // Category is derived through the row's type. Rows with no type
-    // (or a type that has been deleted) fall into the "uncategorized"
-    // bucket so a stale formula referencing them still resolves
-    // sensibly.
     const type = row.typeId ? typesById.get(row.typeId) : undefined;
     if (type) {
       byCategory.set(
@@ -370,7 +425,6 @@ function aggregateMonth(
       uncategorized += amount;
     }
   }
-
   return {
     openingBalance: opening,
     income,
@@ -382,96 +436,9 @@ function aggregateMonth(
   };
 }
 
-function emptyAggregates(openingBalance: number): MonthAggregates {
-  return {
-    openingBalance,
-    income: 0,
-    expenses: 0,
-    net: 0,
-    uncategorized: 0,
-    byCategory: new Map(),
-    byType: new Map(),
-  };
-}
-
-// Cross-sheet lookup: returns the requested property on the first
-// AccountBudget in the named sheet, evaluated against the row's
-// fiscal month. v1 forward-only — the referenced sheet's formula
-// rows contribute 0 here so a cycle through `sheet("…")` can never
-// form.
-function crossSheetLookup(
-  data: UserData,
-  targetSheetId: string,
-  prop: string,
-  monthKey: string,
-  startOfMonth: number,
-  typesById: ReadonlyMap<string, EntryType>,
-): number | null {
-  // v1 forward-only: the referenced sheet's formula rows are treated
-  // as literal-zero so a cycle through `sheet("…")` can never form.
-  // A future v2 could resolve recursively with a visited-set; for now
-  // the cross-sheet edge stays at literals only.
-  const sheet = data.sheets.find((s) => s.id === targetSheetId);
-  if (!sheet) return null;
-  const item = firstBudgetItem(sheet);
-  if (!item) return null;
-
-  const opening = sheetOpeningBalance(data, sheet);
-  const literalAmounts = new Map<string, number>();
-  const amountCol = findColumnByType(item.columns, "amount");
-  if (!amountCol) return null;
-  for (const row of item.rows) {
-    if (row.amountFormula) {
-      // v1 cycle-avoidance: skip formula rows on the referenced sheet.
-      literalAmounts.set(row.id, 0);
-      continue;
-    }
-    const raw = row.cells[amountCol.id];
-    literalAmounts.set(
-      row.id,
-      typeof raw === "number" ? raw : Number(raw) || 0,
-    );
-  }
-  const agg = aggregateMonth(
-    item,
-    monthKey,
-    literalAmounts,
-    opening,
-    null,
-    startOfMonth,
-    typesById,
-  );
-  switch (prop) {
-    case "endOfMonthBalance":
-      return agg.openingBalance + agg.net;
-    case "openingBalance":
-      return agg.openingBalance;
-    case "income":
-      return agg.income;
-    case "expenses":
-      return agg.expenses;
-    case "net":
-      return agg.net;
-    default:
-      throw new Error(`Unknown sheet property "${prop}"`);
-  }
-}
-
 function firstBudgetItem(sheet: Sheet): AccountBudget | null {
   for (const item of sheet.items) {
     if (item.type === "accountBudget") return item;
   }
   return null;
-}
-
-// The opening balance for a sheet's first AccountBudget = its
-// account's opening + the sum of any imported history that pre-dates
-// the budget. v1 keeps this simple: just the account opening. If the
-// app later threads history into the budget seed, update this in
-// concert with the change.
-function sheetOpeningBalance(data: UserData, sheet: Sheet): number {
-  const item = firstBudgetItem(sheet);
-  if (!item || !item.accountId) return 0;
-  const account = data.accounts.find((a) => a.id === item.accountId);
-  return account?.openingBalance ?? 0;
 }

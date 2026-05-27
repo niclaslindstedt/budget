@@ -412,16 +412,23 @@ export function rowsInSeriesFrom(
 // null if the series has no rows with a string date in `dateColumnId`.
 // Used by the edit-row modals to default the "until" picker so the
 // scope-picker reaches the natural end of the series.
+//
+// Single-pass max instead of the obvious `.filter().sort().at(-1)` —
+// we only need the maximum, not the full ordering, so the O(N log N)
+// sort + the three intermediate arrays it allocated were pure waste.
 export function getLastSeriesDate(
   rows: readonly Row[],
   seriesId: string,
   dateColumnId: string,
 ): string | null {
-  const dates = rows
-    .filter((r) => r.seriesId === seriesId)
-    .map((r) => r.cells[dateColumnId])
-    .filter((d): d is string => typeof d === "string");
-  return dates.length > 0 ? (dates.sort().at(-1) ?? null) : null;
+  let best: string | null = null;
+  for (const r of rows) {
+    if (r.seriesId !== seriesId) continue;
+    const d = r.cells[dateColumnId];
+    if (typeof d !== "string") continue;
+    if (best === null || d > best) best = d;
+  }
+  return best;
 }
 
 // Mint a budget Row carrying the standard (date, description, amount)
