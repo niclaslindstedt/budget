@@ -1,4 +1,4 @@
-import { allCategories, allTypes } from "./presets";
+import { allCategories, allTypes } from "./presets/merge";
 import { buildVisibleRows } from "./budget/rows";
 import { findColumnByType } from "./sheet";
 import type {

@@ -17,7 +17,7 @@ import {
   seriesHasOccurrenceInNextMonth,
 } from "../../data/reconciliation";
 import { newId } from "../../data/sheet";
-import { allTypes } from "../../data/presets";
+import { allTypes } from "../../data/presets/merge";
 import type {
   Column,
   EntryType,

@@ -1,4 +1,5 @@
-import { PRESET_CATEGORY_IDS, PRESET_ENTRY_TYPE_IDS } from "../presets";
+import { PRESET_CATEGORY_IDS } from "../presets/categories";
+import { PRESET_ENTRY_TYPE_IDS } from "../presets/types";
 import { LATEST_VERSION } from "../migrations";
 import type {
   Account,

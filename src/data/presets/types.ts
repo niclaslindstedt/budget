@@ -1,26 +1,19 @@
-// Built-in presets — `PRESET_ENTRY_TYPES`, `PRESET_CATEGORIES`, the
-// legacy `createSeedEntryTypes()` seed used by the v12 → v13 migration
-// — together with the helpers that merge them against the user-added
-// arrays on `UserData`. Pickers, renderers that resolve a `typeId` /
-// `categoryId`, and the admin UI in Settings all read through these
-// so the merge rules — preset first, then user-added, hidden presets
-// dropped — live in one place.
+// Built-in preset entry types — concrete labels parented to a preset
+// category. Pickers, renderers that resolve a `typeId`, and the admin
+// UI in Settings all read through `PRESET_ENTRY_TYPES` and the helpers
+// here. The legacy `createSeedEntryTypes()` seed used by the v12 → v13
+// migration also lives here so the preset list and the migration seed
+// stay in one file.
 //
-// Preset ids use the `preset-type-<slug>` / `preset-cat-<slug>`
-// prefixes so they're trivially distinguishable from user-minted ids
-// (`t-…` / `c-…`) in stored data and in the validator. Once shipped,
-// an id must never be reassigned — a rename keeps the id; a removed
-// preset stays in this list (the hidden flag is the user-facing
-// equivalent) so existing references continue to resolve.
+// Preset ids use the `preset-type-<slug>` prefix so they're trivially
+// distinguishable from user-minted ids (`t-…`) in stored data and in
+// the validator. Once shipped, an id must never be reassigned — a
+// rename keeps the id; a removed preset stays in this list (the hidden
+// flag is the user-facing equivalent) so existing references continue
+// to resolve.
 
-import { CATEGORY_COLORS } from "./constants";
-import type {
-  Category,
-  CategoryIcon,
-  EntryType,
-  EntryTypeKind,
-  UserData,
-} from "./types";
+import { CATEGORY_COLORS } from "../constants";
+import type { CategoryIcon, EntryType, EntryTypeKind } from "../types";
 
 // Historical seed for entry types — used only by the v12 → v13
 // migration. The v13 → v20 path no longer seeds the per-user `types`
@@ -917,81 +910,8 @@ export const PRESET_ENTRY_TYPE_IDS: ReadonlySet<string> = new Set(
   PRESET_ENTRY_TYPES.map((t) => t.id),
 );
 
-// Built-in categories. Categories are broader buckets than types —
-// a household typically has under a dozen, used for cross-row analysis
-// (Housing vs. Food vs. Transport). The picker also shows any
-// user-added categories from `UserData.categories`. The user can hide
-// individual presets via `UserData.hiddenPresetCategoryIds`. Same
-// id-stability contract as `PRESET_ENTRY_TYPES`.
-export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
-  const C = CATEGORY_COLORS;
-  const seeds: ReadonlyArray<{
-    slug: string;
-    name: string;
-    color: string;
-    icon: CategoryIcon;
-  }> = [
-    { slug: "housing", name: "Housing", color: C[1], icon: "home" },
-    { slug: "food", name: "Food", color: C[3], icon: "utensils" },
-    { slug: "transport", name: "Transport", color: C[4], icon: "car" },
-    { slug: "health", name: "Health", color: C[0], icon: "heart-pulse" },
-    { slug: "bills", name: "Bills", color: C[7], icon: "receipt" },
-    {
-      slug: "subscriptions",
-      name: "Subscriptions",
-      color: C[5],
-      icon: "repeat",
-    },
-    {
-      slug: "entertainment",
-      name: "Entertainment",
-      color: C[6],
-      icon: "film",
-    },
-    { slug: "savings", name: "Savings", color: C[5], icon: "piggy-bank" },
-    { slug: "income", name: "Income", color: C[3], icon: "banknote" },
-    { slug: "family", name: "Family", color: C[6], icon: "baby" },
-    { slug: "personal", name: "Personal", color: C[2], icon: "shirt" },
-    {
-      slug: "consumption",
-      name: "Consumption",
-      color: C[15],
-      icon: "shopping-bag",
-    },
-    { slug: "travel", name: "Travel", color: C[4], icon: "plane" },
-    { slug: "other", name: "Other", color: C[5], icon: "tag" },
-    { slug: "unknown", name: "Unknown", color: C[8], icon: "circle-help" },
-  ];
-  return seeds.map((s) => ({
-    id: `preset-cat-${s.slug}`,
-    name: s.name,
-    color: s.color,
-    icon: s.icon,
-  }));
-})();
-
-export const PRESET_CATEGORY_IDS: ReadonlySet<string> = new Set(
-  PRESET_CATEGORIES.map((c) => c.id),
-);
-
-// Catch-all preset category used when a type doesn't fit any specific
-// bucket. The v24 → v25 migration falls back to this id for user
-// types whose name doesn't match any known preset, and the picker /
-// settings UI lean on it when a type is being created without an
-// explicit category. Always present — `PRESET_CATEGORIES` includes the
-// "other" slug — so consumers can hardcode the id with confidence.
-export const DEFAULT_CATEGORY_ID = "preset-cat-other";
-
-// ------------------------------------------------------------------
-// Merge helpers — combine presets with user-added arrays on UserData.
-// ------------------------------------------------------------------
-
 export function isPresetTypeId(id: string): boolean {
   return PRESET_ENTRY_TYPE_IDS.has(id);
-}
-
-export function isPresetCategoryId(id: string): boolean {
-  return PRESET_CATEGORY_IDS.has(id);
 }
 
 export function visiblePresetTypes(
@@ -1045,36 +965,4 @@ function applyKindOverride(
   }
   if (type.kind === override) return type;
   return { ...type, kind: override };
-}
-
-export function visiblePresetCategories(
-  hiddenIds: readonly string[],
-): Category[] {
-  if (hiddenIds.length === 0) return [...PRESET_CATEGORIES];
-  const hidden = new Set(hiddenIds);
-  return PRESET_CATEGORIES.filter((c) => !hidden.has(c.id));
-}
-
-// Effective type list shown to pickers and renderers: visible presets
-// followed by user-added entries. Presets come first so they're
-// stable across users; user-added entries follow in insertion order.
-// Preset `kind` is projected through `presetTypeKindOverrides` so
-// every consumer (picker filter, settings UI, schema renderers) sees
-// the same effective income/expense flag without consulting the
-// override map directly.
-export function allTypes(data: UserData): EntryType[] {
-  return [
-    ...visiblePresetTypes(
-      data.hiddenPresetTypeIds,
-      data.presetTypeKindOverrides,
-    ),
-    ...data.types,
-  ];
-}
-
-export function allCategories(data: UserData): Category[] {
-  return [
-    ...visiblePresetCategories(data.hiddenPresetCategoryIds),
-    ...data.categories,
-  ];
 }

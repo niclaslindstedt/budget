@@ -159,21 +159,6 @@ to **Pending** with a rating.
   consume the context, drop the threaded props to ~5. **Severity:
   7** (folds into the above; same PR).
 
-- **`presets.ts` (1080 lines) data + logic intertwined, no
-  versioning** — preset categories / types ids use `preset-type-…`
-  but there's no schema-version field. If a preset's structure
-  changes (e.g. adding `loanTermMonths` to a type), there's no way
-  to migrate stored user data that references the old shape. Merge
-  logic (`effectivePresetKind`, `allCategories`, `allTypes`)
-  cascades into pickers, settings, i18n, validation. New sheet types
-  need their own category namespaces (loans don't share categories
-  with the budget ledger). **Severity: 7.**
-  - Plan: split into `src/data/presets/categories.ts`,
-    `src/data/presets/types.ts`, `src/data/presets/merge.ts`. Add a
-    `presetVersion` field. For each new sheet type, introduce a
-    sibling registry (e.g. `src/data/presets/loan-types.ts`) rather
-    than overloading the budget one.
-
 - **`SettingsModal/admin.tsx` (944 lines) duplicated category/type
   editors** — `CategoryEditor` and `TypeEditor` both re-implement
   form-state + validation + colour/glyph picker. Adding a new sheet
@@ -513,6 +498,18 @@ EntryType) => boolean` prop so callers customise; default to
   duplicated in `AGENTS.md` was consolidated into
   `docs/architecture.md` in the same PR, leaving AGENTS.md with
   just the placement rules.
+- **`presets.ts` data / logic split** (2026-05): the 1080-line
+  `src/data/presets.ts` split into three files under
+  `src/data/presets/` — `types.ts` (PRESET_ENTRY_TYPES + entry-type
+  helpers including `createSeedEntryTypes`, `visiblePresetTypes`,
+  `isPresetTypeId`, `effectivePresetKind`, `effectiveTypeKind`),
+  `categories.ts` (PRESET_CATEGORIES + DEFAULT_CATEGORY_ID +
+  `isPresetCategoryId`, `visiblePresetCategories`), and `merge.ts`
+  (`allTypes` / `allCategories`). 14 importers updated to point at
+  the matching submodule. The `presetVersion` field + per-sheet-type
+  registry parts of the original plan are deferred — both are
+  speculative until a non-budget sheet type with its own preset list
+  lands (same reasoning as the `forecasting/` skip below).
 
 ---
 
