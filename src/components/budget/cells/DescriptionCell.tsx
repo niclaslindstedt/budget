@@ -6,6 +6,7 @@ import { type FloatingPlacement, useSelectAllOnFocus } from "../../../hooks";
 import { ClearableTextarea } from "../../form";
 import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
+import { CompanyPicker } from "../../CompanyPicker";
 import { useClaimActiveRow } from "../../useClaimActiveRow";
 import { DismissBackdrop } from "../../DismissBackdrop";
 import { FloatingPanel } from "../../FloatingPanel";
@@ -46,9 +47,12 @@ export function DescriptionCell({
   isRecurring,
   entryType,
   company,
+  companies,
   placeholder,
   onChange,
   onCommit,
+  onSetCompany,
+  onCreateCompany,
 }: {
   rowId: string;
   value: string;
@@ -57,8 +61,17 @@ export function DescriptionCell({
   // Resolved Company for `row.companyId`. When the cell is in fallback
   // mode (no user-authored description) and a company is set, the
   // trigger renders an outlined pill with the company glyph + name
-  // instead of the type-name / bank-text fallback.
+  // instead of the type-name / bank-text fallback. When BOTH a
+  // user-authored description AND a company are set, the trigger
+  // (and the desktop textarea) renders a small `Building2` glyph
+  // before the description as a low-key indicator that the row is
+  // tagged to a merchant.
   company: Company | null;
+  // Full company list — surfaced by the description popover's inline
+  // `CompanyPicker` so the user can tag (or change) the row's company
+  // straight from the description reveal. Optional: when omitted (or
+  // `onSetCompany` is missing) the popover renders the textarea alone.
+  companies?: readonly Company[];
   // When set, `value` is a fallback (company / type / bank text) rather
   // than a user-authored description. The trigger renders the
   // appropriate fallback (company pill, type-coloured name, or "…")
@@ -68,10 +81,18 @@ export function DescriptionCell({
   placeholder?: string;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
+  // Pre-bound (no rowId) writer for the row's company. Wired by the
+  // parent to dispatch `bulkUpdate` for budget rows and
+  // `updateHistoryEntry` (also clearing `noCompany`) for synthesized
+  // history rows. Optional — when omitted the popover's CompanyPicker
+  // is hidden.
+  onSetCompany?: (companyId: string | null) => void;
+  onCreateCompany?: (draft: Omit<Company, "id">) => Company;
 }) {
   const t = useT();
   const typeLabel = entryType ? displayTypeName(entryType, t) : "";
   const isFallback = placeholder !== undefined;
+  const pickerEnabled = !!companies && !!onSetCompany && !!onCreateCompany;
   return (
     <td
       className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
@@ -82,6 +103,7 @@ export function DescriptionCell({
         rowId={rowId}
         value={value}
         isRecurring={isRecurring}
+        company={company}
         onChange={onChange}
         onCommit={onCommit}
       />
@@ -90,8 +112,12 @@ export function DescriptionCell({
         value={value}
         editValue={isFallback ? "" : value}
         placeholder={placeholder}
+        company={company}
+        companies={pickerEnabled ? companies : undefined}
         onChange={onChange}
         onCommit={onCommit}
+        onSetCompany={pickerEnabled ? onSetCompany : undefined}
+        onCreateCompany={pickerEnabled ? onCreateCompany : undefined}
         renderTrigger={({ ref, onClick, open, displayValue }) => {
           const hasValue = displayValue.length > 0;
           // The fallback rendering applies whenever the cell is showing
@@ -103,6 +129,11 @@ export function DescriptionCell({
           const fallback = isFallback || !hasValue;
           const showCompanyPill = fallback && !!company;
           const showTypeName = fallback && !company && !!entryType;
+          // When BOTH a description and a company are set, prefix the
+          // description text with a low-key Building2 glyph so the
+          // tagged-merchant state is visible at a glance even when the
+          // company name is hidden behind the description override.
+          const showCompanyGlyph = !fallback && hasValue && !!company;
           const hasContent = showCompanyPill || showTypeName || hasValue;
           const ariaLabel = showCompanyPill
             ? company!.name
@@ -120,7 +151,9 @@ export function DescriptionCell({
             : showTypeName
               ? typeLabel
               : hasValue
-                ? displayValue
+                ? company
+                  ? `${company.name}: ${displayValue}`
+                  : displayValue
                 : undefined;
           return (
             <button
@@ -155,7 +188,17 @@ export function DescriptionCell({
                   {typeLabel}
                 </span>
               ) : hasValue ? (
-                <span className="min-w-0 truncate">{displayValue}</span>
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  {showCompanyGlyph && (
+                    <Building2
+                      size={12}
+                      aria-hidden
+                      focusable={false}
+                      className="shrink-0"
+                    />
+                  )}
+                  <span className="min-w-0 truncate">{displayValue}</span>
+                </span>
               ) : !isRecurring ? (
                 <span>…</span>
               ) : null}
@@ -175,12 +218,20 @@ function DesktopDescriptionEditor({
   rowId,
   value,
   isRecurring,
+  company,
   onChange,
   onCommit,
 }: {
   rowId: string;
   value: string;
   isRecurring: boolean;
+  // Resolved Company for `row.companyId`. When set together with a
+  // user-authored description, the editor renders a small Building2
+  // glyph at the leading edge of the textarea row — same low-key
+  // tagged-merchant indicator the mobile trigger surfaces. No glyph
+  // when the description is empty (the description cell already has
+  // its own fallback chain for the company-only state).
+  company: Company | null;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
 }) {
@@ -205,6 +256,8 @@ function DesktopDescriptionEditor({
     if (value !== focusValueRef.current) onCommit(value);
   }
 
+  const showCompanyGlyph = !!company && value.length > 0;
+
   return (
     <div
       className={`relative hidden md:flex md:items-start ${
@@ -223,10 +276,21 @@ function DesktopDescriptionEditor({
           <Repeat size={12} aria-hidden focusable={false} />
         </span>
       )}
+      {showCompanyGlyph && (
+        <span
+          aria-label={company!.name}
+          title={company!.name}
+          className={`flex shrink-0 items-center pt-2 ${
+            isRecurring ? "pl-1" : "pl-2"
+          }`}
+        >
+          <Building2 size={12} aria-hidden focusable={false} />
+        </span>
+      )}
       <textarea
         ref={textareaRef}
         className={`${INPUT_BASE} resize-none leading-snug whitespace-pre-wrap break-words [field-sizing:content] min-h-[1.6em] ${
-          isRecurring ? "pl-1.5" : ""
+          isRecurring || showCompanyGlyph ? "pl-1.5" : ""
         }`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -261,8 +325,12 @@ function DescriptionPopover({
   value,
   editValue,
   placeholder,
+  company,
+  companies,
   onChange,
   onCommit,
+  onSetCompany,
+  onCreateCompany,
   renderTrigger,
 }: {
   rowId: string;
@@ -278,8 +346,17 @@ function DescriptionPopover({
   // memo they're about to override; absent, the generic
   // `cell.descriptionPlaceholder` ("Description") is used.
   placeholder?: string;
+  // Resolved Company for `row.companyId` plus the full list and
+  // create/select handlers needed to render the inline CompanyPicker
+  // above the textarea. All four are gated together: when any is
+  // missing the picker is suppressed and the popover just shows the
+  // textarea (matches the pre-picker behaviour).
+  company: Company | null;
+  companies?: readonly Company[];
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
+  onSetCompany?: (companyId: string | null) => void;
+  onCreateCompany?: (draft: Omit<Company, "id">) => Company;
   renderTrigger: (ctx: {
     ref: React.Ref<HTMLButtonElement>;
     onClick: () => void;
@@ -345,6 +422,18 @@ function DescriptionPopover({
         rowId={rowId}
         arrow="up"
       >
+        {companies && onSetCompany && onCreateCompany && (
+          <div className="border-b border-line p-1.5">
+            <CompanyPicker
+              rowId={rowId}
+              companies={companies}
+              selectedId={company?.id ?? null}
+              onSelect={onSetCompany}
+              onCreate={onCreateCompany}
+              variant="field"
+            />
+          </div>
+        )}
         <ClearableTextarea
           ref={textareaRef}
           value={draft}

@@ -39,6 +39,18 @@ type Props = {
   // and the row has no user-authored description — replacing the
   // type-name / bank-text fallback.
   company?: Company | null;
+  // Full company list — forwarded to the description popover's inline
+  // CompanyPicker so the user can tag (or change) the row's company
+  // straight from the description reveal. Optional: omitted on
+  // synthesized transfer rows (no DescriptionCell rendered) and any
+  // future call site that doesn't want the picker exposed.
+  companies?: readonly Company[];
+  onCreateCompany?: (draft: Omit<Company, "id">) => Company;
+  // Pre-bound (no rowId) writer for the row's company. Pre-bound by
+  // BudgetRow so this cell can stay agnostic of whether the row is a
+  // budget row (dispatches `bulkUpdate`) or a synthesized history row
+  // (dispatches `updateHistoryEntry` with `noCompany` cleared).
+  onSetCompany?: (companyId: string | null) => void;
   // Selectable entry types + categories, threaded through for the `type`
   // column's picker. Optional because synthesized / readonly variants
   // never reach the editable branch where they'd be consulted.
@@ -123,6 +135,9 @@ function CellImpl({
   isRecurring,
   entryType,
   company,
+  companies,
+  onCreateCompany,
+  onSetCompany,
   types,
   categories,
   onCreateType,
@@ -205,9 +220,12 @@ function CellImpl({
               isRecurring={false}
               entryType={entryType ?? null}
               company={company ?? null}
+              companies={companies}
               placeholder={descriptionPlaceholder}
               onChange={onChange}
               onCommit={onCommit}
+              onSetCompany={onSetCompany}
+              onCreateCompany={onCreateCompany}
             />
           );
         case "type":
@@ -250,8 +268,11 @@ function CellImpl({
           isRecurring={!!isRecurring}
           entryType={entryType ?? null}
           company={company ?? null}
+          companies={companies}
           onChange={onChange}
           onCommit={onCommit}
+          onSetCompany={onSetCompany}
+          onCreateCompany={onCreateCompany}
         />
       );
 

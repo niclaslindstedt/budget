@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { isRowSavable } from "../../data/budget-rows";
@@ -36,9 +36,21 @@ type Props = {
   // description. Lifted to page level for the same O(1) lookup +
   // stable reference reasons as `typesById`.
   companiesById: ReadonlyMap<string, Company>;
+  // Full company list, threaded through to the description cell's
+  // popover-mounted CompanyPicker. Kept alongside `companiesById`
+  // because the picker needs the ordered list while the row's display
+  // chain only ever resolves by id.
+  companies: readonly Company[];
   categories: readonly Category[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  // Row-level company writer. Routed by the parent (BudgetPage) so
+  // budget rows dispatch `bulkUpdate` and synthesized history rows
+  // dispatch `updateHistoryEntry` (clearing `noCompany` when a
+  // company is assigned). Pre-bound to a per-row closure here so
+  // `BudgetCell` and the inline picker stay agnostic of row type.
+  onSetRowCompany: (row: Row, companyId: string | null) => void;
   settings: Settings;
   selectMode: boolean;
   selected: boolean;
@@ -120,9 +132,12 @@ function BudgetRowImpl({
   types,
   typesById,
   companiesById,
+  companies,
   categories,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
+  onSetRowCompany,
   settings,
   selectMode,
   selected,
@@ -153,6 +168,10 @@ function BudgetRowImpl({
   const company: Company | null = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
     : null;
+  const handleSetCompany = useCallback(
+    (companyId: string | null) => onSetRowCompany(row, companyId),
+    [onSetRowCompany, row],
+  );
   const { swiped, setSwiped, touchHandlers } = useRowSwipe({
     disabled: selectMode,
   });
@@ -400,6 +419,9 @@ function BudgetRowImpl({
           isRecurring={isSeries}
           entryType={entryType}
           company={company}
+          companies={companies}
+          onSetCompany={handleSetCompany}
+          onCreateCompany={onCreateCompany}
           types={types}
           categories={categories}
           onCreateType={onCreateType}
