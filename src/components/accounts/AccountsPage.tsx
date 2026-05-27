@@ -405,15 +405,31 @@ export function AccountsPage({
                     className="pr-2 pl-1 py-2 text-left md:px-2.5"
                     aria-label={t("accountsSheet.description")}
                   >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <AlignLeft
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.description")}
+                    <span className="inline-flex flex-col items-start gap-0.5 md:flex-row md:items-center md:gap-2">
+                      <span className="inline-flex items-center gap-1.5 md:gap-2">
+                        <AlignLeft
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("accountsSheet.description")}
+                        </span>
+                      </span>
+                      {/* The dedicated transfer column is hidden on
+                          mobile and its from→to chips fold into the
+                          description cell instead. Mirror that here so
+                          the chips have a matching glyph + label
+                          stacked under the description glyph. */}
+                      <span className="inline-flex items-center gap-1.5 md:hidden">
+                        <ArrowLeftRight
+                          size={14}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span>{t("accountsSheet.transfer")}</span>
                       </span>
                     </span>
                   </th>
