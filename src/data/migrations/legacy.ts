@@ -8,11 +8,8 @@ import {
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
 } from "../constants";
-import {
-  DEFAULT_CATEGORY_ID,
-  PRESET_ENTRY_TYPES,
-  createSeedEntryTypes,
-} from "../presets";
+import { DEFAULT_CATEGORY_ID } from "../presets/categories";
+import { PRESET_ENTRY_TYPES, createSeedEntryTypes } from "../presets/types";
 import { newId } from "../sheet";
 import { isObj, type MigrationTable, type Versioned } from "./shared";
 

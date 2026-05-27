@@ -2,7 +2,7 @@ import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, Plus, Tag, X } from "lucide-react";
 
 import { TYPE_GLYPH_NAMES } from "../data/constants";
-import { DEFAULT_CATEGORY_ID } from "../data/presets";
+import { DEFAULT_CATEGORY_ID } from "../data/presets/categories";
 import type { Category, EntryType } from "../data/types";
 import { useRovingTabindex, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";

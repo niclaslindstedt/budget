@@ -2,15 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import {
-  allCategories,
-  allTypes,
+  isPresetCategoryId,
+  PRESET_CATEGORIES,
+} from "../src/data/presets/categories";
+import { allCategories, allTypes } from "../src/data/presets/merge";
+import {
   effectivePresetKind,
   effectiveTypeKind,
-  isPresetCategoryId,
   isPresetTypeId,
-  PRESET_CATEGORIES,
   PRESET_ENTRY_TYPES,
-} from "../src/data/presets";
+} from "../src/data/presets/types";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";

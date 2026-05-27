@@ -14,7 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { allCategories, allTypes } from "../../data/presets";
+import { allCategories, allTypes } from "../../data/presets/merge";
 import { computeAccountBalances } from "../../data/accounts/balance";
 import { compareDateStrings } from "../../data/fiscal-month";
 import type {

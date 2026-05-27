@@ -1,8 +1,8 @@
 import {
   DEFAULT_CATEGORY_ID,
   PRESET_CATEGORY_IDS,
-  PRESET_ENTRY_TYPE_IDS,
-} from "../presets";
+} from "../presets/categories";
+import { PRESET_ENTRY_TYPE_IDS } from "../presets/types";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
 

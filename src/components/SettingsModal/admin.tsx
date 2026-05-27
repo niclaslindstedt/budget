@@ -22,12 +22,14 @@ import {
 } from "../../data/constants";
 import {
   DEFAULT_CATEGORY_ID,
-  effectivePresetKind,
   PRESET_CATEGORIES,
   PRESET_CATEGORY_IDS,
+} from "../../data/presets/categories";
+import {
+  effectivePresetKind,
   PRESET_ENTRY_TYPES,
   PRESET_ENTRY_TYPE_IDS,
-} from "../../data/presets";
+} from "../../data/presets/types";
 import type {
   Category,
   CategoryIcon,

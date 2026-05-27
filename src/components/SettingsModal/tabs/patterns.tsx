@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ChevronDown, ChevronUp, Pencil, RefreshCw } from "lucide-react";
 
 import { countRuleHitsOnSheets } from "../../../data/budget/pattern-apply";
-import { allCategories, allTypes } from "../../../data/presets";
+import { allCategories, allTypes } from "../../../data/presets/merge";
 import type { MatchRule, Settings, UserData } from "../../../data/types";
 import { type TFunction, useT } from "../../../i18n";
 import { formatAmount } from "../../../utils/format";

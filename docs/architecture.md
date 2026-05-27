@@ -73,6 +73,18 @@ src/
 │   │   ├── accounts.ts   # createDefaultAccountsView + descriptor
 │   │   └── index.ts      # SHEET_TYPE_REGISTRY + SHEET_TYPE_IDS +
 │   │                     # getSheetTypeDescriptor lookup
+│   ├── presets/          # built-in entry types + categories that
+│   │   │                 # pickers, validators, and the admin UI all
+│   │   │                 # read through — preset first, user-added next
+│   │   ├── types.ts      # PRESET_ENTRY_TYPES + entry-type helpers
+│   │   │                 # (isPresetTypeId, visiblePresetTypes,
+│   │   │                 # effectivePresetKind, effectiveTypeKind,
+│   │   │                 # createSeedEntryTypes for v12 → v13 migration)
+│   │   ├── categories.ts # PRESET_CATEGORIES + DEFAULT_CATEGORY_ID +
+│   │   │                 # category helpers (isPresetCategoryId,
+│   │   │                 # visiblePresetCategories)
+│   │   └── merge.ts      # allTypes / allCategories — presets the user
+│   │                     # hasn't hidden, then their own entries
 │   ├── fiscal-month.ts   # fiscal-month + ISO date math (getMonthKey,
 │   │                     # groupRowsByMonth, previous/nextMonthKey, …)
 │   ├── budget/
@@ -515,8 +527,9 @@ Current `LATEST_VERSION` is `25`. The chain has twenty-four steps:
   current `APP_VERSION` silently on a fresh install so existing users
   never see the popup the moment they upgrade.
 - **v19 → v20** — introduces built-in preset entry types and preset
-  categories (`PRESET_ENTRY_TYPES` / `PRESET_CATEGORIES` in
-  `data/constants.ts`) plus per-user hide lists for each. Existing
+  categories (`PRESET_ENTRY_TYPES` in `data/presets/types.ts`,
+  `PRESET_CATEGORIES` in `data/presets/categories.ts`) plus per-user
+  hide lists for each. Existing
   user-added types and categories stay as-is; the migration
   initialises `hiddenPresetTypeIds` and `hiddenPresetCategoryIds` as
   empty arrays so every preset shows up until the user toggles one off
