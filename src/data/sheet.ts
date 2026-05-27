@@ -46,11 +46,38 @@ export function createDefaultSheet(
   };
 }
 
+// One pass over a columns array, indexed by `type`, cached by the
+// array reference. Reducer immutability gives us a fresh array
+// reference whenever the schema changes — so the WeakMap key stays
+// valid for the entire lifetime of a given columns array, and every
+// subsequent `findColumnByType` / `getStandardColumns` lookup is O(1)
+// instead of re-scanning all columns. Hot loops (per-history-entry
+// row synthesis, per-row savable checks, per-render budget chrome)
+// pay one O(C) build per columns array and then nothing.
+//
+// `.find()` returns the FIRST match — preserve that contract by
+// only writing the first column seen for each type.
+const columnsByTypeCache = new WeakMap<
+  readonly Column[],
+  Map<ColumnType, Column>
+>();
+
+function columnsByTypeMap(columns: readonly Column[]): Map<ColumnType, Column> {
+  let cached = columnsByTypeCache.get(columns);
+  if (cached) return cached;
+  cached = new Map();
+  for (const col of columns) {
+    if (!cached.has(col.type)) cached.set(col.type, col);
+  }
+  columnsByTypeCache.set(columns, cached);
+  return cached;
+}
+
 export function findColumnByType(
   columns: readonly Column[],
   type: ColumnType,
 ): Column | undefined {
-  return columns.find((c) => c.type === type);
+  return columnsByTypeMap(columns).get(type);
 }
 
 export function moveColumn(
@@ -95,11 +122,12 @@ export type StandardColumns = {
 export function getStandardColumns(
   columns: readonly Column[],
 ): StandardColumns {
+  const m = columnsByTypeMap(columns);
   return {
-    dateCol: findColumnByType(columns, "date"),
-    descCol: findColumnByType(columns, "description"),
-    amountCol: findColumnByType(columns, "amount"),
-    completedCol: findColumnByType(columns, "completed"),
+    dateCol: m.get("date"),
+    descCol: m.get("description"),
+    amountCol: m.get("amount"),
+    completedCol: m.get("completed"),
   };
 }
 

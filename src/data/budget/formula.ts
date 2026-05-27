@@ -286,7 +286,29 @@ class Parser {
   }
 }
 
+// Cache parsed ASTs by raw source string. `resolveEffectiveAmounts`
+// runs `parseFormula` once per formula row on every render, but a
+// formula's source only changes when the user edits the row — so the
+// repeat work is pure waste. `walk` reads the AST without mutating
+// it, so sharing the same node graph across renders is safe. Bounded
+// so a long-lived session with many edited formulas can't grow the
+// cache without limit; eviction is FIFO via Map insertion order.
+const PARSE_CACHE_LIMIT = 256;
+const parseCache = new Map<string, ParseResult>();
+
 export function parseFormula(src: string): ParseResult {
+  const cached = parseCache.get(src);
+  if (cached !== undefined) return cached;
+  const result = parseFormulaUncached(src);
+  if (parseCache.size >= PARSE_CACHE_LIMIT) {
+    const oldest = parseCache.keys().next().value;
+    if (oldest !== undefined) parseCache.delete(oldest);
+  }
+  parseCache.set(src, result);
+  return result;
+}
+
+function parseFormulaUncached(src: string): ParseResult {
   const trimmed = src.trim();
   if (trimmed === "") return { ok: false, error: "Empty formula" };
   const tokens = tokenize(trimmed);
