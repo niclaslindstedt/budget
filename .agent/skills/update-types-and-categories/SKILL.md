@@ -1,6 +1,6 @@
 ---
 name: update-types-and-categories
-description: "Use when the user wants to update categories or types for the budget. Covers adding, renaming, recoloring, re-glyphing, removing, or moving preset categories (PRESET_CATEGORIES) and preset entry types (PRESET_ENTRY_TYPES) in src/data/constants.ts — and the cascade of changes that has to land with them (CategoryIcon union, icon map, glyph allowlists, picker palettes, English + Swedish i18n, validator-friendly id rules, and changeset/PR conventions). Also covers adding a brand-new glyph from lucide-react so a fresh icon can back a type or category."
+description: "Use when the user wants to update categories or types for the budget. Covers adding, renaming, recoloring, re-glyphing, removing, or moving preset categories (PRESET_CATEGORIES) and preset entry types (PRESET_ENTRY_TYPES) in src/data/presets.ts — and the cascade of changes that has to land with them (CategoryIcon union, icon map, glyph allowlists, picker palettes, English + Swedish i18n, validator-friendly id rules, and changeset/PR conventions). Also covers adding a brand-new glyph from lucide-react so a fresh icon can back a type or category."
 ---
 
 # Updating preset categories and entry types
@@ -11,7 +11,7 @@ starting palette without seeding their own. Categories are the broad
 buckets (Housing, Food, Transport, …) used for cross-row analysis;
 types are concrete repeating entries (Rent, Groceries, Spotify, …)
 that belong to exactly one category. Both ship as **presets** in
-`src/data/constants.ts` and are surfaced through the Settings →
+`src/data/presets.ts` and are surfaced through the Settings →
 Categories / Types screens, the row-level type picker, and (for
 categories) the analytics rollups.
 
@@ -26,7 +26,7 @@ typecheck, the validator, the i18n parity test, or the picker UI.
 
 | Concern               | File                                                                                                             |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Preset definitions    | `src/data/constants.ts` — `PRESET_CATEGORIES`, `PRESET_ENTRY_TYPES`                                              |
+| Preset definitions    | `src/data/presets.ts` — `PRESET_CATEGORIES`, `PRESET_ENTRY_TYPES`                                              |
 | Glyph type union      | `src/data/types.ts` — `CategoryIcon`                                                                             |
 | Glyph render map      | `src/components/icons.tsx` — `CATEGORY_ICONS` + lucide imports                                                   |
 | Glyph allowlist       | `src/data/constants.ts` — `CATEGORY_ICON_NAMES`                                                                  |
@@ -220,7 +220,7 @@ render verbatim regardless of language.
 [ ] src/components/icons.tsx — imported lucide component + added map entry
 [ ] src/data/constants.ts — added to CATEGORY_ICON_NAMES
 [ ] src/data/constants.ts — added to TYPE_GLYPH_NAMES (and CATEGORY_GLYPH_NAMES if broad)
-[ ] src/data/constants.ts — added seed to PRESET_ENTRY_TYPES under the right // <Category> marker
+[ ] src/data/presets.ts — added seed to PRESET_ENTRY_TYPES under the right // <Category> marker
 [ ] src/i18n/locales/en.ts — added slug under presetTypes
 [ ] src/i18n/locales/sv.ts — added slug under presetTypes
 [ ] make typecheck && make lint && make test

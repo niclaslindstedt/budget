@@ -1,3 +1,4 @@
+import { FONT_SCALE_PRESETS } from "../../../data/constants";
 import {
   BORDER_WIDTH_PRESETS,
   COLOR_GROUPS,
@@ -7,12 +8,11 @@ import {
   DENSITY_PRESETS,
   FAMILY_DEFAULT_THEME,
   FONT_FAMILIES,
-  FONT_SCALE_PRESETS,
   LIGHT_THEMES,
   PRESET_PALETTES,
   RADIUS_PRESETS,
   themeFamily,
-} from "../../../data/constants";
+} from "../../../data/themes";
 import type {
   CustomTheme,
   CustomThemeColors,

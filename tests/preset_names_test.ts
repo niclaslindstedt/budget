@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PRESET_CATEGORIES, PRESET_ENTRY_TYPES } from "../src/data/constants";
+import { PRESET_CATEGORIES, PRESET_ENTRY_TYPES } from "../src/data/presets";
 import { tFor, type TFunction } from "../src/i18n";
 import { displayCategoryName, displayTypeName } from "../src/i18n/preset-names";
 

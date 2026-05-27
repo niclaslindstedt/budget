@@ -1,4 +1,4 @@
-import { PRESET_CATEGORY_IDS, PRESET_ENTRY_TYPE_IDS } from "../constants";
+import { PRESET_CATEGORY_IDS, PRESET_ENTRY_TYPE_IDS } from "../presets";
 import { LATEST_VERSION } from "../migrations";
 import type {
   Account,

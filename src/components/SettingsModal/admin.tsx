@@ -18,14 +18,16 @@ import {
 import {
   CATEGORY_COLORS,
   CATEGORY_GLYPH_NAMES,
+  TYPE_GLYPH_NAMES,
+} from "../../data/constants";
+import {
   DEFAULT_CATEGORY_ID,
+  effectivePresetKind,
   PRESET_CATEGORIES,
   PRESET_CATEGORY_IDS,
   PRESET_ENTRY_TYPES,
   PRESET_ENTRY_TYPE_IDS,
-  TYPE_GLYPH_NAMES,
-} from "../../data/constants";
-import { effectivePresetKind } from "../../data/presets";
+} from "../../data/presets";
 import type {
   Category,
   CategoryIcon,

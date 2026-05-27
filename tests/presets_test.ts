@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  DEFAULT_PERSISTED_SETTINGS,
-  PRESET_CATEGORIES,
-  PRESET_ENTRY_TYPES,
-} from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
 import {
   allCategories,
   allTypes,
@@ -12,6 +8,8 @@ import {
   effectiveTypeKind,
   isPresetCategoryId,
   isPresetTypeId,
+  PRESET_CATEGORIES,
+  PRESET_ENTRY_TYPES,
 } from "../src/data/presets";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { UserData } from "../src/data/types";

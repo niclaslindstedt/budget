@@ -1,4 +1,4 @@
-import { PRESET_ENTRY_TYPE_IDS } from "../constants";
+import { PRESET_ENTRY_TYPE_IDS } from "../presets";
 import type {
   EntryTypeKind,
   MatchRule,
