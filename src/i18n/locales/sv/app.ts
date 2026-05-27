@@ -13,7 +13,6 @@ const app: AppCatalog = {
   selectRows: "Markera rader",
   exitSelectMode: "Avsluta markeringsläge",
   selectShort: "Markera",
-  cancelShort: "Avbryt",
   undo: "Ångra",
   undoShort: "Ångra (⌘Z)",
   redo: "Gör om",

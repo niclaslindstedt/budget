@@ -1,5 +1,5 @@
 // Rename-pattern memory. Whenever the user types a fresh description
-// over a history entry's bank text — via `HistoryEntryEditModal` (the
+// over a history entry's bank text — via `EditHistoryEntryModal` (the
 // pen button) or the budget-view quick-rename on a synthesized history
 // row — we tally that mapping against the normalised bank description
 // under the entry's account. The next import looks the key back up to

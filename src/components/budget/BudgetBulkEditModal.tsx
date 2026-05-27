@@ -18,7 +18,7 @@ import {
 } from "../../utils/format";
 import { Modal } from "../Modal";
 import { Button, Checkbox, ClearableInput } from "../form";
-import { RecurrenceForm } from "./RecurrenceForm";
+import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
 import { TypePicker } from "../TypePicker";
 
 export type { BulkPatch } from "../../data/action-payloads";
@@ -38,7 +38,7 @@ type Props = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
-export function BulkEditModal({
+export function BudgetBulkEditModal({
   open,
   rows,
   columns,
@@ -68,7 +68,7 @@ export function BulkEditModal({
     return values.every((v) => v === first) ? first : null;
   }, [rows, amountCol]);
 
-  // Seed RecurrenceForm with the earliest date in the selection so the
+  // Seed BudgetRecurrenceForm with the earliest date in the selection so the
   // generated horizon starts somewhere relevant.
   const seedDate = useMemo<string>(() => {
     if (!dateCol) return "";
@@ -255,7 +255,7 @@ export function BulkEditModal({
           onToggle={setRecurringEnabled}
           hint={t("bulkEdit.makeEachRecurringHint")}
         >
-          <RecurrenceForm
+          <BudgetRecurrenceForm
             seedDate={seedDate}
             resetKey={recurrenceResetKey}
             includeOnce={false}

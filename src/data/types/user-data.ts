@@ -112,7 +112,7 @@ export type UserData = {
   // Per-account rename memory. Each entry maps a normalised bank
   // description to the user-typed label they reach for when relabelling
   // entries that match it. See `RenamePattern`. Surfaced by the
-  // `RenamePredictorModal` as the last step of every import that has
+  // `AccountRenamePredictorModal` as the last step of every import that has
   // suggestions to offer; learning happens silently inside the
   // `updateHistoryEntry` reducer action so any in-app rename feeds the
   // store.

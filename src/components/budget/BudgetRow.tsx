@@ -11,7 +11,7 @@ import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { BudgetCell } from "./BudgetCell";
 import { useBudgetContext } from "./BudgetContext";
-import { RowActionsMenu } from "./RowActionsMenu";
+import { BudgetEntryActionsMenu } from "./BudgetEntryActionsMenu";
 
 type Props = {
   row: Row;
@@ -34,7 +34,7 @@ type Props = {
   // in chronological order (i.e. that contributed to the visible
   // running balance step at this row). When > 0, the balance cell
   // renders a small ↔ icon button; clicking it fires
-  // `onToggleTransferAnchor` so MonthTable reveals the hidden run
+  // `onToggleTransferAnchor` so BudgetMonthTable reveals the hidden run
   // inline above this row. 0 (the default) means no icon.
   hiddenTransferCount?: number;
   transferExpanded?: boolean;
@@ -86,7 +86,7 @@ type Props = {
   // row to another month is done by editing its date cell.
   onCopyRequest: (row: Row) => void;
   // Manual fiscal-month override for the row. Threaded through to
-  // `RowActionsMenu` so the "Push to next month" / "Push to previous
+  // `BudgetEntryActionsMenu` so the "Push to next month" / "Push to previous
   // month" / "Reset month override" entries can dispatch the reducer
   // action. Optional — surfaces only on user-authored rows.
   onSetFiscalMonthShift?: (row: Row, shift: -1 | 1 | null) => void;
@@ -137,7 +137,7 @@ function BudgetRowImpl({
     disabled: selectMode,
   });
   // Long-press → open the generic edit-row modal. Same coordinator
-  // pattern as `AddRowButton` / `BottomBar`'s sheet tabs: the timer
+  // pattern as `BudgetAddEntryButton` / `BottomBar`'s sheet tabs: the timer
   // fires after LONG_PRESS_MS and `longPressTriggered` guards the
   // trailing click so the tap that produced the long-press doesn't
   // also fire a cell editor underneath the modal.
@@ -210,7 +210,7 @@ function BudgetRowImpl({
   const rowDateColor =
     rowDateMonthNum !== null ? monthColorVar(rowDateMonthNum) : undefined;
 
-  // Synthesized rows have their own edit affordances (TransferModal
+  // Synthesized rows have their own edit affordances (AccountTransferModal
   // for transfers, the promote flow for history) and balance-
   // correction rows are display-only — long-press is a no-op on all of
   // them. The select-mode tap toggles selection so we leave it alone
@@ -481,7 +481,7 @@ function BudgetRowImpl({
             </span>
           )}
           {!isTransfer && (
-            <RowActionsMenu
+            <BudgetEntryActionsMenu
               row={row}
               isHistory={isHistory}
               isSeries={isSeries}

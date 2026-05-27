@@ -3,9 +3,7 @@ import type { BulkBarCatalog } from "../en/bulkBar";
 const bulkBar: BulkBarCatalog = {
   selectedCount: "{n} markerade",
   selectedSuffix: "markerade",
-  edit: "Redigera",
   editSelected: "Redigera markerade",
-  delete: "Ta bort",
   deleteSelected: "Ta bort markerade",
   move: "Flytta",
   moveSelected: "Flytta markerade till annan månad",
@@ -14,7 +12,6 @@ const bulkBar: BulkBarCatalog = {
   moveCopy: "Flytta / kopiera",
   makeRecurring: "Gör återkommande",
   clear: "Rensa markering",
-  cancel: "Avbryt",
   cancelSelection: "Avbryt markering",
 };
 

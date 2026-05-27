@@ -136,7 +136,7 @@ function seedPatternFromSeed(seed: MatchRuleSeed): string {
   return derivePatternFromDescription(seed.description);
 }
 
-export function MatchRuleModal({
+export function BudgetMatchRuleModal({
   open,
   seedEntry,
   allEntries,

@@ -81,11 +81,11 @@ export type MatchRule = {
 
 // Per-account memory of "the bank wrote X, the user calls it Y".
 // Recorded every time the user types a fresh description over a
-// history entry (`HistoryEntryEditModal` or the budget-view quick-
+// history entry (`EditHistoryEntryModal` or the budget-view quick-
 // rename — both route through the `updateHistoryEntry` reducer
 // chokepoint). The next bank-history import looks the normalised
 // bank description back up and offers the stored text as a suggested
-// rename in `RenamePredictorModal`. Scope is per-account so the same
+// rename in `AccountRenamePredictorModal`. Scope is per-account so the same
 // merchant can carry different user labels in different accounts.
 // See `src/data/rename-patterns.ts` for the pure helpers; the on-disk
 // shape is `Record<accountId, Record<normalisedKey, RenamePattern>>`.

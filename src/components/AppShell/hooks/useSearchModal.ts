@@ -55,7 +55,7 @@ export function useSearchModal({ data }: Params): Result {
   // Building it on every `data` change paid that cost on every reducer
   // dispatch — keystrokes in budget cells, toast queue churn, modal
   // opens — even though the index is only read inside
-  // `TransferSearchModal`. Gate the build on `searchOpen` so the cost
+  // `BudgetTransferSearchModal`. Gate the build on `searchOpen` so the cost
   // moves to the moment the user actually opens search. While the modal
   // stays open, the memo re-runs on every `data` change (so a row edit
   // made in another tab or via undo while search is open still

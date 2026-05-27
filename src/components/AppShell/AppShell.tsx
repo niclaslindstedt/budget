@@ -33,40 +33,40 @@ import { AccountModal } from "../accounts/AccountModal";
 import { ActionHistoryModal } from "../ActionHistoryModal";
 import { UpdateBalanceModal } from "../accounts/UpdateBalanceModal";
 import { AccountsPage } from "../accounts/AccountsPage";
-import { CutAccountHistoryModal } from "../accounts/CutAccountHistoryModal";
-import { ApplySeriesEditDialog } from "../budget/ApplySeriesEditDialog";
-import { DeleteRecurringDialog } from "../budget/DeleteRecurringDialog";
+import { AccountCutHistoryModal } from "../accounts/AccountCutHistoryModal";
+import { BudgetApplySeriesDialog } from "../budget/BudgetApplySeriesDialog";
+import { BudgetDeleteRecurringDialog } from "../budget/BudgetDeleteRecurringDialog";
 import { AppLoading } from "../AppLoading";
 import { ChangelogModal } from "../ChangelogModal";
 import { BottomBar } from "../BottomBar";
-import { BulkEditModal } from "../budget/BulkEditModal";
+import { BudgetBulkEditModal } from "../budget/BudgetBulkEditModal";
 import { SheetModal } from "../SheetModal";
-import { TransferSearchModal } from "../budget/TransferSearchModal";
-import { TransferModal } from "../accounts/TransferModal";
-import { ComplexEntryModal } from "../budget/ComplexEntryModal";
+import { BudgetTransferSearchModal } from "../budget/BudgetTransferSearchModal";
+import { AccountTransferModal } from "../accounts/AccountTransferModal";
+import { BudgetComplexEntryModal } from "../budget/BudgetComplexEntryModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import {
-  EditEntryModal,
+  BudgetEditEntryModal,
   type EditPatch,
   type EditScope,
-} from "../budget/EditEntryModal";
+} from "../budget/BudgetEditEntryModal";
 import {
-  EditRowModal,
+  BudgetEditEntryFullModal,
   type EditRowPatch,
   type EditRowScope,
-} from "../budget/EditRowModal";
+} from "../budget/BudgetEditEntryFullModal";
 import {
-  SplitEntryModal,
+  BudgetSplitEntryModal,
   type SplitSubmission,
-} from "../budget/SplitEntryModal";
+} from "../budget/BudgetSplitEntryModal";
 import { DownloadModal } from "../DownloadModal";
-import { HistoryEntryEditModal } from "../accounts/HistoryEntryEditModal";
+import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { HistoryModal } from "../accounts/HistoryModal";
 import { ImportHistoryModal } from "../accounts/ImportHistoryModal";
-import { ReconciliationModal } from "../accounts/ReconciliationModal";
-import { RenamePredictorModal } from "../accounts/RenamePredictorModal";
-import { MatchRuleModal } from "../budget/MatchRuleModal";
-import { MoveCopyModal } from "../budget/MoveCopyModal";
+import { AccountReconciliationModal } from "../accounts/AccountReconciliationModal";
+import { AccountRenamePredictorModal } from "../accounts/AccountRenamePredictorModal";
+import { BudgetMatchRuleModal } from "../budget/BudgetMatchRuleModal";
+import { BudgetMoveCopyModal } from "../budget/BudgetMoveCopyModal";
 import { AchievementUnlockModal } from "../AchievementUnlockModal";
 import { AchievementsModal } from "../AchievementsModal";
 import { HeaderMenu } from "../HeaderMenu";
@@ -89,8 +89,8 @@ import type {
   Settings,
   UserData,
 } from "../../data/types";
-import { RecurringCandidatesPanel } from "../budget/RecurringCandidatesPanel";
-import { TransferCollapseModal } from "../accounts/TransferCollapseModal";
+import { BudgetRecurringCandidatesPanel } from "../budget/BudgetRecurringCandidatesPanel";
+import { AccountTransferCollapseModal } from "../accounts/AccountTransferCollapseModal";
 import { reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
@@ -975,7 +975,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       setHistoryEditPrompt,
     });
 
-  // Series rows are handled by `DeleteRecurringDialog` (which owns its
+  // Series rows are handled by `BudgetDeleteRecurringDialog` (which owns its
   // own scope picker, optional date bound, and button labels). This
   // memo only feeds `ConfirmDialog` for the single-row fallback path
   // (one-off rows, or series rows on a sheet with no date column).
@@ -1166,7 +1166,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
               />
             ) : (
               <>
-                <RecurringCandidatesPanel
+                <BudgetRecurringCandidatesPanel
                   history={
                     activeItem.accountId
                       ? (data.history[activeItem.accountId] ?? [])
@@ -1358,7 +1358,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCancel={() => setImportHistoryForId(null)}
         onConfirm={onConfirmImportHistory}
       />
-      <ReconciliationModal
+      <AccountReconciliationModal
         open={reconciliation !== null}
         onCancel={onCancelReconciliation}
         onApply={onApplyReconciliation}
@@ -1370,13 +1370,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         settings={effectiveSettings}
       />
       {/* Second mount, scoped to the retrospective orphan-triage CTA
-          fired from the budget-page MonthTable footer. Same modal
+          fired from the budget-page BudgetMonthTable footer. Same modal
           component as the import-time one — just fed an empty
           `newEntries` / `candidates` so only the orphan section
           renders, and committed via `onApplyManualTriage` which
           dispatches `applyReconciliation` standalone (no
           `importBankHistory` in flight). */}
-      <ReconciliationModal
+      <AccountReconciliationModal
         open={manualTriage !== null}
         onCancel={() => setManualTriage(null)}
         onApply={onApplyManualTriage}
@@ -1387,13 +1387,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         orphans={manualTriage?.orphans ?? []}
         settings={effectiveSettings}
       />
-      <RenamePredictorModal
+      <AccountRenamePredictorModal
         open={renamePredictor !== null}
         suggestions={renamePredictor?.suggestions ?? []}
         onCancel={onCancelRenamePredictor}
         onCommit={onCommitRenamePredictor}
       />
-      <CutAccountHistoryModal
+      <AccountCutHistoryModal
         open={cutHistoryAccount !== null}
         account={cutHistoryAccount}
         history={
@@ -1412,7 +1412,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         settings={effectiveSettings}
         onCancel={() => setViewHistoryForId(null)}
       />
-      <TransferCollapseModal
+      <AccountTransferCollapseModal
         open={transferModalOpen}
         history={data.history}
         accounts={data.accounts}
@@ -1422,7 +1422,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCollapse={onCollapseTransferPair}
         onDismiss={onDismissTransferPair}
       />
-      <TransferModal
+      <AccountTransferModal
         open={transferRequest !== null}
         request={transferRequest}
         accounts={data.accounts}
@@ -1437,7 +1437,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
-      <ComplexEntryModal
+      <BudgetComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}
         categories={allCategoriesMerged}
@@ -1461,7 +1461,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
-      <EditEntryModal
+      <BudgetEditEntryModal
         open={editPrompt !== null}
         row={editPrompt?.row ?? null}
         columns={activeItem.columns}
@@ -1480,7 +1480,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
       />
-      <EditRowModal
+      <BudgetEditEntryFullModal
         open={editRowPrompt !== null}
         row={editRowPrompt?.row ?? null}
         columns={activeItem.columns}
@@ -1500,7 +1500,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
-      <SplitEntryModal
+      <BudgetSplitEntryModal
         open={splitPrompt !== null}
         row={splitPrompt?.row ?? null}
         columns={activeItem.columns}
@@ -1516,7 +1516,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
-      <MatchRuleModal
+      <BudgetMatchRuleModal
         open={
           matchRulePrompt !== null &&
           (matchRulePrompt.kind === "edit"
@@ -1539,7 +1539,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
       />
-      <HistoryEntryEditModal
+      <EditHistoryEntryModal
         open={historyEditPrompt !== null && historyEditEntry !== null}
         entry={historyEditEntry}
         categories={allCategoriesMerged}
@@ -1554,7 +1554,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
       />
-      <ApplySeriesEditDialog
+      <BudgetApplySeriesDialog
         open={pendingSeriesEdit !== null}
         fieldLabel={pendingSeriesEdit?.fieldLabel ?? ""}
         anchorDate={pendingSeriesEdit?.anchorDate ?? ""}
@@ -1562,7 +1562,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCancel={onDismissPendingSeriesEdit}
         onApplyToFuture={onApplyPendingToFuture}
       />
-      <BulkEditModal
+      <BudgetBulkEditModal
         open={bulkEditOpen && selectedRows.length > 0}
         rows={selectedRows}
         columns={activeItem.columns}
@@ -1575,7 +1575,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
-      <MoveCopyModal
+      <BudgetMoveCopyModal
         open={moveCopyPrompt !== null}
         mode={moveCopyPrompt?.kind ?? "move"}
         rows={moveCopyPrompt?.rows ?? []}
@@ -1593,7 +1593,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         actions={deleteActions}
         onCancel={() => setDeletePrompt(null)}
       />
-      <DeleteRecurringDialog
+      <BudgetDeleteRecurringDialog
         open={
           deletePrompt !== null &&
           !!deletePrompt.row.seriesId &&
@@ -1785,7 +1785,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           setActionHistoryOpen(false);
         }}
       />
-      <TransferSearchModal
+      <BudgetTransferSearchModal
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         query={searchQuery}

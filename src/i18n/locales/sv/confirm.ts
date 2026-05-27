@@ -2,7 +2,6 @@ import type { ConfirmCatalog } from "../en/confirm";
 
 const confirm: ConfirmCatalog = {
   title: "Är du säker?",
-  cancel: "Avbryt",
   confirm: "Bekräfta",
   confirmDelete: "Ja, ta bort",
   confirmDiscard: "Ja, förkasta",

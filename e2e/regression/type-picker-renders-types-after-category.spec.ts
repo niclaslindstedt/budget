@@ -5,7 +5,7 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // empty bordered box with no types, no back button, and no "New
 // type" footer — the user saw nothing where the list of types
 // belonging to the picked category should have been. Same picker
-// inside EditRowModal in general (not only recurring rows), since
+// inside BudgetEditEntryFullModal in general (not only recurring rows), since
 // nothing about the recurring scope fieldset changes the picker.
 //
 // What was broken: the two-tier picker (TypePicker.tsx) slides
@@ -25,7 +25,7 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // effect.
 
 test.describe("Type picker renders types after picking a category", () => {
-  test("EditRowModal type picker shows the types in the picked category", async ({
+  test("BudgetEditEntryFullModal type picker shows the types in the picked category", async ({
     page,
   }) => {
     await signInAsGuest(page);
@@ -43,7 +43,7 @@ test.describe("Type picker renders types after picking a category", () => {
     await amountInput.fill("3600");
     await amountInput.blur();
 
-    // Open the pen-icon EditRowModal directly (the bug repros on any
+    // Open the pen-icon BudgetEditEntryFullModal directly (the bug repros on any
     // row, recurring or not — the picker's tier-flip path is the
     // same).
     await lastRow.hover();

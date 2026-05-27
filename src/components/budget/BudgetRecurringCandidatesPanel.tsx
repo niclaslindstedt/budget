@@ -45,7 +45,7 @@ type Props = {
 // a detected pattern into a real recurring series. Empty when the
 // detector finds nothing, so the budget view can mount it
 // unconditionally and the panel quietly takes itself out of layout.
-export function RecurringCandidatesPanel({
+export function BudgetRecurringCandidatesPanel({
   history,
   dismissedKeys,
   merchantHints,

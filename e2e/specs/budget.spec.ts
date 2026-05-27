@@ -26,7 +26,7 @@ test.describe("Budget page", () => {
   }) => {
     await signInAsGuest(page);
 
-    // The MonthTable for the current month is the first table on the
+    // The BudgetMonthTable for the current month is the first table on the
     // page. Its tbody's row count is the truth signal for "did the
     // reducer's `addRow` action land?".
     const tbody = page.locator("tbody").first();

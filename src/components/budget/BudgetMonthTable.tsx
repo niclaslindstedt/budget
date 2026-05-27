@@ -22,9 +22,9 @@ import {
   withCurrency,
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
-import { AddRowButton } from "./AddRowButton";
+import { BudgetAddEntryButton } from "./BudgetAddEntryButton";
 import { useBudgetContext } from "./BudgetContext";
-import { ColumnHeader } from "./ColumnHeader";
+import { BudgetColumnHeader } from "./BudgetColumnHeader";
 import { BudgetRow } from "./BudgetRow";
 
 type Props = {
@@ -33,7 +33,7 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   // Row-level company writer — see `BudgetRow.Props.onSetRowCompany`.
-  // MonthTable is the only path that mounts rows, so the prop is
+  // BudgetMonthTable is the only path that mounts rows, so the prop is
   // pure-passthrough here.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
   selectMode: boolean;
@@ -70,7 +70,7 @@ type Props = {
   // Anchor rows the user has expanded — their immediately preceding
   // hidden transfers render inline above the anchor. Lifted into
   // BudgetPage so a future "collapse all on sheet switch" stays a
-  // single source of truth; MonthTable just reads-and-renders.
+  // single source of truth; BudgetMonthTable just reads-and-renders.
   expandedTransferAnchors: ReadonlySet<string>;
   onToggleTransferAnchor: (rowId: string) => void;
   onToggleRowTransfer: (row: Row) => void;
@@ -383,7 +383,7 @@ function MonthTableImpl({
                 </th>
               )}
               {columns.map((col) => (
-                <ColumnHeader
+                <BudgetColumnHeader
                   key={col.id}
                   column={col}
                   onReorder={onReorderColumns}
@@ -544,7 +544,10 @@ function MonthTableImpl({
                     </div>
                   )
                 ) : (
-                  <AddRowButton onAdd={onAddRow} onComplex={onAddComplex} />
+                  <BudgetAddEntryButton
+                    onAdd={onAddRow}
+                    onComplex={onAddComplex}
+                  />
                 )}
               </td>
             </tr>
@@ -560,7 +563,7 @@ function MonthTableImpl({
 // rebuild every month's row tree. Shallow compare suffices — BudgetPage
 // memoizes the per-month `rows` array (via `sortedMonthGroups`) and the
 // other props are stable references coming from the workspace data.
-export const MonthTable = memo(MonthTableImpl);
+export const BudgetMonthTable = memo(MonthTableImpl);
 
 // One-row stand-in for a balance-correction Row. Renders as a single
 // full-width <td> showing "——— balance correction ±X kr ———" — no

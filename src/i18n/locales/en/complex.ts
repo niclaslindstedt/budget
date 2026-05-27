@@ -24,7 +24,6 @@ const complex = {
   formulaPlaceholder: "endOfMonthBalance - 5000",
   amountFormula: "Amount formula",
   formulaEvaluatedHint: "Formula evaluated per row at render time.",
-  addVerb: "Add",
   rowOne: "{n} row",
   rowOther: "{n} rows",
   rowsPlaceholder: "rows",

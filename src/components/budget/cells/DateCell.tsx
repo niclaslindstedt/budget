@@ -21,7 +21,7 @@ export function DateCell({
   const [open, setOpen] = useState(false);
   const iso = typeof value === "string" ? value : "";
   // Wire the date modal into the active-row coordinator. While the
-  // calendar is open the AddRowButton greys itself out and a tap on it
+  // calendar is open the BudgetAddEntryButton greys itself out and a tap on it
   // (or anywhere else outside the modal) only dismisses, mirroring how
   // amount focus and the description popover behave.
   useClaimActiveRow(rowId, open, () => setOpen(false));

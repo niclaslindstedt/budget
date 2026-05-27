@@ -7,11 +7,14 @@ import type { Category, EntryType, Settings, Sheet } from "../../data/types";
 import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
 import { Button, ClearableInput, SignedAmountInput } from "../form";
-import { FormulaHelpButton } from "./FormulaHelpButton";
-import { FormulaInput, type FormulaInputHandle } from "./FormulaInput";
-import { FormulaVariableHelper } from "./FormulaVariableHelper";
+import { BudgetFormulaHelpButton } from "./BudgetFormulaHelpButton";
+import {
+  BudgetFormulaInput,
+  type FormulaInputHandle,
+} from "./BudgetFormulaInput";
+import { BudgetFormulaVariableHelper } from "./BudgetFormulaVariableHelper";
 import { Modal } from "../Modal";
-import { RecurrenceForm } from "./RecurrenceForm";
+import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
 import { TypePicker } from "../TypePicker";
 
 type Props = {
@@ -60,7 +63,7 @@ export type ComplexEntrySeed = {
 export type { ComplexEntryDraft } from "../../data/action-payloads";
 import type { ComplexEntryDraft } from "../../data/action-payloads";
 
-export function ComplexEntryModal({
+export function BudgetComplexEntryModal({
   open,
   initialDate,
   categories,
@@ -90,11 +93,11 @@ export function ComplexEntryModal({
   const [formulaMode, setFormulaMode] = useState(false);
   const [formulaText, setFormulaText] = useState("");
   // Lets the variable-helper dropdown splice tokens at the caret and
-  // restore focus + cursor position afterwards. The FormulaInput is a
+  // restore focus + cursor position afterwards. The BudgetFormulaInput is a
   // contentEditable pill renderer so the ref points at its imperative
   // handle, not a raw DOM input.
   const formulaInputRef = useRef<FormulaInputHandle>(null);
-  // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
+  // resetKey bumps when the modal re-opens so BudgetRecurrenceForm re-seeds.
   const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
@@ -155,7 +158,7 @@ export function ComplexEntryModal({
   const toggleFormulaMode = () => setFormulaMode((m) => !m);
 
   const insertFormulaToken = useCallback((text: string) => {
-    // FormulaInput owns its own caret model (text-offset, not DOM
+    // BudgetFormulaInput owns its own caret model (text-offset, not DOM
     // selection) and handles the "drop caret into first hole"
     // post-insert reposition internally. We just forward the snippet.
     formulaInputRef.current?.insertAtCaret(text);
@@ -261,7 +264,7 @@ export function ComplexEntryModal({
             </span>
             {formulaMode ? (
               <div className="flex gap-1.5">
-                <FormulaInput
+                <BudgetFormulaInput
                   ref={formulaInputRef}
                   value={formulaText}
                   onChange={setFormulaText}
@@ -269,12 +272,12 @@ export function ComplexEntryModal({
                   ariaLabel={t("complex.amountFormula")}
                   className="formula-input field-input flex-1 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
                 />
-                <FormulaVariableHelper
+                <BudgetFormulaVariableHelper
                   onInsert={insertFormulaToken}
                   sheets={sheets}
                   currentSheetId={currentSheetId ?? null}
                 />
-                <FormulaHelpButton />
+                <BudgetFormulaHelpButton />
               </div>
             ) : (
               <SignedAmountInput
@@ -326,7 +329,7 @@ export function ComplexEntryModal({
           <div className="mb-2 text-xs text-muted">
             {t("complex.recurrence")}
           </div>
-          <RecurrenceForm
+          <BudgetRecurrenceForm
             seedDate={initialDate}
             resetKey={resetKey}
             seedRule={seed?.rule ?? null}
@@ -339,7 +342,7 @@ export function ComplexEntryModal({
           {t("common.cancel")}
         </Button>
         <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit}>
-          {submitVerb ?? t("complex.addVerb")}{" "}
+          {submitVerb ?? t("common.add")}{" "}
           {dates.length > 0
             ? dates.length === 1
               ? t("complex.rowOne", { n: dates.length })

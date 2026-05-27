@@ -34,30 +34,30 @@ src/
 │   ├── budget/                    # budget page — per-account ledger
 │   │   ├── BudgetPage.tsx              # page root — month grouping + balances
 │   │   ├── BudgetViewerModal.tsx       # read-only viewer
-│   │   ├── MonthTable.tsx              # one month's table
-│   │   ├── ColumnHeader.tsx            # draggable column header
+│   │   ├── BudgetMonthTable.tsx              # one month's table
+│   │   ├── BudgetColumnHeader.tsx            # draggable column header
 │   │   ├── BudgetCell.tsx              # per-type cell editor
 │   │   ├── BudgetRow.tsx               # row body — swipe-to-act + cell wiring
-│   │   ├── AddRowButton.tsx, RowActionsMenu.tsx
-│   │   ├── ComplexEntryModal.tsx       # recurring + categorised entry form
-│   │   ├── EditEntryModal.tsx          # promote-to-recurring / scoped series edit
-│   │   ├── EditRowModal.tsx, SplitEntryModal.tsx
-│   │   ├── RecurrenceForm.tsx          # mode-tabs + preview, shared by both modals
-│   │   ├── BulkEditModal.tsx, MoveCopyModal.tsx, ApplySeriesEditDialog.tsx
-│   │   ├── MatchRuleModal.tsx          # wildcard rule for history rendering
-│   │   ├── RecurringCandidatesPanel.tsx
+│   │   ├── BudgetAddEntryButton.tsx, BudgetEntryActionsMenu.tsx
+│   │   ├── BudgetComplexEntryModal.tsx       # recurring + categorised entry form
+│   │   ├── BudgetEditEntryModal.tsx          # promote-to-recurring / scoped series edit
+│   │   ├── BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx
+│   │   ├── BudgetRecurrenceForm.tsx          # mode-tabs + preview, shared by both modals
+│   │   ├── BudgetBulkEditModal.tsx, BudgetMoveCopyModal.tsx, BudgetApplySeriesDialog.tsx
+│   │   ├── BudgetMatchRuleModal.tsx          # wildcard rule for history rendering
+│   │   ├── BudgetRecurringCandidatesPanel.tsx
 │   │   ├── TransactionSearchModal.tsx
-│   │   ├── FormulaHelpButton.tsx, FormulaInput.tsx, FormulaVariableHelper.tsx
+│   │   ├── BudgetFormulaHelpButton.tsx, BudgetFormulaInput.tsx, BudgetFormulaVariableHelper.tsx
 │   │   └── cells/                      # readonly cell variants
 │   └── accounts/                  # accounts page — workspace dashboard
 │       ├── AccountsPage.tsx            # page root — accounts table + transfers
 │       ├── AccountModal.tsx, AccountActionsMenu.tsx
 │       ├── TransactionModal.tsx, UpdateBalanceModal.tsx
 │       ├── HistoryModal.tsx            # per-account bank history viewer
-│       ├── ImportHistoryModal.tsx, HistoryEntryEditModal.tsx,
-│       │   CutAccountHistoryModal.tsx
-│       ├── ReconciliationModal.tsx     # post-import flow on a single account
-│       └── TransferCollapseModal.tsx   # cross-account pair collapse
+│       ├── ImportHistoryModal.tsx, EditHistoryEntryModal.tsx,
+│       │   AccountCutHistoryModal.tsx
+│       ├── AccountReconciliationModal.tsx     # post-import flow on a single account
+│       └── AccountTransferCollapseModal.tsx   # cross-account pair collapse
 ├── data/
 │   ├── types.ts          # UserData, Account, Sheet, SheetItem, AccountBudget,
 │   │                     # Settings, StoredUser, UsersFile, …
@@ -220,13 +220,13 @@ type UserData = {
   // series to a bank-description glob, an amount-tolerance band, and
   // a date lag; future imports collapse any matching predicted row +
   // history entry pair silently. See `src/data/reconciliation.ts`
-  // for the matcher and `src/components/accounts/ReconciliationModal.tsx`
+  // for the matcher and `src/components/accounts/AccountReconciliationModal.tsx`
   // for the surface that records them.
   seriesMatchRules: SeriesMatchRule[];
   // Per-account rename memory: "the bank wrote X, the user calls it Y".
   // Recorded inside the `updateHistoryEntry` reducer chokepoint so the
   // pen-button history-edit modal AND the budget-view quick-rename both
-  // feed it. Surfaced by the `RenamePredictorModal` as the last step of
+  // feed it. Surfaced by the `AccountRenamePredictorModal` as the last step of
   // every import that has learned renames to offer; accepted suggestions
   // ride through `applyImportRenames` to land as `userDescription`
   // overrides on the matching history entries. See
@@ -582,7 +582,7 @@ are presets over the `everyNMonths` rule (`intervalMonths` of 1, 3,
 or 12). `expandRecurrence(rule)` returns a sorted, de-duplicated
 list of ISO `YYYY-MM-DD` strings clamped to `[start, end]`.
 
-The `ComplexEntryModal` collects a description, amount, type, and a
+The `BudgetComplexEntryModal` collects a description, amount, type, and a
 recurrence rule; on submit it expands the rule, dispatches one row
 per emitted date, and tags every generated row with a shared
 `seriesId` so they can be edited or deleted as a group later. The
@@ -594,8 +594,8 @@ Each row on the sheet has two actions, revealed by swiping the row
 left on mobile (or via the action icons at the right edge on
 desktop):
 
-- **Repeat icon** opens `EditEntryModal`. On a non-series row the modal
-  is a "promote to recurring" form — it reuses `RecurrenceForm` to
+- **Repeat icon** opens `BudgetEditEntryModal`. On a non-series row the modal
+  is a "promote to recurring" form — it reuses `BudgetRecurrenceForm` to
   capture a cadence + end date and dispatches `convertToRecurring`,
   which generates future rows that inherit the anchor's description
   and amount and share its type, all under a new `seriesId`. On a row that
@@ -631,7 +631,7 @@ import looks up:
 - `budget/recurring-detection.ts` buckets entries by normalised key,
   ranks each bucket by cadence regularity, amount stability, and
   occurrence count, and emits `RecurringCandidate`s the
-  `RecurringCandidatesPanel` surfaces on the budget view. Promotion
+  `BudgetRecurringCandidatesPanel` surfaces on the budget view. Promotion
   dispatches `promoteRecurringCandidate`, which mints a series of
   budget rows (using the existing `expandRecurrence` machinery) and
   records the chosen type as a merchant hint (its category is derived
@@ -640,7 +640,7 @@ import looks up:
 - `accounts/transfer-collapse.ts` finds mirror pairs across accounts —
   opposite signs, equal magnitude, dates within three days, bonus
   confidence for Swish / Överföring keywords — and emits
-  `TransferCandidate`s the `TransferCollapseModal` lists with bulk
+  `TransferCandidate`s the `AccountTransferCollapseModal` lists with bulk
   Collapse / Skip / Never controls. Collapsing dispatches
   `collapseTransferPair`, which mints a `Transaction` and stamps
   both source entries with `hidden: true` plus a

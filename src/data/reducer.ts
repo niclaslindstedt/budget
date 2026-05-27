@@ -398,7 +398,7 @@ export type Action =
       type: "clearUnseenAchievements";
     }
   | {
-      // Apply user-accepted predictions from the `RenamePredictorModal`
+      // Apply user-accepted predictions from the `AccountRenamePredictorModal`
       // — the last step of an import that has rename suggestions to
       // offer. Each entry in `renames` stamps `userDescription` on the
       // matching history entry. Distinct from `updateHistoryEntry`:

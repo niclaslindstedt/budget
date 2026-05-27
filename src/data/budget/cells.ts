@@ -1,5 +1,5 @@
 // Tiny generic readers for `Row.cells`. Modals that walk a row group
-// to coalesce metadata (FindConflictsModal's "promote the winner",
+// to coalesce metadata (BudgetFindConflictsModal's "promote the winner",
 // future pickers that surface a representative description) read
 // cells the same way; the readers here keep that contract in one
 // place and let `conflicts.ts`' own scoring drop a near-twin.

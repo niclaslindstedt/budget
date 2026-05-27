@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type {
   MatchRuleDraft,
   MatchRuleSeed,
-} from "../../budget/MatchRuleModal";
+} from "../../budget/BudgetMatchRuleModal";
 import { findMatchingRule, ruleMatchesEntry } from "../../../data/match-rules";
 import {
   countRowsAffectedByReapply,
@@ -148,7 +148,7 @@ export function useMatchRuleUi({
       if (draft.amountMin !== undefined) rule.amountMin = draft.amountMin;
       if (draft.amountMax !== undefined) rule.amountMax = draft.amountMax;
       // "Save pattern" unchecked → apply the rule's labels once and
-      // throw the rule away. The MatchRuleModal already coerces edits
+      // throw the rule away. The BudgetMatchRuleModal already coerces edits
       // to saveRule=true so an existing rule can never be downgraded
       // to a one-shot sweep here.
       if (!existingId && !draft.saveRule) {

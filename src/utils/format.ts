@@ -282,8 +282,8 @@ export function formatDate(
 
 // Month-key (`YYYY-MM`) rendered as "MMMM YYYY" via `Intl.DateTimeFormat`
 // in the active language — the long-form header used by every page that
-// groups rows or history entries by month (MonthTable, BudgetViewerModal,
-// BudgetMetadataModal, MoveCopyModal, HistoryModal, AccountsPage).
+// groups rows or history entries by month (BudgetMonthTable, BudgetViewerModal,
+// BudgetMetadataModal, BudgetMoveCopyModal, HistoryModal, AccountsPage).
 // Returns the input unchanged for non-parsable keys so callers can drop
 // the result in unconditionally.
 const yearMonthFormatCache = new Map<Lang, Intl.DateTimeFormat>();

@@ -1,12 +1,12 @@
 import type { Widen } from "./_widen";
 
 const searchTransaction = {
-  open: "Search transactions",
-  title: "Search transactions",
+  open: "Search entries",
+  title: "Search entries",
   placeholder: "Search by description, type, category, or amount",
   clear: "Clear search",
   emptyHint: "Start typing to search across every sheet.",
-  noResults: "No matching transactions",
+  noResults: "No matching entries",
   resultAria: "Open {description} on {sheet}",
 } as const;
 

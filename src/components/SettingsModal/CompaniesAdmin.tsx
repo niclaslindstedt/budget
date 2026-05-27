@@ -61,7 +61,7 @@ export function CompaniesAdmin({
                 <CompanyEditor
                   initial={c}
                   existing={companies}
-                  submitLabel={t("settings.companiesTab.saveSubmit")}
+                  submitLabel={t("common.save")}
                   onCancel={() => setEditingId(null)}
                   onSubmit={(draft) => {
                     onUpdateCompany(c.id, draft);
@@ -87,7 +87,7 @@ export function CompaniesAdmin({
                 type="button"
                 onClick={() => setEditingId(c.id)}
                 aria-label={t("settings.companiesTab.editCompany")}
-                title={t("settings.companiesTab.editLabel")}
+                title={t("common.edit")}
                 className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
               >
                 <Pencil size={13} aria-hidden focusable={false} />
@@ -96,7 +96,7 @@ export function CompaniesAdmin({
                 type="button"
                 onClick={() => setPendingDeleteId(c.id)}
                 aria-label={t("settings.companiesTab.deleteCompany")}
-                title={t("settings.companiesTab.deleteLabel")}
+                title={t("common.delete")}
                 className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-danger hover:text-danger"
               >
                 <Trash2 size={13} aria-hidden focusable={false} />
@@ -109,7 +109,7 @@ export function CompaniesAdmin({
             <CompanyEditor
               initial={null}
               existing={companies}
-              submitLabel={t("settings.companiesTab.addSubmit")}
+              submitLabel={t("common.add")}
               onCancel={() => setCreating(false)}
               onSubmit={(draft) => {
                 onCreateCompany(draft);
@@ -204,7 +204,7 @@ function CompanyEditor({
       </label>
       <div className="flex items-center justify-end gap-2">
         <Button variant="secondary" type="button" onClick={onCancel}>
-          {t("settings.companiesTab.cancelSubmit")}
+          {t("common.cancel")}
         </Button>
         <Button variant="primary" type="submit" disabled={!canSubmit}>
           {submitLabel}

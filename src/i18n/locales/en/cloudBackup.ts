@@ -11,7 +11,6 @@ const cloudBackup = {
   restoreTitle: "Restore from backup?",
   restoreHint:
     "The current budget will be replaced with this snapshot. Your current file will be saved as an auto-backup first.",
-  delete: "Delete",
   deleteAria: "Delete {filename}",
   deleteTitle: "Delete this backup?",
   deleteHint:

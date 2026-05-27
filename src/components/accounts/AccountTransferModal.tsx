@@ -94,7 +94,7 @@ type Props = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
 };
 
-export function TransferModal({
+export function AccountTransferModal({
   open,
   request,
   accounts,
@@ -498,7 +498,7 @@ function LockedAccountChip({
 }
 
 // Routed through `FloatingPanel` so the list lifts out of the
-// TransferModal's z-50 stacking context — otherwise its options
+// AccountTransferModal's z-50 stacking context — otherwise its options
 // would render underneath the dismiss backdrop.
 const TRANSFER_ACCOUNT_PICKER_PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 240 },

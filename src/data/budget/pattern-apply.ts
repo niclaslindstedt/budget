@@ -136,7 +136,7 @@ export function countRowsAffectedByReapply(
 //      description / typeId; the rule's labels don't apply to them.
 //
 // History overrides (`userTypeId`, `userDescription`) are intentionally
-// NOT excluded — the MatchRuleModal preview that drives the user's
+// NOT excluded — the BudgetMatchRuleModal preview that drives the user's
 // expectation counts every match, and re-subtracting overrides here
 // would re-open the same gap from the other side.
 export function countRuleHitsOnSheets(
@@ -177,7 +177,7 @@ export function countRuleHitsOnSheets(
 }
 
 // One-shot application of a rule that the user explicitly chose NOT
-// to persist (the "Save pattern" checkbox in MatchRuleModal). Stamps
+// to persist (the "Save pattern" checkbox in BudgetMatchRuleModal). Stamps
 // every match as if the user had manually labelled each row / entry:
 // budget rows pick up `typeId` plus `typeIdLocked: true`, history
 // entries pick up `userTypeId` (and `userDescription` when the rule

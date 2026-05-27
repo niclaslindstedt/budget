@@ -15,7 +15,7 @@ type Props = {
   onCutHistory: (accountId: string) => void;
   // Fired after picking any menu item so the parent can dismiss its
   // swipe state in the same frame the dropdown closes — mirrors the
-  // contract `RowActionsMenu` exposes for the budget sheet.
+  // contract `BudgetEntryActionsMenu` exposes for the budget sheet.
   onAction: () => void;
 };
 
@@ -34,7 +34,7 @@ type MenuItem = {
   onClick: () => void;
 };
 
-// Overflow menu for the Accounts table. Mirrors `RowActionsMenu` from
+// Overflow menu for the Accounts table. Mirrors `BudgetEntryActionsMenu` from
 // the budget sheet — same trigger glyph, same dropdown shell, same
 // `onAction` hook so the parent can collapse the swipe in the same
 // frame. Houses the import / cut actions that don't earn a dedicated

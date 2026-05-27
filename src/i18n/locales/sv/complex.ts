@@ -24,7 +24,6 @@ const complex: ComplexCatalog = {
   formulaPlaceholder: "endOfMonthBalance - 5000",
   amountFormula: "Beloppsformel",
   formulaEvaluatedHint: "Formeln utvärderas per rad vid rendering.",
-  addVerb: "Lägg till",
   rowOne: "{n} rad",
   rowOther: "{n} rader",
   rowsPlaceholder: "rader",

@@ -18,7 +18,7 @@ export function PatternsTab({
 }: {
   data: UserData;
   settings: Settings;
-  // Open the existing MatchRuleModal in edit mode. The modal's own
+  // Open the existing BudgetMatchRuleModal in edit mode. The modal's own
   // danger button handles deletion — keeping the destructive action
   // behind the modal preserves the "open, review matches, then delete"
   // affordance the user already gets when invoking a rule from a row.

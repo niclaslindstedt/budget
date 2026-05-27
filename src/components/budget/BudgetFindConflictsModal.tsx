@@ -89,7 +89,7 @@ type Props = {
 // for ledgers full of mid-size bills.
 const THRESHOLD_PRESETS: ReadonlyArray<number> = [50, 100, 200, 500, 1000];
 
-export function FindConflictsModal({
+export function BudgetFindConflictsModal({
   open,
   onClose,
   rows,

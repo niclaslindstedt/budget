@@ -60,15 +60,15 @@ import { ActiveRowProvider } from "../ActiveRowProvider";
 import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
 import { useBudgetLayoutState } from "./hooks/useBudgetLayoutState";
-import { MonthTable } from "./MonthTable";
+import { BudgetMonthTable } from "./BudgetMonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 import { BudgetMetadataModal } from "./BudgetMetadataModal";
 import { BudgetViewerModal } from "./BudgetViewerModal";
 import {
-  FindConflictsModal,
+  BudgetFindConflictsModal,
   type ConflictHistoryStamp,
   type ConflictUserRowPatch,
-} from "./FindConflictsModal";
+} from "./BudgetFindConflictsModal";
 
 type Props = {
   sheet: Sheet;
@@ -198,7 +198,7 @@ type Props = {
     patch: ConflictUserRowPatch,
   ) => void;
   // Open the orphan-triage modal for the given fiscal month — fired
-  // from each `MonthTable` footer when the month is fully covered by
+  // from each `BudgetMonthTable` footer when the month is fully covered by
   // bank history but still has manual user rows that need to be moved
   // or deleted. The handler in AppShell scopes the modal to this
   // sheet's `accountId` and feeds the modal the orphan list computed
@@ -312,7 +312,7 @@ const HISTORY_PAGE_SIZE = 3;
 const FUTURE_PAGE_SIZE = 3;
 
 // Module-level stable empty array. Used as the fallback rows reference
-// for months with no entries so MonthTable's React.memo sees the same
+// for months with no entries so BudgetMonthTable's React.memo sees the same
 // reference across renders instead of a fresh `[]` each time.
 const EMPTY_ROWS: Row[] = [];
 
@@ -515,7 +515,7 @@ export function BudgetPage({
   }, [history]);
 
   // Fiscal months fully covered by imported history. Computed once
-  // per render; passed down so each `MonthTable` can hide its
+  // per render; passed down so each `BudgetMonthTable` can hide its
   // `+ Add row` footer. Uses `settings.startOfMonth` so the coverage
   // window matches the column the rows are grouped under — with
   // startOfMonth=25, fiscal "2026-04" only flips covered once
@@ -552,7 +552,7 @@ export function BudgetPage({
   // synthesized transfers and history rows count toward
   // `endOfMonthBalance`, `income`, etc.) — then mirror the resolved
   // value into each formula row's amount cell so the existing
-  // MonthTable / Cell rendering chain shows the evaluated number
+  // BudgetMonthTable / Cell rendering chain shows the evaluated number
   // without any per-component plumbing. The same map is fed into
   // `computeBalances` so the running balance column lines up.
   const { effectiveAmounts, decoratedItem } = useMemo(() => {
@@ -670,8 +670,8 @@ export function BudgetPage({
   // Pre-sort each month's rows once per data change. Sorting inline in
   // the render path (one .sort() call per visible month) cost ~O(N log
   // N) on every parent re-render and produced a fresh array reference
-  // each time — defeating React.memo on MonthTable. The memoized map
-  // lets each MonthTable receive a stable rows array, so memo's shallow
+  // each time — defeating React.memo on BudgetMonthTable. The memoized map
+  // lets each BudgetMonthTable receive a stable rows array, so memo's shallow
   // compare can skip the months that didn't change.
   const sortedMonthGroups = useMemo(() => {
     if (!dateCol) return monthGroups;
@@ -691,7 +691,7 @@ export function BudgetPage({
 
   // `todayIso()` returns a fresh string each call, but the value only
   // changes at midnight. Memoize so closures derived from it (the
-  // current-month seed date threaded into MonthTable) keep stable
+  // current-month seed date threaded into BudgetMonthTable) keep stable
   // references across renders.
   const today = useMemo(() => todayIso(), []);
 
@@ -748,7 +748,7 @@ export function BudgetPage({
   const visibleMonths = useMemo(() => {
     const keys = new Set<string>();
     // Always render the current fiscal month — even when empty, the
-    // AddRowButton inside it is how the user adds the first entry.
+    // BudgetAddEntryButton inside it is how the user adds the first entry.
     // Past months in the default-history window only appear when they
     // contain rows, so a freshly created budget shows a single empty
     // current month instead of a stack of empty placeholders.
@@ -825,7 +825,7 @@ export function BudgetPage({
     // First pass: today's row may already be mounted (the user is on
     // or near the current month). Trust it only when its month is
     // current or later AND the current month's own rows are mounted —
-    // when the user is scrolled deep into history, MonthTable's near-
+    // when the user is scrolled deep into history, BudgetMonthTable's near-
     // viewport gate replaces the current-month row tree with a
     // placeholder, so `findRowNearestToday` returns the latest *past*
     // row (already on-screen) and scrolling to it would be a no-op.
@@ -855,7 +855,7 @@ export function BudgetPage({
       // Today's row isn't in the DOM. Scroll to the current-month
       // container (always rendered, even when its rows are lazy-
       // unmounted) — that brings the section under the viewport so
-      // MonthTable's IntersectionObserver flips and the row tree
+      // BudgetMonthTable's IntersectionObserver flips and the row tree
       // mounts. Refine to today's row once the smooth-scroll tail
       // and lazy-mount commit have landed.
       //
@@ -864,7 +864,7 @@ export function BudgetPage({
       // jump from deep-future months to today can run well past a
       // second. A single deadline (we used to wait 450 ms) silently
       // misses long jumps: the current-month container isn't yet in
-      // MonthTable's intersection-observer margin, its rows are
+      // BudgetMonthTable's intersection-observer margin, its rows are
       // still unmounted, `refine` returns false, and the user is
       // parked short of today — they had to click Today several
       // times to step closer. Poll every frame until the row mounts
@@ -927,7 +927,7 @@ export function BudgetPage({
       }
     };
     apply();
-    // Newly-revealed `MonthTable`s render as a height-estimated
+    // Newly-revealed `BudgetMonthTable`s render as a height-estimated
     // placeholder for one frame (`useNearViewport` starts false and
     // only flips to true via its own layout effect), then re-render
     // with the real row tree on the next frame. The placeholder's
@@ -1086,9 +1086,9 @@ export function BudgetPage({
   }, [scrollToRowRequest?.tick, sheet.id]);
 
   // Stable per-month closure bundles, keyed by monthKey. Without this
-  // each visible MonthTable receives fresh `onAddRow` / `onAddComplex` /
+  // each visible BudgetMonthTable receives fresh `onAddRow` / `onAddComplex` /
   // `onToggleCollapsed` arrow functions every parent render, defeating
-  // `React.memo` on MonthTable — and with a few years of history
+  // `React.memo` on BudgetMonthTable — and with a few years of history
   // visible that means rebuilding every row tree on every keystroke.
   // Memo'd against the inputs the closures close over, so a typed
   // amount or a clicked cell elsewhere never invalidates them.
@@ -1128,7 +1128,7 @@ export function BudgetPage({
     toggleCollapsed,
   ]);
 
-  // The month key MonthTable should force-mount its rows for, bypassing
+  // The month key BudgetMonthTable should force-mount its rows for, bypassing
   // its viewport-proximity gate. Set whenever a `scrollToRowRequest`
   // targets this sheet — without it the search-jump effect below would
   // `querySelector` for a row that hasn't been rendered yet (every
@@ -1223,7 +1223,7 @@ export function BudgetPage({
                   ref={isCurrent ? scrollTargetRef : null}
                   data-month-key={monthKey}
                 >
-                  <MonthTable
+                  <BudgetMonthTable
                     monthKey={monthKey}
                     rows={monthRows}
                     columns={decoratedItem.columns}
@@ -1303,7 +1303,7 @@ export function BudgetPage({
             types={types}
             settings={settings}
           />
-          <FindConflictsModal
+          <BudgetFindConflictsModal
             open={conflictsOpen}
             onClose={() => setConflictsOpen(false)}
             rows={decoratedItem.rows}

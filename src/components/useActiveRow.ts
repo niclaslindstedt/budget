@@ -22,7 +22,7 @@ export const ActiveRowCoordinatorContext =
 
 // Separate context for the single boolean — splitting it from the
 // coordinator means components that only call `activate`/`deactivate`
-// don't re-render every time `hasActive` flips. AddRowButton is the
+// don't re-render every time `hasActive` flips. BudgetAddEntryButton is the
 // only consumer.
 export const ActiveRowHasActiveContext = createContext<boolean>(false);
 

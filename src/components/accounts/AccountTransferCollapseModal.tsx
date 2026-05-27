@@ -34,7 +34,7 @@ type Props = {
 //
 // Auto-opened after a multi-account import if any new pairs were
 // detected — driven by the host App component.
-export function TransferCollapseModal({
+export function AccountTransferCollapseModal({
   open,
   history,
   accounts,

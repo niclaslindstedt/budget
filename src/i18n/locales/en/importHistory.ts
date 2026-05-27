@@ -25,7 +25,6 @@ const importHistory = {
   duplicatesSkipped: "Duplicates skipped",
   openingBalance: "Opening balance",
   confirm: "Import",
-  cancel: "Cancel",
   parseError: "Could not read this file.",
   unknownBank: "Could not detect the bank.",
   pickParser: "Choose bank format",

@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import type {
   HistoryMatchPreview,
   HistoryPromotePrefill,
-} from "../../budget/EditEntryModal";
-import type { SplitSubmission } from "../../budget/SplitEntryModal";
+} from "../../budget/BudgetEditEntryModal";
+import type { SplitSubmission } from "../../budget/BudgetSplitEntryModal";
 import { getLastSeriesDate } from "../../../data/budget/rows";
 import { normaliseDescription } from "../../../data/description-normaliser";
 import { findColumnByType } from "../../../data/sheet";
@@ -49,7 +49,7 @@ type Params = {
 
 export type DerivedPromptProps = {
   // Last ISO date in the series — defaults the "until" picker in
-  // EditEntryModal, EditRowModal, and DeleteRecurringDialog.
+  // BudgetEditEntryModal, BudgetEditEntryFullModal, and BudgetDeleteRecurringDialog.
   editLastSeriesDate: string | null;
   editRowLastSeriesDate: string | null;
   deleteLastSeriesDate: string | null;

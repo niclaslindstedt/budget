@@ -94,7 +94,7 @@ type Props = {
 //   same date" (hidden when the row is part of a recurring series
 //   whose next-month occurrence already exists) — plus delete /
 //   keep. Bulk header buttons set every row's decision at once.
-export function ReconciliationModal({
+export function AccountReconciliationModal({
   open,
   onCancel,
   onApply,
@@ -669,7 +669,7 @@ export function ReconciliationModal({
           onClick={handleApply}
           className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent/20"
         >
-          {t("reconciliation.apply")}
+          {t("common.apply")}
         </button>
       </Modal.Footer>
     </Modal>

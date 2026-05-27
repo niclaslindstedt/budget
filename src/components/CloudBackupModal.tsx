@@ -291,7 +291,7 @@ export function CloudBackupModal({
         }
         actions={[
           {
-            label: t("cloudBackup.delete"),
+            label: t("common.delete"),
             tone: "danger",
             onSelect: () => deletePrompt && void handleDelete(deletePrompt),
           },
@@ -367,7 +367,7 @@ function BackupRow({
           aria-label={t("cloudBackup.deleteAria", {
             filename: entry.filename,
           })}
-          title={t("cloudBackup.delete")}
+          title={t("common.delete")}
           className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-line bg-transparent text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Trash2 size={14} aria-hidden focusable={false} />

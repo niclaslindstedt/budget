@@ -124,7 +124,7 @@ export function Modal({
   // The element that owned focus before the modal opened — restored
   // on close so tab order continues from where the user left it
   // (e.g. focus returns to the row's action button after the
-  // EditRowModal closes).
+  // BudgetEditEntryFullModal closes).
   const openerRef = useRef<HTMLElement | null>(null);
 
   // Adds a class to <body> while any modal is open so the fixed

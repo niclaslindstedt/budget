@@ -34,7 +34,7 @@
 //     still a valid candidate — the history row wins and the user
 //     row's metadata stamps onto it.
 //
-// Pure: no React, no storage. Consumed by `FindConflictsModal` in
+// Pure: no React, no storage. Consumed by `BudgetFindConflictsModal` in
 // `src/components/budget/`.
 
 import { readStringCell } from "./budget/cells";

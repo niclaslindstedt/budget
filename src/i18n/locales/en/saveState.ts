@@ -1,7 +1,6 @@
 import type { Widen } from "./_widen";
 
 const saveState = {
-  save: "Save",
   saving: "Saving…",
   saved: "Saved",
   failed: "Save failed",

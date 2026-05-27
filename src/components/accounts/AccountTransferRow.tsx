@@ -136,7 +136,7 @@ function TransferRowImpl({
 }
 
 // Memoised so a swipe on one row doesn't re-render every sibling.
-export const TransferRow = memo(TransferRowImpl);
+export const AccountTransferRow = memo(TransferRowImpl);
 
 // Pill-shaped account label used in the desktop transfer column.
 // Mirrors the budget table's readonly type pill (rounded-full, color-

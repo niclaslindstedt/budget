@@ -16,7 +16,7 @@ const MOVE_THRESHOLD_PX = 8;
 // the complex-entry modal. Tap = add a blank row (the existing path);
 // hold (or right-click on desktop) = open the modal for a recurring
 // or categorised entry.
-export function AddRowButton({ onAdd, onComplex }: Props) {
+export function BudgetAddEntryButton({ onAdd, onComplex }: Props) {
   const t = useT();
   const timer = useRef<number | null>(null);
   const triggered = useRef(false);
