@@ -23,6 +23,27 @@ export function compilePattern(pattern: string): RegExp {
   return new RegExp(`^${body}$`, "i");
 }
 
+// Cache compiled regex per rule object. `buildVisibleRows` runs
+// `findMatchingRule` once per history entry, which previously compiled
+// every rule's pattern on every entry — N entries × M rules `new
+// RegExp()` allocations per render. Keying on the rule object lets the
+// reducer's normal immutability invalidate the cache automatically when
+// the user edits a rule (a fresh rule object means a fresh compile).
+const rulePatternCache = new WeakMap<MatchRule, RegExp | null>();
+
+function regexForRule(rule: MatchRule): RegExp | null {
+  const cached = rulePatternCache.get(rule);
+  if (cached !== undefined) return cached;
+  let compiled: RegExp | null;
+  try {
+    compiled = compilePattern(rule.pattern);
+  } catch {
+    compiled = null;
+  }
+  rulePatternCache.set(rule, compiled);
+  return compiled;
+}
+
 // Minimum surface a candidate needs to be matched against a rule.
 // Both `HistoryEntry` (where `isTransfer` is derived from the
 // collapsed-into-transfer backref) and a synthesized projection of
@@ -62,12 +83,8 @@ export function ruleMatchesCandidate(
   const transfer = rule.transferFilter ?? "any";
   if (transfer === "exclude" && candidate.isTransfer) return false;
   if (transfer === "only" && !candidate.isTransfer) return false;
-  let re: RegExp;
-  try {
-    re = compilePattern(rule.pattern);
-  } catch {
-    return false;
-  }
+  const re = regexForRule(rule);
+  if (re === null) return false;
   return re.test(candidate.description);
 }
 

@@ -32,6 +32,12 @@ type Props = {
   columns: Column[];
   balances: Map<string, number>;
   types: readonly EntryType[];
+  // Id-indexed view of `types`. Built once in `BudgetPage` and threaded
+  // through so each `BudgetRow` looks up its `row.typeId` in O(1)
+  // without re-scanning the `types` array. Passed alongside `types`
+  // (rather than replacing it) because the descendant `TypePicker`
+  // still needs the array form for ordered rendering.
+  typesById: ReadonlyMap<string, EntryType>;
   categories: readonly Category[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -146,6 +152,7 @@ function MonthTableImpl({
   columns,
   balances,
   types,
+  typesById,
   categories,
   onCreateType,
   onCreateCategory,
@@ -504,6 +511,7 @@ function MonthTableImpl({
                           columns={columns}
                           balances={balances}
                           types={types}
+                          typesById={typesById}
                           categories={categories}
                           onCreateType={onCreateType}
                           onCreateCategory={onCreateCategory}
@@ -532,6 +540,7 @@ function MonthTableImpl({
                       columns={columns}
                       balances={balances}
                       types={types}
+                      typesById={typesById}
                       categories={categories}
                       onCreateType={onCreateType}
                       onCreateCategory={onCreateCategory}

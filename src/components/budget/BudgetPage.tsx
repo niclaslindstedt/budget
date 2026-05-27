@@ -365,18 +365,27 @@ export function BudgetPage({
   // ordering. Without a shared context the running balance column
   // would drift from the visible row order on dates with multiple
   // entries.
+  // Id-indexed types map, used both by the secondary-sort context and
+  // by every `BudgetRow` to look up `row.typeId` in O(1). Lifted to
+  // page level so each row gets a stable map reference — having every
+  // row run `types.find()` in a per-row `useMemo` invalidates every
+  // row's memo whenever `types` changes (e.g. adding a single new
+  // type), turning a one-cell edit into N row recomputes.
+  const typesById = useMemo(() => {
+    const m = new Map<string, EntryType>();
+    for (const t of types) m.set(t.id, t);
+    return m;
+  }, [types]);
   const sortContext = useMemo<RowSortContext | undefined>(() => {
     const descCol = findColumnByType(item.columns, "description");
     const amountCol = findColumnByType(item.columns, "amount");
     if (!descCol || !amountCol) return undefined;
-    const typesById = new Map<string, EntryType>();
-    for (const t of types) typesById.set(t.id, t);
     return {
       descriptionColumnId: descCol.id,
       amountColumnId: amountCol.id,
       typesById,
     };
-  }, [item.columns, types]);
+  }, [item.columns, typesById]);
 
   // Interleave synthesized transfer rows alongside the budget's own
   // rows so month grouping, running balance, and sort-by-date pick them
@@ -1203,6 +1212,7 @@ export function BudgetPage({
                   columns={decoratedItem.columns}
                   balances={balances}
                   types={types}
+                  typesById={typesById}
                   categories={categories}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
