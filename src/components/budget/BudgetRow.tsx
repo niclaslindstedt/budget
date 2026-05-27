@@ -5,53 +5,24 @@ import { isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
-import type {
-  Category,
-  CellValue,
-  Column,
-  Company,
-  EntryType,
-  Row,
-  Settings,
-} from "../../data/types";
+import type { CellValue, Column, Row } from "../../data/types";
 import { formatShortDate } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { BudgetCell } from "./BudgetCell";
+import { useBudgetContext } from "./BudgetContext";
 import { RowActionsMenu } from "./RowActionsMenu";
 
 type Props = {
   row: Row;
   columns: Column[];
   balances: Map<string, number>;
-  types: readonly EntryType[];
-  // Id-indexed view of `types` for O(1) lookup of `row.typeId`. Lifted
-  // to BudgetPage so the map reference is stable across rows; a per-
-  // row `useMemo` keyed on the `types` array would invalidate every
-  // row's entry-type cache whenever a single type is added or edited.
-  typesById: ReadonlyMap<string, EntryType>;
-  // Id-indexed view of the user's companies. Looked up here by
-  // `row.companyId` so the description cell can render an outlined pill
-  // with the company glyph + name when the row has no user-authored
-  // description. Lifted to page level for the same O(1) lookup +
-  // stable reference reasons as `typesById`.
-  companiesById: ReadonlyMap<string, Company>;
-  // Full company list, threaded through to the description cell's
-  // popover-mounted CompanyPicker. Kept alongside `companiesById`
-  // because the picker needs the ordered list while the row's display
-  // chain only ever resolves by id.
-  companies: readonly Company[];
-  categories: readonly Category[];
-  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
-  onCreateCompany: (draft: Omit<Company, "id">) => Company;
   // Row-level company writer. Routed by the parent (BudgetPage) so
   // budget rows dispatch `bulkUpdate` and synthesized history rows
   // dispatch `updateHistoryEntry` (clearing `noCompany` when a
   // company is assigned). Pre-bound to a per-row closure here so
   // `BudgetCell` and the inline picker stay agnostic of row type.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
-  settings: Settings;
   selectMode: boolean;
   selected: boolean;
   // Whether the transfer button on this row can be used. False when
@@ -129,16 +100,7 @@ function BudgetRowImpl({
   row,
   columns,
   balances,
-  types,
-  typesById,
-  companiesById,
-  companies,
-  categories,
-  onCreateType,
-  onCreateCategory,
-  onCreateCompany,
   onSetRowCompany,
-  settings,
   selectMode,
   selected,
   canTransfer,
@@ -162,10 +124,9 @@ function BudgetRowImpl({
 }: Props) {
   const tr = useT();
   const lang = useLang();
-  const entryType: EntryType | null = row.typeId
-    ? (typesById.get(row.typeId) ?? null)
-    : null;
-  const company: Company | null = row.companyId
+  const { typesById, companiesById, settings } = useBudgetContext();
+  const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
+  const company = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
     : null;
   const handleSetCompany = useCallback(
@@ -415,17 +376,10 @@ function BudgetRowImpl({
           computedBalance={
             col.type === "balance" ? balances.get(row.id) : undefined
           }
-          settings={settings}
           isRecurring={isSeries}
           entryType={entryType}
           company={company}
-          companies={companies}
           onSetCompany={handleSetCompany}
-          onCreateCompany={onCreateCompany}
-          types={types}
-          categories={categories}
-          onCreateType={onCreateType}
-          onCreateCategory={onCreateCategory}
           isTransfer={isTransfer}
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}

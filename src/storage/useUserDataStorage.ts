@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -197,9 +198,11 @@ export type UserDataStorage<Action> = {
   reload: () => Promise<void>;
 };
 
-// Combined entry + cursor state held inside the hook. Kept together
-// in one `useState` slot so dispatch / undo / redo can mutate both
-// atomically inside a single functional updater.
+// Combined entry + cursor state held inside the hook. The whole slice
+// runs through `historyReducer` below so dispatch / undo / redo /
+// jumpToHistory each correspond to a single named action — instead of
+// the previous setHistoryState-with-functional-updater braid that
+// scattered the same invariants across four call sites.
 type HistoryState = {
   entries: HistoryEntryInternal[];
   cursor: number;
@@ -210,6 +213,62 @@ type HistoryEntryInternal = {
   actionType: string;
   timestamp: number;
 };
+
+// Named transitions for the action timeline + undo cursor. The reducer
+// stays pure — the side-effect of swapping `data` to the target
+// snapshot lives in the calling code, which reads the current entry
+// off `historyStateRef` and pairs each cursor move with a setData.
+type HistoryAction =
+  | { kind: "reset"; seed: UserData }
+  | { kind: "append"; entry: HistoryEntryInternal }
+  // Move the cursor by ±1, clamped at the timeline edges. Undo / redo
+  // dispatch this; the bounds check below is what makes the operation
+  // a no-op at the ends instead of producing a bogus cursor.
+  | { kind: "step-cursor"; delta: -1 | 1 }
+  // Jump the cursor to an arbitrary index, with the same bounds
+  // semantics — out-of-range values and self-jumps return the prior
+  // state unchanged so the side-effect cleanup in the caller doesn't
+  // have to special-case them.
+  | { kind: "set-cursor"; cursor: number };
+
+function historyReducer(
+  state: HistoryState,
+  action: HistoryAction,
+): HistoryState {
+  switch (action.kind) {
+    case "reset":
+      return initialHistoryState(action.seed);
+    case "append": {
+      // Drop any "future" entries beyond the cursor — a fresh mutating
+      // action overwrites the redo timeline. Then append the new
+      // entry and trim from the front if the past portion would
+      // exceed UNDO_HISTORY_LIMIT.
+      const truncated = state.entries.slice(0, state.cursor + 1);
+      const appended = [...truncated, action.entry];
+      const cap = UNDO_HISTORY_LIMIT + 1;
+      const dropped = Math.max(0, appended.length - cap);
+      return {
+        entries: dropped > 0 ? appended.slice(dropped) : appended,
+        cursor: appended.length - 1 - dropped,
+      };
+    }
+    case "step-cursor": {
+      const next = state.cursor + action.delta;
+      if (next < 0 || next >= state.entries.length) return state;
+      return { entries: state.entries, cursor: next };
+    }
+    case "set-cursor": {
+      if (
+        action.cursor < 0 ||
+        action.cursor >= state.entries.length ||
+        action.cursor === state.cursor
+      ) {
+        return state;
+      }
+      return { entries: state.entries, cursor: action.cursor };
+    }
+  }
+}
 
 // SaveStatus kinds the autosave path refuses to write through. The
 // app entered one because something already went wrong (a parse
@@ -367,9 +426,19 @@ export function useUserDataStorage<Action extends { type: string }>(
   // the latest position and dispatches past the cap, the oldest entry
   // falls off the bottom — the same behaviour the old two-stack
   // implementation had.
-  const [historyState, setHistoryState] = useState<HistoryState>(() =>
-    initialHistoryState(initial[0].data),
+  const [historyState, historyDispatch] = useReducer(
+    historyReducer,
+    initial[0].data,
+    initialHistoryState,
   );
+
+  // Ref mirror so the cursor-move callbacks below can look up the
+  // target entry synchronously before dispatching — the reducer can't
+  // do the `setData(target.state)` side effect itself, and reading the
+  // closed-over `historyState` would lag a render behind a freshly
+  // dispatched append.
+  const historyStateRef = useRef(historyState);
+  historyStateRef.current = historyState;
 
   // Replace the timeline with a fresh seed anchored at `seed`. Called
   // whenever data arrives from outside the dispatch path — initial /
@@ -379,7 +448,7 @@ export function useUserDataStorage<Action extends { type: string }>(
   // state, so the old history would describe edits against a vanished
   // base and "undo" past the load would jump to something stale.
   const resetHistory = useCallback((seed: UserData) => {
-    setHistoryState(initialHistoryState(seed));
+    historyDispatch({ kind: "reset", seed });
   }, []);
 
   const dispatch: Dispatch<Action> = useCallback(
@@ -388,23 +457,13 @@ export function useUserDataStorage<Action extends { type: string }>(
       setData((prev: UserData) => {
         const next = reducer(prev, action);
         if (recordHistory && next !== prev) {
-          const timestamp = Date.now();
-          setHistoryState((state) => {
-            // Drop any "future" entries beyond the cursor — a fresh
-            // mutating action overwrites the redo timeline. Then
-            // append the new entry and trim from the front if the
-            // past portion would exceed UNDO_HISTORY_LIMIT.
-            const truncated = state.entries.slice(0, state.cursor + 1);
-            const appended = [
-              ...truncated,
-              { state: next, actionType: action.type, timestamp },
-            ];
-            const cap = UNDO_HISTORY_LIMIT + 1;
-            const dropped = Math.max(0, appended.length - cap);
-            return {
-              entries: dropped > 0 ? appended.slice(dropped) : appended,
-              cursor: appended.length - 1 - dropped,
-            };
+          historyDispatch({
+            kind: "append",
+            entry: {
+              state: next,
+              actionType: action.type,
+              timestamp: Date.now(),
+            },
           });
         }
         return next;
@@ -414,36 +473,26 @@ export function useUserDataStorage<Action extends { type: string }>(
   );
 
   const undo = useCallback(() => {
-    setHistoryState((state) => {
-      if (state.cursor === 0) return state;
-      const target = state.entries[state.cursor - 1];
-      setData(target.state);
-      return { entries: state.entries, cursor: state.cursor - 1 };
-    });
+    const cur = historyStateRef.current;
+    if (cur.cursor === 0) return;
+    setData(cur.entries[cur.cursor - 1].state);
+    historyDispatch({ kind: "step-cursor", delta: -1 });
   }, []);
 
   const redo = useCallback(() => {
-    setHistoryState((state) => {
-      if (state.cursor >= state.entries.length - 1) return state;
-      const target = state.entries[state.cursor + 1];
-      setData(target.state);
-      return { entries: state.entries, cursor: state.cursor + 1 };
-    });
+    const cur = historyStateRef.current;
+    if (cur.cursor >= cur.entries.length - 1) return;
+    setData(cur.entries[cur.cursor + 1].state);
+    historyDispatch({ kind: "step-cursor", delta: 1 });
   }, []);
 
   const jumpToHistory = useCallback((index: number) => {
-    setHistoryState((state) => {
-      if (
-        index < 0 ||
-        index >= state.entries.length ||
-        index === state.cursor
-      ) {
-        return state;
-      }
-      const target = state.entries[index];
-      setData(target.state);
-      return { entries: state.entries, cursor: index };
-    });
+    const cur = historyStateRef.current;
+    if (index < 0 || index >= cur.entries.length || index === cur.cursor) {
+      return;
+    }
+    setData(cur.entries[index].state);
+    historyDispatch({ kind: "set-cursor", cursor: index });
   }, []);
 
   // Shared write path used by both the debounced auto-save and the

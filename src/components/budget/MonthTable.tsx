@@ -12,15 +12,7 @@ import {
   isTransferRow,
 } from "../../data/budget/synthesis";
 import { findColumnByType } from "../../data/sheet";
-import type {
-  Category,
-  CellValue,
-  Column,
-  Company,
-  EntryType,
-  Row,
-  Settings,
-} from "../../data/types";
+import type { CellValue, Column, Row, Settings } from "../../data/types";
 import { useNearViewport } from "../../hooks";
 import { type TFunction, useLang, useT } from "../../i18n";
 import { type Lang } from "../../i18n/locale";
@@ -31,6 +23,7 @@ import {
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AddRowButton } from "./AddRowButton";
+import { useBudgetContext } from "./BudgetContext";
 import { ColumnHeader } from "./ColumnHeader";
 import { BudgetRow } from "./BudgetRow";
 
@@ -39,31 +32,10 @@ type Props = {
   rows: Row[];
   columns: Column[];
   balances: Map<string, number>;
-  types: readonly EntryType[];
-  // Id-indexed view of `types`. Built once in `BudgetPage` and threaded
-  // through so each `BudgetRow` looks up its `row.typeId` in O(1)
-  // without re-scanning the `types` array. Passed alongside `types`
-  // (rather than replacing it) because the descendant `TypePicker`
-  // still needs the array form for ordered rendering.
-  typesById: ReadonlyMap<string, EntryType>;
-  // Id-indexed view of the user's companies. Threaded through to each
-  // `BudgetRow` so the description cell can resolve `row.companyId` to
-  // a Company in O(1) without re-scanning the array per row.
-  companiesById: ReadonlyMap<string, Company>;
-  // Full ordered company list — passed alongside `companiesById` so
-  // each `BudgetRow` can hand it to the description popover's inline
-  // `CompanyPicker` without the row having to materialise the list
-  // itself from the id map.
-  companies: readonly Company[];
-  categories: readonly Category[];
-  onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
-  onCreateCategory: (draft: Omit<Category, "id">) => Category;
-  onCreateCompany: (draft: Omit<Company, "id">) => Company;
   // Row-level company writer — see `BudgetRow.Props.onSetRowCompany`.
   // MonthTable is the only path that mounts rows, so the prop is
   // pure-passthrough here.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
-  settings: Settings;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   canTransfer: boolean;
@@ -157,16 +129,7 @@ function MonthTableImpl({
   rows,
   columns,
   balances,
-  types,
-  typesById,
-  companiesById,
-  companies,
-  categories,
-  onCreateType,
-  onCreateCategory,
-  onCreateCompany,
   onSetRowCompany,
-  settings,
   selectMode,
   selectedIds,
   canTransfer,
@@ -202,6 +165,7 @@ function MonthTableImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { settings } = useBudgetContext();
   // Track whether this month's wrapper is near the viewport. When it
   // isn't, the tbody renders a single height-matched placeholder row
   // instead of the full row tree — that keeps the DOM small even after
@@ -500,16 +464,7 @@ function MonthTableImpl({
                           row={hidden}
                           columns={columns}
                           balances={balances}
-                          types={types}
-                          typesById={typesById}
-                          companiesById={companiesById}
-                          companies={companies}
-                          categories={categories}
-                          onCreateType={onCreateType}
-                          onCreateCategory={onCreateCategory}
-                          onCreateCompany={onCreateCompany}
                           onSetRowCompany={onSetRowCompany}
-                          settings={settings}
                           selectMode={selectMode}
                           selected={selectedIds.has(hidden.id)}
                           canTransfer={canTransfer}
@@ -533,16 +488,7 @@ function MonthTableImpl({
                       row={row}
                       columns={columns}
                       balances={balances}
-                      types={types}
-                      typesById={typesById}
-                      companiesById={companiesById}
-                      companies={companies}
-                      categories={categories}
-                      onCreateType={onCreateType}
-                      onCreateCategory={onCreateCategory}
-                      onCreateCompany={onCreateCompany}
                       onSetRowCompany={onSetRowCompany}
-                      settings={settings}
                       selectMode={selectMode}
                       selected={selectedIds.has(row.id)}
                       canTransfer={canTransfer}
