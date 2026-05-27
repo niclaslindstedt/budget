@@ -184,16 +184,6 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 5–6 — friction
 
-- **`styles.css` (1604 lines)** — break into imported sub-files:
-  `_theme-vars.css`, `_tailwind-overrides.css`, `_components.css`,
-  `_utilities.css`. Palette blocks (One Dark / Light / Dracula /
-  Monokai / GitHub / Solarized / Quiet Light / System) stay
-  together in `_palettes.css` since they share a
-  `:root[data-theme]` pattern. Audit for unused rules via DevTools
-  coverage while you're in there. **Severity: 6.** Pay attention to
-  import order at the entry point because `@layer components` rules
-  consume colour vars declared in `@theme`.
-
 - **`budget/formula.ts` function registry** — the tokenizer / parser
   / evaluator file split landed 2026-05 (see Landed); what remains
   of the original severity-6 candidate is the function-registry idea
@@ -372,6 +362,29 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`styles.css` topical split into `src/styles/`** (2026-05): the
+  1665-line `src/styles.css` split into five sibling modules under
+  `src/styles/` plus a thin entry barrel — `theme.css` (Tailwind v4
+  `@theme` tokens + `:root` custom-property defaults + reduce-motion
+  guard + sticky-header height media queries + html/body type
+  reset), `palettes.css` (the 8 colour themes + System + the pre-
+  React Light fallback), `components.css` (the `@layer components`
+  block — the bulk of project-defined component classes),
+  `utilities.css` (unlayered Tailwind utility remaps:
+  `.rounded`/`.border-{,t,r,b,l}`/`.field-input` density vars +
+  `.border-0` + the `row-pulse` / `field-attention` keyframes),
+  and `chrome.css` (app-shell layout via `data-*` selectors —
+  bottom-bar / toast-stack offsets, centered-modal padding,
+  budget-main bottom padding, landscape-phone overrides, and the
+  installed-PWA standalone-mode block with its iOS workarounds).
+  `src/styles.css` now contains only `@import "tailwindcss";`
+  followed by the five module imports in cascade order, with a
+  comment block documenting why that order matters at equal
+  specificity. Diff is byte-equivalent (normalized rule multiset
+  matches the pre-split file exactly; only difference is the
+  `@import "tailwindcss";` line moved up into the entry barrel).
+  Production build emits the same CSS surface (94 kB gzipped 28 kB)
+  and all 838 tests pass.
 - **`budget/formula.ts` tokenizer / parser / evaluator file split**
   (2026-05): the 702-line `src/data/budget/formula.ts` split into
   four sibling modules along the seams the file's own comment

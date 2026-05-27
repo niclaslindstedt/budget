@@ -1,0 +1,311 @@
+/* App-shell chrome layout — bottom-bar / toast-stack offsets, modal
+   padding, landscape-phone overrides, and the installed-PWA standalone-
+   mode block. Imported by ../styles.css.
+
+   Rules here target the `data-*` attributes the React tree paints on the
+   app shell ([data-bottom-bar], [data-app-header], [data-budget-main],
+   [data-modal-shell], [data-modal-header], [data-modal-footer], …) so
+   they re-shape the chrome without per-component overrides. The
+   standalone-mode block at the bottom carries the iOS PWA workarounds
+   documented inline. */
+
+/* Promote the toast-stack offset when the BottomBar is in the DOM
+   so the floating prompts clear it. The mobile modal-open clause
+   further down drops the offset back to the default because
+   `body.modal-open [data-floating-chrome]` hides the bar on that
+   breakpoint. */
+body:has([data-bottom-bar]) {
+  --toast-stack-bottom: calc(4rem + env(safe-area-inset-bottom));
+  --bottom-bar-h: calc(2.5625rem + max(env(safe-area-inset-bottom), 0.25rem));
+}
+
+@media (min-width: 640px) {
+  body:has([data-bottom-bar]) {
+    --toast-stack-bottom: calc(5rem + env(safe-area-inset-bottom));
+    --bottom-bar-h: calc(2.9375rem + max(env(safe-area-inset-bottom), 0.25rem));
+  }
+}
+
+/* When the bar scroll-hides in standalone PWA mode (the
+   `data-bottom-bar-hidden="true"` attribute is set by `useScrollHide`
+   and translates the bar off the bottom edge in the standalone-mode
+   block further down), drop the offset back to the default so the
+   floating prompt stack rides the bar down instead of hovering
+   above empty space where the bar used to be. The attribute is
+   only ever set in standalone mode, so no media-query gate is
+   needed — browser-mode scroll hide is driven by the URL bar
+   collapse via `translate-y-[calc(100dvh-100svh)]` and leaves the
+   bar pinned at the bottom edge once the URL bar is gone. */
+body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
+  --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  --bottom-bar-h: env(safe-area-inset-bottom);
+}
+
+/* Smooth the toast-stack's bottom shift so it tracks the bar's own
+   200ms translate-out instead of snapping ahead of it. The marker
+   sits on each of the three floating prompts (Toast viewport,
+   UpdateToast, InstallPrompt). The reduce-motion override at the
+   bottom of this file zeroes the duration when the user opts in. */
+[data-toast-stack] {
+  transition: bottom 200ms ease;
+}
+
+/* Landscape phones (≤ 500px tall, e.g. iPhone 12+ in landscape at
+   844–932 × 375–430) get the mobile grid layout via `@layer
+   components` above, but the column-header label still leaks back
+   in because Tailwind's `md:inline` utility (in the `utilities`
+   layer, which beats `components` in the cascade) matches at
+   ≥ 720px wide. Override unlayered here so the cascade picks this
+   rule over `.md\:inline`. Portrait mobile already hides the label
+   via `.hidden` (no media query needed) so this rule doesn't need
+   to cover that case. */
+@media (max-height: 500px) {
+  .budget-table .column-header-label {
+    display: none;
+  }
+  .budget-table .column-header-cell {
+    justify-content: center;
+    gap: 0.375rem;
+  }
+  /* Same width-vs-height mismatch on the cells themselves: the date
+     and type columns are pinned to a 40px floor in landscape (line
+     580 grid), but inside that 40px track the cells render their
+     desktop variants — short-date "DD/MM" and the full-text type
+     chip — because Tailwind's md:* utilities only check width. Flip
+     the visibility back to the mobile variant (day-only date,
+     icon-only type) so the cell content fits its column. The mobile
+     spans are kept as `inline-flex` to match the type-cell icon
+     wrappers (the date span is text-only — `inline-flex` is harmless
+     here). */
+  .budget-table .md\:hidden {
+    display: inline-flex;
+  }
+  .budget-table .hidden.md\:inline,
+  .budget-table .hidden.md\:inline-flex {
+    display: none;
+  }
+  /* Accounts table: drop the bank column on landscape phones so the
+     four-column mobile grid (icon · name · balance · history) stays
+     intact. Tailwind's `md:table-cell` re-shows the cell at width
+     ≥ 768 px — landscape iPhone 12+ reports 844 × 390 — and would
+     otherwise auto-place into a second grid row. Layered rules lose
+     to Tailwind's utilities, so this override is unlayered. The
+     column header labels lean on the same hidden / md:inline pair
+     fixed for the budget sheet above. */
+  .accounts-table .account-bank-cell {
+    display: none;
+  }
+  .accounts-table .hidden.md\:inline {
+    display: none;
+  }
+}
+
+/* Centered modals float in the middle of the viewport, so their
+   header is never pinned to the top edge — the `env(safe-area-inset-top)`
+   the default header padding (`pt-[calc(0.75rem+env(safe-area-inset-top))]`)
+   adds for status-bar clearance becomes dead space above the title.
+   Strip it back to the bottom-matching `0.75rem` so the header is a
+   tight band on every device. Unlayered so it beats the Tailwind
+   utility AND the standalone-mode override further down. */
+[data-modal-shell="centered"] [data-modal-header] {
+  padding-top: 0.75rem;
+}
+
+/* Browser-mode breathing room between the last page content (the
+   "Show 3 future months" / "Show 3 earlier months" toggle, or the
+   AddRow at the foot of the final month) and the sticky BottomBar.
+   The bar is `position: sticky; bottom: 0` in flow in browser mode,
+   so without padding the last row sits flush against the bar's top
+   border. The standalone-mode block further down replaces this with
+   a much larger `4rem` / `5rem` reserve because the bar there is
+   `position: fixed` and out of flow. Same-specificity rule, and the
+   standalone block is later in the file, so its value wins inside a
+   PWA install. */
+[data-budget-main] {
+  padding-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  [data-budget-main] {
+    padding-bottom: 1.5rem;
+  }
+}
+
+/* Installed-PWA layout override for the BottomBar.
+   The browser-mode block (no `@media (display-mode: standalone)`
+   wrap) keeps the svh + sticky + translate-y math from PR #354
+   that iOS 26 Safari's Liquid Glass address bar needs to look
+   right. This override is for the home-screen-installed PWA where
+   there's no Liquid Glass chrome to compensate for.
+
+   In standalone mode the bar is `position: fixed; inset: auto 0 0 0`,
+   matching the Modal component's fullscreen-footer pattern. Fixed
+   anchors to the layout viewport's bottom edge; the bar's inner
+   `padding-bottom: env(safe-area-inset-bottom)` lifts the icons
+   above the home indicator. `<main>` reserves a `padding-bottom`
+   so the AddRow at the foot of the last month clears the
+   out-of-flow bar.
+
+   Known iOS 26 quirk left as-is: on cold launch in installed PWAs,
+   `position: fixed; bottom: 0` actually anchors to a clipped
+   `visualViewport.bottom` instead of the layout viewport, leaving
+   the bar ~20–30 px above the screen edge (WebKit #297779). The
+   first overscroll-bounce reconciles the visual viewport and the
+   bar glides into place. PRs #357, #360, #361, #362, #367, #374,
+   #377, #380, #383, #388 all tried to compensate from CSS or JS;
+   every flavour either failed outright, broke iOS's native bounce
+   feel, or introduced new "bar walks during overscroll" bugs.
+   We're accepting the cold-launch shift as an iOS-side bug;
+   landing more code around it consistently made the app worse. */
+@media (display-mode: standalone) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+
+  [data-budget-shell] {
+    min-height: 100dvh;
+  }
+
+  /* The app header's padding-top swaps from `0.5rem + env(top)` (mobile)
+     / `1rem + env(top)` (desktop) in browser mode to `env(top)` /
+     `0.25rem + env(top)` in standalone (see the `[data-app-header]`
+     rule below). On notched iOS devices `env(safe-area-inset-top)`
+     is ~47px in PWA mode but ~0 in browser Safari (where the URL bar
+     reserves the status-bar band), so the header's rendered height
+     grows from the browser-mode 53/69px to roughly 92/108px — but
+     `--app-header-h` stayed pinned to the browser value. That left
+     the sticky month-name h3 (top: --app-header-h, z-20) and the
+     column-header thead (z-15) anchored INSIDE the app header
+     (z-30, opaque), where they sat hidden until the next month
+     scrolled through. Rebase the variable on the standalone padding
+     so the two sticky bands land just below the actual header. */
+  :root {
+    --app-header-h: calc(45px + env(safe-area-inset-top));
+  }
+
+  @media (min-width: 720px) {
+    :root {
+      --app-header-h: calc(57px + env(safe-area-inset-top));
+    }
+  }
+
+  [data-bottom-bar] {
+    /* `inset: auto 0 0 0` = top: auto, right: 0, bottom: 0, left: 0.
+       Anchors the bar to the layout viewport's bottom edge —
+       same trick `[data-modal-shell="fullscreen"]`'s footer uses.
+       Scoped to `[data-bottom-bar]` (not the broader
+       `[data-floating-chrome]`) so sibling floating chrome like
+       the BudgetPage "Today" pill — which carries its own
+       `top: …` / `bottom: …` Tailwind class because it isn't
+       always bottom-anchored — keeps its own positioning instead
+       of being forced to `bottom: 0` underneath this bar.
+       `translate: none` cancels the browser-mode
+       `translate-y-[calc(100dvh-100svh)]` Tailwind utility on the
+       className (the calc is 0 in PWA mode anyway, but explicit
+       is safer). */
+    position: fixed;
+    inset: auto 0 0 0;
+    translate: none;
+    /* `useScrollHide` flips `data-bottom-bar-hidden` based on
+       window scroll direction; the rule below slides the bar off
+       the bottom edge when that's set. The transition lets the
+       slide animate smoothly; the reduce-motion guard at the top
+       of this file zeroes the duration when the user opts in. */
+    transition: translate 200ms ease;
+  }
+
+  /* PWA-only hide-on-scroll. Browser mode gets the same visual
+     for free via the URL-bar collapse — the bar's
+     `translate-y-[calc(100dvh-100svh)]` rides that. Standalone
+     mode has no URL bar, so the `useScrollHide` hook drives the
+     attribute directly. Translates by the bar's own height plus
+     the home-indicator inset so it clears the screen edge on
+     notched devices instead of leaving a sliver visible. */
+  [data-bottom-bar][data-bottom-bar-hidden="true"] {
+    translate: 0 calc(100% + env(safe-area-inset-bottom));
+  }
+
+  [data-budget-main] {
+    /* Reserve enough room for the fixed bar so the AddRow at the
+       foot of the last month clears it. Bar height ≈ icon (h-8 =
+       2rem) + vertical padding (~0.5rem) + border (1px); pad ~2x
+       that plus `env(safe-area-inset-bottom)` for the home
+       indicator. Desktop bar is slightly taller. */
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    [data-budget-main] {
+      padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* The default header padding (`0.5rem + env(safe-area-inset-top)`)
+     leaves more breathing room above "$ budget" than the Dynamic
+     Island leaves above itself — visually the chrome looks pushed
+     down. Trim the extra 0.5rem (and the desktop 1rem) in standalone
+     mode so the gap from status bar to header roughly matches the
+     gap from the top edge to the top of the island. The browser
+     build keeps the original padding because the URL bar already
+     reserves that visual room. */
+  [data-app-header] {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  @media (min-width: 720px) {
+    [data-app-header] {
+      padding-top: calc(0.25rem + env(safe-area-inset-top));
+    }
+  }
+
+  /* Fullscreen-on-mobile modals: pin the overlay AND the shell to
+     `100vh`. iOS 26 PWAs clip every `svh` / `dvh` / `lvh` viewport
+     unit AND the default `fixed; inset: 0` anchor to the regressed
+     visualViewport bottom (WebKit #297779) — leaving a band of
+     `--page-bg` visible below the modal's footer on first launch.
+     `100vh` is the ONE viewport unit iOS 26 standalone still gets
+     right at cold start (the same workaround `[data-budget-shell]`
+     above uses for the page wrapper), so the modal can extend
+     through the full screen and the footer can land on the
+     home-indicator strip with its safe-area padding intact. Centered
+     modals float in the middle and aren't affected, so they opt out
+     via the `="fullscreen"` qualifier. Desktop modals (≥ 640px) drop
+     the fullscreen layout entirely and don't need this. */
+  @media (max-width: 639.98px) {
+    [data-modal-overlay="fullscreen"] {
+      /* `bottom: auto` keeps the explicit `height` authoritative;
+         without it the still-set `bottom: 0` from `inset-0` would
+         compete on devices where it happens to resolve differently. */
+      inset: 0 0 auto 0;
+      height: 100vh;
+    }
+
+    [data-modal-shell="fullscreen"] {
+      height: 100vh;
+    }
+  }
+
+  /* Modal header: keep `env(safe-area-inset-top)` so the title and
+     close button stay clear of the iOS status bar text — the clock
+     lives in the LEFT corner of the safe area and the signal /
+     battery indicators in the RIGHT corner, so they DO collide with
+     the title and the X if we trim below the safe inset. Trim the
+     extra `0.75rem` the default Tailwind utility adds on top of the
+     inset, and shave the bottom in step so the bar is a tight band
+     instead of a tall card. Matches the `[data-app-header]` trim. */
+  [data-modal-header] {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 0.5rem;
+  }
+
+  [data-modal-footer] {
+    padding-top: 0.5rem;
+    /* `env(safe-area-inset-bottom)` alone — no extra `0.75rem` on top
+       of it — so the buttons land right at the safe-area edge. The
+       `0.5rem` floor protects against the iOS 26 regression where the
+       inset returns 0 after a PWA cold-launch. */
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+}

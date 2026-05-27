@@ -1,0 +1,645 @@
+/* @layer components — project-defined component classes that sit in
+   Tailwind v4's `components` layer. Imported by ../styles.css.
+
+   These rules use the theme tokens from ./theme.css (+ palette overrides
+   in ./palettes.css) and are designed to lose the cascade against
+   Tailwind utility classes — opt out by promoting a rule to the unlayered
+   `utilities` overrides in ./utilities.css instead. */
+
+@layer components {
+  /* Sticky column headers: thead's containing block is the table so it
+     keeps sticking until the table itself scrolls past. Offset sits
+     directly below the month header — the -1px overlap closes a
+     subpixel-rounded hairline that would otherwise let scrolled rows
+     bleed through between the two sticky bands on iOS Safari.
+     Ancestor overflow must be `clip` (not `hidden`) — `hidden`
+     establishes a scroll container which would trap sticky positioning
+     inside the table wrapper. z-index sits above the amount cell's
+     sign button (z-10) so the negative sign in a scrolled-past row
+     doesn't bleed through the header. */
+  .budget-table > thead {
+    position: sticky;
+    top: calc(var(--app-header-h) + var(--month-header-h) - 1px);
+    z-index: 15;
+  }
+
+  /* Shared focus state for editable cell fields. `:focus-visible`
+     instead of `:focus` so the ring only appears for keyboard users —
+     a mouse / touch tap on a cell shouldn't paint a focus halo on top
+     of the value the user can already see. */
+  .field-input:focus-visible {
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 2px var(--accent);
+    outline: none;
+  }
+
+  /* Invisible click-area expander. Pin to a button (or any focusable
+     surface) whose painted glyph is smaller than the WCAG 2.2 AA
+     target-size floor of 24×24 — the visible chrome stays the same
+     size, but the hit-test box grows to at least 24×24 via a
+     centered absolutely-positioned `::before`. Use sparingly: most
+     buttons should hit 24×24 with normal padding; this is the escape
+     hatch for the dense sheet UI (transfer-anchor toggle, swatch
+     grids, glyph grids, the UpdateToast dismiss) where the layout
+     can't absorb a bigger box. The parent must allow positioned
+     descendants — the rule sets `position: relative` for that. */
+  .hit-24 {
+    position: relative;
+  }
+  .hit-24::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    min-width: 24px;
+    min-height: 24px;
+  }
+
+  /* Default keyboard-focus ring for the interactive surface. Applied
+     through `:focus-visible` so mouse / touch taps don't paint a
+     ring over the chrome the user already sees. Per-component focus
+     styles still win the cascade — this is the floor for elements
+     that haven't opted into a custom ring. Skips elements with
+     `data-no-focus-ring` so a parent surface that owns its own focus
+     treatment (a custom `box-shadow` halo, say) can opt out. */
+  button:not([data-no-focus-ring]):focus-visible,
+  [role="button"]:not([data-no-focus-ring]):focus-visible,
+  [role="option"]:not([data-no-focus-ring]):focus-visible,
+  [role="tab"]:not([data-no-focus-ring]):focus-visible,
+  [role="menuitem"]:not([data-no-focus-ring]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  /* Formula input — a contentEditable host that renders recognised
+     variable names (`endOfMonthBalance`, `prevMonth.income`, …) as
+     compact pills so they read as one unit and a single backspace
+     erases the whole token. The host itself is styled to look like
+     the project's monospaced field-input; the pill children carry
+     their own background + border so they pop against the field
+     background but stay in the One Dark / One Light palette. */
+  .formula-input {
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    line-height: 1.5rem;
+  }
+  .formula-input:empty[data-placeholder]::before {
+    content: attr(data-placeholder);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .formula-pill {
+    display: inline-block;
+    padding: 0 0.35rem;
+    border-radius: var(--radius-sm);
+    /* Slight vertical squeeze so the pill aligns with adjacent
+       monospaced glyphs without growing the line box. */
+    line-height: 1.25rem;
+    vertical-align: baseline;
+    /* The whole pill behaves as one unit — disable text selection
+       inside so a triple-click or drag on the pill selects the pill
+       node (via the parent's caret model) rather than the inner
+       characters. */
+    -webkit-user-select: none;
+    user-select: none;
+    caret-color: transparent;
+  }
+  /* Variables (`endOfMonthBalance`, `prevMonth.income`, …) — flag
+     colour, the same orange the sheet uses for numeric literals so
+     amount-shaped tokens read consistently. */
+  .formula-pill-var {
+    background: color-mix(in srgb, var(--flag) 14%, var(--surface-2));
+    color: var(--flag);
+  }
+  /* Function call names (`sheet`, `min`, `clamp`, …) — pipe colour
+     (purple), distinct from variables so the eye can pick the call
+     site out of a long expression. */
+  .formula-pill-fn {
+    background: color-mix(in srgb, var(--pipe) 14%, var(--surface-2));
+    color: var(--pipe);
+  }
+  /* Sheet-name argument inside `sheet("…", …)` — path colour (cyan),
+     reusing the same hue the sheet uses for date columns so the
+     "navigate to another location" feel carries through. */
+  .formula-pill-sheet {
+    background: color-mix(in srgb, var(--path) 14%, var(--surface-2));
+    color: var(--path);
+  }
+
+  /* iOS long-press would select the icon and pop the share/copy callout
+     on the add-row button; suppress both since long-press is reserved for
+     opening the recurring-entry modal. The same gesture opens the sheet-
+     edit modal on the bottom tab bar, and the edit-row modal on every
+     sheet row, so they all get the same treatment. Row cells override
+     this with `auto` so editable inputs still allow text selection. */
+  .add-row-button,
+  .sheet-tab,
+  .budget-table > tbody > tr {
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .budget-table > tbody > tr input,
+  .budget-table > tbody > tr textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+    -webkit-touch-callout: default;
+  }
+
+  /* While a modal is open on mobile, hide the bottom-pinned floating
+     chrome (SheetTabs, BulkActionBar). These are `position: fixed` and
+     on iOS Safari they hover above the modal during keyboard
+     interactions because the visual viewport shrinks but their
+     `bottom: …` value doesn't update. Mobile modals are true sub-
+     screens that cover the viewport edge-to-edge, so the chrome should
+     be visually absent for the duration. Desktop modals are centered
+     cards with a translucent backdrop, so the chrome can stay visible
+     in the background. The short-height clause catches landscape
+     phones (~390px tall) whose width exceeds 640px but still need the
+     mobile chrome-hide treatment. */
+  @media (max-width: 639.98px), (max-height: 500px) {
+    body.modal-open [data-floating-chrome] {
+      display: none;
+    }
+    /* The chrome above is `display: none`'d on this breakpoint, so
+       the floating prompt stack (Toast viewport, UpdateToast,
+       InstallPrompt) would otherwise sit 4rem above the screen edge
+       with empty space below. Drop it back to the default safe-area
+       inset so the prompts hug the bottom edge like they do on
+       routes without a BottomBar. */
+    body.modal-open {
+      --toast-stack-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* Mobile: convert table to block + per-row grid for full-width layout
+     and to make swipe-to-delete possible inside table rows. The short-
+     height clause catches phones held in landscape — those report a
+     viewport width > 720 (iPhone 12+: 844–932px) but a height of only
+     375–430px, so width-only detection would fall through to the
+     desktop layout. That's wrong on a touch device: the swipe-reveal
+     transforms below never apply (the gesture handler in BudgetRow
+     flips `is-swiped` but nothing visible happens), and hover-only
+     action icons are unreachable. Tablets in landscape report
+     heights well above 500px so they keep the desktop layout. */
+  @media (max-width: 720px), (max-height: 500px) {
+    .budget-table,
+    .budget-table > thead,
+    .budget-table > tbody,
+    .budget-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .budget-table > thead > tr,
+    .budget-table > tbody > tr {
+      display: grid;
+      /* Amount and balance widths are driven by --amount-col-ch /
+         --balance-col-ch, set per-sheet from the longest formatted value
+         across every month so each month aligns on the same column
+         widths instead of sizing independently. The amount column's
+         buffer covers the +/- tap-toggle glyph (w-6 = 1.5rem) on the
+         left plus the breathing room on the right; when currency-after
+         is on, the input swaps its right padding to pr-8 (2rem) for the
+         currency overlay so the buffer widens to 3rem. The 2.125rem
+         default matches the mirror's natural padding (pl-6 +
+         px-2.5_right) so the column hugs the rendered text instead of
+         leaving an unused gap on the right. The balance column has no
+         +/- glyph on mobile (sign is conveyed by colour) and no
+         tap-toggle, so its buffer drops to 1.5rem — just enough for
+         pr-8 net of the currency token already counted in the chars
+         tally — and its minmax floor drops to 40px to match the date /
+         type / completed tracks. The date, type and completed tracks
+         are kept narrow (40px, icon or 2-digit day on mobile) so the
+         description column gets as much of the row as possible. */
+      grid-template-columns:
+        40px minmax(0, 1fr) 40px
+        minmax(
+          64px,
+          calc(
+            var(--amount-col-ch, 7) * 1ch + var(--amount-col-buffer, 2.125rem)
+          )
+        )
+        minmax(
+          40px,
+          calc(
+            var(--balance-col-ch, 8) * 1ch + var(--balance-col-buffer, 1.5rem)
+          )
+        )
+        40px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* In select mode, prepend a 30px checkbox column. The grid takes one
+       more leading track so the rest of the layout doesn't reflow. */
+    .budget-table.is-selecting > thead > tr,
+    .budget-table.is-selecting > tbody > tr {
+      grid-template-columns:
+        30px 40px minmax(0, 1fr) 40px
+        minmax(
+          64px,
+          calc(
+            var(--amount-col-ch, 7) * 1ch + var(--amount-col-buffer, 2.125rem)
+          )
+        )
+        minmax(
+          40px,
+          calc(
+            var(--balance-col-ch, 8) * 1ch + var(--balance-col-buffer, 1.5rem)
+          )
+        )
+        40px;
+    }
+    /* Highlight the row in select mode and tint the selected ones. */
+    .budget-table > tbody > tr.is-selecting-row {
+      cursor: pointer;
+    }
+    .budget-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
+      pointer-events: none;
+    }
+    .budget-table
+      > tbody
+      > tr.is-selecting-row.is-selected
+      > td:not(.action-cell) {
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    }
+    .budget-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .budget-table th,
+    .budget-table td {
+      display: flex;
+      /* `align-items: center` keeps each cell's content vertically
+         centered when a sibling cell forces the row taller (the
+         BalanceCell stacks transfer-anchor icons above the number
+         when `hiddenTransferCount > 0`, so the grid row grows). The
+         previous `align-items: stretch` left the date / amount /
+         description text top-aligned against the BalanceCell's
+         icons. Cells that need their inner content to span the full
+         row height (the swipe-revealed action cell, the completed-
+         column button with `h-full`) carry that height explicitly,
+         so this doesn't regress them. */
+      align-items: center;
+      max-width: none;
+    }
+    .budget-table th > *,
+    .budget-table td > * {
+      width: 100%;
+    }
+
+    /* Row swipe: shift content left, slide action cell in from the right */
+    .budget-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .budget-table > tbody > tr.is-swiped > td:not(.action-cell) {
+      transform: translateX(-128px);
+    }
+    .budget-table > thead > tr > .action-cell,
+    .budget-table > tbody > tr > .action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* Width fits the maximum visible button count (3 on a regular
+         budget row: pen, trash, more). Each `action-btn` has `p-2`
+         padding and a 16px icon, giving a 32px min-content width, so
+         3 × 32 = 96px is the minimum. We widen to 128px so the buttons
+         sit at a comfortable ~42px tap-target on phones — extra
+         affordances live in the More dropdown rather than as more
+         siblings in this strip. */
+      width: 128px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .budget-table > tbody > tr.is-swiped > .action-cell {
+      transform: translateX(0);
+    }
+    /* Split the revealed area into equal-width action buttons so the
+       gesture telegraphs each option at a glance. Pen is meta yellow
+       ("edit row"), trash is danger red, and the ellipsis (More) sits
+       on a neutral surface tone so it reads as "open a menu" rather
+       than another destructive action. The Transfer button (shown
+       only on synthesized transfer rows) inherits the row's
+       transparent default and reads as the muted middle option. */
+    .budget-table > tbody > tr > .action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .budget-table > tbody > tr > .action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
+    .budget-table > tbody > tr > .action-cell .action-btn-more {
+      background: var(--surface-2);
+      color: var(--fg-bright);
+    }
+
+    /* Done state tint applies on every cell so the entire row reads green */
+    .budget-table
+      > tbody
+      > tr.is-completed:not(.is-swiped)
+      > td:not(.action-cell) {
+      background: color-mix(in srgb, var(--success) 12%, var(--surface));
+    }
+  }
+
+  /* Desktop completed row tint. The min-height clause excludes
+     landscape phones so the mobile completed-row rule above (which
+     skips the absolutely-positioned action-cell) isn't overridden by
+     this `> td` selector when both media queries match. */
+  @media (min-width: 720px) and (min-height: 501px) {
+    .budget-table > tbody > tr.is-completed > td {
+      background: color-mix(in srgb, var(--success) 10%, var(--surface));
+    }
+    .budget-table > tbody > tr.is-selecting-row {
+      cursor: pointer;
+    }
+    .budget-table > tbody > tr.is-selecting-row > td:not(.select-cell) {
+      pointer-events: none;
+    }
+    .budget-table > tbody > tr.is-selecting-row.is-selected > td {
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    }
+  }
+
+  /* Hidden transfers revealed inline under their anchor balance row.
+     Softer tone + a thin left stripe so the user can tell at a glance
+     these rows came from behind the ↔ icon and aren't part of the
+     normal visible stream. */
+  .budget-table > tbody > tr.is-revealed-transfer > td {
+    background: color-mix(in srgb, var(--muted) 10%, var(--surface));
+    color: var(--muted);
+    font-style: italic;
+  }
+  .budget-table > tbody > tr.is-revealed-transfer > td:first-child {
+    box-shadow: inset 2px 0 0 0 var(--accent);
+  }
+
+  /* Accounts table — mirrors the budget sheet's swipe affordance for
+     the per-account action strip. Desktop keeps the inline action
+     strip so the icons stay discoverable; mobile converts the table
+     to a block / per-row grid (same approach as `.budget-table`) so
+     `position: relative` on `<tr>` establishes a containing block
+     the absolutely-positioned action cell can anchor to. Without the
+     grid conversion the browser keeps the rows as `display: table-row`
+     and the absolute child anchors to the wrong ancestor — leaving
+     the swipe strip floating somewhere outside the row and the
+     wrench column wastefully reserving 128 px of header width. */
+  @media (max-width: 720px), (max-height: 500px) {
+    .accounts-table,
+    .accounts-table > thead,
+    .accounts-table > tbody,
+    .accounts-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .accounts-table > thead > tr,
+    .accounts-table > tbody > tr {
+      /* 40 px icon · flex name · balance (sized to its content with a
+         comfortable floor) · 80 px history count (matches the cell's
+         `w-20` so a four- or five-digit transaction count isn't
+         clipped on the right by the row's `overflow: hidden`). The
+         action cell sits outside the grid as an absolute overlay —
+         the wrench column doesn't reserve a track on mobile,
+         mirroring how the budget sheet's action-cell stays out of
+         the row template. */
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(60px, max-content) 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* The bank cell is hidden on mobile by Tailwind's `hidden` class
+       at portrait widths. Landscape phones (height ≤ 500 px, width
+       ≥ 768 px) need a stronger override because Tailwind's
+       `md:table-cell` reappears in the utilities layer and beats
+       this layered rule — that override lives unlayered at the
+       bottom of this file. The four-column grid template above has
+       no track for the bank cell, so an undropped one wraps to a
+       second grid row and breaks the layout. */
+    .accounts-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .accounts-table th,
+    .accounts-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .accounts-table th > *,
+    .accounts-table td > * {
+      width: 100%;
+    }
+    .accounts-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .accounts-table > tbody > tr.is-swiped > td:not(.account-action-cell) {
+      transform: translateX(-128px);
+    }
+    .accounts-table > thead > tr > .account-action-cell,
+    .accounts-table > tbody > tr > .account-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* Same 128px footprint as the budget sheet's action cell so the
+         three buttons (pen / trash / more) end up at the same ~42px
+         tap target — keeps muscle memory consistent between sheets. */
+      width: 128px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .accounts-table > tbody > tr.is-swiped > .account-action-cell {
+      transform: translateX(0);
+    }
+    .accounts-table > tbody > tr > .account-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .accounts-table > tbody > tr > .account-action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
+    .accounts-table > tbody > tr > .account-action-cell .action-btn-more {
+      background: var(--surface-2);
+      color: var(--fg-bright);
+    }
+
+    /* Transfers table — single-button swipe strip (edit only) using the
+       same overlay pattern as the accounts and budget tables, but at
+       half the width since there's only one action. The desktop
+       Actions column keeps the pen icon visible inline; on mobile the
+       swipe gesture surfaces it. */
+    .transfers-table,
+    .transfers-table > thead,
+    .transfers-table > tbody,
+    .transfers-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .transfers-table > thead > tr,
+    .transfers-table > tbody > tr {
+      /* 56 px date · flex description · transfer chips sized to
+         content · amount sized to content with a comfortable floor.
+         The action cell sits outside the grid as an absolute overlay
+         so the wrench column doesn't reserve a track on mobile,
+         mirroring the accounts table. */
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) minmax(0, max-content) minmax(
+          60px,
+          max-content
+        );
+      position: relative;
+      overflow: hidden;
+    }
+    .transfers-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .transfers-table th,
+    .transfers-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .transfers-table th > *,
+    .transfers-table td > * {
+      width: 100%;
+    }
+    .transfers-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .transfers-table > tbody > tr.is-swiped > td:not(.transfer-action-cell) {
+      transform: translateX(-64px);
+    }
+    .transfers-table > thead > tr > .transfer-action-cell,
+    .transfers-table > tbody > tr > .transfer-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* 64 px — half the 128 px budget / accounts strip since there's
+         only one button to reveal. Keeps the same ~42 px tap target. */
+      width: 64px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .transfers-table > tbody > tr.is-swiped > .transfer-action-cell {
+      transform: translateX(0);
+    }
+    .transfers-table > tbody > tr > .transfer-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    /* Month-header and empty-state rows span every column, so they
+       need to stay as a single full-width block rather than being
+       placed in the grid. Same approach as `.budget-viewer-fullspan`.
+       Override the swipe-strip's `overflow: hidden` back to visible
+       so a sticky `.transfers-month-header` can actually pin past its
+       own row — `overflow: hidden` would trap sticky inside the tr. */
+    .transfers-table > tbody > tr.transfers-fullspan {
+      display: block;
+      width: 100%;
+      overflow: visible;
+    }
+    .transfers-table > tbody > tr.transfers-fullspan > td {
+      display: block;
+      width: 100%;
+    }
+  }
+
+  /* Month-header rows pin below the sticky app header + column-header
+     thead while the rows for that month scroll past underneath. Each
+     month sits in its own <tbody>, so the sticky's containing block
+     ends at the next month's tbody — that's what gives the "previous
+     label gets pushed off as the next one arrives" feel without
+     wrangling z-index manually. The `.transfers-month-header` selector
+     applies at every breakpoint (the table is a real HTML table on
+     desktop and a per-row CSS grid on mobile); modern browsers
+     support `position: sticky` on `<tr>` in both modes. The -1px
+     overlap closes a subpixel-rounded hairline between the sticky
+     bands, same trick as `.budget-table > thead`. */
+  .transfers-table > tbody > tr.transfers-month-header {
+    position: sticky;
+    top: calc(var(--app-header-h) + var(--column-header-h) - 1px);
+    z-index: 14;
+  }
+
+  /* Same pattern for `BudgetViewerModal` and `HistoryModal` — the
+     month-stacked tables that share the `.budget-viewer-table` class.
+     These live inside a `Modal.Body` (`overflow-y-auto`), so the
+     sticky offset is measured from the modal's scrollport — the
+     thead itself sticks at `top: -1px` and is ~32 px tall, so the
+     month header sits flush directly below it. The -1px overlap
+     mirrors the transfers-month-header rule. */
+  .budget-viewer-table > tbody > tr.budget-viewer-month-header {
+    position: sticky;
+    top: 31px;
+    z-index: 9;
+  }
+
+  /* Read-only month-stacked tables — `BudgetViewerModal` and
+     `HistoryModal` both opt into this class. Mobile borrows the same
+     display:block + per-row CSS grid trick as `.budget-table` so the
+     date / type / amount / balance columns get explicit tracks
+     instead of fighting the description for space. Without this, the
+     modal's `overflow-x-hidden` body silently clips the rightmost
+     column (the running balance) once a long description pushes the
+     table past the modal width. The grid template comes from React via
+     `--viewer-row-template` so the optional type / amount / balance
+     columns can drop their tracks when absent. The landscape clause
+     (max-height: 500px) catches phones held sideways the same way the
+     budget table does, since width-only detection would fall through
+     to the desktop layout. */
+  @media (max-width: 720px), (max-height: 500px) {
+    .budget-viewer-table,
+    .budget-viewer-table > thead,
+    .budget-viewer-table > tbody {
+      display: block;
+      width: 100%;
+    }
+    .budget-viewer-table > thead > tr,
+    .budget-viewer-table > tbody > tr:not(.budget-viewer-fullspan) {
+      display: grid;
+      grid-template-columns: var(--viewer-row-template);
+      align-items: center;
+      width: 100%;
+    }
+    .budget-viewer-table > thead > tr > th,
+    .budget-viewer-table > tbody > tr:not(.budget-viewer-fullspan) > td {
+      min-width: 0;
+    }
+    /* Month headers, correction lines, empty-month notes and the
+       future-reveal button all carry `colSpan` so they need to stay as
+       single full-width blocks rather than being placed in the grid. */
+    .budget-viewer-table > tbody > tr.budget-viewer-fullspan {
+      display: block;
+      width: 100%;
+    }
+    .budget-viewer-table > tbody > tr.budget-viewer-fullspan > td {
+      display: block;
+      width: 100%;
+    }
+  }
+}
