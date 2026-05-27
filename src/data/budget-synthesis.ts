@@ -1,6 +1,6 @@
 import { normaliseDescription } from "./description-normaliser";
 import { findMatchingRule } from "./match-rules";
-import { findColumnByType } from "./sheet";
+import { findColumnByType, getStandardColumns } from "./sheet";
 import type {
   CellValue,
   Column,
@@ -51,25 +51,18 @@ export function synthesizeTransferRow(
   // Always positive on the `to` side, negative on the `from` side, so
   // running-balance math from `computeBalances` agrees with intuition.
   const signedAmount = outgoing ? -tx.amount : tx.amount;
+  // Resolve the four standard columns up front instead of walking the
+  // whole columns array with a switch — past the standard four (date,
+  // description, amount, completed) every column is a no-op anyway, so
+  // the loop was paying for `type` / `balance` columns it never wrote
+  // to. `balance` is still derived at render time by `computeBalances`.
+  const { dateCol, descCol, amountCol, completedCol } =
+    getStandardColumns(columns);
   const cells: Record<string, CellValue> = {};
-  for (const col of columns) {
-    switch (col.type) {
-      case "date":
-        cells[col.id] = tx.date;
-        break;
-      case "description":
-        cells[col.id] = tx.description;
-        break;
-      case "amount":
-        cells[col.id] = signedAmount;
-        break;
-      case "completed":
-        cells[col.id] = tx.completed ?? false;
-        break;
-      // `balance` is derived at render time by computeBalances, so no
-      // stored cell is needed.
-    }
-  }
+  if (dateCol) cells[dateCol.id] = tx.date;
+  if (descCol) cells[descCol.id] = tx.description;
+  if (amountCol) cells[amountCol.id] = signedAmount;
+  if (completedCol) cells[completedCol.id] = tx.completed ?? false;
   // Reuse the transfer id as the row id so React's keyed reconciler
   // stays stable across re-syntheses and so deletion paths (which key
   // by row id today) can be wired to a transfer lookup cleanly.

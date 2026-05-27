@@ -1,8 +1,8 @@
-import { memo, useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { isRowSavable } from "../../data/budget-rows";
-import { findColumnByType } from "../../data/sheet";
+import { getStandardColumns } from "../../data/sheet";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import type {
@@ -171,7 +171,13 @@ function BudgetRowImpl({
   // button that was tapped.
   useClaimActiveRow(row.id, swiped, () => setSwiped(false));
 
-  const completedCol = findColumnByType(columns, "completed");
+  // Resolve the four standard columns once per `columns` reference so
+  // a balances-map change (which re-renders every row in the workspace)
+  // doesn't make each row re-scan the columns array four more times.
+  const { dateCol, descCol, amountCol, completedCol } = useMemo(
+    () => getStandardColumns(columns),
+    [columns],
+  );
   const isCompleted =
     completedCol !== undefined && row.cells[completedCol.id] === true;
   const isSeries = !!row.seriesId;
@@ -187,7 +193,6 @@ function BudgetRowImpl({
   // Direction for a synthesized transfer row: negative amount means
   // money flows OUT of this budget's account. The BudgetCell renderer uses
   // this to pick the right arrow glyph for the description cell.
-  const amountCol = findColumnByType(columns, "amount");
   const amountValue =
     amountCol !== undefined ? row.cells[amountCol.id] : undefined;
   const isOutgoing =
@@ -204,7 +209,6 @@ function BudgetRowImpl({
 
   // Expose the row's ISO date so BudgetPage's scroll-to-today can target
   // it directly. Skipped when the date cell is empty or non-string.
-  const dateCol = findColumnByType(columns, "date");
   const isoDate =
     dateCol && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
@@ -215,10 +219,9 @@ function BudgetRowImpl({
   // that context visible even though the dropdown physically overlaps
   // the date and description columns on mobile. Pre-computed here so
   // the picker stays decoupled from the user's date-format setting.
-  const descriptionCol = findColumnByType(columns, "description");
   const rowDescription =
-    descriptionCol && typeof row.cells[descriptionCol.id] === "string"
-      ? (row.cells[descriptionCol.id] as string)
+    descCol && typeof row.cells[descCol.id] === "string"
+      ? (row.cells[descCol.id] as string)
       : "";
   const rowDateFormatted = isoDate
     ? formatShortDate(isoDate, settings.shortDateFormat, lang)
