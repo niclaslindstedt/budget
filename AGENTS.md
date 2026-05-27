@@ -114,27 +114,27 @@ src/
 │   ├── budget/               # budget page — per-account ledger
 │   │   ├── BudgetPage.tsx       # page root — months + columns + rows
 │   │   ├── BudgetViewerModal.tsx# read-only view-mode of a budget
-│   │   ├── MonthTable.tsx       # one month's table
-│   │   ├── ColumnHeader.tsx     # draggable column header
+│   │   ├── BudgetMonthTable.tsx       # one month's table
+│   │   ├── BudgetColumnHeader.tsx     # draggable column header
 │   │   ├── BudgetRow.tsx        # one budget row
 │   │   ├── BudgetCell.tsx       # per-type cell editor
-│   │   ├── AddRowButton.tsx, RowActionsMenu.tsx
-│   │   ├── EditEntryModal.tsx, EditRowModal.tsx, SplitEntryModal.tsx,
-│   │   │   ComplexEntryModal.tsx, BulkEditModal.tsx, MoveCopyModal.tsx,
-│   │   │   ApplySeriesEditDialog.tsx, MatchRuleModal.tsx,
-│   │   │   RecurringCandidatesPanel.tsx, RecurrenceForm.tsx,
+│   │   ├── BudgetAddEntryButton.tsx, BudgetEntryActionsMenu.tsx
+│   │   ├── BudgetEditEntryModal.tsx, BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx,
+│   │   │   BudgetComplexEntryModal.tsx, BudgetBulkEditModal.tsx, BudgetMoveCopyModal.tsx,
+│   │   │   BudgetApplySeriesDialog.tsx, BudgetMatchRuleModal.tsx,
+│   │   │   BudgetRecurringCandidatesPanel.tsx, BudgetRecurrenceForm.tsx,
 │   │   │   TransactionSearchModal.tsx
-│   │   ├── FormulaHelpButton.tsx, FormulaInput.tsx, FormulaVariableHelper.tsx
+│   │   ├── BudgetFormulaHelpButton.tsx, BudgetFormulaInput.tsx, BudgetFormulaVariableHelper.tsx
 │   │   └── cells/               # readonly cell variants for the budget table
 │   └── accounts/             # accounts page — workspace dashboard
 │       ├── AccountsPage.tsx     # page root — accounts table + transfer log
 │       ├── AccountModal.tsx, AccountActionsMenu.tsx
 │       ├── TransactionModal.tsx, UpdateBalanceModal.tsx
 │       ├── HistoryModal.tsx     # read-only per-account bank history viewer
-│       ├── ImportHistoryModal.tsx, HistoryEntryEditModal.tsx,
-│       │   CutAccountHistoryModal.tsx
-│       ├── ReconciliationModal.tsx (post-import flow)
-│       └── TransferCollapseModal.tsx (cross-account pair collapse)
+│       ├── ImportHistoryModal.tsx, EditHistoryEntryModal.tsx,
+│       │   AccountCutHistoryModal.tsx
+│       ├── AccountReconciliationModal.tsx (post-import flow)
+│       └── AccountTransferCollapseModal.tsx (cross-account pair collapse)
 ├── data/
 │   ├── types.ts            # Budget, Sheet, Column, Row, CellValue
 │   ├── constants.ts        # MAX_COLUMN_CHARS, STORAGE_KEY
@@ -705,7 +705,7 @@ typecheck` surfaces the missing key right at the namespace file
   active at creation time.
 - Formula identifiers (`endOfMonthBalance`, `sheet("Wife", …)`, …)
   are code tokens the user types. Only the surrounding prose in
-  `FormulaHelpButton` translates.
+  `BudgetFormulaHelpButton` translates.
 
 ## Changing the persisted shape
 

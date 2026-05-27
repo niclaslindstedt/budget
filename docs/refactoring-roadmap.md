@@ -174,7 +174,7 @@ new sheet type, but feature work can ship through them.
   and decayed to **severity 3**: the systematic audit landed (see
   Landed) and consumed the visible hits in `SheetModal.tsx`,
   `AppLoading.tsx`, `AmountCellDisplay.tsx`, and
-  `accounts/TransferModal.tsx`. The remaining drift surface is
+  `accounts/AccountTransferModal.tsx`. The remaining drift surface is
   small — a handful of literals could still slip in via new
   components without a lint rule to catch them. Promoting the
   one-off audit script to an ESLint rule would be the next step,
@@ -206,7 +206,7 @@ new sheet type, but feature work can ship through them.
     new sheet types register their own functions (`loanPayment(rate,
 years, principal)`).
 
-- **`ReconciliationModal.tsx` (729 lines) state machine in `useState`s** —
+- **`AccountReconciliationModal.tsx` (729 lines) state machine in `useState`s** —
   the orphan-decision flow is tracked by ~6 parallel `useState`
   setters (`orphanDecisions`, `seriesRulesById`, `checked`, …) with
   no atomic transition between them. **Severity: 6.**
@@ -214,20 +214,20 @@ years, principal)`).
     Business helpers (`inferSeriesRule`, `expandToSeries`) become
     reducer actions, testable without React.
 
-- **`EditEntryModal.tsx` (720 lines) recurrence/promotion form
+- **`BudgetEditEntryModal.tsx` (720 lines) recurrence/promotion form
   duplication** — basic-row, recurring-edit, promote-to-series and
   promote-history are different modes sharing some machinery but
   not all. Loans / savings will want their own series semantics.
   **Severity: 6.**
-  - Plan: extract `<RecurrenceForm>` and `<PromotionForm>` so each
+  - Plan: extract `<BudgetRecurrenceForm>` and `<PromotionForm>` so each
     returns a validated domain object (not JSX). Drop the
     `HistoryEntry`-only assumption — accept a generic
     `{date, amount, description}` seed.
 
 - **No `useReducer` in any of the ~20 modal state machines** —
   search for `useReducer` in `src/components/`: zero hits.
-  `useState` pyramids in modals with 5+ fields (`MatchRuleModal`,
-  `SplitEntryModal`, `BulkEditModal`, `BudgetMetadataModal`,
+  `useState` pyramids in modals with 5+ fields (`BudgetMatchRuleModal`,
+  `BudgetSplitEntryModal`, `BudgetBulkEditModal`, `BudgetMetadataModal`,
   `ImportHistoryModal`, …). **Severity: 5.** Per-modal value is
   moderate but the cumulative readability gain is significant.
   Apply opportunistically when a modal is otherwise being touched.
@@ -240,7 +240,7 @@ years, principal)`).
     type registers its own item reducer; `reduceItemDispatch`
     walks the registry instead of hard-coding the union.
 
-- **`MatchRuleModal.tsx` (770 lines) state machine spread + tight
+- **`BudgetMatchRuleModal.tsx` (770 lines) state machine spread + tight
   coupling to `HistoryEntry`** — amount-mode toggles between
   "any / exact / range" with inline render branching; pattern
   derivation runs inside a `useEffect` and assumes a `HistoryEntry`
@@ -295,13 +295,13 @@ T | null` for "explicitly cleared by the user, distinct from
   third OAuth backend (e.g. iCloud Drive) lands.
 
 - **`BudgetViewerModal.tsx` (816 lines) inline search filter**
-  duplicates ~200 lines from `TransferSearchModal.tsx`. **Severity: 4.**
+  duplicates ~200 lines from `BudgetTransferSearchModal.tsx`. **Severity: 4.**
   Easy seam: extract `<RowSearchForm>`. (The `monthFormatCache`
   consolidation half of this item landed 2026-05 — see Landed.)
 
-- **`MonthTable.tsx` orphan-count + transfer-visibility logic
+- **`BudgetMonthTable.tsx` orphan-count + transfer-visibility logic
   scattered** — orphan rendering coordinates between AppShell,
-  MonthTable, and a footer subcomponent. **Severity: 3** (was 4;
+  BudgetMonthTable, and a footer subcomponent. **Severity: 3** (was 4;
   the `hiddenBefore`-Map extraction half landed 2026-05 — see
   Landed). What's left is extracting the `<tfoot>` orphan-indicator
   JSX (~25 lines) into an `<OrphanIndicator>` sibling; opportunistic,
@@ -396,9 +396,9 @@ T | null` for "explicitly cleared by the user, distinct from
   `settings` props now flow through a memoised `BudgetContext`
   (`src/components/budget/BudgetContext.ts` + matching `.tsx` provider
   shim for the Fast Refresh boundary, mirroring the `useToast`
-  pattern). `MonthTable.tsx`, `BudgetRow.tsx`, and `BudgetCell.tsx`
+  pattern). `BudgetMonthTable.tsx`, `BudgetRow.tsx`, and `BudgetCell.tsx`
   consume the context and drop those props from their signatures —
-  MonthTable's Props type shrinks from 50 fields to ~36, BudgetRow's
+  BudgetMonthTable's Props type shrinks from 50 fields to ~36, BudgetRow's
   from ~30 to ~21, BudgetCell's from ~30 to ~22. The
   taxonomy / settings references all flow through a single memoised
   value so descendant `memo`s still skip ordinary edits. The
@@ -440,7 +440,7 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   "Already exists"), `AppLoading.tsx` ("Loading budget…" → reused
   existing `app.loading` key), `budget/cells/AmountCellDisplay.tsx`
   ("Computed from a formula" `title` attribute), and
-  `accounts/TransferModal.tsx` ("Choose an account",
+  `accounts/AccountTransferModal.tsx` ("Choose an account",
   "No accounts yet …"). PrivacyPage stays untranslated by design
   (AGENTS rule). New keys: `sheetModal.newAccount` /
   `.alreadyExists`, `formula.computedFromFormula`,
@@ -455,12 +455,12 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   hard-coding every variant. Existing call sites are unchanged;
   `amountSign` stays as the budget-page default. Severity dropped
   from 5 to 3 — what remains is the (deferred) full registry idea.
-- **`collectHiddenTransfersByAnchor` extraction from `MonthTable.tsx`**
+- **`collectHiddenTransfersByAnchor` extraction from `BudgetMonthTable.tsx`**
   (2026-05): the 25-line `hiddenBefore` Map computation moved into
   `src/data/budget/synthesis.ts` next to its `isTransferRow`
-  collaborator. `MonthTable.tsx` shrank by ~25 lines and the helper
+  collaborator. `BudgetMonthTable.tsx` shrank by ~25 lines and the helper
   is now a pure function callable from tests / future render paths.
-  The `<OrphanIndicator>` half of the original "MonthTable
+  The `<OrphanIndicator>` half of the original "BudgetMonthTable
   orphan-count + transfer-visibility logic scattered" candidate is
   still pending (rated down to 3 — opportunistic).
 - **`resolveNoscriptBody(route)` helper** (2026-05): the build-time
@@ -475,8 +475,8 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   recurring `name.trim().length > 0` + `text.trim() === "" ? undefined : text.trim()`
   patterns collapsed onto two helpers in `src/data/normalize.ts`.
   Adopted at `EntityCreatorForm`, `SheetModal` (sheet name + inline
-  new-account name), `AccountModal`, `TransferModal`, and
-  `MatchRuleModal` (the `normalizeOptional` site). `CompanyPicker` /
+  new-account name), `AccountModal`, `AccountTransferModal`, and
+  `BudgetMatchRuleModal` (the `normalizeOptional` site). `CompanyPicker` /
   `CompaniesAdmin` kept their inline trim because the surrounding
   shape is `name.trim().toLowerCase()` for duplicate detection — a
   different concern.
@@ -484,7 +484,7 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   recurring `Number.parseInt(text, 10)` followed by `Number.isFinite`
   check collapsed onto a `parseInt32` helper in `src/utils/parse.ts`.
   Adopted at the four shift-day / anchor-day parsers in
-  `EditEntryModal`, `EditRowModal`, and `HistoryEntryEditModal`. The
+  `BudgetEditEntryModal`, `BudgetEditEntryFullModal`, and `EditHistoryEntryModal`. The
   remaining inline `Number.parseInt` sites (`xlsx-reader.ts`,
   `semver.ts`) parse internal data, not user input — left inline so
   the call site retains its specific validation.
@@ -506,11 +506,11 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   duplicated `monthFormatCache` + `monthFormatFor` + `formatMonth`
   trio (one copy per file) collapsed onto a single
   `formatYearMonth(monthKey, lang)` in `src/utils/format.ts`. Six
-  call sites — `MonthTable`, `BudgetViewerModal`,
-  `BudgetMetadataModal`, `MoveCopyModal` (year-month half;
+  call sites — `BudgetMonthTable`, `BudgetViewerModal`,
+  `BudgetMetadataModal`, `BudgetMoveCopyModal` (year-month half;
   short-month formatter stays inline), `HistoryModal`, `AccountsPage` —
   now share one Lang-keyed `Intl.DateTimeFormat` cache. The
-  surrounding wrappers (`formatMonth(key, lang, t)` in MonthTable
+  surrounding wrappers (`formatMonth(key, lang, t)` in BudgetMonthTable
   with the "undated" branch, `formatMonth(key, lang, undatedLabel)`
   in BudgetViewerModal) stay where they are because each one's
   pre-call branch differs.
@@ -526,12 +526,12 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   `idb-adapter.ts`, and `dropbox-adapter.ts` (the catch logs a
   diagnostic warning that's useful for debugging).
 - **`useResetOnOpen` adoption at three more modals** (2026-05):
-  `AccountModal`, `SplitEntryModal`, and `HistoryEntryEditModal`
+  `AccountModal`, `BudgetSplitEntryModal`, and `EditHistoryEntryModal`
   switched from the manual `useEffect(() => { if (!open) return; ... }, [open, X])`
   pattern to the shared `useResetOnOpen(open, key, fn)` hook
-  (previously used by `EditEntryModal` + `EditRowModal`).
-  `MatchRuleModal`, `BulkEditModal`, `ComplexEntryModal`,
-  `TransferModal`, and `UpdateBalanceModal` weren't migrated because
+  (previously used by `BudgetEditEntryModal` + `BudgetEditEntryFullModal`).
+  `BudgetMatchRuleModal`, `BudgetBulkEditModal`, `BudgetComplexEntryModal`,
+  `AccountTransferModal`, and `UpdateBalanceModal` weren't migrated because
   each one's reset-on-open effect carries a `settings` (or similar)
   prop in its dep array — preserving that semantic would require
   combining the keys into a composite resetKey, which obscures more
@@ -553,8 +553,8 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   extraction.
 - **`<FormSection>` extraction** (2026-05): lives at
   `src/components/form/FormSection.tsx`, adopted by `SheetModal`,
-  `AccountModal`, `TransferModal`, `DownloadModal`, and
-  `MatchRuleModal` (26 call sites collapsed). The other ~9
+  `AccountModal`, `AccountTransferModal`, `DownloadModal`, and
+  `BudgetMatchRuleModal` (26 call sites collapsed). The other ~9
   candidate modals either wrap a styled container (rounded border +
   `bg-surface-*`) or use a tighter `gap-1` layout and weren't
   migrated. New modals should reach for `<FormSection>` from day
@@ -562,7 +562,7 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
 - **`useResetOnOpen` hook** (2026-05): the reset-on-open `useEffect`
   boilerplate has been hoisted into
   `useResetOnOpen(open, resetKey, reset)` in `src/hooks/`, used by
-  `EditEntryModal` and `EditRowModal`.
+  `BudgetEditEntryModal` and `BudgetEditEntryFullModal`.
 - **`SettingsModal.tsx` tab registry** (2026-05): the `TAB_REGISTRY`
   array lives in `SettingsModal/tabs/index.ts` and owns every tab's
   id + icon + visibility gate (devMode / captureLogs). The modal
@@ -699,9 +699,9 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   was the right abstraction there but was also rejected (see
   below).
 
-- **Step-through modal pattern**: only `ReconciliationModal` and
+- **Step-through modal pattern**: only `AccountReconciliationModal` and
   `BudgetMetadataModal` are true stepping modals (`HistoryModal` is
-  read-only; `HistoryEntryEditModal` is single-entry). The two
+  read-only; `EditHistoryEntryModal` is single-entry). The two
   stepping shapes diverge enough — Reconciliation manages orphan /
   candidate decisions via `setChecked` / `setOrphanDecisions` /
   `setSeriesRulesById`; BudgetMetadata walks `needsMetadata()`
@@ -713,13 +713,13 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
 
 - **`<Amount value={n} settings={s} />` component**: only **3** call
   sites actually pair `withCurrency(formatNumber(…))`
-  (`BudgetViewerModal`, `TransferSearchModal`, `format.ts`), not the
+  (`BudgetViewerModal`, `BudgetTransferSearchModal`, `format.ts`), not the
   ~20 originally claimed. A dedicated component doesn't earn its
   keep at three sites.
 
 - **`useListboxKeyboard()` hook**: only **1** real call site
   (`form/SelectPicker.tsx:124–161`). `SettingsModal/admin.tsx` has
-  icon buttons but no keyboard nav; `FormulaVariableHelper.tsx`
+  icon buttons but no keyboard nav; `BudgetFormulaVariableHelper.tsx`
   uses plain `onClick` handlers. Premature at one call site —
   revisit when a second picker implements keyboard nav.
 
