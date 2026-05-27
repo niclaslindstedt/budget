@@ -16,6 +16,7 @@ import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
+import { usePromptDerivations } from "./hooks/usePromptDerivations";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
 import { useSheetNav } from "./hooks/useSheetNav";
 import { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
@@ -42,8 +43,6 @@ import {
   EditEntryModal,
   type EditPatch,
   type EditScope,
-  type HistoryMatchPreview,
-  type HistoryPromotePrefill,
 } from "../budget/EditEntryModal";
 import {
   EditRowModal,
@@ -75,23 +74,17 @@ import { ReconnectCloudModal } from "../ReconnectCloudModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
 import { SyncStatus } from "../SyncStatus";
 import { allCategories, allTypes } from "../../data/presets";
-import {
-  getLastSeriesDate,
-  isRowSavable,
-  userDataWithSavableRows,
-} from "../../data/budget-rows";
+import { isRowSavable, userDataWithSavableRows } from "../../data/budget-rows";
 import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
   CellValue,
-  HistoryEntry,
   HistoryEntrySplit,
   Row,
   Settings,
   StoredUser,
   UserData,
 } from "../../data/types";
-import { normaliseDescription } from "../../data/description-normaliser";
 import { RecurringCandidatesPanel } from "../budget/RecurringCandidatesPanel";
 import { TransferCollapseModal } from "../accounts/TransferCollapseModal";
 import { reducer } from "../../data/reducer";
@@ -969,54 +962,27 @@ export function AppShell({
     dateCol,
   });
 
-  // Last ISO date in the candidate series — defaults the "until" picker.
-  const editLastSeriesDate = useMemo<string | null>(() => {
-    const row = editPrompt?.row;
-    if (!row?.seriesId || !dateCol) return null;
-    return getLastSeriesDate(activeItem.rows, row.seriesId, dateCol.id);
-  }, [editPrompt, activeItem.rows, dateCol]);
-  // Same defaulting for the generic edit-row modal's scope picker.
-  const editRowLastSeriesDate = useMemo<string | null>(() => {
-    const row = editRowPrompt?.row;
-    if (!row?.seriesId || !dateCol) return null;
-    return getLastSeriesDate(activeItem.rows, row.seriesId, dateCol.id);
-  }, [editRowPrompt, activeItem.rows, dateCol]);
-  // And for the delete-recurring scope picker.
-  const deleteLastSeriesDate = useMemo<string | null>(() => {
-    const row = deletePrompt?.row;
-    if (!row?.seriesId || !dateCol) return null;
-    return getLastSeriesDate(activeItem.rows, row.seriesId, dateCol.id);
-  }, [deletePrompt, activeItem.rows, dateCol]);
-  // Every row in the active prompt's series, fed to the modal so the
-  // affected-rows preview can render under the scope picker.
-  const editRowSeriesRows = useMemo<readonly Row[]>(() => {
-    const row = editRowPrompt?.row;
-    if (!row?.seriesId) return [];
-    return activeItem.rows.filter((r) => r.seriesId === row.seriesId);
-  }, [editRowPrompt, activeItem.rows]);
-
-  // Look up the bank entry behind a history-row split prompt so the
-  // modal can pre-fill any existing splits and use the entry's
-  // authoritative amount instead of whatever individual split-row
-  // amount is currently in the cells map.
-  const splitHistoryEntry = useMemo<HistoryEntry | null>(() => {
-    const row = splitPrompt?.row;
-    if (!row?.historyEntryId || !activeItem.accountId) return null;
-    const entries = data.history[activeItem.accountId] ?? [];
-    return entries.find((e) => e.id === row.historyEntryId) ?? null;
-  }, [splitPrompt, activeItem.accountId, data.history]);
-  const splitInitialSplits = useMemo<SplitSubmission[] | undefined>(() => {
-    if (!splitHistoryEntry?.splits || splitHistoryEntry.splits.length === 0) {
-      return undefined;
-    }
-    return splitHistoryEntry.splits.map((s) => ({
-      description: s.description,
-      amount: s.amount,
-      typeId: s.typeId ?? null,
-    }));
-  }, [splitHistoryEntry]);
-  const splitAuthoritativeAmount = splitHistoryEntry?.amount;
-  const splitAuthoritativeDescription = splitHistoryEntry?.description;
+  const {
+    editLastSeriesDate,
+    editRowLastSeriesDate,
+    deleteLastSeriesDate,
+    editRowSeriesRows,
+    splitInitialSplits,
+    splitAuthoritativeAmount,
+    splitAuthoritativeDescription,
+    historyEditEntry,
+    editHistoryHintPrefill,
+    editHistoryMatches,
+  } = usePromptDerivations({
+    editPrompt,
+    editRowPrompt,
+    splitPrompt,
+    deletePrompt,
+    historyEditPrompt,
+    activeItem,
+    dateCol,
+    data,
+  });
 
   const {
     matchRulePrompt,
@@ -1031,17 +997,6 @@ export function AppShell({
     onMoveMatchRule,
     onReapplyMatchRules,
   } = useMatchRuleUi({ data, activeItem, dispatch, toast });
-
-  // Resolve the entry for the per-entry edit modal from
-  // `historyEditPrompt.entryId`. Looked up fresh each render so a
-  // concurrent delete / re-import doesn't strand a stale snapshot.
-  const historyEditEntry = useMemo<HistoryEntry | null>(() => {
-    if (!historyEditPrompt) return null;
-    const accountId = activeItem.accountId;
-    if (!accountId) return null;
-    const entries = data.history[accountId] ?? [];
-    return entries.find((e) => e.id === historyEditPrompt.entryId) ?? null;
-  }, [historyEditPrompt, activeItem.accountId, data.history]);
 
   const onSubmitHistoryEdit = useCallback(
     (patch: {
@@ -1080,76 +1035,6 @@ export function AppShell({
     },
     [dispatch, activeItem.accountId],
   );
-
-  // Pre-fill values for the history-row promote modal. Looks the
-  // active history entry up by id (the synthesized row carries only
-  // the overlaid description), normalises its raw bank text, and
-  // hands the matching merchant hint's labels back to the modal so a
-  // returning user sees their last choices rather than blanks.
-  const editHistoryHintPrefill = useMemo<HistoryPromotePrefill | null>(() => {
-    const row = editPrompt?.row;
-    if (!row?.historyEntryId) return null;
-    const accountId = activeItem.accountId;
-    if (!accountId) return null;
-    const entries = data.history[accountId] ?? [];
-    const entry = entries.find((e) => e.id === row.historyEntryId);
-    if (!entry) return null;
-    const key = normaliseDescription(entry.description);
-    const hint = data.merchantHints[key];
-    if (!hint) return null;
-    return {
-      description: hint.description ?? null,
-      typeId: hint.typeId ?? null,
-      companyId: hint.companyId ?? null,
-    };
-  }, [editPrompt, activeItem.accountId, data.history, data.merchantHints]);
-
-  // Bank-history entries on the active account that share the
-  // promote-target row's normalised description. Surfaced in the
-  // EditEntryModal so the user sees which past entries will adopt
-  // the typed label / type via the merchant-hint overlay. Skipped
-  // for series rows (the modal is in edit-series mode, not promote).
-  // For history-row promotions, the bucket key is derived from the
-  // source entry's raw bank text (the synthesized row's description
-  // cell may already carry a user override that doesn't normalise
-  // back to the bank text). For regular row promotions the bucket
-  // key comes from the description cell directly.
-  const editHistoryMatches = useMemo<HistoryMatchPreview[] | null>(() => {
-    const row = editPrompt?.row;
-    if (!row || row.seriesId) return null;
-    const accountId = activeItem.accountId;
-    if (!accountId) return null;
-    const entries = data.history[accountId] ?? [];
-    let targetKey: string;
-    if (row.historyEntryId) {
-      const entry = entries.find((e) => e.id === row.historyEntryId);
-      if (!entry) return null;
-      targetKey = normaliseDescription(entry.description);
-    } else {
-      const descId = findColumnByType(activeItem.columns, "description")?.id;
-      if (!descId) return null;
-      const rawDesc = row.cells[descId];
-      if (typeof rawDesc !== "string" || rawDesc.trim() === "") return null;
-      targetKey = normaliseDescription(rawDesc);
-    }
-    if (targetKey.length < 3) return null;
-    const matches: HistoryMatchPreview[] = [];
-    for (const e of entries) {
-      if (e.hidden) continue;
-      if (e.collapsedIntoTransferId) continue;
-      if (normaliseDescription(e.description) !== targetKey) continue;
-      const preview: HistoryMatchPreview = {
-        id: e.id,
-        date: e.date,
-        description: e.description,
-        amount: e.amount,
-      };
-      if (e.hintIgnored) preview.hintIgnored = true;
-      matches.push(preview);
-    }
-    matches.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    return matches;
-  }, [editPrompt, activeItem.accountId, activeItem.columns, data.history]);
 
   // Series rows are handled by `DeleteRecurringDialog` (which owns its
   // own scope picker, optional date bound, and button labels). This

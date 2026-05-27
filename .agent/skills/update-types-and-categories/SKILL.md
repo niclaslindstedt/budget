@@ -26,7 +26,7 @@ typecheck, the validator, the i18n parity test, or the picker UI.
 
 | Concern               | File                                                                                                             |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Preset definitions    | `src/data/presets.ts` — `PRESET_CATEGORIES`, `PRESET_ENTRY_TYPES`                                              |
+| Preset definitions    | `src/data/presets.ts` — `PRESET_CATEGORIES`, `PRESET_ENTRY_TYPES`                                                |
 | Glyph type union      | `src/data/types.ts` — `CategoryIcon`                                                                             |
 | Glyph render map      | `src/components/icons.tsx` — `CATEGORY_ICONS` + lucide imports                                                   |
 | Glyph allowlist       | `src/data/constants.ts` — `CATEGORY_ICON_NAMES`                                                                  |
