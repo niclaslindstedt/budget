@@ -1,4 +1,4 @@
-import { nsCloudPath, nsKey } from "../data/constants";
+import { nsCloudPath, nsKey } from "../data/constants/storage";
 import { createLogger } from "../utils/logger";
 import {
   AuthError,

@@ -22,7 +22,11 @@
 // duration) at info level, or info + error on a thrown rejection. The
 // wrapped fn always runs.
 
-import { CAPTURE_LOGS_KEY, LOGS_KEY, MAX_LOG_ENTRIES } from "../data/constants";
+import {
+  CAPTURE_LOGS_KEY,
+  LOGS_KEY,
+  MAX_LOG_ENTRIES,
+} from "../data/constants/storage";
 import { IS_PREVIEW } from "./build-env";
 import { safeJsonParse } from "./json";
 

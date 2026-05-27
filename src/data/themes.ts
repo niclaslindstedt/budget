@@ -1,6 +1,6 @@
 // Theme presets, palettes, and Custom-theme defaults. Leaf module —
 // imports only from `./types` so callers can pull theme data without
-// dragging in the rest of `constants.ts`. The Appearance settings tab,
+// dragging in the rest of `constants/`. The Appearance settings tab,
 // `useTheme`, and the validator all read from here directly.
 //
 // The eight non-Custom presets (`dark`, `light`, `dracula`, `monokai`,

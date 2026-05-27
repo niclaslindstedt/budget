@@ -7,7 +7,7 @@
 // leaking it is no worse than leaking the browser's
 // `Accept-Language` header.
 
-import { nsKey } from "../data/constants";
+import { nsKey } from "../data/constants/storage";
 import { detectInitialLanguage, type Lang } from "./locale";
 
 const KEY = nsKey("budget.language.v1");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/data/constants";
+import { DEFAULT_SETTINGS } from "../src/data/constants/defaults";
 import type { Settings } from "../src/data/types";
 import {
   formatAmount,

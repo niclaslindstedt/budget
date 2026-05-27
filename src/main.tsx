@@ -9,7 +9,7 @@ import "./styles.css";
 // `@fontsource/*` side-effect import injects a `@font-face` rule and
 // (via the bundler) references the WOFF2 file so it ends up in the
 // build output. Three families × regular + bold weights — see
-// `FONT_FAMILIES` in `src/data/constants.ts` for the user-facing
+// `FONT_FAMILIES` in `src/data/themes.ts` for the user-facing
 // surface. Local-first: no CDN at runtime.
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/700.css";

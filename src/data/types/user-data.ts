@@ -36,13 +36,13 @@ export type UserData = {
   companies: Company[];
   // User-added categories. On top of these the runtime also shows a
   // built-in list of broad Swedish-household preset categories
-  // (`PRESET_CATEGORIES` in `data/constants.ts`); preset categories
+  // (`PRESET_CATEGORIES` in `data/presets/categories.ts`); preset categories
   // live in code, not in this array. The user can hide individual
   // presets via `hiddenPresetCategoryIds`.
   categories: Category[];
   // User-added entry types referenced by `Row.typeId`. On top of these
   // the runtime also shows a built-in list of typical-Swedish-household
-  // preset types (`PRESET_ENTRY_TYPES` in `data/constants.ts`); preset
+  // preset types (`PRESET_ENTRY_TYPES` in `data/presets/types.ts`); preset
   // types live in code, not in this array. The user can hide
   // individual presets via `hiddenPresetTypeIds`.
   types: EntryType[];

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { unlock } from "../data/achievements";
-import { INSTALL_HINT_DISMISSED_KEY } from "../data/constants";
+import { INSTALL_HINT_DISMISSED_KEY } from "../data/constants/storage";
 import { useT, type TFunction } from "../i18n";
 
 // PWA install affordance. Two browser families behave differently here:

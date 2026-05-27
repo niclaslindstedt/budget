@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Database, ShieldAlert, ShieldCheck } from "lucide-react";
 
-import { SESSION_TIMEOUT_PRESETS } from "../../../data/constants";
+import { SESSION_TIMEOUT_PRESETS } from "../../../data/constants/format";
 import type { Settings, UserData } from "../../../data/types";
 import { type TFunction, useT } from "../../../i18n";
 import type {

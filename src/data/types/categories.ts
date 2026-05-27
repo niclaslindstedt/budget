@@ -1,7 +1,7 @@
 // Master allowlist of glyph names used anywhere in the app. The picker
 // grids for sheets, accounts, categories, and types each render a
 // curated subset of this union (see `*_GLYPH_NAMES` in
-// `data/constants.ts`) so the user sees relevant choices in each
+// `data/constants/taxonomy.ts`) so the user sees relevant choices in each
 // context, but the persisted data model accepts any value from the
 // full union. That keeps cross-context moves (an icon used for a
 // category today, promoted to a sheet glyph tomorrow) free.

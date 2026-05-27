@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 
-import { CATEGORY_COLORS } from "../data/constants";
+import { CATEGORY_COLORS } from "../data/constants/taxonomy";
 import { normalizeName } from "../data/normalize";
 import type { CategoryIcon } from "../data/types";
 import { useT } from "../i18n";

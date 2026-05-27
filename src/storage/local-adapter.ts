@@ -1,4 +1,4 @@
-import { STORAGE_KEY } from "../data/constants";
+import { STORAGE_KEY } from "../data/constants/storage";
 
 // Raw localStorage byte access for the small per-user / per-device
 // preferences that still live in `localStorage`: the legacy pre-

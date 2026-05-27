@@ -1,4 +1,4 @@
-import { CATEGORY_GLYPH_NAMES } from "../data/constants";
+import { CATEGORY_GLYPH_NAMES } from "../data/constants/taxonomy";
 import type { Category } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";

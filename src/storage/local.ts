@@ -1,4 +1,4 @@
-import { DEFAULT_PERSISTED_SETTINGS } from "../data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../data/constants/defaults";
 import type { MigrationContext } from "../data/migrations";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";

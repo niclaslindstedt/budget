@@ -1,4 +1,4 @@
-import { FONT_SCALE_PRESETS } from "../../../data/constants";
+import { FONT_SCALE_PRESETS } from "../../../data/constants/format";
 import {
   BORDER_WIDTH_PRESETS,
   COLOR_GROUPS,

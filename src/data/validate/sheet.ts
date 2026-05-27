@@ -1,4 +1,7 @@
-import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "../constants";
+import {
+  DEFAULT_SHEET_COLOR,
+  DEFAULT_SHEET_GLYPH,
+} from "../constants/taxonomy";
 import { SHEET_TYPE_IDS } from "../sheet-types";
 import type {
   AccountBudget,

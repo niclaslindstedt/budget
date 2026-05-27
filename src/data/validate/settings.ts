@@ -4,11 +4,13 @@ import {
   DEFAULT_DOWNLOAD_ACCOUNTS,
   DEFAULT_DOWNLOAD_BUDGET,
   DEFAULT_SETTINGS,
+} from "../constants/defaults";
+import {
   MAX_FONT_SCALE,
   MAX_SESSION_TIMEOUT_MINUTES,
   MIN_FONT_SCALE,
   MIN_SESSION_TIMEOUT_MINUTES,
-} from "../constants";
+} from "../constants/format";
 import type {
   AccountsDownloadPrefs,
   BudgetDownloadPrefs,

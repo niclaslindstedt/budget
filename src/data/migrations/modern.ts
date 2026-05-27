@@ -9,8 +9,8 @@ import {
   DEFAULT_DOWNLOAD_ACCOUNTS,
   DEFAULT_DOWNLOAD_BUDGET,
   DEFAULT_SETTINGS,
-  nsKey,
-} from "../constants";
+} from "../constants/defaults";
+import { nsKey } from "../constants/storage";
 import { DEVICE_SCOPED_KEYS } from "../settings";
 import { clearRawStorage, readRawStorage } from "../../storage/local-adapter";
 import { safeJsonParse } from "../../utils/json";

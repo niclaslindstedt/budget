@@ -12,7 +12,7 @@
 // flag is the user-facing equivalent) so existing references continue
 // to resolve.
 
-import { CATEGORY_COLORS } from "../constants";
+import { CATEGORY_COLORS } from "../constants/taxonomy";
 import type { CategoryIcon, EntryType, EntryTypeKind } from "../types";
 
 // Historical seed for entry types — used only by the v12 → v13

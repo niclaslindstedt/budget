@@ -103,7 +103,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
 
   // Resolvable category-id set built before types validate so a
   // type's `categoryId` can be checked against it. Preset ids resolve
-  // to the built-in definitions in `data/constants.ts`; user-added
+  // to the built-in definitions in `data/presets/`; user-added
   // ids resolve to entries in the array above. Hidden presets stay
   // resolvable — hiding only affects picker / admin visibility, not
   // referential integrity.

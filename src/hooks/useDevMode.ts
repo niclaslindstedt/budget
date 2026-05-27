@@ -26,7 +26,7 @@
 
 import { useEffect, useState } from "react";
 
-import { CAPTURE_LOGS_KEY, DEV_MODE_KEY } from "../data/constants";
+import { CAPTURE_LOGS_KEY, DEV_MODE_KEY } from "../data/constants/storage";
 import { IS_PREVIEW } from "../utils/build-env";
 import { setCaptureEnabled } from "../utils/logger";
 

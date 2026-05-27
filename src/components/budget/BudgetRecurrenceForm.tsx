@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 
-import { DEFAULT_RECURRENCE_MONTHS } from "../../data/constants";
+import { DEFAULT_RECURRENCE_MONTHS } from "../../data/constants/defaults";
 import { useT } from "../../i18n";
 import {
   expandRecurrence,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants";
+import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { EntryType, Transfer, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";

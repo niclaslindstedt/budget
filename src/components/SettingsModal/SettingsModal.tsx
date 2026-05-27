@@ -6,7 +6,8 @@ import {
   X,
 } from "lucide-react";
 
-import { CURRENCY_PRESETS, DEFAULT_SETTINGS } from "../../data/constants";
+import { CURRENCY_PRESETS } from "../../data/constants/currency";
+import { DEFAULT_SETTINGS } from "../../data/constants/defaults";
 import { detectPaydayDayOfMonth } from "../../data/payday";
 import type {
   Category,

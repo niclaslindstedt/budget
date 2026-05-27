@@ -9,7 +9,7 @@
 // the empty / null result and the caller falls back to the browser
 // backend.
 
-import { nsIdbName } from "../data/constants";
+import { nsIdbName } from "../data/constants/storage";
 
 // Preview build uses `budget-folder-handles-preview` so picking a
 // folder in preview doesn't replace the production folder handle.

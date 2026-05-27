@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PERSISTED_SETTINGS,
   DEFAULT_SETTINGS,
-} from "../src/data/constants";
+} from "../src/data/constants/defaults";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { AccountBudget, UserData } from "../src/data/types";
