@@ -13,15 +13,9 @@ import type {
   AccountsDownloadPrefs,
   BudgetDownloadPrefs,
   CommonSettings,
-  DateFormat,
-  DecimalSeparator,
   DeviceSettings,
-  FontFamilyId,
   HeaderAction,
   PersistedSettings,
-  ShortDateFormat,
-  ThemePreset,
-  ThousandsSeparator,
 } from "../types";
 import {
   DATE_FORMAT_SET,
@@ -32,6 +26,7 @@ import {
   THOUSANDS_SEPARATORS,
   isObject,
   validateBoolRecord,
+  validateEnum,
 } from "./helpers";
 import { validateCustomTheme } from "./theme";
 
@@ -101,16 +96,16 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     raw.startOfMonth <= 28
       ? raw.startOfMonth
       : DEFAULT_SETTINGS.startOfMonth;
-  const dateFormat =
-    typeof raw.dateFormat === "string" &&
-    DATE_FORMAT_SET.has(raw.dateFormat as DateFormat)
-      ? (raw.dateFormat as DateFormat)
-      : DEFAULT_SETTINGS.dateFormat;
-  const shortDateFormat =
-    typeof raw.shortDateFormat === "string" &&
-    SHORT_DATE_FORMAT_SET.has(raw.shortDateFormat as ShortDateFormat)
-      ? (raw.shortDateFormat as ShortDateFormat)
-      : DEFAULT_SETTINGS.shortDateFormat;
+  const dateFormat = validateEnum(
+    raw.dateFormat,
+    DATE_FORMAT_SET,
+    DEFAULT_SETTINGS.dateFormat,
+  );
+  const shortDateFormat = validateEnum(
+    raw.shortDateFormat,
+    SHORT_DATE_FORMAT_SET,
+    DEFAULT_SETTINGS.shortDateFormat,
+  );
   const currency =
     typeof raw.currency === "string" && raw.currency.length > 0
       ? raw.currency
@@ -123,16 +118,16 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     typeof raw.currencySpace === "boolean"
       ? raw.currencySpace
       : DEFAULT_SETTINGS.currencySpace;
-  const decimalSeparator =
-    typeof raw.decimalSeparator === "string" &&
-    DECIMAL_SEPARATORS.has(raw.decimalSeparator as DecimalSeparator)
-      ? (raw.decimalSeparator as DecimalSeparator)
-      : DEFAULT_SETTINGS.decimalSeparator;
-  let thousandsSeparator: ThousandsSeparator =
-    typeof raw.thousandsSeparator === "string" &&
-    THOUSANDS_SEPARATORS.has(raw.thousandsSeparator as ThousandsSeparator)
-      ? (raw.thousandsSeparator as ThousandsSeparator)
-      : DEFAULT_SETTINGS.thousandsSeparator;
+  const decimalSeparator = validateEnum(
+    raw.decimalSeparator,
+    DECIMAL_SEPARATORS,
+    DEFAULT_SETTINGS.decimalSeparator,
+  );
+  let thousandsSeparator = validateEnum(
+    raw.thousandsSeparator,
+    THOUSANDS_SEPARATORS,
+    DEFAULT_SETTINGS.thousandsSeparator,
+  );
   // Thousands and decimal can never be the same character; fall back
   // to "no thousands separator" if they collide so display logic isn't
   // fighting ambiguous input.
@@ -156,15 +151,12 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     typeof raw.hideTransfers === "boolean"
       ? raw.hideTransfers
       : DEFAULT_SETTINGS.hideTransfers;
-  const theme: ThemePreset =
-    typeof raw.theme === "string" && THEME_SET.has(raw.theme as ThemePreset)
-      ? (raw.theme as ThemePreset)
-      : DEFAULT_SETTINGS.theme;
-  const fontFamily: FontFamilyId =
-    typeof raw.fontFamily === "string" &&
-    FONT_FAMILY_SET.has(raw.fontFamily as FontFamilyId)
-      ? (raw.fontFamily as FontFamilyId)
-      : DEFAULT_SETTINGS.fontFamily;
+  const theme = validateEnum(raw.theme, THEME_SET, DEFAULT_SETTINGS.theme);
+  const fontFamily = validateEnum(
+    raw.fontFamily,
+    FONT_FAMILY_SET,
+    DEFAULT_SETTINGS.fontFamily,
+  );
   const customTheme = validateCustomTheme(raw.customTheme);
   const achievements: Record<string, number> = {};
   if (isObject(raw.achievements)) {

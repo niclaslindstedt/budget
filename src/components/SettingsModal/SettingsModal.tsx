@@ -1,17 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Building2,
-  Hash,
-  HardDrive,
   type LucideIcon,
   Menu,
-  Palette,
-  ScrollText,
   Settings as SettingsIcon,
-  Sliders,
-  Tag,
-  Tags,
-  Wrench,
   X,
 } from "lucide-react";
 
@@ -46,8 +37,12 @@ import {
   LogsTab,
   MemoryTab,
   PatternsTab,
+  type SettingsTabId,
   StorageTab,
+  TAB_REGISTRY,
 } from "./tabs";
+
+export type { SettingsTabId };
 
 // Derives the picker's initial selection from the persisted format
 // settings. Currencies that render identically are collapsed into a
@@ -186,18 +181,6 @@ type Props = {
   onDeleteAccount: (password: string) => Promise<void>;
 };
 
-export type SettingsTabId =
-  | "general"
-  | "appearance"
-  | "format"
-  | "storage"
-  | "categories"
-  | "companies"
-  | "patterns"
-  | "memory"
-  | "developer"
-  | "logs";
-
 type TabId = SettingsTabId;
 
 type TabDef = {
@@ -209,35 +192,13 @@ type TabDef = {
   icon: LucideIcon;
 };
 
-const TAB_ICONS: Record<TabId, LucideIcon> = {
-  general: Sliders,
-  appearance: Palette,
-  format: Hash,
-  storage: HardDrive,
-  categories: Tag,
-  companies: Building2,
-  patterns: Tags,
-  memory: SettingsIcon,
-  developer: Wrench,
-  logs: ScrollText,
-};
-
-const BASE_TAB_IDS: readonly TabId[] = [
-  "general",
-  "appearance",
-  "format",
-  "storage",
-  "categories",
-  "companies",
-  "patterns",
-  "memory",
-];
+const TAB_ICON_BY_ID = new Map(TAB_REGISTRY.map((e) => [e.id, e.icon]));
 
 function useTabDefs(t: TFunction, tabIds: readonly TabId[]): TabDef[] {
   return tabIds.map((id) => ({
     id,
     label: t(`settings.tabs.${id}` as const),
-    icon: TAB_ICONS[id],
+    icon: TAB_ICON_BY_ID.get(id) as LucideIcon,
   }));
 }
 
@@ -313,12 +274,13 @@ export function SettingsModal({
   // tabs appear at all. Read directly here so the modal re-renders
   // when the user toggles either flag inside its own UI.
   const { devMode, captureLogs } = useDevMode();
-  const tabIds = useMemo<readonly TabId[]>(() => {
-    const ids: TabId[] = [...BASE_TAB_IDS];
-    if (devMode) ids.push("developer");
-    if (devMode && captureLogs) ids.push("logs");
-    return ids;
-  }, [devMode, captureLogs]);
+  const tabIds = useMemo<readonly TabId[]>(
+    () =>
+      TAB_REGISTRY.filter(
+        (entry) => !entry.visible || entry.visible({ devMode, captureLogs }),
+      ).map((entry) => entry.id),
+    [devMode, captureLogs],
+  );
   // Fall back to General if the active tab disappears under us — e.g.
   // the user turns off Capture logs while sitting on the Logs tab.
   useEffect(() => {

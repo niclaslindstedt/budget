@@ -7,7 +7,6 @@ import type {
   ColumnType,
   Row,
   Sheet,
-  SheetGlyph,
   SheetItem,
   SheetType,
 } from "../types";
@@ -17,6 +16,7 @@ import {
   isCellValue,
   isObject,
   type Result,
+  validateEnum,
 } from "./helpers";
 
 const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
@@ -272,14 +272,8 @@ export function validateSheet(
   // Display metadata. Soft-recovers each field to a sane default if
   // missing or bogus — these are cosmetic, so a typo'd glyph name
   // shouldn't lock the user out of an otherwise-valid sheet.
-  const type: SheetType =
-    typeof raw.type === "string" && SHEET_TYPES.has(raw.type as SheetType)
-      ? (raw.type as SheetType)
-      : "budget";
-  const glyph: SheetGlyph =
-    typeof raw.glyph === "string" && CATEGORY_ICONS.has(raw.glyph as SheetGlyph)
-      ? (raw.glyph as SheetGlyph)
-      : DEFAULT_SHEET_GLYPH;
+  const type = validateEnum(raw.type, SHEET_TYPES, "budget");
+  const glyph = validateEnum(raw.glyph, CATEGORY_ICONS, DEFAULT_SHEET_GLYPH);
   const color =
     typeof raw.color === "string" && raw.color.length > 0
       ? raw.color
