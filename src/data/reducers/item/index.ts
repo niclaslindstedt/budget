@@ -373,22 +373,23 @@ export function reduceAccountBudget(
     case "bulkCopyToMonths": {
       const { dateCol } = getStandardColumns(item.columns);
       if (!dateCol) return item;
-      const ids = new Set(action.rowIds);
       const newRows: Row[] = [];
-      for (const r of item.rows) {
-        if (!ids.has(r.id)) continue;
+      for (const r of action.sources) {
         const cur = r.cells[dateCol.id];
         if (typeof cur !== "string") continue;
         for (const month of action.targetMonths) {
-          // Copies are independent — drop any seriesId so they don't
-          // accidentally inherit the source row's recurring group. The
-          // entry type travels with the copy so the user doesn't have
-          // to re-pick it on every duplicated row.
+          // Copies are independent — drop any seriesId, transferId,
+          // historyEntryId, and other runtime-only markers so the new
+          // rows live cleanly in `item.rows` without inheriting the
+          // source's recurring group or synthesized origin. Type and
+          // company tags travel with the copy so the user doesn't have
+          // to re-pick them on every duplicated row.
           const next: Row = {
             id: newId(),
             cells: { ...r.cells, [dateCol.id]: shiftIsoToMonth(cur, month) },
           };
           if (r.typeId) next.typeId = r.typeId;
+          if (r.companyId) next.companyId = r.companyId;
           newRows.push(next);
         }
       }
