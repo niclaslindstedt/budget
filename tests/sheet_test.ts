@@ -955,6 +955,30 @@ describe("synthesizeHistoryRow", () => {
     expect(row.descriptionPlaceholder).toBeUndefined();
   });
 
+  it("skips the merchant hint when the user explicitly cleared the description", () => {
+    // Regression: a user who had `userDescription: "Agilator"` and
+    // then cleared it through the edit modal would still see "Agilator"
+    // in the cell because the learned merchant hint refilled the row
+    // at synthesis time. The empty-string clear signal now short-circuits
+    // the rule / hint description chain so the cell falls back to the
+    // raw bank text (or the company / type tag rendered upstream).
+    const hint: MerchantHint = {
+      hitCount: 1,
+      lastUsedAt: 1,
+      typeId: "hint-type",
+      description: "Agilator",
+    };
+    const cleared: HistoryEntry = { ...baseEntry, userDescription: "" };
+    const [row] = synthesizeHistoryRow(
+      cleared,
+      item.columns,
+      { "app store apl z123": hint },
+      [],
+    );
+    expect(row.cells[descId]).toBe("APP STORE APL*Z123");
+    expect(row.descriptionPlaceholder).toBe("APP STORE APL*Z123");
+  });
+
   it("omits the description placeholder when a rule resolves the description", () => {
     const rule: MatchRule = {
       id: "r1",

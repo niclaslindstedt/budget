@@ -191,7 +191,12 @@ export function synthesizeHistoryRow(
   // text) rather than a real user override. Flag the row so the
   // description cell can render it in italic + glyph color and open
   // its inline editor empty + with the bank text as the placeholder.
-  if (userDescription === null) row.descriptionPlaceholder = entry.description;
+  // The empty-string "explicit clear" signal counts the same as null
+  // here — the cell value is the fallback merchant tag, not text the
+  // user typed.
+  if (userDescription === null || userDescription === "") {
+    row.descriptionPlaceholder = entry.description;
+  }
   // Carry the raw bank memo on the inverse path — when the resolved
   // description IS an override and differs from the bank text — so
   // the popover can surface a read-only "original from bank" line
@@ -264,16 +269,30 @@ export function resolveEntryLabels(
       : null) ??
     hint?.companyId ??
     null;
-  const userDescription =
-    (entry.userDescription && entry.userDescription.trim() !== ""
-      ? entry.userDescription
-      : null) ??
-    (rule?.description && rule.description.trim() !== ""
-      ? rule.description
-      : null) ??
-    hint?.description ??
-    null;
-  let description = userDescription;
+  // The empty string on `entry.userDescription` is the "explicit
+  // clear" signal — the user removed the override through the edit
+  // modal or the popover X. Honour it by skipping the rule / hint
+  // description chain entirely so the cell doesn't silently refill
+  // with the learned text the user just took out. `undefined` still
+  // means "never set on this entry", which DOES fall through to
+  // rule / hint as before.
+  const explicitlyCleared = entry.userDescription === "";
+  const userDescription = explicitlyCleared
+    ? ""
+    : ((entry.userDescription && entry.userDescription.trim() !== ""
+        ? entry.userDescription
+        : null) ??
+      (rule?.description && rule.description.trim() !== ""
+        ? rule.description
+        : null) ??
+      hint?.description ??
+      null);
+  // The cell's resolved value treats an explicit clear the same as a
+  // null override — fall through to company / type / bank text so the
+  // row still surfaces the merchant tag in pill form instead of
+  // rendering an empty cell.
+  let description: string | null =
+    userDescription === "" ? null : userDescription;
   if (description === null && companyId) {
     const company = asCompaniesById(companies).get(companyId);
     if (company && company.name.trim() !== "") description = company.name;
