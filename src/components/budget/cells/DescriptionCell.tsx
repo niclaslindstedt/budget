@@ -361,8 +361,9 @@ function DescriptionPopover({
           }}
           placeholder={placeholder ?? t("cell.descriptionPlaceholder")}
           rows={1}
+          sizeToContent
           wrapperClassName="w-full"
-          className="field-input block w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none [field-sizing:content]"
+          className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
         />
       </FloatingPanel>
     </>
