@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useReducer } from "react";
 import {
   Calendar,
   CalendarDays,
@@ -36,11 +36,12 @@ import {
 } from "../../utils/format";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
-
-type OrphanDecision =
-  | { action: "keep" }
-  | { action: "delete" }
-  | { action: "move"; toDate: string };
+import {
+  candidateKey,
+  initialReconciliationState,
+  reconciliationReducer,
+  type OrphanDecision,
+} from "./account-reconciliation-reducer";
 
 export type ReconciliationApply = {
   mergedRowIds: string[];
@@ -108,10 +109,24 @@ export function AccountReconciliationModal({
   const t = useT();
   const lang = useLang();
   const startOfMonth = settings.startOfMonth;
-  // Toggle for the info popover. Replaces the always-visible intro
-  // paragraph — same copy, but now hidden behind a `?` button so the
-  // modal isn't dominated by explanatory prose.
-  const [showInfo, setShowInfo] = useState(false);
+  // All transient modal state — candidate selections, attached series
+  // rules, expanded candidates, orphan decisions, info toggle — runs
+  // through `reconciliationReducer` so each interaction is a single
+  // named dispatch. Initial state is derived lazily from the immutable
+  // input props (high-confidence pre-checked, every orphan defaulting
+  // to keep).
+  const [state, dispatch] = useReducer(
+    reconciliationReducer,
+    { candidates, orphans },
+    initialReconciliationState,
+  );
+  const {
+    showInfo,
+    checked,
+    seriesRulesById,
+    seriesExpansions,
+    orphanDecisions,
+  } = state;
   // Indexed lookup so each row can render the entry type's coloured
   // glyph next to its description. Resolves preset + user-added types
   // through `allTypes` so chips match the rest of the app.
@@ -157,39 +172,6 @@ export function AccountReconciliationModal({
     return out;
   }, [newEntries]);
 
-  // Toggle state for each candidate. Map<candidateKey, checked>.
-  const initialChecked = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of candidates) {
-      if (c.confidence === "high") set.add(candidateKey(c));
-    }
-    return set;
-  }, [candidates]);
-  const [checked, setChecked] = useState<ReadonlySet<string>>(initialChecked);
-
-  // Series rules learned by clicking "Apply to whole series" on a
-  // candidate row. Keyed by the originating row's seriesId so
-  // re-clicking the same row no-ops.
-  const [seriesRulesById, setSeriesRulesById] = useState<
-    ReadonlyMap<string, SeriesMatchRule>
-  >(new Map());
-  // Extra match candidates pulled in by the series expansions.
-  // Stored separately so the original `candidates` prop stays
-  // immutable and easy to re-render when the parent updates.
-  const [seriesExpansions, setSeriesExpansions] = useState<MatchCandidate[]>(
-    [],
-  );
-
-  // Orphan decisions. Default `keep` so the modal never wipes a
-  // user's data without an explicit confirmation.
-  const [orphanDecisions, setOrphanDecisions] = useState<
-    ReadonlyMap<string, OrphanDecision>
-  >(() => {
-    const out = new Map<string, OrphanDecision>();
-    for (const o of orphans) out.set(o.rowId, { action: "keep" });
-    return out;
-  });
-
   // All rows for this account, grouped by their owning columns set.
   // Needed for the "Move to next month, same date" suppression check
   // — we must walk the series' siblings to see if the destination
@@ -229,26 +211,15 @@ export function AccountReconciliationModal({
   }
 
   function setAllOrphans(builder: (o: OrphanRow) => OrphanDecision) {
-    setOrphanDecisions(() => {
-      const next = new Map<string, OrphanDecision>();
-      for (const o of orphans) next.set(o.rowId, builder(o));
-      return next;
-    });
+    const decisions = new Map<string, OrphanDecision>();
+    for (const o of orphans) decisions.set(o.rowId, builder(o));
+    dispatch({ kind: "setAllOrphans", decisions });
   }
 
   const allCandidates = useMemo<MatchCandidate[]>(
     () => [...candidates, ...seriesExpansions],
     [candidates, seriesExpansions],
   );
-
-  function toggleCandidate(key: string) {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
 
   function applyToSeries(candidate: MatchCandidate) {
     if (!candidate.seriesId) return;
@@ -258,15 +229,12 @@ export function AccountReconciliationModal({
     if (!lookup || !entry) return;
     const rule = inferSeriesRule(candidate, entry, lookup.row, newId);
     if (!rule) return;
-    setSeriesRulesById((prev) => {
-      const next = new Map(prev);
-      next.set(candidate.seriesId!, rule);
-      return next;
-    });
 
     // Compute siblings across every account-budget that tracks this
     // account. The matcher operates on (rows, columns) tuples so we
-    // walk each independently and concat.
+    // walk each independently and concat. The result feeds the reducer
+    // as a single atomic transition — rule, expansions, and the
+    // implied checks land together.
     const alreadyClaimed = new Set<string>();
     for (const c of allCandidates) {
       alreadyClaimed.add(c.rowId);
@@ -287,19 +255,11 @@ export function AccountReconciliationModal({
         for (const e of extra) moreCandidates.push(e);
       }
     }
-    setSeriesExpansions((prev) => [...prev, ...moreCandidates]);
-    setChecked((prev) => {
-      const next = new Set(prev);
-      for (const e of moreCandidates) next.add(candidateKey(e));
-      return next;
-    });
-  }
-
-  function setOrphan(rowId: string, decision: OrphanDecision) {
-    setOrphanDecisions((prev) => {
-      const next = new Map(prev);
-      next.set(rowId, decision);
-      return next;
+    dispatch({
+      kind: "applyToSeries",
+      seriesId: candidate.seriesId,
+      rule,
+      moreCandidates,
     });
   }
 
@@ -395,7 +355,7 @@ export function AccountReconciliationModal({
           <input
             type="checkbox"
             checked={isChecked}
-            onChange={() => toggleCandidate(key)}
+            onChange={() => dispatch({ kind: "toggleCandidate", key })}
             className="mt-1 cursor-pointer"
           />
           <span className="flex-1 grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-0.5">
@@ -513,7 +473,13 @@ export function AccountReconciliationModal({
               active={isKeep}
               tone="success"
               label={t("reconciliation.keep")}
-              onClick={() => setOrphan(o.rowId, { action: "keep" })}
+              onClick={() =>
+                dispatch({
+                  kind: "setOrphan",
+                  rowId: o.rowId,
+                  decision: { action: "keep" },
+                })
+              }
             >
               <Check size={14} aria-hidden focusable={false} />
             </IconButton>
@@ -521,7 +487,13 @@ export function AccountReconciliationModal({
               active={isDelete}
               tone="danger"
               label={t("reconciliation.deleteRow")}
-              onClick={() => setOrphan(o.rowId, { action: "delete" })}
+              onClick={() =>
+                dispatch({
+                  kind: "setOrphan",
+                  rowId: o.rowId,
+                  decision: { action: "delete" },
+                })
+              }
             >
               <Trash2 size={14} aria-hidden focusable={false} />
             </IconButton>
@@ -530,7 +502,11 @@ export function AccountReconciliationModal({
               tone="accent"
               label={t("reconciliation.moveToNextMonthStart")}
               onClick={() =>
-                setOrphan(o.rowId, { action: "move", toDate: nextStartDate })
+                dispatch({
+                  kind: "setOrphan",
+                  rowId: o.rowId,
+                  decision: { action: "move", toDate: nextStartDate },
+                })
               }
             >
               <Calendar size={14} aria-hidden focusable={false} />
@@ -541,7 +517,11 @@ export function AccountReconciliationModal({
                 tone="accent"
                 label={t("reconciliation.moveToNextMonthSameDate")}
                 onClick={() =>
-                  setOrphan(o.rowId, { action: "move", toDate: nextSameDate })
+                  dispatch({
+                    kind: "setOrphan",
+                    rowId: o.rowId,
+                    decision: { action: "move", toDate: nextSameDate },
+                  })
                 }
               >
                 <CalendarDays size={14} aria-hidden focusable={false} />
@@ -605,7 +585,7 @@ export function AccountReconciliationModal({
               </h3>
               <button
                 type="button"
-                onClick={() => setShowInfo((v) => !v)}
+                onClick={() => dispatch({ kind: "toggleInfo" })}
                 aria-expanded={showInfo}
                 aria-label={t("reconciliation.infoAria")}
                 title={t("reconciliation.infoAria")}
@@ -674,10 +654,6 @@ export function AccountReconciliationModal({
       </Modal.Footer>
     </Modal>
   );
-}
-
-function candidateKey(c: MatchCandidate): string {
-  return `${c.rowId}|${c.historyEntryId}`;
 }
 
 // Compact square icon-button used for the orphan-row decision chips

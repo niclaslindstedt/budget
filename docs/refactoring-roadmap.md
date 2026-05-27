@@ -196,14 +196,6 @@ new sheet type, but feature work can ship through them.
   **Severity: 3** — re-rate when the first loan/savings flavour
   needs a domain-specific function.
 
-- **`AccountReconciliationModal.tsx` (729 lines) state machine in `useState`s** —
-  the orphan-decision flow is tracked by ~6 parallel `useState`
-  setters (`orphanDecisions`, `seriesRulesById`, `checked`, …) with
-  no atomic transition between them. **Severity: 6.**
-  - Plan: convert to `useReducer` with a `ReconciliationState` type.
-    Business helpers (`inferSeriesRule`, `expandToSeries`) become
-    reducer actions, testable without React.
-
 - **`BudgetEditEntryModal.tsx` (720 lines) recurrence/promotion form
   duplication** — basic-row, recurring-edit, promote-to-series and
   promote-history are different modes sharing some machinery but
@@ -354,6 +346,25 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`AccountReconciliationModal` `useReducer` extraction** (2026-05): the
+  five parallel `useState` setters in `AccountReconciliationModal.tsx`
+  (`showInfo`, `checked`, `seriesRulesById`, `seriesExpansions`,
+  `orphanDecisions`) collapsed onto a single `useReducer` driven by
+  a `ReconciliationState` type and a named-action union. The big win
+  is `applyToSeries`: it previously fired three sequential `setState`
+  calls (rule + expansion candidates + implied checks) which meant
+  three renders and a window where the three were out of agreement;
+  now it's one atomic transition. The reducer + initial-state factory
+  live in `src/components/accounts/account-reconciliation-reducer.ts`
+  alongside the `OrphanDecision` and `candidateKey` helpers, so the
+  modal file keeps a clean component-only export shape (Fast Refresh
+  preserved) and the pure transitions are testable in isolation —
+  seven unit tests landed in `tests/reconciliation_reducer_test.ts`
+  to lock in the toggle / apply-to-series / setOrphan / setAllOrphans
+  shapes. Mirrors the precedent set by `historyReducer` /
+  `statusReducer` in `useUserDataStorage.ts` (same `kind`-discriminated
+  action shape; side-effect-free reducer; helper lookups stay outside
+  and feed the reducer pre-computed data).
 - **`src/data/constants/` topical split** (2026-05): the 859-line
   `src/data/constants.ts` split into five sibling modules under
   `src/data/constants/` — `storage.ts` (namespacing helpers +
