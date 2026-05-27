@@ -107,6 +107,16 @@ export function resolveEffectiveAmounts(
   // semantics where undated rows contribute to the opening of an
   // "undated" target month only.
   const monthKeysAsc = [...aggsByMonth.keys()].sort();
+  // monthKey → its position in `monthKeysAsc`. Built once so the
+  // cascade loop in `applyResolvedFormulaToCache` can jump straight to
+  // `index + 1` instead of scanning from the start of `monthKeysAsc`
+  // for every resolved formula. Without the index, F formulas across M
+  // months pay F × M month-key equality compares; with it, the loop
+  // only visits the strictly-later months it actually needs to update.
+  const monthKeyToIndex = new Map<string, number>();
+  for (let i = 0; i < monthKeysAsc.length; i += 1) {
+    monthKeyToIndex.set(monthKeysAsc[i], i);
+  }
   // Carry-forward opening per month = base opening + sum of nets of
   // every strictly-prior month. Stored alongside the aggregates so
   // each formula's `thisMonth.openingBalance` is an O(1) lookup, and
@@ -256,6 +266,7 @@ export function resolveEffectiveAmounts(
       applyResolvedFormulaToCache(
         aggsByMonth,
         monthKeysAsc,
+        monthKeyToIndex,
         rowMonth,
         row,
         evaluated.value,
@@ -324,6 +335,7 @@ function buildMonthAggregateCache(
 function applyResolvedFormulaToCache(
   aggsByMonth: Map<string, MutableMonthAggregates>,
   monthKeysAsc: readonly string[],
+  monthKeyToIndex: ReadonlyMap<string, number>,
   monthKey: string,
   row: Row,
   value: number,
@@ -346,15 +358,15 @@ function applyResolvedFormulaToCache(
   }
   // Cascade the carry-forward opening to every strictly-later month.
   // monthKeysAsc is sorted lexically (which agrees with calendar order
-  // for `YYYY-MM` keys and parks "undated" at the end).
-  let cascade = false;
-  for (let i = 0; i < monthKeysAsc.length; i += 1) {
-    const k = monthKeysAsc[i];
-    if (cascade) {
-      aggsByMonth.get(k)!.openingBalance += value;
-      continue;
-    }
-    if (k === monthKey) cascade = true;
+  // for `YYYY-MM` keys and parks "undated" at the end). The
+  // precomputed index map drops the pre-month scan: previously, F
+  // formulas across M months each walked all M keys checking
+  // equality, costing F × M; now each formula visits only the
+  // strictly-later months it actually has to update.
+  const startIdx = monthKeyToIndex.get(monthKey);
+  if (startIdx === undefined) return;
+  for (let i = startIdx + 1; i < monthKeysAsc.length; i += 1) {
+    aggsByMonth.get(monthKeysAsc[i])!.openingBalance += value;
   }
 }
 

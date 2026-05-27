@@ -191,19 +191,31 @@ export type MergeResult = {
 // History modal) can rely on the ordering without re-sorting. Dupes
 // are detected by `historyEntryId`; the existing entry wins so an
 // `importedAt` from the original import stays put.
+//
+// `existing` is assumed to already be in ascending-date order — every
+// call site funnels through previous `mergeHistory` output (or an
+// empty list on first import), and the function maintains the
+// invariant on its return value. That contract lets us avoid a full
+// O((N+K) log(N+K)) re-sort of the combined set: instead we sort just
+// the K new entries (`K log K`) and two-pointer-merge them with the
+// already-ordered existing array (`N + K`). For N = 10k existing
+// entries and K = 500 newly-parsed rows that drops the sort cost from
+// ~150k compares to ~5k — a ~10× speedup at import time, which scales
+// with how much history the account has accumulated.
 export function mergeHistory(
   existing: readonly HistoryEntry[],
   parsed: readonly ParsedBankEntry[],
   now: number,
 ): MergeResult {
-  const byId = new Map<string, HistoryEntry>();
-  for (const e of existing) byId.set(e.id, e);
+  const existingIds = new Set<string>();
+  for (const e of existing) existingIds.add(e.id);
   let addedCount = 0;
   let duplicateCount = 0;
   const addedIds = new Set<string>();
+  const newEntries: HistoryEntry[] = [];
   for (const p of parsed) {
     const id = historyEntryId(p);
-    if (byId.has(id)) {
+    if (existingIds.has(id) || addedIds.has(id)) {
       duplicateCount++;
       continue;
     }
@@ -215,13 +227,41 @@ export function mergeHistory(
       importedAt: now,
     };
     if (p.balance !== undefined) entry.balance = p.balance;
-    byId.set(id, entry);
+    newEntries.push(entry);
     addedIds.add(id);
     addedCount++;
   }
-  const merged = Array.from(byId.values()).sort((a, b) =>
-    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
-  );
+  // Short-circuit when the import was all duplicates — the existing
+  // array is already in the right order, return it as the merged set.
+  if (newEntries.length === 0) {
+    log.info(
+      `mergeHistory: existing=${existing.length} parsed=${parsed.length} added=0 duplicates=${duplicateCount}`,
+    );
+    return {
+      merged: existing.slice(),
+      addedCount: 0,
+      duplicateCount,
+      addedIds,
+    };
+  }
+  newEntries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const merged: HistoryEntry[] = new Array(existing.length + newEntries.length);
+  let ei = 0;
+  let ni = 0;
+  let mi = 0;
+  while (ei < existing.length && ni < newEntries.length) {
+    // `<=` so equal-dated existing entries stay before fresh imports —
+    // matches the Map-based merge's behaviour, where existing entries
+    // were inserted into `byId` first and therefore led ties out of
+    // `Array.from(byId.values())`.
+    if (existing[ei].date <= newEntries[ni].date) {
+      merged[mi++] = existing[ei++];
+    } else {
+      merged[mi++] = newEntries[ni++];
+    }
+  }
+  while (ei < existing.length) merged[mi++] = existing[ei++];
+  while (ni < newEntries.length) merged[mi++] = newEntries[ni++];
   log.info(
     `mergeHistory: existing=${existing.length} parsed=${parsed.length} added=${addedCount} duplicates=${duplicateCount}`,
   );
