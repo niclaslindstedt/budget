@@ -1,6 +1,6 @@
 import { normaliseDescription } from "../description-normaliser";
 import { findMatchingRule } from "../match-rules";
-import { findColumnByType, getStandardColumns } from "../sheet";
+import { getStandardColumns } from "../sheet";
 import type {
   CellValue,
   Column,
@@ -137,10 +137,8 @@ export function synthesizeHistoryRow(
     | readonly EntryType[]
     | ReadonlyMap<string, EntryType> = EMPTY_TYPES_MAP,
 ): Row[] {
-  const dateCol = findColumnByType(columns, "date");
-  const descCol = findColumnByType(columns, "description");
-  const amountCol = findColumnByType(columns, "amount");
-  const completedCol = findColumnByType(columns, "completed");
+  const { dateCol, descCol, amountCol, completedCol } =
+    getStandardColumns(columns);
 
   function buildCells(
     description: string,

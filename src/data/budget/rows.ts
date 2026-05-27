@@ -229,27 +229,25 @@ export function computeBalances(
 // editing them but never reach `localStorage`, so a refresh discards
 // transient placeholders instead of resurrecting them.
 export function isRowSavable(row: Row, columns: Column[]): boolean {
-  const desc = findColumnByType(columns, "description");
-  const amount = findColumnByType(columns, "amount");
-  if (!desc || !amount) return true;
+  const { descCol, amountCol } = getStandardColumns(columns);
+  if (!descCol || !amountCol) return true;
   // A formula row satisfies the amount requirement regardless of the
   // cached numeric cell — the effective amount comes from evaluation
   // at render time.
   const hasAmount =
-    typeof row.cells[amount.id] === "number" ||
+    typeof row.cells[amountCol.id] === "number" ||
     typeof row.amountFormula === "string";
-  return hasText(row.cells[desc.id]) && hasAmount;
+  return hasText(row.cells[descCol.id]) && hasAmount;
 }
 
 // True when the row has one of description/amount but not both — the
 // user has typed something they would lose on refresh.
 export function isRowHalfDone(row: Row, columns: Column[]): boolean {
-  const desc = findColumnByType(columns, "description");
-  const amount = findColumnByType(columns, "amount");
-  if (!desc || !amount) return false;
-  const hasDesc = hasText(row.cells[desc.id]);
+  const { descCol, amountCol } = getStandardColumns(columns);
+  if (!descCol || !amountCol) return false;
+  const hasDesc = hasText(row.cells[descCol.id]);
   const hasAmount =
-    typeof row.cells[amount.id] === "number" ||
+    typeof row.cells[amountCol.id] === "number" ||
     typeof row.amountFormula === "string";
   return hasDesc !== hasAmount;
 }
