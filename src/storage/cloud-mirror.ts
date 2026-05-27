@@ -2,6 +2,7 @@ import { createLogger } from "../utils/logger";
 import {
   AuthError,
   ConflictError,
+  type AdapterCapability,
   type Snapshot,
   type StorageAdapter,
 } from "./adapter";
@@ -197,10 +198,18 @@ export function withCloudMirror(
     }
   }
 
+  // Forward inner capabilities, drop `loadSync` (mirror reads are an
+  // async IDB round-trip), and always advertise `markSynced` since
+  // this wrapper implements one of its own regardless of the inner.
+  const capabilities = new Set<AdapterCapability>(inner.capabilities);
+  capabilities.delete("loadSync");
+  capabilities.add("markSynced");
+
   return {
     id: inner.id,
     label: inner.label,
     saveDebounceMs: inner.saveDebounceMs,
+    capabilities,
     backups: inner.backups,
 
     markSynced(snapshot: Snapshot): void {

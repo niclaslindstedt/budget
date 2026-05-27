@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Trash2, Wallet } from "lucide-react";
 
 import { ACCOUNT_GLYPH_NAMES, SHEET_COLORS } from "../../data/constants";
+import { normalizeName } from "../../data/normalize";
 import type { Account, CategoryIcon } from "../../data/types";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
@@ -80,7 +81,8 @@ export function AccountModal({
     setCurrency(account?.currency ?? "");
   });
 
-  const canSave = name.trim().length > 0;
+  const trimmedName = normalizeName(name);
+  const canSave = trimmedName !== null;
 
   // Surface a non-blocking hint when the user has filled in neither a
   // local bank-detail pair nor an international one. The account still
@@ -93,9 +95,9 @@ export function AccountModal({
     iban.trim().length > 0;
 
   function handleSave() {
-    if (!canSave) return;
+    if (trimmedName === null) return;
     onSave({
-      name: name.trim(),
+      name: trimmedName,
       description: description.trim(),
       glyph,
       color,

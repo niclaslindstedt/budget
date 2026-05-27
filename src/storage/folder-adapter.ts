@@ -179,6 +179,7 @@ export function createFolderAdapter(
     id: "folder",
     label: "Local folder",
     saveDebounceMs: 500,
+    capabilities: new Set(["backups"]),
     backups,
 
     async load(): Promise<Snapshot | null> {

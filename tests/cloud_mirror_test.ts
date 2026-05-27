@@ -44,6 +44,7 @@ function makeInner(
   return {
     id: "dropbox",
     label: "Dropbox",
+    capabilities: new Set(),
     async load() {
       calls.push({ method: "load", args: [] });
       return null;

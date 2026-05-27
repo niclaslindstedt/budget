@@ -20,6 +20,7 @@ import {
   formatAmountForInput,
   parseAmount,
 } from "../../utils/format";
+import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import {
@@ -296,11 +297,9 @@ export function EditEntryModal({
   const typeTouched = typeId !== initialTypeId;
   const companyTouched = companyId !== initialCompanyId;
 
-  const parsedShiftDays = Number.parseInt(shiftDaysText, 10);
+  const parsedShiftDays = parseInt32(shiftDaysText);
   const shiftDays =
-    Number.isFinite(parsedShiftDays) && parsedShiftDays !== 0
-      ? parsedShiftDays
-      : 0;
+    parsedShiftDays !== null && parsedShiftDays !== 0 ? parsedShiftDays : 0;
 
   function handleSaveEdit() {
     if (!row) return;

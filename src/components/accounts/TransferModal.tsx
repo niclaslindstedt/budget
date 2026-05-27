@@ -9,6 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { normalizeName } from "../../data/normalize";
 import type { Account, Category, EntryType } from "../../data/types";
 import { useDesktopAutoFocus, type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
@@ -176,13 +177,14 @@ export function TransferModal({
   const lockedToId = isImported ? request.toAccountId : null;
 
   const parsedAmount = parseAmount(amountText);
+  const trimmedDescription = normalizeName(description);
   const canSave = willUncollapse
     ? true
     : isImported
-      ? description.trim().length > 0
+      ? trimmedDescription !== null
       : parsedAmount !== null &&
         parsedAmount > 0 &&
-        description.trim().length > 0 &&
+        trimmedDescription !== null &&
         !!date &&
         !!fromAccountId &&
         !!toAccountId &&
@@ -205,10 +207,10 @@ export function TransferModal({
       onClose();
       return;
     }
-    if (parsedAmount === null) return;
+    if (parsedAmount === null || trimmedDescription === null) return;
     const draft: TransferDraft = {
       date,
-      description: description.trim(),
+      description: trimmedDescription,
       amount: Math.abs(parsedAmount),
       fromAccountId,
       toAccountId,

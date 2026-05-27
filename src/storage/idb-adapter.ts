@@ -310,6 +310,7 @@ export function createIdbAdapter({
     id: "browser",
     label: "This browser",
     saveDebounceMs: 0,
+    capabilities: new Set(),
 
     async load(): Promise<Snapshot | null> {
       void requestPersistence();

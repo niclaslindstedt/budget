@@ -451,7 +451,7 @@ export function SettingsModal({
                 username={username}
                 data={data}
                 onImport={onImport}
-                backupsSupported={Boolean(adapter?.backups)}
+                backupsSupported={adapter?.capabilities.has("backups") ?? false}
                 onOpenBackups={() => setBackupsOpen(true)}
                 getEncryptionPassword={getEncryptionPassword}
                 onUpdate={update}
@@ -515,7 +515,7 @@ export function SettingsModal({
           </div>
         </div>
       </div>
-      {adapter?.backups && (
+      {adapter?.capabilities.has("backups") && (
         <CloudBackupModal
           open={backupsOpen}
           adapter={adapter}
