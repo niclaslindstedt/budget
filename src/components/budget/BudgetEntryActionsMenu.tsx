@@ -127,18 +127,18 @@ export function BudgetEntryActionsMenu({
     onClick: () => pick(() => onSplitRequest(row)),
   });
 
-  // Copy targets the row's date cell — only meaningful on the
-  // user-authored budget rows the reducer's bulkCopy action can write
-  // back. History rows are derived from bank imports and have no
-  // editable date. Move is handled by editing the date cell directly.
-  if (!isHistory) {
-    items.push({
-      key: "copy",
-      icon: <Copy size={16} aria-hidden focusable={false} />,
-      label: t("cell.copy"),
-      onClick: () => pick(() => onCopyRequest(row)),
-    });
-  }
+  // Copy stamps fresh manual rows into other months. Available on
+  // every row — for synthesized history / transfer rows the new rows
+  // are minted from the row's currently-rendered cells, so the user
+  // can lift a bank entry into a future budgeting month. Move is
+  // handled by editing the date cell directly, and stays off for
+  // history rows (their date is bank-driven).
+  items.push({
+    key: "copy",
+    icon: <Copy size={16} aria-hidden focusable={false} />,
+    label: t("cell.copy"),
+    onClick: () => pick(() => onCopyRequest(row)),
+  });
 
   // Manual fiscal-month override. Hidden on synthesized rows (history /
   // transfer) since they have no editable persisted form; the parent

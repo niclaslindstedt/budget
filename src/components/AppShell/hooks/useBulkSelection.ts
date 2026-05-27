@@ -223,21 +223,28 @@ export function useBulkSelection({
   const handleMoveCopySubmit = useCallback(
     (targetMonths: string[]) => {
       if (!moveCopyPrompt) return;
-      const rowIds = moveCopyPrompt.rows.map((r) => r.id);
       if (moveCopyPrompt.kind === "move") {
+        // Move targets `item.rows` in place, so we still pass ids —
+        // synthesized rows (history / transfer) carry runtime-only ids
+        // that won't resolve here, which is intentional: their dates
+        // are bank-driven and can't be shifted.
         dispatch({
           type: "bulkShiftToMonth",
           sheetId,
           itemId,
-          rowIds,
+          rowIds: moveCopyPrompt.rows.map((r) => r.id),
           targetMonth: targetMonths[0],
         });
       } else {
+        // Copy passes the source rows by value so synthesized history /
+        // transfer rows can be duplicated into `item.rows` as fresh
+        // manual entries — they have no editable persisted form to
+        // look up by id.
         dispatch({
           type: "bulkCopyToMonths",
           sheetId,
           itemId,
-          rowIds,
+          sources: moveCopyPrompt.rows,
           targetMonths,
         });
       }

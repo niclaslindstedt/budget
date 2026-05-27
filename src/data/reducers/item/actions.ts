@@ -1,4 +1,4 @@
-import type { CellValue } from "../../types";
+import type { CellValue, Row } from "../../types";
 import type {
   BulkPatch,
   ComplexEntryDraft,
@@ -87,10 +87,16 @@ export type ItemAction =
       targetMonth: string;
     }
   | {
+      // Source rows are passed by value, not by id, so the action can
+      // duplicate synthesized history / transfer rows (which live
+      // outside `item.rows`) the same way it duplicates user-authored
+      // ones. Only `cells`, `typeId`, and `companyId` are consulted —
+      // every other Row field is treated as runtime-only and dropped on
+      // the new rows.
       type: "bulkCopyToMonths";
       sheetId: string;
       itemId: string;
-      rowIds: string[];
+      sources: Row[];
       targetMonths: string[];
     }
   | {
