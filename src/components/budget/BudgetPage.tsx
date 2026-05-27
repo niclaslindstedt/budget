@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import {
-  buildVisibleRows,
+  buildSynthesizedRows,
   computeBalances,
   reverseRowsByDay,
   sortRowsByDate,
@@ -408,11 +408,21 @@ export function BudgetPage({
     for (const a of accounts) m.set(a.id, a.name);
     return m;
   }, [accounts]);
-  const mergedItem = useMemo<AccountBudget>(
-    () => ({
-      ...item,
-      rows: buildVisibleRows(
-        item,
+  // Synthesize transfer + history rows once per change to the inputs
+  // those rows depend on — column shape, the budget's account, every
+  // workspace transfer, the account's full history, the hints + rules
+  // that label history rows, plus the companies / types those labels
+  // resolve through. None of those flip when the user types in a
+  // budget cell (`item.columns` and `item.accountId` are carried
+  // forward by the updateCell reducer), so the synthesis result is
+  // reused across keystrokes — skipping ~500 history-entry label
+  // resolutions and the matching rule walks they trigger on every
+  // edit. The merge below is a cheap array concat.
+  const synthesizedRows = useMemo(
+    () =>
+      buildSynthesizedRows(
+        item.columns,
+        item.accountId,
         transfers,
         history,
         accountsById,
@@ -421,9 +431,9 @@ export function BudgetPage({
         companies,
         types,
       ),
-    }),
     [
-      item,
+      item.columns,
+      item.accountId,
       transfers,
       history,
       accountsById,
@@ -432,6 +442,16 @@ export function BudgetPage({
       companies,
       types,
     ],
+  );
+  const mergedItem = useMemo<AccountBudget>(
+    () => ({
+      ...item,
+      rows:
+        synthesizedRows.length === 0
+          ? item.rows
+          : [...item.rows, ...synthesizedRows],
+    }),
+    [item, synthesizedRows],
   );
 
   // Each imported bank entry's stored balance is the truth: it pins
