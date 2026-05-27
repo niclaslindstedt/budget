@@ -216,6 +216,59 @@ If the user uses a term you can't find in `docs/dictionary.md` and
 you can't infer it from filenames, ask before guessing. Once you
 have the answer, add the row.
 
+## Understanding the user's query
+
+Before touching any code, work out what the user is actually asking
+about. The cost of a wrong guess is high — agents that dive in on the
+nearest-sounding filename produce confidently-wrong edits in modules
+the user never meant. The cost of a 30-second orientation pass is
+low. Always do the pass.
+
+The workflow:
+
+1. **Check `docs/dictionary.md` first.** Look up every domain noun in
+   the request (the section above is the canonical guidance — read
+   it). The dictionary resolves user vocabulary to concrete files,
+   types, and workflows in one hop. If every term in the request
+   resolves cleanly, you can skip step 2.
+2. **Map terms to candidate code.** For anything the dictionary
+   doesn't cover, build a short list of candidate files from the
+   architecture summary above ("Architecture summary", "Where new
+   code goes", "Pages and the Sheet abstraction"). Prefer the
+   directory-level signal (`src/components/budget/` vs
+   `src/components/accounts/` vs `src/storage/` vs `src/data/`)
+   over filename guessing — the page split is real and
+   load-bearing.
+3. **Research the top candidates.** Read the candidate files (or
+   delegate with the `Explore` agent if the surface is broad —
+   the directive in "Session-specific guidance" applies). Confirm
+   that the symbols, props, and call sites match the behaviour the
+   user described. Discard candidates that don't fit and widen the
+   search before committing to one.
+4. **Name what the question touches.** Before any edit, state in
+   one or two sentences: which page / module the request lands in,
+   which file(s) you expect to change, and any cross-cutting
+   surface it implies (persisted-shape migration, i18n catalog,
+   changelog fragment, dictionary entry). This is the user's
+   chance to redirect cheaply — phrasing it back lets them catch a
+   wrong premise before you spend tool calls on it.
+5. **Then explore further or proceed.** Once the framing is
+   shared, continue with the deeper read / edit pass. If the user
+   corrects the framing, restart from step 2 with the corrected
+   anchor — don't try to patch the wrong tree.
+
+Skip step 4 only for trivially unambiguous requests where the file
+is named outright ("rename `foo` to `bar` in `src/utils/date.ts`").
+For everything else — "the row swipe feels off", "the viewer modal
+shows the wrong balance", "make the bottom bar shorter on mobile" —
+the framing message earns its keep.
+
+The framing message is one or two sentences in the chat, not a
+document. It belongs in the conversation thread, not in `docs/` or
+a new markdown file. Do not write planning, decision, or analysis
+documents unless the user explicitly asks for them — the rule in
+the system tone guidance is hard.
+
 ## Pages and the Sheet abstraction
 
 A **Sheet** is the universal top-level container the user adds, names,
