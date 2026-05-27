@@ -140,17 +140,6 @@ new sheet type, but feature work can ship through them.
   - Risk: medium. The shape itself is mechanical, but the long
     callback-chain on each modal needs careful preservation.
 
-- **`AppShell.tsx` prop signature passed from `App.tsx`** — ~30
-  props (adapter, user, password, hasOtherUsers, backend,
-  dropboxConnected, gdriveConnected, folderConnected, …, plus 16
-  callbacks). Every new backend / sheet type / cloud feature adds
-  to this surface. **Severity: 7.**
-  - Plan: introduce a `useAuthAndBackend()` facade hook that returns
-    `{ user, backend, connections, encryption, callbacks }`; pass
-    the bundle as `auth={…}`. Same for sync state. The shape stays
-    a flat object, but the prop count drops from 30 to ~5 typed
-    bundles.
-
 - **`BudgetPage.tsx` derived-state memo pyramid** — the prop-
   drilling half of the original "BudgetPage prop drilling + memo
   pyramid" candidate landed 2026-05 (see Landed: `<BudgetContext>`).
@@ -383,6 +372,24 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`AppShell.tsx` prop signature bundled** (2026-05): the 28
+  individual props passed from `App.tsx` to `<AppShell>` (adapter +
+  per-backend connection flags + encryption / cloud-offline state +
+  16 callbacks) collapsed onto two typed bundles plus the existing
+  `currentDataRef`. New types `AppShellAuth` (user / password /
+  hasOtherUsers + 4 auth callbacks + getEncryptionPassword) and
+  `AppShellStorage` (adapter / backend / 5 connection flags /
+  encryption / cloud-offline + 11 backend callbacks) live in
+  `src/components/AppShell/types.ts`; `App.tsx` builds them as
+  local consts before the JSX, and `AppShell.tsx` re-destructures
+  them at the top of the function body so every existing reference
+  to `user` / `backend` / `dropboxConnected` / etc. inside the
+  shell stays unchanged. The originally-suggested
+  `useAuthAndBackend()` facade hook was rejected as the wrong shape
+  — `useStorageBackend()` already returns most of the bundle, and
+  introducing a wrapper hook to re-emit it wouldn't add anything
+  the typed bundles don't. New backends or auth callbacks now widen
+  the bundles rather than the AppShell signature.
 - **`<BudgetContext>` provider + descendant consumption** (2026-05):
   the cross-cutting `types` / `typesById` / `categories` / `companies` /
   `companiesById` / `onCreateType` / `onCreateCategory` / `onCreateCompany` /
