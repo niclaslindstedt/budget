@@ -19,6 +19,7 @@ export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
 export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
 export { useRefIdentity } from "./useRefIdentity";
+export { useResetOnOpen } from "./useResetOnOpen";
 export { useGridRovingTabindex, useRovingTabindex } from "./useRovingTabindex";
 export { type RowSwipe, useRowSwipe } from "./useRowSwipe";
 export { suppressScrollHide, useScrollHide } from "./useScrollHide";

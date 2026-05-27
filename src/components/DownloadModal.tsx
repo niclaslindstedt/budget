@@ -11,7 +11,7 @@ import type {
   BudgetDownloadFormat,
   BudgetDownloadPrefs,
 } from "../data/types";
-import { Button } from "./form";
+import { Button, FormSection } from "./form";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
 
@@ -115,10 +115,7 @@ function BudgetDownloadModal({
       />
       <Modal.Body>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("download.formatLabel")}
-            </span>
+          <FormSection label={t("download.formatLabel")}>
             <FormatPicker
               value={format}
               open={formatOpen}
@@ -129,7 +126,7 @@ function BudgetDownloadModal({
                 setFormatOpen(false);
               }}
             />
-          </div>
+          </FormSection>
 
           <div className="flex flex-col gap-2">
             <span className="text-xs text-muted">

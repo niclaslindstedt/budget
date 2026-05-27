@@ -22,7 +22,12 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableInput, SignedAmountInput } from "../form";
+import {
+  Button,
+  ClearableInput,
+  FormSection,
+  SignedAmountInput,
+} from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -518,10 +523,7 @@ export function MatchRuleModal({
           <legend className="px-1 text-xs text-muted">
             {t("matchRule.filters")}
           </legend>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("matchRule.amountLabel")}
-            </span>
+          <FormSection label={t("matchRule.amountLabel")}>
             <SegmentedRadio
               name="amount-sign"
               value={signMode}
@@ -585,11 +587,8 @@ export function MatchRuleModal({
                 )}
               </div>
             )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("matchRule.transferFilter")}
-            </span>
+          </FormSection>
+          <FormSection label={t("matchRule.transferFilter")}>
             <SegmentedRadio
               name="transfer-filter"
               value={transferFilter}
@@ -600,7 +599,7 @@ export function MatchRuleModal({
                 { value: "only", label: t("matchRule.transferOnly") },
               ]}
             />
-          </div>
+          </FormSection>
         </fieldset>
 
         {!isEdit && (

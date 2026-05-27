@@ -13,7 +13,7 @@ import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
-import { Button, ClearableInput, ClearableTextarea } from "./form";
+import { Button, ClearableInput, ClearableTextarea, FormSection } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
@@ -152,8 +152,11 @@ export function SheetModal({
             >
               <CategoryIconGlyph name={glyph} size={22} />
             </div>
-            <label className="flex flex-1 flex-col gap-1.5">
-              <span className="text-xs text-muted">{t("sheetModal.name")}</span>
+            <FormSection
+              as="label"
+              className="flex-1"
+              label={t("sheetModal.name")}
+            >
               <ClearableInput
                 ref={nameRef}
                 value={name}
@@ -167,11 +170,10 @@ export function SheetModal({
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
                 placeholder={t("sheetModal.namePlaceholder")}
               />
-            </label>
+            </FormSection>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("sheetModal.type")}</span>
+          <FormSection label={t("sheetModal.type")}>
             <TypePicker
               value={type}
               open={typeOpen}
@@ -184,7 +186,7 @@ export function SheetModal({
               }}
             />
             <p className="text-xs text-muted">{selectedType.description}</p>
-          </div>
+          </FormSection>
 
           {type === "accounts" && (
             <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
@@ -193,10 +195,7 @@ export function SheetModal({
           )}
 
           {type === "budget" && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">
-                {t("sheetModal.account")}
-              </span>
+            <FormSection label={t("sheetModal.account")}>
               {creatingAccount ? (
                 <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
                   <label className="flex flex-col gap-1">
@@ -240,20 +239,18 @@ export function SheetModal({
               <p className="text-xs text-muted">
                 {t("sheetModal.accountHint")}
               </p>
-            </div>
+            </FormSection>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("sheetModal.color")}</span>
+          <FormSection label={t("sheetModal.color")}>
             <ColorPalette
               colors={SHEET_COLORS}
               value={color}
               onChange={setColor}
             />
-          </div>
+          </FormSection>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">{t("sheetModal.glyph")}</span>
+          <FormSection label={t("sheetModal.glyph")}>
             <GlyphGrid
               icons={SHEET_GLYPH_NAMES}
               value={glyph}
@@ -261,12 +258,9 @@ export function SheetModal({
               size={8}
               tintColor={color}
             />
-          </div>
+          </FormSection>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              {t("sheetModal.description")}
-            </span>
+          <FormSection as="label" label={t("sheetModal.description")}>
             <ClearableTextarea
               value={description}
               onValueChange={setDescription}
@@ -275,7 +269,7 @@ export function SheetModal({
               wrapperClassName="w-full"
               className="field-input w-full resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
-          </label>
+          </FormSection>
         </div>
       </Modal.Body>
       <Modal.Footer className="justify-between">
