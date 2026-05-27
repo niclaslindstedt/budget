@@ -49,12 +49,10 @@ test.describe("Budget page", () => {
       .first()
       .click();
 
-    // Pre-save filter (`isRowSavable` in `src/data/sheet.ts`) requires
-    // both a description AND an amount before the row is persisted.
-    // Half-done rows are kept in memory for the user's convenience
-    // but stripped on every storage write, so a description-only row
-    // would silently vanish on reload — fill both fields here so the
-    // row reaches the on-disk snapshot.
+    // Fill both fields so the row is fully complete before the reload.
+    // The pre-save filter (`isRowSavable` in `src/data/budget/rows.ts`)
+    // only strips rows with no user-meaningful data at all (just the
+    // column defaults), so a row with either field still persists.
     //
     // The description cell drives both viewports through the portalled
     // `DescriptionPopover` (with company picker + bank-memo line), so
