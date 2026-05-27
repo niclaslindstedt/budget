@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { unlock } from "../data/achievements";
 import { hasOpenModal } from "./dom-queries";
+import { dominantAxis, TOUCH_AXIS_ARM_PX } from "./touch-gestures";
 
 // Touch-driven sheet-switch fallback. Listens at the document level
 // for a horizontal swipe that originates on a "neutral" page area —
@@ -36,12 +37,6 @@ import { hasOpenModal } from "./dom-queries";
 function thresholdPx(): number {
   return Math.max(60, window.innerWidth * 0.15);
 }
-
-// Discrimination tolerance — the gesture has to commit to one axis
-// before we'll either bail (vertical) or arm (horizontal). 10 px is
-// the same threshold the row-swipe handler uses
-// (`src/components/BudgetRow.tsx`).
-const AXIS_LOCK_PX = 10;
 
 // Width of the absolute-edge band on each vertical side of the
 // viewport. Touches that start inside this band bypass the
@@ -131,11 +126,12 @@ export function useSheetSwipe(
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
       if (axis === "none") {
-        if (Math.abs(dy) > AXIS_LOCK_PX && Math.abs(dy) > Math.abs(dx)) {
+        const decided = dominantAxis(dx, dy, TOUCH_AXIS_ARM_PX);
+        if (decided === "vertical") {
           // User is scrolling — give the page its gesture back.
           axis = "vertical";
           reset();
-        } else if (Math.abs(dx) > AXIS_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
+        } else if (decided === "horizontal") {
           axis = "horizontal";
         }
       }
