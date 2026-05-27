@@ -49,10 +49,13 @@ export interface RouteSeo {
   // sitemap.xml row for this route. Omit to keep the route out of the
   // generated sitemap (e.g. the 404 page).
   sitemap?: SitemapEntry;
-  // Per-route <noscript> body. Pure HTML string spliced into the
-  // alias HTML between the <!-- NOSCRIPT_START --> markers so non-JS
-  // crawlers and link unfurlers see route-specific content instead of
-  // the home-page fallback. Omit to inherit the home-page noscript.
+  // Per-route <noscript> body override. Pure HTML string spliced
+  // into the alias HTML between the <!-- NOSCRIPT_START --> markers
+  // so non-JS crawlers and link unfurlers see route-specific content
+  // instead of the home-page fallback. Omit to fall back to a
+  // generic body derived from `title` + `description` via
+  // `resolveNoscriptBody(route)` — that default protects new routes
+  // from silently inheriting the home-page noscript.
   noscriptBody?: string;
 }
 
@@ -75,6 +78,21 @@ function noscript(h1: string, paragraphs: string[]): string {
     `  <p><a href="/">Back to ${SITE_NAME}</a></p>`,
     `</main>`,
   ].join("\n        ");
+}
+
+// Resolve the <noscript> body for a route. Routes that supply an
+// explicit `noscriptBody` get it verbatim; everything else falls back
+// to a generic body composed from `title` + `description` plus the
+// standard "needs JavaScript" line. The build splicer in
+// `vite.config.ts` consumes this so new routes (and the build's own
+// inline 404 route) can't quietly inherit the home-page noscript
+// when their description shifts.
+export function resolveNoscriptBody(route: RouteSeo): string {
+  if (route.noscriptBody) return route.noscriptBody;
+  return noscript(route.title, [
+    route.description,
+    "This page needs JavaScript to render fully. Enable JavaScript and reload.",
+  ]);
 }
 
 const AUTHOR_PERSON = {

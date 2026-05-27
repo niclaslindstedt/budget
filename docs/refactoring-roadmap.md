@@ -313,26 +313,29 @@ T | null` for "explicitly cleared by the user, distinct from
 
 - **`MonthTable.tsx` orphan-count + transfer-visibility logic
   scattered** — orphan rendering coordinates between AppShell,
-  MonthTable, and a footer subcomponent; transfer visibility is
-  computed implicitly per row. **Severity: 4.** Easy seam: extract
-  `<OrphanIndicator>` and `affectedByHiddenTransfer(rowId, hideSet,
-balances)` utility.
+  MonthTable, and a footer subcomponent. **Severity: 3** (was 4;
+  the `hiddenBefore`-Map extraction half landed 2026-05 — see
+  Landed). What's left is extracting the `<tfoot>` orphan-indicator
+  JSX (~25 lines) into an `<OrphanIndicator>` sibling; opportunistic,
+  not worth a dedicated PR.
 
 - **`TypePicker.tsx` (716 lines) hardcoded `amountSign` filter** —
-  branches on income-only / expense-only types inline. New sheet
-  types with different category semantics (loans → only
-  loan-payment types) will need their own filter. **Severity: 5**
-  (overlap with the 7-rating registry idea; one fix lands both).
-  - Easy partial fix at the 4-band: add a `filterFn?: (type:
-EntryType) => boolean` prop so callers customise; default to
-    the current `amountSign` behaviour.
+  branches on income-only / expense-only types inline. **Severity: 3**
+  (was 5; the `filterFn?: (type: EntryType) => boolean` escape hatch
+  landed 2026-05 — see Landed). The remaining `amountSign` branching
+  is now opt-in default behaviour and stays put until a non-budget
+  sheet type ships and demands a richer registry.
 
-- **JSON parse before validate, ~9 sites** — `file.ts:38`,
-  `backup-index.ts:29`, `migrations/modern.ts:351,379`,
-  `session.ts:41`. Validators run downstream so it's not a live
-  bug, but the parse→cast window is a footgun. **Severity: 4.**
-  Easy win: extract `parseAndValidate<T>(text, validator)` helper
-  and adopt at the ~9 sites.
+- **JSON parse before validate** — investigated 2026-05 and decayed
+  to **severity 2**: the original "~9 sites" claim collapsed once
+  `safeJsonParse` adoption landed (see Landed). Only three raw
+  `JSON.parse` calls remain (`file.ts:38`, `idb-adapter.ts:232`,
+  `dropbox-adapter.ts:259`), each intentionally kept inline so the
+  caller retains an error-detail message or diagnostic warning. The
+  parse-then-validate combo at the existing `safeJsonParse` sites is
+  shaped differently per call (each one runs a bespoke
+  `typeof parsed.x === "..."` validator) — no shared helper would
+  consolidate them without obscuring the validation. Left alone.
 
 - **Backup logic per-adapter (Dropbox, GDrive, Folder)** — each
   hand-rolls the backup-index lifecycle (`backup-index.ts`,
@@ -345,12 +348,14 @@ EntryType) => boolean` prop so callers customise; default to
   binary-decompression libs. **Severity: 4.** Defer until a target
   actually needs to drop a parser.
 
-- **Per-route `<noscript>` fallback drift** — `src/seo/routes.ts`
-  defines a fallback string per route, but the prerender plugin
-  reads from it without a parity check. If a route's description
-  changes in `routes.ts` but the fallback doesn't, search engines
-  see stale content. **Severity: 3.** Easy win: derive the
-  `<noscript>` body from `routes.ts` exclusively.
+- **Per-route `<noscript>` fallback drift** — investigated and
+  partially landed 2026-05 (see Landed: `resolveNoscriptBody`).
+  Routes that don't supply an explicit `noscriptBody` now get a
+  body derived from `title` + `description` so new routes (and the
+  build's inline 404 route) can't quietly inherit the home-page
+  noscript. The PRIVACY route's richer override still risks drift
+  against its own description; **severity 2** at this point, not
+  worth chasing until a second route grows a custom override.
 
 - **Inline `parseFloat` / `new Date(…)` at remaining sites** —
   `parseInt32` landed 2026-05 (see Landed) and was adopted at the
@@ -379,6 +384,30 @@ EntryType) => boolean` prop so callers customise; default to
 
 ## Landed
 
+- **`TypePicker` `filterFn` escape hatch** (2026-05): the
+  `amountSign` prop is now backed by an optional generic
+  `filterFn?: (type: EntryType) => boolean` that takes precedence
+  over the income/expense default — so future sheet flavours (loans,
+  savings) can supply their own filter shape without the picker
+  hard-coding every variant. Existing call sites are unchanged;
+  `amountSign` stays as the budget-page default. Severity dropped
+  from 5 to 3 — what remains is the (deferred) full registry idea.
+- **`collectHiddenTransfersByAnchor` extraction from `MonthTable.tsx`**
+  (2026-05): the 25-line `hiddenBefore` Map computation moved into
+  `src/data/budget/synthesis.ts` next to its `isTransferRow`
+  collaborator. `MonthTable.tsx` shrank by ~25 lines and the helper
+  is now a pure function callable from tests / future render paths.
+  The `<OrphanIndicator>` half of the original "MonthTable
+  orphan-count + transfer-visibility logic scattered" candidate is
+  still pending (rated down to 3 — opportunistic).
+- **`resolveNoscriptBody(route)` helper** (2026-05): the build-time
+  `<noscript>` splicer in `vite.config.ts` now always emits a body
+  per route — explicit `noscriptBody` wins; otherwise a default is
+  derived from `route.title` + `route.description` plus the
+  standard "needs JavaScript" line. Fixes the silent inheritance
+  bug where the inline 404 route (and any new route added without
+  an explicit body) embedded the home-page noscript text verbatim.
+  The PRIVACY route keeps its richer override.
 - **`normalizeName` / `normalizeOptional` helpers** (2026-05): the
   recurring `name.trim().length > 0` + `text.trim() === "" ? undefined : text.trim()`
   patterns collapsed onto two helpers in `src/data/normalize.ts`.

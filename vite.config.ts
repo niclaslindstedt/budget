@@ -7,7 +7,12 @@ import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 import pkg from "./package.json" with { type: "json" };
-import { HOME_ROUTE, PRIVACY_ROUTE, type RouteSeo } from "./src/seo/routes";
+import {
+  HOME_ROUTE,
+  PRIVACY_ROUTE,
+  resolveNoscriptBody,
+  type RouteSeo,
+} from "./src/seo/routes";
 import {
   DEFAULT_OG_IMAGE,
   OG_IMAGE_ALT,
@@ -124,21 +129,19 @@ function spliceRouteSeo(html: string, route: RouteSeo): string {
     `\n    <!-- HEAD_SEO_END -->`;
   let next = html.replace(HEAD_SEO_RE, block);
 
-  if (route.noscriptBody) {
-    if (!NOSCRIPT_RE.test(next)) {
-      throw new Error(
-        "emit-path-alias-with-seo: NOSCRIPT markers missing in " +
-          "dist/index.html — cannot splice per-route noscript body. " +
-          "Did `index.html` drop the <!-- NOSCRIPT_START --> / " +
-          "<!-- NOSCRIPT_END --> pair?",
-      );
-    }
-    const noscript =
-      `<!-- NOSCRIPT_START (${route.path}) -->\n        ` +
-      route.noscriptBody +
-      `\n        <!-- NOSCRIPT_END -->`;
-    next = next.replace(NOSCRIPT_RE, noscript);
+  if (!NOSCRIPT_RE.test(next)) {
+    throw new Error(
+      "emit-path-alias-with-seo: NOSCRIPT markers missing in " +
+        "dist/index.html — cannot splice per-route noscript body. " +
+        "Did `index.html` drop the <!-- NOSCRIPT_START --> / " +
+        "<!-- NOSCRIPT_END --> pair?",
+    );
   }
+  const noscript =
+    `<!-- NOSCRIPT_START (${route.path}) -->\n        ` +
+    resolveNoscriptBody(route) +
+    `\n        <!-- NOSCRIPT_END -->`;
+  next = next.replace(NOSCRIPT_RE, noscript);
 
   return next;
 }

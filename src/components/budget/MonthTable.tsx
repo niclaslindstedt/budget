@@ -7,7 +7,10 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { isTransferRow } from "../../data/budget/synthesis";
+import {
+  collectHiddenTransfersByAnchor,
+  isTransferRow,
+} from "../../data/budget/synthesis";
 import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
@@ -213,40 +216,15 @@ function MonthTableImpl({
   // proximity gate flipped (#339).
   const measuredHeightRef = useRef<number | null>(null);
   const nearViewport = useNearViewport(sectionRef, MONTH_VIEWPORT_MARGIN_PX);
-  // When the hide-transfers setting is on, partition the month's
-  // chronologically-sorted rows into the visible set (rendered as
-  // normal BudgetRows) and a map from each visible anchor to the
-  // contiguous run of hidden transfer rows immediately preceding it.
-  // The map is what powers the balance-cell ↔ icon: a non-empty run
-  // means at least one hidden transfer contributed to the anchor's
-  // running balance step, and clicking the icon reveals that run
-  // inline. With the setting off, no hiding happens and the map is
-  // empty so the chain behaves exactly like before.
-  const { hiddenBefore } = useMemo(() => {
-    const map = new Map<string, Row[]>();
-    if (!hideTransfers) return { hiddenBefore: map };
-    let buffer: Row[] = [];
-    for (const r of rows) {
-      // Correction rows render as full-width dividers, never as
-      // transfers; treat them like visible anchors so a hidden run
-      // doesn't leak past a divider into the next concrete row.
-      if (!r.isCorrection && isTransferRow(r)) {
-        buffer.push(r);
-      } else {
-        if (buffer.length > 0) {
-          map.set(r.id, buffer);
-          buffer = [];
-        }
-      }
-    }
-    // Any hidden rows trailing the last visible anchor get dropped
-    // from the map — there's no balance row in this month to attach
-    // the icon to. The amounts still feed the running balance via
-    // computeBalances; they just don't surface an expand affordance
-    // here. The "next month's first visible row" inheriting them is
-    // intentionally out of scope.
-    return { hiddenBefore: map };
-  }, [rows, hideTransfers]);
+  // When the hide-transfers setting is on, group every run of hidden
+  // transfer rows under the next visible anchor row's id. The map
+  // powers the balance-cell ↔ icon: a non-empty run on an anchor
+  // means at least one hidden transfer contributed to its running-
+  // balance step, and clicking the icon reveals that run inline.
+  const hiddenBefore = useMemo(
+    () => collectHiddenTransfersByAnchor(rows, hideTransfers),
+    [rows, hideTransfers],
+  );
   // Synthesized transfer rows live in `rows` (the parent merges them
   // in) but they are not selectable for bulk operations — they aren't
   // real budget rows, so a delete or move that targets them would do
