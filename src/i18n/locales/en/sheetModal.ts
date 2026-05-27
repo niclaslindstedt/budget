@@ -21,6 +21,8 @@ const sheetModal = {
   description: "Description",
   pickAccount: "Pick an account",
   noAccount: "No account",
+  newAccount: "New account",
+  alreadyExists: "Already exists",
   deleteTitle: "Delete sheet?",
   deleteHint: "The rows in this sheet are dropped. This cannot be undone.",
   deleteThisSheet: "Delete this sheet",

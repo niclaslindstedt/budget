@@ -16,6 +16,8 @@ const transfer = {
   needTwoAccounts: "A transfer needs two different accounts.",
   markAsDone: "Mark as done",
   pickAccount: "Pick an account",
+  chooseAccount: "Choose an account",
+  noAccountsYet: "No accounts yet — create one from the Accounts sheet.",
   deleteTitle: "Delete transfer?",
   deleteHint: "The two bank entries it collapsed will come back.",
   isTransfer: "This is a transfer between two accounts",

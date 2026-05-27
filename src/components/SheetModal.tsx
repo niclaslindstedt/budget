@@ -334,8 +334,10 @@ function AccountPicker({
   onClose: () => void;
   onPick: (value: string) => void;
 }) {
+  const t = useT();
   const triggerRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
+  const noAccountLabel = t("sheetModal.noAccount");
 
   return (
     <div ref={triggerRef} className="relative">
@@ -350,7 +352,7 @@ function AccountPicker({
           <Wallet size={16} aria-hidden focusable={false} />
         </span>
         <span className="flex-1 truncate">
-          {selected ? selected.name : "No account"}
+          {selected ? selected.name : noAccountLabel}
         </span>
         <ChevronDown
           size={14}
@@ -367,7 +369,7 @@ function AccountPicker({
       >
         <ul role="listbox" className="max-h-64 overflow-auto py-1">
           <AccountOption
-            label="No account"
+            label={noAccountLabel}
             icon={<Wallet size={16} aria-hidden focusable={false} />}
             selected={value === null}
             onClick={() => onPick("")}
@@ -388,7 +390,7 @@ function AccountPicker({
               className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
               <Plus size={14} aria-hidden focusable={false} />
-              New account
+              {t("sheetModal.newAccount")}
             </button>
           </li>
         </ul>
@@ -457,6 +459,7 @@ function TypePicker({
   onClose: () => void;
   onPick: (next: SheetType) => void;
 }) {
+  const t = useT();
   const triggerRef = useRef<HTMLDivElement>(null);
   const selected = getSheetTypeDescriptor(value);
 
@@ -513,7 +516,9 @@ function TypePicker({
                   </span>
                   <span className="flex-1 truncate">{opt.label}</span>
                   {isDisabled && (
-                    <span className="text-xs text-muted">Already exists</span>
+                    <span className="text-xs text-muted">
+                      {t("sheetModal.alreadyExists")}
+                    </span>
                   )}
                   {isSelected && (
                     <Check

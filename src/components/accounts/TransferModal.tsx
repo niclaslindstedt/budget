@@ -525,6 +525,7 @@ function AccountPicker({
   onClose: () => void;
   onPick: (value: string) => void;
 }) {
+  const t = useT();
   const triggerRef = useRef<HTMLDivElement>(null);
   const selected = accounts.find((a) => a.id === value) ?? null;
 
@@ -557,7 +558,7 @@ function AccountPicker({
           )}
         </span>
         <span className="flex-1 truncate">
-          {selected ? selected.name : "Choose an account"}
+          {selected ? selected.name : t("transfer.chooseAccount")}
         </span>
         <ChevronDown
           size={14}
@@ -575,7 +576,7 @@ function AccountPicker({
         <ul role="listbox" className="max-h-64 overflow-auto py-1">
           {accounts.length === 0 && (
             <li className="px-3 py-2 text-xs text-muted">
-              No accounts yet — create one from the Accounts sheet.
+              {t("transfer.noAccountsYet")}
             </li>
           )}
           {accounts.map((a) => {

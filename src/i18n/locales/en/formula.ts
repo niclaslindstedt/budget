@@ -29,6 +29,7 @@ const formula = {
   insertVariableAria: "Insert formula variable or function",
   insertVariableTitle: "Insert a formula variable or function",
   variablesButtonLabel: "Variables",
+  computedFromFormula: "Computed from a formula",
   thisSheet: "This sheet",
   functionsSection: "Functions",
   sheetSectionPrefix: "Sheet ·",

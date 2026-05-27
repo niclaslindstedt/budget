@@ -270,6 +270,68 @@ function historyReducer(
   }
 }
 
+// Named transitions for the SaveStatus state machine. The reducer is
+// pure — the side effects that pair with each transition (logging,
+// `setResumeNonce` bumps, in-flight throttle-resume timers) stay in
+// the calling code. Replacing the previous ~30 inline
+// `setStatus(...)` call sites with a single action union keeps every
+// reachable state explicit in one place and makes the load / save /
+// reload / watch / conflict / shrink-warning paths share the same
+// vocabulary.
+type StatusAction =
+  | { kind: "load-start" }
+  | { kind: "save-start" }
+  // Save completed against the remote; the timestamp is read off the
+  // reducer's own clock so call sites don't repeat `Date.now()`.
+  | { kind: "save-success" }
+  // Save landed in the local mirror because the cloud was unreachable.
+  // Same Date.now()-in-reducer pattern as `save-success`.
+  | { kind: "save-offline" }
+  | { kind: "idle" }
+  | { kind: "conflict"; local: UserData; remote: UserData }
+  | { kind: "auth-error"; message: string }
+  | { kind: "throttled"; until: number }
+  | { kind: "parse-error"; message: string }
+  | {
+      kind: "shrink-warning";
+      pendingText: string;
+      prevBytes: number;
+      newBytes: number;
+    }
+  | { kind: "error"; message: string };
+
+function statusReducer(_state: SaveStatus, action: StatusAction): SaveStatus {
+  switch (action.kind) {
+    case "load-start":
+      return { kind: "loading" };
+    case "save-start":
+      return { kind: "saving" };
+    case "save-success":
+      return { kind: "saved", at: Date.now() };
+    case "save-offline":
+      return { kind: "offline", since: Date.now() };
+    case "idle":
+      return { kind: "idle" };
+    case "conflict":
+      return { kind: "conflict", local: action.local, remote: action.remote };
+    case "auth-error":
+      return { kind: "auth-error", message: action.message };
+    case "throttled":
+      return { kind: "throttled", until: action.until };
+    case "parse-error":
+      return { kind: "parse-error", message: action.message };
+    case "shrink-warning":
+      return {
+        kind: "shrink-warning",
+        pendingText: action.pendingText,
+        prevBytes: action.prevBytes,
+        newBytes: action.newBytes,
+      };
+    case "error":
+      return { kind: "error", message: action.message };
+  }
+}
+
 // SaveStatus kinds the autosave path refuses to write through. The
 // app entered one because something already went wrong (a parse
 // failure, an auth error, an in-progress load) or because the user
@@ -334,7 +396,11 @@ export function useUserDataStorage<Action extends { type: string }>(
   });
 
   const [data, setData] = useState<UserData>(initial[0].data);
-  const [status, setStatus] = useState<SaveStatus>(initial[0].status);
+  // Status flows through `statusReducer` so every transition is a
+  // named action — the load / save / reload / watch paths all dispatch
+  // into the same vocabulary instead of constructing `SaveStatus`
+  // objects inline at ~30 different sites.
+  const [status, dispatchStatus] = useReducer(statusReducer, initial[0].status);
   // Last bytes successfully written to (or loaded from) storage.
   // Drives the `dirty` flag below.
   const [lastSavedText, setLastSavedText] = useState<string | null>(() => {
@@ -402,8 +468,8 @@ export function useUserDataStorage<Action extends { type: string }>(
 
   // Latest status, exposed via a ref so the save effect can bail when
   // the app is in a bad state without keeping `status` in its dep
-  // list. With `status` in the deps, every `setStatus({kind:"saving"})`
-  // call inside `performSave` re-ran the effect, the cleanup cancelled
+  // list. With `status` in the deps, every `save-start` dispatch
+  // inside `performSave` re-ran the effect, the cleanup cancelled
   // the in-flight save as "stale", and the body immediately scheduled
   // another save — an autosave loop that produced endless saves on
   // any data change and pinned status to "saving" forever (each stale
@@ -546,7 +612,7 @@ export function useUserDataStorage<Action extends { type: string }>(
               SHRINK_WARN_THRESHOLD * 100
             }% [${adapter.id}]`,
           );
-          setStatus({
+          dispatchStatus({
             kind: "shrink-warning",
             pendingText: text,
             prevBytes,
@@ -554,7 +620,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           });
           return;
         }
-        setStatus({ kind: "saving" });
+        dispatchStatus({ kind: "save-start" });
         log.info(
           `save start [${adapter.id}] bytes=${text.length} baseRev=${
             lastSnapshot.current?.revision ?? "<none>"
@@ -584,12 +650,12 @@ export function useUserDataStorage<Action extends { type: string }>(
             return;
           }
           if (next.offline) {
-            setStatus({ kind: "offline", since: Date.now() });
+            dispatchStatus({ kind: "save-offline" });
             log.info(
               `save offline (${ms}ms) [${adapter.id}] mirroredRev=${next.revision ?? "<none>"}`,
             );
           } else {
-            setStatus({ kind: "saved", at: Date.now() });
+            dispatchStatus({ kind: "save-success" });
             log.info(
               `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
             );
@@ -597,8 +663,8 @@ export function useUserDataStorage<Action extends { type: string }>(
         } catch (err) {
           const ms = (performance.now() - start).toFixed(0);
           // Conflict bookkeeping must happen even if our caller is
-          // now stale (a re-render between `setStatus("saving")` and
-          // the adapter resolving cancelled the effect). Without
+          // now stale (a re-render between `save-start` and the
+          // adapter resolving cancelled the effect). Without
           // stashing `err.remote` here, the next save reuses the old
           // baseRev and we loop on the same 409 forever. Setting the
           // conflict status surfaces the resolution modal AND lands
@@ -618,7 +684,7 @@ export function useUserDataStorage<Action extends { type: string }>(
               ? readUserDataFromText(err.local.text, migrationCtx)
               : data;
             lastSnapshot.current = err.remote;
-            setStatus({ kind: "conflict", local, remote });
+            dispatchStatus({ kind: "conflict", local, remote });
             return;
           }
           if (err instanceof RateLimitError) {
@@ -646,11 +712,11 @@ export function useUserDataStorage<Action extends { type: string }>(
                 log.info(
                   `save throttle cleared [${adapter.id}] — resuming autosave`,
                 );
-                setStatus({ kind: "idle" });
+                dispatchStatus({ kind: "idle" });
                 setResumeNonce((n) => n + 1);
               }
             }, err.retryAfterMs);
-            setStatus({ kind: "throttled", until });
+            dispatchStatus({ kind: "throttled", until });
             return;
           }
           if (isStale()) {
@@ -659,11 +725,11 @@ export function useUserDataStorage<Action extends { type: string }>(
           }
           if (err instanceof AuthError) {
             log.warn(`save auth failed (${ms}ms) [${adapter.id}]`, err);
-            setStatus({ kind: "auth-error", message: err.message });
+            dispatchStatus({ kind: "auth-error", message: err.message });
             return;
           }
           log.error(`save failed (${ms}ms) [${adapter.id}]`, err);
-          setStatus({
+          dispatchStatus({
             kind: "error",
             message: err instanceof Error ? err.message : String(err),
           });
@@ -700,9 +766,9 @@ export function useUserDataStorage<Action extends { type: string }>(
         resetHistory(parsed.data);
         setLastSavedText(snap?.text ?? null);
         if (parsed.status === "parse-failed") {
-          setStatus({ kind: "parse-error", message: parsed.error });
+          dispatchStatus({ kind: "parse-error", message: parsed.error });
         } else {
-          setStatus({ kind: "idle" });
+          dispatchStatus({ kind: "idle" });
         }
         return;
       }
@@ -710,7 +776,7 @@ export function useUserDataStorage<Action extends { type: string }>(
       return;
     }
     let cancelled = false;
-    setStatus({ kind: "loading" });
+    dispatchStatus({ kind: "load-start" });
     log.info(`adapter mount [${adapter.id}] async — load start`);
     const start = performance.now();
     adapter
@@ -750,11 +816,11 @@ export function useUserDataStorage<Action extends { type: string }>(
             // can't parse them. The autosave guard refuses to write
             // the fresh fallback over the user's real data on disk —
             // the user reconnects via the sync details panel.
-            setStatus({ kind: "parse-error", message: parsed.error });
+            dispatchStatus({ kind: "parse-error", message: parsed.error });
           } else if (snap.offline) {
-            setStatus({ kind: "offline", since: Date.now() });
+            dispatchStatus({ kind: "save-offline" });
           } else {
-            setStatus({ kind: "idle" });
+            dispatchStatus({ kind: "idle" });
           }
         } else if (wasInitialLoad) {
           // No bytes on disk for a brand-new user. The `useState`
@@ -775,7 +841,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           // every change since mount and writes them out as the
           // user's first persisted snapshot.
           setLastSavedText(null);
-          setStatus({ kind: "idle" });
+          dispatchStatus({ kind: "idle" });
           setData((prev) => ({ ...prev }));
         } else {
           // Adapter swap to a backend that has no data yet — the
@@ -787,7 +853,7 @@ export function useUserDataStorage<Action extends { type: string }>(
           setData(fresh);
           resetHistory(fresh);
           setLastSavedText(null);
-          setStatus({ kind: "idle" });
+          dispatchStatus({ kind: "idle" });
         }
       })
       .catch((err: unknown) => {
@@ -817,16 +883,16 @@ export function useUserDataStorage<Action extends { type: string }>(
           setData(local);
           resetHistory(local);
           setLastSavedText(localText ?? null);
-          setStatus({ kind: "conflict", local, remote });
+          dispatchStatus({ kind: "conflict", local, remote });
           return;
         }
         if (err instanceof AuthError) {
           log.warn(`load auth failed (${ms}ms) [${adapter.id}]`, err);
-          setStatus({ kind: "auth-error", message: err.message });
+          dispatchStatus({ kind: "auth-error", message: err.message });
           return;
         }
         log.error(`load failed (${ms}ms) [${adapter.id}]`, err);
-        setStatus({
+        dispatchStatus({
           kind: "error",
           message: err instanceof Error ? err.message : String(err),
         });
@@ -847,9 +913,9 @@ export function useUserDataStorage<Action extends { type: string }>(
   // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
   // `status` is intentionally NOT a dep — it is read through
-  // `statusRef` so that `setStatus({kind:"saving"})` calls inside
-  // `performSave` don't re-run this effect and turn the save chain
-  // into a tight loop (see the statusRef comment above).
+  // `statusRef` so that `save-start` dispatches inside `performSave`
+  // don't re-run this effect and turn the save chain into a tight
+  // loop (see the statusRef comment above).
   useEffect(() => {
     if (!hasLoadedRef.current) return;
     if (skipNextSave.current) {
@@ -985,13 +1051,13 @@ export function useUserDataStorage<Action extends { type: string }>(
       setData(parsed.data);
       resetHistory(parsed.data);
       setLastSavedText(snap.text);
-      setStatus(
-        parsed.status === "parse-failed"
-          ? { kind: "parse-error", message: parsed.error }
-          : { kind: "idle" },
-      );
+      if (parsed.status === "parse-failed") {
+        dispatchStatus({ kind: "parse-error", message: parsed.error });
+      } else {
+        dispatchStatus({ kind: "idle" });
+      }
     } else {
-      setStatus({ kind: "idle" });
+      dispatchStatus({ kind: "idle" });
     }
   }, [adapter.id, resetHistory, status, migrationCtx]);
 
@@ -1009,7 +1075,7 @@ export function useUserDataStorage<Action extends { type: string }>(
     setData(remote);
     resetHistory(remote);
     setLastSavedText(remoteText);
-    setStatus({ kind: "idle" });
+    dispatchStatus({ kind: "idle" });
     // Tell the adapter chain that the bytes we're now showing are
     // the authoritative ones — without this the cloud-mirror cache
     // would still hold the unsynced local edits and the next reload
@@ -1024,8 +1090,8 @@ export function useUserDataStorage<Action extends { type: string }>(
   // load body (lines 558-639) and the watch callback (lines 813-833)
   // — same lastSnapshot / skipNextSave / hasLoadedRef bookkeeping so
   // the autosave effect doesn't immediately push the freshly-loaded
-  // bytes back out. Skips the `setStatus({kind:"loading"})` flip the
-  // initial load does — that triggers the full-screen `AppLoading`
+  // bytes back out. Skips the `load-start` flip the initial load
+  // does — that triggers the full-screen `AppLoading`
   // splash, which is wrong for a manual refresh on top of an already-
   // populated app. The pull-to-refresh indicator owns its own
   // "refreshing…" pip instead.
@@ -1083,11 +1149,11 @@ export function useUserDataStorage<Action extends { type: string }>(
       resetHistory(parsed.data);
       setLastSavedText(snap?.text ?? null);
       if (parsed.status === "parse-failed") {
-        setStatus({ kind: "parse-error", message: parsed.error });
+        dispatchStatus({ kind: "parse-error", message: parsed.error });
       } else if (snap?.offline) {
-        setStatus({ kind: "offline", since: Date.now() });
+        dispatchStatus({ kind: "save-offline" });
       } else {
-        setStatus({ kind: "idle" });
+        dispatchStatus({ kind: "idle" });
       }
     } catch (err) {
       const ms = (performance.now() - start).toFixed(0);
@@ -1102,16 +1168,16 @@ export function useUserDataStorage<Action extends { type: string }>(
           ? readUserDataFromText(err.local.text, migrationCtx)
           : data;
         lastSnapshot.current = err.remote;
-        setStatus({ kind: "conflict", local, remote });
+        dispatchStatus({ kind: "conflict", local, remote });
         return;
       }
       if (err instanceof AuthError) {
         log.warn(`reload auth failed (${ms}ms) [${adapter.id}]`, err);
-        setStatus({ kind: "auth-error", message: err.message });
+        dispatchStatus({ kind: "auth-error", message: err.message });
         return;
       }
       log.error(`reload failed (${ms}ms) [${adapter.id}]`, err);
-      setStatus({
+      dispatchStatus({
         kind: "error",
         message: err instanceof Error ? err.message : String(err),
       });
@@ -1137,11 +1203,11 @@ export function useUserDataStorage<Action extends { type: string }>(
       resetHistory(parsed.data);
       setLastSavedText(snap.text);
       if (parsed.status === "parse-failed") {
-        setStatus({ kind: "parse-error", message: parsed.error });
+        dispatchStatus({ kind: "parse-error", message: parsed.error });
       } else if (snap.offline) {
-        setStatus({ kind: "offline", since: Date.now() });
+        dispatchStatus({ kind: "save-offline" });
       } else {
-        setStatus({ kind: "idle" });
+        dispatchStatus({ kind: "idle" });
       }
     });
     return () => {

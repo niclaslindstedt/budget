@@ -72,33 +72,41 @@ to **Pending** with a rating.
 
 ### Severity 9–10 — architectural blockers
 
-- **`useUserDataStorage.ts` (1167 lines) is a god hook** — the
+_Currently empty._ The persistence engine refactor (`useUserDataStorage.ts`)
+dropped from 9 to 8 once step 1 of its plan landed (history +
+status reducers — see Landed), and now lives in the 7-8 band. No
+remaining candidate gates the feature wave on its own; the
+multipliers below are still worth landing before adding the second
+new sheet type, but feature work can ship through them.
+
+### Severity 7–8 — multipliers (land before the second new sheet type)
+
+- **`useUserDataStorage.ts` (1247 lines) is a god hook** — the
   persistence engine of the app. Braids load / save / conflict
   resolution / shrink-warning with parallel `useRef` variables and
   `useEffect` blocks whose dependency arrays each span 20+ entries.
   The `performSave` callback alone spans ~180 lines. Bugs here
-  corrupt user data or leak auth tokens. **Severity: 9.**
-  - Plan (two PRs, in order to keep each reviewable):
-    1. Split the remaining in-hook state into named slices — the
-       `SaveStatus` machine is currently a `useState<SaveStatus>` with
-       ~25 inline `setStatus(...)` call sites scattered across load,
-       save, throttle-resume, conflict-resolution, and shrink-warning
-       paths. Pull those transitions into a single `statusReducer`
-       with named actions (`load-start`, `save-success`, `conflict`,
-       `auth-error`, `throttle-resume`, `confirm-shrink-save`, …)
-       so the state machine is auditable in one place. The
-       `historyReducer` half of this step landed 2026-05 (see
-       Landed).
+  corrupt user data or leak auth tokens. **Severity: 8** (was 9 —
+  dropped one band now that step 1 is complete; the remaining
+  sibling-hook extraction is still high-leverage but no longer
+  blocks the feature wave on its own).
+  - Plan:
+    1. ~~Split the remaining in-hook state into named slices~~ —
+       **done.** The `historyReducer` half landed 2026-05; the
+       `statusReducer` half landed 2026-05 (see Landed). Both
+       SaveStatus transitions and history mutations now flow
+       through named-action reducers.
     2. Extract `useLoadState`, `useSaveStateMachine`, and
        `useUndoRedo` as siblings; the outer hook becomes a thin
-       composer that wires their outputs together.
+       composer that wires their outputs together. The
+       reducer-first split is what makes this tractable — each
+       sibling now has a self-contained state machine to lift
+       out, not a setState braid threaded through three effects.
   - Risk: **high**. Storage hot path. Needs smoke-test of all four
     backends (IDB, Dropbox, GDrive, Folder) before merging plus a
     full Playwright regression run. The previous-roadmap note about
     "reducer split first, hook extraction as a consumer" still
     stands.
-
-### Severity 7–8 — multipliers (land before the second new sheet type)
 
 - **`useStorageBackend.ts` (1256 lines)** — split into
   `useDropboxAuth`, `useGdriveAuth`, `useFolderHandle`, leaving the
@@ -173,21 +181,17 @@ to **Pending** with a rating.
   consolidates. Re-rate up if a `<LoanTypeAdmin>` lands and the
   pattern shows up a third time.
 
-- **Hardcoded user-facing strings in chrome** — sample sweep found
-  `SheetModal.tsx:348` and `:365` ("No account") rendering plain
-  literals instead of `t("…")`. The AGENTS rule ("No hardcoded
-  user-facing strings") is enforced by convention, not lint, so
-  drift is invisible until a Swedish-speaking user opens the
-  modal. Past ~6 component files have been spot-checked, so a
-  systematic audit hasn't run. **Severity: 7.**
-  - Plan: write a one-off audit script that greps every
-    `src/components/**/*.tsx` for string literals inside JSX text
-    nodes, `aria-label=`, `title=`, `placeholder=`, and modal
-    titles, excluding allowlist (CSS classes, ids, dev-only
-    `data-*` attributes). Fix the hits; promote the script to a
-    lint rule once the baseline is clean.
-  - Risk: low. Each fix is a one-line edit + a key in both
-    `locales/en/<ns>.ts` and `locales/sv/<ns>.ts`.
+- **Hardcoded user-facing strings in chrome** — investigated 2026-05
+  and decayed to **severity 3**: the systematic audit landed (see
+  Landed) and consumed the visible hits in `SheetModal.tsx`,
+  `AppLoading.tsx`, `AmountCellDisplay.tsx`, and
+  `accounts/TransferModal.tsx`. The remaining drift surface is
+  small — a handful of literals could still slip in via new
+  components without a lint rule to catch them. Promoting the
+  one-off audit script to an ESLint rule would be the next step,
+  but it's a tooling change rather than a refactor and stays low
+  priority until a missed string is found in production. Re-rate
+  up if a second batch of hardcoded strings surfaces.
 
 ### Severity 5–6 — friction
 
@@ -200,15 +204,6 @@ to **Pending** with a rating.
   coverage while you're in there. **Severity: 6.** Pay attention to
   import order at the entry point because `@layer components` rules
   consume colour vars declared in `@theme`.
-
-- **`useUserDataStorage.ts` `statusReducer` extraction (step 1 of
-  the god-hook decomposition, second half)** — same item as the
-  severity-9 god hook, listed here because the **statusReducer half
-  of step 1** is a moderate-risk friction fix on its own (the
-  `historyReducer` half already landed 2026-05). Walks the ~25
-  inline `setStatus(...)` calls into a single named-action reducer.
-  The 9-rating applies to the full extraction including sibling
-  hooks; this slice on its own is severity 6.
 
 - **`budget/formula.ts` (680 lines) parser/evaluator entanglement** —
   tokenizer + parser + evaluator share a module with no abstraction
@@ -413,10 +408,38 @@ T | null` for "explicitly cleared by the user, distinct from
   current entry synchronously before dispatching, so the `setData`
   side-effect lives outside the reducer (which stays pure). No
   behaviour change — same cap, same UI-only-action filter, same
-  truncate-on-append semantics. Reduces the in-hook state-mutation
-  braid; the matching `statusReducer` half (the ~25 inline `setStatus`
-  calls) is still pending (see Pending — severity 6 on its own,
-  rolled into the severity-9 godhook plan).
+  truncate-on-append semantics.
+- **`statusReducer` extraction in `useUserDataStorage.ts`** (2026-05):
+  the second half of the severity-9 step-1 plan. The
+  `useState<SaveStatus>` plus ~30 inline `setStatus(...)` call sites
+  scattered across load / save / reload / watch / conflict /
+  shrink-warning paths collapsed onto a single named-action
+  `useReducer`. Action union is `load-start | save-start | save-success
+| save-offline | idle | conflict | auth-error | throttled |
+parse-error | shrink-warning | error`; the `Date.now()` timestamps
+  for `saved` / `offline` now live in the reducer so each call site
+  is one short dispatch instead of an inline `SaveStatus` literal.
+  The `statusRef` mirror, the throttle-resume conditional check, and
+  the bail-status helper all stay where they are — the reducer is
+  the transition table, not the orchestration. No behaviour change;
+  every code path now opts into the same vocabulary. Together with
+  the `historyReducer` half above, this closes step 1 of the
+  severity-9 god-hook plan; step 2 (sibling hook extraction)
+  remains pending (now rated 8 — see Pending).
+- **Hardcoded user-facing strings audit + fixes** (2026-05): the
+  systematic `src/components/**/*.tsx` sweep called for in the
+  severity-7 candidate landed and consumed the visible hits.
+  Translated `SheetModal.tsx` ("No account" / "New account" /
+  "Already exists"), `AppLoading.tsx` ("Loading budget…" → reused
+  existing `app.loading` key), `budget/cells/AmountCellDisplay.tsx`
+  ("Computed from a formula" `title` attribute), and
+  `accounts/TransferModal.tsx` ("Choose an account",
+  "No accounts yet …"). PrivacyPage stays untranslated by design
+  (AGENTS rule). New keys: `sheetModal.newAccount` /
+  `.alreadyExists`, `formula.computedFromFormula`,
+  `transfer.chooseAccount` / `.noAccountsYet`; English and Swedish
+  catalogs updated together. The remaining drift surface (severity 3) sits in Pending — promoting the audit to an ESLint rule is
+  the only thing keeping new violations from sneaking back in.
 - **`TypePicker` `filterFn` escape hatch** (2026-05): the
   `amountSign` prop is now backed by an optional generic
   `filterFn?: (type: EntryType) => boolean` that takes precedence

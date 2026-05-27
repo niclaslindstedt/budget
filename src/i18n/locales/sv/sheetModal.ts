@@ -21,6 +21,8 @@ const sheetModal: SheetModalCatalog = {
   description: "Beskrivning",
   pickAccount: "Välj ett konto",
   noAccount: "Inget konto",
+  newAccount: "Nytt konto",
+  alreadyExists: "Finns redan",
   deleteTitle: "Ta bort blad?",
   deleteHint: "Raderna i detta blad tas bort. Det går inte att ångra.",
   deleteThisSheet: "Ta bort detta blad",

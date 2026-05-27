@@ -1,6 +1,7 @@
 import { Minus, Plus } from "lucide-react";
 
 import type { Settings } from "../../../data/types";
+import { useT } from "../../../i18n";
 import { formatNumber } from "../../../utils/format";
 import { CELL_BASE } from "./constants";
 
@@ -20,6 +21,7 @@ type Props = {
 // when it isn't focused (`showDecimals`, `formatNumbers`,
 // `abbreviateNumbers`).
 export function AmountCellDisplay({ value, settings, formula }: Props) {
+  const t = useT();
   const negative = value !== null && value < 0;
   const abs = value !== null ? Math.abs(value) : null;
   const body = abs !== null ? formatNumber(abs, settings) : "";
@@ -43,7 +45,7 @@ export function AmountCellDisplay({ value, settings, formula }: Props) {
         {formula && (
           <span
             aria-hidden
-            title="Computed from a formula"
+            title={t("formula.computedFromFormula")}
             className="pointer-events-none absolute top-1 left-6 z-10 rounded border border-accent/60 bg-accent/10 px-1 font-mono text-[9px] leading-none text-accent"
           >
             fx
