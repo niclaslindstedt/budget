@@ -14,6 +14,13 @@ type Props = Omit<
   // `w-full min-w-0`) the original `<textarea>` carried so the
   // wrapper occupies the same row.
   wrapperClassName?: string;
+  // Grow the wrapper to fit the value or the placeholder text. Renders
+  // a hidden sizing ghost in the same grid cell as the textarea so the
+  // wrapper tracks `max(value, placeholder)`. Without this, a multi-
+  // line placeholder clips when the textarea is empty —
+  // `field-sizing: content` only sizes to the value, and the `rows`
+  // attribute pins the textarea to a fixed row count.
+  sizeToContent?: boolean;
 };
 
 // Textarea with an inline X button that clears the value in one tap.
@@ -29,6 +36,8 @@ export const ClearableTextarea = forwardRef<HTMLTextAreaElement, Props>(
       wrapperClassName,
       disabled,
       readOnly,
+      placeholder,
+      sizeToContent,
       ...rest
     },
     ref,
@@ -44,16 +53,35 @@ export const ClearableTextarea = forwardRef<HTMLTextAreaElement, Props>(
     );
     const hasValue = value.length > 0;
     const canClear = hasValue && !disabled && !readOnly;
+    const textareaClass = `${className ?? ""} ${canClear ? "pr-8" : ""}`.trim();
 
     return (
-      <div className={`relative ${wrapperClassName ?? ""}`.trim()}>
+      <div
+        className={`relative ${sizeToContent ? "grid grid-cols-1" : ""} ${wrapperClassName ?? ""}`.trim()}
+      >
+        {sizeToContent && (
+          // Sizing ghost: same padding / font / wrapping as the textarea
+          // but invisible. Sharing the grid cell forces the wrapper to
+          // size to whichever side is taller. The trailing space keeps
+          // a value that ends in `\n` from collapsing, so an empty
+          // trailing line is still represented in the ghost's height.
+          <div
+            aria-hidden
+            style={{ gridArea: "1 / 1" }}
+            className={`pointer-events-none invisible whitespace-pre-wrap break-words ${textareaClass}`}
+          >
+            {value || placeholder || ""}{" "}
+          </div>
+        )}
         <textarea
           ref={setRefs}
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
           disabled={disabled}
           readOnly={readOnly}
-          className={`${className ?? ""} ${canClear ? "pr-8" : ""}`.trim()}
+          placeholder={placeholder}
+          style={sizeToContent ? { gridArea: "1 / 1" } : undefined}
+          className={textareaClass}
           {...rest}
         />
         {canClear && (

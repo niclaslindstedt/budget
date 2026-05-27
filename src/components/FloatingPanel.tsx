@@ -129,6 +129,11 @@ export function FloatingPanel({
   // the panel's bottom edge, mirror that: border the top-left +
   // top-right of the rotated square.
   const arrowBorderClass = flipUp ? "border-b border-r" : "border-t border-l";
+  // `kind: "max"` panels (e.g. the description popover) declare a hard
+  // upper-bound width — `position.width` is `min(maxPx, viewport - margin)`.
+  // Cap the panel at that width too, otherwise wide intrinsic content
+  // (e.g. a sizing ghost) lets the panel grow past `maxPx`.
+  const fixedWidth = placement.width.kind === "max";
   return createPortal(
     <>
       <DismissBackdrop onDismiss={onClose} />
@@ -139,6 +144,7 @@ export function FloatingPanel({
           top: position.top,
           left: position.left,
           minWidth: position.width,
+          maxWidth: fixedWidth ? position.width : undefined,
           maxHeight: position.maxHeight,
           transform: flipUp ? "translateY(-100%)" : undefined,
         }}
