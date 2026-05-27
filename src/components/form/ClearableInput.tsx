@@ -14,6 +14,10 @@ type Props = Omit<
   // `w-full min-w-0`, `flex-1`) the original `<input>` carried so the
   // wrapper occupies the same row.
   wrapperClassName?: string;
+  // Override the default "Clear" aria-label on the inline X. Use a
+  // more specific verb when the parent input has an obvious noun (e.g.
+  // "Clear search") so screen reader users hear what's being cleared.
+  clearLabel?: string;
 };
 
 // Text / numeric input with an inline X button that clears the value
@@ -32,6 +36,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, Props>(
       onValueChange,
       className,
       wrapperClassName,
+      clearLabel,
       disabled,
       readOnly,
       type = "text",
@@ -67,7 +72,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, Props>(
           <button
             type="button"
             tabIndex={-1}
-            aria-label={t("common.clear")}
+            aria-label={clearLabel ?? t("common.clear")}
             // Keep the press from shifting focus to the button itself —
             // we want focus to land on the input so the soft keyboard
             // stays up (mobile) and the user can keep typing (desktop).

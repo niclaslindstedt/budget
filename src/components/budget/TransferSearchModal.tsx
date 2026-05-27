@@ -85,6 +85,7 @@ export function TransferSearchModal({
             onKeyDown={handleKeyDown}
             placeholder={t("searchTransaction.placeholder")}
             aria-label={t("searchTransaction.placeholder")}
+            clearLabel={t("searchTransaction.clear")}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
