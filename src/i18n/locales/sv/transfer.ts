@@ -16,6 +16,8 @@ const transfer: TransferCatalog = {
   needTwoAccounts: "En överföring kräver två olika konton.",
   markAsDone: "Markera som klar",
   pickAccount: "Välj ett konto",
+  chooseAccount: "Välj ett konto",
+  noAccountsYet: "Inga konton ännu — skapa ett från Konto-bladet.",
   deleteTitle: "Ta bort överföring?",
   deleteHint: "De två bankposterna som slogs ihop kommer tillbaka.",
   isTransfer: "Detta är en överföring mellan två konton",

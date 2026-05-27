@@ -29,6 +29,7 @@ const formula: FormulaCatalog = {
   insertVariableAria: "Infoga formelvariabel eller funktion",
   insertVariableTitle: "Infoga en formelvariabel eller funktion",
   variablesButtonLabel: "Variabler",
+  computedFromFormula: "Beräknas från en formel",
   thisSheet: "Detta blad",
   functionsSection: "Funktioner",
   sheetSectionPrefix: "Blad ·",
