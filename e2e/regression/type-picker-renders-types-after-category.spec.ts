@@ -37,8 +37,11 @@ test.describe("Type picker renders types after picking a category", () => {
       .first()
       .click();
     const lastRow = page.locator("tbody tr").last();
-    await lastRow.locator("textarea").first().fill("Hemkärt AB");
-    await page.keyboard.press("Tab");
+    // Description cell drives both viewports through the portalled
+    // `DescriptionPopover`; fill via the trigger + popover textarea.
+    await lastRow.getByRole("button", { name: "Add description" }).click();
+    await page.getByPlaceholder("Description").fill("Hemkärt AB");
+    await page.keyboard.press("Escape");
     const amountInput = lastRow.locator("input[inputmode='decimal']").first();
     await amountInput.fill("3600");
     await amountInput.blur();

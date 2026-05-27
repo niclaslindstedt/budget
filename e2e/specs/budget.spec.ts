@@ -55,10 +55,16 @@ test.describe("Budget page", () => {
     // but stripped on every storage write, so a description-only row
     // would silently vanish on reload — fill both fields here so the
     // row reaches the on-disk snapshot.
+    //
+    // The description cell drives both viewports through the portalled
+    // `DescriptionPopover` (with company picker + bank-memo line), so
+    // edits go via the trigger button → popover textarea, not an
+    // inline textarea in the row.
     const newRow = tbody.locator("tr").last();
-    const description = newRow.locator("textarea").first();
+    await newRow.getByRole("button", { name: "Add description" }).click();
+    const description = page.getByPlaceholder("Description");
     await description.fill("Rent");
-    await description.blur();
+    await page.keyboard.press("Escape");
 
     const amountInput = newRow.locator("input[inputmode='decimal']").first();
     await amountInput.fill("1234");
@@ -70,7 +76,9 @@ test.describe("Budget page", () => {
 
     // Guest sessions auto-rehydrate, so the same row should render
     // after the reload without re-clicking "Continue".
-    await expect(page.locator("textarea").first()).toHaveValue("Rent");
+    await expect(
+      page.getByRole("button", { name: "Description: Rent" }).first(),
+    ).toBeVisible();
     // The amount cell hides its sign in the input value — only the
     // absolute value is visible. The default sign on a new row is
     // negative (cost), so the persisted `-1234` displays as `1,234`
