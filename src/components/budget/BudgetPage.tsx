@@ -57,6 +57,8 @@ import type {
 import { suppressScrollHide } from "../../hooks";
 import { formatNumber, withCurrency } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
+import { type BudgetContextValue } from "./BudgetContext";
+import { BudgetContextProvider } from "./BudgetContextProvider";
 import { useBudgetLayoutState } from "./hooks/useBudgetLayoutState";
 import { MonthTable } from "./MonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
@@ -402,6 +404,36 @@ export function BudgetPage({
       typesById,
     };
   }, [item.columns, typesById]);
+
+  // Bundle the cross-cutting taxonomy + settings the budget subtree
+  // reaches for in every row. Memoised once per change to any input so
+  // every memoised descendant sees a stable context reference across
+  // ordinary edits — only a real taxonomy / settings change forces a
+  // re-render of the row tree.
+  const budgetContextValue = useMemo<BudgetContextValue>(
+    () => ({
+      types,
+      typesById,
+      categories,
+      companies,
+      companiesById,
+      onCreateType,
+      onCreateCategory,
+      onCreateCompany,
+      settings,
+    }),
+    [
+      types,
+      typesById,
+      categories,
+      companies,
+      companiesById,
+      onCreateType,
+      onCreateCategory,
+      onCreateCompany,
+      settings,
+    ],
+  );
 
   // Interleave synthesized transfer rows alongside the budget's own
   // rows so month grouping, running balance, and sort-by-date pick them
@@ -1150,209 +1182,208 @@ export function BudgetPage({
 
   return (
     <ActiveRowProvider>
-      <section ref={sectionRef} data-sheet-content>
-        <header className="mb-2 flex items-center justify-center gap-2 md:mb-6">
-          <h2 className="m-0 text-base font-bold text-fg-bright">
-            {sheet.name}
-          </h2>
-          <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
-        </header>
-        <div className="flex flex-col gap-3 md:gap-6">
-          {hasMoreHistory &&
-            settings.transactionSortOrder === "oldestFirst" && (
-              <BudgetMonthSectionToggle
-                label={t("budget.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
-                onClick={onShowMoreHistoryClick}
-              />
-            )}
-          {hasHiddenFuture &&
-            settings.transactionSortOrder === "newestFirst" && (
-              <BudgetMonthSectionToggle
-                label={t("budget.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
-                onClick={onShowMoreFutureClick}
-              />
-            )}
-          {visibleMonths.map((monthKey) => {
-            const slot = monthSlots.get(monthKey);
-            if (!slot) return null;
-            const {
-              onAddRow: slotAdd,
-              onAddComplex: slotAddComplex,
-              onToggleCollapsed: slotToggle,
-            } = slot;
-            const isCurrent = monthKey === currentMonth;
-            const monthRows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
-            return (
-              <div
-                key={monthKey}
-                ref={isCurrent ? scrollTargetRef : null}
-                data-month-key={monthKey}
-              >
-                <MonthTable
-                  monthKey={monthKey}
-                  rows={monthRows}
-                  columns={decoratedItem.columns}
-                  balances={balances}
-                  types={types}
-                  typesById={typesById}
-                  companiesById={companiesById}
-                  companies={companies}
-                  categories={categories}
-                  onCreateType={onCreateType}
-                  onCreateCategory={onCreateCategory}
-                  onCreateCompany={onCreateCompany}
-                  onSetRowCompany={onSetRowCompany}
-                  settings={settings}
-                  selectMode={selectMode}
-                  selectedIds={selectedIds}
-                  canTransfer={canTransfer}
-                  amountChars={colWidths.amountChars}
-                  balanceChars={colWidths.balanceChars}
-                  collapsed={collapsedMonths.has(monthKey)}
-                  covered={
-                    // `coveredSet` keys are fiscal months — same
-                    // basis as `monthKey` — so straight membership
-                    // is the right check. The `+` button hides only
-                    // when history is authoritative across the entire
-                    // fiscal window the section represents.
-                    coveredSet.has(monthKey)
-                  }
-                  orphanCount={orphanCountByMonth.get(monthKey) ?? 0}
-                  onTriage={
-                    coveredSet.has(monthKey) &&
-                    (orphanCountByMonth.get(monthKey) ?? 0) > 0
-                      ? () => onTriageMonth(monthKey)
-                      : undefined
-                  }
-                  onToggleCollapsed={slotToggle}
-                  forceMount={monthKey === forceMountMonthKey}
-                  hideTransfers={settings.hideTransfers}
-                  expandedTransferAnchors={expandedTransferAnchors}
-                  onToggleTransferAnchor={toggleTransferAnchor}
-                  onToggleRowTransfer={onToggleRowTransfer}
-                  onUpdateCell={handleUpdateCell}
-                  onCommitCell={onCommitCell}
-                  onAddRow={slotAdd}
-                  onAddComplex={slotAddComplex}
-                  onDeleteRequest={onDeleteRequest}
-                  onEditRequest={onEditRequest}
-                  onEditRowRequest={onEditRowRequest}
-                  onSplitRequest={onSplitRequest}
-                  onTransferRequest={onTransferRequest}
-                  onMatchRuleRequest={onMatchRuleRequest}
-                  onEditHistoryRequest={onEditHistoryRequest}
-                  onCopyRequest={onCopyRequest}
-                  onSetFiscalMonthShift={onSetFiscalMonthShift}
-                  onCorrectionDeleteRequest={onCorrectionDeleteRequest}
-                  onReorderColumns={onReorderColumns}
-                  onToggleSelect={onToggleSelect}
-                  onToggleSelectMonth={onToggleSelectMonth}
+      <BudgetContextProvider value={budgetContextValue}>
+        <section ref={sectionRef} data-sheet-content>
+          <header className="mb-2 flex items-center justify-center gap-2 md:mb-6">
+            <h2 className="m-0 text-base font-bold text-fg-bright">
+              {sheet.name}
+            </h2>
+            <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
+          </header>
+          <div className="flex flex-col gap-3 md:gap-6">
+            {hasMoreHistory &&
+              settings.transactionSortOrder === "oldestFirst" && (
+                <BudgetMonthSectionToggle
+                  label={t("budget.showEarlierMonths", {
+                    n: HISTORY_PAGE_SIZE,
+                  })}
+                  onClick={onShowMoreHistoryClick}
                 />
-              </div>
-            );
-          })}
-          {hasHiddenFuture &&
-            settings.transactionSortOrder === "oldestFirst" && (
-              <BudgetMonthSectionToggle
-                label={t("budget.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
-                onClick={onShowMoreFutureClick}
-              />
-            )}
-          {hasMoreHistory &&
-            settings.transactionSortOrder === "newestFirst" && (
-              <BudgetMonthSectionToggle
-                label={t("budget.showEarlierMonths", { n: HISTORY_PAGE_SIZE })}
-                onClick={onShowMoreHistoryClick}
-              />
-            )}
-        </div>
-        <BudgetViewerModal
-          open={viewerOpen}
-          onClose={() => setViewerOpen(false)}
-          sheet={sheet}
-          item={decoratedItem}
-          balances={balances}
-          types={types}
-          settings={settings}
-        />
-        <FindConflictsModal
-          open={conflictsOpen}
-          onClose={() => setConflictsOpen(false)}
-          rows={decoratedItem.rows}
-          columns={decoratedItem.columns}
-          types={types}
-          categories={categories}
-          settings={settings}
-          accountId={item.accountId}
-          descriptionColumnId={
-            findColumnByType(decoratedItem.columns, "description")?.id ?? null
-          }
-          onMergeIntoHistory={onMergeConflictIntoHistory}
-          onMergeUserRows={onMergeConflictUserRows}
-        />
-        <BudgetMetadataModal
-          open={metadataOpen}
-          onClose={() => setMetadataOpen(false)}
-          accountId={item.accountId}
-          entries={history}
-          merchantHints={merchantHints}
-          matchRules={matchRules}
-          types={types}
-          categories={categories}
-          companies={companies}
-          settings={settings}
-          onCreateType={onCreateType}
-          onCreateCategory={onCreateCategory}
-          onCreateCompany={onCreateCompany}
-          onUpdateHistoryEntry={onUpdateHistoryEntry}
-        />
-      </section>
-      {showTodayButton &&
-        // Floating pill anchored above the BottomBar (z-30) when the
-        // user has scrolled into the past, or below the sticky page
-        // header when they've scrolled into the future — z-40 keeps it
-        // above the sheet content but below any modal backdrop
-        // (z-50+). `pointer-events-none` on the wrapper lets the rows
-        // underneath stay tappable in the gutter; the button itself
-        // re-enables them.
-        //
-        // Portalled to `document.body` so `position: fixed` resolves
-        // against the layout viewport. The sheet-panel wrapper in
-        // AppShell carries `will-change: transform` (for the
-        // swipe-between-sheets perf hint), and the CSS spec says any
-        // element with `will-change` set to a property that creates a
-        // stacking context — `transform` included — also creates a
-        // containing block for fixed-position descendants. Without
-        // the portal, the pill rendered at `top: 61px` relative to
-        // that wrapper and slid out of view as soon as the user
-        // scrolled.
-        createPortal(
-          <div
-            className={
-              todayButtonDirection === "up"
-                ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+var(--month-header-h)+var(--column-header-h)+0.5rem)]"
-                : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(var(--bottom-bar-h)+0.5rem)]"
-            }
-            data-floating-chrome
-            data-toast-stack={todayButtonDirection === "down" ? "" : undefined}
-          >
-            <button
-              type="button"
-              onClick={() => scrollToToday("smooth")}
-              aria-label={t("app.scrollToToday")}
-              title={t("app.scrollToToday")}
-              className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-            >
-              {todayButtonDirection === "up" ? (
-                <ChevronUp size={14} aria-hidden focusable={false} />
-              ) : (
-                <ChevronDown size={14} aria-hidden focusable={false} />
               )}
-              {t("common.today")}
-            </button>
-          </div>,
-          document.body,
-        )}
+            {hasHiddenFuture &&
+              settings.transactionSortOrder === "newestFirst" && (
+                <BudgetMonthSectionToggle
+                  label={t("budget.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
+                  onClick={onShowMoreFutureClick}
+                />
+              )}
+            {visibleMonths.map((monthKey) => {
+              const slot = monthSlots.get(monthKey);
+              if (!slot) return null;
+              const {
+                onAddRow: slotAdd,
+                onAddComplex: slotAddComplex,
+                onToggleCollapsed: slotToggle,
+              } = slot;
+              const isCurrent = monthKey === currentMonth;
+              const monthRows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
+              return (
+                <div
+                  key={monthKey}
+                  ref={isCurrent ? scrollTargetRef : null}
+                  data-month-key={monthKey}
+                >
+                  <MonthTable
+                    monthKey={monthKey}
+                    rows={monthRows}
+                    columns={decoratedItem.columns}
+                    balances={balances}
+                    onSetRowCompany={onSetRowCompany}
+                    selectMode={selectMode}
+                    selectedIds={selectedIds}
+                    canTransfer={canTransfer}
+                    amountChars={colWidths.amountChars}
+                    balanceChars={colWidths.balanceChars}
+                    collapsed={collapsedMonths.has(monthKey)}
+                    covered={
+                      // `coveredSet` keys are fiscal months — same
+                      // basis as `monthKey` — so straight membership
+                      // is the right check. The `+` button hides only
+                      // when history is authoritative across the entire
+                      // fiscal window the section represents.
+                      coveredSet.has(monthKey)
+                    }
+                    orphanCount={orphanCountByMonth.get(monthKey) ?? 0}
+                    onTriage={
+                      coveredSet.has(monthKey) &&
+                      (orphanCountByMonth.get(monthKey) ?? 0) > 0
+                        ? () => onTriageMonth(monthKey)
+                        : undefined
+                    }
+                    onToggleCollapsed={slotToggle}
+                    forceMount={monthKey === forceMountMonthKey}
+                    hideTransfers={settings.hideTransfers}
+                    expandedTransferAnchors={expandedTransferAnchors}
+                    onToggleTransferAnchor={toggleTransferAnchor}
+                    onToggleRowTransfer={onToggleRowTransfer}
+                    onUpdateCell={handleUpdateCell}
+                    onCommitCell={onCommitCell}
+                    onAddRow={slotAdd}
+                    onAddComplex={slotAddComplex}
+                    onDeleteRequest={onDeleteRequest}
+                    onEditRequest={onEditRequest}
+                    onEditRowRequest={onEditRowRequest}
+                    onSplitRequest={onSplitRequest}
+                    onTransferRequest={onTransferRequest}
+                    onMatchRuleRequest={onMatchRuleRequest}
+                    onEditHistoryRequest={onEditHistoryRequest}
+                    onCopyRequest={onCopyRequest}
+                    onSetFiscalMonthShift={onSetFiscalMonthShift}
+                    onCorrectionDeleteRequest={onCorrectionDeleteRequest}
+                    onReorderColumns={onReorderColumns}
+                    onToggleSelect={onToggleSelect}
+                    onToggleSelectMonth={onToggleSelectMonth}
+                  />
+                </div>
+              );
+            })}
+            {hasHiddenFuture &&
+              settings.transactionSortOrder === "oldestFirst" && (
+                <BudgetMonthSectionToggle
+                  label={t("budget.showFutureMonths", { n: FUTURE_PAGE_SIZE })}
+                  onClick={onShowMoreFutureClick}
+                />
+              )}
+            {hasMoreHistory &&
+              settings.transactionSortOrder === "newestFirst" && (
+                <BudgetMonthSectionToggle
+                  label={t("budget.showEarlierMonths", {
+                    n: HISTORY_PAGE_SIZE,
+                  })}
+                  onClick={onShowMoreHistoryClick}
+                />
+              )}
+          </div>
+          <BudgetViewerModal
+            open={viewerOpen}
+            onClose={() => setViewerOpen(false)}
+            sheet={sheet}
+            item={decoratedItem}
+            balances={balances}
+            types={types}
+            settings={settings}
+          />
+          <FindConflictsModal
+            open={conflictsOpen}
+            onClose={() => setConflictsOpen(false)}
+            rows={decoratedItem.rows}
+            columns={decoratedItem.columns}
+            types={types}
+            categories={categories}
+            settings={settings}
+            accountId={item.accountId}
+            descriptionColumnId={
+              findColumnByType(decoratedItem.columns, "description")?.id ?? null
+            }
+            onMergeIntoHistory={onMergeConflictIntoHistory}
+            onMergeUserRows={onMergeConflictUserRows}
+          />
+          <BudgetMetadataModal
+            open={metadataOpen}
+            onClose={() => setMetadataOpen(false)}
+            accountId={item.accountId}
+            entries={history}
+            merchantHints={merchantHints}
+            matchRules={matchRules}
+            types={types}
+            categories={categories}
+            companies={companies}
+            settings={settings}
+            onCreateType={onCreateType}
+            onCreateCategory={onCreateCategory}
+            onCreateCompany={onCreateCompany}
+            onUpdateHistoryEntry={onUpdateHistoryEntry}
+          />
+        </section>
+        {showTodayButton &&
+          // Floating pill anchored above the BottomBar (z-30) when the
+          // user has scrolled into the past, or below the sticky page
+          // header when they've scrolled into the future — z-40 keeps it
+          // above the sheet content but below any modal backdrop
+          // (z-50+). `pointer-events-none` on the wrapper lets the rows
+          // underneath stay tappable in the gutter; the button itself
+          // re-enables them.
+          //
+          // Portalled to `document.body` so `position: fixed` resolves
+          // against the layout viewport. The sheet-panel wrapper in
+          // AppShell carries `will-change: transform` (for the
+          // swipe-between-sheets perf hint), and the CSS spec says any
+          // element with `will-change` set to a property that creates a
+          // stacking context — `transform` included — also creates a
+          // containing block for fixed-position descendants. Without
+          // the portal, the pill rendered at `top: 61px` relative to
+          // that wrapper and slid out of view as soon as the user
+          // scrolled.
+          createPortal(
+            <div
+              className={
+                todayButtonDirection === "up"
+                  ? "pointer-events-none fixed inset-x-0 z-40 flex justify-center top-[calc(var(--app-header-h)+var(--month-header-h)+var(--column-header-h)+0.5rem)]"
+                  : "pointer-events-none fixed inset-x-0 z-40 flex justify-center bottom-[calc(var(--bottom-bar-h)+0.5rem)]"
+              }
+              data-floating-chrome
+              data-toast-stack={
+                todayButtonDirection === "down" ? "" : undefined
+              }
+            >
+              <button
+                type="button"
+                onClick={() => scrollToToday("smooth")}
+                aria-label={t("app.scrollToToday")}
+                title={t("app.scrollToToday")}
+                className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+              >
+                {todayButtonDirection === "up" ? (
+                  <ChevronUp size={14} aria-hidden focusable={false} />
+                ) : (
+                  <ChevronDown size={14} aria-hidden focusable={false} />
+                )}
+                {t("common.today")}
+              </button>
+            </div>,
+            document.body,
+          )}
+      </BudgetContextProvider>
     </ActiveRowProvider>
   );
 }

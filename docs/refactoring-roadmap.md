@@ -72,17 +72,23 @@ to **Pending** with a rating.
 
 ### Severity 9–10 — architectural blockers
 
-- **`useUserDataStorage.ts` (1139 lines) is a god hook** — the
+- **`useUserDataStorage.ts` (1167 lines) is a god hook** — the
   persistence engine of the app. Braids load / save / conflict
-  resolution / shrink-warning / undo-redo with nine parallel `useRef`
-  variables and three `useEffect` blocks whose dependency arrays each
-  span 20+ entries. The `performSave` callback alone spans ~180 lines.
-  Bugs here corrupt user data or leak auth tokens. **Severity: 9.**
+  resolution / shrink-warning with parallel `useRef` variables and
+  `useEffect` blocks whose dependency arrays each span 20+ entries.
+  The `performSave` callback alone spans ~180 lines. Bugs here
+  corrupt user data or leak auth tokens. **Severity: 9.**
   - Plan (two PRs, in order to keep each reviewable):
-    1. Split the in-hook reducer state into named slices
-       (`conflictResolutionReducer`, `authErrorReducer`,
-       `shrinkWarningReducer`) — disentangling the braid before any
-       file split, otherwise the split just relocates the braid.
+    1. Split the remaining in-hook state into named slices — the
+       `SaveStatus` machine is currently a `useState<SaveStatus>` with
+       ~25 inline `setStatus(...)` call sites scattered across load,
+       save, throttle-resume, conflict-resolution, and shrink-warning
+       paths. Pull those transitions into a single `statusReducer`
+       with named actions (`load-start`, `save-success`, `conflict`,
+       `auth-error`, `throttle-resume`, `confirm-shrink-save`, …)
+       so the state machine is auditable in one place. The
+       `historyReducer` half of this step landed 2026-05 (see
+       Landed).
     2. Extract `useLoadState`, `useSaveStateMachine`, and
        `useUndoRedo` as siblings; the outer hook becomes a thin
        composer that wires their outputs together.
@@ -137,27 +143,22 @@ to **Pending** with a rating.
     a flat object, but the prop count drops from 30 to ~5 typed
     bundles.
 
-- **`BudgetPage.tsx` (1373 lines) prop drilling + memo pyramid** —
-  threads `types`, `categories`, `companies`, `onCreateType`,
-  `onCreateCategory`, `onCreateCompany`, `settings`, … through
-  `MonthTable` (50+ props) → `BudgetRow` → `BudgetCell` →
-  `TypePicker`. 15+ overlapping `useMemo`s build derived state; one
-  memo broken cascades through the others. Porting to React Native
-  or adding a savings/loans sibling page will copy this prop tree.
-  **Severity: 7.**
-  - Plan: a `<BudgetContext>` provider near the top of `BudgetPage`
-    holding `{ types, categories, companies, settings, onCreate* }`
-    so descendants `useContext`. Collapse the memo pyramid by
-    deriving a single `ComputedBudgetState` object (months,
-    balances, synthesised rows) memoised once at the top.
-  - Caveat: a context for hot-path renders is fine as long as the
-    object identity is memoised — re-creating it per render would
-    re-render every descendant. Stabilise with `useMemo`.
-
-- **`MonthTable.tsx` (682 lines) has a 50-property `Props` type** —
-  symptom of the same disease as `BudgetPage.tsx`. Same fix:
-  consume the context, drop the threaded props to ~5. **Severity:
-  7** (folds into the above; same PR).
+- **`BudgetPage.tsx` derived-state memo pyramid** — the prop-
+  drilling half of the original "BudgetPage prop drilling + memo
+  pyramid" candidate landed 2026-05 (see Landed: `<BudgetContext>`).
+  What remains is the 15+ overlapping `useMemo`s that derive
+  visible-month / sorted-month-groups / col-widths / balance-overrides
+  / synthesised-rows / merged-item / decorated-item / coveredSet /
+  orphanCountByMonth. One memo breaking cascades through the others;
+  a planner sheet type that wants to reuse a subset of those derivations
+  would have to fork the pyramid. **Severity: 5.**
+  - Plan: derive a single `ComputedBudgetState` object (visible months,
+    balances, synthesised rows, coveredSet) memoised once at the top
+    of `BudgetPage`. The downstream JSX reads fields off that object
+    instead of carrying 8 separate memos.
+  - Risk: low — pure refactor with no observable behaviour change.
+    Make sure each memo's dep array stays exact when consolidated so
+    the budget table doesn't recompute on every keystroke.
 
 - **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
   half of the previous duplicated-editor item; the `<EntityForm>`
@@ -200,11 +201,14 @@ to **Pending** with a rating.
   import order at the entry point because `@layer components` rules
   consume colour vars declared in `@theme`.
 
-- **`useUserDataStorage.ts` reducer split (step 1 of the god-hook
-  decomposition)** — same item as the severity-9 god hook, listed
-  here because the **first PR** of the plan (reducer-state split
-  only) is a moderate-risk friction fix on its own. The 9-rating
-  applies to the full extraction including sibling hooks.
+- **`useUserDataStorage.ts` `statusReducer` extraction (step 1 of
+  the god-hook decomposition, second half)** — same item as the
+  severity-9 god hook, listed here because the **statusReducer half
+  of step 1** is a moderate-risk friction fix on its own (the
+  `historyReducer` half already landed 2026-05). Walks the ~25
+  inline `setStatus(...)` calls into a single named-action reducer.
+  The 9-rating applies to the full extraction including sibling
+  hooks; this slice on its own is severity 6.
 
 - **`budget/formula.ts` (680 lines) parser/evaluator entanglement** —
   tokenizer + parser + evaluator share a module with no abstraction
@@ -384,6 +388,35 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`<BudgetContext>` provider + descendant consumption** (2026-05):
+  the cross-cutting `types` / `typesById` / `categories` / `companies` /
+  `companiesById` / `onCreateType` / `onCreateCategory` / `onCreateCompany` /
+  `settings` props now flow through a memoised `BudgetContext`
+  (`src/components/budget/BudgetContext.ts` + matching `.tsx` provider
+  shim for the Fast Refresh boundary, mirroring the `useToast`
+  pattern). `MonthTable.tsx`, `BudgetRow.tsx`, and `BudgetCell.tsx`
+  consume the context and drop those props from their signatures —
+  MonthTable's Props type shrinks from 50 fields to ~36, BudgetRow's
+  from ~30 to ~21, BudgetCell's from ~30 to ~22. The
+  taxonomy / settings references all flow through a single memoised
+  value so descendant `memo`s still skip ordinary edits. The
+  derived-state memo pyramid half of the original BudgetPage
+  candidate is still pending (rated down to 5 — see Pending).
+- **`historyReducer` extraction in `useUserDataStorage.ts`** (2026-05):
+  the half of the severity-9 step-1 plan that consolidates the
+  undo / redo / jumpToHistory / resetHistory transitions onto a
+  single named-action `useReducer`. Action union is
+  `reset | append | step-cursor | set-cursor`; the four call-sites
+  in the hook now dispatch one of those rather than each carrying its
+  own `setHistoryState((state) => …)` updater. A
+  `historyStateRef` mirror lets the cursor-move callbacks read the
+  current entry synchronously before dispatching, so the `setData`
+  side-effect lives outside the reducer (which stays pure). No
+  behaviour change — same cap, same UI-only-action filter, same
+  truncate-on-append semantics. Reduces the in-hook state-mutation
+  braid; the matching `statusReducer` half (the ~25 inline `setStatus`
+  calls) is still pending (see Pending — severity 6 on its own,
+  rolled into the severity-9 godhook plan).
 - **`TypePicker` `filterFn` escape hatch** (2026-05): the
   `amountSign` prop is now backed by an optional generic
   `filterFn?: (type: EntryType) => boolean` that takes precedence

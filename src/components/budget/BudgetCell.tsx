@@ -2,13 +2,13 @@ import { memo } from "react";
 import { Check } from "lucide-react";
 
 import type {
-  Category,
   CellValue,
   Column,
   Company,
   EntryType,
   Settings,
 } from "../../data/types";
+import { useBudgetContext } from "./BudgetContext";
 import { AmountCell } from "./cells/AmountCell";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
 import { BalanceCell } from "./cells/BalanceCell";
@@ -26,7 +26,6 @@ type Props = {
   column: Column;
   value: CellValue;
   computedBalance?: number;
-  settings: Settings;
   isRecurring?: boolean;
   // Resolved EntryType for `row.typeId`. Drives the dedicated `type`
   // column's picker / readonly chip, and — on recurring rows — the
@@ -39,25 +38,11 @@ type Props = {
   // and the row has no user-authored description — replacing the
   // type-name / bank-text fallback.
   company?: Company | null;
-  // Full company list — forwarded to the description popover's inline
-  // CompanyPicker so the user can tag (or change) the row's company
-  // straight from the description reveal. Optional: omitted on
-  // synthesized transfer rows (no DescriptionCell rendered) and any
-  // future call site that doesn't want the picker exposed.
-  companies?: readonly Company[];
-  onCreateCompany?: (draft: Omit<Company, "id">) => Company;
   // Pre-bound (no rowId) writer for the row's company. Pre-bound by
   // BudgetRow so this cell can stay agnostic of whether the row is a
   // budget row (dispatches `bulkUpdate`) or a synthesized history row
   // (dispatches `updateHistoryEntry` with `noCompany` cleared).
   onSetCompany?: (companyId: string | null) => void;
-  // Selectable entry types + categories, threaded through for the `type`
-  // column's picker. Optional because synthesized / readonly variants
-  // never reach the editable branch where they'd be consulted.
-  types?: readonly EntryType[];
-  categories?: readonly Category[];
-  onCreateType?: (draft: Omit<EntryType, "id">) => EntryType;
-  onCreateCategory?: (draft: Omit<Category, "id">) => Category;
   // True when this row is a synthesized side of a Transfer. Disables
   // every editor (the row is sourced from `data.transfers`, not the
   // budget's `item.rows`) and swaps the description leading glyph to a
@@ -139,17 +124,10 @@ function CellImpl({
   column,
   value,
   computedBalance,
-  settings,
   isRecurring,
   entryType,
   company,
-  companies,
-  onCreateCompany,
   onSetCompany,
-  types,
-  categories,
-  onCreateType,
-  onCreateCategory,
   isTransfer,
   peerName,
   outgoing,
@@ -168,6 +146,15 @@ function CellImpl({
   onUpdateCell,
   onCommitCell,
 }: Props) {
+  const {
+    settings,
+    types,
+    categories,
+    companies,
+    onCreateType,
+    onCreateCategory,
+    onCreateCompany,
+  } = useBudgetContext();
   // Wrappers that adapt the parent's (rowId, colId, value) handlers into
   // the (value)-only signature the inline editors expect. Allocated per
   // Cell render — but Cell is memoized, so they're only rebuilt when the
@@ -242,8 +229,8 @@ function CellImpl({
           return (
             <TypePickerCell
               rowId={rowId}
-              types={types ?? []}
-              categories={categories ?? []}
+              types={types}
+              categories={categories}
               entryType={entryType ?? null}
               rowDate={rowDate}
               rowDateColor={rowDateColor}
