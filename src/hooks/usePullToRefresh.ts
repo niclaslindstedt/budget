@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { unlock } from "../data/achievements";
+import { hasOpenFloatingPanel, hasOpenModal } from "./dom-queries";
 
 // Touch-driven pull-to-refresh. Listens at the document level for a
 // downward drag that starts while the page is scrolled to the top,
@@ -61,21 +62,6 @@ type Result = {
   // uses this to translate / fade itself in as the user pulls.
   pullDistance: number;
 };
-
-function hasOpenModal(): boolean {
-  return document.querySelector('[aria-modal="true"]') !== null;
-}
-
-// FloatingPanel (TypePicker, CategoryPicker, BackendPicker, …) marks
-// its portalled root + dismiss backdrop with `data-active-portal`.
-// While one is open the user is interacting with a popover whose own
-// scroll container sits over the page, so a downward drag inside it
-// is "scroll up in the list", not "pull the page". Without this gate
-// the document-level listener arms at scrollY=0 and the resulting
-// pull fires `onRefresh` when the user lifts their finger.
-function hasOpenFloatingPanel(): boolean {
-  return document.querySelector("[data-active-portal]") !== null;
-}
 
 function isFormInteractive(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;

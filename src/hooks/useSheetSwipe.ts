@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { unlock } from "../data/achievements";
+import { hasOpenModal } from "./dom-queries";
 
 // Touch-driven sheet-switch fallback. Listens at the document level
 // for a horizontal swipe that originates on a "neutral" page area —
@@ -65,10 +66,6 @@ type Options = {
   // initial load / conflict modals, or when there's only one sheet.
   enabled?: boolean;
 };
-
-function hasOpenModal(): boolean {
-  return document.querySelector('[aria-modal="true"]') !== null;
-}
 
 function isOptedOut(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
