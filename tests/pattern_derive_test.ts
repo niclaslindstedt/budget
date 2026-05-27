@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { derivePatternFromDescription } from "../src/data/pattern-derive";
+import { derivePatternFromDescription } from "../src/data/budget/pattern-derive";
 
 describe("derivePatternFromDescription", () => {
   it("returns an empty pattern for an empty description", () => {

@@ -11,7 +11,7 @@ import {
   detectTransferCandidates,
   hasCollapsedHistory,
   type TransferCandidate,
-} from "../../../data/transfer-collapse";
+} from "../../../data/accounts/transfer-collapse";
 import type {
   AccountBudget,
   Row,

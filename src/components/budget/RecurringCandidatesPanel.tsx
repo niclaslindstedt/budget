@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Repeat, X } from "lucide-react";
 
-import type { RecurringCandidate } from "../../data/recurring-detection";
-import { detectRecurringCandidates } from "../../data/recurring-detection";
+import type { RecurringCandidate } from "../../data/budget/recurring-detection";
+import { detectRecurringCandidates } from "../../data/budget/recurring-detection";
 import { expandRecurrence, type RecurrenceRule } from "../../data/recurrence";
 import { suggestTypeForDescription } from "../../data/merchant-hints";
 import type {

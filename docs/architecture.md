@@ -74,11 +74,38 @@ src/
 │   │   ├── synthesis.ts  # synthesized rows (transfersForAccount,
 │   │   │                 # synthesizeTransferRow, synthesizeHistoryRow,
 │   │   │                 # resolveEntryLabels, isTransferRow)
-│   │   └── export.ts     # CSV/XLSX export builder for an AccountBudget
+│   │   ├── export.ts     # CSV/XLSX export builder for an AccountBudget
+│   │   ├── cells.ts      # generic Row.cells readers (readStringCell,
+│   │   │                 # readNumberCell, firstNonBlank)
+│   │   ├── formula.ts    # tokenizer + parser + evaluator for the
+│   │   │                 # `=` formula cell + display/stored rewriting
+│   │   ├── formula-resolve.ts  # per-row resolveEffectiveAmounts walker
+│   │   │                       # that drives the budget table's
+│   │   │                       # computed amount column
+│   │   ├── pattern-apply.ts    # cross-sheet match-rule application
+│   │   │                       # (reapplyPatternsToAllSheets,
+│   │   │                       # countRuleHitsOnSheets, …)
+│   │   ├── pattern-derive.ts   # derives a glob-pattern seed from a
+│   │   │                       # row description for the
+│   │   │                       # "Label similar" modal
+│   │   └── recurring-detection.ts  # surfaces "looks recurring"
+│   │                               # candidates from HistoryEntry
+│   │                               # clusters (detectRecurringCandidates)
 │   ├── accounts/
 │   │   ├── balance.ts    # account-level aggregation (accountBalance)
-│   │   └── export.ts     # JSON export builder for the accounts sheet
-│   ├── recurrence.ts     # RecurrenceRule + expandRecurrence
+│   │   ├── export.ts     # JSON export builder for the accounts sheet
+│   │   └── transfer-collapse.ts  # mirror-pair detector for
+│   │                             # cross-account history entries
+│   │                             # (detectTransferCandidates)
+│   ├── reconciliation.ts # matches imported history against budget
+│   │                     # rows (used by both pages — kept at root)
+│   ├── recurrence.ts     # RecurrenceRule + expandRecurrence, plus the
+│   │                     # generic isIsoDate validator used by the
+│   │                     # universal DatePickerModal
+│   ├── merchant-hints.ts # description→typeId hints recorded by the
+│   │                     # transfer, recurring, and item reducers
+│   ├── row-candidate.ts  # plumbing for pattern-apply.ts and the
+│   │                     # item-reducer hint path (cross-page)
 │   ├── migrations.ts     # forward-only schema migration runner
 │   └── validate.ts       # boundary validator: unknown → Result<UserData>
 ├── storage/
@@ -580,8 +607,8 @@ import looks up:
   sequences (transaction reference numbers), and a small allowlist
   of Swedish bank-noise prefixes (`Kortköp`, `Överföring`, `Swish`,
   …) — into a stable key. Used by all three modules below.
-- `recurring-detection.ts` buckets entries by normalised key, ranks
-  each bucket by cadence regularity, amount stability, and
+- `budget/recurring-detection.ts` buckets entries by normalised key,
+  ranks each bucket by cadence regularity, amount stability, and
   occurrence count, and emits `RecurringCandidate`s the
   `RecurringCandidatesPanel` surfaces on the budget view. Promotion
   dispatches `promoteRecurringCandidate`, which mints a series of
@@ -589,7 +616,7 @@ import looks up:
   records the chosen type as a merchant hint (its category is derived
   through `type.categoryId`). Dismissals persist in
   `recurringDismissals` so the noise doesn't keep coming back.
-- `transfer-collapse.ts` finds mirror pairs across accounts —
+- `accounts/transfer-collapse.ts` finds mirror pairs across accounts —
   opposite signs, equal magnitude, dates within three days, bonus
   confidence for Swish / Överföring keywords — and emits
   `TransferCandidate`s the `TransferCollapseModal` lists with bulk

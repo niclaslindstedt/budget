@@ -14,8 +14,8 @@
 import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
-} from "./description-normaliser";
-import type { HistoryEntry } from "./types";
+} from "../description-normaliser";
+import type { HistoryEntry } from "../types";
 
 // Cadence kinds the detector recognises. Each maps to a
 // `RecurrenceRule` the reducer can hand to `expandRecurrence`.

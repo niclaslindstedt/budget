@@ -109,39 +109,6 @@ to **Pending** with a rating.
     "reducer split first, hook extraction as a consumer" still
     stands.
 
-- **Budget-specific logic in the universal data layer** — the
-  unprefixed budget-only modules `row-cells.ts` (38), `formula.ts`
-  (680), `formula-resolve.ts` (477), `reconciliation.ts` (546),
-  `pattern-apply.ts` (308), `pattern-derive.ts` (102),
-  `recurrence.ts` (219), `recurring-detection.ts` (292),
-  `row-candidate.ts` (46), `merchant-hints.ts` (106),
-  `transfer-collapse.ts` (251) — all sit at the `src/data/` root
-  but are hard-coupled to `AccountBudget` row schema. New sheet
-  types (savings rows have probability fields; loans have
-  schedules) will either copy this code or branch every callsite
-  on `item.type`. **Severity: 9.**
-  - Step 1 done (2026-05): `src/data/budget/` and
-    `src/data/accounts/` directories now exist. The already-prefixed
-    `budget-rows.ts` / `budget-synthesis.ts` / `budget-export.ts`
-    moved into `src/data/budget/`; `accounts-balance.ts` /
-    `accounts-export.ts` moved into `src/data/accounts/`.
-  - Step 2 (this row): move the unprefixed budget-only modules
-    listed above into `src/data/budget/`. Drop the `-` separators
-    when relocating (`row-cells.ts` → `budget/cells.ts`,
-    `reconciliation.ts` → `budget/reconciliation.ts`,
-    `pattern-apply.ts` → `budget/pattern-apply.ts`, …). Leave only
-    the universal primitives (`sheet.ts`, `types/`,
-    `fiscal-month.ts`, `validate/`, `migrations/`, `reducer.ts`,
-    `reducers/`, `constants.ts`, `presets.ts`, `themes.ts`,
-    `settings.ts`, `achievements/`) at the root. The data-module
-    map in `AGENTS.md` must be updated in the same PR.
-  - Risk: medium — pure module relocation, but ~50 import paths
-    update. Best landed as a sequence of small per-module moves
-    each in their own commit, not one mega-PR. Some candidates
-    here (`recurrence.ts`, `merchant-hints.ts`) cross the
-    accounts boundary — re-verify before moving and consider
-    keeping at root if both pages depend on them.
-
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
 - **`useStorageBackend.ts` (1256 lines)** — split into
@@ -281,16 +248,17 @@ to **Pending** with a rating.
   only) is a moderate-risk friction fix on its own. The 9-rating
   applies to the full extraction including sibling hooks.
 
-- **`formula.ts` (680 lines) parser/evaluator entanglement** —
+- **`budget/formula.ts` (680 lines) parser/evaluator entanglement** —
   tokenizer + parser + evaluator share a module with no abstraction
   boundary. Adding a function (`min`, `max`, `loanPayment`) touches
   tokenizer, parser, evaluator. Cross-sheet variables resolved
   late: a typo on a variable name is a runtime error, not a parse
   error. **Severity: 6.**
-  - Plan: split into `formula-tokenizer.ts`, `formula-parser.ts`,
-    `formula-ast.ts`, `formula-evaluator.ts`. Introduce a function
-    registry so new sheet types register their own functions
-    (`loanPayment(rate, years, principal)`).
+  - Plan: split into `budget/formula-tokenizer.ts`,
+    `budget/formula-parser.ts`, `budget/formula-ast.ts`,
+    `budget/formula-evaluator.ts`. Introduce a function registry so
+    new sheet types register their own functions (`loanPayment(rate,
+years, principal)`).
 
 - **`ReconciliationModal.tsx` (729 lines) state machine in `useState`s** —
   the orphan-decision flow is tracked by ~6 parallel `useState`
@@ -542,10 +510,24 @@ EntryType) => boolean` prop so callers customise; default to
   `src/data/budget/{rows,synthesis,export}.ts`; `accounts-balance.ts` /
   `accounts-export.ts` moved to `src/data/accounts/{balance,export}.ts`.
   17 importers updated. The data-module map in `AGENTS.md` and the tree
-  diagram in `docs/architecture.md` were updated in the same PR. The
-  remaining unprefixed budget-only modules (`row-cells.ts`, `formula.ts`,
-  `reconciliation.ts`, …) stay at root and are tracked as step 2 in the
-  severity-9 row.
+  diagram in `docs/architecture.md` were updated in the same PR.
+- **`src/data/` per-page relocation, step 2** (2026-05): the
+  unambiguously budget-only modules `row-cells.ts`, `formula.ts`,
+  `formula-resolve.ts`, `pattern-derive.ts`, `pattern-apply.ts`, and
+  `recurring-detection.ts` moved under `src/data/budget/` (with
+  `row-cells.ts` renamed to `cells.ts`); `transfer-collapse.ts` —
+  mis-categorised by the earlier sweep, since its mirror-pair
+  detector operates purely on `HistoryEntry`s and is only used by
+  `AppShell/hooks/useTransferFlow.ts` and the accounts modal —
+  moved to `src/data/accounts/transfer-collapse.ts`. The
+  cross-page modules `reconciliation.ts`, `recurrence.ts`,
+  `merchant-hints.ts`, and `row-candidate.ts` stay at the
+  `src/data/` root because they're used by both pages; the
+  detailed reasoning lives in the `## Today` tree in
+  `docs/architecture.md`. The data-layer inventory previously
+  duplicated in `AGENTS.md` was consolidated into
+  `docs/architecture.md` in the same PR, leaving AGENTS.md with
+  just the placement rules.
 
 ---
 

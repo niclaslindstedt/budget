@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wand2 } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../../data/match-rules";
-import { derivePatternFromDescription } from "../../data/pattern-derive";
+import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";

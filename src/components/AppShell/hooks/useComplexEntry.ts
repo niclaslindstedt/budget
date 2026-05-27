@@ -9,7 +9,7 @@ import {
   type RecurrenceRule,
   shiftRuleStartToFuture,
 } from "../../../data/recurrence";
-import type { RecurringCandidate } from "../../../data/recurring-detection";
+import type { RecurringCandidate } from "../../../data/budget/recurring-detection";
 import type { AccountBudget } from "../../../data/types";
 import { todayIso } from "../../../utils/date";
 import type { RecurringPromoteContext } from "../types";

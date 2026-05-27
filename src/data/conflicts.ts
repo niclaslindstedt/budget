@@ -37,7 +37,7 @@
 // Pure: no React, no storage. Consumed by `FindConflictsModal` in
 // `src/components/budget/`.
 
-import { readStringCell } from "./row-cells";
+import { readStringCell } from "./budget/cells";
 import { findColumnByType } from "./sheet";
 import type { Column, EntryType, Row } from "./types";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { detectRecurringCandidates } from "../src/data/recurring-detection";
+import { detectRecurringCandidates } from "../src/data/budget/recurring-detection";
 import type { HistoryEntry } from "../src/data/types";
 
 let counter = 0;

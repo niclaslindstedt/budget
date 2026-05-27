@@ -36,7 +36,7 @@ import {
 import { findColumnByType } from "../../data/sheet";
 import { coveredMonths } from "../../data/coverage";
 import { findOrphans } from "../../data/reconciliation";
-import { resolveEffectiveAmounts } from "../../data/formula-resolve";
+import { resolveEffectiveAmounts } from "../../data/budget/formula-resolve";
 import { useT } from "../../i18n";
 import type {
   Account,
