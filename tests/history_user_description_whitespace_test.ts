@@ -57,7 +57,12 @@ describe("updateHistoryEntry preserves typed whitespace", () => {
     expect(next.history.acct1[0].userDescription).toBe("StockholmGas ");
   });
 
-  it("still clears userDescription when the patch is whitespace-only", () => {
+  it("stamps the empty-string clear signal when the patch is whitespace-only", () => {
+    // The empty string is the load-bearing "user explicitly cleared
+    // this" marker that `resolveEntryLabels` reads to skip the rule /
+    // hint description chain. Deleting the field would let a learned
+    // merchant hint silently refill the cell with the text the user
+    // just removed.
     const state = workspaceWithHistoryEntry({
       ...baseEntry,
       userDescription: "Stockholm Gas",
@@ -68,6 +73,6 @@ describe("updateHistoryEntry preserves typed whitespace", () => {
       entryId: "ent1",
       patch: { userDescription: "   " },
     });
-    expect(next.history.acct1[0].userDescription).toBeUndefined();
+    expect(next.history.acct1[0].userDescription).toBe("");
   });
 });

@@ -101,7 +101,10 @@ describe("reducer.updateHistoryEntry → rename-pattern learning", () => {
       patch: { userDescription: "" },
     });
     expect(next.renamePatterns).toEqual({});
-    expect(next.history[ACCOUNT_ID][0].userDescription).toBeUndefined();
+    // The empty string is the load-bearing "explicit clear" marker
+    // that `resolveEntryLabels` reads to skip rule / hint description
+    // — see `synthesizeHistoryRow` and `history_user_description_whitespace_test.ts`.
+    expect(next.history[ACCOUNT_ID][0].userDescription).toBe("");
   });
 
   it("does not record when the user retypes the existing override text", () => {

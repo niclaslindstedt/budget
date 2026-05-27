@@ -28,14 +28,18 @@ export function reduceHistory(
       (prev) => {
         const next: HistoryEntry = { ...prev };
         if (action.patch.userDescription !== undefined) {
-          // Whitespace-only collapses to "no override" so the user can
-          // clear the field through the modal without the synthesized
-          // row falling back to an empty label. Otherwise persist the
-          // raw value — trimming here would strip a trailing space the
-          // moment the user typed it, leaving the controlled textarea
-          // looking like the keystroke never landed.
+          // Empty / whitespace-only keeps the field as an empty string
+          // rather than deleting it — the empty string is the explicit
+          // "I cleared this" signal that `resolveEntryLabels` reads to
+          // skip the rule / hint description chain. Without it, a
+          // learned merchant hint silently refills the cell with the
+          // text the user just removed, and the row looks unchanged on
+          // close. Non-empty values persist verbatim (no trimming
+          // here — that would strip a trailing space the moment the
+          // user typed it, leaving the controlled textarea looking
+          // like the keystroke never landed).
           const raw = action.patch.userDescription;
-          if (raw.trim() === "") delete next.userDescription;
+          if (raw.trim() === "") next.userDescription = "";
           else next.userDescription = raw;
         }
         if (action.patch.userTypeId !== undefined) {
