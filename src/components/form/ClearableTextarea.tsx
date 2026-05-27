@@ -15,11 +15,11 @@ type Props = Omit<
   // wrapper occupies the same row.
   wrapperClassName?: string;
   // Grow the wrapper to fit the value or the placeholder text. Renders
-  // a hidden sizing ghost in the same grid cell as the textarea so the
-  // wrapper tracks `max(value, placeholder)`. Without this, a multi-
-  // line placeholder clips when the textarea is empty —
-  // `field-sizing: content` only sizes to the value, and the `rows`
-  // attribute pins the textarea to a fixed row count.
+  // a hidden sizing ghost (a duplicate textarea with
+  // `field-sizing: content`) in the same grid cell as the real textarea
+  // so the wrapper tracks `max(value, placeholder)`. Without this, a
+  // multi-line placeholder clips when the textarea is empty — the
+  // browser sizes a textarea to its value, ignoring the placeholder.
   sizeToContent?: boolean;
 };
 
@@ -60,18 +60,24 @@ export const ClearableTextarea = forwardRef<HTMLTextAreaElement, Props>(
         className={`relative ${sizeToContent ? "grid grid-cols-1" : ""} ${wrapperClassName ?? ""}`.trim()}
       >
         {sizeToContent && (
-          // Sizing ghost: same padding / font / wrapping as the textarea
-          // but invisible. Sharing the grid cell forces the wrapper to
-          // size to whichever side is taller. The trailing space keeps
-          // a value that ends in `\n` from collapsing, so an empty
-          // trailing line is still represented in the ghost's height.
-          <div
+          // Sizing ghost: a duplicate textarea with `field-sizing: content`
+          // shares the grid cell with the real textarea so the wrapper
+          // tracks `max(value, placeholder)`. Using a textarea — not a
+          // `div` — means line metrics and word-wrap behavior match
+          // the real control exactly, so the panel sizes to the same
+          // pixel height the text actually needs. With a div ghost,
+          // iOS Safari wrapped the div's text at a different point than
+          // the textarea's placeholder, leaving a 2-line placeholder
+          // pinned to the `rows={1}` intrinsic height.
+          <textarea
             aria-hidden
+            tabIndex={-1}
+            readOnly
+            value={value || placeholder || ""}
+            rows={1}
             style={{ gridArea: "1 / 1" }}
-            className={`pointer-events-none invisible whitespace-pre-wrap break-words ${textareaClass}`}
-          >
-            {value || placeholder || ""}{" "}
-          </div>
+            className={`pointer-events-none invisible [field-sizing:content] ${textareaClass}`}
+          />
         )}
         <textarea
           ref={setRefs}
