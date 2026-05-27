@@ -322,9 +322,33 @@ export function expandToSeries(
   } catch {
     return [];
   }
-  const seriesRows = rows.filter(
-    (r) => r.seriesId === rule.seriesId && !alreadyMatched.has(r.id),
-  );
+  // Project each candidate row to its (date, amount, absCents,
+  // amountCents) once. The previous loop called `readRowDateAmount` —
+  // and recomputed `Math.round(Math.abs(...) * 100)` — for every
+  // (entry, row) pair, even though row data is invariant across the
+  // entry loop. With E entries × R rows this is up to E×R wasted
+  // projections; doing it once collapses to R.
+  type ProjectedRow = {
+    row: Row;
+    date: string;
+    amount: number;
+    absCents: number;
+    amountCents: number;
+  };
+  const seriesRows: ProjectedRow[] = [];
+  for (const r of rows) {
+    if (r.seriesId !== rule.seriesId) continue;
+    if (alreadyMatched.has(r.id)) continue;
+    const ra = readRowDateAmount(r, dateCol.id, amountCol.id);
+    if (!ra) continue;
+    seriesRows.push({
+      row: r,
+      date: ra.date,
+      amount: ra.amount,
+      absCents: Math.round(Math.abs(ra.amount) * 100),
+      amountCents: Math.round(ra.amount * 100),
+    });
+  }
   if (seriesRows.length === 0) return [];
 
   const pool: MatchCandidate[] = [];
@@ -333,26 +357,24 @@ export function expandToSeries(
     if (entry.collapsedIntoTransferId !== undefined) continue;
     if (alreadyMatched.has(`hist:${entry.id}`)) continue;
     if (!re.test(entry.description)) continue;
-    for (const row of seriesRows) {
-      const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
-      if (!ra) continue;
-      if (!sameSign(entry.amount, ra.amount)) continue;
-      const lag = daysBetween(entry.date, ra.date);
+    // Project the entry once too — `Math.round(Math.abs(...) * 100)`
+    // and the absolute-cents form are invariant across the row loop.
+    const entryAbsCents = Math.round(Math.abs(entry.amount) * 100);
+    const entryCents = Math.round(entry.amount * 100);
+    for (const p of seriesRows) {
+      if (!sameSign(entry.amount, p.amount)) continue;
+      const lag = daysBetween(entry.date, p.date);
       if (!Number.isFinite(lag)) continue;
       if (lag < 0 || lag > rule.dateLagDays) continue;
-      const aCents = Math.round(Math.abs(entry.amount) * 100);
-      const bCents = Math.round(Math.abs(ra.amount) * 100);
       const tolerance = Math.max(
         RECONCILIATION_AMOUNT_FLOOR_CENTS,
-        Math.max(aCents, bCents) * rule.amountTolerancePct,
+        Math.max(entryAbsCents, p.absCents) * rule.amountTolerancePct,
       );
-      const deltaCents = Math.abs(
-        Math.round(entry.amount * 100) - Math.round(ra.amount * 100),
-      );
+      const deltaCents = Math.abs(entryCents - p.amountCents);
       if (deltaCents > tolerance) continue;
       pool.push({
         historyEntryId: entry.id,
-        rowId: row.id,
+        rowId: p.row.id,
         amountDelta: deltaCents,
         dateLagDays: lag,
         confidence: "high",
@@ -405,47 +427,65 @@ export function findRuleDrivenCandidates(
   // rows belonging to that rule's series instead of the entire row
   // list. Filters that would always be true for series-bound rows
   // (isCorrection / historyEntryId / transferId) are applied once
-  // during indexing rather than per inner iteration.
-  const rowsBySeries = new Map<string, Row[]>();
+  // during indexing rather than per inner iteration. Each row is
+  // projected to its (date, amount, absCents, amountCents) here too,
+  // so the triple-nested inner loop below reads cached numbers instead
+  // of re-running `readRowDateAmount` + `Math.round(Math.abs(...))` on
+  // every (entry, rule, row) combination — the row data is invariant.
+  type ProjectedRow = {
+    row: Row;
+    date: string;
+    amount: number;
+    absCents: number;
+    amountCents: number;
+  };
+  const rowsBySeries = new Map<string, ProjectedRow[]>();
   for (const row of rows) {
     if (row.isCorrection) continue;
     if (row.historyEntryId) continue;
     if (row.transferId) continue;
     if (typeof row.seriesId !== "string" || row.seriesId === "") continue;
+    const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
+    if (!ra) continue;
+    const projected: ProjectedRow = {
+      row,
+      date: ra.date,
+      amount: ra.amount,
+      absCents: Math.round(Math.abs(ra.amount) * 100),
+      amountCents: Math.round(ra.amount * 100),
+    };
     const list = rowsBySeries.get(row.seriesId);
-    if (list) list.push(row);
-    else rowsBySeries.set(row.seriesId, [row]);
+    if (list) list.push(projected);
+    else rowsBySeries.set(row.seriesId, [projected]);
   }
 
   const pool: MatchCandidate[] = [];
   for (const entry of newEntries) {
     if (entry.hidden) continue;
     if (entry.collapsedIntoTransferId !== undefined) continue;
+    // Project the entry's invariant amount-in-cents form once per
+    // entry instead of once per (rule, row) combination.
+    const entryAbsCents = Math.round(Math.abs(entry.amount) * 100);
+    const entryCents = Math.round(entry.amount * 100);
     for (const c of compiled) {
       if (!c) continue;
       if (!c.re.test(entry.description)) continue;
       const seriesRows = rowsBySeries.get(c.rule.seriesId);
       if (!seriesRows) continue;
-      for (const row of seriesRows) {
-        const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
-        if (!ra) continue;
-        if (!sameSign(entry.amount, ra.amount)) continue;
-        const lag = daysBetween(entry.date, ra.date);
+      for (const p of seriesRows) {
+        if (!sameSign(entry.amount, p.amount)) continue;
+        const lag = daysBetween(entry.date, p.date);
         if (!Number.isFinite(lag)) continue;
         if (lag < 0 || lag > c.rule.dateLagDays) continue;
-        const aCents = Math.round(Math.abs(entry.amount) * 100);
-        const bCents = Math.round(Math.abs(ra.amount) * 100);
         const tolerance = Math.max(
           RECONCILIATION_AMOUNT_FLOOR_CENTS,
-          Math.max(aCents, bCents) * c.rule.amountTolerancePct,
+          Math.max(entryAbsCents, p.absCents) * c.rule.amountTolerancePct,
         );
-        const deltaCents = Math.abs(
-          Math.round(entry.amount * 100) - Math.round(ra.amount * 100),
-        );
+        const deltaCents = Math.abs(entryCents - p.amountCents);
         if (deltaCents > tolerance) continue;
         pool.push({
           historyEntryId: entry.id,
-          rowId: row.id,
+          rowId: p.row.id,
           amountDelta: deltaCents,
           dateLagDays: lag,
           confidence: "high",

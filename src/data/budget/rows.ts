@@ -92,6 +92,13 @@ export function sortRowsByDate(
     isIncome: boolean;
     categoryKey: string;
     desc: string;
+    // Cached `${date}|i|e` bucket id + the category sum for this row
+    // within that bucket. Resolved once per row below so the sort
+    // comparator avoids re-allocating a fresh template-literal string
+    // and doing two Map lookups on every comparison — for n rows the
+    // sort does ~n log n comparisons, so the saved per-call work is the
+    // bulk of `sortRowsByDate`'s cost.
+    bucketSum: number;
   };
   const auxes: Aux[] = rows.map((row) => {
     const amount = rowAmountNumber(row, ctx.amountColumnId);
@@ -103,6 +110,7 @@ export function sortRowsByDate(
       isIncome: rowIsIncome(amount, row, ctx.typesById),
       categoryKey: rowCategoryKey(row, ctx.typesById),
       desc: rowDescriptionString(row, ctx.descriptionColumnId),
+      bucketSum: 0,
     };
   });
   // Per (date, income/expense) bucket, the absolute-amount sum of each
@@ -122,15 +130,18 @@ export function sortRowsByDate(
       (inner.get(aux.categoryKey) ?? 0) + aux.absAmount,
     );
   }
+  // Second pass: stamp each aux row with its precomputed bucket sum so
+  // the comparator below reads a plain number instead of rebuilding the
+  // bucket key + looking up two nested maps on every comparison.
+  for (const aux of auxes) {
+    const bucketKey = `${aux.date}|${aux.isIncome ? "i" : "e"}`;
+    aux.bucketSum = sumByBucket.get(bucketKey)?.get(aux.categoryKey) ?? 0;
+  }
   return auxes
     .sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? -1 : 1;
       if (a.isIncome !== b.isIncome) return a.isIncome ? -1 : 1;
-      const bucketKey = `${a.date}|${a.isIncome ? "i" : "e"}`;
-      const inner = sumByBucket.get(bucketKey);
-      const sa = inner?.get(a.categoryKey) ?? 0;
-      const sb = inner?.get(b.categoryKey) ?? 0;
-      if (sa !== sb) return sb - sa;
+      if (a.bucketSum !== b.bucketSum) return b.bucketSum - a.bucketSum;
       // Two categories with the same sum still need a stable grouping
       // so their rows don't interleave — break sum-ties by category id.
       if (a.categoryKey !== b.categoryKey) {
