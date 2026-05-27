@@ -75,6 +75,15 @@ export type Row = {
   // every other row (regular budget rows, transfers, splits, and
   // history rows whose underlying entry already has an override).
   descriptionPlaceholder?: string;
+  // Runtime-only carrier for the underlying bank entry's raw memo on
+  // history rows where the user (or a rule / hint) has overridden it
+  // — i.e. the inverse of `descriptionPlaceholder`. The description
+  // popover renders this as a read-only "original from bank" line
+  // beneath the textarea so the user can still see what the bank
+  // reported even after relabelling the row. Skipped when the bank
+  // text is already serving as the cell's display value (covered by
+  // `descriptionPlaceholder`) and on every non-history row.
+  bankDescription?: string;
   // Optional dynamic amount: a small formula string whose evaluation
   // produces this row's effective amount at render time. When set, it
   // overrides the numeric value in `cells[amountColumnId]` (which is

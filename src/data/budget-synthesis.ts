@@ -194,6 +194,16 @@ export function synthesizeHistoryRow(
   // description cell can render it in italic + glyph color and open
   // its inline editor empty + with the bank text as the placeholder.
   if (userDescription === null) row.descriptionPlaceholder = entry.description;
+  // Carry the raw bank memo on the inverse path — when the resolved
+  // description IS an override and differs from the bank text — so
+  // the popover can surface a read-only "original from bank" line
+  // alongside the editor without the user losing reference to the
+  // statement memo. Skipped when there's no override (the placeholder
+  // already shows it) or when the override happens to match (no
+  // signal to add).
+  if (userDescription !== null && entry.description !== userDescription) {
+    row.bankDescription = entry.description;
+  }
   return [row];
 }
 

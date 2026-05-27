@@ -80,6 +80,14 @@ type Props = {
   // empty + with this string as the placeholder. Only meaningful on
   // synthesized history rows; ignored by every other column.
   descriptionPlaceholder?: string;
+  // Threaded from `Row.bankDescription`. When set, the row is a
+  // history row whose visible description is a user override that
+  // differs from the bank's memo — the description popover surfaces
+  // this read-only as "original from bank" beneath the textarea so
+  // the user can still see what the statement reported. Undefined
+  // when no override is in play (the placeholder already shows the
+  // bank text) and on every non-history row.
+  bankDescription?: string;
   // True when the row carries an `amountFormula`. The amount cell
   // becomes read-only (the value comes from the formula resolver) and
   // surfaces a small `fx` glyph so the user can tell at a glance that
@@ -156,6 +164,7 @@ function CellImpl({
   rowDescription,
   fiscalMonthShift,
   descriptionPlaceholder,
+  bankDescription,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -222,6 +231,7 @@ function CellImpl({
               company={company ?? null}
               companies={companies}
               placeholder={descriptionPlaceholder}
+              bankDescription={bankDescription}
               onChange={onChange}
               onCommit={onCommit}
               onSetCompany={onSetCompany}
