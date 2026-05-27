@@ -364,6 +364,47 @@ export function BudgetMetadataModal({
       noCompany !== initialRef.current.noCompany);
   const canSave = !!accountId && !!current && dirty;
 
+  // The field that's still blocking this entry from leaving the queue,
+  // computed from the current form state. Drives both the hint shown
+  // next to the Save button when it's gated and the one-shot ring on
+  // the field when the user taps Save anyway. Type comes before
+  // company because the company picker is only meaningful once a type
+  // has been chosen — the resolver's description fallback also walks
+  // company → type, so this matches the priority the user already sees
+  // elsewhere. `description` isn't tracked separately: with either a
+  // type or a company set, the resolver's name fallback carries the
+  // description away from the raw bank text, so it can never be the
+  // sole reason an entry stays in the queue.
+  const stillMissingField = useMemo<"type" | "company" | null>(() => {
+    if (!current) return null;
+    if (!typeId) return "type";
+    if (!companyId && !noCompany) return "company";
+    return null;
+  }, [current, typeId, companyId, noCompany]);
+
+  const typeFieldRef = useRef<HTMLDivElement | null>(null);
+  const companyFieldRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSaveClick = useCallback(() => {
+    if (canSave) {
+      handleSave();
+      return;
+    }
+    // Save is gated. Pulse a ring around the next blocker so the user
+    // sees what to do instead of being met with silence. Replays on
+    // repeated taps because we remove the attribute, force a reflow,
+    // then re-add it — React's no-op re-render would otherwise leave
+    // the animation glued to its end frame.
+    const target = stillMissingField;
+    if (target === null) return;
+    const el =
+      target === "type" ? typeFieldRef.current : companyFieldRef.current;
+    if (!el) return;
+    el.removeAttribute("data-field-attention");
+    void el.offsetWidth;
+    el.setAttribute("data-field-attention", "");
+  }, [canSave, handleSave, stillMissingField]);
+
   if (!open) return null;
 
   return (
@@ -420,7 +461,7 @@ export function BudgetMetadataModal({
               </p>
             </fieldset>
             <div className="grid gap-3">
-              <div className="flex flex-col gap-1">
+              <div ref={typeFieldRef} className="flex flex-col gap-1">
                 <span className="text-xs text-muted">
                   {t("metadata.typeLabel")}
                 </span>
@@ -435,7 +476,7 @@ export function BudgetMetadataModal({
                   amountSign={current.amount < 0 ? "negative" : "positive"}
                 />
               </div>
-              <div className="flex flex-col gap-1">
+              <div ref={companyFieldRef} className="flex flex-col gap-1">
                 <span className="text-xs text-muted">
                   {t("metadata.companyLabel")}
                 </span>
@@ -493,19 +534,44 @@ export function BudgetMetadataModal({
           </>
         )}
       </Modal.Body>
-      <Modal.Footer>
+      <Modal.Footer
+        className={
+          current === null ? "" : "flex-wrap justify-between gap-x-2 gap-y-1"
+        }
+      >
         {current === null ? (
           <Button variant="primary" onClick={onClose}>
             {t("common.close")}
           </Button>
         ) : (
           <>
-            <Button variant="secondary" onClick={handleSkip}>
-              {t("metadata.skip")}
-            </Button>
-            <Button variant="primary" onClick={handleSave} disabled={!canSave}>
-              {t("metadata.save")}
-            </Button>
+            <p
+              aria-live="polite"
+              className="min-w-0 flex-1 text-xs text-flag empty:hidden"
+            >
+              {!canSave && stillMissingField === "type"
+                ? t("metadata.needsTypePrompt")
+                : !canSave && stillMissingField === "company"
+                  ? t("metadata.needsCompanyPrompt")
+                  : ""}
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button variant="secondary" onClick={handleSkip}>
+                {t("metadata.skip")}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveClick}
+                aria-disabled={!canSave}
+                className={
+                  canSave
+                    ? ""
+                    : "cursor-not-allowed opacity-50 hover:bg-accent/10"
+                }
+              >
+                {t("metadata.save")}
+              </Button>
+            </div>
           </>
         )}
       </Modal.Footer>

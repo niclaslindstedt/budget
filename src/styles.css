@@ -1381,6 +1381,29 @@ body {
   animation: row-pulse 1500ms ease-out;
 }
 
+/* One-shot ring pulse around a metadata-mode form field after the user
+   tapped the gated Save button. The save handler removes + re-adds the
+   attribute (forcing a reflow in between) so the animation replays on
+   every tap. `--flag` is the orange "attention" slot in the palette;
+   `color-mix` keeps the ring tinted by the user's theme instead of a
+   hardcoded hue. Reduce-motion guard at the top of this file zeroes
+   the duration when the user opts in. */
+@keyframes field-attention {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  20% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--flag) 70%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+[data-field-attention] {
+  border-radius: var(--radius-md);
+  animation: field-attention 1500ms ease-out;
+}
+
 /* `.border-0` is repeated unlayered so it wins over `.field-input`'s
    shorthand `border-width: var(--border-width)`. Without this, the
    transparent textareas that combine `field-input` (for the
