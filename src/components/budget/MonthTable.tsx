@@ -250,24 +250,37 @@ function MonthTableImpl({
   // even when revealed via the expand toggle — the user expressed an
   // explicit intent to suppress them, so they shouldn't be roped into
   // mass operations from the month header's "select all" checkbox.
-  const selectableRowIds = rows
-    .filter(
-      (r) =>
-        r.transferId === undefined &&
-        !r.isCorrection &&
-        !(hideTransfers && isTransferRow(r)),
-    )
-    .map((r) => r.id);
+  //
+  // Single-pass over `rows` so a typical month (30+ rows) doesn't get
+  // walked four times per render — once each for filter, map,
+  // every, and some. Also derives `renderedRowCount` here so the
+  // placeholder math below doesn't take another pass.
+  const { selectableRowIds, allSelected, someSelected, renderedRowCount } =
+    useMemo(() => {
+      const ids: string[] = [];
+      let selectedCount = 0;
+      let visibleCount = 0;
+      for (const r of rows) {
+        const isTx = !r.isCorrection && isTransferRow(r);
+        if (!(hideTransfers && isTx)) visibleCount++;
+        if (r.transferId !== undefined || r.isCorrection) continue;
+        if (hideTransfers && isTx) continue;
+        ids.push(r.id);
+        if (selectedIds.has(r.id)) selectedCount++;
+      }
+      const total = ids.length;
+      return {
+        selectableRowIds: ids,
+        allSelected: total > 0 && selectedCount === total,
+        someSelected: selectedCount > 0 && selectedCount < total,
+        renderedRowCount: visibleCount,
+      };
+    }, [rows, hideTransfers, selectedIds]);
   const amountCol = findColumnByType(columns, "amount");
   // Columns + action cell + (optional) select cell = total td count we
   // need to colSpan when rendering a correction row as a full-width
   // divider line.
   const correctionColSpan = columns.length + 1 + (selectMode ? 1 : 0);
-  const allSelected =
-    selectableRowIds.length > 0 &&
-    selectableRowIds.every((id) => selectedIds.has(id));
-  const someSelected =
-    selectableRowIds.some((id) => selectedIds.has(id)) && !allSelected;
   // Tint the sticky header with the month's pastel — `undated` has no
   // calendar month so it stays on the neutral `fg-bright` colour.
   const headerMonthNum = monthNumberFromKey(monthKey);
@@ -275,17 +288,9 @@ function MonthTableImpl({
     headerMonthNum !== null ? monthColorVar(headerMonthNum) : undefined;
 
   const monthLabel = formatMonth(monthKey, lang, t);
-  // Count rows that would actually render so the placeholder matches
-  // their combined height. Mirrors the filters applied inside the
-  // tbody (`row.isCorrection` rows still take a slot; hidden transfers
-  // are dropped when `hideTransfers` is on so their absence wouldn't
-  // leave a gap behind the placeholder either).
-  const renderedRowCount = hideTransfers
-    ? rows.reduce(
-        (acc, r) => acc + (!r.isCorrection && isTransferRow(r) ? 0 : 1),
-        0,
-      )
-    : rows.length;
+  // `renderedRowCount` (number of rows that would actually render after
+  // the hide-transfers filter) is computed in the single-pass useMemo
+  // above so the placeholder math doesn't take another walk over `rows`.
   // Prefer the cached measured height — every previous mount of this
   // section has stamped its actual tbody height into the ref, so the
   // placeholder size matches the rows it replaces to the pixel. Fall
