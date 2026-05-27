@@ -138,23 +138,48 @@ export function computePrimaryIncomeShift(
 }
 
 // Twin of `computePrimaryIncomeShift` for bank-imported history
-// entries. Walks the `primaryIncomeMerchants` array for one whose
-// `key` matches the entry's normalised description; when found,
-// applies the same "date earlier than anchor" rule. `normaliseKey`
-// is the pre-computed normalised description, threaded by callers
-// that already paid for it.
+// entries. Resolves the matching merchant by `key` against the
+// pre-indexed merchant map and applies the same "date earlier than
+// anchor" rule. `normaliseKey` is the pre-computed normalised
+// description, threaded by callers that already paid for it.
+//
+// The merchants are passed as a `Map` (rather than the raw array
+// they're stored as on `UserData`) because every call site iterates
+// over many candidate entries: at import time a single statement may
+// stamp shifts on 500+ new entries, and a budget render walks the
+// account's full history. With the map, each entry is O(1) instead
+// of an O(M) `.find()` over the merchants array.
 export function computePrimaryIncomeShiftForHistory(
   normalisedKey: string,
   isoDate: string,
-  merchants: readonly PrimaryIncomeMerchant[],
+  merchantsByKey: ReadonlyMap<string, PrimaryIncomeMerchant>,
 ): -1 | 1 | undefined {
-  if (merchants.length === 0 || normalisedKey === "") return undefined;
-  const match = merchants.find((m) => m.key === normalisedKey);
+  if (merchantsByKey.size === 0 || normalisedKey === "") return undefined;
+  const match = merchantsByKey.get(normalisedKey);
   if (!match) return undefined;
   return shiftFromAnchor(isoDate, match.anchorDayOfMonth);
 }
 
-function shiftFromAnchor(
+// Build a `Map<key, PrimaryIncomeMerchant>` from the on-disk array.
+// Callers that loop over many history entries pay one O(M) pass here
+// and then get O(1) lookups inside the hot loop. Exported so import /
+// rendering call sites can reuse the same index across the batch
+// instead of rebuilding it per entry.
+export function indexPrimaryIncomeMerchants(
+  merchants: readonly PrimaryIncomeMerchant[],
+): Map<string, PrimaryIncomeMerchant> {
+  const out = new Map<string, PrimaryIncomeMerchant>();
+  for (const m of merchants) out.set(m.key, m);
+  return out;
+}
+
+// Decide whether a date earlier in its calendar month than the
+// configured anchor day-of-month should be shifted into the next
+// fiscal month. Exported because the merchant- and series-anchor
+// callers can skip the merchant lookup once they've matched their
+// own way (e.g. inside `applyMerchantToHistory`, where the merchant
+// is implied by the outer filter) and just need the date check.
+export function shiftFromAnchor(
   isoDate: string,
   anchor: number | undefined,
 ): -1 | 1 | undefined {

@@ -1,5 +1,5 @@
 import { normaliseDescription } from "../description-normaliser";
-import { computePrimaryIncomeShiftForHistory } from "../fiscal-month";
+import { shiftFromAnchor } from "../fiscal-month";
 import { updateHistoryEntry } from "../sheet";
 import type { Action } from "../reducer";
 import type { HistoryEntry, PrimaryIncomeMerchant, UserData } from "../types";
@@ -152,9 +152,12 @@ function applyMerchantToHistory(
     const replaced = entries.map((entry) => {
       const entryKey = normaliseDescription(entry.description);
       if (entryKey !== key) return entry;
-      const expected = computePrimaryIncomeShiftForHistory(key, entry.date, [
-        { key, anchorDayOfMonth },
-      ]);
+      // The outer filter already established that this entry matches
+      // the merchant, so go straight to the date check — the previous
+      // `computePrimaryIncomeShiftForHistory` wrapper allocated a
+      // throwaway one-element merchant array per matching entry just
+      // to look the key up again.
+      const expected = shiftFromAnchor(entry.date, anchorDayOfMonth);
       if (expected === entry.fiscalMonthShift) return entry;
       const updated = { ...entry };
       if (expected === undefined) delete updated.fiscalMonthShift;

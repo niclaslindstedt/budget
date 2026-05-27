@@ -1,6 +1,9 @@
 import { mintBudgetRow } from "../budget/rows";
 import { normaliseDescription } from "../description-normaliser";
-import { computePrimaryIncomeShiftForHistory } from "../fiscal-month";
+import {
+  computePrimaryIncomeShiftForHistory,
+  indexPrimaryIncomeMerchants,
+} from "../fiscal-month";
 import { findColumnByType, newId, updateAccountBudget } from "../sheet";
 import { findRuleDrivenCandidates } from "../reconciliation";
 import {
@@ -94,13 +97,18 @@ export function reduceAccounts(
     const addedIds = mergeResult.addedIds;
     let merged = mergeResult.merged;
     if (merchants.length > 0 && addedIds.size > 0) {
+      // Index merchants once outside the per-entry loop — without this
+      // the `.find()` inside `computePrimaryIncomeShiftForHistory` ran
+      // for every imported entry, making the stamp pass O(H × M). A
+      // 500-entry import against 10 merchants now runs in O(H + M).
+      const merchantsByKey = indexPrimaryIncomeMerchants(merchants);
       const stamped = merged.map((entry) => {
         if (!addedIds.has(entry.id)) return entry;
         const key = normaliseDescription(entry.description);
         const shift = computePrimaryIncomeShiftForHistory(
           key,
           entry.date,
-          merchants,
+          merchantsByKey,
         );
         if (shift === undefined) return entry;
         return { ...entry, fiscalMonthShift: shift };
