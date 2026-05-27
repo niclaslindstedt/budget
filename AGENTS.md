@@ -269,6 +269,59 @@ a new markdown file. Do not write planning, decision, or analysis
 documents unless the user explicitly asks for them — the rule in
 the system tone guidance is hard.
 
+## Workflow
+
+The contract for "this change is ready to ship" is the exact chain
+CI runs in `.github/workflows/ci.yml` — `make fmt-check`, `make
+lint`, `make build`, `make icons-check`, `make test`. Skip any of
+those locally and you'll learn about it from a red CI run after
+the push, which costs a round trip plus a fixup commit cluttering
+the squash-merge history.
+
+The loop:
+
+1. **Resolve user vocabulary first.** Before any code search,
+   look every domain noun in the request up in
+   `docs/dictionary.md`. The dictionary resolves "transfer log",
+   "viewer modal", "promote a history entry" to concrete files in
+   one hop, and skipping it is how agents end up grepping for
+   "transfer" across the whole tree and editing the wrong module.
+   The "Resolving user vocabulary" and "Understanding the user's
+   query" sections above are the canonical guidance — this is the
+   reminder, not the spec. Add or update the matching dictionary
+   row in the same PR whenever you introduce, rename, or learn a
+   new term for a user-facing concept.
+2. **Edit, then run the fast loop locally:** `make fmt-check &&
+make lint && make typecheck && make test`. All four are
+   cheap. `fmt-check` in particular catches prettier drift that
+   no other target enforces — `make fmt` writes the fixes if any
+   show up. Running the loop before staging is cheaper than
+   running it after `git commit`; a failure pre-commit is a
+   re-edit, a failure post-commit is a fixup commit.
+3. **Before opening the PR, also run** `make build` and `make
+icons-check`. Build catches the build-only TS surface
+   (`vite.config.ts`, `vite/*.ts`) that `tsc -b` skips;
+   `icons-check` catches drift if you touched `public/favicon.svg`
+   or the icon generator. The e2e suite (`make e2e`) is only
+   needed when the change touches the storage hot path, auth, or
+   anything else `e2e/specs/` covers — Playwright is slow and
+   wants Chromium installed (`make e2e-install`).
+4. **Push, open the PR, then invoke the `write-changeset` skill.**
+   The skill decides between writing a new `.changes/unreleased/*`
+   fragment, editing a parent fragment, or applying the
+   `no-changelog` label. CI's `changeset` job will fail the PR
+   without one of those three outcomes.
+5. **Watch the PR.** Subscribe to PR activity for any change of
+   non-trivial size so CI failures and review comments wake the
+   session instead of going unnoticed.
+
+A pure refactor or doc-only change doesn't escape steps 2 and 3 —
+prettier still has opinions about your import statements, and the
+typechecker still runs. The skip-list at
+`scripts/release/check-changeset.mjs:39-55` only governs whether
+step 4 demands a changelog fragment, not whether the fast loop
+applies.
+
 ## Pages and the Sheet abstraction
 
 A **Sheet** is the universal top-level container the user adds, names,
