@@ -211,7 +211,7 @@ export function AccountsPage({
   return (
     <ActiveRowProvider>
       <section>
-        <header className="mb-4 flex items-center justify-center gap-2">
+        <header className="mb-2 flex items-center justify-center gap-2 md:mb-6">
           <h2 className="m-0 text-base font-bold text-fg-bright">
             {sheet.name}
           </h2>
