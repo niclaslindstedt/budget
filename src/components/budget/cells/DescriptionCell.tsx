@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeftRight, ArrowRight, Building2, Repeat } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Building2,
+  Landmark,
+  Repeat,
+} from "lucide-react";
 
 import type { CellValue, Company, EntryType } from "../../../data/types";
 import { type FloatingPlacement, useSelectAllOnFocus } from "../../../hooks";
@@ -49,6 +55,7 @@ export function DescriptionCell({
   company,
   companies,
   placeholder,
+  bankDescription,
   onChange,
   onCommit,
   onSetCompany,
@@ -79,6 +86,13 @@ export function DescriptionCell({
   // as the input placeholder. Supplied by `synthesizeHistoryRow` via
   // `Row.descriptionPlaceholder`.
   placeholder?: string;
+  // Raw bank memo for history rows whose visible description is a
+  // user override. The popover surfaces this read-only beneath the
+  // textarea so the user keeps a reference to what the statement
+  // reported even after relabelling. Supplied by `synthesizeHistoryRow`
+  // via `Row.bankDescription`; absent when the bank text is already
+  // serving as the cell's display value or on every non-history row.
+  bankDescription?: string;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   // Pre-bound (no rowId) writer for the row's company. Wired by the
@@ -112,6 +126,7 @@ export function DescriptionCell({
         value={value}
         editValue={isFallback ? "" : value}
         placeholder={placeholder}
+        bankDescription={bankDescription}
         company={company}
         companies={pickerEnabled ? companies : undefined}
         onChange={onChange}
@@ -325,6 +340,7 @@ function DescriptionPopover({
   value,
   editValue,
   placeholder,
+  bankDescription,
   company,
   companies,
   onChange,
@@ -346,6 +362,12 @@ function DescriptionPopover({
   // memo they're about to override; absent, the generic
   // `cell.descriptionPlaceholder` ("Description") is used.
   placeholder?: string;
+  // Raw bank memo on history rows whose visible description is a
+  // user override. Rendered read-only beneath the textarea with a
+  // small Landmark glyph so the user can still see what the bank
+  // reported. Absent when the bank text is already the placeholder
+  // (no override) or on non-history rows.
+  bankDescription?: string;
   // Resolved Company for `row.companyId` plus the full list and
   // create/select handlers needed to render the inline CompanyPicker
   // above the textarea. All four are gated together: when any is
@@ -454,6 +476,22 @@ function DescriptionPopover({
           wrapperClassName="w-full"
           className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
         />
+        {bankDescription && (
+          <div
+            className="flex items-start gap-1.5 border-t border-line bg-surface-3 px-2 py-1.5 text-xs text-muted"
+            title={t("cell.originalFromBank")}
+          >
+            <Landmark
+              size={12}
+              aria-hidden
+              focusable={false}
+              className="mt-0.5 shrink-0"
+            />
+            <span className="min-w-0 font-mono break-words whitespace-pre-wrap">
+              {bankDescription}
+            </span>
+          </div>
+        )}
       </FloatingPanel>
     </>
   );

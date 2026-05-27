@@ -446,6 +446,9 @@ function BudgetRowImpl({
           descriptionPlaceholder={
             col.type === "description" ? row.descriptionPlaceholder : undefined
           }
+          bankDescription={
+            col.type === "description" ? row.bankDescription : undefined
+          }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />

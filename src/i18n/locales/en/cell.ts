@@ -34,6 +34,7 @@ const cell = {
   placeholderEllipsis: "…",
   descriptionWith: "Description: {value}",
   addDescription: "Add description",
+  originalFromBank: "Original from bank",
   pushToNextMonth: "Push to next fiscal month",
   pushToNextMonthTitle:
     "Treat this entry — and every other entry on the same day — as belonging to the next fiscal month",

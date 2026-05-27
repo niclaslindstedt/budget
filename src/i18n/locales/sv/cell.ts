@@ -35,6 +35,7 @@ const cell: CellCatalog = {
   placeholderEllipsis: "…",
   descriptionWith: "Beskrivning: {value}",
   addDescription: "Lägg till beskrivning",
+  originalFromBank: "Original från banken",
   pushToNextMonth: "Skjut till nästa budgetmånad",
   pushToNextMonthTitle:
     "Behandla posten — och alla andra poster samma dag — som om de tillhörde nästa budgetmånad",
