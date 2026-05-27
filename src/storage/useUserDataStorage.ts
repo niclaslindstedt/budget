@@ -570,7 +570,10 @@ export function useUserDataStorage<Action extends { type: string }>(
     (
       text: string,
       isStale: () => boolean,
-      { skipShrinkCheck = false }: { skipShrinkCheck?: boolean } = {},
+      {
+        skipShrinkCheck = false,
+        ignoreBailStatus = false,
+      }: { skipShrinkCheck?: boolean; ignoreBailStatus?: boolean } = {},
     ): Promise<void> =>
       // Chain onto any prior in-flight save so we don't race for the
       // baseRev. The isStale and bail-status re-checks at the top of
@@ -584,8 +587,11 @@ export function useUserDataStorage<Action extends { type: string }>(
         // Status may have flipped into a bail state (conflict,
         // throttle, …) while we were queued behind another save.
         // Pushing through would clobber the resolution UI the user is
-        // about to act on.
-        if (isBailStatus(statusRef.current)) {
+        // about to act on. `resolveKeepLocal` is the one caller that
+        // sets `ignoreBailStatus`: the user IS acting on the conflict
+        // modal, and skipping the save here would leave the modal
+        // stuck open with no further effect from clicking the button.
+        if (!ignoreBailStatus && isBailStatus(statusRef.current)) {
           log.info(
             `save skipped — status=${statusRef.current.kind} (flipped while queued) [${adapter.id}]`,
           );
@@ -1022,7 +1028,13 @@ export function useUserDataStorage<Action extends { type: string }>(
       pendingTimerRef.current = null;
     }
     const text = serializeUserData(data);
-    void performSave(text, () => false);
+    // `ignoreBailStatus` because the current status IS "conflict" —
+    // the default bail check would skip this save and leave the
+    // modal stuck open. The save itself sends the remote revision
+    // as baseRev so the cloud accepts the overwrite cleanly, and
+    // its `save-start` dispatch flips status out of "conflict" so
+    // the modal closes.
+    void performSave(text, () => false, { ignoreBailStatus: true });
   }, [data, performSave]);
 
   // Resolution for the shrink safeguard. "Confirm" re-enters the
