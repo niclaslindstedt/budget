@@ -154,20 +154,6 @@ to **Pending** with a rating.
     a flat object, but the prop count drops from 30 to ~5 typed
     bundles.
 
-- **Sheet-type routing is scattered across 15+ files** — adding a
-  new `SheetType` requires edits in `data/types/sheets.ts` (literal),
-  `data/constants.ts` (`SHEET_TYPES`), `AppShell.tsx` (routing
-  switch), `data/validate/sheet.ts` (`SHEET_TYPES` set),
-  `data/sheet.ts` (factory functions), `components/SheetModal.tsx`
-  (type picker), `i18n/locales/{en,sv}/sheet.ts` (label), plus a
-  per-type subdirectory under `components/`. There is no single
-  registry. **Severity: 7.**
-  - Plan: introduce `src/data/sheet-types/<type>.ts` modules each
-    exporting `{ id, defaultItems, validate, i18nKey, glyph }`.
-    Compose into a `SHEET_TYPE_REGISTRY` at module load. All the
-    scattered files import from the registry. Adding a new type
-    becomes "drop a new file in `sheet-types/`".
-
 - **`BudgetPage.tsx` (1373 lines) prop drilling + memo pyramid** —
   threads `types`, `categories`, `companies`, `onCreateType`,
   `onCreateCategory`, `onCreateCompany`, `settings`, … through
@@ -511,6 +497,22 @@ EntryType) => boolean` prop so callers customise; default to
   `accounts-export.ts` moved to `src/data/accounts/{balance,export}.ts`.
   17 importers updated. The data-module map in `AGENTS.md` and the tree
   diagram in `docs/architecture.md` were updated in the same PR.
+- **`src/data/sheet-types/` registry** (2026-05): the scattered
+  sheet-type touchpoints (`SHEET_TYPES` array in `constants.ts`,
+  `SHEET_TYPES` set in `validate/sheet.ts`, factory dispatch in
+  `sheet.ts`, type-picker in `SheetModal.tsx`) collapse onto a single
+  `SHEET_TYPE_REGISTRY` composed from one file per flavour
+  (`sheet-types/{budget,accounts}.ts`). Adding a new flavour is now
+  "drop a new file in `sheet-types/` + add one entry to the
+  registry". The validator's enum set derives from the registry so
+  it can't drift. The page-routing switch in `AppShell.tsx` and the
+  per-type validators stay where they are — their per-type code
+  shapes (validator dependency context, page prop signatures) differ
+  enough that folding them into the descriptor would obscure more
+  than it would consolidate; revisit either if they end up
+  multiplied across 6+ flavours. The per-page i18n labels (still
+  English-baked on the descriptors) remain part of the separate
+  "Hardcoded user-facing strings in chrome" sweep.
 - **`src/data/` per-page relocation, step 2** (2026-05): the
   unambiguously budget-only modules `row-cells.ts`, `formula.ts`,
   `formula-resolve.ts`, `pattern-derive.ts`, `pattern-apply.ts`, and

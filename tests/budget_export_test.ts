@@ -6,10 +6,8 @@ import {
   rowsToCsv,
 } from "../src/data/budget/export";
 import { computeBalances } from "../src/data/budget/rows";
-import {
-  createDefaultAccountBudget,
-  findColumnByType,
-} from "../src/data/sheet";
+import { findColumnByType } from "../src/data/sheet";
+import { createDefaultAccountBudget } from "../src/data/sheet-types";
 import type {
   AccountBudget,
   Category,

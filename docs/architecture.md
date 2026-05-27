@@ -63,8 +63,16 @@ src/
 │   │                     # Settings, StoredUser, UsersFile, …
 │   ├── constants.ts      # MAX_COLUMN_CHARS, STORAGE_KEY, USERS_KEY,
 │   │                     # userDataKey(), DEFAULT_SETTINGS, palette, icon list
-│   ├── sheet.ts          # universal sheet primitives (newId, factories,
-│   │                     # column + sheet-tree traversal helpers)
+│   ├── sheet.ts          # universal sheet primitives (newId,
+│   │                     # createDefaultSheet, column + sheet-tree
+│   │                     # traversal helpers)
+│   ├── sheet-types/      # per-flavour descriptors composed into one
+│   │   │                 # SHEET_TYPE_REGISTRY — adding a new flavour
+│   │   │                 # is a new file here plus a registry entry
+│   │   ├── budget.ts     # createDefaultAccountBudget + descriptor
+│   │   ├── accounts.ts   # createDefaultAccountsView + descriptor
+│   │   └── index.ts      # SHEET_TYPE_REGISTRY + SHEET_TYPE_IDS +
+│   │                     # getSheetTypeDescriptor lookup
 │   ├── fiscal-month.ts   # fiscal-month + ISO date math (getMonthKey,
 │   │                     # groupRowsByMonth, previous/nextMonthKey, …)
 │   ├── budget/

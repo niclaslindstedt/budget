@@ -25,7 +25,6 @@ import {
   sortMonthKeys,
 } from "../src/data/fiscal-month";
 import {
-  createDefaultAccountBudget,
   createDefaultSheet,
   findColumnByType,
   getStandardColumns,
@@ -34,6 +33,7 @@ import {
   updateAccountBudget,
   updateHistoryEntry,
 } from "../src/data/sheet";
+import { createDefaultAccountBudget } from "../src/data/sheet-types";
 import type {
   AccountBudget,
   AccountsView,

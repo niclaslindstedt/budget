@@ -1,7 +1,7 @@
 import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "./constants";
+import { getSheetTypeDescriptor } from "./sheet-types";
 import type {
   AccountBudget,
-  AccountsView,
   CellValue,
   Column,
   ColumnType,
@@ -9,7 +9,6 @@ import type {
   Row,
   Sheet,
   SheetGlyph,
-  SheetItem,
   SheetType,
 } from "./types";
 
@@ -24,30 +23,6 @@ export function newId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export function createDefaultAccountBudget(
-  accountId: string | null = null,
-): AccountBudget {
-  const columns: Column[] = [
-    { id: newId(), type: "date", label: "Date" },
-    { id: newId(), type: "description", label: "Description" },
-    { id: newId(), type: "type", label: "Type" },
-    { id: newId(), type: "amount", label: "Amount" },
-    { id: newId(), type: "balance", label: "Balance" },
-    { id: newId(), type: "completed", label: "Done" },
-  ];
-  return {
-    id: newId(),
-    type: "accountBudget",
-    accountId,
-    columns,
-    rows: [],
-  };
-}
-
-export function createDefaultAccountsView(): AccountsView {
-  return { id: newId(), type: "accountsView" };
-}
-
 export function createDefaultSheet(
   name = "Budget",
   accountId: string | null = null,
@@ -59,14 +34,7 @@ export function createDefaultSheet(
   } = {},
 ): Sheet {
   const type = overrides.type ?? "budget";
-  // The Accounts flavour renders a global dashboard, not a per-account
-  // ledger — seed an AccountsView in place of the budget block. Other
-  // flavours fall back to a fresh AccountBudget bound to `accountId`
-  // (which may be null for a free-standing forward-looking ledger).
-  const items: SheetItem[] =
-    type === "accounts"
-      ? [createDefaultAccountsView()]
-      : [createDefaultAccountBudget(accountId)];
+  const descriptor = getSheetTypeDescriptor(type);
   return {
     id: newId(),
     name,
@@ -74,7 +42,7 @@ export function createDefaultSheet(
     glyph: overrides.glyph ?? DEFAULT_SHEET_GLYPH,
     color: overrides.color ?? DEFAULT_SHEET_COLOR,
     description: overrides.description ?? "",
-    items,
+    items: [descriptor.createDefaultItem({ accountId })],
   };
 }
 
