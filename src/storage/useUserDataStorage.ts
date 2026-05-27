@@ -24,6 +24,7 @@ import {
   readUserDataFromText,
   tryReadUserDataFromText,
 } from "./local";
+import { createSaveChain } from "./save-chain";
 
 const log = createLogger("storage-hook");
 
@@ -314,6 +315,23 @@ export function useUserDataStorage<Action extends { type: string }>(
   // it before issuing its own immediate write.
   const pendingTimerRef = useRef<number | null>(null);
 
+  // Serialises every `performSave` call: a new save can't start
+  // until the prior one has settled. Without this, a save that fires
+  // while another is still awaiting the network reads the same
+  // `lastSnapshot.current.revision` as the in-flight one, both calls
+  // send the same baseRev, the cloud accepts the first and 409s the
+  // second — surfacing as a phantom "Sync conflict" popup on a
+  // single-device account. Most reproducible from Metadata mode and
+  // any other workflow where rapid Save clicks queue dispatches
+  // inside a single network round-trip. Complements the "record new
+  // rev before the stale check" fix inside `performSave` below —
+  // that one protects the rev after a save returns; this one
+  // protects it during the in-flight window. The chain also
+  // coalesces: a second queued body replaces the first, so a burst
+  // of edits over a slow network catches up with one trailing save
+  // instead of a deep backlog.
+  const saveChainRef = useRef(createSaveChain());
+
   // Timer that flips status back to `idle` after a cloud-side rate
   // limit (HTTP 429) cooldown expires. Cleared on adapter unmount so a
   // backend swap doesn't leave a dangling resume firing into the new
@@ -434,157 +452,174 @@ export function useUserDataStorage<Action extends { type: string }>(
   // `isStale` predicate lets a debounced caller bail out if the
   // effect was cleaned up while the request was in flight.
   const performSave = useCallback(
-    async (
+    (
       text: string,
       isStale: () => boolean,
       { skipShrinkCheck = false }: { skipShrinkCheck?: boolean } = {},
-    ): Promise<void> => {
-      if (isStale()) {
-        log.info(`save skipped (stale before start) [${adapter.id}]`);
-        return;
-      }
-      // Block catastrophic size collapses unless the user has
-      // explicitly confirmed them via `confirmShrinkSave`. The
-      // baseline is the last bytes we successfully read or wrote;
-      // if the new payload is < (1 - SHRINK_WARN_THRESHOLD) of that
-      // and the previous size was non-trivial, pause and surface
-      // the numbers to the user. A fresh-budget fallback writing
-      // 3 KB over a 1 MB cloud file (the original incident) trips
-      // this trivially.
-      const prevBytes = lastSnapshot.current?.text.length ?? null;
-      if (
-        !skipShrinkCheck &&
-        prevBytes !== null &&
-        prevBytes >= SHRINK_WARN_MIN_PREV_BYTES &&
-        text.length < prevBytes * (1 - SHRINK_WARN_THRESHOLD)
-      ) {
-        const pct = ((1 - text.length / prevBytes) * 100).toFixed(1);
-        log.warn(
-          `save paused: shrink ${prevBytes}→${text.length} bytes (-${pct}%) > ${
-            SHRINK_WARN_THRESHOLD * 100
-          }% [${adapter.id}]`,
+    ): Promise<void> =>
+      // Chain onto any prior in-flight save so we don't race for the
+      // baseRev. The isStale and bail-status re-checks at the top of
+      // the body let a queued save bail when the data has moved on or
+      // the app entered a resolution flow while we were waiting.
+      saveChainRef.current.run(async () => {
+        if (isStale()) {
+          log.info(`save skipped (stale before start) [${adapter.id}]`);
+          return;
+        }
+        // Status may have flipped into a bail state (conflict,
+        // throttle, …) while we were queued behind another save.
+        // Pushing through would clobber the resolution UI the user is
+        // about to act on.
+        if (isBailStatus(statusRef.current)) {
+          log.info(
+            `save skipped — status=${statusRef.current.kind} (flipped while queued) [${adapter.id}]`,
+          );
+          return;
+        }
+        // Block catastrophic size collapses unless the user has
+        // explicitly confirmed them via `confirmShrinkSave`. The
+        // baseline is the last bytes we successfully read or wrote;
+        // if the new payload is < (1 - SHRINK_WARN_THRESHOLD) of that
+        // and the previous size was non-trivial, pause and surface
+        // the numbers to the user. A fresh-budget fallback writing
+        // 3 KB over a 1 MB cloud file (the original incident) trips
+        // this trivially.
+        const prevBytes = lastSnapshot.current?.text.length ?? null;
+        if (
+          !skipShrinkCheck &&
+          prevBytes !== null &&
+          prevBytes >= SHRINK_WARN_MIN_PREV_BYTES &&
+          text.length < prevBytes * (1 - SHRINK_WARN_THRESHOLD)
+        ) {
+          const pct = ((1 - text.length / prevBytes) * 100).toFixed(1);
+          log.warn(
+            `save paused: shrink ${prevBytes}→${text.length} bytes (-${pct}%) > ${
+              SHRINK_WARN_THRESHOLD * 100
+            }% [${adapter.id}]`,
+          );
+          setStatus({
+            kind: "shrink-warning",
+            pendingText: text,
+            prevBytes,
+            newBytes: text.length,
+          });
+          return;
+        }
+        setStatus({ kind: "saving" });
+        log.info(
+          `save start [${adapter.id}] bytes=${text.length} baseRev=${
+            lastSnapshot.current?.revision ?? "<none>"
+          }`,
         );
-        setStatus({
-          kind: "shrink-warning",
-          pendingText: text,
-          prevBytes,
-          newBytes: text.length,
-        });
-        return;
-      }
-      setStatus({ kind: "saving" });
-      log.info(
-        `save start [${adapter.id}] bytes=${text.length} baseRev=${
-          lastSnapshot.current?.revision ?? "<none>"
-        }`,
-      );
-      const start = performance.now();
-      try {
-        const next = await adapter.save(text, lastSnapshot.current?.revision);
-        const ms = (performance.now() - start).toFixed(0);
-        // Record the new revision before the stale check: the cloud
-        // accepted these bytes at this rev, regardless of whether
-        // the in-memory data has moved on while the request was in
-        // flight. Without this, a stale completion leaves
-        // `lastSnapshot.revision` pinned to the OLD rev, the next
-        // save sends that stale rev as `baseRev`, and the cloud 409s
-        // as soon as the content actually changes — surfacing as a
-        // phantom "Sync conflict" popup on a single-device account.
-        // Mirrors the same "bookkeeping outlives the effect" rule
-        // the ConflictError branch below already follows.
-        lastSnapshot.current = next;
-        setLastSavedText(next.text);
-        if (isStale()) {
-          log.info(
-            `save ok but stale (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
-          );
-          return;
-        }
-        if (next.offline) {
-          setStatus({ kind: "offline", since: Date.now() });
-          log.info(
-            `save offline (${ms}ms) [${adapter.id}] mirroredRev=${next.revision ?? "<none>"}`,
-          );
-        } else {
-          setStatus({ kind: "saved", at: Date.now() });
-          log.info(
-            `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
-          );
-        }
-      } catch (err) {
-        const ms = (performance.now() - start).toFixed(0);
-        // Conflict bookkeeping must happen even if our caller is now
-        // stale (a re-render between `setStatus("saving")` and the
-        // adapter resolving cancelled the effect). Without stashing
-        // `err.remote` here, the next save reuses the old baseRev
-        // and we loop on the same 409 forever. Setting the conflict
-        // status surfaces the resolution modal AND lands us in the
-        // save effect's bail list so the autosave loop stops.
-        if (err instanceof ConflictError) {
-          log.warn(
-            `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
-              err.remote.revision ?? "<none>"
-            } hasLocal=${Boolean(err.local)} stale=${isStale()}`,
-          );
-          const remote = readUserDataFromText(err.remote.text, migrationCtx);
-          // The cloud-mirror wrapper attaches `local`; bare cloud
-          // adapters don't, in which case the in-memory `data` is
-          // the freshest local view we have.
-          const local = err.local
-            ? readUserDataFromText(err.local.text, migrationCtx)
-            : data;
-          lastSnapshot.current = err.remote;
-          setStatus({ kind: "conflict", local, remote });
-          return;
-        }
-        if (err instanceof RateLimitError) {
-          // Soft pause: schedule a resume timer for the carried
-          // cooldown, then re-run the save effect via a nonce bump so
-          // whatever the user has been editing during the cooldown
-          // lands in a single full-blob save. Like the conflict
-          // branch, this runs before the stale check — the throttle
-          // applies to the whole adapter, not to a single in-flight
-          // request, so a stale completion still needs to set up the
-          // cooldown bookkeeping.
-          const until = Date.now() + err.retryAfterMs;
-          log.warn(
-            `save throttled (${ms}ms) [${adapter.id}] retryAfter=${err.retryAfterMs}ms until=${until}`,
-          );
-          if (throttleResumeRef.current !== null) {
-            window.clearTimeout(throttleResumeRef.current);
+        const start = performance.now();
+        try {
+          const next = await adapter.save(text, lastSnapshot.current?.revision);
+          const ms = (performance.now() - start).toFixed(0);
+          // Record the new revision before the stale check: the cloud
+          // accepted these bytes at this rev, regardless of whether
+          // the in-memory data has moved on while the request was in
+          // flight. Without this, a stale completion leaves
+          // `lastSnapshot.revision` pinned to the OLD rev, the next
+          // save sends that stale rev as `baseRev`, and the cloud
+          // 409s as soon as the content actually changes — surfacing
+          // as a phantom "Sync conflict" popup on a single-device
+          // account. Mirrors the same "bookkeeping outlives the
+          // effect" rule the ConflictError branch below already
+          // follows.
+          lastSnapshot.current = next;
+          setLastSavedText(next.text);
+          if (isStale()) {
+            log.info(
+              `save ok but stale (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+            );
+            return;
           }
-          throttleResumeRef.current = window.setTimeout(() => {
-            throttleResumeRef.current = null;
-            // Only resume if we're still in the throttled state we set
-            // ourselves — an intervening adapter swap or other status
-            // change shouldn't be clobbered with `idle`.
-            if (statusRef.current.kind === "throttled") {
-              log.info(
-                `save throttle cleared [${adapter.id}] — resuming autosave`,
-              );
-              setStatus({ kind: "idle" });
-              setResumeNonce((n) => n + 1);
+          if (next.offline) {
+            setStatus({ kind: "offline", since: Date.now() });
+            log.info(
+              `save offline (${ms}ms) [${adapter.id}] mirroredRev=${next.revision ?? "<none>"}`,
+            );
+          } else {
+            setStatus({ kind: "saved", at: Date.now() });
+            log.info(
+              `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+            );
+          }
+        } catch (err) {
+          const ms = (performance.now() - start).toFixed(0);
+          // Conflict bookkeeping must happen even if our caller is
+          // now stale (a re-render between `setStatus("saving")` and
+          // the adapter resolving cancelled the effect). Without
+          // stashing `err.remote` here, the next save reuses the old
+          // baseRev and we loop on the same 409 forever. Setting the
+          // conflict status surfaces the resolution modal AND lands
+          // us in the save effect's bail list so the autosave loop
+          // stops.
+          if (err instanceof ConflictError) {
+            log.warn(
+              `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
+                err.remote.revision ?? "<none>"
+              } hasLocal=${Boolean(err.local)} stale=${isStale()}`,
+            );
+            const remote = readUserDataFromText(err.remote.text, migrationCtx);
+            // The cloud-mirror wrapper attaches `local`; bare cloud
+            // adapters don't, in which case the in-memory `data` is
+            // the freshest local view we have.
+            const local = err.local
+              ? readUserDataFromText(err.local.text, migrationCtx)
+              : data;
+            lastSnapshot.current = err.remote;
+            setStatus({ kind: "conflict", local, remote });
+            return;
+          }
+          if (err instanceof RateLimitError) {
+            // Soft pause: schedule a resume timer for the carried
+            // cooldown, then re-run the save effect via a nonce bump
+            // so whatever the user has been editing during the
+            // cooldown lands in a single full-blob save. Like the
+            // conflict branch, this runs before the stale check — the
+            // throttle applies to the whole adapter, not to a single
+            // in-flight request, so a stale completion still needs to
+            // set up the cooldown bookkeeping.
+            const until = Date.now() + err.retryAfterMs;
+            log.warn(
+              `save throttled (${ms}ms) [${adapter.id}] retryAfter=${err.retryAfterMs}ms until=${until}`,
+            );
+            if (throttleResumeRef.current !== null) {
+              window.clearTimeout(throttleResumeRef.current);
             }
-          }, err.retryAfterMs);
-          setStatus({ kind: "throttled", until });
-          return;
+            throttleResumeRef.current = window.setTimeout(() => {
+              throttleResumeRef.current = null;
+              // Only resume if we're still in the throttled state we
+              // set ourselves — an intervening adapter swap or other
+              // status change shouldn't be clobbered with `idle`.
+              if (statusRef.current.kind === "throttled") {
+                log.info(
+                  `save throttle cleared [${adapter.id}] — resuming autosave`,
+                );
+                setStatus({ kind: "idle" });
+                setResumeNonce((n) => n + 1);
+              }
+            }, err.retryAfterMs);
+            setStatus({ kind: "throttled", until });
+            return;
+          }
+          if (isStale()) {
+            log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
+            return;
+          }
+          if (err instanceof AuthError) {
+            log.warn(`save auth failed (${ms}ms) [${adapter.id}]`, err);
+            setStatus({ kind: "auth-error", message: err.message });
+            return;
+          }
+          log.error(`save failed (${ms}ms) [${adapter.id}]`, err);
+          setStatus({
+            kind: "error",
+            message: err instanceof Error ? err.message : String(err),
+          });
         }
-        if (isStale()) {
-          log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
-          return;
-        }
-        if (err instanceof AuthError) {
-          log.warn(`save auth failed (${ms}ms) [${adapter.id}]`, err);
-          setStatus({ kind: "auth-error", message: err.message });
-          return;
-        }
-        log.error(`save failed (${ms}ms) [${adapter.id}]`, err);
-        setStatus({
-          kind: "error",
-          message: err instanceof Error ? err.message : String(err),
-        });
-      }
-    },
+      }),
     [adapter, data, migrationCtx],
   );
 
