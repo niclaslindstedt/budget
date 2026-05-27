@@ -289,6 +289,56 @@ export function userDataHasHalfDoneRows(data: UserData): boolean {
   );
 }
 
+// Synthesize the transfer + history rows for an account budget — the
+// projected, non-persisted rows the budget view interleaves with
+// `item.rows`. Split out from `buildVisibleRows` so callers (today
+// just `BudgetPage`) can memoize the synthesis independently of
+// `item.rows`. The user-row reference flips on every cell keystroke;
+// the inputs here (history, transfers, hints, rules, companies, types,
+// columns, accountId) don't, so a separate memo skips ~all the
+// per-entry `normaliseDescription` + `findMatchingRule` work that
+// `synthesizeHistoryRow` does during regular editing. Returns an empty
+// array when the budget has no account attached (no transfers or
+// history to project).
+export function buildSynthesizedRows(
+  columns: Column[],
+  accountId: string | null,
+  transfers: readonly Transfer[],
+  history: readonly HistoryEntry[],
+  accountsById: ReadonlyMap<string, string>,
+  merchantHints: Readonly<Record<string, MerchantHint>> = {},
+  matchRules: readonly MatchRule[] = [],
+  companies: readonly Company[] = [],
+  types: readonly EntryType[] = [],
+): Row[] {
+  if (!accountId) return [];
+  const accountTxs = transfersForAccount(transfers, accountId);
+  const transferRows = accountTxs.map((tx) =>
+    synthesizeTransferRow(tx, accountId, columns, accountsById),
+  );
+  // Build id-indexed maps once per call so the per-entry fallbacks in
+  // `resolveEntryLabels` (company/type-name description) don't scan the
+  // arrays linearly for every synthesized history row.
+  const companiesById = new Map<string, Company>();
+  for (const c of companies) companiesById.set(c.id, c);
+  const typesById = new Map<string, EntryType>();
+  for (const t of types) typesById.set(t.id, t);
+  const historyRows: Row[] = [];
+  for (const e of history) {
+    if (e.hidden) continue;
+    const rows = synthesizeHistoryRow(
+      e,
+      columns,
+      merchantHints,
+      matchRules,
+      companiesById,
+      typesById,
+    );
+    for (const r of rows) historyRows.push(r);
+  }
+  return [...transferRows, ...historyRows];
+}
+
 // Build the full list of rows a `BudgetPage` would render for an
 // `AccountBudget` item: the user-authored rows plus synthesized
 // transfer rows and synthesized history rows. Centralised so the
@@ -309,35 +359,18 @@ export function buildVisibleRows(
   types: readonly EntryType[] = [],
 ): Row[] {
   if (!item.accountId) return [...item.rows];
-  const accountTxs = transfersForAccount(transfers, item.accountId);
-  const transferRows = accountTxs.map((tx) =>
-    synthesizeTransferRow(
-      tx,
-      item.accountId as string,
-      item.columns,
-      accountsById,
-    ),
+  const synthesized = buildSynthesizedRows(
+    item.columns,
+    item.accountId,
+    transfers,
+    history,
+    accountsById,
+    merchantHints,
+    matchRules,
+    companies,
+    types,
   );
-  // Build id-indexed maps once per call so the per-entry fallbacks in
-  // `resolveEntryLabels` (company/type-name description) don't scan the
-  // arrays linearly for every synthesized history row.
-  const companiesById = new Map<string, Company>();
-  for (const c of companies) companiesById.set(c.id, c);
-  const typesById = new Map<string, EntryType>();
-  for (const t of types) typesById.set(t.id, t);
-  const historyRows = history
-    .filter((e) => !e.hidden)
-    .flatMap((e) =>
-      synthesizeHistoryRow(
-        e,
-        item.columns,
-        merchantHints,
-        matchRules,
-        companiesById,
-        typesById,
-      ),
-    );
-  return [...item.rows, ...transferRows, ...historyRows];
+  return [...item.rows, ...synthesized];
 }
 
 // Past-dated rows default to completed: the user is back-filling

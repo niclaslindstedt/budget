@@ -36,8 +36,20 @@ const LONG_DIGITS_RE = /\d{4,}/g;
 const PUNCT_RE = /[*#/\\,.;:|()[\]<>~+_-]+/g;
 const WS_RE = /\s+/g;
 
+// Memoize results by input string. Same bank description appears many
+// times per import (every Spotify charge, every weekly salary) and
+// `buildVisibleRows` re-resolves every history entry on every render
+// that touches the active budget — without a cache, each render paid
+// 7 regex replacements per entry. The transform is pure, so caching
+// by input is sound. Bounded to keep memory predictable across long
+// sessions; eviction is FIFO (Map preserves insertion order).
+const CACHE_LIMIT = 4096;
+const cache = new Map<string, string>();
+
 export function normaliseDescription(input: string): string {
-  return input
+  const cached = cache.get(input);
+  if (cached !== undefined) return cached;
+  const result = input
     .toLowerCase()
     .replace(ISO_DATE_RE, " ")
     .replace(SHORT_DATE_RE, " ")
@@ -47,6 +59,12 @@ export function normaliseDescription(input: string): string {
     .replace(PUNCT_RE, " ")
     .replace(WS_RE, " ")
     .trim();
+  if (cache.size >= CACHE_LIMIT) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(input, result);
+  return result;
 }
 
 // True when the input collapses to a key that's too short to be a
