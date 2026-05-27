@@ -13,6 +13,7 @@ import type {
   Category,
   CellValue,
   Column,
+  Company,
   EntryType,
   Row,
   Settings,
@@ -38,6 +39,10 @@ type Props = {
   // (rather than replacing it) because the descendant `TypePicker`
   // still needs the array form for ordered rendering.
   typesById: ReadonlyMap<string, EntryType>;
+  // Id-indexed view of the user's companies. Threaded through to each
+  // `BudgetRow` so the description cell can resolve `row.companyId` to
+  // a Company in O(1) without re-scanning the array per row.
+  companiesById: ReadonlyMap<string, Company>;
   categories: readonly Category[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -153,6 +158,7 @@ function MonthTableImpl({
   balances,
   types,
   typesById,
+  companiesById,
   categories,
   onCreateType,
   onCreateCategory,
@@ -512,6 +518,7 @@ function MonthTableImpl({
                           balances={balances}
                           types={types}
                           typesById={typesById}
+                          companiesById={companiesById}
                           categories={categories}
                           onCreateType={onCreateType}
                           onCreateCategory={onCreateCategory}
@@ -541,6 +548,7 @@ function MonthTableImpl({
                       balances={balances}
                       types={types}
                       typesById={typesById}
+                      companiesById={companiesById}
                       categories={categories}
                       onCreateType={onCreateType}
                       onCreateCategory={onCreateCategory}

@@ -5,6 +5,7 @@ import type {
   Category,
   CellValue,
   Column,
+  Company,
   EntryType,
   Settings,
 } from "../../data/types";
@@ -33,6 +34,11 @@ type Props = {
   // color (a clearer at-a-glance identifier than the recurring-arrow
   // glyph) with the description tucked into a popover behind it.
   entryType?: EntryType | null;
+  // Resolved Company for `row.companyId`. The description cell renders
+  // a white pill (Building2 glyph + company name) when this is set and
+  // the row has no user-authored description — replacing the
+  // type-name / bank-text fallback.
+  company?: Company | null;
   // Selectable entry types + categories, threaded through for the `type`
   // column's picker. Optional because synthesized / readonly variants
   // never reach the editable branch where they'd be consulted.
@@ -116,6 +122,7 @@ function CellImpl({
   settings,
   isRecurring,
   entryType,
+  company,
   types,
   categories,
   onCreateType,
@@ -197,6 +204,7 @@ function CellImpl({
               value={typeof value === "string" ? value : ""}
               isRecurring={false}
               entryType={entryType ?? null}
+              company={company ?? null}
               placeholder={descriptionPlaceholder}
               onChange={onChange}
               onCommit={onCommit}
@@ -241,6 +249,7 @@ function CellImpl({
           value={typeof value === "string" ? value : ""}
           isRecurring={!!isRecurring}
           entryType={entryType ?? null}
+          company={company ?? null}
           onChange={onChange}
           onCommit={onCommit}
         />

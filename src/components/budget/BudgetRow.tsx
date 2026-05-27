@@ -9,6 +9,7 @@ import type {
   Category,
   CellValue,
   Column,
+  Company,
   EntryType,
   Row,
   Settings,
@@ -29,6 +30,12 @@ type Props = {
   // row `useMemo` keyed on the `types` array would invalidate every
   // row's entry-type cache whenever a single type is added or edited.
   typesById: ReadonlyMap<string, EntryType>;
+  // Id-indexed view of the user's companies. Looked up here by
+  // `row.companyId` so the description cell can render a white pill
+  // with the company glyph + name when the row has no user-authored
+  // description. Lifted to page level for the same O(1) lookup +
+  // stable reference reasons as `typesById`.
+  companiesById: ReadonlyMap<string, Company>;
   categories: readonly Category[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -112,6 +119,7 @@ function BudgetRowImpl({
   balances,
   types,
   typesById,
+  companiesById,
   categories,
   onCreateType,
   onCreateCategory,
@@ -141,6 +149,9 @@ function BudgetRowImpl({
   const lang = useLang();
   const entryType: EntryType | null = row.typeId
     ? (typesById.get(row.typeId) ?? null)
+    : null;
+  const company: Company | null = row.companyId
+    ? (companiesById.get(row.companyId) ?? null)
     : null;
   const { swiped, setSwiped, touchHandlers } = useRowSwipe({
     disabled: selectMode,
@@ -385,6 +396,7 @@ function BudgetRowImpl({
           settings={settings}
           isRecurring={isSeries}
           entryType={entryType}
+          company={company}
           types={types}
           categories={categories}
           onCreateType={onCreateType}

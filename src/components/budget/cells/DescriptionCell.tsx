@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeftRight, ArrowRight, Repeat } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Building2, Repeat } from "lucide-react";
 
-import type { CellValue, EntryType } from "../../../data/types";
+import type { CellValue, Company, EntryType } from "../../../data/types";
 import { type FloatingPlacement, useSelectAllOnFocus } from "../../../hooks";
 import { ClearableTextarea } from "../../form";
 import { useT } from "../../../i18n";
@@ -45,6 +45,7 @@ export function DescriptionCell({
   value,
   isRecurring,
   entryType,
+  company,
   placeholder,
   onChange,
   onCommit,
@@ -53,11 +54,17 @@ export function DescriptionCell({
   value: string;
   isRecurring: boolean;
   entryType: EntryType | null;
+  // Resolved Company for `row.companyId`. When the cell is in fallback
+  // mode (no user-authored description) and a company is set, the
+  // trigger renders a white pill with the company glyph + name instead
+  // of the type-name / bank-text fallback.
+  company: Company | null;
   // When set, `value` is a fallback (company / type / bank text) rather
-  // than a user-authored description. The trigger renders in italic +
-  // glyph color and the inline editor opens with an empty textarea +
-  // this string as the input placeholder. Supplied by `synthesizeHistoryRow`
-  // via `Row.descriptionPlaceholder`.
+  // than a user-authored description. The trigger renders the
+  // appropriate fallback (company pill, type-coloured name, or "…")
+  // and the inline editor opens with an empty textarea + this string
+  // as the input placeholder. Supplied by `synthesizeHistoryRow` via
+  // `Row.descriptionPlaceholder`.
   placeholder?: string;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
@@ -87,53 +94,48 @@ export function DescriptionCell({
         onCommit={onCommit}
         renderTrigger={({ ref, onClick, open, displayValue }) => {
           const hasValue = displayValue.length > 0;
-          // The fallback styling (italic + glyph color) applies whenever
-          // the cell is showing a calculated value, even when the popover
-          // is closed and `displayValue` is non-empty. Without
-          // `isFallback`, the trigger reverts to the regular non-italic
-          // style as soon as the popover closes — which is misleading
-          // because the row still has no user-authored description.
-          const styleAsFallback = isFallback || !hasValue;
-          return entryType ? (
-            <button
-              ref={ref}
-              type="button"
-              onClick={onClick}
-              className={`flex h-full min-h-9 w-full cursor-pointer items-center border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-                styleAsFallback
-                  ? "justify-center text-xs font-medium italic"
-                  : "justify-start text-left"
-              }`}
-              style={styleAsFallback ? { color: entryType.color } : undefined}
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              aria-label={
-                hasValue ? `${typeLabel}: ${displayValue}` : typeLabel
-              }
-              title={hasValue ? displayValue : typeLabel}
-            >
-              <span className="min-w-0 truncate">
-                {hasValue ? displayValue : typeLabel}
-              </span>
-            </button>
-          ) : (
+          // The fallback rendering applies whenever the cell is showing
+          // a calculated value, even when the popover is closed and
+          // `displayValue` is non-empty. Without `isFallback`, the
+          // trigger reverts to plain description styling as soon as the
+          // popover closes — which is misleading because the row still
+          // has no user-authored description.
+          const fallback = isFallback || !hasValue;
+          const showCompanyPill = fallback && !!company;
+          const showTypeName = fallback && !company && !!entryType;
+          const hasContent = showCompanyPill || showTypeName || hasValue;
+          const ariaLabel = showCompanyPill
+            ? company!.name
+            : showTypeName
+              ? typeLabel
+              : hasValue
+                ? entryType
+                  ? `${typeLabel}: ${displayValue}`
+                  : t("cell.descriptionWith", { value: displayValue })
+                : entryType
+                  ? typeLabel
+                  : t("cell.addDescription");
+          const title = showCompanyPill
+            ? company!.name
+            : showTypeName
+              ? typeLabel
+              : hasValue
+                ? displayValue
+                : undefined;
+          return (
             <button
               ref={ref}
               type="button"
               onClick={onClick}
               className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 md:hidden ${
-                hasValue
+                hasContent
                   ? "justify-start text-left"
                   : "justify-center text-center"
-              } ${isRecurring ? "text-flag" : hasValue ? "text-fg" : "text-muted"}`}
+              } ${isRecurring ? "text-flag" : hasContent ? "text-fg" : "text-muted"}`}
               aria-haspopup="dialog"
               aria-expanded={open}
-              aria-label={
-                hasValue
-                  ? t("cell.descriptionWith", { value: displayValue })
-                  : t("cell.addDescription")
-              }
-              title={hasValue ? displayValue : undefined}
+              aria-label={ariaLabel}
+              title={title}
             >
               {isRecurring && (
                 <Repeat
@@ -143,7 +145,16 @@ export function DescriptionCell({
                   className="shrink-0 text-flag"
                 />
               )}
-              {hasValue ? (
+              {showCompanyPill ? (
+                <CompanyPill name={company!.name} />
+              ) : showTypeName ? (
+                <span
+                  className="min-w-0 truncate"
+                  style={{ color: entryType!.color }}
+                >
+                  {typeLabel}
+                </span>
+              ) : hasValue ? (
                 <span className="min-w-0 truncate">{displayValue}</span>
               ) : !isRecurring ? (
                 <span>…</span>
@@ -355,6 +366,25 @@ function DescriptionPopover({
         />
       </FloatingPanel>
     </>
+  );
+}
+
+// White pill with the company glyph + name, shown inside the
+// description cell when the row has a `companyId` but no user-authored
+// description. Uses theme tokens so the pill stays high-contrast in
+// both dark (white-on-dark) and light (dark-on-light) themes.
+function CompanyPill({ name }: { name: string }) {
+  return (
+    <span
+      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full px-2 py-0.5 font-medium"
+      style={{
+        backgroundColor: "var(--fg-bright)",
+        color: "var(--page-bg)",
+      }}
+    >
+      <Building2 size={12} aria-hidden focusable={false} className="shrink-0" />
+      <span className="truncate">{name}</span>
+    </span>
   );
 }
 
