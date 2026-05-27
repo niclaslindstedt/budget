@@ -371,16 +371,6 @@ export function EditEntryModal({
         {isSeries ? (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">
-                  {t("editEntry.description")}
-                </span>
-                <ClearableInput
-                  value={description}
-                  onValueChange={setDescription}
-                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                />
-              </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <span className="text-xs text-muted">
                   {t("editEntry.type")}
@@ -407,6 +397,16 @@ export function EditEntryModal({
                   onCreate={onCreateCompany}
                 />
               </div>
+              <label className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">
+                  {t("editEntry.description")}
+                </span>
+                <ClearableInput
+                  value={description}
+                  onValueChange={setDescription}
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                />
+              </label>
               <label className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs text-muted">
                   {t("editEntry.amount")}
@@ -486,31 +486,6 @@ export function EditEntryModal({
               {t("editEntry.promoteHistoryHint")}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 sm:col-span-2">
-                <span className="text-xs text-muted">
-                  {t("editEntry.description")}
-                </span>
-                <ClearableInput
-                  key={row.id}
-                  ref={descriptionRef}
-                  value={description}
-                  onValueChange={setDescription}
-                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("editEntry.amount")}
-                </span>
-                <SignedAmountInput
-                  value={amount}
-                  negative={negative}
-                  onValueChange={setAmount}
-                  onToggleSign={toggleSign}
-                  settings={settings}
-                  ariaLabel={t("editEntry.amount")}
-                />
-              </label>
               <div className="flex flex-col gap-1 sm:col-span-2">
                 <span className="text-xs text-muted">
                   {t("editEntry.type")}
@@ -537,6 +512,31 @@ export function EditEntryModal({
                   onCreate={onCreateCompany}
                 />
               </div>
+              <label className="flex flex-col gap-1 sm:col-span-2">
+                <span className="text-xs text-muted">
+                  {t("editEntry.description")}
+                </span>
+                <ClearableInput
+                  key={row.id}
+                  ref={descriptionRef}
+                  value={description}
+                  onValueChange={setDescription}
+                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                />
+              </label>
+              <label className="flex min-w-0 flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("editEntry.amount")}
+                </span>
+                <SignedAmountInput
+                  value={amount}
+                  negative={negative}
+                  onValueChange={setAmount}
+                  onToggleSign={toggleSign}
+                  settings={settings}
+                  ariaLabel={t("editEntry.amount")}
+                />
+              </label>
             </div>
             <div className="mt-4">
               <RecurrenceForm

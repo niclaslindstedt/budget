@@ -159,18 +159,6 @@ export function HistoryEntryEditModal({
           </p>
         </fieldset>
         <div className="grid gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("editHistory.description")}
-            </span>
-            <ClearableInput
-              ref={descriptionRef}
-              value={description}
-              onValueChange={setDescription}
-              placeholder={t("editHistory.descriptionPlaceholder")}
-              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-            />
-          </label>
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">{t("editHistory.type")}</span>
             <TypePicker
@@ -195,6 +183,18 @@ export function HistoryEntryEditModal({
               onCreate={onCreateCompany}
             />
           </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("editHistory.description")}
+            </span>
+            <ClearableInput
+              ref={descriptionRef}
+              value={description}
+              onValueChange={setDescription}
+              placeholder={t("editHistory.descriptionPlaceholder")}
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+            />
+          </label>
         </div>
         {entry && entry.amount > 0 && entryKey !== "" && (
           <fieldset className="mt-5 rounded border border-line bg-surface-3 p-3">
