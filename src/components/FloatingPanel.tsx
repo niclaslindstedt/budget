@@ -84,7 +84,13 @@ export function FloatingPanel({
       "button, [href], [tabindex]:not([tabindex='-1'])",
     );
     if (focusable && document.activeElement === document.body) {
-      focusable.focus();
+      // `preventScroll` keeps the page where the user left it — on iOS
+      // the soft keyboard's hide animation has already shifted the
+      // layout viewport back to the unflipped position, and calling
+      // `.focus()` without the flag would chase that with a
+      // `scrollIntoView`, yanking the visible area away from the row
+      // the user just edited.
+      focusable.focus({ preventScroll: true });
     }
   }, [open, triggerRef]);
 
