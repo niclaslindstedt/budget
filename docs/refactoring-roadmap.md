@@ -132,21 +132,6 @@ to **Pending** with a rating.
     update. Best landed as a sequence of small per-module moves
     each in their own commit, not one mega-PR.
 
-- **`storage/` imports from `components/`** — `useStorageBackend.ts:6-8`
-  imports `PendingCloudLink` and `PendingFolderLink` types from
-  `components/CloudLinkDialog.tsx`. Direct violation of the
-  `AGENTS.md` dependency rule ("Nothing in `data/` or `storage/`
-  imports from `components/`. Keep it that way.") The types are
-  defined in the dialog file (CloudLinkDialog.tsx:18, 42) but
-  consumed by the storage hook _and_ the dialog. **Severity: 8.**
-  - Plan: move `PendingCloudLink` / `PendingFolderLink` into
-    `src/storage/cloud-link-types.ts` (the conceptual owner — they
-    represent in-flight OAuth state, not dialog UI). The
-    `CloudLinkDialog` re-imports from there. Mechanical fix; the
-    pattern `data/action-payloads.ts` already established for the
-    inverse case is the template.
-  - Risk: low. ~3 import paths change.
-
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
 - **`useStorageBackend.ts` (1256 lines)** — split into
@@ -475,10 +460,6 @@ EntryType) => boolean` prop so callers customise; default to
 - Move `monthFormatCache` to `useMonthFormatter(lang)` hook
   (severity-4 item).
 
-- Move `PendingCloudLink` / `PendingFolderLink` types out of
-  `components/CloudLinkDialog.tsx` into a `storage/` module
-  (severity-8 item — the boundary fix itself is mechanical).
-
 - Extract `parseDecimal` / `parseInt32` helpers and adopt at the
   ~30 inline call sites (severity-4 item).
 
@@ -529,6 +510,14 @@ EntryType) => boolean` prop so callers customise; default to
   `src/data/validate/helpers.ts` and replaced the recurring
   `typeof raw.x === "string" && SET.has(raw.x as T) ? raw.x : default`
   pattern at 9 sites (settings.ts, theme.ts, sheet.ts, account.ts).
+- **`storage/` → `components/` boundary fix** (2026-05):
+  `PendingCloudLink` / `PendingFolderLink` types moved from
+  `src/components/CloudLinkDialog.tsx` to
+  `src/storage/cloud-link-types.ts`. `useStorageBackend.ts` and
+  `CloudLinkDialog.tsx` now both import from the storage module;
+  `src/storage/` and `src/data/` have no remaining imports from
+  `src/components/`. Mirrors the inverse `data/action-payloads.ts`
+  pattern.
 - **i18n achievements split** (2026-05): `achievements.ts` (~400
   lines) has been split into `src/i18n/locales/{en,sv}/achievements/`
   with `shell.ts` (star button, unlock toast, four-tier tour) +

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock } from "../data/achievements";
 import type { UserData } from "../data/types";
-import {
-  type PendingCloudLink,
-  type PendingFolderLink,
-} from "../components/CloudLinkDialog";
+import type {
+  PendingCloudLink,
+  PendingFolderLink,
+} from "./cloud-link-types";
 import type { StorageAdapter } from "./adapter";
 import {
   type BackendId,
