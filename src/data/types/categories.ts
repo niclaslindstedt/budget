@@ -45,6 +45,7 @@ export type CategoryIcon =
   | "wine"
   | "hand-platter"
   | "cooking-pot"
+  | "milk"
   // Transport
   | "bus"
   | "train"

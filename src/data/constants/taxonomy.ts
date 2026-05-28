@@ -89,6 +89,7 @@ export const CATEGORY_ICON_NAMES = [
   "wine",
   "hand-platter",
   "cooking-pot",
+  "milk",
   "bus",
   "train",
   "bike",
@@ -283,6 +284,7 @@ export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
   "wine",
   "hand-platter",
   "cooking-pot",
+  "milk",
   "shopping-cart",
   // Transport
   "car",
