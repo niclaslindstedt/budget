@@ -19,14 +19,13 @@ import {
   setCloudOfflineMode,
   setDropboxToken,
   setEncryption,
-  setGdriveToken,
 } from "./backend-preference";
 import { withCloudMirror } from "./cloud-mirror";
 import { createDropboxAdapter, startDropboxAuth } from "./dropbox-adapter";
 import { withEncryption } from "./encrypting-adapter";
 import { serializeUserData } from "./file";
 import { createFolderAdapter } from "./folder-adapter";
-import { createGdriveAdapter, startGdriveAuth } from "./gdrive-adapter";
+import { createGdriveAdapter } from "./gdrive-adapter";
 import {
   clearCloudMirrorBytes,
   createIdbAdapter,
@@ -35,6 +34,7 @@ import {
 import type { StoredUser } from "../data/types";
 import { useDropboxAuth } from "./useDropboxAuth";
 import { useFolderHandle } from "./useFolderHandle";
+import { useGdriveAuth } from "./useGdriveAuth";
 import { wrapForActive } from "./wrap-for-active";
 import { createLogger } from "../utils/logger";
 
@@ -169,9 +169,6 @@ export function useStorageBackend({
   const [backend, setBackendState] = useState<BackendId>(() =>
     auth.kind === "signed-in" ? getBackend(auth.user.id) : "browser",
   );
-  const [gdriveToken, setGdriveTokenState] = useState<string | null>(() =>
-    auth.kind === "signed-in" ? getGdriveToken(auth.user.id) : null,
-  );
   // Mirror of `useFolderHandle`'s `folderHandle` state, declared here
   // so `buildSourceRawAdapter` (defined below, used by `loadSourceText`,
   // used by `useFolderHandle`) can read the current handle without
@@ -211,41 +208,29 @@ export function useStorageBackend({
   // Sync state with the active user every time auth flips. The
   // default (no-password) user is pinned to plaintext storage — there
   // is no password to derive a key from, and the user explicitly
-  // opted out of accounts. `useDropboxAuth` runs its own parallel
-  // sync effect for the Dropbox token state so this one doesn't bloat
-  // with provider-specific token resets.
+  // opted out of accounts. `useDropboxAuth` and `useGdriveAuth` each
+  // run their own parallel sync effect for their cloud token state
+  // so this one stays focused on the non-cloud per-user prefs.
   useEffect(() => {
     if (auth.kind !== "signed-in") {
       log.info("auth: signed-out — clearing per-user preferences");
       setBackendState("browser");
-      setGdriveTokenState(null);
       setEncryptionState("encrypted");
       setCloudOfflineModeState(false);
       return;
     }
     const nextBackend = getBackend(auth.user.id);
-    const nextGdriveToken = getGdriveToken(auth.user.id);
     const nextEncryption = auth.user.isDefault
       ? "plaintext"
       : getEncryption(auth.user.id);
     const nextOffline = getCloudOfflineMode(auth.user.id);
     log.info(
-      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} hasGdriveToken=${Boolean(nextGdriveToken)} encryption=${nextEncryption} cloudOffline=${nextOffline}`,
+      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} encryption=${nextEncryption} cloudOffline=${nextOffline}`,
     );
     setBackendState(nextBackend);
-    setGdriveTokenState(nextGdriveToken);
     setEncryptionState(nextEncryption);
     setCloudOfflineModeState(nextOffline);
   }, [auth]);
-
-  const commitGdriveLink = useCallback((userId: string, token: string) => {
-    log.info("commitGdriveLink: persisting token");
-    setGdriveToken(userId, token);
-    setBackend(userId, "gdrive");
-    setGdriveTokenState(token);
-    setBackendState("gdrive");
-    unlock("cloudWalker");
-  }, []);
 
   // Wrap a raw adapter with `withEncryption` when the active user has
   // encryption on AND a password is in hand — mirrors the same gate
@@ -334,6 +319,20 @@ export function useStorageBackend({
     markDisconnected: markDropboxDisconnected,
     applySignedInUser: applyDropboxSignedInUser,
   } = useDropboxAuth({
+    auth,
+    loadSourceText,
+    setPendingCloudLink,
+    setBackendState,
+  });
+
+  const {
+    gdriveToken,
+    connectGdrive,
+    commitGdriveLink,
+    reauthorizeGdrive,
+    markDisconnected: markGdriveDisconnected,
+    applySignedInUser: applyGdriveSignedInUser,
+  } = useGdriveAuth({
     auth,
     loadSourceText,
     setPendingCloudLink,
@@ -557,12 +556,7 @@ export function useStorageBackend({
   const reconnectCloud = useCallback(async (): Promise<void> => {
     if (auth.kind !== "signed-in") return;
     if (backend === "gdrive") {
-      const userId = auth.user.id;
-      log.info("reconnect(gdrive): launching GIS popup");
-      const token = await startGdriveAuth();
-      if (auth.kind !== "signed-in") return;
-      setGdriveToken(userId, token);
-      setGdriveTokenState(token);
+      await reauthorizeGdrive(auth.user.id);
       return;
     }
     if (backend === "dropbox") {
@@ -574,59 +568,7 @@ export function useStorageBackend({
       // — the page unloads shortly after.
       await startDropboxAuth();
     }
-  }, [auth, backend]);
-
-  // Google Drive uses GIS token client — popup, not redirect — so the
-  // probe-and-park-pendingCloudLink dance that Dropbox runs from the
-  // URL-redirect handler happens inline here, awaiting the popup
-  // result.
-  //
-  // Throws on OAuth failure (popup blocked, GIS script unreachable,
-  // user dismissed) so the caller can surface the error inline. The
-  // Settings storage tab catches and displays it next to the picker
-  // — silently returning here meant the picker option flipped to
-  // Google Drive but nothing visible happened, leaving the user
-  // wondering whether the app got the click.
-  const connectGdrive = useCallback(async () => {
-    if (auth.kind !== "signed-in") return;
-    const userId = auth.user.id;
-    const fromBackend = getBackend(userId);
-    let token: string;
-    try {
-      log.info("oauth(gdrive): launching GIS popup");
-      token = await startGdriveAuth();
-    } catch (err) {
-      log.error("oauth(gdrive): popup failed", err);
-      throw err;
-    }
-    if (auth.kind !== "signed-in") {
-      log.info("oauth(gdrive): aborted after token (signed out)");
-      return;
-    }
-    log.info("oauth(gdrive): probing remote + source in parallel");
-    const probe = createGdriveAdapter(token);
-    const [remote, sourceText] = await Promise.all([
-      probe.load().catch((err: unknown) => {
-        log.error("oauth(gdrive): probe failed", err);
-        return null;
-      }),
-      loadSourceText(userId, fromBackend),
-    ]);
-    if (auth.kind !== "signed-in") {
-      log.info("oauth(gdrive): aborted after probe (signed out)");
-      return;
-    }
-    log.info(
-      `oauth(gdrive): probe done remoteHasBytes=${Boolean(remote)} sourceHasBytes=${Boolean(sourceText)} — opening confirmation`,
-    );
-    setPendingCloudLink({
-      provider: "gdrive",
-      accessToken: token,
-      fromBackend,
-      remoteSnapshot: remote,
-      sourceText,
-    });
-  }, [auth, loadSourceText]);
+  }, [auth, backend, reauthorizeGdrive]);
 
   const selectBrowser = useCallback(() => {
     if (auth.kind !== "signed-in") return;
@@ -677,9 +619,9 @@ export function useStorageBackend({
           log.error(`${provider} disconnect: failed to mirror to local`, err);
         }
       }
-      // Provider-specific cleanup: useDropboxAuth owns its own token
-      // state and persisted clears; GDrive still lives here until its
-      // own hook lands.
+      // Persisted-token cleanup: useDropboxAuth's markDisconnected
+      // handles its own clear path; GDrive's persisted token still
+      // lives behind a separate getter so the clear stays inline.
       if (provider === "gdrive") {
         clearGdriveToken(userId);
       }
@@ -691,7 +633,7 @@ export function useStorageBackend({
       if (provider === "dropbox") {
         markDropboxDisconnected(userId);
       } else {
-        setGdriveTokenState(null);
+        markGdriveDisconnected();
       }
       setBackendState("browser");
     },
@@ -703,6 +645,7 @@ export function useStorageBackend({
       encryption,
       passwordRef,
       markDropboxDisconnected,
+      markGdriveDisconnected,
     ],
   );
 
@@ -810,9 +753,10 @@ export function useStorageBackend({
     (user: StoredUser) => {
       setBackendState(getBackend(user.id));
       applyDropboxSignedInUser(user);
+      applyGdriveSignedInUser(user);
       setEncryptionState(user.isDefault ? "plaintext" : getEncryption(user.id));
     },
-    [applyDropboxSignedInUser],
+    [applyDropboxSignedInUser, applyGdriveSignedInUser],
   );
 
   return {
