@@ -263,6 +263,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "food",
       kind: "expense",
     },
+    {
+      slug: "bakery",
+      name: "Bakery",
+      color: C[2],
+      glyph: "croissant",
+      category: "food",
+      kind: "expense",
+    },
     // Transport
     {
       slug: "fuel",
