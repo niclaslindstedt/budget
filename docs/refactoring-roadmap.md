@@ -137,26 +137,27 @@ new sheet type, but feature work can ship through them.
 ### Severity 5–6 — friction
 
 - **`BudgetPage.tsx` display-machinery hooks** — `BudgetPage.tsx`
-  dropped from 1540 → 1326 → 1210 lines after the
-  `computeBudgetState` consolidation and the `useRowFlashing`
-  extraction (see Landed). ~300 lines of display-side machinery
-  still live in the page as inline refs / effects / callbacks,
-  falling into 4 remaining cohesive sub-systems:
-  - **`useScrollToToday`** (~80 lines, around `BudgetPage.tsx:609-694`) —
-    `scrollTargetRef`, `lastScrolledKey`, the `scrollToToday`
-    callback with its rAF + 3s polling refine, plus the
-    sheet+currentMonth-keyed auto-scroll effect.
+  dropped from 1540 → 1326 → 1210 → 1049 lines after the
+  `computeBudgetState` consolidation, the `useRowFlashing`
+  extraction, and the `useScrollToToday` extraction (see Landed).
+  ~190 lines of display-side machinery still live in the page as
+  inline refs / effects / callbacks, falling into 3 remaining
+  cohesive sub-systems:
   - **`useRevealAnchorPreservation`** (~65 lines, around
-    `BudgetPage.tsx:696-755`) — the `captureRevealAnchor` callback,
+    `BudgetPage.tsx:524-587`) — the `captureRevealAnchor` callback,
     the `onShowMoreFutureClick` / `onShowMoreHistoryClick` callbacks,
     and the 8-frame `useLayoutEffect` that re-applies the scroll
-    delta as `BudgetMonthTable` placeholders settle.
+    delta as `BudgetMonthTable` placeholders settle. Reads
+    `scrollTargetRef` from the `useScrollToToday` hook return, so
+    the new hook needs to take the ref as a param (or the two hooks
+    share a small "current-month anchor" sub-hook that exposes the
+    ref).
   - **`useVisibleMonthRange`** (~75 lines, around
-    `BudgetPage.tsx:757-826`) — the IntersectionObserver setup
+    `BudgetPage.tsx:589-662`) — the IntersectionObserver setup
     that tracks `oldest` / `newest` visible months + the
     `todayButtonDirection` memo + `showTodayButton` derivation.
   - **`useScrollToRowRequest`** (~50 lines, around
-    `BudgetPage.tsx:828-883`) — the effect that responds to a
+    `BudgetPage.tsx:664-719`) — the effect that responds to a
     search-modal `scrollToRowRequest` (grows `extraHistory` enough,
     then scrolls + pulses the target row).
 
@@ -164,21 +165,22 @@ new sheet type, but feature work can ship through them.
   via refs that the hooks can own and return. **Severity: 5** as a
   multi-PR plan; **3** for any single hook in isolation. The win is
   on the feature wave: savings / loans / scenario pages will want
-  the same "scroll to today / preserve reveal anchor / show today
-  button when scrolled away" behaviours, and today they'd duplicate
-  ~300 lines verbatim. Land at least the scroll-to-today hook before
-  the second budget-style page type ships.
+  the same "preserve reveal anchor / show today button when scrolled
+  away / scroll to row from search" behaviours, and today they'd
+  duplicate ~190 lines verbatim. Land at least the reveal-anchor
+  hook before the second budget-style page type ships.
   - Plan: one PR per hook, in the order listed above (smallest
     coupling first, biggest IO surface last). Each hook lives at
-    `src/components/budget/use<Name>.ts` (the row-flashing PR set
-    the precedent at top-level rather than under `hooks/`). After
-    all four land, `BudgetPage.tsx` drops to ~900 lines and the
-    page reads as "compose data, compose chrome, render visible
-    months".
+    `src/components/budget/use<Name>.ts` (the row-flashing and
+    scroll-to-today PRs set the precedent at top-level rather than
+    under `hooks/`). After all three land, `BudgetPage.tsx` drops
+    to ~860 lines and the page reads as "compose data, compose
+    chrome, render visible months".
   - Risk: low-medium per PR. Each hook touches DOM refs and
-    requestAnimationFrame timing; the scroll-to-today flow in
-    particular is subtle (the refine / poll cascade exists because
-    Chrome's smooth-scroll interpolates by distance — see the
+    requestAnimationFrame timing; the reveal-anchor flow in
+    particular is subtle (the 8-frame `useLayoutEffect` cascade
+    exists because `BudgetMonthTable`'s near-viewport gate flips
+    the placeholder for several frames after a reveal — see the
     comments). Preserve the comments verbatim when moving.
     Smoke-test on mobile + desktop after each PR (pull-to-refresh,
     scroll into deep past via search, "Show more history" click,
@@ -346,6 +348,30 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`useScrollToToday` hook extraction from `BudgetPage.tsx`** (2026-05):
+  the second PR of the display-machinery plan. The scroll-to-today
+  machinery — `scrollTargetRef`, `lastScrolledKey`, the `scrollToToday`
+  callback with its rAF + 3s polling refine, the sheet+currentMonth-keyed
+  auto-scroll effect, plus the two private collaborators
+  `findRowNearestToday` and `scrollRowToTop` that only `scrollToToday`
+  uses — lifted into `src/components/budget/useScrollToToday.ts`.
+  The hook takes `{ sheetId, today, currentMonth, sectionRef }` and
+  returns `{ scrollTargetRef, scrollToToday }`; the parent attaches
+  the returned ref to the current-month container (`ref={isCurrent ?
+scrollTargetRef : null}`) and the reveal-anchor `useLayoutEffect`
+  reads through `scrollTargetRef.current` unchanged because the same
+  RefObject instance is what matters. `scrollToToday` became a
+  `useCallback` (was a plain function with an `exhaustive-deps`
+  disable) so the auto-scroll effect can correctly depend on it.
+  The orphaned comment block above `findRowNearestToday` was removed
+  in the same edit. `BudgetPage.tsx` drops from 1210 → 1049 lines.
+  Pure refactor — typecheck + fmt-check + 866 tests + build pass;
+  lint emits the same two pre-existing `setExtraFuture` /
+  `setExtraHistory` warnings (state setters the linter doesn't
+  recognise as stable). The remaining 3 hooks in the plan
+  (`useRevealAnchorPreservation`, `useVisibleMonthRange`,
+  `useScrollToRowRequest`) stay in Pending with re-verified line
+  ranges, severity unchanged at 5 as a multi-PR plan.
 - **`useRowFlashing` hook extraction from `BudgetPage.tsx`** (2026-05):
   the first PR of the 5-step display-machinery plan. The heartbeat
   pulse machinery (the `flashRow` callback, the `handleUpdateCell`
