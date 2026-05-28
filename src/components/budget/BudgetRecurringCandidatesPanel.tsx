@@ -15,6 +15,7 @@ import { type TFunction, useLang, useT } from "../../i18n";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Modal } from "../Modal";
 import { TypeChip } from "../TypePicker";
+import { addMonthsIso, todayIso } from "../../utils/date";
 import { formatDate, formatNumber, withCurrency } from "../../utils/format";
 
 type Props = {
@@ -437,23 +438,4 @@ function cadenceLabel(c: RecurringCandidate, t: TFunction): string {
 function dayFromIso(iso: string): number {
   const n = Number(iso.slice(8, 10));
   return Number.isFinite(n) && n >= 1 && n <= 31 ? n : 1;
-}
-
-function addMonthsIso(iso: string, months: number): string {
-  const y = Number(iso.slice(0, 4));
-  const m = Number(iso.slice(5, 7));
-  const d = Number(iso.slice(8, 10));
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
-    return iso;
-  }
-  const target = new Date(Date.UTC(y, m - 1 + months, d));
-  const ty = target.getUTCFullYear();
-  const tm = String(target.getUTCMonth() + 1).padStart(2, "0");
-  const td = String(target.getUTCDate()).padStart(2, "0");
-  return `${ty}-${tm}-${td}`;
-}
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

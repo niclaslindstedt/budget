@@ -55,6 +55,7 @@ import type {
   UserData,
 } from "../../data/types";
 import { suppressScrollHide } from "../../hooks";
+import { todayIso } from "../../utils/date";
 import { widestFormattedAmount } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { type BudgetContextValue } from "./BudgetContext";
@@ -212,11 +213,6 @@ type Props = {
   // running balances at this row's month.
   data: UserData;
 };
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 // Pick the row that should anchor a "scroll to today" jump.
 //

@@ -4,6 +4,7 @@ import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { isIsoDate } from "../data/recurrence";
 import { useT } from "../i18n";
 import { type MessageKey } from "../i18n";
+import { todayIso } from "../utils/date";
 import { Button, SelectPicker } from "./form";
 import { Modal } from "./Modal";
 
@@ -46,11 +47,6 @@ function pad(n: number): string {
 
 function toIso(y: number, m: number, d: number): string {
   return `${y}-${pad(m)}-${pad(d)}`;
-}
-
-function todayIso(): string {
-  const d = new Date();
-  return toIso(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
 function daysInMonth(year: number, month1: number): number {

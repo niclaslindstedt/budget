@@ -21,6 +21,7 @@ import type {
   Row,
   Transfer,
 } from "../types";
+import { todayIso } from "../../utils/date";
 
 export type ExportRow = {
   date: string;
@@ -56,11 +57,6 @@ export type BuildBudgetExportArgs = {
   includeHistory: boolean;
   includeFuture: boolean;
 };
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 // Build the flat list of export rows for one budget. Returns a
 // chronologically sorted array — empty when the budget has no rows and
