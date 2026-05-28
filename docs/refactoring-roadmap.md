@@ -183,14 +183,6 @@ new sheet type, but feature work can ship through them.
   moderate but the cumulative readability gain is significant.
   Apply opportunistically when a modal is otherwise being touched.
 
-- **Reducer has no generic per-sheet-type dispatcher** — the
-  item-level reducer (`src/data/reducers/item/index.ts:505`) matches
-  on `i.type === "accountBudget"` directly. Each new sheet type will
-  add an arm. **Severity: 6.**
-  - Plan: introduce a `SheetItemReducer<T>` factory so each sheet
-    type registers its own item reducer; `reduceItemDispatch`
-    walks the registry instead of hard-coding the union.
-
 - **`BudgetMatchRuleModal.tsx` (770 lines) state machine spread + tight
   coupling to `HistoryEntry`** — amount-mode toggles between
   "any / exact / range" with inline render branching; pattern
@@ -331,6 +323,30 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **Per-sheet-type item dispatcher via `SHEET_TYPE_REGISTRY`**
+  (2026-05): the item-level dispatch tail moved from
+  `src/data/reducers/item/index.ts` into the budget sheet-type
+  descriptor (`src/data/sheet-types/budget.ts`) and is wired in as
+  `BUDGET_SHEET_DESCRIPTOR.reduceItem`. The top-level reducer's tail
+  in `src/data/reducer.ts` now walks `SHEET_TYPE_REGISTRY` and stops
+  at the first descriptor whose `reduceItem(state, action)` returns
+  a non-null result — mirroring the existing slice-reducer chain
+  (`reduceCategoriesAndTypes`, `reduceMatchRules`, …) instead of
+  hard-coding `i.type === "accountBudget"` in the dispatcher itself.
+  `SheetTypeDescriptor` gained an optional `reduceItem` field;
+  singleton flavours (Accounts) leave it undefined. The budget
+  descriptor owns its own `isBudgetItemAction` predicate so the
+  registry walker doesn't need to know which actions belong to which
+  flavour. `src/data/reducers/item/index.ts` shrank from 595 to 447
+  lines and is now the pure per-item reducer + helpers (no dispatch
+  glue). Adding a new sheet type with item-level data — savings,
+  loans, scenarios — is now: declare the per-item action union, write
+  the per-item reducer, expose `reduceItem` on the descriptor.
+  Closes the severity-6 "Reducer has no generic per-sheet-type
+  dispatcher" candidate. Pure refactor: typecheck + lint + build +
+  846 tests pass; behaviour is byte-equivalent to the prior chain
+  because the budget descriptor is the only one with a `reduceItem`
+  today.
 - **Inline `todayIso` / `addMonthsIso` adoption of the shared
   `src/utils/date.ts` helpers** (2026-05): the seven inline copies of
   `todayIso()` (`BudgetPage.tsx`, `BudgetEditEntryModal.tsx`,

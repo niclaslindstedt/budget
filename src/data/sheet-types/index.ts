@@ -1,4 +1,5 @@
-import type { SheetGlyph, SheetItem, SheetType } from "../types";
+import type { SheetGlyph, SheetItem, SheetType, UserData } from "../types";
+import type { Action } from "../reducer";
 
 import {
   ACCOUNTS_SHEET_DESCRIPTOR,
@@ -28,6 +29,12 @@ export type SheetTypeDescriptor = {
   // `accountId` is only honoured by flavours that have a per-account
   // budget item; singleton flavours (Accounts) ignore it.
   createDefaultItem(opts: { accountId: string | null }): SheetItem;
+  // Item-level dispatch entry point. Returns the next state when the
+  // action targets one of this flavour's items; returns `null` when
+  // the action belongs to a different sheet type so the outer reducer
+  // can defer to the next descriptor. Singleton flavours that hold no
+  // row-shaped data (e.g. Accounts) leave this undefined.
+  reduceItem?: (state: UserData, action: Action) => UserData | null;
 };
 
 export const SHEET_TYPE_REGISTRY: readonly SheetTypeDescriptor[] = [
