@@ -107,6 +107,9 @@ src/
 │   │   ├── synthesis.ts  # synthesized rows (transfersForAccount,
 │   │   │                 # synthesizeTransferRow, synthesizeHistoryRow,
 │   │   │                 # resolveEntryLabels, isTransferRow)
+│   │   ├── computed-state.ts # one-shot row-pipeline cascade consumed by
+│   │   │                     # BudgetPage as a single useMemo (synthesis →
+│   │   │                     # merge → decorate → sort → balance → bucket)
 │   │   ├── export.ts     # CSV/XLSX export builder for an AccountBudget
 │   │   ├── cells.ts      # generic Row.cells readers (readStringCell,
 │   │   │                 # readNumberCell, firstNonBlank)
