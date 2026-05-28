@@ -23,12 +23,10 @@ export function compilePattern(pattern: string): RegExp {
   return new RegExp(`^${body}$`, "i");
 }
 
-// Cache compiled regex per rule object. `buildVisibleRows` runs
-// `findMatchingRule` once per history entry, which previously compiled
-// every rule's pattern on every entry — N entries × M rules `new
-// RegExp()` allocations per render. Keying on the rule object lets the
-// reducer's normal immutability invalidate the cache automatically when
-// the user edits a rule (a fresh rule object means a fresh compile).
+// Cache compiled regex per rule object. Keying on the rule object lets
+// the reducer's normal immutability invalidate the cache automatically
+// when the user edits a rule (a fresh rule object means a fresh
+// compile).
 const rulePatternCache = new WeakMap<MatchRule, RegExp | null>();
 
 function regexForRule(rule: MatchRule): RegExp | null {

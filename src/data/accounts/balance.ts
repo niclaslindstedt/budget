@@ -15,14 +15,9 @@ import type { UserData } from "../types";
 //
 // Direct single-account computation: only touches the slices that
 // matter for `accountId` (its own history, transfers it's a leg of,
-// budget sheets pointing at it). Routing through
-// `computeAccountBalances` would walk every other account's history,
-// every other sheet's budget rows, and every transfer between two
-// unrelated accounts — wasted O(workspace) work when the caller only
-// needs one number. For workspaces with K accounts the saved factor
-// is K. When computing balances for every account at once, prefer
-// `computeAccountBalances` — that path amortises the shared sheet /
-// transfer walks across all K accounts in one pass.
+// budget sheets pointing at it). When computing balances for every
+// account at once, prefer `computeAccountBalances` — it walks the
+// shared sheet / transfer log once instead of per account.
 export function accountBalance(
   data: UserData,
   accountId: string,
@@ -35,8 +30,6 @@ export function accountBalance(
   // History anchor: the latest entry on or before `today` with a
   // stored balance wins. Walks this account's entries once to find
   // it, then a second pass sums amounts strictly after the anchor.
-  // Two short passes over one account's history beats one big pass
-  // over every account's history when the caller only wants one.
   const history = data.history[accountId] ?? [];
   let anchorDate = "";
   let anchorTotal = 0;
@@ -89,11 +82,9 @@ export function accountBalance(
 }
 
 // Compute every account's balance in a single pass over the workspace.
-// `AccountsPage` calls this once per render instead of invoking
-// `accountBalance` per account, which would re-walk the sheet tree,
-// the transfer log, and each account's history K times for K accounts.
-// With ~10 accounts, ~500 rows, and ~200 transfers, that drops a
-// per-render budget from O(K × (R + T + H)) to O(R + T + H).
+// `AccountsPage` calls this once per render so the sheet tree, the
+// transfer log, and each account's history are walked once total
+// rather than once per account.
 export function computeAccountBalances(
   data: UserData,
   today: string = todayIso(),

@@ -216,10 +216,9 @@ export function computeBalances(
   sortContext?: RowSortContext,
   // Pre-sorted view of `item.rows` produced by `sortRowsByDate(item.rows,
   // dateCol.id, sortContext)`. Callers that also need the sorted array
-  // for display (BudgetPage, the XLSX exporter) pass it in to avoid
-  // paying for the same O(N log N) sort twice — the running-balance pass
-  // and the display path used to each sort independently. When omitted,
-  // the function sorts internally as before.
+  // for display (BudgetPage, the XLSX exporter) pass it in so the
+  // running-balance pass and the display path share one sort. When
+  // omitted, the function sorts internally.
   presortedRows?: readonly Row[],
 ): Map<string, number> {
   const result = new Map<string, number>();
@@ -471,9 +470,8 @@ export function rowsInSeriesFrom<R extends Row>(
 // Used by the edit-row modals to default the "until" picker so the
 // scope-picker reaches the natural end of the series.
 //
-// Single-pass max instead of the obvious `.filter().sort().at(-1)` —
-// we only need the maximum, not the full ordering, so the O(N log N)
-// sort + the three intermediate arrays it allocated were pure waste.
+// Single-pass max — we only need the maximum, not the full ordering,
+// so don't reach for `.filter().sort().at(-1)` here.
 export function getLastSeriesDate(
   rows: readonly Row[],
   seriesId: string,

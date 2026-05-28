@@ -44,10 +44,9 @@ export type SearchEntry = {
   // fields contain that string. Empty for non-historic rows.
   bankDescription: string;
   amount: number | null;
-  // Pre-lowercased mirrors of the searchable string fields.
-  // `runSearch` previously lowercased every haystack on every
-  // keystroke; hoisting the work into `buildSearchIndex` collapses
-  // the per-keystroke cost to a plain `indexOf` on the cached form.
+  // Pre-lowercased mirrors of the searchable string fields, built once
+  // in `buildSearchIndex` so `runSearch` does a plain `indexOf` on the
+  // cached form per keystroke.
   descriptionLc: string;
   typeNameLc: string;
   categoryNameLc: string;

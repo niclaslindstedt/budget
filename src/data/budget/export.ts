@@ -136,8 +136,7 @@ export function buildBudgetExportRows(
     typesById,
   };
   // Sort once. `computeBalances` accepts the pre-sorted view so the
-  // running-balance walk and the export iteration below share a single
-  // O(N log N) pass instead of each sorting independently.
+  // running-balance walk and the export iteration below share one sort.
   const sorted = sortRowsByDate(allRows, dateCol.id, sortContext);
   const balances = computeBalances(
     item,

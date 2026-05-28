@@ -122,9 +122,8 @@ export function findCandidates(
   // Project rows once: filter out the categorically ineligible ones
   // (correction / synthesized) and cache `(date, amount, absCents)` so
   // the inner loop only sees minted candidates. Then sort by
-  // `absCents` and binary-search the tolerance band per entry, so a
-  // 1000-row × 1000-entry import drops from O(E × R) ≈ 1e6 pair
-  // checks to O((E + R) log R + E × band) ≈ a few × 1e4.
+  // `absCents` and binary-search the tolerance band per entry so each
+  // entry checks only rows within the band, not every row.
   type Projected = {
     row: Row;
     date: string;

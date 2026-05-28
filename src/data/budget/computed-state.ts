@@ -142,8 +142,7 @@ export function computeBudgetState(
   // Sort the full rows array once. Both the running-balance pass below
   // and the per-month display path consume this view — feeding
   // `groupRowsByMonth` a globally date-sorted array delivers per-month
-  // sorted buckets for free. Trades two O(N log N) sorts per keystroke
-  // for one.
+  // sorted buckets for free.
   const sortedRows = dateCol
     ? sortRowsByDate(decoratedItem.rows, dateCol.id, sortContext)
     : decoratedItem.rows;
