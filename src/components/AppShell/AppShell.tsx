@@ -415,6 +415,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         userDescription?: string;
         userTypeId?: string | null;
         userCompanyId?: string | null;
+        isTransfer?: boolean;
         noCompany?: boolean;
       },
     ) =>

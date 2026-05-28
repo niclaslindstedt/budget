@@ -11,6 +11,9 @@ const metadata: MetadataCatalog = {
   descriptionLabel: "Beskrivning",
   descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
   descriptionHint: "Tomt fält behåller bankens text.",
+  markAsTransfer: "Markera som överföring",
+  markAsTransferHint:
+    "Överföringar är bara pengar som flyttas mellan konton — varken typ eller företag behövs.",
   skip: "Hoppa över",
   needsTypePrompt: "Välj en typ för att spara.",
   needsCompanyPrompt:

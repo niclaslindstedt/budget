@@ -165,6 +165,7 @@ type Props = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      isTransfer?: boolean;
       noCompany?: boolean;
     },
   ) => void;
