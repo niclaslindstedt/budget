@@ -236,6 +236,53 @@ describe("runSearch — text matches", () => {
   });
 });
 
+describe("runSearch — sort overrides", () => {
+  it("date-desc orders the relevance-trimmed list newest first", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-01-10", x: "Spotify", a: -119 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "Spotify family", a: -119 } },
+      { id: "r3", cells: { d: "2026-03-15", x: "Spotify duo", a: -119 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(idx, "spotify", "date-desc");
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r2", "r3", "r1"]);
+  });
+
+  it("date-asc orders the relevance-trimmed list oldest first", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-01-10", x: "Spotify", a: -119 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "Spotify family", a: -119 } },
+      { id: "r3", cells: { d: "2026-03-15", x: "Spotify duo", a: -119 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(idx, "spotify", "date-asc");
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r1", "r3", "r2"]);
+  });
+
+  it("amount-desc orders by amount highest first", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "Spotify family", a: -250 } },
+      { id: "r3", cells: { d: "2026-05-03", x: "Spotify duo", a: -50 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(idx, "spotify", "amount-desc");
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r3", "r1", "r2"]);
+  });
+
+  it("rows with no date sink to the bottom regardless of direction", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "", x: "Spotify draft", a: -119 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "Spotify family", a: -119 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const desc = runSearch(idx, "spotify", "date-desc");
+    expect(desc.map((r) => r.entry.rowId)).toEqual(["r2", "r1"]);
+    const asc = runSearch(idx, "spotify", "date-asc");
+    expect(asc.map((r) => r.entry.rowId)).toEqual(["r2", "r1"]);
+  });
+});
+
 describe("runSearch — performance", () => {
   it("filters a 5000-row index per keystroke without re-lowercasing", () => {
     const rows: Row[] = [];

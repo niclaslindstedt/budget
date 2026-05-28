@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 
-import { buildSearchIndex, type SearchEntry } from "../../../data/search";
+import {
+  buildSearchIndex,
+  type SearchEntry,
+  type SearchSort,
+} from "../../../data/search";
 import type { UserData } from "../../../data/types";
 import { useLang, useT } from "../../../i18n";
 import type { Lang } from "../../../i18n/locale";
@@ -27,6 +31,11 @@ type Result = {
   setSearchOpen: (open: boolean) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  // Sort order survives modal close like `searchQuery` does — never
+  // persisted to localStorage. Default is `"relevance"` so the score-
+  // based ranking from `runSearch` shows up unchanged on first open.
+  searchSort: SearchSort;
+  setSearchSort: (sort: SearchSort) => void;
   // Memoised search index against the whole `data` reference so it
   // rebuilds on every persisted edit but stays stable between renders
   // when nothing changed. `runSearch` filters this on every keystroke
@@ -52,6 +61,7 @@ export function useSearchModal({ data }: Params): Result {
   const lang = useLang();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchSort, setSearchSort] = useState<SearchSort>("relevance");
   const [scrollToRowRequest, setScrollToRowRequest] =
     useState<ScrollToRowRequest | null>(null);
   // Lazy: the search index is a flattened projection of every sheet's
@@ -88,6 +98,8 @@ export function useSearchModal({ data }: Params): Result {
     setSearchOpen,
     searchQuery,
     setSearchQuery,
+    searchSort,
+    setSearchSort,
     searchIndex,
     scrollToRowRequest,
     setScrollToRowRequest,

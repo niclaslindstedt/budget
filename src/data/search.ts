@@ -63,6 +63,18 @@ export type SearchResult = {
   match: SearchMatch;
 };
 
+// Caller-selected ordering applied after the relevance scoring pass.
+// `relevance` (default) keeps the score-sorted order; the date /
+// amount variants re-sort by the corresponding cell value, pushing
+// rows without that value to the bottom so they stay reachable
+// without dominating the list.
+export type SearchSort =
+  | "relevance"
+  | "date-asc"
+  | "date-desc"
+  | "amount-asc"
+  | "amount-desc";
+
 // Build a flat searchable list across every sheet the user has. Pulls
 // in user-authored rows plus the same synthesized rows that
 // `BudgetPage` renders — `buildVisibleRows` is the single source of
@@ -204,6 +216,7 @@ const MAX_RESULTS = 50;
 export function runSearch(
   index: readonly SearchEntry[],
   query: string,
+  sortBy: SearchSort = "relevance",
 ): SearchResult[] {
   const trimmed = query.trim();
   if (trimmed === "") return [];
@@ -287,5 +300,40 @@ export function runSearch(
   // happens to be the row order inside each sheet — newest rows last,
   // which is fine for a transaction ledger.
   scored.sort((a, b) => a.score - b.score);
-  return scored.slice(0, MAX_RESULTS).map((s) => s.result);
+  const top = scored.slice(0, MAX_RESULTS).map((s) => s.result);
+  if (sortBy === "relevance") return top;
+  return reorderResults(top, sortBy);
+}
+
+// Re-sort the relevance-trimmed list by the user-picked field. Rows
+// missing the field's value (no date, no amount) drop to the bottom
+// regardless of direction — promoting them would surface
+// least-informative hits first and bury the rows the user can
+// actually compare.
+function reorderResults(
+  results: SearchResult[],
+  sortBy: Exclude<SearchSort, "relevance">,
+): SearchResult[] {
+  const reordered = results.slice();
+  reordered.sort((a, b) => {
+    const av = fieldValue(a.entry, sortBy);
+    const bv = fieldValue(b.entry, sortBy);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    const direction = sortBy.endsWith("-asc") ? 1 : -1;
+    if (av === bv) return 0;
+    return av < bv ? -1 * direction : 1 * direction;
+  });
+  return reordered;
+}
+
+function fieldValue(
+  entry: SearchEntry,
+  sortBy: Exclude<SearchSort, "relevance">,
+): number | string | null {
+  if (sortBy === "date-asc" || sortBy === "date-desc") {
+    return entry.iso === "" ? null : entry.iso;
+  }
+  return entry.amount;
 }

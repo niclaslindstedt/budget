@@ -8,6 +8,13 @@ const searchTransaction: SearchTransactionCatalog = {
   emptyHint: "Börja skriva för att söka i alla blad.",
   noResults: "Inga matchande poster",
   resultAria: "Öppna {description} i {sheet}",
+  sortMenuAria: "Ändra sorteringsordning",
+  sortMenuTitle: "Sortera efter",
+  sortRelevance: "Relevans",
+  sortDateDesc: "Datum · Nyaste först",
+  sortDateAsc: "Datum · Äldsta först",
+  sortAmountDesc: "Belopp · Högsta först",
+  sortAmountAsc: "Belopp · Lägsta först",
 };
 
 export default searchTransaction;
