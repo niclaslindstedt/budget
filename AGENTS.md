@@ -119,7 +119,9 @@ src/
 │   │   ├── BudgetRow.tsx        # one budget row
 │   │   ├── BudgetCell.tsx       # per-type cell editor
 │   │   ├── BudgetAddEntryButton.tsx, BudgetEntryActionsMenu.tsx
-│   │   ├── BudgetEditEntryModal.tsx, BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx,
+│   │   ├── BudgetEditEntryModal.tsx, BudgetEditSeriesForm.tsx,
+│   │   │   BudgetPromoteHistoryForm.tsx, BudgetPromoteToSeriesForm.tsx,
+│   │   │   BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx,
 │   │   │   BudgetComplexEntryModal.tsx, BudgetBulkEditModal.tsx, BudgetMoveCopyModal.tsx,
 │   │   │   BudgetApplySeriesDialog.tsx, BudgetMatchRuleModal.tsx,
 │   │   │   BudgetRecurringCandidatesPanel.tsx, BudgetRecurrenceForm.tsx,

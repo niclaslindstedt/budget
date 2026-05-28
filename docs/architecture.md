@@ -41,7 +41,10 @@ src/
 │   │   ├── BudgetRow.tsx               # row body — swipe-to-act + cell wiring
 │   │   ├── BudgetAddEntryButton.tsx, BudgetEntryActionsMenu.tsx
 │   │   ├── BudgetComplexEntryModal.tsx       # recurring + categorised entry form
-│   │   ├── BudgetEditEntryModal.tsx          # promote-to-recurring / scoped series edit
+│   │   ├── BudgetEditEntryModal.tsx          # tri-mode dispatcher: series-edit / promote-history / promote
+│   │   ├── BudgetEditSeriesForm.tsx          # body+footer for series edit (scope, shift, until)
+│   │   ├── BudgetPromoteHistoryForm.tsx      # body+footer for history-row promotion + historic matches
+│   │   ├── BudgetPromoteToSeriesForm.tsx     # body+footer for regular-row promote-to-series
 │   │   ├── BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx
 │   │   ├── BudgetRecurrenceForm.tsx          # mode-tabs + preview, shared by both modals
 │   │   ├── BudgetBulkEditModal.tsx, BudgetMoveCopyModal.tsx, BudgetApplySeriesDialog.tsx
