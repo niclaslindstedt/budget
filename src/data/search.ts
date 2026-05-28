@@ -183,6 +183,50 @@ export function indexBounds(index: readonly SearchEntry[]): IndexBounds {
   return { amountMin, amountMax, dateMin, dateMax };
 }
 
+// Amount / date extents of the rows the current query and the
+// categorical filters (the exclude toggles + sheet selection) would
+// surface — what the filter popover seeds its range sliders from.
+// Unlike `indexBounds`, which spans the entire workspace, this tracks
+// what the user is actually looking at: searching "Meds" with four
+// 100–500 kr hits collapses the amount slider to 100–500 instead of
+// 0–981K, and the date slider to those four rows' span.
+//
+// The amount/date range bounds of `filter` are deliberately ignored
+// here — folding a slider's own value back into its domain would let
+// it collapse onto itself as the user drags. The exclude toggles and
+// sheet selection ARE honoured, since those genuinely change which
+// rows are "in the search".
+export function searchBounds(
+  index: readonly SearchEntry[],
+  query: string,
+  filter: SearchFilter,
+): IndexBounds {
+  // Strip the range constraints; keep the categorical ones.
+  const categorical: SearchFilter = {
+    ...filter,
+    amountMin: null,
+    amountMax: null,
+    dateMin: null,
+    dateMax: null,
+  };
+  const trimmed = query.trim();
+  // No query → bounds over every categorically-matching row (matches
+  // the old whole-index seeding for empty-query filter browsing, but
+  // narrowed by any active exclude / sheet filter).
+  if (trimmed === "") {
+    const matched = index.filter((e) => matchesFilter(e, categorical));
+    return indexBounds(matched);
+  }
+  const needle = trimmed.toLowerCase();
+  const parsedAmount = parseAmount(trimmed);
+  const matched: SearchEntry[] = [];
+  for (const entry of index) {
+    if (!matchesFilter(entry, categorical)) continue;
+    if (scoreEntry(entry, needle, parsedAmount) !== null) matched.push(entry);
+  }
+  return indexBounds(matched);
+}
+
 // Build a flat searchable list across every sheet the user has. Pulls
 // in user-authored rows plus the same synthesized rows that
 // `BudgetPage` renders — `buildVisibleRows` is the single source of
@@ -350,6 +394,92 @@ const FIELD_WEIGHT: Record<
   bankDescription: 4,
 };
 
+// The searchable text fields paired with their pre-lowercased mirror,
+// in field-priority order. Hoisted to module scope so both `runSearch`
+// and `scoreEntry` share one allocation instead of rebuilding the
+// literal per call.
+const TEXT_FIELDS: {
+  name:
+    | "description"
+    | "typeName"
+    | "categoryName"
+    | "companyName"
+    | "bankDescription";
+  lcKey:
+    | "descriptionLc"
+    | "typeNameLc"
+    | "categoryNameLc"
+    | "companyNameLc"
+    | "bankDescriptionLc";
+}[] = [
+  { name: "description", lcKey: "descriptionLc" },
+  { name: "companyName", lcKey: "companyNameLc" },
+  { name: "typeName", lcKey: "typeNameLc" },
+  { name: "categoryName", lcKey: "categoryNameLc" },
+  { name: "bankDescription", lcKey: "bankDescriptionLc" },
+];
+
+// Score one entry against a parsed query: the best (lowest-scoring)
+// text or amount hit, or null when nothing matches. `needle` is the
+// already-lowercased trimmed query; `parsedAmount` is `parseAmount` of
+// the same query (null when it doesn't read as a number). Shared by
+// `runSearch` (ranking) and `searchBounds` (which rows feed the slider
+// domains) so the two can't disagree on what "matches the query" means.
+function scoreEntry(
+  entry: SearchEntry,
+  needle: string,
+  parsedAmount: number | null,
+): { match: SearchMatch; score: number } | null {
+  let best: { match: SearchMatch; score: number } | null = null;
+
+  // Text matches first — find earliest hit across fields, weighted
+  // by field priority.
+  for (const field of TEXT_FIELDS) {
+    const haystackLc = entry[field.lcKey];
+    if (haystackLc === "") continue;
+    const idx = haystackLc.indexOf(needle);
+    if (idx === -1) continue;
+    // Score: field weight (×1000 so it dominates) + position inside
+    // the field. Earlier matches and higher-priority fields rank
+    // first; ties break on insertion order via stable sort.
+    const score = FIELD_WEIGHT[field.name] * 1000 + idx;
+    if (best === null || score < best.score) {
+      best = {
+        match: { field: field.name, start: idx, end: idx + needle.length },
+        score,
+      };
+    }
+  }
+
+  // Amount match — kicks in when the query parses as a number AND
+  // the row carries an amount within the tolerance band. Distance-
+  // based score; exact match lands at 0 and beats any text hit on
+  // a row that matches both ways. Comparison is on absolute value
+  // so "100" matches both income (+100) and expense (-100) rows —
+  // users typically remember the magnitude, not the sign.
+  if (parsedAmount !== null && entry.amount !== null) {
+    const queryAbs = Math.abs(parsedAmount);
+    const rowAbs = Math.abs(entry.amount);
+    const distance = Math.abs(rowAbs - queryAbs);
+    const band = Math.max(queryAbs * AMOUNT_TOLERANCE, 0.01);
+    if (distance <= band) {
+      // Amount distance is on a different scale than text scores;
+      // map it into the same range so a near-exact amount can
+      // outrank a mid-field text hit. Exact match → 0; full-band
+      // → 999 (just under the next field weight tier).
+      const amountScore = Math.round((distance / band) * 999);
+      if (best === null || amountScore < best.score) {
+        best = {
+          match: { field: "amount", distance },
+          score: amountScore,
+        };
+      }
+    }
+  }
+
+  return best;
+}
+
 // Cap the result list so a query like "a" doesn't render thousands of
 // rows. The modal shows the top hits ordered by relevance; in
 // practice the user refines the query when they don't see what they
@@ -416,79 +546,9 @@ export function runSearch(
   type Scored = { result: SearchResult; score: number };
   const scored: Scored[] = [];
 
-  // Pull the lowercase haystacks out of an array literal once per
-  // iteration. The previous loop body lowercased every haystack on
-  // every keystroke; `buildSearchIndex` now caches the lc forms so
-  // each text-match check collapses to a plain `indexOf`.
-  const TEXT_FIELDS: {
-    name:
-      | "description"
-      | "typeName"
-      | "categoryName"
-      | "companyName"
-      | "bankDescription";
-    lcKey:
-      | "descriptionLc"
-      | "typeNameLc"
-      | "categoryNameLc"
-      | "companyNameLc"
-      | "bankDescriptionLc";
-  }[] = [
-    { name: "description", lcKey: "descriptionLc" },
-    { name: "companyName", lcKey: "companyNameLc" },
-    { name: "typeName", lcKey: "typeNameLc" },
-    { name: "categoryName", lcKey: "categoryNameLc" },
-    { name: "bankDescription", lcKey: "bankDescriptionLc" },
-  ];
   for (const entry of index) {
     if (!matchesFilter(entry, filter)) continue;
-    let best: { match: SearchMatch; score: number } | null = null;
-
-    // Text matches first — find earliest hit across fields, weighted
-    // by field priority.
-    for (const field of TEXT_FIELDS) {
-      const haystackLc = entry[field.lcKey];
-      if (haystackLc === "") continue;
-      const idx = haystackLc.indexOf(needle);
-      if (idx === -1) continue;
-      // Score: field weight (×1000 so it dominates) + position inside
-      // the field. Earlier matches and higher-priority fields rank
-      // first; ties break on insertion order via stable sort.
-      const score = FIELD_WEIGHT[field.name] * 1000 + idx;
-      if (best === null || score < best.score) {
-        best = {
-          match: { field: field.name, start: idx, end: idx + needle.length },
-          score,
-        };
-      }
-    }
-
-    // Amount match — kicks in when the query parses as a number AND
-    // the row carries an amount within the tolerance band. Distance-
-    // based score; exact match lands at 0 and beats any text hit on
-    // a row that matches both ways. Comparison is on absolute value
-    // so "100" matches both income (+100) and expense (-100) rows —
-    // users typically remember the magnitude, not the sign.
-    if (parsedAmount !== null && entry.amount !== null) {
-      const queryAbs = Math.abs(parsedAmount);
-      const rowAbs = Math.abs(entry.amount);
-      const distance = Math.abs(rowAbs - queryAbs);
-      const band = Math.max(queryAbs * AMOUNT_TOLERANCE, 0.01);
-      if (distance <= band) {
-        // Amount distance is on a different scale than text scores;
-        // map it into the same range so a near-exact amount can
-        // outrank a mid-field text hit. Exact match → 0; full-band
-        // → 999 (just under the next field weight tier).
-        const amountScore = Math.round((distance / band) * 999);
-        if (best === null || amountScore < best.score) {
-          best = {
-            match: { field: "amount", distance },
-            score: amountScore,
-          };
-        }
-      }
-    }
-
+    const best = scoreEntry(entry, needle, parsedAmount);
     if (best !== null) {
       scored.push({
         result: { entry, match: best.match },

@@ -19,14 +19,19 @@ import type {
 } from "../../data/search";
 import {
   EMPTY_FILTER,
-  indexBounds,
   isFilterActive,
   runSearch,
+  searchBounds,
 } from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
 import { useLang, useT, type TFunction } from "../../i18n";
-import { formatDate, formatNumber, withCurrency } from "../../utils/format";
+import {
+  formatDate,
+  formatMonthLabel,
+  formatNumber,
+  withCurrency,
+} from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
 import { Checkbox, ClearableInput, RangeSlider } from "../form";
 import { CategoryIconGlyph } from "../icons";
@@ -68,17 +73,38 @@ const FILTER_MENU_PLACEMENT: FloatingPlacement = {
 // the user has moved away from that default.
 const DEFAULT_SORT: SearchSort = "date-desc";
 
-// One UTC day in milliseconds — the date range slider works in whole
-// days so it can drive `RangeSlider`'s numeric domain. The FilterMenu
-// maps ISO dates to/from day indices around this constant.
-const MS_PER_DAY = 86_400_000;
-
-function isoToDayNum(iso: string): number {
-  return Math.floor(Date.parse(`${iso}T00:00:00Z`) / MS_PER_DAY);
+// The date range slider works in whole months, not days — day-level
+// resolution is more granularity than a transaction-browsing filter
+// needs, and a month-stepped thumb is far easier to land on. A "month
+// number" is `year * 12 + (month - 1)` so the slider gets a dense
+// integer domain; the FilterMenu maps ISO dates to/from it.
+function isoToMonthNum(iso: string): number {
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7));
+  return y * 12 + (m - 1);
 }
 
-function dayNumToIso(day: number): string {
-  return new Date(day * MS_PER_DAY).toISOString().slice(0, 10);
+function monthNumToKey(month: number): string {
+  const y = Math.floor(month / 12);
+  const m = (month % 12) + 1;
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
+}
+
+// First day of the month — the inclusive lower ISO bound a min thumb
+// commits to.
+function monthNumToIsoStart(month: number): string {
+  return `${monthNumToKey(month)}-01`;
+}
+
+// Last day of the month — the inclusive upper ISO bound a max thumb
+// commits to, so the band covers the whole selected month. Day 0 of
+// the following month resolves to the last day of this one, handling
+// February and 30-day months without a lookup table.
+function monthNumToIsoEnd(month: number): string {
+  const y = Math.floor(month / 12);
+  const m = month % 12;
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return `${monthNumToKey(month)}-${String(lastDay).padStart(2, "0")}`;
 }
 
 // Cap a long string with an ellipsis so the result row stays in a
@@ -147,6 +173,7 @@ export function BudgetTransferSearchModal({
                 filter={filter}
                 onFilterChange={onFilterChange}
                 index={index}
+                query={query}
                 settings={settings}
               />
               <SortMenu sort={sort} onSortChange={onSortChange} />
@@ -456,11 +483,13 @@ function FilterMenu({
   filter,
   onFilterChange,
   index,
+  query,
   settings,
 }: {
   filter: SearchFilter;
   onFilterChange: (next: SearchFilter) => void;
   index: readonly SearchEntry[];
+  query: string;
   settings: Settings;
 }) {
   const t = useT();
@@ -488,32 +517,41 @@ function FilterMenu({
     return [...seen.values()];
   }, [index]);
 
-  const bounds = useMemo(() => indexBounds(index), [index]);
+  // Seed the range sliders from the rows the current query + categorical
+  // filters surface, not the whole workspace — so a four-row "Meds"
+  // search shows a 100–500 amount slider instead of 0–981K.
+  const bounds = useMemo(
+    () => searchBounds(index, query, filter),
+    [index, query, filter],
+  );
 
   const hasAmount =
     bounds.amountMin !== null &&
     bounds.amountMax !== null &&
     bounds.amountMax > bounds.amountMin;
-  const hasDate =
-    bounds.dateMin !== null &&
-    bounds.dateMax !== null &&
-    bounds.dateMax > bounds.dateMin;
-
   const amountValue: [number, number] = [
     filter.amountMin ?? bounds.amountMin ?? 0,
     filter.amountMax ?? bounds.amountMax ?? 0,
   ];
-  const dateMinNum = bounds.dateMin !== null ? isoToDayNum(bounds.dateMin) : 0;
-  const dateMaxNum = bounds.dateMax !== null ? isoToDayNum(bounds.dateMax) : 0;
+  const dateMinNum =
+    bounds.dateMin !== null ? isoToMonthNum(bounds.dateMin) : 0;
+  const dateMaxNum =
+    bounds.dateMax !== null ? isoToMonthNum(bounds.dateMax) : 0;
+  // Drive the slider only when the matched rows span more than one
+  // month — a single-month domain has no range to drag.
+  const hasDate =
+    bounds.dateMin !== null &&
+    bounds.dateMax !== null &&
+    dateMaxNum > dateMinNum;
   const dateValue: [number, number] = [
-    filter.dateMin !== null ? isoToDayNum(filter.dateMin) : dateMinNum,
-    filter.dateMax !== null ? isoToDayNum(filter.dateMax) : dateMaxNum,
+    filter.dateMin !== null ? isoToMonthNum(filter.dateMin) : dateMinNum,
+    filter.dateMax !== null ? isoToMonthNum(filter.dateMax) : dateMaxNum,
   ];
 
   const amountLabel = (v: number) =>
     withCurrency(formatNumber(v, settings), settings);
-  const dateLabel = (day: number) =>
-    formatDate(dayNumToIso(day), settings.dateFormat, lang);
+  const dateLabel = (month: number) =>
+    formatMonthLabel(monthNumToKey(month), lang);
 
   // Store a bound as null when its thumb sits at the natural edge so the
   // filter stays "default" on that side and the Filter glyph dims back.
@@ -533,8 +571,8 @@ function FilterMenu({
   function commitDate(next: [number, number]) {
     onFilterChange({
       ...filter,
-      dateMin: next[0] <= dateMinNum ? null : dayNumToIso(next[0]),
-      dateMax: next[1] >= dateMaxNum ? null : dayNumToIso(next[1]),
+      dateMin: next[0] <= dateMinNum ? null : monthNumToIsoStart(next[0]),
+      dateMax: next[1] >= dateMaxNum ? null : monthNumToIsoEnd(next[1]),
     });
   }
   function toggleSheet(id: string, checked: boolean) {
