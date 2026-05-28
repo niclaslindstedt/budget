@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       branch_ref:
-        description: "Optional branch to also deploy at /branches/<slug>/. Leave blank to deploy only / and /preview/."
+        description: "Optional branch to park in the stable /branch/ slot. Persists across regular deploys until the next branch_ref dispatch overwrites it."
         required: false
         type: string
         default: ""
@@ -23,13 +23,21 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
+
+env:
+  # Stable orphan branch in this repo that stores the most recently
+  # dispatched /branch/ build. Created on demand by the first
+  # workflow_dispatch with a branch_ref. Every Pages run rehydrates
+  # the /branch/ slot from here, so regular deploys preserve the slot
+  # until the next dispatch overwrites it.
+  BRANCH_DEPLOY_REF: branch-deploy
 
 jobs:
   build:
@@ -63,34 +71,24 @@ jobs:
             echo "No release tag found — will serve main at /."
           fi
 
-      # ---- Resolve optional branch deploy ----
+      # ---- Resolve optional branch dispatch ----
       # `branch_ref` is only set on workflow_dispatch. A push to main
-      # (or a workflow_call from release.yml) leaves it empty, which
-      # drops any previously-deployed /branches/<slug>/ slot from the
-      # artifact — Pages effectively garbage-collects branch deploys
-      # the moment a fresh production publish lands without them.
-      - name: Resolve branch deploy
-        id: branch
+      # or a workflow_call from release.yml leaves it empty — the
+      # /branch/ slot then comes from whatever the BRANCH_DEPLOY_REF
+      # branch already holds (if anything), so previously-dispatched
+      # builds persist across regular deploys.
+      - name: Resolve branch dispatch
+        id: dispatch
         run: |
           REF="${{ inputs.branch_ref }}"
           if [ -z "$REF" ]; then
-            echo "ref=" >> "$GITHUB_OUTPUT"
-            echo "slug=" >> "$GITHUB_OUTPUT"
-            echo "has_branch=false" >> "$GITHUB_OUTPUT"
-            echo "No branch_ref input — skipping /branches/<slug>/ slot."
-            exit 0
+            echo "has_dispatch=false" >> "$GITHUB_OUTPUT"
+            echo "No branch_ref input — preserving any previously-dispatched /branch/ build."
+          else
+            echo "ref=$REF" >> "$GITHUB_OUTPUT"
+            echo "has_dispatch=true" >> "$GITHUB_OUTPUT"
+            echo "Dispatched: $REF -> /branch/"
           fi
-          SLUG=$(printf '%s' "$REF" \
-            | tr '[:upper:]' '[:lower:]' \
-            | sed -E 's/[^a-z0-9-]+/-/g; s/-+/-/g; s/^-//; s/-$//')
-          if [ -z "$SLUG" ]; then
-            echo "branch_ref '$REF' slugifies to an empty string — refusing to deploy." >&2
-            exit 1
-          fi
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
-          echo "has_branch=true" >> "$GITHUB_OUTPUT"
-          echo "Resolved branch deploy: $REF -> /branches/$SLUG/"
 
       # ---- Production build (latest tag, root path) ----
       - name: Checkout production tag
@@ -146,44 +144,86 @@ jobs:
           # braces — either guard alone would suffice.
           VITE_GOATCOUNTER_ENDPOINT: ${{ steps.tag.outputs.has_release == 'true' && '' || secrets.VITE_GOATCOUNTER_ENDPOINT }}
 
-      # ---- Optional branch build (/branches/<slug>/ path) ----
+      # ---- Optional /branch/ build + persist to orphan branch ----
       - name: Stash preview dist
-        if: steps.branch.outputs.has_branch == 'true'
+        if: steps.dispatch.outputs.has_dispatch == 'true'
         run: mv dist dist-preview
 
-      - name: Checkout branch ref
-        if: steps.branch.outputs.has_branch == 'true'
+      - name: Checkout dispatched ref
+        if: steps.dispatch.outputs.has_dispatch == 'true'
         run: |
-          git fetch origin "${{ steps.branch.outputs.ref }}"
-          git checkout "${{ steps.branch.outputs.ref }}"
+          git fetch origin "${{ steps.dispatch.outputs.ref }}"
+          git checkout "${{ steps.dispatch.outputs.ref }}"
 
-      - name: Reinstall deps for branch ref
-        if: steps.branch.outputs.has_branch == 'true'
+      - name: Reinstall deps for dispatched ref
+        if: steps.dispatch.outputs.has_dispatch == 'true'
         run: npm ci
 
-      - name: Build branch
-        if: steps.branch.outputs.has_branch == 'true'
+      - name: Build /branch/
+        if: steps.dispatch.outputs.has_dispatch == 'true'
         run: make build
         env:
-          VITE_BASE_PATH: /branches/${{ steps.branch.outputs.slug }}/
+          VITE_BASE_PATH: /branch/
+          # Surface the source branch name in the BUILD_LABEL even
+          # though the URL is stable, so the running bundle reveals
+          # which feature branch is currently parked at /branch/.
+          VITE_BRANCH_SOURCE: ${{ steps.dispatch.outputs.ref }}
           VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
-          # Branch deploys are noindex + tracker-free, same posture as
-          # the /preview/ slot.
           VITE_GOATCOUNTER_ENDPOINT: ""
 
-      - name: Stash branch dist
-        if: steps.branch.outputs.has_branch == 'true'
-        run: mv dist dist-branch
+      - name: Persist /branch/ build to orphan branch
+        if: steps.dispatch.outputs.has_dispatch == 'true'
+        run: |
+          mv dist dist-branch
+          STAGE=$(mktemp -d)
+          cp -R dist-branch/. "$STAGE/"
+          # Drop CNAME from the per-slot copy; only the root artifact
+          # may carry it. (Vite copies public/CNAME into every build.)
+          rm -f "$STAGE/CNAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Build an orphan tree containing just the build output and
+          # force-push it to BRANCH_DEPLOY_REF. Force-push is safe: the
+          # branch is auto-managed and only ever written by this step.
+          cd "$STAGE"
+          git init -q -b "$BRANCH_DEPLOY_REF"
+          git add -A
+          git commit -q -m "branch deploy: ${{ steps.dispatch.outputs.ref }} (${{ github.run_id }})"
+          REMOTE_URL=$(git -C "$GITHUB_WORKSPACE" remote get-url origin)
+          AUTH_URL=$(printf '%s' "$REMOTE_URL" \
+            | sed "s|https://|https://x-access-token:${{ github.token }}@|")
+          git remote add origin "$AUTH_URL"
+          git push -f origin "HEAD:$BRANCH_DEPLOY_REF"
+          cd "$GITHUB_WORKSPACE"
 
-      - name: Restore preview dist
-        if: steps.branch.outputs.has_branch == 'true'
-        run: mv dist-preview dist
+      - name: Return to triggering ref after dispatch build
+        if: steps.dispatch.outputs.has_dispatch == 'true'
+        run: |
+          git checkout ${{ github.sha }}
+          mv dist-preview dist
 
-      - name: Return to triggering ref after branch build
-        if: steps.branch.outputs.has_branch == 'true'
-        run: git checkout ${{ github.sha }}
+      # ---- Rehydrate /branch/ from orphan branch (every run) ----
+      # The orphan branch outlives any single dispatch, so regular
+      # deploys pick up the previously-parked build and carry it
+      # forward into the new Pages artifact untouched.
+      - name: Rehydrate /branch/ from orphan branch
+        id: rehydrate
+        run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH_DEPLOY_REF" >/dev/null 2>&1; then
+            git fetch origin "$BRANCH_DEPLOY_REF"
+            mkdir -p dist-branch
+            git --work-tree=dist-branch checkout "origin/$BRANCH_DEPLOY_REF" -- .
+            # The branch's tree is rooted at the build output, no
+            # nested directory. CNAME was stripped on push, so nothing
+            # to clean up here.
+            echo "has_branch_dist=true" >> "$GITHUB_OUTPUT"
+            echo "Rehydrated /branch/ from $BRANCH_DEPLOY_REF."
+          else
+            echo "has_branch_dist=false" >> "$GITHUB_OUTPUT"
+            echo "$BRANCH_DEPLOY_REF branch does not exist yet — skipping /branch/ slot."
+          fi
 
       # ---- Merge ----
       - name: Merge builds
@@ -200,12 +240,10 @@ jobs:
           else
             echo "No release yet — serving main at / (no /preview/ slot)."
           fi
-          if [ -d dist-branch ]; then
-            SLUG="${{ steps.branch.outputs.slug }}"
-            mkdir -p "dist/branches/$SLUG"
-            rm -f dist-branch/CNAME
-            cp -R dist-branch/. "dist/branches/$SLUG/"
-            echo "Merged: /branches/$SLUG/ = ${{ steps.branch.outputs.ref }}"
+          if [ "${{ steps.rehydrate.outputs.has_branch_dist }}" = "true" ]; then
+            mkdir -p dist/branch
+            cp -R dist-branch/. dist/branch/
+            echo "Merged: /branch/ from $BRANCH_DEPLOY_REF"
           fi
 
       - uses: actions/configure-pages@v5
