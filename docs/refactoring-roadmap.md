@@ -165,16 +165,6 @@ new sheet type, but feature work can ship through them.
   **Severity: 3** — re-rate when the first loan/savings flavour
   needs a domain-specific function.
 
-- **`BudgetEditEntryModal.tsx` (720 lines) recurrence/promotion form
-  duplication** — basic-row, recurring-edit, promote-to-series and
-  promote-history are different modes sharing some machinery but
-  not all. Loans / savings will want their own series semantics.
-  **Severity: 6.**
-  - Plan: extract `<BudgetRecurrenceForm>` and `<PromotionForm>` so each
-    returns a validated domain object (not JSX). Drop the
-    `HistoryEntry`-only assumption — accept a generic
-    `{date, amount, description}` seed.
-
 - **No `useReducer` in any of the ~20 modal state machines** —
   search for `useReducer` in `src/components/`: zero hits.
   `useState` pyramids in modals with 5+ fields (`BudgetMatchRuleModal`,
@@ -323,6 +313,33 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`BudgetEditEntryModal.tsx` tri-mode dispatcher split** (2026-05): the
+  715-line modal's three mode-conditional branches (`isSeries` / `isHistory`
+  / regular row) lifted into three sibling sub-form components. Each one
+  owns its own state (`useState` calls + initial-value derivation from
+  the row's cells), renders its own `<Modal.Body>` + `<Modal.Footer>`,
+  and emits a single validated domain payload via its own `onSubmit`
+  callback. The parent `BudgetEditEntryModal` becomes a 177-line
+  dispatcher that owns the `Modal` shell + header title and routes to
+  one of `BudgetEditSeriesForm` (scope / shift-days / until-date),
+  `BudgetPromoteHistoryForm` (history-row promotion + historic-matches
+  checklist), or `BudgetPromoteToSeriesForm` (regular row promote-to-
+  series). Sub-forms are keyed by `row.id` so React handles state reset
+  via re-mount (replacing the prior `useResetOnOpen` + manual reset
+  closure that lived in the parent). `HistoryPromotePrefill` /
+  `HistoryMatchPreview` / `HistoryPromotion` types moved to
+  `BudgetPromoteHistoryForm.tsx` and are re-exported from
+  `BudgetEditEntryModal.tsx` so the two existing consumers
+  (`AppShell/hooks/usePromptDerivations.ts`,
+  `AppShell/BudgetModalHost.tsx`) continue to import unchanged.
+  Architecture-doc tree and dictionary entry updated in the same PR.
+  Pure refactor — typecheck + lint + fmt-check + 846 tests + build
+  pass; the modal's three submit handlers (`onEditSeries`,
+  `onConvertToRecurring`, `onPromoteHistory`) and their payloads are
+  byte-equivalent. Adding a new sheet-type series flow (loans,
+  savings) is now: drop a new `Budget<flavour>Form.tsx`, add a branch
+  to the dispatcher. Closes the severity-6 "recurrence/promotion
+  form duplication" candidate.
 - **Per-sheet-type item dispatcher via `SHEET_TYPE_REGISTRY`**
   (2026-05): the item-level dispatch tail moved from
   `src/data/reducers/item/index.ts` into the budget sheet-type
