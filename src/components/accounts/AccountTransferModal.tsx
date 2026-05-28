@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import {
   ArrowDown,
   ArrowLeftRight,
@@ -27,6 +27,10 @@ import { Button, Checkbox, ClearableInput, FormSection } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { TypePicker } from "../TypePicker";
 import type { Settings } from "../../data/types";
+import {
+  initialTransferModalState,
+  transferModalReducer,
+} from "./account-transfer-modal-reducer";
 
 export type TransferDraft = {
   date: string;
@@ -110,17 +114,22 @@ export function AccountTransferModal({
   onCreateCategory,
 }: Props) {
   const t = useT();
-  const [date, setDate] = useState("");
-  const [description, setDescription] = useState("");
-  const [amountText, setAmountText] = useState("");
-  const [fromAccountId, setFromAccountId] = useState<string>("");
-  const [toAccountId, setToAccountId] = useState<string>("");
-  const [typeId, setTypeId] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(false);
-  const [isTransfer, setIsTransfer] = useState(true);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [fromOpen, setFromOpen] = useState(false);
-  const [toOpen, setToOpen] = useState(false);
+  const [state, dispatch] = useReducer(transferModalReducer, null, () =>
+    initialTransferModalState(request, settings),
+  );
+  const {
+    date,
+    description,
+    amountText,
+    fromAccountId,
+    toAccountId,
+    typeId,
+    completed,
+    isTransfer,
+    datePickerOpen,
+    fromOpen,
+    toOpen,
+  } = state;
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open);
@@ -130,27 +139,10 @@ export function AccountTransferModal({
   // transfer, create reuses the workspace defaults.
   useEffect(() => {
     if (!open || !request) return;
-    if (request.kind === "edit") {
-      setDate(request.date);
-      setDescription(request.description);
-      setAmountText(formatAmountForInput(request.amount, settings));
-      setFromAccountId(request.fromAccountId);
-      setToAccountId(request.toAccountId);
-      setTypeId(request.typeId);
-      setCompleted(request.completed);
-      setIsTransfer(true);
-    } else {
-      setDate(request.seedDate);
-      setDescription("");
-      setAmountText("");
-      setFromAccountId(request.defaultFromId ?? "");
-      setToAccountId(request.defaultToId ?? "");
-      setTypeId(null);
-      setCompleted(false);
-    }
-    setDatePickerOpen(false);
-    setFromOpen(false);
-    setToOpen(false);
+    dispatch({
+      kind: "reset",
+      state: initialTransferModalState(request, settings),
+    });
   }, [open, request, settings]);
 
   if (!request) {
@@ -192,12 +184,14 @@ export function AccountTransferModal({
 
   function commitAmount(text: string) {
     const stripped = text.replace(/-/g, "");
-    setAmountText(normalizeAmountInput(stripped, settings));
+    dispatch({
+      kind: "setAmountText",
+      value: normalizeAmountInput(stripped, settings),
+    });
   }
 
   function swap() {
-    setFromAccountId(toAccountId);
-    setToAccountId(fromAccountId);
+    dispatch({ kind: "swapAccounts" });
   }
 
   function handleSave() {
@@ -255,7 +249,9 @@ export function AccountTransferModal({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setDatePickerOpen(true)}
+                  onClick={() =>
+                    dispatch({ kind: "setDatePickerOpen", value: true })
+                  }
                   className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm text-fg hover:border-accent"
                 >
                   {date || "—"}
@@ -264,8 +260,12 @@ export function AccountTransferModal({
               <DatePickerModal
                 open={datePickerOpen}
                 value={date}
-                onClose={() => setDatePickerOpen(false)}
-                onSelect={(next) => setDate(next ?? "")}
+                onClose={() =>
+                  dispatch({ kind: "setDatePickerOpen", value: false })
+                }
+                onSelect={(next) =>
+                  dispatch({ kind: "setDate", value: next ?? "" })
+                }
               />
             </FormSection>
             <FormSection as="label" label={t("transfer.amount")}>
@@ -307,7 +307,9 @@ export function AccountTransferModal({
             <ClearableInput
               ref={descriptionRef}
               value={description}
-              onValueChange={setDescription}
+              onValueChange={(value) =>
+                dispatch({ kind: "setDescription", value })
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter" && canSave) {
                   e.preventDefault();
@@ -330,12 +332,15 @@ export function AccountTransferModal({
                   accounts={accounts}
                   excludeId={toAccountId}
                   open={fromOpen}
-                  onToggle={() => setFromOpen((v) => !v)}
-                  onClose={() => setFromOpen(false)}
-                  onPick={(id) => {
-                    setFromAccountId(id);
-                    setFromOpen(false);
-                  }}
+                  onToggle={() =>
+                    dispatch({ kind: "setFromOpen", value: !fromOpen })
+                  }
+                  onClose={() =>
+                    dispatch({ kind: "setFromOpen", value: false })
+                  }
+                  onPick={(id) =>
+                    dispatch({ kind: "pickFromAccount", value: id })
+                  }
                 />
               )}
             </FormSection>
@@ -360,12 +365,13 @@ export function AccountTransferModal({
                   accounts={accounts}
                   excludeId={fromAccountId}
                   open={toOpen}
-                  onToggle={() => setToOpen((v) => !v)}
-                  onClose={() => setToOpen(false)}
-                  onPick={(id) => {
-                    setToAccountId(id);
-                    setToOpen(false);
-                  }}
+                  onToggle={() =>
+                    dispatch({ kind: "setToOpen", value: !toOpen })
+                  }
+                  onClose={() => dispatch({ kind: "setToOpen", value: false })}
+                  onPick={(id) =>
+                    dispatch({ kind: "pickToAccount", value: id })
+                  }
                 />
               )}
             </FormSection>
@@ -381,7 +387,7 @@ export function AccountTransferModal({
               types={types}
               categories={categories}
               selectedId={typeId}
-              onSelect={setTypeId}
+              onSelect={(value) => dispatch({ kind: "setTypeId", value })}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               variant="field"
@@ -395,14 +401,14 @@ export function AccountTransferModal({
           {isImported ? (
             <Checkbox
               checked={isTransfer}
-              onChange={setIsTransfer}
+              onChange={(value) => dispatch({ kind: "setIsTransfer", value })}
               label={t("transfer.isTransfer")}
               className="items-center"
             />
           ) : (
             <Checkbox
               checked={completed}
-              onChange={setCompleted}
+              onChange={(value) => dispatch({ kind: "setCompleted", value })}
               label={t("transfer.markAsDone")}
               className="items-center"
             />

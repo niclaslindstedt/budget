@@ -149,21 +149,22 @@ new sheet type, but feature work can ship through them.
   needs a domain-specific function.
 
 - **No `useReducer` in most modal state machines** — `useReducer`
-  now has **three** real hits (`AccountReconciliationModal`,
-  `BudgetRecurrenceForm`, and `BudgetEditEntryFullModal`, see
-  Landed), but the broader pattern is still pervasive: `useState`
-  pyramids with 5+ fields plus a multi-setter reset effect.
-  Remaining sites: `AccountTransferModal` (9 setters at lines
-  113–123), `BudgetSplitEntryModal`, `BudgetBulkEditModal`,
-  `BudgetMetadataModal`, `ImportHistoryModal`, `BudgetMatchRuleModal`
-  (residual after `useMatchRuleAmountFilter` landed), `SettingsModal`
-  (4-piece state pyramid). **Severity: 5.** Per-modal value is
-  moderate but the cumulative readability gain is significant. Apply
-  opportunistically when a modal is otherwise being touched. The
-  textbook discriminated-mode candidate (`BudgetRecurrenceForm`) has
-  landed; re-survey for new prioritisation hooks if a different
-  modal grows a mode discriminator that the current setters silently
-  allow drift through.
+  now has **four** real hits (`AccountReconciliationModal`,
+  `BudgetRecurrenceForm`, `BudgetEditEntryFullModal`, and
+  `AccountTransferModal`, see Landed), but the broader pattern is
+  still pervasive: `useState` pyramids with 5+ fields plus a
+  multi-setter reset effect. Remaining sites: `BudgetSplitEntryModal`,
+  `BudgetBulkEditModal` (12 useState calls in 310 lines),
+  `BudgetMetadataModal` (8 useState calls), `ImportHistoryModal`,
+  `BudgetMatchRuleModal` (residual after `useMatchRuleAmountFilter`
+  landed), `SettingsModal` (4-piece state pyramid). **Severity: 5.**
+  Per-modal value is moderate but the cumulative readability gain
+  is significant. Apply opportunistically when a modal is otherwise
+  being touched. The textbook discriminated-mode candidate
+  (`BudgetRecurrenceForm`) has landed; re-survey for new
+  prioritisation hooks if a different modal grows a mode
+  discriminator that the current setters silently allow drift
+  through.
 
 - **`useUserDataStorage.ts` save chain has no retry strategy** —
   network failures are caught into `RateLimitError` and pause
@@ -286,6 +287,47 @@ T | null` for "explicitly cleared by the user, distinct from
 ---
 
 ## Landed
+
+- **`AccountTransferModal` `useReducer` extraction** (2026-05): the
+  11 parallel `useState` setters in `AccountTransferModal.tsx`
+  (`date`, `description`, `amountText`, `fromAccountId`,
+  `toAccountId`, `typeId`, `completed`, `isTransfer`,
+  `datePickerOpen`, `fromOpen`, `toOpen`) collapsed onto a single
+  `useReducer` driven by a `TransferModalState` shape and a named-
+  action union (`reset | setDate | setDescription | setAmountText |
+swapAccounts | pickFromAccount | pickToAccount | setTypeId |
+setCompleted | setIsTransfer | setDatePickerOpen | setFromOpen |
+setToOpen`). Three transitions that previously fired multiple
+  sequential `setState` calls in one handler became atomic actions:
+  the `useEffect` reset on open / request change (13 setters → one
+  `reset` dispatch carrying `initialTransferModalState(request,
+settings)`), the `swap()` helper (two setters → one
+  `swapAccounts`), and the `AccountPicker` onPick handlers (two
+  setters each for the value + closing the panel → one
+  `pickFromAccount` / `pickToAccount`). The reducer + initial-state
+  factory live in
+  `src/components/accounts/account-transfer-modal-reducer.ts`; the
+  modal file keeps the JSX + the `parsedAmount` / `trimmedDescription`
+  / `canSave` derivations + the `handleSave` / `handleDelete` dispatch
+  glue. The reducer uses a narrower structural `TransferModalSeed`
+  input rather than importing `TransferModalRequest` from the modal,
+  avoiding a circular type dependency while staying assignable from
+  the modal's wider request type. 24 unit tests landed in
+  `tests/account_transfer_modal_reducer_test.ts` to lock in the
+  edit-seed / create-seed snapshots, the swap symmetry, the
+  atomic pick-account-and-close behaviour, and that each setter
+  only touches its own field. `AccountTransferModal.tsx` grows from
+  630 → 636 lines (the dispatch-wrapping callbacks are slightly
+  more verbose than bare setters); the new reducer file is 153
+  lines. Pure refactor — same behaviour, same i18n keys, same
+  payload shape (`TransferDraft` / `TransferModalRequest` stay
+  exported from the modal); `useTransferFlow` consumes the public
+  component unchanged. Mirrors the precedent set by
+  `BudgetEditEntryFullModal` and `BudgetRecurrenceForm` (same
+  `kind`-discriminated action shape; side-effect-free reducer; the
+  dispatcher computes the imperative side-effects — `onClose`,
+  `onCreate`, `onEdit`, `onDelete`, `onUncollapse` — outside the
+  reducer). typecheck + lint + fmt-check + 914 tests + build pass.
 
 - **`BudgetEditEntryFullModal` `useReducer` extraction** (2026-05):
   the 14 parallel `useState` setters in `BudgetEditEntryFullModal.tsx`
