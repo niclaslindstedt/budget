@@ -4,7 +4,6 @@ import { findOrphans } from "../reconciliation";
 import { groupRowsByMonth } from "../fiscal-month";
 import { widestFormattedAmount } from "../../utils/format";
 import {
-  buildSynthesizedRows,
   computeBalances,
   reverseRowsByDay,
   sortRowsByDate,
@@ -14,14 +13,10 @@ import { resolveEffectiveAmounts } from "./formula-resolve";
 import type {
   AccountBudget,
   Column,
-  Company,
   EntryType,
   HistoryEntry,
-  MatchRule,
-  MerchantHint,
   Row,
   Settings,
-  Transfer,
   UserData,
 } from "../types";
 
@@ -38,19 +33,20 @@ export type ComputedBudgetStateInputs = {
   data: UserData;
   settings: Settings;
   history: readonly HistoryEntry[];
-  transfers: readonly Transfer[];
-  types: readonly EntryType[];
-  companies: readonly Company[];
-  matchRules: readonly MatchRule[];
-  merchantHints: Readonly<Record<string, MerchantHint>>;
   typesById: ReadonlyMap<string, EntryType>;
-  accountsById: ReadonlyMap<string, string>;
+  // Interleaved transfer + history rows produced by `buildSynthesizedRows`.
+  // Hoisted to the caller so its memo can skip the synthesis walk across
+  // cell-edit keystrokes — `item.rows` flips per keystroke but the
+  // synthesis inputs (transfers, history, rules, hints, companies,
+  // types, accountsById, item.columns, item.accountId) don't. Threading
+  // the result through keeps the heavy O(H) walk + per-entry rule cache
+  // build off the per-keystroke path.
+  synthesizedRows: readonly Row[];
 };
 
 export type ComputedBudgetState = {
   dateCol: Column | undefined;
   sortContext: RowSortContext | undefined;
-  synthesizedRows: Row[];
   mergedItem: AccountBudget;
   decoratedItem: AccountBudget;
   effectiveAmounts: Map<string, number>;
@@ -73,13 +69,8 @@ export function computeBudgetState(
     data,
     settings,
     history,
-    transfers,
-    types,
-    companies,
-    matchRules,
-    merchantHints,
     typesById,
-    accountsById,
+    synthesizedRows,
   } = inputs;
 
   const dateCol = findColumnByType(item.columns, "date");
@@ -94,26 +85,6 @@ export function computeBudgetState(
       typesById,
     };
   })();
-
-  // Interleave synthesized transfer + history rows once per change to
-  // the inputs those rows depend on — column shape, the budget's
-  // account, every workspace transfer, the account's full history, the
-  // hints + rules that label history rows, plus the companies / types
-  // those labels resolve through. None of those flip when the user
-  // types in a budget cell, so the synthesis result is reused across
-  // keystrokes — skipping ~500 history-entry label resolutions and the
-  // matching rule walks they trigger on every edit.
-  const synthesizedRows = buildSynthesizedRows(
-    item.columns,
-    item.accountId,
-    transfers,
-    history,
-    accountsById,
-    merchantHints,
-    matchRules,
-    companies,
-    types,
-  );
 
   const mergedItem: AccountBudget = {
     ...item,
@@ -275,7 +246,6 @@ export function computeBudgetState(
   return {
     dateCol,
     sortContext,
-    synthesizedRows,
     mergedItem,
     decoratedItem,
     effectiveAmounts,

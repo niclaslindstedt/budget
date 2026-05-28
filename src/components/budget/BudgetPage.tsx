@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { computeBudgetState } from "../../data/budget/computed-state";
+import { buildSynthesizedRows } from "../../data/budget/rows";
 import {
   currentFiscalMonthKey,
   fiscalMonthSeedIso,
@@ -314,14 +315,48 @@ export function BudgetPage({
     ],
   );
 
-  // All the pure derivations the budget page renders off of — the
-  // synthesis → merge → decorate → sort → balance → bucket cascade —
-  // collapsed onto one memo. Each step used to be its own `useMemo`
-  // with a hand-curated dep array; on a typical row edit (every input
-  // here invalidates) all 13 cascaded anyway, so consolidation costs
-  // nothing at the hot path and removes the fragile dep-array surface.
-  // The helper lives in `src/data/budget/computed-state.ts` so future
-  // sheet types (savings, loans) can reuse the same pipeline.
+  // Synthesized transfer + history rows are derived from inputs that
+  // don't flip on a cell-edit keystroke — column shape, the budget's
+  // account, every workspace transfer, the account's full history, the
+  // hints + rules that label history rows, plus the companies / types
+  // those labels resolve through. Hoisting the walk into its own memo
+  // lets cell edits reuse the cached array; without this, the consolidated
+  // `computed` memo below invalidates on `item` per keystroke and pays
+  // for an O(H) re-synthesis + per-entry rule-cache rebuild — the
+  // dominant cost of typing in a cell on accounts with a few thousand
+  // history entries.
+  const synthesizedRows = useMemo(
+    () =>
+      buildSynthesizedRows(
+        item.columns,
+        item.accountId,
+        transfers,
+        history,
+        accountsById,
+        merchantHints,
+        matchRules,
+        companies,
+        types,
+      ),
+    [
+      item.columns,
+      item.accountId,
+      transfers,
+      history,
+      accountsById,
+      merchantHints,
+      matchRules,
+      companies,
+      types,
+    ],
+  );
+
+  // The remaining pure derivations — merge → decorate → sort → balance →
+  // bucket — collapsed onto one memo. `synthesizedRows` rides in as a
+  // prebuilt input so the synthesis walk stays cached across keystrokes
+  // even though this memo invalidates on `item`. The helper lives in
+  // `src/data/budget/computed-state.ts` so future sheet types (savings,
+  // loans) can reuse the same pipeline.
   const computed = useMemo(
     () =>
       computeBudgetState({
@@ -330,28 +365,10 @@ export function BudgetPage({
         data,
         settings,
         history,
-        transfers,
-        types,
-        companies,
-        matchRules,
-        merchantHints,
         typesById,
-        accountsById,
+        synthesizedRows,
       }),
-    [
-      item,
-      openingBalance,
-      data,
-      settings,
-      history,
-      transfers,
-      types,
-      companies,
-      matchRules,
-      merchantHints,
-      typesById,
-      accountsById,
-    ],
+    [item, openingBalance, data, settings, history, typesById, synthesizedRows],
   );
   const {
     decoratedItem,
