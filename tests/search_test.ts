@@ -12,6 +12,14 @@ import type {
   Sheet,
   UserData,
 } from "../src/data/types";
+import { tFor, type TFunction } from "../src/i18n";
+
+// User-added types and categories carry their own name verbatim, so
+// the resolver is irrelevant for those — `tFor("en", ...)` is enough
+// to cover the preset-name fallback path when one of the tests
+// happens to use a preset id.
+const t = ((key, params) =>
+  tFor("en", key, params as Record<string, string | number>)) as TFunction;
 
 const cols: Column[] = [
   { id: "d", type: "date", label: "Date" },
@@ -81,7 +89,7 @@ describe("runSearch — text matches", () => {
       { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
       { id: "r2", cells: { d: "2026-05-02", x: "Netflix", a: -100 } },
     ]);
-    const idx = buildSearchIndex(data);
+    const idx = buildSearchIndex(data, t);
     const out = runSearch(idx, "SPOT");
     expect(out).toHaveLength(1);
     expect(out[0].entry.rowId).toBe("r1");
@@ -111,7 +119,7 @@ describe("runSearch — text matches", () => {
       ],
       { types: [groc], categories: [cat] },
     );
-    const idx = buildSearchIndex(data);
+    const idx = buildSearchIndex(data, t);
     const out = runSearch(idx, "groc");
     // r2's description starts with "Groceries"; r1 only matches via
     // typeName. Description hits outrank typeName hits.
@@ -131,7 +139,7 @@ describe("runSearch — text matches", () => {
       ],
       { companies: [hm] },
     );
-    const idx = buildSearchIndex(data);
+    const idx = buildSearchIndex(data, t);
     const out = runSearch(idx, "H&M");
     expect(out).toHaveLength(1);
     expect(out[0].entry.rowId).toBe("r1");
@@ -151,7 +159,7 @@ describe("runSearch — text matches", () => {
       ],
       { companies: [ica] },
     );
-    const idx = buildSearchIndex(data);
+    const idx = buildSearchIndex(data, t);
     const out = runSearch(idx, "ica");
     // r1 matches via companyName ("ICA") and r2 via description ("ICA
     // Maxi"); description is the higher-priority field so r2 ranks
@@ -187,7 +195,7 @@ describe("runSearch — text matches", () => {
       ],
       { companies: [spotify], types: [groc], categories: [cat] },
     );
-    const idx = buildSearchIndex(data);
+    const idx = buildSearchIndex(data, t);
     const out = runSearch(idx, "spotify");
     // Both rows match "spotify" at offset 0, r1 via companyName and
     // r2 via typeName. Company is higher priority than type, so r1
@@ -198,12 +206,33 @@ describe("runSearch — text matches", () => {
     expect(out[1].match.field).toBe("typeName");
   });
 
+  it("matches a preset type by its translated name, not its baseline", () => {
+    // `preset-type-pharmacy` ships with `name: "Apoteket"` (Swedish
+    // baseline) but renders as "Pharmacy" in English via the i18n
+    // catalog. The search index has to mirror what the user sees, so
+    // a query for "pharmacy" must surface rows tagged with that
+    // preset even though the EntryType's `.name` field never contains
+    // the English string.
+    const data = withItem([
+      {
+        id: "r1",
+        cells: { d: "2026-05-01", x: "Prescription", a: -85 },
+        typeId: "preset-type-pharmacy",
+      },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(idx, "pharmacy");
+    expect(out).toHaveLength(1);
+    expect(out[0].entry.rowId).toBe("r1");
+    expect(out[0].match.field).toBe("typeName");
+  });
+
   it("returns nothing for empty queries", () => {
     const data = withItem([
       { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
     ]);
-    expect(runSearch(buildSearchIndex(data), "")).toEqual([]);
-    expect(runSearch(buildSearchIndex(data), "   ")).toEqual([]);
+    expect(runSearch(buildSearchIndex(data, t), "")).toEqual([]);
+    expect(runSearch(buildSearchIndex(data, t), "   ")).toEqual([]);
   });
 });
 
@@ -221,7 +250,7 @@ describe("runSearch — performance", () => {
       });
     }
     const data = withItem(rows);
-    const idx = buildSearchIndex(data);
+    const idx = buildSearchIndex(data, t);
     // Simulate a 5-keystroke type-ahead — "s", "sp", "spo", "spot", "spoti".
     const queries = ["s", "sp", "spo", "spot", "spoti"];
     const t0 = performance.now();

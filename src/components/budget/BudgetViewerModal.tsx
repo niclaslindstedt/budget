@@ -32,6 +32,7 @@ import type {
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { type Lang } from "../../i18n/locale";
+import { displayTypeName } from "../../i18n/preset-names";
 import {
   formatNumber,
   formatRunningBalance,
@@ -174,7 +175,7 @@ export function BudgetViewerModal({
       const typeId = row.typeId ?? null;
       if (typeId) {
         const type = typesById.get(typeId);
-        if (type) typeNameLc = type.name.toLowerCase();
+        if (type) typeNameLc = displayTypeName(type, t).toLowerCase();
       }
       const companyId = row.companyId ?? null;
       if (companyId) {
@@ -204,6 +205,7 @@ export function BudgetViewerModal({
     dateCol,
     typesById,
     companiesById,
+    t,
   ]);
 
   // Honour the same hide-transfers filter the main view uses. Running
