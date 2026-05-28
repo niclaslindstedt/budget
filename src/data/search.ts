@@ -67,7 +67,10 @@ export type SearchResult = {
 // `relevance` (default) keeps the score-sorted order; the date /
 // amount variants re-sort by the corresponding cell value, pushing
 // rows without that value to the bottom so they stay reachable
-// without dominating the list.
+// without dominating the list. Amount sorts compare magnitudes
+// (|amount|) so "Highest first" means biggest spend / biggest
+// income — not the most-positive number, which would otherwise
+// rank a -744 row ahead of a -944 row.
 export type SearchSort =
   | "relevance"
   | "date-asc"
@@ -335,5 +338,10 @@ function fieldValue(
   if (sortBy === "date-asc" || sortBy === "date-desc") {
     return entry.iso === "" ? null : entry.iso;
   }
-  return entry.amount;
+  // Compare amounts by magnitude so "Highest first" surfaces the
+  // biggest spend or biggest income regardless of sign — the user's
+  // mental model when scanning a transaction list is size, not the
+  // mathematical position on the number line that would rank -744
+  // ahead of -944.
+  return entry.amount === null ? null : Math.abs(entry.amount);
 }
