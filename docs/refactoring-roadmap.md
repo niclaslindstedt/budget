@@ -420,8 +420,8 @@ updateHistoryEntry; else dispatch budget-row action`) moved
   `onSetRowCompany`) branch on history-vs-budget so they can't
   cleanly live in one sub-hook anyway. The unused `autoTypeForCompany`,
   `formatNumber`, and `withCurrency` imports dropped from AppShell
-  in the same change. Pure refactor — typecheck + lint + fmt-check
-  + 861 tests + build pass.
+  in the same change. Pure refactor — typecheck, lint, fmt-check,
+  861 tests, and build pass.
 - **`indexById<T>(items)` helper adoption across 8 files** (2026-05):
   the recurring 5-line `useMemo(() => { const m = new Map<string,
 T>(); for (const x of items) m.set(x.id, x); return m; }, [items])`
