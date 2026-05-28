@@ -32,6 +32,14 @@ export type RowSortContext = {
   typesById: ReadonlyMap<string, EntryType>;
 };
 
+// `String.prototype.localeCompare` allocates a fresh Intl.Collator on
+// every call. Caching one collator at module scope and calling
+// `.compare` directly is 10–50x faster, which matters because the
+// description tiebreaker fires inside the sort comparator — N log N
+// times per sort, and the sort itself runs multiple times per data
+// change in the budget render path.
+const DESC_COLLATOR = new Intl.Collator(undefined, { usage: "sort" });
+
 function rowDateString(row: Row, dateColumnId: string): string {
   const v = row.cells[dateColumnId];
   return typeof v === "string" ? v : "";
@@ -148,7 +156,7 @@ export function sortRowsByDate(
         return a.categoryKey < b.categoryKey ? -1 : 1;
       }
       if (a.absAmount !== b.absAmount) return b.absAmount - a.absAmount;
-      return a.desc.localeCompare(b.desc);
+      return DESC_COLLATOR.compare(a.desc, b.desc);
     })
     .map((aux) => aux.row);
 }

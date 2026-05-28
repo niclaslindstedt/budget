@@ -13,6 +13,23 @@ import type {
   Transfer,
 } from "../types";
 
+// Date-sorted view of a transfers array, cached by reference. The
+// reducer hands out a fresh top-level array whenever transfers change,
+// so the WeakMap key stays valid for that array's whole lifetime and
+// every `transfersForAccount` call against it skips the O(T log T)
+// sort entirely — only the O(T) filter remains.
+const sortedTransfersCache = new WeakMap<readonly Transfer[], Transfer[]>();
+
+function sortedByDate(transfers: readonly Transfer[]): Transfer[] {
+  let cached = sortedTransfersCache.get(transfers);
+  if (cached) return cached;
+  cached = [...transfers].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  sortedTransfersCache.set(transfers, cached);
+  return cached;
+}
+
 // Every transfer with `accountId` on either end, ordered by date.
 // Both incoming and outgoing transfers are included — callers
 // decide the sign at render time from `selfAccountId` vs the
@@ -21,11 +38,8 @@ export function transfersForAccount(
   transfers: readonly Transfer[],
   accountId: string,
 ): Transfer[] {
-  const matches = transfers.filter(
+  return sortedByDate(transfers).filter(
     (tx) => tx.fromAccountId === accountId || tx.toAccountId === accountId,
-  );
-  return matches.sort((a, b) =>
-    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
   );
 }
 
