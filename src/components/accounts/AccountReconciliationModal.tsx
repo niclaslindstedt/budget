@@ -20,7 +20,6 @@ import { newId } from "../../data/sheet";
 import { allTypes } from "../../data/presets/merge";
 import type {
   Column,
-  EntryType,
   HistoryEntry,
   Row,
   SeriesMatchRule,
@@ -34,6 +33,7 @@ import {
   formatMonthLabel,
   formatShortDate,
 } from "../../utils/format";
+import { indexById } from "../../utils/indexById";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 import {
@@ -130,11 +130,10 @@ export function AccountReconciliationModal({
   // Indexed lookup so each row can render the entry type's coloured
   // glyph next to its description. Resolves preset + user-added types
   // through `allTypes` so chips match the rest of the app.
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const type of allTypes(preImportData)) m.set(type.id, type);
-    return m;
-  }, [preImportData]);
+  const typesById = useMemo(
+    () => indexById(allTypes(preImportData)),
+    [preImportData],
+  );
   // Lookup tables for rendering. Built from the pre-import snapshot
   // so the modal doesn't have to chase reducer state to find rows.
   const rowsById = useMemo(() => {
@@ -166,11 +165,7 @@ export function AccountReconciliationModal({
     return out;
   }, [preImportData, accountId]);
 
-  const entriesById = useMemo(() => {
-    const out = new Map<string, HistoryEntry>();
-    for (const entry of newEntries) out.set(entry.id, entry);
-    return out;
-  }, [newEntries]);
+  const entriesById = useMemo(() => indexById(newEntries), [newEntries]);
 
   // All rows for this account, grouped by their owning columns set.
   // Needed for the "Move to next month, same date" suppression check

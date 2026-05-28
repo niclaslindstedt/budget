@@ -6,6 +6,7 @@ import { allCategories, allTypes } from "../../../data/presets/merge";
 import type { MatchRule, Settings, UserData } from "../../../data/types";
 import { type TFunction, useT } from "../../../i18n";
 import { formatAmount } from "../../../utils/format";
+import { indexById } from "../../../utils/indexById";
 import { CategoryIconGlyph } from "../../icons";
 import { Section } from "./shared";
 
@@ -42,16 +43,8 @@ export function PatternsTab({
   // hid the type from pickers.
   const types = useMemo(() => allTypes(data), [data]);
   const categories = useMemo(() => allCategories(data), [data]);
-  const typesById = useMemo(() => {
-    const m = new Map<string, (typeof types)[number]>();
-    for (const ty of types) m.set(ty.id, ty);
-    return m;
-  }, [types]);
-  const categoriesById = useMemo(() => {
-    const m = new Map<string, (typeof categories)[number]>();
-    for (const c of categories) m.set(c.id, c);
-    return m;
-  }, [categories]);
+  const typesById = useMemo(() => indexById(types), [types]);
+  const categoriesById = useMemo(() => indexById(categories), [categories]);
   const rules = data.matchRules;
   // Per-rule hit counts across the whole budget view — explicit
   // budget rows AND synthesized history rows (what the rule modal

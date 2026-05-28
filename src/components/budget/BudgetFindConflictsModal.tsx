@@ -22,6 +22,7 @@ import type {
   Settings,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { indexById } from "../../utils/indexById";
 import { Button } from "../form";
 import { EntityChip } from "../EntityChip";
 import { Modal } from "../Modal";
@@ -118,17 +119,9 @@ export function BudgetFindConflictsModal({
     [columns],
   );
 
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const ty of types) m.set(ty.id, ty);
-    return m;
-  }, [types]);
+  const typesById = useMemo(() => indexById(types), [types]);
 
-  const categoriesById = useMemo(() => {
-    const m = new Map<string, Category>();
-    for (const c of categories) m.set(c.id, c);
-    return m;
-  }, [categories]);
+  const categoriesById = useMemo(() => indexById(categories), [categories]);
 
   const handleMerge = useCallback(
     (conflict: Conflict) => {

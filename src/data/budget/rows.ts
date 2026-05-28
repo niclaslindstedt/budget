@@ -1,4 +1,5 @@
 import { todayIso } from "../../utils/date";
+import { indexById } from "../../utils/indexById";
 import {
   newRuleMatchCache,
   synthesizeHistoryRow,
@@ -369,10 +370,8 @@ export function buildSynthesizedRows(
   // Build id-indexed maps once per call so the per-entry fallbacks in
   // `resolveEntryLabels` (company/type-name description) don't scan the
   // arrays linearly for every synthesized history row.
-  const companiesById = new Map<string, Company>();
-  for (const c of companies) companiesById.set(c.id, c);
-  const typesById = new Map<string, EntryType>();
-  for (const t of types) typesById.set(t.id, t);
+  const companiesById = indexById(companies);
+  const typesById = indexById(types);
   // Reuse one rule-match cache across every history entry in this call
   // so a recurring merchant (Spotify charging the same amount every
   // month for years) pays a single rule walk instead of one per

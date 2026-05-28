@@ -392,25 +392,9 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ### Easy wins (mechanical, land regardless of rating)
 
-- **`indexById<T>(items)` helper** — the 5-line `const xById =
-useMemo(() => { const m = new Map<string, X>(); for (const x of
-items) m.set(x.id, x); return m; }, [items]);` pattern appears at
-  **17 sites** across 8 files: `typesById` × 7 (`BudgetPage:369`,
-  `BudgetMetadataModal:154`, `BudgetFindConflictsModal:121`,
-  `BudgetViewerModal:122`, `SettingsModal/tabs/patterns:45`,
-  `AccountReconciliationModal:133`, `AccountsPage:130`),
-  `companiesById` × 2 (`BudgetPage:374`, `BudgetMetadataModal:149`),
-  `accountsById` × 2 (`BudgetPage:379`, `AccountsPage:114`),
-  `categoriesById` × 3 (`BudgetFindConflictsModal:127`,
-  `patterns:50`, `AccountsPage:119`), plus 3 one-off shapes
-  (`rowsById`, `entriesById`, `accountNameById`). Add
-  `indexById<T extends { id: string }>(items: readonly T[]):
-Map<string, T>` to `src/utils/` (or `src/data/` if the helper
-  graduates to data-layer use too — `src/data/budget/rows.ts:372-375`
-  has the same pattern inline). Call sites collapse to
-  `const typesById = useMemo(() => indexById(types), [types]);`.
-  Consumes ~50 lines of cross-file boilerplate. **Severity: 3**
-  (easy-win category — mechanical, lands regardless).
+- The `indexById<T>(items)` helper landed 2026-05 — see Landed.
+  Future `Map<string, T>` indexers keyed by `item.id` should reach
+  for it from day one.
 
 - The inline `todayIso` / `addMonthsIso` duplication (7 + 2 sites)
   was consumed 2026-05 — see Landed. New ISO date helpers should
@@ -445,6 +429,32 @@ Map<string, T>` to `src/utils/` (or `src/data/` if the helper
 
 ## Landed
 
+- **`indexById<T>(items)` helper adoption across 8 files** (2026-05):
+  the recurring 5-line `useMemo(() => { const m = new Map<string,
+T>(); for (const x of items) m.set(x.id, x); return m; }, [items])`
+  pattern consumed by a new `indexById<T extends { id: string }>(items:
+readonly T[]): Map<string, T>` helper at `src/utils/indexById.ts`.
+  Adopted at 16 sites: `BudgetMetadataModal` (companiesById, typesById),
+  `BudgetFindConflictsModal` (typesById, categoriesById), `BudgetPage`
+  (typesById, companiesById), `BudgetViewerModal` (typesById),
+  `SettingsModal/tabs/patterns` (typesById, categoriesById),
+  `AccountsPage` (accountsById, categoriesById, typesById),
+  `AccountReconciliationModal` (typesById, entriesById), and the
+  inline (non-`useMemo`) site in `src/data/budget/rows.ts`
+  (companiesById, typesById). Each `useMemo` body collapses to
+  `useMemo(() => indexById(items), [items])`. `BudgetPage`'s
+  `accountsById` (maps `a.id → a.name`) and the
+  `AccountTransferCollapseModal` peer (same shape) are intentionally
+  left inline — they index to a derived value, not the source item,
+  so the helper doesn't fit. `AccountReconciliationModal`'s
+  `rowsById` is also left alone because its value shape is
+  `{ row, columns }` and it walks every sheet, not a flat input list.
+  Removes ~55 lines of boilerplate (86 → 31 diff). The unused
+  `Account` / `Category` / `EntryType` imports on `AccountsPage` and
+  the unused `EntryType` import on `AccountReconciliationModal`
+  dropped in the same change (the inline `new Map<string, X>()` type
+  annotations were the only references). Pure refactor — typecheck +
+  lint + fmt-check + build + 858 tests pass.
 - **`useMatchRuleAmountFilter` hook extraction from `BudgetMatchRuleModal.tsx`**
   (2026-05): the amount-filter sub-state machine (7 `useState` calls
   for `signMode` + 6 `(text, negative)` input fields, the reset-on-open
