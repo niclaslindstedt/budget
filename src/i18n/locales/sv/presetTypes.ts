@@ -64,7 +64,7 @@ const presetTypes: PresetTypesCatalog = {
   "union-fee": "Fackavgift",
   "a-kassa": "A-kassa",
   csn: "Studielån",
-  donation: "Donation",
+  donation: "Välgörenhet",
   salary: "Lön",
   bonus: "Bonusar",
   "tax-refund": "Skatteåterbäring",

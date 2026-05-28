@@ -64,7 +64,7 @@ const presetTypes = {
   "union-fee": "Union fee",
   "a-kassa": "A-kassa",
   csn: "Student loan",
-  donation: "Donation",
+  donation: "Charity",
   salary: "Salary",
   bonus: "Bonuses",
   "tax-refund": "Tax refund",
