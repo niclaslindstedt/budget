@@ -26,6 +26,12 @@ import {
   tryReadUserDataFromText,
 } from "./local";
 import { createSaveChain } from "./save-chain";
+import { type ActionHistoryEntry, useUndoRedo } from "./useUndoRedo";
+
+// Re-exported so existing consumers that import the type from this
+// module (the orchestrating storage hook) don't have to chase the
+// type's new home. The canonical declaration lives in `./useUndoRedo`.
+export type { ActionHistoryEntry };
 
 const log = createLogger("storage-hook");
 
@@ -86,14 +92,6 @@ export type SaveStatus =
 // fresh-budget overwrite (the original incident) is a 99.7% shrink
 // and trips this trivially; routine edits never do.
 const SHRINK_WARN_THRESHOLD = 0.05;
-// Maximum number of past states retained in the undo stack. Each
-// entry is a `UserData` reference; structural sharing in the reducer
-// means unchanged sub-trees are not duplicated across snapshots.
-const UNDO_HISTORY_LIMIT = 50;
-// Action type stamped on the seed entry created from a fresh load or
-// a remote replacement — there's no user action to label it with, so
-// the UI renders it as the timeline's start anchor.
-const INITIAL_ACTION_TYPE = "initial";
 // Reducer actions that are pure UI navigation — they change the
 // active tab/sheet but no user data. Excluded from the undo stack so
 // ⌘Z reverts the last edit, not a tab switch.
@@ -126,20 +124,6 @@ export type UserDataStorageOptions = {
   // can omit it; the migration treats absent userId as "no
   // per-user localStorage to read".
   userId?: string;
-};
-
-// Metadata view of one history entry surfaced to the UI. The full
-// `UserData` snapshot is kept inside the hook; consumers identify an
-// entry by its position in `historyEntries`.
-export type ActionHistoryEntry = {
-  // Reducer action type that produced the state at this position, or
-  // `"initial"` for the seed entry that anchors the timeline. The UI
-  // resolves this to a translated label.
-  actionType: string;
-  // Wall-clock milliseconds when the action was dispatched (or when
-  // the initial state was loaded). Used by the action history modal to
-  // tell the user when each action was taken.
-  timestamp: number;
 };
 
 export type UserDataStorage<Action> = {
@@ -206,78 +190,6 @@ export type UserDataStorage<Action> = {
   // surfaced via `status`.
   reload: () => Promise<void>;
 };
-
-// Combined entry + cursor state held inside the hook. The whole slice
-// runs through `historyReducer` below so dispatch / undo / redo /
-// jumpToHistory each correspond to a single named action — instead of
-// the previous setHistoryState-with-functional-updater braid that
-// scattered the same invariants across four call sites.
-type HistoryState = {
-  entries: HistoryEntryInternal[];
-  cursor: number;
-};
-
-type HistoryEntryInternal = {
-  state: UserData;
-  actionType: string;
-  timestamp: number;
-};
-
-// Named transitions for the action timeline + undo cursor. The reducer
-// stays pure — the side-effect of swapping `data` to the target
-// snapshot lives in the calling code, which reads the current entry
-// off `historyStateRef` and pairs each cursor move with a setData.
-type HistoryAction =
-  | { kind: "reset"; seed: UserData }
-  | { kind: "append"; entry: HistoryEntryInternal }
-  // Move the cursor by ±1, clamped at the timeline edges. Undo / redo
-  // dispatch this; the bounds check below is what makes the operation
-  // a no-op at the ends instead of producing a bogus cursor.
-  | { kind: "step-cursor"; delta: -1 | 1 }
-  // Jump the cursor to an arbitrary index, with the same bounds
-  // semantics — out-of-range values and self-jumps return the prior
-  // state unchanged so the side-effect cleanup in the caller doesn't
-  // have to special-case them.
-  | { kind: "set-cursor"; cursor: number };
-
-function historyReducer(
-  state: HistoryState,
-  action: HistoryAction,
-): HistoryState {
-  switch (action.kind) {
-    case "reset":
-      return initialHistoryState(action.seed);
-    case "append": {
-      // Drop any "future" entries beyond the cursor — a fresh mutating
-      // action overwrites the redo timeline. Then append the new
-      // entry and trim from the front if the past portion would
-      // exceed UNDO_HISTORY_LIMIT.
-      const truncated = state.entries.slice(0, state.cursor + 1);
-      const appended = [...truncated, action.entry];
-      const cap = UNDO_HISTORY_LIMIT + 1;
-      const dropped = Math.max(0, appended.length - cap);
-      return {
-        entries: dropped > 0 ? appended.slice(dropped) : appended,
-        cursor: appended.length - 1 - dropped,
-      };
-    }
-    case "step-cursor": {
-      const next = state.cursor + action.delta;
-      if (next < 0 || next >= state.entries.length) return state;
-      return { entries: state.entries, cursor: next };
-    }
-    case "set-cursor": {
-      if (
-        action.cursor < 0 ||
-        action.cursor >= state.entries.length ||
-        action.cursor === state.cursor
-      ) {
-        return state;
-      }
-      return { entries: state.entries, cursor: action.cursor };
-    }
-  }
-}
 
 // Named transitions for the SaveStatus state machine. The reducer is
 // pure — the side effects that pair with each transition (logging,
@@ -357,19 +269,6 @@ function isBailStatus(status: SaveStatus): boolean {
     status.kind === "shrink-warning" ||
     status.kind === "throttled"
   );
-}
-
-function initialHistoryState(seed: UserData): HistoryState {
-  return {
-    entries: [
-      {
-        state: seed,
-        actionType: INITIAL_ACTION_TYPE,
-        timestamp: Date.now(),
-      },
-    ],
-    cursor: 0,
-  };
 }
 
 export function useUserDataStorage<Action extends { type: string }>(
@@ -506,30 +405,17 @@ export function useUserDataStorage<Action extends { type: string }>(
   // the latest position and dispatches past the cap, the oldest entry
   // falls off the bottom — the same behaviour the old two-stack
   // implementation had.
-  const [historyState, historyDispatch] = useReducer(
-    historyReducer,
-    initial[0].data,
-    initialHistoryState,
-  );
-
-  // Ref mirror so the cursor-move callbacks below can look up the
-  // target entry synchronously before dispatching — the reducer can't
-  // do the `setData(target.state)` side effect itself, and reading the
-  // closed-over `historyState` would lag a render behind a freshly
-  // dispatched append.
-  const historyStateRef = useRef(historyState);
-  historyStateRef.current = historyState;
-
-  // Replace the timeline with a fresh seed anchored at `seed`. Called
-  // whenever data arrives from outside the dispatch path — initial /
-  // async load, remote watch, conflict resolution choosing remote,
-  // discardShrinkSave reverting to last-saved bytes. In each of those
-  // cases the previous in-memory data is no longer the user's working
-  // state, so the old history would describe edits against a vanished
-  // base and "undo" past the load would jump to something stale.
-  const resetHistory = useCallback((seed: UserData) => {
-    historyDispatch({ kind: "reset", seed });
-  }, []);
+  const {
+    appendEntry,
+    resetHistory,
+    undo,
+    redo,
+    jumpToHistory,
+    historyEntries,
+    historyIndex,
+    canUndo,
+    canRedo,
+  } = useUndoRedo({ initialSeed: initial[0].data, setData });
 
   const dispatch: Dispatch<Action> = useCallback(
     (action) => {
@@ -537,43 +423,17 @@ export function useUserDataStorage<Action extends { type: string }>(
       setData((prev: UserData) => {
         const next = reducer(prev, action);
         if (recordHistory && next !== prev) {
-          historyDispatch({
-            kind: "append",
-            entry: {
-              state: next,
-              actionType: action.type,
-              timestamp: Date.now(),
-            },
+          appendEntry({
+            state: next,
+            actionType: action.type,
+            timestamp: Date.now(),
           });
         }
         return next;
       });
     },
-    [reducer],
+    [reducer, appendEntry],
   );
-
-  const undo = useCallback(() => {
-    const cur = historyStateRef.current;
-    if (cur.cursor === 0) return;
-    setData(cur.entries[cur.cursor - 1].state);
-    historyDispatch({ kind: "step-cursor", delta: -1 });
-  }, []);
-
-  const redo = useCallback(() => {
-    const cur = historyStateRef.current;
-    if (cur.cursor >= cur.entries.length - 1) return;
-    setData(cur.entries[cur.cursor + 1].state);
-    historyDispatch({ kind: "step-cursor", delta: 1 });
-  }, []);
-
-  const jumpToHistory = useCallback((index: number) => {
-    const cur = historyStateRef.current;
-    if (index < 0 || index >= cur.entries.length || index === cur.cursor) {
-      return;
-    }
-    setData(cur.entries[index].state);
-    historyDispatch({ kind: "set-cursor", cursor: index });
-  }, []);
 
   // Shared write path used by both the debounced auto-save and the
   // explicit `saveNow`. Owns status reporting, conflict surfacing,
@@ -1275,19 +1135,6 @@ export function useUserDataStorage<Action extends { type: string }>(
     return true;
   }, [data, lastSavedData, hasUnsavableContent]);
 
-  // Surface the timeline as metadata-only so consumers don't hold
-  // refs to internal `UserData` snapshots. Re-derived whenever
-  // `historyState.entries` changes, which is fine — the array is
-  // short (capped at UNDO_HISTORY_LIMIT + 1 entries).
-  const historyEntries = useMemo<ActionHistoryEntry[]>(
-    () =>
-      historyState.entries.map((entry) => ({
-        actionType: entry.actionType,
-        timestamp: entry.timestamp,
-      })),
-    [historyState.entries],
-  );
-
   return {
     data,
     dispatch,
@@ -1300,10 +1147,10 @@ export function useUserDataStorage<Action extends { type: string }>(
     discardShrinkSave,
     undo,
     redo,
-    canUndo: historyState.cursor > 0,
-    canRedo: historyState.cursor < historyState.entries.length - 1,
+    canUndo,
+    canRedo,
     historyEntries,
-    historyIndex: historyState.cursor,
+    historyIndex,
     jumpToHistory,
     reload,
   };
