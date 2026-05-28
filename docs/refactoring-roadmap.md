@@ -149,15 +149,16 @@ new sheet type, but feature work can ship through them.
   needs a domain-specific function.
 
 - **No `useReducer` in most modal state machines** — `useReducer`
-  now has **four** real hits (`AccountReconciliationModal`,
-  `BudgetRecurrenceForm`, `BudgetEditEntryFullModal`, and
-  `AccountTransferModal`, see Landed), but the broader pattern is
-  still pervasive: `useState` pyramids with 5+ fields plus a
-  multi-setter reset effect. Remaining sites: `BudgetSplitEntryModal`,
-  `BudgetBulkEditModal` (12 useState calls in 310 lines),
+  now has **five** real hits (`AccountReconciliationModal`,
+  `BudgetRecurrenceForm`, `BudgetEditEntryFullModal`,
+  `AccountTransferModal`, and `BudgetBulkEditModal`, see Landed), but
+  the broader pattern is still present: `useState` pyramids with 5+
+  fields plus a multi-setter reset effect. Remaining sites:
   `BudgetMetadataModal` (8 useState calls), `ImportHistoryModal`,
   `BudgetMatchRuleModal` (residual after `useMatchRuleAmountFilter`
-  landed), `SettingsModal` (4-piece state pyramid). **Severity: 5.**
+  landed), `SettingsModal` (4-piece state pyramid).
+  `BudgetSplitEntryModal` dropped off the list — re-verified 2026-05
+  at 2 `useState` calls (459 lines), no longer a pyramid. **Severity: 5.**
   Per-modal value is moderate but the cumulative readability gain
   is significant. Apply opportunistically when a modal is otherwise
   being touched. The textbook discriminated-mode candidate
@@ -287,6 +288,40 @@ T | null` for "explicitly cleared by the user, distinct from
 ---
 
 ## Landed
+
+- **`BudgetBulkEditModal` `useReducer` extraction** (2026-05): the
+  11 parallel `useState` setters in `BudgetBulkEditModal.tsx`
+  (`typeEnabled` / `typeId`, `dateEnabled` / `dateValue`,
+  `amountEnabled` / `amountText`, `transferEnabled` / `transferValue`,
+  `recurringEnabled` / `recurringDates`, `recurrenceResetKey`)
+  collapsed onto a single `useReducer` driven by a `BulkEditState`
+  shape and a named-action union (`reset | setTypeEnabled | setTypeId
+| setDateEnabled | setDateValue | setAmountEnabled | setAmountText |
+setTransferEnabled | setTransferValue | setRecurringEnabled |
+setRecurringDates`). The win is the reset-on-open effect: previously
+  11 sequential `setState` calls (including the
+  `setAmountText(sharedAmount < 0 ? … : …)` formatting branch and the
+  `setRecurrenceResetKey((k) => k + 1)` bump); now one `reset` dispatch
+  carrying the seed (`{ seedDate, sharedAmount, settings }`), with the
+  amount-text formatting moved into the colocated `initialBulkEditState`
+  factory and the `recurrenceResetKey` increment kept monotonic inside
+  the reducer (the `reset` arm reads the prior key and adds one rather
+  than replacing it, so `BudgetRecurrenceForm` keeps re-seeding on every
+  re-open). The reducer + seed factory live in
+  `src/components/budget/budget-bulk-edit-modal-reducer.ts`; the modal
+  keeps the JSX + the `sharedAmount` / `seedDate` / `parsedAmount`
+  derivations + the `handleSubmit` patch-building glue. 6 unit tests
+  landed in `tests/budget_bulk_edit_modal_reducer_test.ts` to lock in
+  the seeded defaults (date, positive/negative amount text), the
+  monotonic resetKey, and that each setter only touches its own field.
+  `BudgetBulkEditModal.tsx` stays at 310 lines (dispatch wrappers
+  offset the removed `useState` lines); the new reducer file is 116
+  lines. Pure refactor — same behaviour, same i18n keys, same
+  `BulkPatch` / `onApply*` payload shape; `BudgetModalHost` consumes the
+  public component unchanged. Mirrors the precedent set by
+  `AccountTransferModal` (same `kind`-discriminated action shape;
+  side-effect-free reducer). typecheck + lint + fmt-check + 920 tests +
+  build pass.
 
 - **`AccountTransferModal` `useReducer` extraction** (2026-05): the
   11 parallel `useState` setters in `AccountTransferModal.tsx`

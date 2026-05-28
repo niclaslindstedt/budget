@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import { ListChecks } from "lucide-react";
 
 import { findColumnByType } from "../../data/sheet";
@@ -11,15 +11,15 @@ import type {
   Settings,
 } from "../../data/types";
 import { useT } from "../../i18n";
-import {
-  formatAmountForInput,
-  normalizeAmountInput,
-  parseAmount,
-} from "../../utils/format";
+import { normalizeAmountInput, parseAmount } from "../../utils/format";
 import { Modal } from "../Modal";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
 import { TypePicker } from "../TypePicker";
+import {
+  budgetBulkEditModalReducer,
+  initialBulkEditState,
+} from "./budget-bulk-edit-modal-reducer";
 
 export type { BulkPatch } from "../../data/action-payloads";
 import type { BulkPatch } from "../../data/action-payloads";
@@ -78,46 +78,33 @@ export function BudgetBulkEditModal({
     return dates.sort()[0] ?? "";
   }, [rows, dateCol]);
 
-  const [typeEnabled, setTypeEnabled] = useState(false);
-  const [typeId, setTypeId] = useState<string | null>(null);
-
-  const [dateEnabled, setDateEnabled] = useState(false);
-  const [dateValue, setDateValue] = useState("");
-
-  const [amountEnabled, setAmountEnabled] = useState(false);
-  const [amountText, setAmountText] = useState("");
-
-  const [transferEnabled, setTransferEnabled] = useState(false);
-  const [transferValue, setTransferValue] = useState(true);
-
-  const [recurringEnabled, setRecurringEnabled] = useState(false);
-  const [recurringDates, setRecurringDates] = useState<string[]>([]);
-  const [recurrenceResetKey, setRecurrenceResetKey] = useState(0);
+  const [state, dispatch] = useReducer(
+    budgetBulkEditModalReducer,
+    { seedDate: "", sharedAmount: null, settings },
+    initialBulkEditState,
+  );
+  const {
+    typeEnabled,
+    typeId,
+    dateEnabled,
+    dateValue,
+    amountEnabled,
+    amountText,
+    transferEnabled,
+    transferValue,
+    recurringEnabled,
+    recurringDates,
+    recurrenceResetKey,
+  } = state;
 
   useEffect(() => {
     if (!open) return;
-    setTypeEnabled(false);
-    setTypeId(null);
-    setDateEnabled(false);
-    setDateValue(seedDate);
-    setAmountEnabled(false);
-    setAmountText(
-      sharedAmount !== null
-        ? sharedAmount < 0
-          ? `-${formatAmountForInput(Math.abs(sharedAmount), settings)}`
-          : formatAmountForInput(sharedAmount, settings)
-        : "",
-    );
-    setTransferEnabled(false);
-    setTransferValue(true);
-    setRecurringEnabled(false);
-    setRecurringDates([]);
-    setRecurrenceResetKey((k) => k + 1);
+    dispatch({ kind: "reset", seed: { seedDate, sharedAmount, settings } });
   }, [open, seedDate, sharedAmount, settings]);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, dates: string[]) => {
-      setRecurringDates(dates);
+      dispatch({ kind: "setRecurringDates", value: dates });
     },
     [],
   );
@@ -175,14 +162,14 @@ export function BudgetBulkEditModal({
         <Toggle
           label={t("bulkEdit.changeType")}
           enabled={typeEnabled}
-          onToggle={setTypeEnabled}
+          onToggle={(value) => dispatch({ kind: "setTypeEnabled", value })}
         >
           <TypePicker
             variant="field"
             types={types}
             categories={categories}
             selectedId={typeId}
-            onSelect={setTypeId}
+            onSelect={(value) => dispatch({ kind: "setTypeId", value })}
             onCreate={onCreateType}
             onCreateCategory={onCreateCategory}
           />
@@ -191,12 +178,14 @@ export function BudgetBulkEditModal({
         <Toggle
           label={t("bulkEdit.changeDate")}
           enabled={dateEnabled}
-          onToggle={setDateEnabled}
+          onToggle={(value) => dispatch({ kind: "setDateEnabled", value })}
         >
           <input
             type="date"
             value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
+            onChange={(e) =>
+              dispatch({ kind: "setDateValue", value: e.target.value })
+            }
             className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-path"
           />
         </Toggle>
@@ -205,7 +194,7 @@ export function BudgetBulkEditModal({
           <Toggle
             label={t("bulkEdit.changeAmount")}
             enabled={amountEnabled}
-            onToggle={setAmountEnabled}
+            onToggle={(value) => dispatch({ kind: "setAmountEnabled", value })}
             hint={t("bulkEdit.sharedAmountHint", {
               n: rows.length,
               amount: sharedAmount,
@@ -215,7 +204,10 @@ export function BudgetBulkEditModal({
               inputMode="decimal"
               value={amountText}
               onValueChange={(next) =>
-                setAmountText(normalizeAmountInput(next, settings))
+                dispatch({
+                  kind: "setAmountText",
+                  value: normalizeAmountInput(next, settings),
+                })
               }
               className={`field-input w-full rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono text-sm tabular-nums ${
                 parsedAmount !== null && parsedAmount < 0
@@ -235,12 +227,12 @@ export function BudgetBulkEditModal({
         <Toggle
           label={t("bulkEdit.markAsTransfer")}
           enabled={transferEnabled}
-          onToggle={setTransferEnabled}
+          onToggle={(value) => dispatch({ kind: "setTransferEnabled", value })}
           hint={t("bulkEdit.markAsTransferHint")}
         >
           <Checkbox
             checked={transferValue}
-            onChange={setTransferValue}
+            onChange={(value) => dispatch({ kind: "setTransferValue", value })}
             label={
               transferValue
                 ? t("bulkEdit.markAsTransferOn")
@@ -252,7 +244,7 @@ export function BudgetBulkEditModal({
         <Toggle
           label={t("bulkEdit.makeEachRecurring")}
           enabled={recurringEnabled}
-          onToggle={setRecurringEnabled}
+          onToggle={(value) => dispatch({ kind: "setRecurringEnabled", value })}
           hint={t("bulkEdit.makeEachRecurringHint")}
         >
           <BudgetRecurrenceForm
