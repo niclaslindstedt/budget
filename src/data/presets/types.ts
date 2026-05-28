@@ -662,6 +662,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "income",
       kind: "income",
     },
+    {
+      slug: "gift-received",
+      name: "Gifts received",
+      color: C[3],
+      glyph: "gift",
+      category: "income",
+      kind: "income",
+    },
     // Savings — left as "any" because some households model savings
     // both ways (a deposit out of checking on one sheet, the matching
     // arrival on the savings sheet).

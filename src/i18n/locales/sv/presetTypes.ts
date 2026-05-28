@@ -72,6 +72,7 @@ const presetTypes: PresetTypesCatalog = {
   "sick-pay": "Sjuklön",
   dividends: "Utdelning",
   "side-income": "Sidoinkomst",
+  "gift-received": "Mottagna presenter",
   savings: "Sparande",
   "child-savings": "Barnsparande",
   isk: "ISK",
