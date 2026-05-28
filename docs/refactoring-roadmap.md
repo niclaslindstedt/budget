@@ -149,25 +149,22 @@ new sheet type, but feature work can ship through them.
   needs a domain-specific function.
 
 - **No `useReducer` in most modal state machines** — `useReducer`
-  now has **one** real hit (`AccountReconciliationModal`, see Landed),
-  but the broader pattern is still pervasive: `useState` pyramids with
-  5+ fields plus a multi-setter reset effect. Confirmed sites:
+  now has **two** real hits (`AccountReconciliationModal` and
+  `BudgetRecurrenceForm`, see Landed), but the broader pattern is
+  still pervasive: `useState` pyramids with 5+ fields plus a
+  multi-setter reset effect. Remaining sites:
   `BudgetEditEntryFullModal` (13 setters at lines 185–222),
   `AccountTransferModal` (9 setters at lines 113–123),
-  `BudgetRecurrenceForm` (11 setters at lines 156–176 with a
-  `Mode = "once" | "every-n-days" | "monthly"` discriminator that's
-  the **textbook useReducer fit** — half the fields only matter for
-  one mode), `BudgetSplitEntryModal`, `BudgetBulkEditModal`,
+  `BudgetSplitEntryModal`, `BudgetBulkEditModal`,
   `BudgetMetadataModal`, `ImportHistoryModal`, `BudgetMatchRuleModal`
   (residual after `useMatchRuleAmountFilter` landed), `SettingsModal`
   (4-piece state pyramid). **Severity: 5.** Per-modal value is
-  moderate but the cumulative readability gain is significant — and
-  `BudgetRecurrenceForm` in particular would benefit (the mode-change
-  side-effect of clearing dependent fields becomes an explicit reducer
-  arm rather than a sequence of 11 setter calls). Apply opportunistically
-  when a modal is otherwise being touched; prioritise the
-  discriminated-mode shapes (`BudgetRecurrenceForm`) where the reducer
-  catches mode-vs-fields invariants the current setters silently allow.
+  moderate but the cumulative readability gain is significant. Apply
+  opportunistically when a modal is otherwise being touched. The
+  textbook discriminated-mode candidate (`BudgetRecurrenceForm`) has
+  landed; re-survey for new prioritisation hooks if a different
+  modal grows a mode discriminator that the current setters silently
+  allow drift through.
 
 - **`useStorageBackend.ts` token state machine entangled with
   adapter selection** — token refresh, OAuth completion, and
@@ -298,6 +295,45 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`BudgetRecurrenceForm` `useReducer` extraction** (2026-05): the
+  11 parallel `useState` setters in `BudgetRecurrenceForm.tsx`
+  (`mode`, `onceDate`, `datesList`, `everyNStart`, `everyNEnd`,
+  `everyNDays`, `monthlyStride`, `monthlyDay`, `monthlyOffset`,
+  `monthlyStartMonth`, `monthlyEndMonth`) collapsed onto a single
+  `useReducer` driven by a `RecurrenceFormState` shape and a named
+  action union (`reset | setMode | setOnceDate | setDateAt |
+addDate | removeDateAt | setEveryN{Start,End,Days} |
+setMonthly{Stride,Day,Offset,StartMonth,EndMonth}`). The big win
+  is the resetKey-driven reset effect: previously 11 sequential
+  `setState` calls (one render per setter in concept, batched in
+  practice but still implicit-as-atomic); now one `reset` dispatch
+  carrying the full new state, computed by the colocated
+  `initialRecurrenceFormState` factory. The reducer + factory +
+  helpers (`todayDayOfMonth`, `seedDayOfMonth`) live in
+  `src/components/budget/budget-recurrence-form-reducer.ts`; the
+  component file keeps the rule-derivation switch (which depends on
+  `isIsoMonth` / `startOfMonth` / `endOfMonth` helpers that stay
+  scoped to the component) plus the JSX. The list-mutation
+  shapes (`setDateAt` / `addDate` / `removeDateAt`) became
+  named actions instead of inline array splices, and the reducer
+  guards against out-of-range indices + last-remaining-date
+  removal — invariants the previous `setDatesList(...)` callers
+  enforced via JSX `disabled` attributes alone. Mirrors the
+  precedent set by `reconciliationReducer` (same `kind`-
+  discriminated action shape; side-effect-free reducer; the
+  component owns the rule-derivation `useMemo` and the
+  `onChange` notification effect outside the reducer). 18 unit
+  tests landed in `tests/budget_recurrence_form_reducer_test.ts` to
+  lock in the seed-rule pre-fill, the dayOfMonth clamping, the
+  setDateAt index-guard, the addDate fallback when the list is
+  empty, the removeDateAt last-entry guard, and the simple setter
+  arms. `BudgetRecurrenceForm.tsx` drops from 538 → 470 lines;
+  the new reducer file is 160 lines. Pure refactor — same
+  behaviour, same `onChange` payload shape, same i18n keys; the
+  four parent modals (`BudgetPromoteHistoryForm`,
+  `BudgetComplexEntryModal`, `BudgetBulkEditModal`,
+  `BudgetPromoteToSeriesForm`) consume the public component
+  unchanged. typecheck + lint + fmt-check + 888 tests + build pass.
 - **`useRevealAnchorPreservation` + `useVisibleMonthRange` +
   `useScrollToRowRequest` hook extraction from `BudgetPage.tsx`** (2026-05):
   the final three PRs of the display-machinery plan bundled into one.
