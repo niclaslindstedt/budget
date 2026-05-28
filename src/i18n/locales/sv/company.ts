@@ -5,6 +5,8 @@ const company: CompanyCatalog = {
   pickCompanyEllipsis: "Välj ett företag…",
   addCompany: "Lägg till företag",
   clearCompany: "Rensa företag",
+  omitCompany: "Utelämna företag",
+  omittedLabel: "Företag utelämnat",
   newCompany: "Nytt företag",
   noCompaniesYet: "Inga företag än.",
   name: "Namn",
