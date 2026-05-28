@@ -38,6 +38,7 @@ export type CategoryIcon =
   | "star"
   // Food & drink
   | "cookie"
+  | "croissant"
   | "cake"
   | "ice-cream"
   | "beer"

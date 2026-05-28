@@ -23,6 +23,7 @@ const presetTypes: PresetTypesCatalog = {
   systembolaget: "Alkohol",
   takeaway: "Hämtmat",
   snacks: "Snacks",
+  bakery: "Bageri",
   fuel: "Bränsle",
   "public-transport": "Kollektivtrafik",
   parking: "Parkering",
