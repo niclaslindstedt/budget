@@ -95,6 +95,7 @@ const presetTypes = {
   tools: "Tools",
   stationery: "Stationery",
   appliances: "Appliances",
+  kitchenware: "Kitchenware",
   "digital-services": "Digital services",
   unknown: "Unknown",
   forgotten: "Forgotten",
