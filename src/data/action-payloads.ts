@@ -53,6 +53,12 @@ export type EditPatch = {
   // days (e.g. recurring landed on day 24 instead of 25). Omitted or
   // 0 leaves dates untouched.
   dateShiftDays?: number;
+  // Optional signed amount range for an "estimate" row. `undefined`
+  // leaves the row's range untouched; `null` clears it back to an exact
+  // row; a number sets that bound. Both bounds move together — the
+  // modal only ever sends both numbers or both nulls.
+  amountMin?: number | null;
+  amountMax?: number | null;
 };
 
 export type EditScope =
@@ -87,6 +93,12 @@ export type ComplexEntryDraft = {
   // numeric preview for the cached cell so older builds without
   // formula support see a sensible static fallback.
   amountFormula?: string;
+  // Optional signed amount range for an "estimate" row. When both are
+  // present, every generated row gets `amountMin` / `amountMax` set
+  // (the estimate stays in `amount`). Mutually exclusive with
+  // `amountFormula` — a formula row computes its amount dynamically.
+  amountMin?: number;
+  amountMax?: number;
 };
 
 export type SplitSubmission = {

@@ -13,7 +13,9 @@ import type {
 } from "../../data/types";
 import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
-import { Button, Checkbox, ClearableInput, SignedAmountInput } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
+import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
+import { resolveAmountSpan, type AmountMode } from "./budget-amount-span";
 import { BudgetFormulaHelpButton } from "./BudgetFormulaHelpButton";
 import {
   BudgetFormulaInput,
@@ -101,6 +103,11 @@ export function BudgetComplexEntryModal({
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
+  // Exact vs estimate band; the estimate stays in `amountText`, the band
+  // magnitudes (positive strings, sign from `negative`) live here.
+  const [amountMode, setAmountMode] = useState<AmountMode>("exact");
+  const [amountMinText, setAmountMinText] = useState("");
+  const [amountMaxText, setAmountMaxText] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const handlePickCompany = useCallback(
@@ -149,6 +156,9 @@ export function BudgetComplexEntryModal({
       setIsTransfer(false);
     }
     setDates([]);
+    setAmountMode("exact");
+    setAmountMinText("");
+    setAmountMaxText("");
     setFormulaMode(false);
     setFormulaText("");
     setResetKey((k) => k + 1);
@@ -220,6 +230,13 @@ export function BudgetComplexEntryModal({
       return;
     }
     if (parsedAmount === null) return;
+    const span = resolveAmountSpan(
+      amountMode,
+      negative,
+      amountText,
+      amountMinText,
+      amountMaxText,
+    );
     onCreate({
       description: description.trim(),
       amount: parsedAmount,
@@ -227,6 +244,10 @@ export function BudgetComplexEntryModal({
       companyId,
       isTransfer,
       dates,
+      // Only attach a band when both bounds parsed (estimate mode).
+      ...(span.amountMin !== null && span.amountMax !== null
+        ? { amountMin: span.amountMin, amountMax: span.amountMax }
+        : {}),
     });
   }
 
@@ -316,14 +337,19 @@ export function BudgetComplexEntryModal({
                 <BudgetFormulaHelpButton />
               </div>
             ) : (
-              <SignedAmountInput
-                value={amountText}
+              <BudgetAmountSpanFields
+                mode={amountMode}
+                onModeChange={setAmountMode}
                 negative={negative}
-                onValueChange={setAmountText}
                 onToggleSign={toggleSign}
+                amount={amountText}
+                onAmountChange={setAmountText}
+                min={amountMinText}
+                onMinChange={setAmountMinText}
+                max={amountMaxText}
+                onMaxChange={setAmountMaxText}
                 settings={settings}
-                ariaLabel={t("complex.amount")}
-                placeholder={t("complex.amountPlaceholder")}
+                hideLabel
               />
             )}
             {formulaMode && formulaError !== null ? (

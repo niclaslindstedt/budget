@@ -60,6 +60,8 @@ export function validateRow(
     typeId,
     isCorrection,
     amountFormula,
+    amountMin,
+    amountMax,
     isTransfer,
     typeIdLocked,
     companyId,
@@ -106,6 +108,21 @@ export function validateRow(
     if (typeof amountFormula !== "string")
       return fail(`${path}.amountFormula`, "expected a string");
     if (amountFormula !== "") row.amountFormula = amountFormula;
+  }
+  // An estimate row carries BOTH bounds; a lone or non-finite bound is
+  // meaningless, so drop the pair rather than persist a half-range.
+  if (amountMin !== undefined || amountMax !== undefined) {
+    if (
+      typeof amountMin === "number" &&
+      Number.isFinite(amountMin) &&
+      typeof amountMax === "number" &&
+      Number.isFinite(amountMax)
+    ) {
+      // Normalize ordering defensively so the matching predicates can
+      // assume amountMin <= amountMax.
+      row.amountMin = Math.min(amountMin, amountMax);
+      row.amountMax = Math.max(amountMin, amountMax);
+    }
   }
   if (isTransfer !== undefined) {
     if (typeof isTransfer !== "boolean")

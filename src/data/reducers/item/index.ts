@@ -114,6 +114,13 @@ export function reduceAccountBudget(
         // a referenced sheet don't break the formula; the renderer
         // recomputes the amount each pass via the resolver.
         if (draft.amountFormula) row.amountFormula = draft.amountFormula;
+        // Estimate rows carry a signed [min, max] band alongside the
+        // estimate cell so an imported bank amount inside the band still
+        // reconciles to this row. Both bounds set together.
+        if (draft.amountMin !== undefined && draft.amountMax !== undefined) {
+          row.amountMin = draft.amountMin;
+          row.amountMax = draft.amountMax;
+        }
         return row;
       });
       return { ...item, rows: [...item.rows, ...newRows] };
@@ -148,6 +155,13 @@ export function reduceAccountBudget(
           row.typeIdLocked = true;
         }
         if (action.companyId) row.companyId = action.companyId;
+        // Carry the anchor's estimate range onto every generated
+        // occurrence so the whole series stays matchable against the
+        // band, not just the anchor.
+        if (anchor.amountMin !== undefined && anchor.amountMax !== undefined) {
+          row.amountMin = anchor.amountMin;
+          row.amountMax = anchor.amountMax;
+        }
         return row;
       });
       return {

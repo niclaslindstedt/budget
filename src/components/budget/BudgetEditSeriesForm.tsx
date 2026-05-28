@@ -13,19 +13,18 @@ import type {
   Settings,
 } from "../../data/types";
 import { useT } from "../../i18n";
-import { formatAmountForInput, parseAmount } from "../../utils/format";
+import { formatAmountForInput } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
-import {
-  Button,
-  Checkbox,
-  ClearableInput,
-  Radio,
-  RadioGroup,
-  SignedAmountInput,
-} from "../form";
+import { Button, Checkbox, ClearableInput, Radio, RadioGroup } from "../form";
 import { TypePicker } from "../TypePicker";
+import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
+import {
+  amountModeFromRow,
+  resolveAmountSpan,
+  spanInputStringsFromBounds,
+} from "./budget-amount-span";
 
 type Props = {
   row: Row;
@@ -98,10 +97,18 @@ export function BudgetEditSeriesForm({
       : "";
   const initialTypeId: string | null = row.typeId ?? null;
   const initialCompanyId: string | null = row.companyId ?? null;
+  const initialAmountMode = amountModeFromRow(row.amountMin, row.amountMax);
+  const initialBand =
+    row.amountMin !== undefined && row.amountMax !== undefined
+      ? spanInputStringsFromBounds(row.amountMin, row.amountMax, settings)
+      : { min: "", max: "" };
 
   const [description, setDescription] = useState(initialDescription);
   const [amount, setAmount] = useState(initialAmountText);
   const [negative, setNegative] = useState(initialNegative);
+  const [amountMode, setAmountMode] = useState(initialAmountMode);
+  const [amountMin, setAmountMin] = useState(initialBand.min);
+  const [amountMax, setAmountMax] = useState(initialBand.max);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
   // Wrap the company picker's onSelect so a confident company → type
@@ -133,15 +140,12 @@ export function BudgetEditSeriesForm({
   // the field snapping back to a parsed number.
   const [shiftDaysText, setShiftDaysText] = useState("0");
 
-  const parsedAbs = parseAmount(amount);
-  const parsedAmount =
-    parsedAbs === null
-      ? null
-      : negative
-        ? -Math.abs(parsedAbs)
-        : Math.abs(parsedAbs);
   const amountTouched =
     amount !== initialAmountText || negative !== initialNegative;
+  const bandTouched =
+    amountMode !== initialAmountMode ||
+    amountMin !== initialBand.min ||
+    amountMax !== initialBand.max;
 
   const typeTouched = typeId !== initialTypeId;
   const companyTouched = companyId !== initialCompanyId;
@@ -156,11 +160,22 @@ export function BudgetEditSeriesForm({
 
   function handleSubmit() {
     if (shiftDays !== 0) unlock("dateShifter");
+    const span = resolveAmountSpan(
+      amountMode,
+      negative,
+      amount,
+      amountMin,
+      amountMax,
+    );
     onSubmit(
       row.id,
       {
         description: description.trim(),
-        amount: amountTouched ? parsedAmount : null,
+        amount: amountTouched ? span.amount : null,
+        // `undefined` leaves bounds untouched; `null` clears to exact;
+        // numbers set the band. Only send when the band inputs changed.
+        amountMin: bandTouched ? span.amountMin : undefined,
+        amountMax: bandTouched ? span.amountMax : undefined,
         typeId: typeTouched ? typeId : undefined,
         companyId: companyTouched ? companyId : undefined,
         dateShiftDays: shiftDays !== 0 ? shiftDays : undefined,
@@ -207,17 +222,21 @@ export function BudgetEditSeriesForm({
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-xs text-muted">{t("editEntry.amount")}</span>
-            <SignedAmountInput
-              value={amount}
+          <div className="flex min-w-0 flex-col gap-1">
+            <BudgetAmountSpanFields
+              mode={amountMode}
+              onModeChange={setAmountMode}
               negative={negative}
-              onValueChange={setAmount}
               onToggleSign={toggleSign}
+              amount={amount}
+              onAmountChange={setAmount}
+              min={amountMin}
+              onMinChange={setAmountMin}
+              max={amountMax}
+              onMaxChange={setAmountMax}
               settings={settings}
-              ariaLabel={t("editEntry.amount")}
             />
-          </label>
+          </div>
           <label className="flex min-w-0 flex-col gap-1">
             <span className="text-xs text-muted">
               {t("editEntry.shiftDaysBy")}

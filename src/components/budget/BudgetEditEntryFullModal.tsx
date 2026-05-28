@@ -17,17 +17,12 @@ import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { formatAmount, formatShortDate, parseAmount } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
-import {
-  Checkbox,
-  Button,
-  ClearableInput,
-  Radio,
-  RadioGroup,
-  SignedAmountInput,
-} from "../form";
+import { Checkbox, Button, ClearableInput, Radio, RadioGroup } from "../form";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
+import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
+import { resolveAmountSpan } from "./budget-amount-span";
 import {
   budgetEditEntryFullModalReducer,
   initialEditFullState,
@@ -105,6 +100,11 @@ export type EditRowPatch = {
   // was off (e.g. landed on day 24 but should be day 25). 0 means
   // "leave dates alone".
   dateShiftDays: number;
+  // Optional signed estimate band. `undefined` leaves the row's range
+  // untouched; `null` clears it back to an exact row; a number sets the
+  // bound. Both bounds move together.
+  amountMin: number | null | undefined;
+  amountMax: number | null | undefined;
 };
 
 export type EditRowScope =
@@ -176,6 +176,9 @@ export function BudgetEditEntryFullModal({
     description,
     amount,
     negative,
+    amountMode,
+    amountMin,
+    amountMax,
     date,
     typeId,
     companyId,
@@ -276,7 +279,19 @@ export function BudgetEditEntryFullModal({
     // "all" scope explicitly skips the amount — the input is disabled
     // in the UI so the user can see why, but force-null it here too
     // in case anything ever bypasses the disabled state.
-    const patchAmount = scopeKind === "all" ? null : parsedAmount;
+    const span = resolveAmountSpan(
+      amountMode,
+      negative,
+      amount,
+      amountMin,
+      amountMax,
+    );
+    const skipAmount = scopeKind === "all";
+    const patchAmount = skipAmount ? null : span.amount;
+    // `null` clears any existing band back to exact; the bounds ride the
+    // same disabled-under-"all"-scope rule as the amount.
+    const patchMin = skipAmount ? undefined : span.amountMin;
+    const patchMax = skipAmount ? undefined : span.amountMax;
     const companyTouched = companyId !== initialState.companyId;
     const transferTouched = isTransfer !== initialState.isTransfer;
     onSave(
@@ -284,6 +299,8 @@ export function BudgetEditEntryFullModal({
       {
         description: description.trim(),
         amount: patchAmount,
+        amountMin: patchMin,
+        amountMax: patchMax,
         date,
         typeId,
         companyId: companyTouched ? companyId : undefined,
@@ -340,17 +357,27 @@ export function BudgetEditEntryFullModal({
             </label>
           )}
           {amountCol && (
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-xs text-muted">
-                {t("editEntry.amount")}
-              </span>
-              <SignedAmountInput
-                value={amount}
+            <div className="flex min-w-0 flex-col gap-1">
+              <BudgetAmountSpanFields
+                mode={amountMode}
+                onModeChange={(v) =>
+                  dispatch({ kind: "setAmountMode", value: v })
+                }
                 negative={negative}
-                onValueChange={(v) => dispatch({ kind: "setAmount", value: v })}
                 onToggleSign={toggleSign}
+                amount={amount}
+                onAmountChange={(v) =>
+                  dispatch({ kind: "setAmount", value: v })
+                }
+                min={amountMin}
+                onMinChange={(v) =>
+                  dispatch({ kind: "setAmountMin", value: v })
+                }
+                max={amountMax}
+                onMaxChange={(v) =>
+                  dispatch({ kind: "setAmountMax", value: v })
+                }
                 settings={settings}
-                ariaLabel={t("editEntry.amount")}
                 disabled={scopeKind === "all"}
               />
               {scopeKind === "all" && (
@@ -358,7 +385,7 @@ export function BudgetEditEntryFullModal({
                   {t("editRow.scopeAllAmountDisabled")}
                 </span>
               )}
-            </label>
+            </div>
           )}
           <div className="col-span-2 flex flex-col gap-1">
             <span className="text-xs text-muted">{t("editEntry.type")}</span>

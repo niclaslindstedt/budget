@@ -1,6 +1,11 @@
 import { findColumnByType } from "../../data/sheet";
 import type { Column, Row, SeriesMetadata, Settings } from "../../data/types";
 import { formatAmountForInput } from "../../utils/format";
+import {
+  amountModeFromRow,
+  spanInputStringsFromBounds,
+  type AmountMode,
+} from "./budget-amount-span";
 
 export type ScopeKind = "just-this" | "future" | "all";
 
@@ -17,6 +22,13 @@ export type EditFullState = {
   // `amount` so a transient empty input still remembers which sign
   // the user picked.
   negative: boolean;
+  // Exact (single amount) vs estimate (min / estimate / max band). The
+  // estimate stays in `amount`; the band magnitudes live in
+  // `amountMin` / `amountMax` (positive strings; sign comes from
+  // `negative`).
+  amountMode: AmountMode;
+  amountMin: string;
+  amountMax: string;
   date: string;
   typeId: string | null;
   companyId: string | null;
@@ -34,6 +46,9 @@ export type EditFullAction =
   | { kind: "reset"; state: EditFullState }
   | { kind: "setDescription"; value: string }
   | { kind: "setAmount"; value: string }
+  | { kind: "setAmountMode"; value: AmountMode }
+  | { kind: "setAmountMin"; value: string }
+  | { kind: "setAmountMax"; value: string }
   | { kind: "toggleNegative" }
   | { kind: "setDate"; value: string }
   | { kind: "setTypeId"; value: string | null }
@@ -97,10 +112,19 @@ export function initialEditFullState(
       ? (row.cells[completedCol.id] as boolean)
       : false;
 
+  const amountMode = amountModeFromRow(row?.amountMin, row?.amountMax);
+  const band =
+    row?.amountMin !== undefined && row?.amountMax !== undefined
+      ? spanInputStringsFromBounds(row.amountMin, row.amountMax, settings)
+      : { min: "", max: "" };
+
   return {
     description,
     amount,
     negative,
+    amountMode,
+    amountMin: band.min,
+    amountMax: band.max,
     date,
     typeId: row?.typeId ?? null,
     companyId: row?.companyId ?? null,
@@ -126,6 +150,12 @@ export function budgetEditEntryFullModalReducer(
       return { ...state, description: action.value };
     case "setAmount":
       return { ...state, amount: action.value };
+    case "setAmountMode":
+      return { ...state, amountMode: action.value };
+    case "setAmountMin":
+      return { ...state, amountMin: action.value };
+    case "setAmountMax":
+      return { ...state, amountMax: action.value };
     case "toggleNegative":
       return { ...state, negative: !state.negative };
     case "setDate":

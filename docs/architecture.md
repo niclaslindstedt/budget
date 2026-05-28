@@ -357,6 +357,15 @@ type Row = {
   typeId?: string;
   isCorrection?: boolean; // see Account.openingBalance / "update balance" flow
   amountFormula?: string; // optional formula; renderer resolves each pass
+  // Optional signed estimate band for an "estimate" row (a bill that
+  // varies within a known range). The estimate lives in the amount cell
+  // and drives the balance; these only widen what an imported bank
+  // amount may be and still reconcile (see `amountWithinSpan` in
+  // `src/data/reconciliation.ts`). Both present ⇒ estimate mode;
+  // ordered `amountMin <= amountMax`. Edited only through the add / edit
+  // modals. Additive optional fields — no migration / version bump.
+  amountMin?: number;
+  amountMax?: number;
 };
 
 type HistoryEntry = {
