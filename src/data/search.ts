@@ -10,6 +10,8 @@ import type {
   Sheet,
   UserData,
 } from "./types";
+import type { TFunction } from "../i18n";
+import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
 import { parseAmount } from "../utils/format";
 
 // Flattened, search-friendly projection of one row that the user sees
@@ -68,7 +70,16 @@ export type SearchResult = {
 // projected to its searchable fields: description, type name,
 // category name, amount. Computed once per `UserData` snapshot via
 // `useMemo` upstream.
-export function buildSearchIndex(data: UserData): SearchEntry[] {
+//
+// Preset type / category names are stored as the seeding Swedish
+// baseline (e.g. `name: "Apoteket"` for `pharmacy`); the displayed
+// name routes through `displayTypeName` / `displayCategoryName` so
+// the user sees the catalog translation for the active language.
+// The search has to index that translated form so a user searching
+// "pharmacy" finds rows of preset type `preset-type-pharmacy` —
+// hence the `t` parameter. User-added types and categories carry
+// their own name verbatim and route through `t` no-op-style.
+export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
   const entries: SearchEntry[] = [];
   const types = allTypes(data);
   const categories = allCategories(data);
@@ -113,8 +124,8 @@ export function buildSearchIndex(data: UserData): SearchEntry[] {
           row.companyId !== undefined
             ? companiesById.get(row.companyId)
             : undefined;
-        const typeName = type?.name ?? "";
-        const categoryName = category?.name ?? "";
+        const typeName = type ? displayTypeName(type, t) : "";
+        const categoryName = category ? displayCategoryName(category, t) : "";
         const companyName = company?.name ?? "";
         entries.push({
           sheetId: sheet.id,
