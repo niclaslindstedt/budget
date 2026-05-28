@@ -333,6 +333,18 @@ T | null` for "explicitly cleared by the user, distinct from
   `src/data/budget/` (folds into the severity-9 item above; the
   directory move itself is the easy part). The prefix-rename pass
   already landed; what's left is the naming-judgment pass.
+  Audited 2026-05: `conflicts.ts` moved (see Landed); the remaining
+  root-level data modules (`coverage.ts`, `match-rules.ts`,
+  `merchant-hints.ts`, `reconciliation.ts`, `recurrence.ts`,
+  `row-candidate.ts`, `search.ts`, plus the obvious universals
+  `sheet.ts` / `fiscal-month.ts` / `normalize.ts` / `settings.ts` /
+  `themes.ts` / `action-payloads.ts` / `reducer.ts` /
+  `migrations.ts` / `validate.ts` / `description-normaliser.ts` /
+  `hit-count.ts` / `payday.ts`) are genuinely cross-page or
+  universal. `rename-patterns.ts` is the only ambiguous remaining
+  candidate (called from both the accounts rename predictor and
+  the budget-view quick-rename on synthesized history rows); left
+  at root for now.
 
 - Replace remaining native-looking patterns: scan for any new
   `<select>` / `<option>` introduced since the last sweep (AGENTS
@@ -346,6 +358,15 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`conflicts.ts` relocated under `src/data/budget/`** (2026-05): the
+  last unambiguously budget-only module sitting at the `src/data/`
+  root moved to `src/data/budget/conflicts.ts`. Only consumer was
+  `BudgetFindConflictsModal.tsx`; only test was `tests/conflicts_test.ts`.
+  Internal relative imports rewired (`./budget/cells` → `./cells`,
+  `./sheet` → `../sheet`, `./types` → `../types`). The architecture-doc
+  data-layer tree gained a `conflicts.ts` entry (previously missed
+  altogether) and the dictionary entry for the find-conflicts modal
+  now points at the new path. Pure move, no behaviour change.
 - **`AccountReconciliationModal` `useReducer` extraction** (2026-05): the
   five parallel `useState` setters in `AccountReconciliationModal.tsx`
   (`showInfo`, `checked`, `seriesRulesById`, `seriesExpansions`,

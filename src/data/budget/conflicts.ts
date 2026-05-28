@@ -37,9 +37,9 @@
 // Pure: no React, no storage. Consumed by `BudgetFindConflictsModal` in
 // `src/components/budget/`.
 
-import { readStringCell } from "./budget/cells";
-import { findColumnByType } from "./sheet";
-import type { Column, EntryType, Row } from "./types";
+import { readStringCell } from "./cells";
+import { findColumnByType } from "../sheet";
+import type { Column, EntryType, Row } from "../types";
 
 export const CONFLICT_AMOUNT_PCT = 0.05;
 // Default for the modal's min-amount slider, in major units (kr).
