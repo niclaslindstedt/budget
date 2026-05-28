@@ -30,18 +30,33 @@ type Leaves<T, P extends string = ""> = {
 
 export type MessageKey = Leaves<Catalog>;
 
-function getByPath(obj: unknown, path: string): string {
-  const parts = path.split(".");
-  let cur: unknown = obj;
-  for (const part of parts) {
-    if (cur && typeof cur === "object" && part in (cur as object)) {
-      cur = (cur as Record<string, unknown>)[part];
-    } else {
-      return path;
-    }
+// Flatten each catalog into a `dotted.path → string` map once at module
+// load. The runtime then resolves `t("a.b.c")` as a single `Map.get`
+// instead of splitting the path and walking the nested object on every
+// call. With 1000+ `t()` call sites and many landing in per-row render
+// paths, the per-call savings compound across the app.
+function flattenCatalog(
+  obj: unknown,
+  prefix: string,
+  out: Map<string, string>,
+): void {
+  if (obj === null || typeof obj !== "object") return;
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    const path = prefix === "" ? k : `${prefix}.${k}`;
+    if (typeof v === "string") out.set(path, v);
+    else flattenCatalog(v, path, out);
   }
-  return typeof cur === "string" ? cur : path;
 }
+
+const flatCatalogs: Record<Lang, Map<string, string>> = (() => {
+  const out = {} as Record<Lang, Map<string, string>>;
+  for (const [lang, catalog] of Object.entries(catalogs) as [Lang, Catalog][]) {
+    const m = new Map<string, string>();
+    flattenCatalog(catalog, "", m);
+    out[lang] = m;
+  }
+  return out;
+})();
 
 function formatString(
   template: string,
@@ -79,7 +94,7 @@ export function useT(): TFunction {
   const lang = useContext(LanguageContext);
   return useCallback<TFunction>(
     (key, params) => {
-      const raw = getByPath(catalogs[lang], key);
+      const raw = flatCatalogs[lang].get(key) ?? key;
       return formatString(raw, params);
     },
     [lang],
@@ -93,7 +108,7 @@ export function tFor(
   key: MessageKey,
   params?: Record<string, string | number>,
 ): string {
-  const raw = getByPath(catalogs[lang], key);
+  const raw = flatCatalogs[lang].get(key) ?? key;
   return formatString(raw, params);
 }
 
