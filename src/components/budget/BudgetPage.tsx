@@ -17,26 +17,16 @@ import {
   Tags,
 } from "lucide-react";
 
-import {
-  buildSynthesizedRows,
-  computeBalances,
-  reverseRowsByDay,
-  sortRowsByDate,
-  type RowSortContext,
-} from "../../data/budget/rows";
+import { computeBudgetState } from "../../data/budget/computed-state";
 import {
   currentFiscalMonthKey,
   fiscalMonthSeedIso,
   getMonthKey,
-  groupRowsByMonth,
   nextMonthKey,
   previousMonthKey,
   sortMonthKeys,
 } from "../../data/fiscal-month";
 import { findColumnByType } from "../../data/sheet";
-import { coveredMonths } from "../../data/coverage";
-import { findOrphans } from "../../data/reconciliation";
-import { resolveEffectiveAmounts } from "../../data/budget/formula-resolve";
 import { useT } from "../../i18n";
 import type {
   Account,
@@ -56,7 +46,6 @@ import type {
 } from "../../data/types";
 import { suppressScrollHide } from "../../hooks";
 import { todayIso } from "../../utils/date";
-import { widestFormattedAmount } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
@@ -371,46 +360,27 @@ export function BudgetPage({
 }: Props) {
   const t = useT();
   const sectionRef = useRef<HTMLElement | null>(null);
-  const dateCol = useMemo(
-    () => findColumnByType(item.columns, "date"),
-    [item.columns],
-  );
-  // Built once per (columns, types) tick so every sort within this
-  // render — month-grouped display order, computeBalances, the formula
-  // engine's running-balance lookup — agrees on income/category/amount
-  // ordering. Without a shared context the running balance column
-  // would drift from the visible row order on dates with multiple
-  // entries.
-  // Id-indexed types map, used both by the secondary-sort context and
-  // by every `BudgetRow` to look up `row.typeId` in O(1). Lifted to
-  // page level so each row gets a stable map reference — having every
-  // row run `types.find()` in a per-row `useMemo` invalidates every
-  // row's memo whenever `types` changes (e.g. adding a single new
-  // type), turning a one-cell edit into N row recomputes.
+  // Id-indexed types / companies / accounts maps. Kept as their own
+  // memos (instead of folded into the consolidated row pipeline below)
+  // so their identity only flips when the underlying list changes —
+  // `budgetContextValue` reads them through and any row edit would
+  // otherwise force a fresh context reference, re-rendering every
+  // memoised descendant.
   const typesById = useMemo(() => {
     const m = new Map<string, EntryType>();
     for (const t of types) m.set(t.id, t);
     return m;
   }, [types]);
-  // Id-indexed companies map, threaded through to every `BudgetRow` so
-  // the description cell can resolve `row.companyId` in O(1) and render
-  // an outlined pill (Building2 + company name) when the row has no
-  // user-authored description. Same lift rationale as `typesById`.
   const companiesById = useMemo(() => {
     const m = new Map<string, Company>();
     for (const c of companies) m.set(c.id, c);
     return m;
   }, [companies]);
-  const sortContext = useMemo<RowSortContext | undefined>(() => {
-    const descCol = findColumnByType(item.columns, "description");
-    const amountCol = findColumnByType(item.columns, "amount");
-    if (!descCol || !amountCol) return undefined;
-    return {
-      descriptionColumnId: descCol.id,
-      amountColumnId: amountCol.id,
-      typesById,
-    };
-  }, [item.columns, typesById]);
+  const accountsById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of accounts) m.set(a.id, a.name);
+    return m;
+  }, [accounts]);
 
   // Bundle the cross-cutting taxonomy + settings the budget subtree
   // reaches for in every row. Memoised once per change to any input so
@@ -442,180 +412,54 @@ export function BudgetPage({
     ],
   );
 
-  // Interleave synthesized transfer rows alongside the budget's own
-  // rows so month grouping, running balance, and sort-by-date pick them
-  // up without further special-casing. Only the transfers involving
-  // this budget's account contribute. When the budget has no account
-  // attached, no synthesis happens — there is no "this account" to
-  // place the transfers against.
-  const accountsById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const a of accounts) m.set(a.id, a.name);
-    return m;
-  }, [accounts]);
-  // Synthesize transfer + history rows once per change to the inputs
-  // those rows depend on — column shape, the budget's account, every
-  // workspace transfer, the account's full history, the hints + rules
-  // that label history rows, plus the companies / types those labels
-  // resolve through. None of those flip when the user types in a
-  // budget cell (`item.columns` and `item.accountId` are carried
-  // forward by the updateCell reducer), so the synthesis result is
-  // reused across keystrokes — skipping ~500 history-entry label
-  // resolutions and the matching rule walks they trigger on every
-  // edit. The merge below is a cheap array concat.
-  const synthesizedRows = useMemo(
+  // All the pure derivations the budget page renders off of — the
+  // synthesis → merge → decorate → sort → balance → bucket cascade —
+  // collapsed onto one memo. Each step used to be its own `useMemo`
+  // with a hand-curated dep array; on a typical row edit (every input
+  // here invalidates) all 13 cascaded anyway, so consolidation costs
+  // nothing at the hot path and removes the fragile dep-array surface.
+  // The helper lives in `src/data/budget/computed-state.ts` so future
+  // sheet types (savings, loans) can reuse the same pipeline.
+  const computed = useMemo(
     () =>
-      buildSynthesizedRows(
-        item.columns,
-        item.accountId,
-        transfers,
+      computeBudgetState({
+        item,
+        openingBalance,
+        data,
+        settings,
         history,
-        accountsById,
-        merchantHints,
-        matchRules,
-        companies,
+        transfers,
         types,
-      ),
+        companies,
+        matchRules,
+        merchantHints,
+        typesById,
+        accountsById,
+      }),
     [
-      item.columns,
-      item.accountId,
-      transfers,
-      history,
-      accountsById,
-      merchantHints,
-      matchRules,
-      companies,
-      types,
-    ],
-  );
-  const mergedItem = useMemo<AccountBudget>(
-    () => ({
-      ...item,
-      rows:
-        synthesizedRows.length === 0
-          ? item.rows
-          : [...item.rows, ...synthesizedRows],
-    }),
-    [item, synthesizedRows],
-  );
-
-  // Each imported bank entry's stored balance is the truth: it pins
-  // the running total at that row so an off-by-one opening balance
-  // or a hand-edited authored row can't drag the column away from
-  // what the bank says. Credit-card exports (no per-row balance) and
-  // hidden entries fall through to the amount-based computation.
-  // Split entries pin the balance at the LAST split row (after all
-  // pieces have applied) so the on-screen total matches what the
-  // bank reported for the original entry.
-  const balanceOverrides = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const e of history) {
-      if (e.hidden) continue;
-      if (e.balance === undefined) continue;
-      const anchorId =
-        e.splits && e.splits.length > 0
-          ? `hist:${e.id}:${e.splits.length - 1}`
-          : `hist:${e.id}`;
-      m.set(anchorId, e.balance);
-    }
-    return m;
-  }, [history]);
-
-  // Fiscal months fully covered by imported history. Computed once
-  // per render; passed down so each `BudgetMonthTable` can hide its
-  // `+ Add row` footer. Uses `settings.startOfMonth` so the coverage
-  // window matches the column the rows are grouped under — with
-  // startOfMonth=25, fiscal "2026-04" only flips covered once
-  // history extends past May 24, not April 30.
-  const coveredSet = useMemo(
-    () =>
-      coveredMonths(history, item.rows, item.columns, settings.startOfMonth),
-    [history, item.rows, item.columns, settings.startOfMonth],
-  );
-
-  // Per-month count of manual rows sitting inside a covered fiscal
-  // month — those are orphans the bank statement contradicts. Reuses
-  // the same `findOrphans` walk the import-triage flow does so the
-  // footer's count agrees with what the modal will surface. Treats
-  // every covered month as "newly covered" since the budget-page CTA
-  // is always retrospective (no import in flight).
-  const orphanCountByMonth = useMemo(() => {
-    const out = new Map<string, number>();
-    if (coveredSet.size === 0) return out;
-    const orphans = findOrphans(
-      item.rows,
-      item.columns,
-      coveredSet,
-      new Set(),
-      settings.startOfMonth,
-    );
-    for (const o of orphans) {
-      out.set(o.monthKey, (out.get(o.monthKey) ?? 0) + 1);
-    }
-    return out;
-  }, [coveredSet, item.rows, item.columns, settings.startOfMonth]);
-
-  // Evaluate every formula row's amount against the merged view (so
-  // synthesized transfers and history rows count toward
-  // `endOfMonthBalance`, `income`, etc.) — then mirror the resolved
-  // value into each formula row's amount cell so the existing
-  // BudgetMonthTable / Cell rendering chain shows the evaluated number
-  // without any per-component plumbing. The same map is fed into
-  // `computeBalances` so the running balance column lines up.
-  const { effectiveAmounts, decoratedItem } = useMemo(() => {
-    const resolved = resolveEffectiveAmounts(
-      mergedItem,
+      item,
       openingBalance,
       data,
-      settings.startOfMonth,
-    );
-    const amountCol = findColumnByType(mergedItem.columns, "amount");
-    if (!amountCol) {
-      return { effectiveAmounts: resolved.amounts, decoratedItem: mergedItem };
-    }
-    const decoratedRows = mergedItem.rows.map((row) => {
-      if (!row.amountFormula) return row;
-      const v = resolved.amounts.get(row.id) ?? 0;
-      return { ...row, cells: { ...row.cells, [amountCol.id]: v } };
-    });
-    return {
-      effectiveAmounts: resolved.amounts,
-      decoratedItem: { ...mergedItem, rows: decoratedRows },
-    };
-  }, [mergedItem, openingBalance, data, settings.startOfMonth]);
-
-  // Sort the full rows array once. Both the running-balance pass below
-  // and the per-month display path consume this view — previously each
-  // call site sorted independently (`computeBalances` did its own sort
-  // and `sortedMonthGroups` sorted each month bucket again with the same
-  // comparator). `groupRowsByMonth` preserves input order within each
-  // bucket, so feeding it a globally date-sorted array delivers
-  // per-month sorted buckets for free. Trades two O(N log N) sorts per
-  // keystroke for one.
-  const sortedRows = useMemo(() => {
-    if (!dateCol) return decoratedItem.rows;
-    return sortRowsByDate(decoratedItem.rows, dateCol.id, sortContext);
-  }, [decoratedItem.rows, dateCol, sortContext]);
-
-  const balances = useMemo(
-    () =>
-      computeBalances(
-        decoratedItem,
-        openingBalance,
-        effectiveAmounts,
-        balanceOverrides,
-        sortContext,
-        sortedRows,
-      ),
-    [
-      decoratedItem,
-      openingBalance,
-      effectiveAmounts,
-      balanceOverrides,
-      sortContext,
-      sortedRows,
+      settings,
+      history,
+      transfers,
+      types,
+      companies,
+      matchRules,
+      merchantHints,
+      typesById,
+      accountsById,
     ],
   );
+  const {
+    decoratedItem,
+    balances,
+    coveredSet,
+    orphanCountByMonth,
+    colWidths,
+    sortedMonthGroups,
+    monthGroups,
+  } = computed;
 
   // History rows are synthesized — their cells don't exist in
   // `item.rows[]`, so the generic `onUpdateCell` reducer would no-op.
@@ -660,11 +504,16 @@ export function BudgetPage({
 
   const handleUpdateCell = useCallback(
     (rowId: string, columnId: string, value: CellValue) => {
+      // `decoratedItem.columns` is identical to `item.columns` (the
+      // synthesis / decorate pipeline only ever replaces `rows`), so
+      // closing over `item.columns` keeps the callback stable across
+      // row edits — the rebuilt `computed` would otherwise force a
+      // fresh `decoratedItem` reference on every keystroke.
       if (!rowId.startsWith("hist:") || !accountId) {
         onUpdateCell(rowId, columnId, value);
       } else {
         const entryId = rowId.slice("hist:".length);
-        const col = decoratedItem.columns.find((c) => c.id === columnId);
+        const col = item.columns.find((c) => c.id === columnId);
         if (col?.type === "description") {
           onUpdateHistoryEntry(accountId, entryId, {
             userDescription: typeof value === "string" ? value : "",
@@ -684,18 +533,12 @@ export function BudgetPage({
       // those two column types. Text inputs (description, amount) and
       // the type picker route their heartbeat through `handleCommitCell`
       // below instead — flashing on every keystroke would be noise.
-      const col = decoratedItem.columns.find((c) => c.id === columnId);
+      const col = item.columns.find((c) => c.id === columnId);
       if (col?.type === "date" || col?.type === "completed") {
         flashRow(rowId);
       }
     },
-    [
-      accountId,
-      decoratedItem.columns,
-      onUpdateCell,
-      onUpdateHistoryEntry,
-      flashRow,
-    ],
+    [accountId, item.columns, onUpdateCell, onUpdateHistoryEntry, flashRow],
   );
 
   const handleCommitCell = useCallback(
@@ -751,63 +594,6 @@ export function BudgetPage({
     }
     if (newId !== null) flashRow(newId);
   }, [item.rows, flashRow]);
-
-  // Each month renders as its own CSS grid, so amount/balance columns
-  // sized with `max-content` end up different widths per month. Compute
-  // the longest formatted value across the whole block here and pass it
-  // down so every month aligns on the same column widths.
-  //
-  // `widestFormattedAmount` bucketizes by formatter tier and formats
-  // at most one candidate per bucket, so the only per-row cost left is
-  // a `Math.abs` + comparison — orders of magnitude cheaper than the
-  // prior "format every row" walk when the budget has thousands of
-  // rows and balances.
-  const colWidths = useMemo(() => {
-    const amountCol = findColumnByType(decoratedItem.columns, "amount");
-    const balanceCol = findColumnByType(decoratedItem.columns, "balance");
-    let amountChars = 0;
-    let balanceChars = 0;
-    if (amountCol) {
-      function* amountValues() {
-        for (const row of decoratedItem.rows) {
-          const v = row.cells[amountCol!.id];
-          if (typeof v === "number") yield v;
-        }
-      }
-      amountChars = widestFormattedAmount(amountValues(), settings);
-    }
-    if (balanceCol) {
-      balanceChars = widestFormattedAmount(balances.values(), settings, {
-        alwaysTwoFractionDigits: true,
-        alwaysAbbreviate: settings.alwaysAbbreviateBalance,
-      });
-    }
-    return { amountChars, balanceChars };
-  }, [decoratedItem.rows, decoratedItem.columns, balances, settings]);
-
-  // Bucket the already-sorted rows by fiscal month. Because
-  // `groupRowsByMonth` preserves input order, each bucket comes out
-  // in the same date order the global sort produced — so the per-month
-  // sort the next memo used to do collapses to a no-op (or just a
-  // reversal for the newest-first preference).
-  const monthGroups = useMemo(() => {
-    if (!dateCol) return new Map<string, Row[]>();
-    return groupRowsByMonth(sortedRows, dateCol.id, settings.startOfMonth);
-  }, [sortedRows, dateCol, settings.startOfMonth]);
-
-  // Each bucket is already date-sorted thanks to `sortedRows` above;
-  // only the newest-first preference needs an extra reverse pass.
-  // Stable array refs per month so React.memo on BudgetMonthTable can
-  // skip months whose rows didn't change.
-  const sortedMonthGroups = useMemo(() => {
-    if (!dateCol) return monthGroups;
-    if (settings.transactionSortOrder !== "newestFirst") return monthGroups;
-    const out = new Map<string, Row[]>();
-    for (const [key, rows] of monthGroups) {
-      out.set(key, reverseRowsByDay(rows, dateCol.id));
-    }
-    return out;
-  }, [monthGroups, dateCol, settings.transactionSortOrder]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),

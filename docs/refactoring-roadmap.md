@@ -109,23 +109,6 @@ new sheet type, but feature work can ship through them.
     callbacks in AppShell and have them call into a host-exposed
     dispatch, or move the callbacks into the hosts too.
 
-- **`BudgetPage.tsx` derived-state memo pyramid** — the prop-
-  drilling half of the original "BudgetPage prop drilling + memo
-  pyramid" candidate landed 2026-05 (see Landed: `<BudgetContext>`).
-  What remains is the 15+ overlapping `useMemo`s that derive
-  visible-month / sorted-month-groups / col-widths / balance-overrides
-  / synthesised-rows / merged-item / decorated-item / coveredSet /
-  orphanCountByMonth. One memo breaking cascades through the others;
-  a planner sheet type that wants to reuse a subset of those derivations
-  would have to fork the pyramid. **Severity: 5.**
-  - Plan: derive a single `ComputedBudgetState` object (visible months,
-    balances, synthesised rows, coveredSet) memoised once at the top
-    of `BudgetPage`. The downstream JSX reads fields off that object
-    instead of carrying 8 separate memos.
-  - Risk: low — pure refactor with no observable behaviour change.
-    Make sure each memo's dep array stays exact when consolidated so
-    the budget table doesn't recompute on every keystroke.
-
 - **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
   half of the previous duplicated-editor item; the `<EntityForm>`
   half landed in 2026-05 (see Landed). What's left: the
@@ -313,6 +296,35 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`BudgetPage.tsx` derived-state memo pyramid consolidation** (2026-05):
+  the 13 overlapping `useMemo`s that derived the budget page's row
+  pipeline (`dateCol`, `sortContext`, `synthesizedRows`, `mergedItem`,
+  `decoratedItem`+`effectiveAmounts`, `balanceOverrides`, `sortedRows`,
+  `balances`, `coveredSet`, `orphanCountByMonth`, `colWidths`,
+  `monthGroups`, `sortedMonthGroups`) collapsed onto a single
+  `computeBudgetState(inputs): ComputedBudgetState` factory at
+  `src/data/budget/computed-state.ts`. `BudgetPage` now calls it
+  through one `useMemo` and destructures the eight downstream
+  consumers (`decoratedItem`, `balances`, `coveredSet`,
+  `orphanCountByMonth`, `colWidths`, `monthGroups`,
+  `sortedMonthGroups`) from the result. The taxonomy lookups
+  (`typesById`, `companiesById`, `accountsById`) stay as their own
+  narrow-dep memos because `budgetContextValue` reads them through —
+  folding them into the consolidated memo would force a fresh context
+  reference on every row edit and re-render every memoised descendant.
+  The cascade isn't a perf regression at the hot path: every row edit
+  already invalidates basically every memo in the old pyramid because
+  `item` is the dominant dep, so the consolidated memo recomputes the
+  same shape with the same frequency. The win is in **reusability**
+  (future sheet types — savings, loans — can call into the same
+  factory) and **dep-array surface** (one list instead of 13 hand-
+  curated arrays). `handleUpdateCell` now closes over `item.columns`
+  (identical to `decoratedItem.columns`, the synthesis pipeline only
+  ever replaces `rows`) so the callback stays stable across row
+  edits. `BudgetPage.tsx` drops from 1540 → 1326 lines; `useMemo`
+  count drops from 21 → 12. Pure refactor — typecheck + lint +
+  fmt-check + 858 tests + build pass. Architecture-doc tree updated
+  in the same PR.
 - **`BudgetEditEntryModal.tsx` tri-mode dispatcher split** (2026-05): the
   715-line modal's three mode-conditional branches (`isSeries` / `isHistory`
   / regular row) lifted into three sibling sub-form components. Each one
