@@ -90,6 +90,12 @@ type Props = {
   // each entry. Lookup also feeds the description-cell fallback chain
   // on synthesized history rows.
   companies: readonly Company[];
+  // companyId → suggested typeId for the auto-fill. Forwarded to the
+  // `BudgetMetadataModal` so picking a company there auto-fills the
+  // type on entries that don't have one. The description popover's
+  // inline picker routes through `onSetRowCompany` (defined in
+  // AppShell) which applies the same rule directly.
+  companyTypeSuggestions: ReadonlyMap<string, string>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -321,6 +327,7 @@ export function BudgetPage({
   types,
   categories,
   companies,
+  companyTypeSuggestions,
   onCreateType,
   onCreateCategory,
   onCreateCompany,
@@ -1447,6 +1454,7 @@ export function BudgetPage({
             types={types}
             categories={categories}
             companies={companies}
+            companyTypeSuggestions={companyTypeSuggestions}
             settings={settings}
             onCreateType={onCreateType}
             onCreateCategory={onCreateCategory}

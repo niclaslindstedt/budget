@@ -44,6 +44,10 @@ import { SyncStatus } from "../SyncStatus";
 import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import {
+  autoTypeForCompany,
+  computeCompanyTypeSuggestions,
+} from "../../data/company-type-suggestions";
+import {
   isRowSavable,
   userDataHasUnsavableRows,
   userDataWithSavableRows,
@@ -249,6 +253,21 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     [data.hiddenPresetTypeIds, data.presetTypeKindOverrides, data.types],
   );
 
+  // (company, type) tallies for the auto-fill: when the user picks a
+  // company on a row whose type isn't set, and the company has been
+  // paired with one single type more times than the user-configured
+  // threshold, we auto-fill the type. Walks every budget row and
+  // history-entry override on every relevant data change — small
+  // surface, cheap enough not to bother caching across renders.
+  const companyTypeSuggestions = useMemo(
+    () =>
+      computeCompanyTypeSuggestions(
+        data,
+        data.settings.companyTypeAutoFillMinOccurrences,
+      ),
+    [data],
+  );
+
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
   // browser shows its own generic confirmation prompt; we just have
@@ -412,15 +431,28 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // `updateHistoryEntry` (clearing `noCompany` on assignment so the
   // metadata walkthrough's "needs attention" filter releases the
   // entry) and falls through to a single-row `bulkUpdate` for
-  // user-authored budget rows.
+  // user-authored budget rows. Also auto-fills the type when the row
+  // has none and the company qualifies — same rule the edit modals
+  // apply when the user picks a company there.
   const onSetRowCompany = useCallback(
     (row: Row, companyId: string | null) => {
       if (row.historyEntryId && activeItem.accountId) {
+        const entry = data.history[activeItem.accountId]?.find(
+          (e) => e.id === row.historyEntryId,
+        );
+        const userTypeId = entry?.userTypeId ?? null;
+        const autoTypeId = autoTypeForCompany(
+          userTypeId,
+          companyId,
+          companyTypeSuggestions,
+        );
         const patch: {
           userCompanyId: string | null;
           noCompany?: boolean;
+          userTypeId?: string;
         } = { userCompanyId: companyId };
         if (companyId !== null) patch.noCompany = false;
+        if (autoTypeId !== undefined) patch.userTypeId = autoTypeId;
         dispatch({
           type: "updateHistoryEntry",
           accountId: activeItem.accountId,
@@ -429,15 +461,33 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         });
         return;
       }
+      const rowTypeId = row.typeId ?? null;
+      const autoTypeId = autoTypeForCompany(
+        rowTypeId,
+        companyId,
+        companyTypeSuggestions,
+      );
+      const patch: {
+        companyId: string | null;
+        typeId?: string;
+      } = { companyId };
+      if (autoTypeId !== undefined) patch.typeId = autoTypeId;
       dispatch({
         type: "bulkUpdate",
         sheetId,
         itemId,
         rowIds: [row.id],
-        patch: { companyId },
+        patch,
       });
     },
-    [dispatch, sheetId, itemId, activeItem.accountId],
+    [
+      dispatch,
+      sheetId,
+      itemId,
+      activeItem.accountId,
+      data.history,
+      companyTypeSuggestions,
+    ],
   );
   // Row-level "omit company" writer fired by the description popover's
   // inline CompanyPicker when the user picks "Omit company". Only the
@@ -794,6 +844,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   types={allTypesMerged}
                   categories={allCategoriesMerged}
                   companies={data.companies}
+                  companyTypeSuggestions={companyTypeSuggestions}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
                   onCreateCompany={onCreateCompany}
@@ -933,6 +984,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         effectiveSettings={effectiveSettings}
         categories={allCategoriesMerged}
         types={allTypesMerged}
+        companyTypeSuggestions={companyTypeSuggestions}
         sheetId={sheetId}
         itemId={itemId}
         activeItem={activeItem}

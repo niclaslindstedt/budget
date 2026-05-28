@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
+import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { findColumnByType } from "../../data/sheet";
 import { nextOccurrenceWithSameDom } from "../../data/recurrence";
 import type { RecurrenceRule } from "../../data/recurrence";
@@ -42,6 +43,11 @@ type Props = {
   categories: Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  // companyId → suggested typeId for the auto-fill. When the user
+  // picks a company on a row whose type isn't set and the company has
+  // a confident suggestion, the type picker auto-fills behind the
+  // CompanyPicker.
+  companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.
@@ -132,6 +138,7 @@ export function BudgetEditEntryModal({
   categories,
   types,
   companies,
+  companyTypeSuggestions,
   settings,
   lastSeriesDate,
   historyHintPrefill,
@@ -213,6 +220,17 @@ export function BudgetEditEntryModal({
   const [negative, setNegative] = useState(initialNegative);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  // Wrap the company picker's onSelect so a confident company → type
+  // pairing auto-fills the empty type. The user can still override
+  // either field afterwards.
+  const handlePickCompany = useCallback(
+    (next: string | null) => {
+      setCompanyId(next);
+      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      if (auto !== undefined) setTypeId(auto);
+    },
+    [typeId, companyTypeSuggestions],
+  );
 
   // "Just this" vs "this and all future"; the latter optionally clamped
   // to a date so temporary price changes can revert later.
@@ -388,7 +406,7 @@ export function BudgetEditEntryModal({
                   variant="field"
                   companies={companies}
                   selectedId={companyId}
-                  onSelect={setCompanyId}
+                  onSelect={handlePickCompany}
                   onCreate={onCreateCompany}
                 />
               </div>
@@ -503,7 +521,7 @@ export function BudgetEditEntryModal({
                   variant="field"
                   companies={companies}
                   selectedId={companyId}
-                  onSelect={setCompanyId}
+                  onSelect={handlePickCompany}
                   onCreate={onCreateCompany}
                 />
               </div>
@@ -647,7 +665,7 @@ export function BudgetEditEntryModal({
                 variant="field"
                 companies={companies}
                 selectedId={companyId}
-                onSelect={setCompanyId}
+                onSelect={handlePickCompany}
                 onCreate={onCreateCompany}
               />
             </div>

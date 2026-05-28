@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
+import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { normaliseDescription } from "../../data/description-normaliser";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
@@ -35,6 +36,9 @@ type Props = {
   categories: readonly Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  // companyId → suggested typeId for the auto-fill. See
+  // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
+  companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   primaryIncomeMerchants: readonly PrimaryIncomeMerchant[];
   onClose: () => void;
@@ -65,6 +69,7 @@ export function EditHistoryEntryModal({
   categories,
   types,
   companies,
+  companyTypeSuggestions,
   settings,
   primaryIncomeMerchants,
   onClose,
@@ -97,6 +102,14 @@ export function EditHistoryEntryModal({
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const handlePickCompany = useCallback(
+    (next: string | null) => {
+      setCompanyId(next);
+      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      if (auto !== undefined) setTypeId(auto);
+    },
+    [typeId, companyTypeSuggestions],
+  );
   const [noCompany, setNoCompany] = useState(initialNoCompany);
   const [isPrimaryIncome, setIsPrimaryIncome] = useState(initialIsPrimary);
   const [anchorDayText, setAnchorDayText] = useState(String(initialAnchorDay));
@@ -184,7 +197,7 @@ export function EditHistoryEntryModal({
               companies={companies}
               selectedId={companyId}
               noCompany={noCompany}
-              onSelect={setCompanyId}
+              onSelect={handlePickCompany}
               onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
             />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sigma } from "lucide-react";
 
 import { formulaToStored, parseFormula } from "../../data/budget/formula";
+import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import type { RecurrenceRule } from "../../data/recurrence";
 import type {
   Category,
@@ -30,6 +31,9 @@ type Props = {
   categories: Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  // companyId → suggested typeId for the auto-fill. See
+  // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
+  companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   // All sheets in the workspace. Used by the formula editor's
   // autocomplete (sheet name suggestions) and the name ↔ id transform
@@ -80,6 +84,7 @@ export function BudgetComplexEntryModal({
   categories,
   types,
   companies,
+  companyTypeSuggestions,
   settings,
   sheets,
   currentSheetId,
@@ -98,6 +103,14 @@ export function BudgetComplexEntryModal({
   const [negative, setNegative] = useState(true);
   const [typeId, setTypeId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const handlePickCompany = useCallback(
+    (next: string | null) => {
+      setCompanyId(next);
+      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      if (auto !== undefined) setTypeId(auto);
+    },
+    [typeId, companyTypeSuggestions],
+  );
   const [isTransfer, setIsTransfer] = useState(false);
   const [dates, setDates] = useState<string[]>([]);
   // fx mode swaps the numeric amount input for a formula textarea
@@ -352,7 +365,7 @@ export function BudgetComplexEntryModal({
               variant="field"
               companies={companies}
               selectedId={companyId}
-              onSelect={setCompanyId}
+              onSelect={handlePickCompany}
               onCreate={onCreateCompany}
             />
           </div>

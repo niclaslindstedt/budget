@@ -40,6 +40,12 @@ const settings = {
     futureEntryMonthsHint:
       "Number of fiscal months past the current one to render up front. Anything further out still shows up after clicking the “Show 3 future months” toggle inside the sheet — each click reveals three more months.",
   },
+  companyTypeAutoFill: {
+    title: "Auto-fill type from company",
+    threshold: "Required occurrences",
+    thresholdHint:
+      "When a company has been used together with the same type more than this many times, picking that company on an entry whose type isn’t set auto-fills the type. Set to 0 to turn auto-fill off.",
+  },
   headerAction: {
     title: "Title click",
     label: "When I click the title",
