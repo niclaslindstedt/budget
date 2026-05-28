@@ -4,7 +4,7 @@ const download = {
   budgetTitle: "Download {name}",
   accountsTitle: "Download accounts",
   downloadBudget: "Download budget",
-  downloadAccountData: "Download account data",
+  downloadAccountData: "Download",
   formatLabel: "Format",
   contentsLabel: "Include",
   includeHistory: "Past entries (history)",
@@ -14,6 +14,7 @@ const download = {
   includeUnconfirmed: "Include unconfirmed entries",
   includeFutureEntries: "Include future entries",
   noAccountsToExport: "No accounts to include yet.",
+  legend: "Legend",
   submit: "Download",
   column: {
     account: "Account",
