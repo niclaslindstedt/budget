@@ -113,6 +113,16 @@ export function CompanyPicker({
     close();
   }, [onOmitChange, noCompany, selectedId, onSelect, close]);
 
+  // Reset both the selection and the omit flag so the picker returns
+  // to its neutral "no choice made" state. Surfaces in the dropdown
+  // footer whenever either flag is set so users can back out of an
+  // accidental omit without first re-opening the same toggle.
+  const handleClear = useCallback(() => {
+    if (selectedId !== null) onSelect(null);
+    if (noCompany && onOmitChange) onOmitChange(false);
+    close();
+  }, [selectedId, onSelect, noCompany, onOmitChange, close]);
+
   const beginCreating = useCallback(() => {
     setOpen(false);
     setCreating(true);
@@ -252,11 +262,11 @@ export function CompanyPicker({
               </button>
             </li>
           ))}
-          {selected && (
+          {(selected || (noCompany && onOmitChange)) && (
             <li>
               <button
                 type="button"
-                onClick={() => handlePick(null)}
+                onClick={handleClear}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <X size={12} aria-hidden focusable={false} />
