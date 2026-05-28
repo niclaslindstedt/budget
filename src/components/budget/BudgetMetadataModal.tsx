@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tags } from "lucide-react";
 
+import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { resolveEntryLabels } from "../../data/budget/synthesis";
 import { useLang, useT } from "../../i18n";
 import type {
@@ -51,6 +52,9 @@ type Props = {
   types: readonly EntryType[];
   categories: readonly Category[];
   companies: readonly Company[];
+  // companyId → suggested typeId for the auto-fill. See
+  // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
+  companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -106,6 +110,7 @@ export function BudgetMetadataModal({
   types,
   categories,
   companies,
+  companyTypeSuggestions,
   settings,
   onCreateType,
   onCreateCategory,
@@ -214,6 +219,14 @@ export function BudgetMetadataModal({
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const handlePickCompany = useCallback(
+    (next: string | null) => {
+      setCompanyId(next);
+      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      if (auto !== undefined) setTypeId(auto);
+    },
+    [typeId, companyTypeSuggestions],
+  );
   const [noCompany, setNoCompany] = useState(false);
   // Snapshot of the values the form was pre-populated with, so the
   // save handler only stamps per-entry overrides for fields the user
@@ -468,7 +481,7 @@ export function BudgetMetadataModal({
                   companies={companies}
                   selectedId={companyId}
                   noCompany={noCompany}
-                  onSelect={setCompanyId}
+                  onSelect={handlePickCompany}
                   onOmitChange={setNoCompany}
                   onCreate={onCreateCompany}
                 />

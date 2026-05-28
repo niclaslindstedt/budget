@@ -83,6 +83,8 @@ function clonePersistedDefaults(): PersistedSettings {
     transactionSortOrder: DEFAULT_SETTINGS.transactionSortOrder,
     showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
     futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
+    companyTypeAutoFillMinOccurrences:
+      DEFAULT_SETTINGS.companyTypeAutoFillMinOccurrences,
     device: {
       mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
       desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
@@ -204,6 +206,13 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     raw.futureEntryMonths <= 24
       ? raw.futureEntryMonths
       : DEFAULT_SETTINGS.futureEntryMonths;
+  const companyTypeAutoFillMinOccurrences =
+    typeof raw.companyTypeAutoFillMinOccurrences === "number" &&
+    Number.isInteger(raw.companyTypeAutoFillMinOccurrences) &&
+    raw.companyTypeAutoFillMinOccurrences >= 0 &&
+    raw.companyTypeAutoFillMinOccurrences <= 1000
+      ? raw.companyTypeAutoFillMinOccurrences
+      : DEFAULT_SETTINGS.companyTypeAutoFillMinOccurrences;
   return {
     startOfMonth,
     dateFormat,
@@ -226,6 +235,7 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     transactionSortOrder,
     showFutureEntries,
     futureEntryMonths,
+    companyTypeAutoFillMinOccurrences,
   };
 }
 

@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import { sortRowsByDate } from "../../data/budget/rows";
+import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
@@ -51,6 +52,9 @@ type Props = {
   categories: readonly Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  // companyId → suggested typeId for the auto-fill. See
+  // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
+  companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   // Last ISO date in the same series — defaults the "until" picker
   // when the user picks the future scope. `null` for one-off rows.
@@ -119,6 +123,7 @@ export function BudgetEditEntryFullModal({
   categories,
   types,
   companies,
+  companyTypeSuggestions,
   settings,
   lastSeriesDate,
   seriesRows,
@@ -183,6 +188,14 @@ export function BudgetEditEntryFullModal({
   const [date, setDate] = useState(initialDate);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const handlePickCompany = useCallback(
+    (next: string | null) => {
+      setCompanyId(next);
+      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      if (auto !== undefined) setTypeId(auto);
+    },
+    [typeId, companyTypeSuggestions],
+  );
   const [isTransfer, setIsTransfer] = useState(initialIsTransfer);
   const [completed, setCompleted] = useState(initialCompleted);
 
@@ -399,7 +412,7 @@ export function BudgetEditEntryFullModal({
               variant="field"
               companies={companies}
               selectedId={companyId}
-              onSelect={setCompanyId}
+              onSelect={handlePickCompany}
               onCreate={onCreateCompany}
             />
           </div>

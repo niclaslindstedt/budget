@@ -40,6 +40,12 @@ const settings: SettingsCatalog = {
     futureEntryMonthsHint:
       "Antal budgetmånader efter den aktuella som visas direkt. Allt längre fram dyker upp först när man klickar på ”Visa 3 framtida månader”-knappen i bladet — varje klick visar tre månader till.",
   },
+  companyTypeAutoFill: {
+    title: "Fyll i typ automatiskt från företag",
+    threshold: "Antal träffar som krävs",
+    thresholdHint:
+      "När ett företag har använts tillsammans med samma typ fler gånger än så här, fyller valet av företaget i typen automatiskt på en post där typen saknas. Sätt till 0 för att stänga av automatiken.",
+  },
   headerAction: {
     title: "Klick på rubriken",
     label: "När jag klickar på rubriken",
