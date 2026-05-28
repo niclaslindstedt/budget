@@ -104,16 +104,16 @@
   0% {
     background-color: transparent;
   }
-  8% {
-    background-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  10% {
+    background-color: color-mix(in srgb, var(--accent) 18%, transparent);
   }
-  22% {
+  26% {
     background-color: transparent;
   }
-  30% {
-    background-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  36% {
+    background-color: color-mix(in srgb, var(--accent) 18%, transparent);
   }
-  44% {
+  52% {
     background-color: transparent;
   }
   100% {
@@ -122,7 +122,7 @@
 }
 [data-row-flash],
 [data-row-flash] > td {
-  animation: row-flash 900ms ease-out;
+  animation: row-flash 1100ms ease-out;
 }
 
 /* One-shot ring pulse around a metadata-mode form field after the user
