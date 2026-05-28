@@ -124,21 +124,33 @@ new sheet type, but feature work can ship through them.
   rather than owning them. Storage hot path — **needs smoke-testing
   all four backends before merging.**
 
-- **`AppShell.tsx` (1826 lines) modal-mount + prop-drilling hub** —
-  the component already extracted ~24 sub-hooks, but the JSX tail
-  still mounts ~25 modals back-to-back, each fed 5–15 props
-  threaded down from the AppShell prop interface (which itself
-  takes ~30 props from `App.tsx`). 22 `useCallback`s. Adding a new
-  sheet type means another modal cluster + more callbacks +
-  more props on the AppShell signature. **Severity: 8.**
-  - Plan: introduce a `<ModalHost>` component that owns the modal
-    open-state and renders the registered modals from a registry.
-    Each modal's open-args become a typed action. Keep
-    `AppShell.tsx` as a routing switch (`activeSheet.type === …`)
-    - a `<ModalHost>` mount; everything else is decomposed into
-      per-page modal hosts (`<BudgetModalHost>`, `<AccountsModalHost>`).
-  - Risk: medium. The shape itself is mechanical, but the long
-    callback-chain on each modal needs careful preservation.
+- **`AppShell.tsx` modal-mount registry** — the JSX-relocation half
+  of the original severity-8 modal-host item landed 2026-05 (see
+  Landed: three modal hosts). AppShell dropped from 1849 to ~930
+  lines and adding a new sheet type now lands a new
+  `<SomethingModalHost>` file instead of another 200 lines of JSX
+  in the AppShell tail. What remains of the original plan is the
+  **state-ownership shift**: each host still receives prompt /
+  modal-open state via props (the sub-hooks in
+  `src/components/AppShell/hooks/` still own those `useState`s).
+  The real "registered modals from a registry" plan would move
+  that state into the host itself and expose a typed
+  `dispatchModal({ kind: "open-edit-row", row })` shape so AppShell
+  no longer threads 25+ setters down through the hosts.
+  **Severity: 5** (was 8 — JSX relocation done; what's left is a
+  smaller, more architectural change).
+  - Plan: hoist the `useEditPrompts` / `useDeletePrompts` /
+    `useBulkSelection` / etc. state into the matching host (or a
+    pair of `useReducer`-style contexts colocated with each host).
+    AppShell becomes a routing switch + three host mounts with no
+    prompt-setter props at all. The hosts then become the dispatch
+    target every modal-opening flow routes through.
+  - Risk: low-medium. The state-ownership shift is mechanical but
+    touches `BudgetPage` / `AccountsPage` prop wiring because some
+    of those prompts are also set from page-level callbacks
+    (`onDeleteRequest`, `onEditRequest`, etc.). Either keep the
+    callbacks in AppShell and have them call into a host-exposed
+    dispatch, or move the callbacks into the hosts too.
 
 - **`BudgetPage.tsx` derived-state memo pyramid** — the prop-
   drilling half of the original "BudgetPage prop drilling + memo
@@ -358,6 +370,28 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`AppShell.tsx` modal-mount extraction → three hosts** (2026-05):
+  the 553-line modal-mount JSX tail of `AppShell.tsx` lifted into
+  three sibling host components — `AccountsModalHost`,
+  `BudgetModalHost`, `UniversalModalHost` — each owning one cohesive
+  cluster of modals. `BudgetModalHost` also absorbs the tightly-
+  scoped inline callbacks AppShell had grown for budget-side modal
+  flows (`onSplitSubmit`, `onSplitRevert`, `onEditSeries`,
+  `onConvertToRecurring`, `onSaveEditRow`, `onDeleteRecurringRows`,
+  plus the `deleteActions` / `correctionDeleteActions` memos), so
+  the dispatch + setter closures travel with the modal that
+  consumes them. The hosts receive sub-hook returns as bundled
+  props (`accountDialog: ReturnType<typeof useAccountDialog>`, etc.)
+  to keep per-host prop counts manageable. `AppShell.tsx` dropped
+  from 1849 → 930 lines; the return JSX is now header + main +
+  bottombar + three host mounts. Adding a new sheet type now lands
+  a new `<SomethingModalHost>` file instead of another 200-line
+  modal cluster in the AppShell tail. **Narrower than the original
+  severity-8 plan claimed:** the registry-based "host owns the
+  modal open-state" half is deferred — the sub-hooks still own
+  prompt state and the hosts thread it through to the modals.
+  That residual is now tracked as a smaller (severity-5) Pending
+  item — see "AppShell.tsx modal-mount registry" above.
 - **`<OrphanIndicator>` sibling extraction from `BudgetMonthTable.tsx`**
   (2026-05): the covered-month tfoot indicator (~30 lines of nested
   ternary: orphan-count > 0 + onTriage → orange triage button; else
