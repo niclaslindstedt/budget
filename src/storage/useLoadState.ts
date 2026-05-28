@@ -15,24 +15,13 @@ import {
   readUserDataFromText,
   tryReadUserDataFromText,
 } from "./local";
-import type { SaveStatus, StatusAction } from "./useUserDataStorage";
+import {
+  isBailStatus,
+  type SaveStatus,
+  type StatusAction,
+} from "./useUserDataStorage";
 
 const log = createLogger("storage-load");
-
-// Predicate copied across from the storage hook — kept private here so
-// the load / reload paths don't need to import the equivalent from the
-// outer hook. Tracks the SaveStatus kinds that the autosave / reload
-// flows refuse to drive new saves through (a paused state owns the
-// screen and we don't want to silently keep writing past it).
-function isBailStatus(status: SaveStatus): boolean {
-  return (
-    status.kind === "conflict" ||
-    status.kind === "shrink-warning" ||
-    status.kind === "parse-error" ||
-    status.kind === "auth-error" ||
-    status.kind === "throttled"
-  );
-}
 
 // Inputs the load path shares with the rest of the storage hook. The
 // hook drives in-flight async loads, the manual `reload()` flow, and
@@ -42,10 +31,10 @@ function isBailStatus(status: SaveStatus): boolean {
 // agreement after a load replaces in-memory state.
 //
 // The refs the hook mutates (lastSnapshotRef, skipNextSaveRef,
-// hasLoadedRef, throttleResumeRef, pendingTimerRef) are owned by the
-// outer hook because the save path reads them too — they're the
-// straddle points where load and save coordinate. Passing them in
-// rather than minting fresh refs inside the hook keeps both halves
+// hasLoadedRef, pendingTimerRef) are owned by the outer hook
+// because the save path reads them too — they're the straddle
+// points where load and save coordinate. Passing them in rather
+// than minting fresh refs inside the hook keeps both halves
 // looking at the same instance.
 type Params = {
   adapter: StorageAdapter;
@@ -75,7 +64,6 @@ type Params = {
   skipNextSaveRef: MutableRefObject<boolean>;
   hasLoadedRef: MutableRefObject<boolean>;
   pendingTimerRef: MutableRefObject<number | null>;
-  throttleResumeRef: MutableRefObject<number | null>;
   setData: (next: UserData | ((prev: UserData) => UserData)) => void;
   setLastSavedData: (next: UserData | null) => void;
   dispatchStatus: (action: StatusAction) => void;
@@ -114,7 +102,6 @@ export function useLoadState(params: Params): LoadState {
     skipNextSaveRef,
     hasLoadedRef,
     pendingTimerRef,
-    throttleResumeRef,
     setData,
     setLastSavedData,
     dispatchStatus,
@@ -283,13 +270,6 @@ export function useLoadState(params: Params): LoadState {
     return () => {
       cancelled = true;
       log.info(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
-      // Drop any pending rate-limit resume timer so a backend swap
-      // (or sign-out) doesn't leave a setTimeout firing into the new
-      // adapter and flipping its status to `idle` mid-load.
-      if (throttleResumeRef.current !== null) {
-        window.clearTimeout(throttleResumeRef.current);
-        throttleResumeRef.current = null;
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adapter, migrationCtx]);

@@ -81,44 +81,6 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **`useUserDataStorage.ts` (871 lines) save-state-machine extraction**
-  — the persistence engine of the app. With `useUndoRedo` and
-  `useLoadState` extracted, what remains is the save pipeline:
-  the debounced auto-save effect, the `performSave` callback
-  (~180 lines), `saveNow`, the shrink-warning pause / confirm /
-  discard flow, `resolveKeepLocal` / `resolveKeepRemote` conflict
-  exits, and the `saveChainRef` + throttle / rate-limit timer
-  bookkeeping. Each remaining concern is now contained — load,
-  history, save no longer braid through one giant hook — so
-  pulling the save half into a sibling is the next mechanical
-  step. **Severity: 6** (was 7 — dropped a band now that load /
-  history sit in their own hooks; the save extraction is still
-  high-leverage but its blast radius is now the save chain only).
-  - Plan:
-    1. ~~Split the remaining in-hook state into named slices~~ —
-       **done.** The `historyReducer` half landed 2026-05; the
-       `statusReducer` half landed 2026-05 (see Landed). Both
-       SaveStatus transitions and history mutations now flow
-       through named-action reducers.
-    2. Extract ~~`useLoadState`~~, `useSaveStateMachine`, and
-       ~~`useUndoRedo`~~ as siblings. `useUndoRedo` landed 2026-05
-       and `useLoadState` landed 2026-05 (see Landed). What
-       remains is `useSaveStateMachine` &mdash; the debounced
-       auto-save plus manual `saveNow` plus shrink-warning plus
-       conflict-exit pipeline, which is what owns `performSave`
-       and `saveChainRef`. The outer hook becomes a thin composer
-       wiring three siblings together: `useLoadState` produces
-       `reload` plus side-effects on the shared refs;
-       `useSaveStateMachine` produces `saveNow` plus auto-save
-       effects plus the conflict-exit callbacks; `useUndoRedo`
-       produces `undo` / `redo` / `jumpToHistory` plus the
-       `appendEntry` callback that dispatch threads through.
-  - Risk: **high**. Storage hot path. Needs smoke-test of all four
-    backends (IDB, Dropbox, GDrive, Folder) before merging — the
-    save extraction touches `adapter.save()`, conflict surfacing,
-    and the throttle/cooldown machinery, all of which are
-    backend-specific in behaviour.
-
 - **`useStorageBackend.ts` (1256 lines)** — split into
   `useDropboxAuth`, `useGdriveAuth`, `useFolderHandle`, leaving the
   main hook as an orchestrator. Natural seams at `buildInnerAdapter`
@@ -381,6 +343,34 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`useSaveStateMachine` sibling-hook extraction from
+  `useUserDataStorage.ts`** (2026-05): the save pipeline lifted into
+  its own hook at `src/storage/useSaveStateMachine.ts` — the
+  `performSave` callback (~180 lines), the debounced auto-save
+  effect, the manual `saveNow`, the shrink-warning safeguard plus
+  its `confirmShrinkSave` / `discardShrinkSave` resolutions, the
+  conflict-exit callbacks (`resolveKeepLocal` / `resolveKeepRemote`),
+  the `saveChainRef` save-serialiser, and the throttle / rate-limit
+  resume timer with its `resumeNonce` re-trigger. The throttle
+  timer's cleanup-on-adapter-unmount also moved here (off
+  `useLoadState`'s back) so the timer's whole lifecycle is in one
+  file. The `isBailStatus` predicate consolidated to a single
+  exported function on `useUserDataStorage.ts` consumed by both
+  sub-hooks — closing a latent gap where `useLoadState`'s private
+  copy was missing the `auth-error` / `error` / `loading` cases.
+  `useUserDataStorage.ts` drops from 871 → 484 lines and is now the
+  thin composer the original plan envisioned: it owns `data` /
+  `status` / `lastSavedData` / the straddle refs and the `dirty`
+  memo, and threads the four pieces (`useUndoRedo`,
+  `useSaveStateMachine`, `useLoadState`, plus the inline `dispatch`)
+  together. **Closes the severity-7 sibling-hook plan in full** —
+  the original god-hook (1310 LOC) now lives as four cohesive
+  modules summing to 1683 lines with each concern clearly named.
+  **Needs smoke-testing of all four backends (IDB, Dropbox, GDrive,
+  Folder) before merging** because the save extraction touches
+  `adapter.save()`, conflict surfacing, the shrink safeguard, and
+  the throttle/cooldown machinery, all of which differ in behaviour
+  per backend.
 - **`useLoadState` sibling-hook extraction from `useUserDataStorage.ts`**
   (2026-05): the async-load effect (initial mount + adapter swap
   recovery), the manual `reload()` callback (pull-to-refresh +
