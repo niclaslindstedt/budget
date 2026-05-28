@@ -136,56 +136,6 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 5–6 — friction
 
-- **`BudgetPage.tsx` display-machinery hooks** — `BudgetPage.tsx`
-  dropped from 1540 → 1326 → 1210 → 1049 lines after the
-  `computeBudgetState` consolidation, the `useRowFlashing`
-  extraction, and the `useScrollToToday` extraction (see Landed).
-  ~190 lines of display-side machinery still live in the page as
-  inline refs / effects / callbacks, falling into 3 remaining
-  cohesive sub-systems:
-  - **`useRevealAnchorPreservation`** (~65 lines, around
-    `BudgetPage.tsx:524-587`) — the `captureRevealAnchor` callback,
-    the `onShowMoreFutureClick` / `onShowMoreHistoryClick` callbacks,
-    and the 8-frame `useLayoutEffect` that re-applies the scroll
-    delta as `BudgetMonthTable` placeholders settle. Reads
-    `scrollTargetRef` from the `useScrollToToday` hook return, so
-    the new hook needs to take the ref as a param (or the two hooks
-    share a small "current-month anchor" sub-hook that exposes the
-    ref).
-  - **`useVisibleMonthRange`** (~75 lines, around
-    `BudgetPage.tsx:589-662`) — the IntersectionObserver setup
-    that tracks `oldest` / `newest` visible months + the
-    `todayButtonDirection` memo + `showTodayButton` derivation.
-  - **`useScrollToRowRequest`** (~50 lines, around
-    `BudgetPage.tsx:664-719`) — the effect that responds to a
-    search-modal `scrollToRowRequest` (grows `extraHistory` enough,
-    then scrolls + pulses the target row).
-
-  Each one is self-contained — most of the page-internal coupling is
-  via refs that the hooks can own and return. **Severity: 5** as a
-  multi-PR plan; **3** for any single hook in isolation. The win is
-  on the feature wave: savings / loans / scenario pages will want
-  the same "preserve reveal anchor / show today button when scrolled
-  away / scroll to row from search" behaviours, and today they'd
-  duplicate ~190 lines verbatim. Land at least the reveal-anchor
-  hook before the second budget-style page type ships.
-  - Plan: one PR per hook, in the order listed above (smallest
-    coupling first, biggest IO surface last). Each hook lives at
-    `src/components/budget/use<Name>.ts` (the row-flashing and
-    scroll-to-today PRs set the precedent at top-level rather than
-    under `hooks/`). After all three land, `BudgetPage.tsx` drops
-    to ~860 lines and the page reads as "compose data, compose
-    chrome, render visible months".
-  - Risk: low-medium per PR. Each hook touches DOM refs and
-    requestAnimationFrame timing; the reveal-anchor flow in
-    particular is subtle (the 8-frame `useLayoutEffect` cascade
-    exists because `BudgetMonthTable`'s near-viewport gate flips
-    the placeholder for several frames after a reveal — see the
-    comments). Preserve the comments verbatim when moving.
-    Smoke-test on mobile + desktop after each PR (pull-to-refresh,
-    scroll into deep past via search, "Show more history" click,
-    type into a cell to see the flash).
-
 - **`budget/formula.ts` function registry** — the tokenizer / parser
   / evaluator file split landed 2026-05 (see Landed); what remains
   of the original severity-6 candidate is the function-registry idea
@@ -347,6 +297,40 @@ T | null` for "explicitly cleared by the user, distinct from
 ---
 
 ## Landed
+
+- **`useRevealAnchorPreservation` + `useVisibleMonthRange` +
+  `useScrollToRowRequest` hook extraction from `BudgetPage.tsx`** (2026-05):
+  the final three PRs of the display-machinery plan bundled into one.
+  The reveal-anchor preservation block (the `captureRevealAnchor`
+  callback, the `onShowMoreFutureClick` / `onShowMoreHistoryClick`
+  callbacks, the `revealAnchorRef`, and the 8-frame `useLayoutEffect`
+  that re-applies the scroll delta as `BudgetMonthTable` placeholders
+  settle) lifted into `src/components/budget/useRevealAnchorPreservation.ts`;
+  the visible-month-range observer (the `visibleMonthRange` state, the
+  IntersectionObserver effect keyed on the join of `visibleMonths`,
+  the `todayButtonDirection` memo, and the `showTodayButton`
+  derivation) lifted into `src/components/budget/useVisibleMonthRange.ts`;
+  and the scroll-to-row request handler (the `useEffect` that grows
+  `extraHistory` enough to reach the target month then schedules the
+  pulse + scroll-into-view, plus the `forceMountMonthKey` memo that
+  tells `BudgetMonthTable` to bypass its viewport-proximity gate for
+  the target month) lifted into `src/components/budget/useScrollToRowRequest.ts`.
+  Each hook takes the `scrollTargetRef` / `sectionRef` from
+  `useScrollToToday` / the parent component as inputs and returns the
+  values the JSX consumes. Constants stay in `BudgetPage.tsx`
+  (`DEFAULT_HISTORY_MONTHS`, `HISTORY_PAGE_SIZE`, `FUTURE_PAGE_SIZE`)
+  because the reveal toggle labels render off the same numbers as the
+  setters use; the hooks receive them as params instead of importing.
+  `BudgetPage.tsx` drops from 1049 → 856 lines and the page reads as
+  "compose data, compose chrome, render visible months" exactly as
+  the roadmap predicted. **Closes the severity-5
+  `BudgetPage.tsx` display-machinery hooks plan in full** — there
+  are no more 50+ line inline-effect clusters in the page. Pure
+  refactor — same comments preserved verbatim, same dep arrays
+  (including the `eslint-disable-next-line react-hooks/exhaustive-deps`
+  on the scroll-to-row effect's `[scrollToRowRequest?.tick, sheetId]`
+  pair), same DOM/rAF timing. typecheck + lint + fmt-check + 866
+  tests + build pass.
 
 - **`useScrollToToday` hook extraction from `BudgetPage.tsx`** (2026-05):
   the second PR of the display-machinery plan. The scroll-to-today
