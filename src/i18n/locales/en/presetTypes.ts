@@ -48,6 +48,8 @@ const presetTypes = {
   "kids-clothing": "Kids' clothing",
   school: "School",
   "kids-activities": "Kids' activities",
+  "kids-gear": "Kids' gear",
+  "kids-consumables": "Kids' consumables",
   "music-streaming": "Music streaming",
   "tv-streaming": "TV streaming",
   subscription: "Subscriptions",

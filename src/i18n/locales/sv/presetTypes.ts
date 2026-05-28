@@ -48,6 +48,8 @@ const presetTypes: PresetTypesCatalog = {
   "kids-clothing": "Barnkläder",
   school: "Skola",
   "kids-activities": "Fritidsaktiviteter",
+  "kids-gear": "Barnutrustning",
+  "kids-consumables": "Barnförnödenheter",
   "music-streaming": "Musikstreaming",
   "tv-streaming": "TV-streaming",
   subscription: "Prenumerationer",
