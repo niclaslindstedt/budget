@@ -548,14 +548,6 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "bills",
       kind: "expense",
     },
-    {
-      slug: "donation",
-      name: "Donation",
-      color: C[7],
-      glyph: "hand-heart",
-      category: "bills",
-      kind: "expense",
-    },
     // Subscriptions
     {
       slug: "music-streaming",
@@ -722,6 +714,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       name: "Gifts",
       color: C[6],
       glyph: "gift",
+      category: "personal",
+      kind: "expense",
+    },
+    {
+      slug: "donation",
+      name: "Charity",
+      color: C[7],
+      glyph: "hand-heart",
       category: "personal",
       kind: "expense",
     },
