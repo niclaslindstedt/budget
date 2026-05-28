@@ -16,7 +16,8 @@ import type {
 } from "./types";
 import type { SheetDraft } from "./action-payloads";
 import type { ParsedBankEntry } from "../storage/banks";
-import { type ItemAction, reduceItemDispatch } from "./reducers/item";
+import { type ItemAction } from "./reducers/item";
+import { SHEET_TYPE_REGISTRY } from "./sheet-types";
 import { reduceAchievements } from "./reducers/achievements";
 import { reduceSheets } from "./reducers/sheets";
 import { reduceSettings } from "./reducers/settings";
@@ -487,8 +488,13 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceHistoryPrimaryIncome(state, action);
   if (handled !== null) return handled;
 
-  // Item-level dispatch tail. Handles every ItemAction; falls through
-  // to the defensive `state` fallback when the action is not an item
-  // action (unreachable at runtime — the union is closed).
-  return reduceItemDispatch(state, action) ?? state;
+  // Item-level dispatch tail. Walks the sheet-type registry until one
+  // descriptor's `reduceItem` claims the action; falls through to the
+  // defensive `state` fallback when the action is not an item action
+  // (unreachable at runtime — the union is closed).
+  for (const descriptor of SHEET_TYPE_REGISTRY) {
+    const next = descriptor.reduceItem?.(state, action);
+    if (next !== undefined && next !== null) return next;
+  }
+  return state;
 }
