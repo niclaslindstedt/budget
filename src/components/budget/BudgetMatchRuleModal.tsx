@@ -16,12 +16,7 @@ import type {
   MatchRule,
   Settings,
 } from "../../data/types";
-import {
-  formatAmountForInput,
-  formatBalance,
-  formatShortDate,
-  parseAmount,
-} from "../../utils/format";
+import { formatBalance, formatShortDate } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
 import {
   Button,
@@ -31,20 +26,14 @@ import {
 } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
+import {
+  useMatchRuleAmountFilter,
+  type SignMode,
+} from "./useMatchRuleAmountFilter";
 
 const log = createLogger("match-rules");
 
-type AmountSign = NonNullable<MatchRule["amountSign"]>;
 type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
-// UI-only mode that extends the persisted `amountSign` with two extra
-// options: "exact" pins to a single amount (stored as
-// `amountMin === amountMax`), and "range" stores a signed band. Both
-// are mutually exclusive with the sign filters — picking either hides
-// the sign filter and surfaces the bounded-amount inputs; picking
-// Any / Negative / Positive clears the bounds. The persisted
-// `amountSign` stays "any" while in either mode (the bounds carry
-// their own sign) so the data model is unchanged.
-type SignMode = AmountSign | "exact" | "range";
 
 export type MatchRuleDraft = {
   pattern: string;
@@ -54,7 +43,7 @@ export type MatchRuleDraft = {
   // override (clears any prior pick on matching budget rows); a string
   // assigns the company.
   companyId: string | null;
-  amountSign: AmountSign;
+  amountSign: NonNullable<MatchRule["amountSign"]>;
   transferFilter: TransferFilter;
   // Signed bounds. `undefined` means "no constraint" — either end of
   // the band can be open.
@@ -160,20 +149,7 @@ export function BudgetMatchRuleModal({
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [signMode, setSignMode] = useState<SignMode>("any");
   const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
-  // The "between" range. Each bound has a magnitude (text) and a
-  // sign, mirroring the +/- toggle pattern used by the other amount
-  // inputs in the app. An empty text means "no bound".
-  const [amountMinText, setAmountMinText] = useState("");
-  const [amountMinNegative, setAmountMinNegative] = useState(true);
-  const [amountMaxText, setAmountMaxText] = useState("");
-  const [amountMaxNegative, setAmountMaxNegative] = useState(true);
-  // Single signed amount used when the user picks the Exact mode.
-  // Persisted as `amountMin === amountMax` so the matcher needs no
-  // changes — only the UI distinguishes "exact" from "1-wide range".
-  const [amountExactText, setAmountExactText] = useState("");
-  const [amountExactNegative, setAmountExactNegative] = useState(true);
   // "Save pattern" — when checked (the default) the rule is persisted
   // alongside the labels it applies; when unchecked the parent stamps
   // matching rows / history once and throws the rule away. The latter
@@ -181,6 +157,22 @@ export function BudgetMatchRuleModal({
   // that's never coming back (the canonical example in the project
   // brief: a pizzeria the user moved away from).
   const [saveRule, setSaveRule] = useState(true);
+
+  const amountFilter = useMatchRuleAmountFilter(
+    open,
+    existing,
+    seedEntry,
+    settings,
+  );
+  const {
+    isRangeMode,
+    isExactMode,
+    amountMin,
+    amountMax,
+    amountSign,
+    rangeInverted,
+    exactBlank,
+  } = amountFilter.derived;
 
   const patternRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(patternRef, open);
@@ -193,77 +185,15 @@ export function BudgetMatchRuleModal({
       setDescription(existing.description ?? "");
       setTypeId(existing.typeId ?? null);
       setCompanyId(existing.companyId ?? null);
-      // A rule with both bounds equal collapses to Exact mode (one
-      // input). A rule with any other combination of bounds keeps the
-      // legacy Range mode. A rule without bounds shows the saved sign
-      // filter as before.
-      const minDef = existing.amountMin !== undefined;
-      const maxDef = existing.amountMax !== undefined;
-      const isExact =
-        minDef && maxDef && existing.amountMin === existing.amountMax;
-      setSignMode(
-        isExact
-          ? "exact"
-          : minDef || maxDef
-            ? "range"
-            : (existing.amountSign ?? "any"),
-      );
       setTransferFilter(existing.transferFilter ?? "any");
-      if (existing.amountMin !== undefined) {
-        setAmountMinText(
-          formatAmountForInput(Math.abs(existing.amountMin), settings),
-        );
-        setAmountMinNegative(existing.amountMin < 0);
-      } else {
-        setAmountMinText("");
-        setAmountMinNegative(true);
-      }
-      if (existing.amountMax !== undefined) {
-        setAmountMaxText(
-          formatAmountForInput(Math.abs(existing.amountMax), settings),
-        );
-        setAmountMaxNegative(existing.amountMax < 0);
-      } else {
-        setAmountMaxText("");
-        setAmountMaxNegative(true);
-      }
-      if (isExact) {
-        setAmountExactText(
-          formatAmountForInput(Math.abs(existing.amountMin!), settings),
-        );
-        setAmountExactNegative(existing.amountMin! < 0);
-      } else {
-        setAmountExactText("");
-        setAmountExactNegative(true);
-      }
       return;
     }
     setPattern(seedEntry ? seedPatternFromSeed(seedEntry) : "");
     setDescription("");
     setTypeId(null);
     setCompanyId(null);
-    // Seed sign filter from the row the user invoked from: most
-    // descriptions are tied to one direction (a refund vs a purchase
-    // for the same merchant), so defaulting to the seed's sign keeps
-    // a fat-fingered "BAUHAUS" rule from sweeping the inverse
-    // direction by accident. The user can flip to "Any" if they
-    // really want both.
-    if (seedEntry) {
-      setSignMode(seedEntry.amount < 0 ? "negative" : "positive");
-    } else {
-      setSignMode("any");
-    }
     setTransferFilter("exclude");
-    setAmountMinText("");
-    setAmountMaxText("");
-    setAmountExactText("");
-    // Default the toggles to the seed's direction so the user can
-    // type magnitudes without first remembering to flip the sign.
-    const seedNeg = seedEntry ? seedEntry.amount < 0 : true;
-    setAmountMinNegative(seedNeg);
-    setAmountMaxNegative(seedNeg);
-    setAmountExactNegative(seedNeg);
-  }, [open, existing, seedEntry, settings]);
+  }, [open, existing, seedEntry]);
 
   // Compile the regex once per pattern; an empty pattern yields no
   // matches without throwing. Wrapped in useMemo so the live preview
@@ -276,43 +206,6 @@ export function BudgetMatchRuleModal({
       return null;
     }
   }, [pattern]);
-
-  // Resolve each bound to a signed JS number (or undefined when the
-  // user left the field blank or range/exact mode is off). Done once
-  // so the preview, the draft, and the submit handler all agree on
-  // what "this band means".
-  const isRangeMode = signMode === "range";
-  const isExactMode = signMode === "exact";
-  const amountExact = useMemo(
-    () =>
-      isExactMode
-        ? parseSignedAmount(amountExactText, amountExactNegative)
-        : undefined,
-    [isExactMode, amountExactText, amountExactNegative],
-  );
-  // In Exact mode the single value drives both ends of the band so
-  // the matcher (which still compares amountMin <= a <= amountMax)
-  // accepts only that exact amount. Range mode keeps the user's
-  // From/To inputs. Otherwise both ends are undefined (no bounds).
-  const amountMin = useMemo(() => {
-    if (isExactMode) return amountExact;
-    if (isRangeMode) return parseSignedAmount(amountMinText, amountMinNegative);
-    return undefined;
-  }, [isExactMode, isRangeMode, amountExact, amountMinText, amountMinNegative]);
-  const amountMax = useMemo(() => {
-    if (isExactMode) return amountExact;
-    if (isRangeMode) return parseSignedAmount(amountMaxText, amountMaxNegative);
-    return undefined;
-  }, [isExactMode, isRangeMode, amountExact, amountMaxText, amountMaxNegative]);
-  // Reject a band where the user has typed both ends but inverted
-  // them (min > max). The preview falls through to zero matches so
-  // the user sees the mistake immediately. Exact mode collapses min
-  // and max to the same value, so this can only fire in range mode.
-  const rangeInverted =
-    amountMin !== undefined && amountMax !== undefined && amountMin > amountMax;
-  // Persisted sign filter — "any" while in range or exact mode, since
-  // the bounds carry their own sign.
-  const amountSign: AmountSign = isRangeMode || isExactMode ? "any" : signMode;
 
   const draft = useMemo<MatchRule>(
     () => ({
@@ -387,7 +280,6 @@ export function BudgetMatchRuleModal({
     return items;
   }, [shownMatches]);
 
-  const exactBlank = isExactMode && amountExact === undefined;
   const canSave =
     pattern.trim().length > 0 &&
     compiled !== null &&
@@ -411,7 +303,7 @@ export function BudgetMatchRuleModal({
     const willSave = isEdit ? true : saveRule;
     log.info(
       `apply: pattern=${JSON.stringify(pattern.trim())} ` +
-        `signMode=${signMode} amountSign=${amountSign} ` +
+        `signMode=${amountFilter.state.signMode} amountSign=${amountSign} ` +
         `amountMin=${amountMin ?? "(none)"} ` +
         `amountMax=${amountMax ?? "(none)"} ` +
         `transferFilter=${transferFilter} ` +
@@ -438,7 +330,7 @@ export function BudgetMatchRuleModal({
     description,
     typeId,
     companyId,
-    signMode,
+    amountFilter.state.signMode,
     amountSign,
     transferFilter,
     amountMin,
@@ -527,8 +419,8 @@ export function BudgetMatchRuleModal({
           <FormSection label={t("matchRule.amountLabel")}>
             <SegmentedRadio
               name="amount-sign"
-              value={signMode}
-              onChange={(v) => setSignMode(v as SignMode)}
+              value={amountFilter.state.signMode}
+              onChange={(v) => amountFilter.setSignMode(v as SignMode)}
               options={[
                 { value: "any", label: t("matchRule.amountAny") },
                 { value: "negative", label: t("matchRule.amountNegative") },
@@ -540,10 +432,10 @@ export function BudgetMatchRuleModal({
             {isExactMode && (
               <div className="mt-1 flex flex-col gap-1.5">
                 <SignedAmountInput
-                  value={amountExactText}
-                  negative={amountExactNegative}
-                  onValueChange={setAmountExactText}
-                  onToggleSign={() => setAmountExactNegative((s) => !s)}
+                  value={amountFilter.state.exactText}
+                  negative={amountFilter.state.exactNegative}
+                  onValueChange={amountFilter.setExactText}
+                  onToggleSign={amountFilter.toggleExactNegative}
                   settings={settings}
                   ariaLabel={t("matchRule.amountExactAria")}
                   placeholder={t("matchRule.amountExactPlaceholder")}
@@ -556,10 +448,10 @@ export function BudgetMatchRuleModal({
               <div className="mt-1 flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <SignedAmountInput
-                    value={amountMinText}
-                    negative={amountMinNegative}
-                    onValueChange={setAmountMinText}
-                    onToggleSign={() => setAmountMinNegative((s) => !s)}
+                    value={amountFilter.state.minText}
+                    negative={amountFilter.state.minNegative}
+                    onValueChange={amountFilter.setMinText}
+                    onToggleSign={amountFilter.toggleMinNegative}
                     settings={settings}
                     ariaLabel={t("matchRule.amountFromAria")}
                     placeholder={t("matchRule.amountFrom")}
@@ -570,10 +462,10 @@ export function BudgetMatchRuleModal({
                     {t("matchRule.amountToLabel")}
                   </span>
                   <SignedAmountInput
-                    value={amountMaxText}
-                    negative={amountMaxNegative}
-                    onValueChange={setAmountMaxText}
-                    onToggleSign={() => setAmountMaxNegative((s) => !s)}
+                    value={amountFilter.state.maxText}
+                    negative={amountFilter.state.maxNegative}
+                    onValueChange={amountFilter.setMaxText}
+                    onToggleSign={amountFilter.toggleMaxNegative}
                     settings={settings}
                     ariaLabel={t("matchRule.amountToAria")}
                     placeholder={t("matchRule.amountTo")}
@@ -714,21 +606,6 @@ export function BudgetMatchRuleModal({
       </Modal.Footer>
     </Modal>
   );
-}
-
-// Convert one bound's magnitude text + sign toggle into a signed
-// number. Returns `undefined` when the field is blank (no bound) so
-// the caller can leave that end of the band open.
-function parseSignedAmount(
-  text: string,
-  negative: boolean,
-): number | undefined {
-  if (text.trim() === "") return undefined;
-  const abs = parseAmount(text);
-  if (abs === null) return undefined;
-  const mag = Math.abs(abs);
-  if (mag === 0) return 0;
-  return negative ? -mag : mag;
 }
 
 type SegmentedOption = { value: string; label: string };
