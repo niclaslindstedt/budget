@@ -1,11 +1,26 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowDownUp,
+  BanknoteArrowDown,
+  BanknoteArrowUp,
+  CalendarArrowDown,
+  CalendarArrowUp,
+  Search,
+  Sparkles,
+} from "lucide-react";
 
-import type { SearchEntry, SearchMatch, SearchResult } from "../../data/search";
+import type {
+  SearchEntry,
+  SearchMatch,
+  SearchResult,
+  SearchSort,
+} from "../../data/search";
 import { runSearch } from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
-import { useLang, useT } from "../../i18n";
+import type { FloatingPlacement } from "../../hooks";
+import { useLang, useT, type TFunction } from "../../i18n";
 import { formatDate, formatNumber, withCurrency } from "../../utils/format";
+import { FloatingPanel } from "../FloatingPanel";
 import { ClearableInput } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
@@ -17,9 +32,19 @@ type Props = {
   // open / close cycles while the tab stays open.
   query: string;
   onQueryChange: (next: string) => void;
+  // Caller-controlled sort order. Lives on the parent so the choice
+  // survives modal close like `query` does.
+  sort: SearchSort;
+  onSortChange: (next: SearchSort) => void;
   index: readonly SearchEntry[];
   settings: Settings;
   onPick: (entry: SearchEntry) => void;
+};
+
+const SORT_MENU_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 220 },
+  anchor: "right",
+  coordinateSpace: "viewport",
 };
 
 // Cap a long string with an ellipsis so the result row stays in a
@@ -33,6 +58,8 @@ export function BudgetTransferSearchModal({
   onClose,
   query,
   onQueryChange,
+  sort,
+  onSortChange,
   index,
   settings,
   onPick,
@@ -52,7 +79,10 @@ export function BudgetTransferSearchModal({
     return () => window.clearTimeout(id);
   }, [open]);
 
-  const results = useMemo(() => runSearch(index, query), [index, query]);
+  const results = useMemo(
+    () => runSearch(index, query, sort),
+    [index, query, sort],
+  );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && results.length > 0) {
@@ -73,7 +103,7 @@ export function BudgetTransferSearchModal({
         onClose={onClose}
       />
       <Modal.Body noPadding>
-        <div className="border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
+        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
           <ClearableInput
             ref={inputRef}
             value={query}
@@ -85,9 +115,10 @@ export function BudgetTransferSearchModal({
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
-            wrapperClassName="w-full"
+            wrapperClassName="min-w-0 flex-1"
             className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
           />
+          <SortMenu sort={sort} onSortChange={onSortChange} />
         </div>
         {query.trim() === "" ? (
           <p className="px-4 py-6 text-center text-sm text-muted">
@@ -253,5 +284,124 @@ function renderHighlighted(
       </mark>
       {snippet.slice(localEnd)}
     </>
+  );
+}
+
+type SortOption = {
+  value: SearchSort;
+  glyph: React.ReactNode;
+  label: (t: TFunction) => string;
+};
+
+// Order mirrors the visual list — relevance first because it's the
+// default, then the four directional pairs grouped by field. The
+// glyphs come from lucide-react: arrows on the calendar / banknote
+// pictograms read as "by date / by amount, in this direction"
+// without needing the secondary "asc / desc" caption.
+const SORT_OPTIONS: SortOption[] = [
+  {
+    value: "relevance",
+    glyph: <Sparkles size={16} aria-hidden focusable={false} />,
+    label: (t) => t("searchTransaction.sortRelevance"),
+  },
+  {
+    value: "date-desc",
+    glyph: <CalendarArrowDown size={16} aria-hidden focusable={false} />,
+    label: (t) => t("searchTransaction.sortDateDesc"),
+  },
+  {
+    value: "date-asc",
+    glyph: <CalendarArrowUp size={16} aria-hidden focusable={false} />,
+    label: (t) => t("searchTransaction.sortDateAsc"),
+  },
+  {
+    value: "amount-desc",
+    glyph: <BanknoteArrowDown size={16} aria-hidden focusable={false} />,
+    label: (t) => t("searchTransaction.sortAmountDesc"),
+  },
+  {
+    value: "amount-asc",
+    glyph: <BanknoteArrowUp size={16} aria-hidden focusable={false} />,
+    label: (t) => t("searchTransaction.sortAmountAsc"),
+  },
+];
+
+function SortMenu({
+  sort,
+  onSortChange,
+}: {
+  sort: SearchSort;
+  onSortChange: (next: SearchSort) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  const current = SORT_OPTIONS.find((o) => o.value === sort) ?? SORT_OPTIONS[0];
+  return (
+    <div ref={triggerRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("searchTransaction.sortMenuAria")}
+        title={current.label(t)}
+        className={`inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded border px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+          open
+            ? "border-accent bg-accent/15 text-accent"
+            : "border-line bg-surface text-muted hover:border-fg hover:bg-surface-2 hover:text-fg"
+        }`}
+      >
+        <ArrowDownUp size={16} aria-hidden focusable={false} />
+        <span aria-hidden className="text-muted">
+          {current.glyph}
+        </span>
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={close}
+        triggerRef={triggerRef}
+        placement={SORT_MENU_PLACEMENT}
+        className="overflow-hidden"
+      >
+        <div role="menu" aria-label={t("searchTransaction.sortMenuTitle")}>
+          <p className="border-b border-line bg-surface-3 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted">
+            {t("searchTransaction.sortMenuTitle")}
+          </p>
+          <ul className="py-1">
+            {SORT_OPTIONS.map((option) => {
+              const active = option.value === sort;
+              return (
+                <li key={option.value} role="none">
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={active}
+                    onClick={() => {
+                      onSortChange(option.value);
+                      close();
+                    }}
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+                      active
+                        ? "bg-accent/10 text-accent"
+                        : "text-fg hover:bg-surface"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={active ? "text-accent" : "text-muted"}
+                    >
+                      {option.glyph}
+                    </span>
+                    <span className="flex-1 truncate">{option.label(t)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </FloatingPanel>
+    </div>
   );
 }

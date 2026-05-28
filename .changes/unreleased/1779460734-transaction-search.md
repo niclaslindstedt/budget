@@ -13,3 +13,8 @@ Clicking a result switches to that row's sheet, scrolls it into view
 (expanding older months if needed), and pulses the row briefly so you
 can see where you landed. The last query is remembered while the tab
 stays open.
+A sort menu to the right of the search bar overrides the relevance
+ordering: pick "Date · Newest first / Oldest first" or
+"Amount · Highest first / Lowest first" to flip the result list into
+a chronological or value-ordered view. The choice sticks while the
+tab stays open.

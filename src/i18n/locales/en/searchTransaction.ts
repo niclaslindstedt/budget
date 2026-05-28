@@ -8,6 +8,13 @@ const searchTransaction = {
   emptyHint: "Start typing to search across every sheet.",
   noResults: "No matching entries",
   resultAria: "Open {description} on {sheet}",
+  sortMenuAria: "Change sort order",
+  sortMenuTitle: "Sort by",
+  sortRelevance: "Relevance",
+  sortDateDesc: "Date · Newest first",
+  sortDateAsc: "Date · Oldest first",
+  sortAmountDesc: "Amount · Highest first",
+  sortAmountAsc: "Amount · Lowest first",
 } as const;
 
 export type SearchTransactionCatalog = Widen<typeof searchTransaction>;
