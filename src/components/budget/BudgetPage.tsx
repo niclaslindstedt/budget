@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   AlertTriangle,
@@ -21,7 +14,6 @@ import { computeBudgetState } from "../../data/budget/computed-state";
 import {
   currentFiscalMonthKey,
   fiscalMonthSeedIso,
-  getMonthKey,
   nextMonthKey,
   previousMonthKey,
   sortMonthKeys,
@@ -44,15 +36,17 @@ import type {
   Transfer,
   UserData,
 } from "../../data/types";
-import { suppressScrollHide } from "../../hooks";
 import { todayIso } from "../../utils/date";
 import { indexById } from "../../utils/indexById";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
 import { useBudgetLayoutState } from "./hooks/useBudgetLayoutState";
+import { useRevealAnchorPreservation } from "./useRevealAnchorPreservation";
 import { useRowFlashing } from "./useRowFlashing";
+import { useScrollToRowRequest } from "./useScrollToRowRequest";
 import { useScrollToToday } from "./useScrollToToday";
+import { useVisibleMonthRange } from "./useVisibleMonthRange";
 import { BudgetMonthTable } from "./BudgetMonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 import { BudgetMetadataModal } from "./BudgetMetadataModal";
@@ -521,202 +515,32 @@ export function BudgetPage({
     sectionRef,
   });
 
-  // Preserve the user's visual position when either reveal toggle
-  // ("Show 3 future months" / "Show 3 earlier months") steps its cutoff.
-  // Whichever direction the revealed months land relative to the
-  // viewport, browser scroll anchoring can't shift past scrollY=0, so
-  // expansions above the current scroll position leave the user looking
-  // at the newly-revealed slab instead of the rows they were editing.
-  // Capture the current-month anchor's top before the state change and
-  // scroll by the delta after layout so the view stays put — clicking
-  // either toggle just expands the list. When the revealed months land
-  // below the anchor (oldest-first future, newest-first earlier) the
-  // delta is ~0 and the layout effect is a no-op.
-  const revealAnchorRef = useRef<number | null>(null);
-  const captureRevealAnchor = useCallback(() => {
-    const anchor = scrollTargetRef.current;
-    revealAnchorRef.current = anchor
-      ? anchor.getBoundingClientRect().top
-      : null;
-  }, [scrollTargetRef]);
-  const onShowMoreFutureClick = useCallback(() => {
-    captureRevealAnchor();
-    setExtraFuture((n) => n + FUTURE_PAGE_SIZE);
-  }, [captureRevealAnchor]);
-  const onShowMoreHistoryClick = useCallback(() => {
-    captureRevealAnchor();
-    setExtraHistory((n) => n + HISTORY_PAGE_SIZE);
-  }, [captureRevealAnchor]);
-  useLayoutEffect(() => {
-    const before = revealAnchorRef.current;
-    if (before === null) return;
-    revealAnchorRef.current = null;
-    const apply = () => {
-      const anchor = scrollTargetRef.current;
-      if (!anchor) return;
-      const delta = anchor.getBoundingClientRect().top - before;
-      if (Math.abs(delta) > 0.5) {
-        window.scrollBy({ top: delta, behavior: "auto" });
-      }
-    };
-    apply();
-    // Newly-revealed `BudgetMonthTable`s render as a height-estimated
-    // placeholder for one frame (`useNearViewport` starts false and
-    // only flips to true via its own layout effect), then re-render
-    // with the real row tree on the next frame. The placeholder's
-    // 40px-per-row estimate rarely matches the real stack, so the
-    // anchor shifts a second time after our initial compensation —
-    // and a third / fourth if any of the revealed months sit just
-    // outside the 1200px near-viewport margin and need the row tree
-    // measured before their cached height settles. Re-apply across
-    // the next handful of frames until the layout above the anchor
-    // stops moving.
-    let frames = 0;
-    let raf = 0;
-    const loop = () => {
-      apply();
-      frames += 1;
-      if (frames < 8) {
-        raf = requestAnimationFrame(loop);
-      }
-    };
-    raf = requestAnimationFrame(loop);
-    return () => {
-      cancelAnimationFrame(raf);
-    };
-  }, [extraFuture, extraHistory, scrollTargetRef]);
-
-  // Track which rendered month containers are currently intersecting
-  // the viewport so the floating "Today" button below can decide when
-  // the current fiscal month is no longer on screen.
-  // Stable join key avoids re-creating the observer on every keystroke
-  // (visibleMonths is memoized against monthGroups, which changes on
-  // every cell edit — the array reference flips even when its
-  // contents don't). Sentinel month keys like "undated" are ignored.
-  const [visibleMonthRange, setVisibleMonthRange] = useState<{
-    oldest: string | null;
-    newest: string | null;
-  }>({ oldest: null, newest: null });
-  const visibleMonthsKey = visibleMonths.join(",");
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-    const monthEls = section.querySelectorAll<HTMLElement>("[data-month-key]");
-    if (monthEls.length === 0) return;
-    const intersecting = new Set<string>();
-    const recompute = () => {
-      let newest: string | null = null;
-      let oldest: string | null = null;
-      for (const key of intersecting) {
-        if (key === "undated") continue;
-        if (!newest || key > newest) newest = key;
-        if (!oldest || key < oldest) oldest = key;
-      }
-      setVisibleMonthRange((prev) =>
-        prev.newest === newest && prev.oldest === oldest
-          ? prev
-          : { oldest, newest },
-      );
-    };
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const key = entry.target.getAttribute("data-month-key");
-        if (!key) continue;
-        if (entry.isIntersecting) intersecting.add(key);
-        else intersecting.delete(key);
-      }
-      recompute();
+  const { onShowMoreFutureClick, onShowMoreHistoryClick } =
+    useRevealAnchorPreservation({
+      extraHistory,
+      extraFuture,
+      historyPageSize: HISTORY_PAGE_SIZE,
+      futurePageSize: FUTURE_PAGE_SIZE,
+      setExtraHistory,
+      setExtraFuture,
+      scrollTargetRef,
     });
-    for (const el of monthEls) observer.observe(el);
-    return () => observer.disconnect();
-  }, [visibleMonthsKey]);
 
-  // Surface the floating "Today" button whenever the current fiscal
-  // month is scrolled off-screen — in either direction. Anchoring to
-  // the current fiscal month (not today's calendar date) keeps the
-  // button hidden while the user is editing the active budget, even
-  // late in the month when today's row sits near the bottom of the
-  // current month. The pill's direction tracks the scroll the user
-  // needs to make to reach current, which depends on where current
-  // sits in the DOM relative to the visible range — and that flips
-  // with `transactionSortOrder`. Oldest-first stacks past above
-  // current and future below; newest-first inverts both.
-  const todayButtonDirection = useMemo<"down" | "up" | null>(() => {
-    const { newest, oldest } = visibleMonthRange;
-    if (!newest || !oldest) return null;
-    const newestFirst = settings.transactionSortOrder === "newestFirst";
-    if (newest < currentMonth) {
-      // Visible range is entirely in the past. Past sits above
-      // current in oldest-first (scroll down) and below current in
-      // newest-first (scroll up).
-      return newestFirst ? "up" : "down";
-    }
-    if (oldest > currentMonth) {
-      // Visible range is entirely in the future. Future sits below
-      // current in oldest-first (scroll up) and above current in
-      // newest-first (scroll down).
-      return newestFirst ? "down" : "up";
-    }
-    return null;
-  }, [visibleMonthRange, currentMonth, settings.transactionSortOrder]);
-  const showTodayButton = todayButtonDirection !== null;
+  const { todayButtonDirection, showTodayButton } = useVisibleMonthRange({
+    sectionRef,
+    visibleMonths,
+    currentMonth,
+    transactionSortOrder: settings.transactionSortOrder,
+  });
 
-  // Honour a one-shot scroll-to-row request from the transfer-search
-  // modal. When the row's month falls outside the default history
-  // window, grow `extraHistory` enough to include it before scrolling —
-  // otherwise the row is filtered out of `visibleMonths` and the
-  // `[data-row-id]` query finds nothing. The pulse animation is driven
-  // by a CSS attribute on the row element: `[data-row-pulse]` flashes
-  // the row background once via `--accent` for ~1500ms, then the
-  // attribute is removed so the same row can pulse again on a future
-  // pick.
-  useEffect(() => {
-    if (!scrollToRowRequest) return;
-    if (scrollToRowRequest.sheetId !== sheet.id) return;
-    const { rowId, iso } = scrollToRowRequest;
-    if (iso) {
-      const targetKey = getMonthKey(iso, settings.startOfMonth);
-      if (/^\d{4}-\d{2}$/.test(targetKey) && targetKey < currentMonth) {
-        let cursor = currentMonth;
-        let stepsBack = 0;
-        while (cursor > targetKey) {
-          cursor = previousMonthKey(cursor);
-          stepsBack += 1;
-        }
-        const needed = stepsBack - DEFAULT_HISTORY_MONTHS;
-        if (needed > 0) {
-          setExtraHistory((n) => (n < needed ? needed : n));
-        }
-      }
-    }
-    let pulsedRow: HTMLElement | null = null;
-    const pulseHandle = window.setTimeout(() => {
-      const selector = `[data-row-id="${CSS.escape(rowId)}"]`;
-      const row = document.querySelector<HTMLElement>(selector);
-      if (!row) return;
-      const reduceMotion =
-        document.documentElement.dataset.reduceMotion === "true";
-      // Same rationale as `scrollToToday`: the BottomBar's
-      // hide-on-scroll hook would otherwise read this programmatic
-      // scroll-into-view as a user fling.
-      suppressScrollHide();
-      row.scrollIntoView({
-        block: "center",
-        behavior: reduceMotion ? "auto" : "smooth",
-      });
-      row.setAttribute("data-row-pulse", "true");
-      pulsedRow = row;
-    }, 50);
-    const clearHandle = window.setTimeout(() => {
-      pulsedRow?.removeAttribute("data-row-pulse");
-    }, 1700);
-    return () => {
-      window.clearTimeout(pulseHandle);
-      window.clearTimeout(clearHandle);
-      pulsedRow?.removeAttribute("data-row-pulse");
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollToRowRequest?.tick, sheet.id]);
+  const { forceMountMonthKey } = useScrollToRowRequest({
+    scrollToRowRequest,
+    sheetId: sheet.id,
+    currentMonth,
+    startOfMonth: settings.startOfMonth,
+    defaultHistoryMonths: DEFAULT_HISTORY_MONTHS,
+    setExtraHistory,
+  });
 
   // Stable per-month closure bundles, keyed by monthKey. Without this
   // each visible BudgetMonthTable receives fresh `onAddRow` / `onAddComplex` /
@@ -760,23 +584,6 @@ export function BudgetPage({
     onAddComplex,
     toggleCollapsed,
   ]);
-
-  // The month key BudgetMonthTable should force-mount its rows for, bypassing
-  // its viewport-proximity gate. Set whenever a `scrollToRowRequest`
-  // targets this sheet — without it the search-jump effect below would
-  // `querySelector` for a row that hasn't been rendered yet (every
-  // off-screen month renders only a placeholder by default) and the
-  // scroll-into-view would silently no-op. Cleared back to `null`
-  // between requests so the gate re-engages once the user has finished
-  // navigating.
-  const forceMountMonthKey = useMemo<string | null>(() => {
-    if (!scrollToRowRequest) return null;
-    if (scrollToRowRequest.sheetId !== sheet.id) return null;
-    const { iso } = scrollToRowRequest;
-    if (!iso) return null;
-    const key = getMonthKey(iso, settings.startOfMonth);
-    return /^\d{4}-\d{2}$/.test(key) ? key : null;
-  }, [scrollToRowRequest, sheet.id, settings.startOfMonth]);
 
   const canTransfer = item.accountId !== null;
 
