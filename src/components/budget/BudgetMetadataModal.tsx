@@ -1,8 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { Tags } from "lucide-react";
 
 import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { resolveEntryLabels } from "../../data/budget/synthesis";
+import {
+  budgetMetadataFormReducer,
+  EMPTY_METADATA_FORM_FIELDS,
+  initialMetadataFormState,
+  type MetadataFormFields,
+} from "./budget-metadata-form-reducer";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
@@ -210,32 +223,43 @@ export function BudgetMetadataModal({
   ]);
   const monthIndex = monthTotal > 0 ? monthTotal - monthRemaining + 1 : 0;
 
-  const [description, setDescription] = useState("");
-  const [typeId, setTypeId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  // The per-entry form fields plus their seed snapshot live in one
+  // reducer so the reset-on-entry-change transition is a single
+  // dispatch (see `budget-metadata-form-reducer`). The seed snapshot
+  // (`form.initial`) lets the save handler stamp per-entry overrides
+  // only for fields the user actually changed — otherwise "review and
+  // Save" on a rule-resolved entry would silently lock the rule's
+  // values into per-entry overrides, fine until the rule changes and
+  // this entry refuses to follow.
+  const [form, dispatchForm] = useReducer(
+    budgetMetadataFormReducer,
+    EMPTY_METADATA_FORM_FIELDS,
+    initialMetadataFormState,
+  );
+  const { description, typeId, companyId, noCompany, isTransfer } = form;
+  const setDescription = useCallback(
+    (value: string) => dispatchForm({ kind: "setDescription", value }),
+    [],
+  );
+  const setTypeId = useCallback(
+    (value: string | null) => dispatchForm({ kind: "setTypeId", value }),
+    [],
+  );
+  const setNoCompany = useCallback(
+    (value: boolean) => dispatchForm({ kind: "setNoCompany", value }),
+    [],
+  );
+  const setIsTransfer = useCallback(
+    (value: boolean) => dispatchForm({ kind: "setIsTransfer", value }),
+    [],
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
-      setCompanyId(next);
       const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
-      if (auto !== undefined) setTypeId(auto);
+      dispatchForm({ kind: "pickCompany", companyId: next, autoTypeId: auto });
     },
     [typeId, companyTypeSuggestions],
   );
-  const [noCompany, setNoCompany] = useState(false);
-  const [isTransfer, setIsTransfer] = useState(false);
-  // Snapshot of the values the form was pre-populated with, so the
-  // save handler only stamps per-entry overrides for fields the user
-  // actually changed. Otherwise "review and Save" on a rule-resolved
-  // entry would silently lock the rule's values into per-entry
-  // overrides — fine until the rule changes and this entry refuses
-  // to follow.
-  const initialRef = useRef({
-    description: "",
-    typeId: null as string | null,
-    companyId: null as string | null,
-    noCompany: false,
-    isTransfer: false,
-  });
 
   // Pre-populate the form with whatever is already resolved for the
   // current entry so the user sees existing metadata (and can edit
@@ -250,18 +274,7 @@ export function BudgetMetadataModal({
   // is precisely when the effect re-runs (entry change).
   useEffect(() => {
     if (!current) {
-      setDescription("");
-      setTypeId(null);
-      setCompanyId(null);
-      setNoCompany(false);
-      setIsTransfer(false);
-      initialRef.current = {
-        description: "",
-        typeId: null,
-        companyId: null,
-        noCompany: false,
-        isTransfer: false,
-      };
+      dispatchForm({ kind: "reset", fields: EMPTY_METADATA_FORM_FIELDS });
       return;
     }
     const resolved = resolveEntryLabels(
@@ -277,19 +290,14 @@ export function BudgetMetadataModal({
     // for the budget tables — seeding the input with a type name
     // would push that string into `userDescription` on save and
     // permanently freeze the fallback as an override.
-    const initDescription = resolved.userDescription ?? "";
-    setDescription(initDescription);
-    setTypeId(resolved.typeId);
-    setCompanyId(resolved.companyId);
-    setNoCompany(current.noCompany ?? false);
-    setIsTransfer(current.isTransfer ?? false);
-    initialRef.current = {
-      description: initDescription,
+    const fields: MetadataFormFields = {
+      description: resolved.userDescription ?? "",
       typeId: resolved.typeId,
       companyId: resolved.companyId,
       noCompany: current.noCompany ?? false,
       isTransfer: current.isTransfer ?? false,
     };
+    dispatchForm({ kind: "reset", fields });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
@@ -305,7 +313,7 @@ export function BudgetMetadataModal({
   const handleSave = useCallback(() => {
     if (!current || !accountId) return;
     const trimmed = description.trim();
-    const initial = initialRef.current;
+    const initial = form.initial;
     const patch: {
       userDescription?: string;
       userTypeId?: string | null;
@@ -355,16 +363,17 @@ export function BudgetMetadataModal({
     companyId,
     noCompany,
     isTransfer,
+    form.initial,
     onUpdateHistoryEntry,
   ]);
 
   const dirty =
     !!current &&
-    (description.trim() !== initialRef.current.description.trim() ||
-      typeId !== initialRef.current.typeId ||
-      companyId !== initialRef.current.companyId ||
-      noCompany !== initialRef.current.noCompany ||
-      isTransfer !== initialRef.current.isTransfer);
+    (description.trim() !== form.initial.description.trim() ||
+      typeId !== form.initial.typeId ||
+      companyId !== form.initial.companyId ||
+      noCompany !== form.initial.noCompany ||
+      isTransfer !== form.initial.isTransfer);
   const canSave = !!accountId && !!current && dirty;
 
   // The field that's still blocking this entry from leaving the queue,
