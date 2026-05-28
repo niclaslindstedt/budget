@@ -977,6 +977,10 @@ describe("synthesizeHistoryRow", () => {
     );
     expect(row.cells[descId]).toBe("APP STORE APL*Z123");
     expect(row.descriptionPlaceholder).toBe("APP STORE APL*Z123");
+    // The descriptionPlaceholder already shows the bank text in the
+    // popover's textarea placeholder; surfacing it again as the
+    // "original from bank" line below would just duplicate it.
+    expect(row.bankDescription).toBeUndefined();
   });
 
   it("omits the description placeholder when a rule resolves the description", () => {
