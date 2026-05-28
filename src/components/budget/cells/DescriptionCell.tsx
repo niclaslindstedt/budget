@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
+  Ban,
   Building2,
   Landmark,
   Repeat,
@@ -129,27 +130,51 @@ export function DescriptionCell({
           // tagged-merchant state is visible at a glance even when the
           // company name is hidden behind the description override.
           const showCompanyGlyph = !fallback && hasValue && !!company;
+          // Mirror the Building2 prefix with a Ban glyph when the row's
+          // company is explicitly omitted, so the skipped state is
+          // visible without having to tap the row open. `noCompany` and
+          // `company` are mutually exclusive (CompanyPicker clears one
+          // when the other is set) so this never overlaps the Building2
+          // prefix.
+          const showOmittedGlyph = !!noCompany && !company;
+          const omittedLabel = t("company.omittedLabel");
           const hasContent = showCompanyPill || showTypeName || hasValue;
           const ariaLabel = showCompanyPill
             ? company!.name
             : showTypeName
-              ? typeLabel
+              ? showOmittedGlyph
+                ? `${typeLabel} (${omittedLabel})`
+                : typeLabel
               : hasValue
-                ? entryType
-                  ? `${typeLabel}: ${displayValue}`
-                  : t("cell.descriptionWith", { value: displayValue })
+                ? showOmittedGlyph
+                  ? entryType
+                    ? `${typeLabel}: ${displayValue} (${omittedLabel})`
+                    : `${t("cell.descriptionWith", { value: displayValue })} (${omittedLabel})`
+                  : entryType
+                    ? `${typeLabel}: ${displayValue}`
+                    : t("cell.descriptionWith", { value: displayValue })
                 : entryType
-                  ? typeLabel
-                  : t("cell.addDescription");
+                  ? showOmittedGlyph
+                    ? `${typeLabel} (${omittedLabel})`
+                    : typeLabel
+                  : showOmittedGlyph
+                    ? omittedLabel
+                    : t("cell.addDescription");
           const title = showCompanyPill
             ? company!.name
             : showTypeName
-              ? typeLabel
+              ? showOmittedGlyph
+                ? `${typeLabel} — ${omittedLabel}`
+                : typeLabel
               : hasValue
                 ? company
                   ? `${company.name}: ${displayValue}`
-                  : displayValue
-                : undefined;
+                  : showOmittedGlyph
+                    ? `${omittedLabel}: ${displayValue}`
+                    : displayValue
+                : showOmittedGlyph
+                  ? omittedLabel
+                  : undefined;
           return (
             <button
               ref={ref}
@@ -176,11 +201,14 @@ export function DescriptionCell({
               {showCompanyPill ? (
                 <CompanyPill name={company!.name} />
               ) : showTypeName ? (
-                <span
-                  className="min-w-0 truncate"
-                  style={{ color: entryType!.color }}
-                >
-                  {typeLabel}
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  {showOmittedGlyph && <OmittedGlyph />}
+                  <span
+                    className="min-w-0 truncate"
+                    style={{ color: entryType!.color }}
+                  >
+                    {typeLabel}
+                  </span>
                 </span>
               ) : hasValue ? (
                 <span className="inline-flex min-w-0 items-center gap-1">
@@ -192,8 +220,11 @@ export function DescriptionCell({
                       className="shrink-0"
                     />
                   )}
+                  {showOmittedGlyph && <OmittedGlyph />}
                   <span className="min-w-0 truncate">{displayValue}</span>
                 </span>
+              ) : showOmittedGlyph ? (
+                <OmittedGlyph />
               ) : !isRecurring ? (
                 <span>…</span>
               ) : null}
@@ -387,6 +418,30 @@ function DescriptionPopover({
         )}
       </FloatingPanel>
     </>
+  );
+}
+
+// Composite "company banned" glyph: a Building2 with a Ban circle
+// overlaid on top, so the omitted state reads as "company, but
+// excluded" rather than a generic prohibition mark. Mirrors the role
+// of the Building2 prefix used when a company IS tagged — the two
+// states are mutually exclusive (CompanyPicker clears one when the
+// other is set), so this never co-exists with the bare Building2.
+function OmittedGlyph() {
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center text-muted"
+      style={{ width: 14, height: 14 }}
+      aria-hidden
+    >
+      <Building2 size={10} focusable={false} />
+      <Ban
+        size={14}
+        focusable={false}
+        className="absolute inset-0"
+        strokeWidth={1.75}
+      />
+    </span>
   );
 }
 
