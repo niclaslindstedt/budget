@@ -5,7 +5,7 @@ import {
   CONFLICT_DEFAULT_MIN_AMOUNT,
   findConflicts,
   type Conflict,
-} from "../../data/conflicts";
+} from "../../data/budget/conflicts";
 import {
   firstNonBlank,
   readNumberCell,

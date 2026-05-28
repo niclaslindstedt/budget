@@ -117,9 +117,12 @@ src/
 │   │   ├── pattern-derive.ts   # derives a glob-pattern seed from a
 │   │   │                       # row description for the
 │   │   │                       # "Label similar" modal
-│   │   └── recurring-detection.ts  # surfaces "looks recurring"
-│   │                               # candidates from HistoryEntry
-│   │                               # clusters (detectRecurringCandidates)
+│   │   ├── recurring-detection.ts  # surfaces "looks recurring"
+│   │   │                           # candidates from HistoryEntry
+│   │   │                           # clusters (detectRecurringCandidates)
+│   │   └── conflicts.ts        # duplicate-finder for an AccountBudget
+│   │                           # (findConflicts, pickWinner) consumed
+│   │                           # by BudgetFindConflictsModal
 │   ├── accounts/
 │   │   ├── balance.ts    # account-level aggregation (accountBalance)
 │   │   ├── export.ts     # JSON export builder for the accounts sheet

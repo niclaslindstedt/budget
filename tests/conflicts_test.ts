@@ -6,7 +6,7 @@ import {
   EXCLUDED_CATEGORY_IDS,
   findConflicts,
   pickWinner,
-} from "../src/data/conflicts";
+} from "../src/data/budget/conflicts";
 import type { Column, EntryType, Row } from "../src/data/types";
 
 const dateCol: Column = { id: "d", type: "date", label: "Date" };
