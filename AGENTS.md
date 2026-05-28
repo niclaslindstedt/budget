@@ -316,6 +316,24 @@ icons-check`. Build catches the build-only TS surface
    fragment, editing a parent fragment, or applying the
    `no-changelog` label. CI's `changeset` job will fail the PR
    without one of those three outcomes.
+
+   **Preempt the `changeset` check when the diff is clearly all
+   skip-list.** The job fires on `pull_request: opened` before
+   anything can react, so a CI-only / docs-only / build-config-only
+   PR predictably fails its first run. When the entire diff is
+   covered by the patterns in
+   `scripts/release/check-changeset.mjs:39-55`
+   (`.github/**`, `docs/**`, `scripts/**`, `vite/**`, `*.md`,
+   `tsconfig*.json`, etc.) **and** the change is obviously
+   invisible to end-users, apply the `no-changelog` label
+   immediately after creating the PR via the GitHub MCP
+   `issue_write` tool. The workflow re-runs `changeset` on the
+   `labeled` event (it's in the trigger types list in `ci.yml`)
+   and the new run goes green. Skips the failure → fixup → re-run
+   round-trip. Don't preempt when the diff contains any `src/**`
+   change that could be user-visible — invoke `write-changeset`
+   instead and let it decide.
+
 5. **Watch the PR.** Subscribe to PR activity for any change of
    non-trivial size so CI failures and review comments wake the
    session instead of going unnoticed.
