@@ -18,7 +18,7 @@ import type {
   BudgetDownloadFormat,
   BudgetDownloadPrefs,
 } from "../data/types";
-import { Button, FormSection } from "./form";
+import { Button, Checkbox, FormSection } from "./form";
 import { Modal } from "./Modal";
 import { CategoryIconGlyph } from "./icons";
 
@@ -139,32 +139,21 @@ function BudgetDownloadModal({
             <span className="text-xs text-muted">
               {t("download.contentsLabel")}
             </span>
-            <label className="inline-flex items-center gap-2 text-sm text-fg-bright">
-              <input
-                type="checkbox"
-                checked={includeFuture}
-                onChange={(e) => setIncludeFuture(e.target.checked)}
-                className="h-4 w-4 cursor-pointer"
-              />
-              {t("download.includeFuture")}
-            </label>
-            <label
-              className={`inline-flex items-center gap-2 text-sm ${
-                hasHistory
-                  ? "text-fg-bright"
-                  : "cursor-not-allowed text-muted opacity-60"
-              }`}
-              title={hasHistory ? undefined : t("download.noHistoryHint")}
-            >
-              <input
-                type="checkbox"
+            <Checkbox
+              align="center"
+              checked={includeFuture}
+              onChange={setIncludeFuture}
+              label={t("download.includeFuture")}
+            />
+            <span title={hasHistory ? undefined : t("download.noHistoryHint")}>
+              <Checkbox
+                align="center"
                 disabled={!hasHistory}
                 checked={includeHistory && hasHistory}
-                onChange={(e) => setIncludeHistory(e.target.checked)}
-                className="h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
+                onChange={setIncludeHistory}
+                label={t("download.includeHistory")}
               />
-              {t("download.includeHistory")}
-            </label>
+            </span>
           </div>
         </div>
       </Modal.Body>
@@ -293,58 +282,52 @@ function AccountsDownloadModal({
                 <thead>
                   <tr className="border-b border-line bg-surface-3 text-muted">
                     <th className="px-2 py-2 text-left">
-                      <button
-                        type="button"
-                        onClick={toggleAllSelected}
-                        aria-label={t("download.column.account")}
-                        title={t("download.column.account")}
-                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          readOnly
-                          tabIndex={-1}
-                          className="h-4 w-4 cursor-pointer"
-                        />
-                        <Wallet size={14} aria-hidden focusable={false} />
-                      </button>
+                      <Checkbox
+                        align="center"
+                        checked={allSelected}
+                        onChange={toggleAllSelected}
+                        ariaLabel={t("download.column.account")}
+                        label={
+                          <Wallet
+                            size={14}
+                            className="text-muted"
+                            aria-hidden
+                            focusable={false}
+                          />
+                        }
+                      />
                     </th>
-                    <th className="px-2 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={toggleAllInfo}
-                        aria-label={t("download.column.accountInfo")}
-                        title={t("download.column.accountInfo")}
-                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allInfo}
-                          readOnly
-                          tabIndex={-1}
-                          className="h-4 w-4 cursor-pointer"
-                        />
-                        <Info size={14} aria-hidden focusable={false} />
-                      </button>
+                    <th className="px-2 py-2 text-left">
+                      <Checkbox
+                        align="center"
+                        checked={allInfo}
+                        onChange={toggleAllInfo}
+                        ariaLabel={t("download.column.accountInfo")}
+                        label={
+                          <Info
+                            size={14}
+                            className="text-muted"
+                            aria-hidden
+                            focusable={false}
+                          />
+                        }
+                      />
                     </th>
-                    <th className="px-2 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={toggleAllTx}
-                        aria-label={t("download.column.transactions")}
-                        title={t("download.column.transactions")}
-                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allTx}
-                          readOnly
-                          tabIndex={-1}
-                          className="h-4 w-4 cursor-pointer"
-                        />
-                        <History size={14} aria-hidden focusable={false} />
-                      </button>
+                    <th className="px-2 py-2 text-left">
+                      <Checkbox
+                        align="center"
+                        checked={allTx}
+                        onChange={toggleAllTx}
+                        ariaLabel={t("download.column.transactions")}
+                        label={
+                          <History
+                            size={14}
+                            className="text-muted"
+                            aria-hidden
+                            focusable={false}
+                          />
+                        }
+                      />
                     </th>
                   </tr>
                 </thead>
@@ -355,73 +338,77 @@ function AccountsDownloadModal({
                       className="border-b border-line last:border-b-0 hover:bg-surface-2"
                     >
                       <td className="px-2 py-2 align-middle">
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-fg-bright">
-                          <input
-                            type="checkbox"
-                            checked={selected[account.id] ?? true}
-                            onChange={(e) =>
-                              setSelected((prev) => ({
-                                ...prev,
-                                [account.id]: e.target.checked,
-                              }))
-                            }
-                            className="h-4 w-4 cursor-pointer"
-                          />
-                          <span
-                            aria-hidden
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
-                            style={{
-                              color: account.color,
-                              backgroundColor: account.color
-                                ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-                                : undefined,
-                              borderColor: account.color
-                                ? `color-mix(in srgb, ${account.color} 55%, transparent)`
-                                : undefined,
-                            }}
-                          >
-                            {account.glyph ? (
-                              <CategoryIconGlyph
-                                name={account.glyph}
-                                size={12}
-                              />
-                            ) : (
-                              <Wallet size={12} aria-hidden focusable={false} />
-                            )}
-                          </span>
-                          <span className="truncate">{account.name}</span>
-                        </label>
-                      </td>
-                      <td className="px-2 py-2 text-center align-middle">
-                        <input
-                          type="checkbox"
-                          checked={info[account.id] ?? true}
-                          onChange={(e) =>
-                            setInfo((prev) => ({
+                        <Checkbox
+                          align="center"
+                          checked={selected[account.id] ?? true}
+                          onChange={(checked) =>
+                            setSelected((prev) => ({
                               ...prev,
-                              [account.id]: e.target.checked,
+                              [account.id]: checked,
                             }))
                           }
-                          aria-label={t("download.accountInfoFor", {
-                            name: account.name,
-                          })}
-                          className="h-4 w-4 cursor-pointer"
+                          ariaLabel={account.name}
+                          label={
+                            <span className="inline-flex min-w-0 items-center gap-2">
+                              <span
+                                aria-hidden
+                                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
+                                style={{
+                                  color: account.color,
+                                  backgroundColor: account.color
+                                    ? `color-mix(in srgb, ${account.color} 18%, transparent)`
+                                    : undefined,
+                                  borderColor: account.color
+                                    ? `color-mix(in srgb, ${account.color} 55%, transparent)`
+                                    : undefined,
+                                }}
+                              >
+                                {account.glyph ? (
+                                  <CategoryIconGlyph
+                                    name={account.glyph}
+                                    size={12}
+                                  />
+                                ) : (
+                                  <Wallet
+                                    size={12}
+                                    aria-hidden
+                                    focusable={false}
+                                  />
+                                )}
+                              </span>
+                              <span className="truncate">{account.name}</span>
+                            </span>
+                          }
                         />
                       </td>
-                      <td className="px-2 py-2 text-center align-middle">
-                        <input
-                          type="checkbox"
-                          checked={transactions[account.id] ?? true}
-                          onChange={(e) =>
-                            setTransactions((prev) => ({
+                      <td className="px-2 py-2 text-left align-middle">
+                        <Checkbox
+                          align="center"
+                          checked={info[account.id] ?? true}
+                          onChange={(checked) =>
+                            setInfo((prev) => ({
                               ...prev,
-                              [account.id]: e.target.checked,
+                              [account.id]: checked,
                             }))
                           }
-                          aria-label={t("download.accountTransactionsFor", {
+                          ariaLabel={t("download.accountInfoFor", {
                             name: account.name,
                           })}
-                          className="h-4 w-4 cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-left align-middle">
+                        <Checkbox
+                          align="center"
+                          checked={transactions[account.id] ?? true}
+                          onChange={(checked) =>
+                            setTransactions((prev) => ({
+                              ...prev,
+                              [account.id]: checked,
+                            }))
+                          }
+                          ariaLabel={t("download.accountTransactionsFor", {
+                            name: account.name,
+                          })}
                         />
                       </td>
                     </tr>
@@ -451,33 +438,24 @@ function AccountsDownloadModal({
             </div>
           )}
 
-          <label className="inline-flex items-center gap-2 text-sm text-fg-bright">
-            <input
-              type="checkbox"
-              checked={includeTransactions}
-              onChange={(e) => setIncludeTransactions(e.target.checked)}
-              className="h-4 w-4 cursor-pointer"
-            />
-            {t("download.includeTransactionsAll")}
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-fg-bright">
-            <input
-              type="checkbox"
-              checked={includeUnconfirmed}
-              onChange={(e) => setIncludeUnconfirmed(e.target.checked)}
-              className="h-4 w-4 cursor-pointer"
-            />
-            {t("download.includeUnconfirmed")}
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-fg-bright">
-            <input
-              type="checkbox"
-              checked={includeFutureEntries}
-              onChange={(e) => setIncludeFutureEntries(e.target.checked)}
-              className="h-4 w-4 cursor-pointer"
-            />
-            {t("download.includeFutureEntries")}
-          </label>
+          <Checkbox
+            align="center"
+            checked={includeTransactions}
+            onChange={setIncludeTransactions}
+            label={t("download.includeTransactionsAll")}
+          />
+          <Checkbox
+            align="center"
+            checked={includeUnconfirmed}
+            onChange={setIncludeUnconfirmed}
+            label={t("download.includeUnconfirmed")}
+          />
+          <Checkbox
+            align="center"
+            checked={includeFutureEntries}
+            onChange={setIncludeFutureEntries}
+            label={t("download.includeFutureEntries")}
+          />
         </div>
       </Modal.Body>
       <Modal.Footer>

@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import { useRefIdentity } from "../../hooks";
 import { useT } from "../../i18n";
 import type { RenameSuggestion } from "../../data/rename-patterns";
-import { Button, ClearableInput } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 
 // Last step of every bank-history import that has rename suggestions to
@@ -176,14 +176,12 @@ export function AccountRenamePredictorModal({
                 className="flex flex-col gap-2 border-b border-line py-3 last:border-b-0"
               >
                 <div className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={state.accepted}
                     onChange={() => handleToggle(s.entryId)}
-                    aria-label={t("renamePredictor.acceptAria", {
+                    ariaLabel={t("renamePredictor.acceptAria", {
                       description: s.originalDescription,
                     })}
-                    className="mt-1 cursor-pointer"
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex flex-col gap-0.5">
