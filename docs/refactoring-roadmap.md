@@ -151,12 +151,12 @@ new sheet type, but feature work can ship through them.
 - **No `useReducer` in most modal state machines** — `useReducer`
   now has **five** real hits (`AccountReconciliationModal`,
   `BudgetRecurrenceForm`, `BudgetEditEntryFullModal`,
-  `AccountTransferModal`, and `BudgetBulkEditModal`, see Landed), but
-  the broader pattern is still present: `useState` pyramids with 5+
-  fields plus a multi-setter reset effect. Remaining sites:
-  `BudgetMetadataModal` (8 useState calls), `ImportHistoryModal`,
-  `BudgetMatchRuleModal` (residual after `useMatchRuleAmountFilter`
-  landed), `SettingsModal` (4-piece state pyramid).
+  `AccountTransferModal`, `BudgetBulkEditModal`, and
+  `BudgetMetadataModal`, see Landed), but the broader pattern is still
+  present: `useState` pyramids with 5+ fields plus a multi-setter reset
+  effect. Remaining sites: `ImportHistoryModal`, `BudgetMatchRuleModal`
+  (residual after `useMatchRuleAmountFilter` landed), `SettingsModal`
+  (4-piece state pyramid).
   `BudgetSplitEntryModal` dropped off the list — re-verified 2026-05
   at 2 `useState` calls (459 lines), no longer a pyramid. **Severity: 5.**
   Per-modal value is moderate but the cumulative readability gain
@@ -288,6 +288,39 @@ T | null` for "explicitly cleared by the user, distinct from
 ---
 
 ## Landed
+
+- **`BudgetMetadataModal` form-field `useReducer` extraction** (2026-05):
+  the 5 per-entry form-field `useState` calls in
+  `BudgetMetadataModal.tsx` (`description`, `typeId`, `companyId`,
+  `noCompany`, `isTransfer`) plus the parallel `initialRef` snapshot
+  collapsed onto a single `useReducer` driven by a `MetadataFormState`
+  shape (the live fields + an `initial` snapshot) and a named-action
+  union (`reset | setDescription | setTypeId | pickCompany |
+setNoCompany | setIsTransfer`). The reset-on-entry-change effect
+  previously fired 5 sequential `setState` calls _and_ wrote the
+  `initialRef` snapshot; now it's a single `reset` dispatch carrying the
+  seed fields, which the reducer mirrors into both the live values and
+  the `initial` baseline. The `pickCompany` action folds the
+  `setCompanyId(next)` + conditional `setTypeId(auto)` pair into one
+  atomic transition (same precedent as `BudgetEditEntryFullModal`),
+  removing the brief intermediate render where the company changed but
+  the auto-filled type hadn't landed. `dirty` and the per-field touched
+  comparisons in `handleSave` now read `form.initial.*` instead of
+  `initialRef.current.*`. The session skip/complete sets stay as plain
+  `useState` — they reset on a different trigger (modal close) and
+  aren't part of the form pyramid. The reducer + seed factory live in
+  `src/components/budget/budget-metadata-form-reducer.ts`; the modal
+  keeps the queue/progress derivations, the still-missing-field gating,
+  and the `handleSave` patch-building glue. 10 unit tests landed in
+  `tests/budget_metadata_form_reducer_test.ts` to lock in the
+  seed-mirroring, the atomic reset, the `pickCompany` autoTypeId
+  conditional, and that each setter only touches its own field.
+  `BudgetMetadataModal.tsx` stays at ~566 lines (the dispatch-wrapping
+  `useCallback`s offset the removed `useState` + `initialRef` lines);
+  the new reducer file is 91 lines. Pure refactor — same behaviour,
+  same i18n keys, same patch payload shape; `BudgetModalHost` consumes
+  the public component unchanged. typecheck + lint + fmt-check + 929
+  tests + build + icons-check pass.
 
 - **`BudgetBulkEditModal` `useReducer` extraction** (2026-05): the
   11 parallel `useState` setters in `BudgetBulkEditModal.tsx`
