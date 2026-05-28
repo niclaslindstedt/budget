@@ -208,9 +208,9 @@ function MonthTableImpl({
       let selectedCount = 0;
       let visibleCount = 0;
       for (const r of rows) {
-        const isTx = !r.isCorrection && isTransferRow(r);
+        const isTx = r.kind !== "correction" && isTransferRow(r);
         if (!(hideTransfers && isTx)) visibleCount++;
-        if (r.transferId !== undefined || r.isCorrection) continue;
+        if (r.kind === "transfer" || r.kind === "correction") continue;
         if (hideTransfers && isTx) continue;
         ids.push(r.id);
         if (selectedIds.has(r.id)) selectedCount++;
@@ -430,10 +430,14 @@ function MonthTableImpl({
               rows.map((row) => {
                 // Skip hidden transfers — they're rendered inline above
                 // their anchor when the anchor's expand toggle is on.
-                if (hideTransfers && !row.isCorrection && isTransferRow(row)) {
+                if (
+                  hideTransfers &&
+                  row.kind !== "correction" &&
+                  isTransferRow(row)
+                ) {
                   return null;
                 }
-                if (row.isCorrection) {
+                if (row.kind === "correction") {
                   const amount =
                     amountCol && typeof row.cells[amountCol.id] === "number"
                       ? (row.cells[amountCol.id] as number)

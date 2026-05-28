@@ -369,7 +369,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       // suppresses the long-press and the pen button on them, but guard
       // here too so a stray dispatch never opens the modal on a row it
       // can't meaningfully edit.
-      if (row.transferId || row.historyEntryId || row.isCorrection) return;
+      if (row.kind !== "user") return;
       setEditRowPrompt({ kind: "edit-row", row });
     },
     [setEditRowPrompt],
@@ -381,7 +381,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       // rows are allowed: splitting a bank entry writes a `splits` array
       // on the underlying `HistoryEntry`, which the synthesizer fans out
       // into multiple rows on the next render.
-      if (row.transferId || row.isCorrection) return;
+      if (row.kind === "transfer" || row.kind === "correction") return;
       setSplitPrompt({ kind: "split", row });
     },
     [setSplitPrompt],

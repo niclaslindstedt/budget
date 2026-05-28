@@ -14,10 +14,11 @@ import type {
 
 function row(overrides: Partial<Row>): Row {
   return {
+    kind: "user",
     id: overrides.id ?? Math.random().toString(36).slice(2),
     cells: overrides.cells ?? {},
     ...overrides,
-  };
+  } as Row;
 }
 
 function entry(overrides: Partial<HistoryEntry>): HistoryEntry {

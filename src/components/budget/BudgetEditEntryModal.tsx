@@ -108,7 +108,7 @@ export function BudgetEditEntryModal({
   if (!open || !row) return null;
 
   const isSeries = !!row.seriesId;
-  const isHistory = !!row.historyEntryId;
+  const isHistory = row.kind === "historic";
 
   const title = isSeries
     ? t("editEntry.titleEditSeries")

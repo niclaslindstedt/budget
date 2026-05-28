@@ -11,7 +11,7 @@ import {
   mergeHistory,
 } from "../../storage/banks";
 import type { Action } from "../reducer";
-import type { UserData } from "../types";
+import type { CorrectionRow, UserData } from "../types";
 
 export function reduceAccounts(
   state: UserData,
@@ -174,7 +174,7 @@ export function reduceAccounts(
               const dateCol = findColumnByType(item.columns, "date");
               const filtered = item.rows.filter((r) => {
                 if (autoDeletedRowIds.has(r.id)) return false;
-                if (!r.isCorrection) return true;
+                if (r.kind !== "correction") return true;
                 if (rangeStart === "" || rangeEnd === "") return true;
                 if (!dateCol) return true;
                 const d = r.cells[dateCol.id];
@@ -237,13 +237,20 @@ export function reduceAccounts(
       target.sheetId,
       target.itemId,
       (item) => {
-        const row = mintBudgetRow(item.columns, {
+        const minted = mintBudgetRow(item.columns, {
           date: action.date,
           description,
           amount: action.amount,
         });
-        if (!row) return item;
-        row.isCorrection = true;
+        if (!minted) return item;
+        // Re-tag the minted UserRow as a CorrectionRow — `mintBudgetRow`
+        // doesn't know about correction semantics, and the discriminated
+        // union requires `kind` and `isCorrection` to be set together.
+        const row: CorrectionRow = {
+          ...minted,
+          kind: "correction",
+          isCorrection: true,
+        };
         return { ...item, rows: [...item.rows, row] };
       },
     );

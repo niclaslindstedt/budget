@@ -73,15 +73,14 @@ export function useEditPrompts({
   // entries instead.
   useEffect(() => {
     if (!splitPrompt) return;
-    if (splitPrompt.row.historyEntryId) {
+    const promptRow = splitPrompt.row;
+    if (promptRow.kind === "historic") {
       const entries = (activeAccountId && history[activeAccountId]) || [];
-      const exists = entries.some(
-        (e) => e.id === splitPrompt.row.historyEntryId,
-      );
+      const exists = entries.some((e) => e.id === promptRow.historyEntryId);
       if (!exists) setSplitPrompt(null);
       return;
     }
-    const exists = activeRows.some((r) => r.id === splitPrompt.row.id);
+    const exists = activeRows.some((r) => r.id === promptRow.id);
     if (!exists) setSplitPrompt(null);
   }, [splitPrompt, activeRows, activeAccountId, history]);
 

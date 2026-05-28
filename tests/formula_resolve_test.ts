@@ -23,6 +23,7 @@ function row(opts: {
   typeId?: string;
 }): Row {
   const r: Row = {
+    kind: "user",
     id: opts.id,
     cells: {
       [dateCol.id]: opts.date,

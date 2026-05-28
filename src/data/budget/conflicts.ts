@@ -141,7 +141,7 @@ export function pickWinner(
   if (rows.length === 0) {
     throw new Error("pickWinner: empty group");
   }
-  const history = rows.find((r) => typeof r.historyEntryId === "string");
+  const history = rows.find((r) => r.kind === "historic");
   if (history) return history;
   const descColId = findColumnByType(columns, "description")?.id ?? null;
   return [...rows].sort((a, b) => {
@@ -184,8 +184,8 @@ export function findConflicts(
   // anything, but two specific categories don't match each other).
   const buckets = new Map<string, BucketEntry[]>();
   for (const row of rows) {
-    if (typeof row.transferId === "string") continue;
-    if (row.isCorrection) continue;
+    if (row.kind === "transfer") continue;
+    if (row.kind === "correction") continue;
     const cat = resolveCat(row);
     if (cat !== null && EXCLUDED_CATEGORY_IDS.includes(cat)) continue;
     const dateValue = row.cells[dateCol.id];
@@ -223,11 +223,10 @@ export function findConflicts(
         // genuine double charge. Refuse to add a second history row
         // to a group that already contains one. (Mirrored at the
         // seed level by `pickWinner`'s single-history assumption.)
-        const candidateIsHistory =
-          typeof candidate.row.historyEntryId === "string";
+        const candidateIsHistory = candidate.row.kind === "historic";
         if (
           candidateIsHistory &&
-          group.some((g) => typeof g.row.historyEntryId === "string")
+          group.some((g) => g.row.kind === "historic")
         ) {
           continue;
         }

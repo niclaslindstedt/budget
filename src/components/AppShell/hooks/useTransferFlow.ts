@@ -76,7 +76,7 @@ export function useTransferFlow({
   const onTransferRequest = useCallback(
     (row: Row) => {
       if (!activeBudget || activeBudget.accountId === null) return;
-      if (!row.transferId) return;
+      if (row.kind !== "transfer") return;
       const tx = data.transfers.find((t) => t.id === row.transferId);
       if (!tx) return;
       setTransferRequest({

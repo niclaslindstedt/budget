@@ -10,6 +10,7 @@ import type {
   Sheet,
   SheetGlyph,
   SheetType,
+  UserRow,
 } from "./types";
 
 // Universal id minter for every entity the workspace holds (sheets,
@@ -98,12 +99,12 @@ export function moveColumn(
 export function createEmptyRow(
   columns: Column[],
   defaults: Partial<Record<ColumnType, CellValue>> = {},
-): Row {
+): UserRow {
   const cells: Record<string, CellValue> = {};
   for (const col of columns) {
     if (col.type in defaults) cells[col.id] = defaults[col.type] ?? null;
   }
-  return { id: newId(), cells };
+  return { kind: "user", id: newId(), cells };
 }
 
 // Standard column trio every AccountBudget surface relies on:
@@ -169,12 +170,12 @@ export function updateAccountBudget(
 // out inline, which obscured that they were doing the same operation
 // with different transforms. Returns the same `rows` reference when
 // `ids` is empty so callers can skip an enclosing spread.
-export function mapRowsByIds(
-  rows: readonly Row[],
+export function mapRowsByIds<R extends Row>(
+  rows: readonly R[],
   ids: ReadonlySet<string>,
-  transform: (row: Row) => Row,
-): Row[] {
-  if (ids.size === 0) return rows as Row[];
+  transform: (row: R) => R,
+): R[] {
+  if (ids.size === 0) return rows as R[];
   return rows.map((r) => (ids.has(r.id) ? transform(r) : r));
 }
 

@@ -171,8 +171,8 @@ function BudgetRowImpl({
   const isCompleted =
     completedCol !== undefined && row.cells[completedCol.id] === true;
   const isSeries = !!row.seriesId;
-  const isTransfer = !!row.transferId;
-  const isHistory = !!row.historyEntryId;
+  const isTransfer = row.kind === "transfer";
+  const isHistory = row.kind === "historic";
   // The transfer button needs both a savable row (so we know an amount
   // and description exist to promote) AND a parent budget with a known
   // account. Synthesized transfer rows skip the savable check —
@@ -226,7 +226,7 @@ function BudgetRowImpl({
   // them. The select-mode tap toggles selection so we leave it alone
   // there too.
   const longPressEligible =
-    !selectMode && !isTransfer && !isHistory && !row.isCorrection;
+    !selectMode && !isTransfer && !isHistory && row.kind !== "correction";
 
   function clearLongPress() {
     if (longPressTimer.current !== null) {
@@ -390,10 +390,12 @@ function BudgetRowImpl({
           entryType={entryType}
           company={company}
           onSetCompany={handleSetCompany}
-          noCompany={isHistory ? (row.noCompany ?? false) : undefined}
+          noCompany={
+            row.kind === "historic" ? (row.noCompany ?? false) : undefined
+          }
           onSetNoCompany={isHistory ? handleSetNoCompany : undefined}
           isTransfer={isTransfer}
-          peerName={row.peerAccountName ?? ""}
+          peerName={row.kind === "transfer" ? row.peerAccountName : ""}
           outgoing={isOutgoing}
           isHistory={isHistory}
           hasFormula={typeof row.amountFormula === "string"}
@@ -410,10 +412,14 @@ function BudgetRowImpl({
             col.type === "date" ? row.fiscalMonthShift : undefined
           }
           descriptionPlaceholder={
-            col.type === "description" ? row.descriptionPlaceholder : undefined
+            col.type === "description" && row.kind === "historic"
+              ? row.descriptionPlaceholder
+              : undefined
           }
           bankDescription={
-            col.type === "description" ? row.bankDescription : undefined
+            col.type === "description" && row.kind === "historic"
+              ? row.bankDescription
+              : undefined
           }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}

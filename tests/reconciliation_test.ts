@@ -29,6 +29,7 @@ const columns: Column[] = [dateCol, descCol, amtCol];
 
 function row(over: Partial<Row> & { date?: string; amount?: number }): Row {
   return {
+    kind: "user",
     id: over.id ?? "r1",
     cells: {
       [dateCol.id]: over.date ?? "2026-03-27",
@@ -138,13 +139,21 @@ describe("findCandidates — boundaries", () => {
   });
 
   it("skips correction rows", () => {
-    const r: Row = { ...row({ date: "2026-03-27" }), isCorrection: true };
+    const r: Row = {
+      ...row({ date: "2026-03-27" }),
+      kind: "correction",
+      isCorrection: true,
+    };
     const e = entry({ date: "2026-03-30" });
     expect(findCandidates([e], [r], columns)).toHaveLength(0);
   });
 
   it("skips synthesized history rows", () => {
-    const r: Row = { ...row({ date: "2026-03-27" }), historyEntryId: "ext" };
+    const r: Row = {
+      ...row({ date: "2026-03-27" }),
+      kind: "historic",
+      historyEntryId: "ext",
+    };
     const e = entry({ date: "2026-03-30" });
     expect(findCandidates([e], [r], columns)).toHaveLength(0);
   });
@@ -205,8 +214,16 @@ describe("findOrphans", () => {
   });
 
   it("skips correction / synthesized rows", () => {
-    const corr: Row = { ...row({ id: "r1" }), isCorrection: true };
-    const synth: Row = { ...row({ id: "r2" }), historyEntryId: "x" };
+    const corr: Row = {
+      ...row({ id: "r1" }),
+      kind: "correction",
+      isCorrection: true,
+    };
+    const synth: Row = {
+      ...row({ id: "r2" }),
+      kind: "historic",
+      historyEntryId: "x",
+    };
     expect(
       findOrphans([corr, synth], columns, new Set(["2026-03"]), new Set()),
     ).toHaveLength(0);
@@ -219,6 +236,7 @@ describe("findOrphans", () => {
     const manual = row({ id: "m1", date: "2026-04-10" });
     const reconciled: Row = {
       ...row({ id: "h1", date: "2026-04-12" }),
+      kind: "historic",
       historyEntryId: "abc",
     };
     expect(

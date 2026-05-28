@@ -81,52 +81,6 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **`Row` as a discriminated union (`kind: "user" | "historic" | "transfer" | "correction"`)** —
-  `Row` is currently one type with ~15 optional fields and uses _field
-  presence_ as an implicit discriminator: `transferId` set → synthesized
-  transfer row; `historyEntryId` set → synthesized history row;
-  `isCorrection` true → balance correction; none of the above → vanilla
-  user-authored row. **93 sites** across `src/components/`,
-  `src/components/AppShell/`, and `src/data/` re-assert the convention
-  by hand (`if (row.transferId || row.historyEntryId || row.isCorrection) return`,
-  `if (row.historyEntryId) { /* history path */ } else { /* user path */ }`,
-  etc.). The most common shape is a bail-on-non-user guard at the top
-  of every callback that only makes sense on a user-authored row — and
-  those guards rot silently when a new synthesized kind lands (every
-  consumer that wasn't updated treats the new kind as a vanilla user
-  row). TypeScript also can't narrow the related fields: the synthesis
-  guarantees that an `historyEntryId`-set row also carries
-  `bankDescription` / `descriptionPlaceholder`, and a `transferId`-set
-  row also carries `peerAccountId` / `peerAccountName`, but the type
-  doesn't encode that, so every consumer re-checks. **Severity: 7.**
-  The cost compounds on the feature wave — savings projections, loan
-  amortization schedules, scenario rows, and prognosis projections all
-  want to synthesize "kind-of-budget-row-but-not-user-authored" rows
-  into the same view; each one would add another field to the implicit
-  discriminator set and another ~93 guards to keep in sync.
-  - Plan: introduce a `kind: "user" | "historic" | "transfer" | "correction"`
-    discriminator on `Row` and split into `UserRow | HistoricRow |
-TransferRow | CorrectionRow`. `HistoricRow` carries
-    `historyEntryId` / `bankDescription` / `descriptionPlaceholder` as
-    required fields; `TransferRow` carries `transferId` /
-    `peerAccountId` / `peerAccountName`. `synthesizeHistoryRow` and
-    `synthesizeTransferRow` set the `kind`; user-authored rows from
-    `item.rows[]` get `kind: "user"` (or `"correction"` derived from
-    `isCorrection`) when they enter the synthesis pipeline.
-    **Persisted shape is unchanged** — the four synthesized-only fields
-    are runtime-only (see comments on `src/data/types/budget.ts:49-77`),
-    and the discriminator is derived at synthesis time. Migrate the 93
-    call sites by directory: budget components first, then AppShell
-    hooks, then `src/data/` consumers.
-  - Risk: medium-low. Diff is large (multi-PR plan is mandatory —
-    aim for one directory per PR). No data risk because nothing
-    persists. The main hazard is missing a call site during migration
-    and leaving it on the old field-presence shape; once the union
-    lands and the bail-on-non-user guards become `switch (row.kind)`
-    statements, TS exhaustiveness flags the rest. Smoke-test history
-    row interactions (inline edit, promote-to-series, splits,
-    metadata mode, "needs attention" filter) after each PR.
-
 - **`AppShell.tsx` modal-mount registry** — the JSX-relocation half
   of the original severity-8 modal-host item landed 2026-05 (see
   Landed: three modal hosts). AppShell dropped from 1849 to ~930
@@ -397,6 +351,45 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`Row` as a discriminated union (`kind: "user" | "correction" |
+"historic" | "transfer"`)** (2026-05): `Row` in `src/data/types/budget.ts`
+  split into `UserRow | CorrectionRow | HistoricRow | TransferRow` keyed
+  by a required `kind` literal. `HistoricRow` carries `historyEntryId` /
+  `bankDescription` / `descriptionPlaceholder` / `noCompany` as required
+  fields on the variant; `TransferRow` carries `transferId` /
+  `peerAccountId` / `peerAccountName`; `CorrectionRow` retains
+  `isCorrection: true` alongside the kind so older readers still
+  recognise the snapshot. `validateRow` derives `kind` from the legacy
+  `isCorrection` field so existing on-disk snapshots (no `kind` field)
+  load cleanly; `synthesizeTransferRow` and `synthesizeHistoryRow`
+  return the typed variants directly; `createEmptyRow` and
+  `mintBudgetRow` set `kind: "user"`; the construct-from-scratch
+  reducer sites (`bulkCopyToMonths`, `bulkMakeRecurring`) stamp
+  `kind: "user"` explicitly. The 50+ field-presence guards across
+  AppShell, AppShell/hooks, budget components, accounts components,
+  and `src/data/` (reconciliation, coverage, conflicts, payday,
+  achievements, accounts/export, budget/export, BudgetMonthTable,
+  BudgetRow, BudgetEditEntryModal, BudgetPromoteHistoryForm,
+  BudgetFindConflictsModal, BudgetViewerModal, BudgetEntryActionsMenu)
+  switched from `row.transferId || row.historyEntryId ||
+row.isCorrection` shapes to `row.kind === "..."` / `row.kind !==
+"user"` checks so TS narrowing now reveals the kind-specific fields
+  and exhaustiveness flags future sites that forget a new kind.
+  `AccountBudget.rows` stays typed as the wide `Row[]` (rather than a
+  stricter `PersistedRow = UserRow | CorrectionRow` subset) so the
+  merged "user rows + synthesized rows" view in `computed-state` and
+  `budget/export` keeps the existing `AccountBudget` shape; the
+  storage invariant is upheld operationally by the validator + the
+  synthesizers (which never write into `item.rows[]`). Persisted
+  shape on disk is unchanged for legacy snapshots — they have no
+  `kind` field — and forward-compatible for new snapshots, which
+  carry `kind` alongside the existing fields. 16 test fixtures
+  updated to stamp `kind` on row literals. Closes the original
+  severity-7 multipliers entry in one PR rather than the multi-PR
+  per-directory plan the entry described — the discriminator gave TS
+  exhaustiveness, which made the call-site migration mechanical
+  enough to bundle. typecheck + lint + fmt-check + 862 tests + build
+  pass.
 - **`AppShell.tsx` budget-row mutation callbacks lifted into
   `useRowMutations`** (2026-05): the 6 row-level mutation callbacks
   still defined inline in `AppShell.tsx` after the modal-host split

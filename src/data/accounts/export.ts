@@ -286,7 +286,7 @@ export function buildAccountsExport(
         if (completedCol) entry.completed = completed;
         if (row.typeId) entry.typeId = row.typeId;
         if (row.seriesId) entry.seriesId = row.seriesId;
-        if (row.isCorrection) entry.isCorrection = true;
+        if (row.kind === "correction") entry.isCorrection = true;
         if (row.isTransfer) entry.isTransfer = true;
         bucket.push(entry);
       }

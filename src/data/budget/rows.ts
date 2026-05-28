@@ -19,6 +19,7 @@ import type {
   Row,
   Transfer,
   UserData,
+  UserRow,
 } from "../types";
 
 // Secondary-sort context for `sortRowsByDate`. When supplied, rows
@@ -445,12 +446,12 @@ export function defaultCompletedForDate(
 // Optionally clamped to an inclusive upper bound, used for the "until …"
 // option on edit-scope dialogs. For non-series anchors, returns just the
 // anchor so callers can treat scope-aware ops uniformly.
-export function rowsInSeriesFrom(
-  rows: Row[],
-  anchor: Row,
+export function rowsInSeriesFrom<R extends Row>(
+  rows: R[],
+  anchor: R,
   dateColumnId: string,
   untilIso?: string | null,
-): Row[] {
+): R[] {
   if (!anchor.seriesId) return [anchor];
   const anchorDate = anchor.cells[dateColumnId];
   if (typeof anchorDate !== "string") return [anchor];
@@ -462,7 +463,7 @@ export function rowsInSeriesFrom(
     if (untilIso && d > untilIso) return false;
     return true;
   });
-  return sortRowsByDate(matched, dateColumnId);
+  return sortRowsByDate(matched, dateColumnId) as R[];
 }
 
 // Return the highest ISO date held by any row sharing `seriesId`, or
@@ -503,7 +504,7 @@ export function mintBudgetRow(
     companyId?: string | null;
     seriesId?: string;
   },
-): Row | null {
+): UserRow | null {
   const { dateCol, descCol, amountCol } = getStandardColumns(columns);
   if (!dateCol || !descCol || !amountCol) return null;
   const cells: Record<string, CellValue> = {
@@ -511,7 +512,7 @@ export function mintBudgetRow(
     [descCol.id]: values.description,
     [amountCol.id]: values.amount,
   };
-  const row: Row = { id: newId(), cells };
+  const row: UserRow = { kind: "user", id: newId(), cells };
   if (values.seriesId) row.seriesId = values.seriesId;
   if (values.typeId) row.typeId = values.typeId;
   if (values.companyId) row.companyId = values.companyId;
@@ -521,14 +522,14 @@ export function mintBudgetRow(
 // Set `cellColumnId` to `value` on the anchor and every later sibling in
 // the same series, optionally clamped by `untilIso`. Returns `rows`
 // unchanged when the anchor is not part of a series.
-export function propagateCellInSeries(
-  rows: Row[],
-  anchor: Row,
+export function propagateCellInSeries<R extends Row>(
+  rows: R[],
+  anchor: R,
   dateColumnId: string,
   cellColumnId: string,
   value: CellValue,
   untilIso: string | null,
-): Row[] {
+): R[] {
   if (!anchor.seriesId) return rows;
   const targetIds = new Set(
     rowsInSeriesFrom(rows, anchor, dateColumnId, untilIso).map((r) => r.id),

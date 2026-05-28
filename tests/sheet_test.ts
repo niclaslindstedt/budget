@@ -559,6 +559,7 @@ describe("rowsInSeriesFrom", () => {
 
   function s(id: string, date: string, amount = 1, seriesId?: string): Row {
     const row: Row = {
+      kind: "user",
       id,
       cells: { [dateCol.id]: date, [amountCol.id]: amount },
     };
@@ -607,6 +608,7 @@ describe("propagateCellInSeries", () => {
 
   function s(id: string, date: string, amount = 1, seriesId?: string): Row {
     const row: Row = {
+      kind: "user",
       id,
       cells: { [dateCol.id]: date, [amountCol.id]: amount },
     };
@@ -677,7 +679,7 @@ describe("isRowSavable / isRowHalfDone", () => {
   const dateCol = findColumnByType(sheet.columns, "date")!;
 
   function row(cells: Record<string, string | number | boolean | null>): Row {
-    return { id: "r", cells };
+    return { kind: "user", id: "r", cells };
   }
 
   it("savable when description and amount are both set", () => {
@@ -729,7 +731,7 @@ describe("isRowSavable / isRowHalfDone", () => {
   });
 
   it("a typeId-only row is savable so a tag survives clearing description+amount", () => {
-    const r: Row = { id: "r", cells: {}, typeId: "type-1" };
+    const r: Row = { kind: "user", id: "r", cells: {}, typeId: "type-1" };
     expect(isRowSavable(r, sheet.columns)).toBe(true);
   });
 

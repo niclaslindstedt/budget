@@ -133,9 +133,7 @@ export function findCandidates(
   };
   const projected: Projected[] = [];
   for (const row of rows) {
-    if (row.isCorrection) continue;
-    if (row.historyEntryId) continue;
-    if (row.transferId) continue;
+    if (row.kind !== "user") continue;
     const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
     if (!ra) continue;
     projected.push({
@@ -255,9 +253,7 @@ export function findOrphans(
   const out: OrphanRow[] = [];
   for (const row of rows) {
     if (reconciledRowIds.has(row.id)) continue;
-    if (row.isCorrection) continue;
-    if (row.historyEntryId) continue;
-    if (row.transferId) continue;
+    if (row.kind !== "user") continue;
     const monthKey = getMonthKey(row.cells[dateCol.id], startOfMonth);
     if (monthKey === "undated") continue;
     if (!newlyCovered.has(monthKey)) continue;
@@ -441,9 +437,7 @@ export function findRuleDrivenCandidates(
   };
   const rowsBySeries = new Map<string, ProjectedRow[]>();
   for (const row of rows) {
-    if (row.isCorrection) continue;
-    if (row.historyEntryId) continue;
-    if (row.transferId) continue;
+    if (row.kind !== "user") continue;
     if (typeof row.seriesId !== "string" || row.seriesId === "") continue;
     const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
     if (!ra) continue;

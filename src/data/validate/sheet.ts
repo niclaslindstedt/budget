@@ -9,9 +9,11 @@ import type {
   CellValue,
   Column,
   ColumnType,
+  CorrectionRow,
   Row,
   Sheet,
   SheetItem,
+  UserRow,
 } from "../types";
 import {
   CATEGORY_ICONS,
@@ -75,7 +77,17 @@ export function validateRow(
       return fail(`${path}.cells.${k}`, "expected string|number|boolean|null");
     validated[k] = v;
   }
-  const row: Row = { id, cells: validated };
+  let correctionFlag = false;
+  if (isCorrection !== undefined) {
+    if (typeof isCorrection !== "boolean")
+      return fail(`${path}.isCorrection`, "expected a boolean");
+    correctionFlag = isCorrection;
+  }
+  // Derive `kind` from the legacy `isCorrection` field so existing
+  // snapshots (which don't carry `kind`) still narrow correctly.
+  const row: UserRow | CorrectionRow = correctionFlag
+    ? { kind: "correction", isCorrection: true, id, cells: validated }
+    : { kind: "user", id, cells: validated };
   if (seriesId !== undefined) {
     if (typeof seriesId !== "string" || seriesId === "")
       return fail(`${path}.seriesId`, "expected a non-empty string");
@@ -89,13 +101,6 @@ export function validateRow(
     // treats an unknown id as "no type" and falls back to the
     // description.
     if (knownTypeIds.has(typeId)) row.typeId = typeId;
-  }
-  if (isCorrection !== undefined) {
-    if (typeof isCorrection !== "boolean")
-      return fail(`${path}.isCorrection`, "expected a boolean");
-    // Only persist `true` — a stored `false` is indistinguishable from
-    // "field absent" and just bloats the on-disk snapshot.
-    if (isCorrection) row.isCorrection = true;
   }
   if (amountFormula !== undefined) {
     if (typeof amountFormula !== "string")

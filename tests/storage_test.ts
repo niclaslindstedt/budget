@@ -24,10 +24,12 @@ function sampleData(): UserData {
   const amountCol = aItem.columns.find((c) => c.type === "amount")!;
   aItem.rows = [
     {
+      kind: "user",
       id: "row-1",
       cells: { [dateCol.id]: "2026-05-01", [amountCol.id]: 42 },
     },
     {
+      kind: "user",
       id: "row-2",
       cells: { [dateCol.id]: "2026-05-15", [amountCol.id]: -10 },
     },
@@ -90,7 +92,11 @@ describe("serializeUserData", () => {
         items: s.items.map((it) => {
           const ab = it as AccountBudget;
           return {
-            rows: ab.rows.map((r) => ({ cells: r.cells, id: r.id })),
+            rows: ab.rows.map((r) => ({
+              cells: r.cells,
+              id: r.id,
+              kind: r.kind,
+            })),
             accountId: ab.accountId,
             type: ab.type,
             columns: ab.columns.map((c) => ({

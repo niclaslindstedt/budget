@@ -15,7 +15,11 @@ const amtCol: Column = { id: "a", type: "amount", label: "Amount" };
 const columns: Column[] = [dateCol, amtCol];
 
 function row(id: string, date: string): Row {
-  return { id, cells: { [dateCol.id]: date, [amtCol.id]: -100 } };
+  return {
+    kind: "user",
+    id,
+    cells: { [dateCol.id]: date, [amtCol.id]: -100 },
+  };
 }
 
 function hist(id: string, date: string): HistoryEntry {

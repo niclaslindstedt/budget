@@ -52,16 +52,16 @@ export function hintRecordingsFromBudget(
   return out;
 }
 
-export function applyPatch(
-  row: Row,
+export function applyPatch<R extends Row>(
+  row: R,
   patch: EditPatch,
   cols: {
     descId?: string;
     amountId?: string;
     dateId?: string;
   },
-): Row {
-  const next: Row = { ...row, cells: { ...row.cells } };
+): R {
+  const next: R = { ...row, cells: { ...row.cells } };
   if (cols.descId) next.cells[cols.descId] = patch.description;
   if (cols.amountId && patch.amount !== null) {
     next.cells[cols.amountId] = patch.amount;
