@@ -35,12 +35,6 @@ import {
 import { withEncryption } from "./encrypting-adapter";
 import { serializeUserData } from "./file";
 import { createFolderAdapter } from "./folder-adapter";
-import {
-  clearDirectoryHandle,
-  ensurePermission,
-  loadDirectoryHandle,
-  saveDirectoryHandle,
-} from "./folder-handle-store";
 import { createGdriveAdapter, startGdriveAuth } from "./gdrive-adapter";
 import {
   clearCloudMirrorBytes,
@@ -48,6 +42,8 @@ import {
   createIdbCloudMirrorStorage,
 } from "./idb-adapter";
 import type { StoredUser } from "../data/types";
+import { useFolderHandle } from "./useFolderHandle";
+import { wrapForActive } from "./wrap-for-active";
 import { createLogger } from "../utils/logger";
 
 const log = createLogger("app");
@@ -110,21 +106,6 @@ function buildInnerAdapter(args: BuildInnerArgs): StorageAdapter {
     });
   }
   return createIdbAdapter({ userId });
-}
-
-// Wrap a raw adapter with `withEncryption` when the user keeps storage
-// encrypted; otherwise return it untouched. Used everywhere we need an
-// adapter that reads / writes the same envelope shape the steady-state
-// live adapter does.
-function wrapForActive(
-  inner: StorageAdapter,
-  encryption: EncryptionMode,
-  passwordRef: React.MutableRefObject<string | null>,
-): StorageAdapter {
-  const password = passwordRef.current;
-  return encryption === "encrypted" && password
-    ? withEncryption(inner, passwordRef)
-    : inner;
 }
 
 export type UseStorageBackendOptions = {
@@ -210,28 +191,12 @@ export function useStorageBackend({
   const [gdriveToken, setGdriveTokenState] = useState<string | null>(() =>
     auth.kind === "signed-in" ? getGdriveToken(auth.user.id) : null,
   );
-  // Live `FileSystemDirectoryHandle` for the folder backend, restored
-  // from IndexedDB after auth flips. `folderHandleLoaded` distinguishes
-  // "still probing IDB" from "no handle exists" so the `adapter`
-  // useMemo can hold off on building anything during the async restore
-  // (returning `null` from the memo, which the storage hook treats as
-  // a no-op — same contract as the auth handshake). Seeded `true` for
-  // non-folder users so the adapter useMemo isn't gated on a probe
-  // that has nothing to find — without this gate, every cloud-backed
-  // refresh would flicker through `folderHandleLoaded=false → true`
-  // and rebuild the adapter for no reason.
-  const [folderHandle, setFolderHandle] =
-    useState<FileSystemDirectoryHandle | null>(null);
-  const [folderHandleLoaded, setFolderHandleLoaded] = useState<boolean>(() => {
-    if (auth.kind !== "signed-in") return true;
-    return getBackend(auth.user.id) !== "folder";
-  });
-  // Set when a boot-time `queryPermission` returns anything other than
-  // "granted" — the App keeps the IDB record around so the user can
-  // re-grant with one click, but the Settings hint flips to a
-  // "Reconnect folder" cue and the active adapter falls back to the
-  // browser backend so editing keeps working.
-  const [folderReconnectNeeded, setFolderReconnectNeeded] = useState(false);
+  // Mirror of `useFolderHandle`'s `folderHandle` state, declared here
+  // so `buildSourceRawAdapter` (defined below, used by `loadSourceText`,
+  // used by `useFolderHandle`) can read the current handle without
+  // forming a circular hook-order dependency. The folder hook receives
+  // this ref and keeps it in sync with its state via an effect.
+  const folderHandleRef = useRef<FileSystemDirectoryHandle | null>(null);
   // Seeded from boot so the very first adapter built by the `useMemo`
   // below matches what the auth effect would later set. Without this,
   // a guest-with-data session boots with encryption="encrypted", the
@@ -261,8 +226,6 @@ export function useStorageBackend({
   // budget" branches can finish the link with the right effect.
   const [pendingCloudLink, setPendingCloudLink] =
     useState<PendingCloudLink | null>(null);
-  const [pendingFolderLink, setPendingFolderLink] =
-    useState<PendingFolderLink | null>(null);
 
   // Sync state with the active user every time auth flips. The
   // default (no-password) user is pinned to plaintext storage — there
@@ -380,13 +343,19 @@ export function useStorageBackend({
         // The folder source needs the live handle held in App state,
         // not something we can rebuild from localStorage. Caller falls
         // back to the in-memory snapshot when the handle isn't there
-        // — e.g. permission was revoked between sessions.
-        if (!folderHandle) return null;
-        return createFolderAdapter({ directoryHandle: folderHandle });
+        // — e.g. permission was revoked between sessions. Read through
+        // `folderHandleRef` (kept in sync by `useFolderHandle`) so this
+        // callback can be defined before the folder hook runs without
+        // creating a circular hook-order dependency — `useFolderHandle`
+        // needs `loadSourceText`, which needs `buildSourceRawAdapter`,
+        // which would otherwise need the folder hook's state.
+        const handle = folderHandleRef.current;
+        if (!handle) return null;
+        return createFolderAdapter({ directoryHandle: handle });
       }
       return createIdbAdapter({ userId });
     },
-    [folderHandle],
+    [],
   );
 
   // Read the source backend's current bytes, falling back to the
@@ -627,6 +596,27 @@ export function useStorageBackend({
     setPendingCloudLink(null);
   }, []);
 
+  const {
+    folderHandle,
+    folderHandleLoaded,
+    folderReconnectNeeded,
+    pendingFolderLink,
+    connectFolder,
+    reconnectFolder,
+    disconnectFolder,
+    resolveFolderLink,
+    cancelFolderLink,
+    markPermissionLost: markFolderPermissionLost,
+  } = useFolderHandle({
+    auth,
+    encryption,
+    passwordRef,
+    wrapWithActiveEncryption,
+    loadSourceText,
+    setBackendState,
+    folderHandleRef,
+  });
+
   const adapter = useMemo<StorageAdapter | null>(() => {
     if (auth.kind !== "signed-in") {
       log.info("adapter: null (not signed in)");
@@ -684,11 +674,7 @@ export function useStorageBackend({
       // adapter, and surface the reconnect banner — the IDB
       // record is intentionally kept so the user can re-grant
       // with one click against the stored handle.
-      onFolderPermissionLost: () => {
-        log.warn("folder: permission lost during operation");
-        setFolderHandle(null);
-        setFolderReconnectNeeded(true);
-      },
+      onFolderPermissionLost: markFolderPermissionLost,
     });
     // Wrap cloud backends with the offline-mirror so a session that
     // boots without network can still load the last-known bytes and
@@ -730,6 +716,7 @@ export function useStorageBackend({
     encryption,
     cloudOfflineMode,
     passwordRef,
+    markFolderPermissionLost,
   ]);
 
   const connectDropbox = useCallback(() => {
@@ -902,229 +889,6 @@ export function useStorageBackend({
     () => disconnectCloud("gdrive"),
     [disconnectCloud],
   );
-
-  // Restore the per-user folder handle from IndexedDB whenever the
-  // signed-in user changes. We always reset `folderHandleLoaded` to
-  // false up front so the `adapter` useMemo holds off on building a
-  // browser-fallback adapter during the async probe — without that
-  // gate, a folder-backed session would flash a fresh-budget render
-  // on every reload.
-  //
-  // At boot we only `queryPermission` (no `requestPermission`) since
-  // no user gesture is in scope. On "denied" / "prompt" we keep the
-  // IDB record around so the Reconnect button in Settings can
-  // re-grant in one click against the stored handle, and surface the
-  // reconnect cue so the user knows their folder isn't live.
-  useEffect(() => {
-    if (auth.kind !== "signed-in") {
-      setFolderHandle(null);
-      setFolderHandleLoaded(true);
-      setFolderReconnectNeeded(false);
-      return;
-    }
-    const userId = auth.user.id;
-    // Skip the probe when the user isn't on folder backend — the
-    // adapter useMemo only consults `folderHandle` / `folderHandleLoaded`
-    // when `backend === "folder"`, so probing IDB on every refresh for
-    // every cloud / browser user just churns state and rebuilds the
-    // adapter for nothing.
-    if (getBackend(userId) !== "folder") {
-      setFolderHandle(null);
-      setFolderHandleLoaded(true);
-      setFolderReconnectNeeded(false);
-      return;
-    }
-    let cancelled = false;
-    setFolderHandleLoaded(false);
-    setFolderReconnectNeeded(false);
-    void (async () => {
-      const stored = await loadDirectoryHandle(userId);
-      if (cancelled) return;
-      if (!stored) {
-        setFolderHandle(null);
-        setFolderHandleLoaded(true);
-        return;
-      }
-      const status = await ensurePermission(stored, "readwrite", false);
-      if (cancelled) return;
-      if (status === "granted") {
-        setFolderHandle(stored);
-        setFolderReconnectNeeded(false);
-      } else {
-        setFolderHandle(null);
-        setFolderReconnectNeeded(true);
-      }
-      setFolderHandleLoaded(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [auth]);
-
-  // Commit a freshly-picked folder as the active backend. Persists the
-  // handle to IDB, mirrors any source-side bytes through the encrypting
-  // wrapper if they need to land in the folder, then flips state.
-  const commitFolderLink = useCallback(
-    async (userId: string, handle: FileSystemDirectoryHandle) => {
-      await saveDirectoryHandle(userId, handle);
-      setBackend(userId, "folder");
-      setFolderHandle(handle);
-      setFolderHandleLoaded(true);
-      setFolderReconnectNeeded(false);
-      setBackendState("folder");
-      unlock("cloudWalker");
-    },
-    [],
-  );
-
-  // Pick a folder and probe both sides for an existing budget. Same
-  // probe-and-confirm pattern as the cloud OAuth flow: if both the
-  // folder and the current source already hold data, the dialog asks
-  // the user which one to keep. Otherwise commits straight away.
-  const connectFolder = useCallback(async () => {
-    if (auth.kind !== "signed-in") return;
-    if (typeof window === "undefined" || !window.showDirectoryPicker) return;
-    let handle: FileSystemDirectoryHandle;
-    try {
-      handle = await window.showDirectoryPicker({ mode: "readwrite" });
-    } catch (err) {
-      // AbortError = user cancelled the picker; nothing to do.
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      log.error("folder picker failed", err);
-      return;
-    }
-    const userId = auth.user.id;
-    const fromBackend = getBackend(userId);
-    const probeInner = createFolderAdapter({ directoryHandle: handle });
-    const probe = wrapWithActiveEncryption(probeInner);
-    const [remote, sourceText] = await Promise.all([
-      probe.load().catch((err: unknown) => {
-        log.error("folder probe failed during link", err);
-        return null;
-      }),
-      loadSourceText(userId, fromBackend),
-    ]);
-    if (auth.kind !== "signed-in") return;
-    if (remote === null && sourceText === null) {
-      // Nothing on either side — just commit, no dialog needed.
-      await commitFolderLink(userId, handle);
-      return;
-    }
-    if (remote !== null && sourceText === null) {
-      // Folder already has bytes, source is empty — adopt them silently
-      // (matches the cloud-link "use cloud" branch with nothing to lose).
-      await commitFolderLink(userId, handle);
-      return;
-    }
-    if (remote === null && sourceText !== null) {
-      // Folder is empty, source has bytes — push the source into the
-      // folder before flipping so the folder's first read returns the
-      // user's actual budget rather than nothing.
-      try {
-        await probe.save(sourceText);
-      } catch (err) {
-        log.error("folder seed failed during link", err);
-      }
-      await commitFolderLink(userId, handle);
-      return;
-    }
-    // Both sides have data — ask the user which one wins.
-    setPendingFolderLink({
-      handle,
-      fromBackend,
-      remoteSnapshot: remote,
-      sourceText,
-    });
-  }, [auth, commitFolderLink, loadSourceText, wrapWithActiveEncryption]);
-
-  // Resolve the folder-link confirmation. Mirrors `resolveCloudLink`:
-  // "use-source" pushes the parked source bytes into the folder
-  // (threading the remote revision so the write lands as an update),
-  // then commits; "use-cloud" — the folder's existing budget wins —
-  // just commits.
-  const resolveFolderLink = useCallback(
-    async (action: "use-cloud" | "use-source"): Promise<void> => {
-      const pending = pendingFolderLink;
-      if (!pending || auth.kind !== "signed-in") return;
-      setPendingFolderLink(null);
-      const userId = auth.user.id;
-      try {
-        if (action === "use-source" && pending.sourceText !== null) {
-          const probeInner = createFolderAdapter({
-            directoryHandle: pending.handle,
-          });
-          const probe = wrapWithActiveEncryption(probeInner);
-          await probe.save(
-            pending.sourceText,
-            pending.remoteSnapshot?.revision,
-          );
-        }
-        await commitFolderLink(userId, pending.handle);
-      } catch (err) {
-        log.error("folder link failed", err);
-      }
-    },
-    [auth, pendingFolderLink, commitFolderLink, wrapWithActiveEncryption],
-  );
-
-  const cancelFolderLink = useCallback(() => {
-    setPendingFolderLink(null);
-  }, []);
-
-  // Re-grant permission against the already-stored handle. The
-  // `requestPermission` call requires a user gesture, which is why
-  // this lives in a click handler rather than the boot effect.
-  const reconnectFolder = useCallback(async () => {
-    if (auth.kind !== "signed-in") return;
-    const userId = auth.user.id;
-    const stored = await loadDirectoryHandle(userId);
-    if (!stored) {
-      // No stored handle to re-grant against — escalate to the full
-      // picker flow instead.
-      void connectFolder();
-      return;
-    }
-    const status = await ensurePermission(stored, "readwrite", true);
-    if (status === "granted") {
-      setFolderHandle(stored);
-      setFolderReconnectNeeded(false);
-    }
-  }, [auth, connectFolder]);
-
-  // Mirror the folder's current bytes back into the browser backend
-  // (same pattern as the Dropbox / GDrive disconnect), then clear the
-  // handle from IDB and flip state. Best-effort: a stale browser copy
-  // is a few-edit regression at worst, since `useUserDataStorage`
-  // saves on debounce.
-  const disconnectFolder = useCallback(async () => {
-    if (auth.kind !== "signed-in") return;
-    const userId = auth.user.id;
-    if (folderHandle) {
-      try {
-        const folderInner = createFolderAdapter({
-          directoryHandle: folderHandle,
-        });
-        const folder = wrapForActive(folderInner, encryption, passwordRef);
-        const snap = await folder.load();
-        if (snap) {
-          const browserInner = createIdbAdapter({ userId });
-          const browserAdapter = wrapForActive(
-            browserInner,
-            encryption,
-            passwordRef,
-          );
-          await browserAdapter.save(snap.text);
-        }
-      } catch (err) {
-        log.error("folder disconnect: failed to mirror to browser", err);
-      }
-    }
-    await clearDirectoryHandle(userId);
-    setBackend(userId, "browser");
-    setFolderHandle(null);
-    setFolderReconnectNeeded(false);
-    setBackendState("browser");
-  }, [auth, folderHandle, encryption, passwordRef]);
 
   // Flip the per-user encryption preference, re-wrapping the bytes
   // already in the active backend so the next load isn't reading the

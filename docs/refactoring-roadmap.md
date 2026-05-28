@@ -81,21 +81,35 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **`useStorageBackend.ts` (1256 lines)** — split into
-  `useDropboxAuth`, `useGdriveAuth`, `useFolderHandle`, leaving the
-  main hook as an orchestrator. Natural seams at `buildInnerAdapter`
-  lines 99–120 — each branch is ~15 lines with its own token-refresh
-  / permission logic. Each sub-hook becomes <300 lines and testable
-  in isolation. Token-refresh side channel
-  (`dropboxRefreshTokenRef`) is a correctness hazard: a ref bypasses
-  React state so the adapter `useMemo` doesn't rebuild on refresh.
-  **Severity: 8.** Disentanglement caveats: `disconnectCloud` is
-  shared between Dropbox + GDrive, `pendingCloudLink` flows through
-  OAuth completion in two places, and `loadSourceText` is consumed
-  by both `connectGdrive` and the Dropbox OAuth effect — sub-hooks
+- **`useStorageBackend.ts` (1018 lines) per-backend auth split** —
+  split into ~~`useFolderHandle`~~, `useDropboxAuth`, `useGdriveAuth`,
+  leaving the main hook as an orchestrator. The folder slice
+  (`useFolderHandle`) landed 2026-05 (see Landed), shrinking the
+  outer hook from 1253 → 1018 lines and pulling out the
+  FileSystemDirectoryHandle lifecycle (IDB-backed handle storage,
+  boot-time permission probe, pick-and-link flow, post-revoke
+  reconnect path, disconnect mirror back to browser). The
+  `wrapForActive` utility relocated to its own file
+  (`src/storage/wrap-for-active.ts`) so per-backend hooks can call
+  it without importing from the orchestrator. What remains is the
+  `useDropboxAuth` and `useGdriveAuth` splits — each owns its OAuth
+  start / complete / refresh flow, token state, the per-backend
+  disconnect, and the cloud-link confirmation seeding. Natural
+  seams at `buildInnerAdapter` lines 92–101 — each branch is ~10
+  lines with its own token-refresh / permission logic.
+  Token-refresh side channel (`dropboxRefreshTokenRef`) is a
+  correctness hazard: a ref bypasses React state so the adapter
+  `useMemo` doesn't rebuild on refresh. **Severity: 7** (was 8 —
+  dropped one band now that the folder slice is out; the cloud
+  splits are still high-leverage but no longer the whole picture).
+  Disentanglement caveats: `disconnectCloud` is shared between
+  Dropbox + GDrive, `pendingCloudLink` flows through OAuth
+  completion in two places, and `loadSourceText` is consumed by
+  both `connectGdrive` and the Dropbox OAuth effect — sub-hooks
   must take injected callbacks for these orchestration points
-  rather than owning them. Storage hot path — **needs smoke-testing
-  all four backends before merging.**
+  rather than owning them. Storage hot path — **needs
+  smoke-testing of the affected cloud backend before merging each
+  slice.**
 
 - **`AppShell.tsx` modal-mount registry** — the JSX-relocation half
   of the original severity-8 modal-host item landed 2026-05 (see
@@ -343,6 +357,35 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`useFolderHandle` extraction from `useStorageBackend.ts`**
+  (2026-05): the folder-backend lifecycle lifted into its own hook
+  at `src/storage/useFolderHandle.ts` — the
+  `FileSystemDirectoryHandle` state, the `folderHandleLoaded` /
+  `folderReconnectNeeded` flags, the `pendingFolderLink` state, the
+  boot-time IDB-restore + `queryPermission` probe effect, the
+  `commitFolderLink` / `connectFolder` / `resolveFolderLink` /
+  `cancelFolderLink` / `reconnectFolder` / `disconnectFolder`
+  callbacks, plus a `markPermissionLost` callback the live adapter
+  calls when an in-flight save hits a revoked grant.
+  `useStorageBackend.ts` declares a `folderHandleRef` early and
+  passes it to `useFolderHandle`, which keeps it synced with its
+  state — this lets `buildSourceRawAdapter` (which has to be defined
+  before the folder hook runs because `loadSourceText` depends on
+  it) read the current handle without a circular hook-order
+  dependency. The shared `wrapForActive` utility relocated to its
+  own file (`src/storage/wrap-for-active.ts`) so per-backend hooks
+  can call it without importing from the orchestrator (which would
+  become circular once cloud hooks are extracted too).
+  `useStorageBackend.ts` drops from 1253 → 1018 lines. **Closes
+  the `useFolderHandle` arm of the original severity-8 per-backend
+  split**; `useDropboxAuth` and `useGdriveAuth` remain Pending with
+  a narrower scope (severity 7). Pure refactor — no behaviour
+  change; the boot-time probe, the both-sides-have-data dialog,
+  the post-revoke reconnect path, the disconnect-mirror-to-browser
+  flow, and the permission-lost handler are all preserved verbatim.
+  **Needs smoke-testing of the folder backend** (pick a folder,
+  edit, reload, revoke permission via browser settings, reconnect)
+  before merge; IDB / Dropbox / GDrive paths are unaffected.
 - **`useSaveStateMachine` sibling-hook extraction from
   `useUserDataStorage.ts`** (2026-05): the save pipeline lifted into
   its own hook at `src/storage/useSaveStateMachine.ts` — the
