@@ -177,6 +177,9 @@ type Props = {
   // budget rows through `bulkUpdate` and history rows through
   // `updateHistoryEntry` (with `noCompany` cleared on assignment).
   onSetRowCompany: (row: Row, companyId: string | null) => void;
+  // Row-level "omit company" writer; only meaningful for synthesized
+  // history rows (the only shape carrying `entry.noCompany`).
+  onSetRowNoCompany: (row: Row, next: boolean) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -360,6 +363,7 @@ export function BudgetPage({
   onMergeConflictUserRows,
   onTriageMonth,
   onSetRowCompany,
+  onSetRowNoCompany,
   data,
 }: Props) {
   const t = useT();
@@ -711,6 +715,13 @@ export function BudgetPage({
       flashRow(row.id);
     },
     [onSetRowCompany, flashRow],
+  );
+  const handleSetRowNoCompany = useCallback(
+    (row: Row, next: boolean) => {
+      onSetRowNoCompany(row, next);
+      flashRow(row.id);
+    },
+    [onSetRowNoCompany, flashRow],
   );
 
   // Flash newly-added rows. Diffs `item.rows` ids across renders and
@@ -1340,6 +1351,7 @@ export function BudgetPage({
                     columns={decoratedItem.columns}
                     balances={balances}
                     onSetRowCompany={handleSetRowCompany}
+                    onSetRowNoCompany={handleSetRowNoCompany}
                     selectMode={selectMode}
                     selectedIds={selectedIds}
                     canTransfer={canTransfer}

@@ -43,6 +43,16 @@ type Props = {
   // budget row (dispatches `bulkUpdate`) or a synthesized history row
   // (dispatches `updateHistoryEntry` with `noCompany` cleared).
   onSetCompany?: (companyId: string | null) => void;
+  // Current omit-company flag for the row, mirrored from
+  // `HistoryEntry.noCompany` by `synthesizeHistoryRow`. Drives the
+  // "omitted" trigger state of the inline CompanyPicker. Undefined for
+  // non-history rows; passing it alongside `onSetNoCompany` is what
+  // surfaces the "Omit company" option in the picker.
+  noCompany?: boolean;
+  // Pre-bound (no rowId) writer for the row's omit-company flag.
+  // Undefined for non-history rows — the picker hides the option when
+  // this callback is absent.
+  onSetNoCompany?: (next: boolean) => void;
   // True when this row is a synthesized side of a Transfer. Disables
   // every editor (the row is sourced from `data.transfers`, not the
   // budget's `item.rows`) and swaps the description leading glyph to a
@@ -128,6 +138,8 @@ function CellImpl({
   entryType,
   company,
   onSetCompany,
+  noCompany,
+  onSetNoCompany,
   isTransfer,
   peerName,
   outgoing,
@@ -222,6 +234,8 @@ function CellImpl({
               onChange={onChange}
               onCommit={onCommit}
               onSetCompany={onSetCompany}
+              noCompany={noCompany}
+              onSetNoCompany={onSetNoCompany}
               onCreateCompany={onCreateCompany}
             />
           );
@@ -269,6 +283,8 @@ function CellImpl({
           onChange={onChange}
           onCommit={onCommit}
           onSetCompany={onSetCompany}
+          noCompany={noCompany}
+          onSetNoCompany={onSetNoCompany}
           onCreateCompany={onCreateCompany}
         />
       );

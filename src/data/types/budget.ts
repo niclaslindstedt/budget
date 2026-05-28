@@ -121,4 +121,10 @@ export type Row = {
   // to the company name; when no company is set, it falls back to the
   // type name; absent both, to the raw bank text for history rows.
   companyId?: string;
+  // Runtime-only mirror of `HistoryEntry.noCompany`, propagated by
+  // `synthesizeHistoryRow` so the description popover's inline picker
+  // can offer "Omit company" with the right initial state. Never
+  // persisted on user-authored rows — only history-derived rows
+  // carry it.
+  noCompany?: boolean;
 };

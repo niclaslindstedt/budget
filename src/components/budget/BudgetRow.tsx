@@ -23,6 +23,11 @@ type Props = {
   // company is assigned). Pre-bound to a per-row closure here so
   // `BudgetCell` and the inline picker stay agnostic of row type.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
+  // Row-level "omit company" writer. Only synthesized history rows
+  // carry the underlying flag, so the parent's handler is a no-op for
+  // user-authored budget rows; the cell wiring suppresses the picker's
+  // `onOmitChange` for those rows anyway, so the no-op never fires.
+  onSetRowNoCompany: (row: Row, next: boolean) => void;
   selectMode: boolean;
   selected: boolean;
   // Whether the transfer button on this row can be used. False when
@@ -101,6 +106,7 @@ function BudgetRowImpl({
   columns,
   balances,
   onSetRowCompany,
+  onSetRowNoCompany,
   selectMode,
   selected,
   canTransfer,
@@ -132,6 +138,10 @@ function BudgetRowImpl({
   const handleSetCompany = useCallback(
     (companyId: string | null) => onSetRowCompany(row, companyId),
     [onSetRowCompany, row],
+  );
+  const handleSetNoCompany = useCallback(
+    (next: boolean) => onSetRowNoCompany(row, next),
+    [onSetRowNoCompany, row],
   );
   const { swiped, setSwiped, touchHandlers } = useRowSwipe({
     disabled: selectMode,
@@ -380,6 +390,8 @@ function BudgetRowImpl({
           entryType={entryType}
           company={company}
           onSetCompany={handleSetCompany}
+          noCompany={isHistory ? (row.noCompany ?? false) : undefined}
+          onSetNoCompany={isHistory ? handleSetNoCompany : undefined}
           isTransfer={isTransfer}
           peerName={row.peerAccountName ?? ""}
           outgoing={isOutgoing}
