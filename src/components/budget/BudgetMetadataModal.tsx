@@ -467,30 +467,11 @@ export function BudgetMetadataModal({
                   variant="field"
                   companies={companies}
                   selectedId={companyId}
-                  onSelect={(id) => {
-                    setCompanyId(id);
-                    // Picking a company contradicts "no company
-                    // needed" — clear the opt-out so the checkbox
-                    // mirrors reality.
-                    if (id !== null) setNoCompany(false);
-                  }}
+                  noCompany={noCompany}
+                  onSelect={setCompanyId}
+                  onOmitChange={setNoCompany}
                   onCreate={onCreateCompany}
                 />
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-                  <input
-                    type="checkbox"
-                    checked={noCompany}
-                    onChange={(e) => {
-                      const next = e.target.checked;
-                      setNoCompany(next);
-                      // Checking the opt-out clears any company
-                      // pick; unchecking leaves the picker as-is.
-                      if (next) setCompanyId(null);
-                    }}
-                    className="h-3.5 w-3.5 cursor-pointer"
-                  />
-                  {t("metadata.noCompanyLabel")}
-                </label>
                 <span className="text-xs text-muted">
                   {noCompany
                     ? t("metadata.noCompanyHint")

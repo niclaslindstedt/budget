@@ -7,7 +7,6 @@ const metadata: MetadataCatalog = {
   typeLabel: "Typ",
   companyLabel: "Företag",
   companyHint: "Tagga företaget som tog emot pengarna.",
-  noCompanyLabel: "Inget företag behövs",
   noCompanyHint: "Denna post dyker inte upp här igen för att företag saknas.",
   descriptionLabel: "Beskrivning",
   descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
@@ -15,7 +14,7 @@ const metadata: MetadataCatalog = {
   skip: "Hoppa över",
   needsTypePrompt: "Välj en typ för att spara.",
   needsCompanyPrompt:
-    'Välj ett företag — eller bocka i "Inget företag behövs" — för att spara.',
+    'Välj ett företag — eller "Utelämna företag" — för att spara.',
   allCaught: "Allt är ifyllt.",
   allCaughtHint:
     "Varje importerad post på detta konto har en typ eller en egen beskrivning.",

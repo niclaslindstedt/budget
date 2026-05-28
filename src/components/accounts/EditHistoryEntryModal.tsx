@@ -42,6 +42,7 @@ type Props = {
     userDescription: string;
     userTypeId: string | null;
     userCompanyId: string | null;
+    noCompany: boolean;
   }) => void;
   // Toggle the primary-income flag for the merchant this entry
   // represents. The reducer captures the entry's normalised
@@ -79,6 +80,7 @@ export function EditHistoryEntryModal({
   const initialDescription = entry?.userDescription ?? "";
   const initialTypeId = entry?.userTypeId ?? null;
   const initialCompanyId = entry?.userCompanyId ?? null;
+  const initialNoCompany = entry?.noCompany ?? false;
 
   // Resolve the persisted primary-income flag for this entry's
   // normalised description. Anchor day falls back to the user's
@@ -95,6 +97,7 @@ export function EditHistoryEntryModal({
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const [noCompany, setNoCompany] = useState(initialNoCompany);
   const [isPrimaryIncome, setIsPrimaryIncome] = useState(initialIsPrimary);
   const [anchorDayText, setAnchorDayText] = useState(String(initialAnchorDay));
 
@@ -105,6 +108,7 @@ export function EditHistoryEntryModal({
     setDescription(initialDescription);
     setTypeId(initialTypeId);
     setCompanyId(initialCompanyId);
+    setNoCompany(initialNoCompany);
     setIsPrimaryIncome(initialIsPrimary);
     setAnchorDayText(String(initialAnchorDay));
   });
@@ -118,8 +122,9 @@ export function EditHistoryEntryModal({
       userDescription: description.trim(),
       userTypeId: typeId,
       userCompanyId: companyId,
+      noCompany,
     });
-  }, [entry, description, typeId, companyId, onSubmit]);
+  }, [entry, description, typeId, companyId, noCompany, onSubmit]);
 
   if (!open || !entry) return null;
 
@@ -178,7 +183,9 @@ export function EditHistoryEntryModal({
               variant="field"
               companies={companies}
               selectedId={companyId}
+              noCompany={noCompany}
               onSelect={setCompanyId}
+              onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
             />
           </div>

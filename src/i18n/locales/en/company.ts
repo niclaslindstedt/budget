@@ -5,6 +5,8 @@ const company = {
   pickCompanyEllipsis: "Pick a company…",
   addCompany: "Add company",
   clearCompany: "Clear company",
+  omitCompany: "Omit company",
+  omittedLabel: "Company omitted",
   newCompany: "New company",
   noCompaniesYet: "No companies yet.",
   name: "Name",

@@ -20,6 +20,7 @@ type Result = {
     userDescription: string;
     userTypeId: string | null;
     userCompanyId: string | null;
+    noCompany: boolean;
   }) => void;
   onSetHistoryEntryPrimaryIncome: (
     entryId: string,
@@ -39,6 +40,7 @@ export function useHistoryEntryActions({
       userDescription: string;
       userTypeId: string | null;
       userCompanyId: string | null;
+      noCompany: boolean;
     }) => {
       if (!activeAccountId || !historyEditPrompt) return;
       dispatch({

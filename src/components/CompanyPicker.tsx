@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Building2, Check, ChevronDown, Plus, X } from "lucide-react";
+import { Ban, Building2, Check, ChevronDown, Plus, X } from "lucide-react";
 
 import type { Company } from "../data/types";
 import {
@@ -31,7 +31,18 @@ type Props = {
   rowId?: string;
   companies: readonly Company[];
   selectedId: string | null;
+  // Current per-entry opt-out state. When true the trigger renders an
+  // "omitted" pill and the dropdown shows the "Omit company" item as
+  // already-checked. Ignored unless `onOmitChange` is also wired.
+  noCompany?: boolean;
   onSelect: (id: string | null) => void;
+  // Toggle the per-entry omit flag. When provided, the dropdown grows
+  // an "Omit company" row at the top — picking it sets the flag and
+  // clears any selected company; picking a real company afterwards
+  // auto-clears the flag (they're mutually exclusive). Only history-
+  // entry editors wire this; rule / new-entry surfaces leave it off
+  // and the row stays hidden.
+  onOmitChange?: (next: boolean) => void;
   onCreate: (draft: Omit<Company, "id">) => Company;
   // Render style — kept for parity with `TypePicker`. Today every
   // call site uses "field", but the chip variant is here so a
@@ -44,7 +55,9 @@ export function CompanyPicker({
   rowId,
   companies,
   selectedId,
+  noCompany,
   onSelect,
+  onOmitChange,
   onCreate,
   variant = "field",
   placeholder,
@@ -82,10 +95,23 @@ export function CompanyPicker({
   const handlePick = useCallback(
     (id: string | null) => {
       onSelect(id);
+      // Picking a real company contradicts an active omit — clear it
+      // so the two states never disagree on screen.
+      if (id !== null && noCompany && onOmitChange) onOmitChange(false);
       close();
     },
-    [onSelect, close],
+    [onSelect, close, noCompany, onOmitChange],
   );
+
+  const handleToggleOmit = useCallback(() => {
+    if (!onOmitChange) return;
+    const next = !noCompany;
+    onOmitChange(next);
+    // Enabling omit clears any currently selected company; toggling it
+    // back off leaves the picker empty (the user can pick or clear next).
+    if (next && selectedId !== null) onSelect(null);
+    close();
+  }, [onOmitChange, noCompany, selectedId, onSelect, close]);
 
   const beginCreating = useCallback(() => {
     setOpen(false);
@@ -124,6 +150,13 @@ export function CompanyPicker({
             <Building2 size={14} aria-hidden focusable={false} />
             <span className="min-w-0 truncate">{selected.name}</span>
           </span>
+        ) : noCompany && onOmitChange ? (
+          <span className="inline-flex min-w-0 items-center gap-2 text-muted">
+            <Ban size={14} aria-hidden focusable={false} />
+            <span className="min-w-0 truncate">
+              {t("company.omittedLabel")}
+            </span>
+          </span>
         ) : isChip ? (
           <span
             className="inline-flex items-center justify-center rounded-full border border-dashed border-muted px-1.5 py-0.5 text-muted"
@@ -155,6 +188,35 @@ export function CompanyPicker({
         rowId={rowId}
       >
         <ul role="listbox" className="max-h-72 overflow-auto py-1">
+          {onOmitChange && (
+            <li className="border-b border-line">
+              <button
+                type="button"
+                role="option"
+                aria-selected={noCompany === true}
+                onClick={handleToggleOmit}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Ban
+                  size={14}
+                  aria-hidden
+                  focusable={false}
+                  className="shrink-0 text-muted"
+                />
+                <span className="min-w-0 truncate">
+                  {t("company.omitCompany")}
+                </span>
+                {noCompany && (
+                  <Check
+                    size={14}
+                    className="ml-auto text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                )}
+              </button>
+            </li>
+          )}
           {sorted.length === 0 && (
             <li className="px-3 py-2 text-xs text-muted">
               {t("company.noCompaniesYet")}

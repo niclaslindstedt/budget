@@ -11,8 +11,8 @@ pre-populates with whatever is already resolved for the entry (from
 rules, hints, or per-entry overrides) so you see existing metadata
 and can edit it instead of typing it again — Save only commits what
 you actually changed, and surfaces a hint plus a one-shot pulse on
-the next blocker if you tap it before there's anything to save. A
-"No company needed" toggle marks entries
+the next blocker if you tap it before there's anything to save. An
+"Omit company" item at the top of the company dropdown marks entries
 where tagging a merchant doesn't apply (salary, internal transfers,
 …) so they stop surfacing here over a missing company. Built for the
 spare-minute case on mobile — entries covered by a match rule or a
