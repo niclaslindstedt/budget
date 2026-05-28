@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      branch_ref:
+        description: "Optional branch to also deploy at /branches/<slug>/. Leave blank to deploy only / and /preview/."
+        required: false
+        type: string
+        default: ""
   # Allow release.yml to chain into us after a tag is pushed. The tag
   # passes in via `release_ref`; otherwise we resolve the latest `v*`
   # tag with `git describe`. Before the first release ever exists,
@@ -57,6 +63,35 @@ jobs:
             echo "No release tag found — will serve main at /."
           fi
 
+      # ---- Resolve optional branch deploy ----
+      # `branch_ref` is only set on workflow_dispatch. A push to main
+      # (or a workflow_call from release.yml) leaves it empty, which
+      # drops any previously-deployed /branches/<slug>/ slot from the
+      # artifact — Pages effectively garbage-collects branch deploys
+      # the moment a fresh production publish lands without them.
+      - name: Resolve branch deploy
+        id: branch
+        run: |
+          REF="${{ inputs.branch_ref }}"
+          if [ -z "$REF" ]; then
+            echo "ref=" >> "$GITHUB_OUTPUT"
+            echo "slug=" >> "$GITHUB_OUTPUT"
+            echo "has_branch=false" >> "$GITHUB_OUTPUT"
+            echo "No branch_ref input — skipping /branches/<slug>/ slot."
+            exit 0
+          fi
+          SLUG=$(printf '%s' "$REF" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9-]+/-/g; s/-+/-/g; s/^-//; s/-$//')
+          if [ -z "$SLUG" ]; then
+            echo "branch_ref '$REF' slugifies to an empty string — refusing to deploy." >&2
+            exit 1
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "has_branch=true" >> "$GITHUB_OUTPUT"
+          echo "Resolved branch deploy: $REF -> /branches/$SLUG/"
+
       # ---- Production build (latest tag, root path) ----
       - name: Checkout production tag
         if: steps.tag.outputs.has_release == 'true'
@@ -74,8 +109,9 @@ jobs:
           VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
-          # Production-only: the preview build below intentionally
-          # omits this so /preview/ never includes the tracker.
+          # Production-only: the preview and branch builds below
+          # intentionally omit this so non-production slots never
+          # include the tracker.
           VITE_GOATCOUNTER_ENDPOINT: ${{ secrets.VITE_GOATCOUNTER_ENDPOINT }}
 
       - name: Stash production dist
@@ -110,6 +146,45 @@ jobs:
           # braces — either guard alone would suffice.
           VITE_GOATCOUNTER_ENDPOINT: ${{ steps.tag.outputs.has_release == 'true' && '' || secrets.VITE_GOATCOUNTER_ENDPOINT }}
 
+      # ---- Optional branch build (/branches/<slug>/ path) ----
+      - name: Stash preview dist
+        if: steps.branch.outputs.has_branch == 'true'
+        run: mv dist dist-preview
+
+      - name: Checkout branch ref
+        if: steps.branch.outputs.has_branch == 'true'
+        run: |
+          git fetch origin "${{ steps.branch.outputs.ref }}"
+          git checkout "${{ steps.branch.outputs.ref }}"
+
+      - name: Reinstall deps for branch ref
+        if: steps.branch.outputs.has_branch == 'true'
+        run: npm ci
+
+      - name: Build branch
+        if: steps.branch.outputs.has_branch == 'true'
+        run: make build
+        env:
+          VITE_BASE_PATH: /branches/${{ steps.branch.outputs.slug }}/
+          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
+          # Branch deploys are noindex + tracker-free, same posture as
+          # the /preview/ slot.
+          VITE_GOATCOUNTER_ENDPOINT: ""
+
+      - name: Stash branch dist
+        if: steps.branch.outputs.has_branch == 'true'
+        run: mv dist dist-branch
+
+      - name: Restore preview dist
+        if: steps.branch.outputs.has_branch == 'true'
+        run: mv dist-preview dist
+
+      - name: Return to triggering ref after branch build
+        if: steps.branch.outputs.has_branch == 'true'
+        run: git checkout ${{ github.sha }}
+
       # ---- Merge ----
       - name: Merge builds
         run: |
@@ -118,12 +193,19 @@ jobs:
             mv dist-prod dist
             mkdir -p dist/preview
             # Only one CNAME may exist in the artifact (Pages picks the
-            # root). Drop the preview copy before merging in.
+            # root). Drop the per-slot copies before merging in.
             rm -f dist-preview/CNAME
             cp -R dist-preview/. dist/preview/
             echo "Merged: / = ${{ steps.tag.outputs.ref }}, /preview/ = ${{ github.sha }}"
           else
             echo "No release yet — serving main at / (no /preview/ slot)."
+          fi
+          if [ -d dist-branch ]; then
+            SLUG="${{ steps.branch.outputs.slug }}"
+            mkdir -p "dist/branches/$SLUG"
+            rm -f dist-branch/CNAME
+            cp -R dist-branch/. "dist/branches/$SLUG/"
+            echo "Merged: /branches/$SLUG/ = ${{ steps.branch.outputs.ref }}"
           fi
 
       - uses: actions/configure-pages@v5
