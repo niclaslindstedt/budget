@@ -2,7 +2,9 @@ import { useMemo, useRef, useState } from "react";
 
 import {
   buildSearchIndex,
+  EMPTY_FILTER,
   type SearchEntry,
+  type SearchFilter,
   type SearchSort,
 } from "../../../data/search";
 import type { UserData } from "../../../data/types";
@@ -37,6 +39,12 @@ type Result = {
   // likely looking for in a ledger that grows over time.
   searchSort: SearchSort;
   setSearchSort: (sort: SearchSort) => void;
+  // Filter refinements survive modal close like `searchQuery` / sort do
+  // — session-only, never persisted. Applied at query time inside
+  // `runSearch`, so changing the filter does NOT invalidate
+  // `searchIndex` (its cache key is still just data + lang).
+  searchFilter: SearchFilter;
+  setSearchFilter: (filter: SearchFilter) => void;
   // Memoised search index against the whole `data` reference so it
   // rebuilds on every persisted edit but stays stable between renders
   // when nothing changed. `runSearch` filters this on every keystroke
@@ -63,6 +71,7 @@ export function useSearchModal({ data }: Params): Result {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchSort, setSearchSort] = useState<SearchSort>("date-desc");
+  const [searchFilter, setSearchFilter] = useState<SearchFilter>(EMPTY_FILTER);
   const [scrollToRowRequest, setScrollToRowRequest] =
     useState<ScrollToRowRequest | null>(null);
   // Lazy: the search index is a flattened projection of every sheet's
@@ -101,6 +110,8 @@ export function useSearchModal({ data }: Params): Result {
     setSearchQuery,
     searchSort,
     setSearchSort,
+    searchFilter,
+    setSearchFilter,
     searchIndex,
     scrollToRowRequest,
     setScrollToRowRequest,

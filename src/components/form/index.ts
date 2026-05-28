@@ -4,5 +4,6 @@ export { ClearableInput } from "./ClearableInput";
 export { ClearableTextarea } from "./ClearableTextarea";
 export { FormSection } from "./FormSection";
 export { Radio, RadioGroup } from "./Radio";
+export { RangeSlider } from "./RangeSlider";
 export { SelectPicker, type SelectOption } from "./SelectPicker";
 export { SignedAmountInput } from "./SignedAmountInput";
