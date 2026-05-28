@@ -25,26 +25,46 @@ import {
 } from "./src/seo/siteConfig";
 import { emitChangelogData } from "./vite/changelog-plugin";
 
-// Two-build deploy: production goes at "/", a preview of `main` goes at
-// "/preview/". `pages.yml` invokes vite twice with different
-// `VITE_BASE_PATH` values and merges the two `dist/` trees into a
-// single Pages artifact. `IS_PREVIEW` flips on every persistence
-// namespace inside the app at runtime (see `src/utils/build-env.ts`),
-// keeping production data untouched by preview migrations.
+// Multi-build deploy: production goes at "/", a preview of `main` goes
+// at "/preview/", and an optional per-branch build goes at
+// "/branches/<slug>/". `pages.yml` invokes vite once per slot with
+// different `VITE_BASE_PATH` values and merges the resulting `dist/`
+// trees into a single Pages artifact. `IS_PREVIEW` flips on for every
+// non-production slot (preview and branch builds), so the gates that
+// already exist — noindex meta, goatcounter skip, Dev settings tab —
+// fire for branch builds too. Per-slot data isolation is finer-grained:
+// `STORAGE_NS` is "" for production, "preview" for `/preview/`, and
+// `branch-<slug>` for `/branches/<slug>/`, so each branch keeps its
+// own localStorage / cloud / IndexedDB world distinct from preview AND
+// from every other branch.
 const BASE_PATH = process.env.VITE_BASE_PATH || "/";
 const IS_PREVIEW = BASE_PATH !== "/";
+const BRANCH_MATCH = BASE_PATH.match(/^\/branches\/([^/]+)\/$/);
+const IS_BRANCH = BRANCH_MATCH !== null;
+const BRANCH_SLUG = BRANCH_MATCH?.[1] ?? "";
+const STORAGE_NS = IS_BRANCH
+  ? `branch-${BRANCH_SLUG}`
+  : BASE_PATH === "/preview/"
+    ? "preview"
+    : "";
 
 // Short build identifier rendered next to the "budget" header on
 // the page and suffixed onto the browser-tab title. Shape is
-// `<pkg.version>[.<run>][-pre]`, where `<run>` is the
+// `<pkg.version>[.<run>][-<suffix>]`, where `<run>` is the
 // `GITHUB_RUN_NUMBER` GitHub Actions populates automatically (so
-// local builds drop it) and `-pre` only appears on the preview
-// slot (`VITE_BASE_PATH !== "/"`).
+// local builds drop it). `<suffix>` is `pre` for the `/preview/`
+// slot and `<branch-slug>` for a `/branches/<slug>/` slot, omitted
+// for the production `/` slot.
 const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
+const BUILD_SUFFIX = IS_BRANCH
+  ? BRANCH_SLUG
+  : BASE_PATH === "/preview/"
+    ? "pre"
+    : "";
 const BUILD_LABEL =
   pkg.version +
   (GITHUB_RUN_NUMBER ? `.${GITHUB_RUN_NUMBER}` : "") +
-  (IS_PREVIEW ? "-pre" : "");
+  (BUILD_SUFFIX ? `-${BUILD_SUFFIX}` : "");
 
 function escapeHtmlAttr(s: string): string {
   return s
@@ -298,22 +318,25 @@ function emitPathAliasWithSeo(
 }
 
 // Rewrite the static `apple-mobile-web-app-title` meta in `index.html`
-// to "Budget pre" for the preview build. iOS shows this string under
-// the home-screen icon; without per-slot differentiation, a user who
-// installs both `/` and `/preview/` sees two identical "Budget" tiles.
-// The rewrite runs in `transformIndexHtml`, which fires before
-// vite-plugin-pwa's own head-injection and before the alias-emitting
-// `closeBundle` step — so the SEO alias HTMLs inherit the patched
-// value automatically.
+// for non-production slots. iOS shows this string under the
+// home-screen icon; without per-slot differentiation, a user who
+// installs `/`, `/preview/`, and any `/branches/<slug>/` would see
+// identical "Budget" tiles. Preview becomes "Budget pre"; a branch
+// build becomes `Budget <slug>` (truncated to keep iOS's tile label
+// readable). The rewrite runs in `transformIndexHtml`, which fires
+// before vite-plugin-pwa's own head-injection and before the
+// alias-emitting `closeBundle` step — so the SEO alias HTMLs inherit
+// the patched value automatically.
 function patchAppleTitle(): Plugin {
   return {
     name: "patch-apple-mobile-title",
     apply: "build",
     transformIndexHtml(html) {
       if (!IS_PREVIEW) return html;
+      const suffix = IS_BRANCH ? BRANCH_SLUG.slice(0, 10) : "pre";
       return html.replace(
         '<meta name="apple-mobile-web-app-title" content="Budget" />',
-        '<meta name="apple-mobile-web-app-title" content="Budget pre" />',
+        `<meta name="apple-mobile-web-app-title" content="Budget ${escapeHtmlAttr(suffix)}" />`,
       );
     },
   };
@@ -370,10 +393,35 @@ function injectGoatcounter(): Plugin {
 // toast never renders, and the page silently runs old JS until the
 // next full navigation.
 function pwaPlugin(): Plugin[] {
-  const id = BASE_PATH; // "/" or "/preview/" — W3C app identity
-  const name = IS_PREVIEW ? "Budget (preview)" : "Budget";
-  const shortName = IS_PREVIEW ? "Budget pre" : "Budget";
-  const cacheId = IS_PREVIEW ? "budget-preview" : "budget";
+  // W3C app identity is BASE_PATH — distinct per slot ("/",
+  // "/preview/", "/branches/<slug>/") so each install registers as
+  // its own app.
+  const id = BASE_PATH;
+  const slotLabel = IS_BRANCH
+    ? BRANCH_SLUG
+    : BASE_PATH === "/preview/"
+      ? "preview"
+      : "";
+  const name = slotLabel ? `Budget (${slotLabel})` : "Budget";
+  const shortName = IS_BRANCH
+    ? `Budget ${BRANCH_SLUG.slice(0, 10)}`
+    : BASE_PATH === "/preview/"
+      ? "Budget pre"
+      : "Budget";
+  const cacheId = IS_BRANCH
+    ? `budget-branch-${BRANCH_SLUG}`
+    : BASE_PATH === "/preview/"
+      ? "budget-preview"
+      : "budget";
+
+  // Belt-and-braces denylist alongside the W3C scope rule: never
+  // claim navigation fallbacks outside this slot, even if a stale
+  // registration ever had a broader scope.
+  const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const navigateFallbackDenylist =
+    BASE_PATH === "/"
+      ? [/^\/preview\//, /^\/branches\//]
+      : [new RegExp(`^/(?!${escapeRegex(BASE_PATH.slice(1))})`)];
 
   return VitePWA({
     registerType: "prompt",
@@ -423,13 +471,7 @@ function pwaPlugin(): Plugin[] {
       globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff2}"],
       globIgnores: ["**/*.map", "robots.txt", "sitemap.xml", "llms.txt"],
       navigateFallback: `${BASE_PATH}index.html`,
-      navigateFallbackDenylist: [
-        // Defensive: never claim the *other* slot under any
-        // circumstance, even if a stale registration somehow had a
-        // broader scope. The more-specific-scope-wins rule already
-        // handles this; the regex is belt-and-braces.
-        IS_PREVIEW ? /^\/(?!preview\/).+/ : /^\/preview\//,
-      ],
+      navigateFallbackDenylist,
       cleanupOutdatedCaches: true,
       cacheId,
     },
@@ -469,5 +511,6 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __IS_PREVIEW__: JSON.stringify(IS_PREVIEW),
     __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
+    __STORAGE_NS__: JSON.stringify(STORAGE_NS),
   },
 });

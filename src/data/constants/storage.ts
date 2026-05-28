@@ -1,20 +1,21 @@
-import { IS_PREVIEW } from "../../utils/build-env";
+import { STORAGE_NS } from "../../utils/build-env";
 
 // Build-time namespace segment inserted into every persistence key,
-// cloud path, and IndexedDB DB name when the bundle is the `/preview/`
-// build. Production = "" (untouched legacy keys); preview = "preview".
-// The single flag drives `nsKey` / `nsCloudPath` / `nsIdbName` so
-// adding a new persisted surface only requires routing it through
-// these helpers — no further wiring.
+// cloud path, and IndexedDB DB name. Production = "" (untouched
+// legacy keys); preview = "preview"; branch deploy = `branch-<slug>`.
+// The string drives `nsKey` / `nsCloudPath` / `nsIdbName` so adding a
+// new persisted surface only requires routing it through these
+// helpers — no further wiring.
 //
-// Why this matters: the `/` slot serves the latest released tag and
-// the `/preview/` slot serves current `main`. Without isolation, a
-// visit to `/preview/` would migrate the shared localStorage / cloud
-// file to the (possibly newer) preview schema; reloading `/` would
-// then fail to read its own data. Namespacing every key keeps the
-// two builds in completely separate worlds on the same machine and
-// the same cloud account.
-const STORAGE_NS = IS_PREVIEW ? "preview" : "";
+// Why this matters: the `/` slot serves the latest released tag, the
+// `/preview/` slot serves current `main`, and any `/branches/<slug>/`
+// slot serves an in-flight feature branch. Without isolation, a visit
+// to `/preview/` (or any branch slot) would migrate the shared
+// localStorage / cloud file to the (possibly newer) schema; reloading
+// `/` would then fail to read its own data. Namespacing every key
+// keeps each slot in a completely separate world on the same machine
+// and the same cloud account, including between distinct branch
+// deploys.
 
 // Insert the namespace segment after the leading "budget." in any
 // storage key, e.g. "budget.users.v1" → "budget.preview.users.v1".

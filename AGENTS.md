@@ -732,21 +732,24 @@ runtime by `src/data/validate.ts`. When you change it:
 
 ## Service-worker rollout invariants
 
-The app installs as a PWA from both deploy slots. Production at `/`
-and staging at `/preview/` register as **two independent apps** on
-any device — never one shared install. Every identity-bearing field
-branches on `IS_PREVIEW` inside `pwaPlugin()` in `vite.config.ts`:
+The app installs as a PWA from every deploy slot. Production at `/`,
+staging at `/preview/`, and any optional branch slot at
+`/branches/<slug>/` each register as **independent apps** on any
+device — never one shared install. Every identity-bearing field
+branches per-slot inside `pwaPlugin()` in `vite.config.ts`:
 
-- `manifest.id`, `manifest.scope`, `manifest.start_url` — `/` vs
-  `/preview/`. Distinct `id` is what makes Chrome / Android treat
-  the two installs as different apps; without it they dedupe.
+- `manifest.id`, `manifest.scope`, `manifest.start_url` — `/`,
+  `/preview/`, or `/branches/<slug>/`. Distinct `id` is what makes
+  Chrome / Android treat the installs as different apps; without it
+  they dedupe.
 - `manifest.name` / `short_name` — `Budget` vs `Budget (preview)` /
-  `Budget pre`.
-- `workbox.cacheId` — `budget` vs `budget-preview`. Sets the Cache
-  Storage namespace prefix so the two slots can't collide.
+  `Budget pre` vs `Budget (<slug>)` / `Budget <slug>` for branches.
+- `workbox.cacheId` — `budget` vs `budget-preview` vs
+  `budget-branch-<slug>`. Sets the Cache Storage namespace prefix so
+  the slots can't collide.
 - `apple-mobile-web-app-title` — patched from `Budget` to `Budget pre`
-  for the preview build via the `patchAppleTitle` Vite plugin so iOS
-  home-screen tiles are visually distinguishable.
+  (preview) or `Budget <slug>` (branch) by the `patchAppleTitle` Vite
+  plugin so iOS home-screen tiles are visually distinguishable.
 
 **Update strategy.** `registerType: "prompt"` — no `skipWaiting`,
 no `clientsClaim`. A new service worker installs and sits in the
@@ -897,25 +900,45 @@ triggers `pages.yml`, which:
    pre-release-pipeline behaviour, so the change was safe to land
    ahead of the first dispatch.
 2. Returns to `main` and builds with `VITE_BASE_PATH=/preview/`.
-3. Merges the two `dist/` trees into one Pages artifact, deleting
-   the preview's `CNAME` first (only the root copy is allowed).
+3. If a `branch_ref` workflow_dispatch input is set, checks out
+   that ref and builds with `VITE_BASE_PATH=/branches/<slug>/`
+   where `<slug>` is the lowercased branch name with non-`[a-z0-9-]`
+   runs collapsed to single hyphens.
+4. Merges the resulting `dist/` trees into one Pages artifact,
+   deleting the per-slot `CNAME` copies first (only the root copy is
+   allowed).
 
-The preview build sets `<meta name="robots" content="noindex,nofollow">`
-on every emitted alias so search engines never index a second copy
-of the app, and the root `public/robots.txt` carries an explicit
-`Disallow: /preview/` so well-behaved crawlers skip the slot
-entirely instead of fetching it and discovering the meta tag.
-`sitemap.xml` and `llms.txt` are emitted by the production build
-only — the preview build short-circuits both in `emitPathAliasWithSeo`
-so staging URLs never appear in either discovery surface. JSON-LD
-`@id`s remain canonical (point at the production `SITE_URL`) so the
-preview doesn't fork structured-data entities.
+The preview and branch builds set
+`<meta name="robots" content="noindex,nofollow">` on every emitted
+alias so search engines never index a second copy of the app, and
+the root `public/robots.txt` carries explicit `Disallow: /preview/`
+
+- `Disallow: /branches/` lines so well-behaved crawlers skip both
+  slots entirely instead of fetching them and discovering the meta
+  tag. `sitemap.xml` and `llms.txt` are emitted by the production
+  build only — non-production builds short-circuit both in
+  `emitPathAliasWithSeo` so staging URLs never appear in either
+  discovery surface. JSON-LD `@id`s remain canonical (point at the
+  production `SITE_URL`) so the preview / branch slots don't fork
+  structured-data entities.
+
+**Branch deploys are opt-in and ephemeral.** A branch slot only
+ships when a maintainer dispatches `pages.yml` with the
+`branch_ref` input set. The next push to `main` (or any subsequent
+dispatch without `branch_ref`) re-publishes the Pages artifact
+without that `/branches/<slug>/` directory, so the slot disappears
+automatically when the work merges. Multiple branches can be
+deployed across separate dispatches, but each dispatch only ships
+the single slug it was invoked with — earlier branch slugs are not
+preserved across runs.
 
 **Data isolation.** Vite's `define` block exposes
-`__IS_PREVIEW__` to the bundle when `VITE_BASE_PATH !== "/"`.
-That flips on a `STORAGE_NS = "preview"` constant inside
-`src/data/constants/storage.ts`, which threads through three helpers
-that every persistence surface must be routed through:
+`__IS_PREVIEW__` (true for any non-root `VITE_BASE_PATH`) and
+`__STORAGE_NS__` (the empty string for production, `"preview"` for
+the preview slot, `branch-<slug>` for a branch slot) to the bundle.
+The namespace string drives a single constant inside
+`src/data/constants/storage.ts`, which threads through three
+helpers that every persistence surface must be routed through:
 
 - `nsKey(key)` — for any `localStorage` / `sessionStorage` key
   starting with `budget.` (data buckets, users registry, backend
@@ -926,28 +949,40 @@ that every persistence surface must be routed through:
   filenames. Dropbox writes to `/preview/budget.json` and
   `/preview/backups/` inside the same registered app folder;
   GDrive writes to `budget-preview.json` and a
-  `budget-preview-backups` folder in My Drive.
+  `budget-preview-backups` folder in My Drive. Branch slots get
+  `/branch-<slug>/budget.json` and `budget-branch-<slug>.json`
+  respectively.
 - `nsIdbName(name)` — for IndexedDB database names. The
-  FileSystem-handle DB becomes `budget-folder-handles-preview`.
+  FileSystem-handle DB becomes `budget-folder-handles-preview` (or
+  `budget-folder-handles-branch-<slug>`).
 
 When introducing a new persisted surface, route it through the
 appropriate helper from day one. Forgetting one is a silent way to
-break the "preview cannot touch production data" invariant.
+break the "non-production slots cannot touch production data"
+invariant (which extends to "each branch slot cannot touch any
+other slot's data" as well).
 
 The OAuth redirect URI helper at
 `src/storage/oauth-pkce.ts:37-39` already derives the URI from
 `window.location.origin + pathname`, so the preview flow requests
 `https://budget.niclaslindstedt.se/preview` as its redirect
-automatically. **Manual one-time setup:** add that URL to the
-authorized redirect URI list on both the Dropbox app console and
-the Google Cloud OAuth consent screen, or the preview's "Connect"
-buttons return an `unauthorized redirect` error from the provider.
-Documented in the release skill's pre-flight checklist.
+automatically. Branch slots request
+`https://budget.niclaslindstedt.se/branches/<slug>` likewise.
+**Manual one-time setup:** add the preview URL to the authorized
+redirect URI list on both the Dropbox app console and the Google
+Cloud OAuth consent screen, or the preview's "Connect" buttons
+return an `unauthorized redirect` error from the provider. Branch
+slots are typically tested without cloud sync (the slug-derived
+redirect URL is not registered with the providers); if a branch
+needs to exercise the OAuth flow, register that branch's redirect
+URL separately and deregister it once the branch merges. Documented
+in the release skill's pre-flight checklist.
 
 The user-picked folder backend (File System Access API) is the one
 surface where the namespace can't intercede — the user chose the
-directory. Picking the same directory in both builds is on them;
-the in-app folder picker would write to `budget.json` either way.
+directory. Picking the same directory in different slots is on
+them; the in-app folder picker would write to `budget.json` either
+way.
 
 ## OSS*SPEC.md exceptions — the website \_is* the project
 
