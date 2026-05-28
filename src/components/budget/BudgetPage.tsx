@@ -644,7 +644,7 @@ export function BudgetPage({
         if (row.getAttribute("data-row-flash") === "true") {
           row.removeAttribute("data-row-flash");
         }
-      }, 950);
+      }, 1150);
     };
     // Small delay so a freshly-added row has time to mount before we
     // query for it. Same rationale as the scroll-to-row pulse below.
@@ -697,6 +697,20 @@ export function BudgetPage({
       flashRow(rowId);
     },
     [onCommitCell, flashRow],
+  );
+
+  // Company picker in the description popover lives outside the
+  // generic onUpdateCell / onCommitCell path — it has its own dispatch
+  // surface so it can route budget rows through `bulkUpdate` and
+  // history rows through `updateHistoryEntry`. Wrap it here so picking
+  // a company (or clearing the existing one) gets the same heartbeat
+  // confirmation as the cell-level edits.
+  const handleSetRowCompany = useCallback(
+    (row: Row, companyId: string | null) => {
+      onSetRowCompany(row, companyId);
+      flashRow(row.id);
+    },
+    [onSetRowCompany, flashRow],
   );
 
   // Flash newly-added rows. Diffs `item.rows` ids across renders and
@@ -1325,7 +1339,7 @@ export function BudgetPage({
                     rows={monthRows}
                     columns={decoratedItem.columns}
                     balances={balances}
-                    onSetRowCompany={onSetRowCompany}
+                    onSetRowCompany={handleSetRowCompany}
                     selectMode={selectMode}
                     selectedIds={selectedIds}
                     canTransfer={canTransfer}
