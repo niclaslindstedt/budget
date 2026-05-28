@@ -4,6 +4,7 @@ import { findColumnByType } from "./sheet";
 import type {
   AccountBudget,
   Category,
+  Company,
   EntryType,
   Row,
   Sheet,
@@ -30,14 +31,16 @@ export type SearchEntry = {
   description: string;
   typeName: string;
   categoryName: string;
+  companyName: string;
   amount: number | null;
-  // Pre-lowercased mirrors of the three searchable string fields.
+  // Pre-lowercased mirrors of the searchable string fields.
   // `runSearch` previously lowercased every haystack on every
   // keystroke; hoisting the work into `buildSearchIndex` collapses
   // the per-keystroke cost to a plain `indexOf` on the cached form.
   descriptionLc: string;
   typeNameLc: string;
   categoryNameLc: string;
+  companyNameLc: string;
 };
 
 // Where the match landed and the offset / length inside the matched
@@ -45,7 +48,7 @@ export type SearchEntry = {
 // range because the score is distance-based, not substring-based.
 export type SearchMatch =
   | {
-      field: "description" | "typeName" | "categoryName";
+      field: "description" | "typeName" | "categoryName" | "companyName";
       start: number;
       end: number;
     }
@@ -73,6 +76,8 @@ export function buildSearchIndex(data: UserData): SearchEntry[] {
   for (const t of types) typesById.set(t.id, t);
   const categoriesById = new Map<string, Category>();
   for (const c of categories) categoriesById.set(c.id, c);
+  const companiesById = new Map<string, Company>();
+  for (const c of data.companies) companiesById.set(c.id, c);
   const accountsById = new Map<string, string>();
   for (const a of data.accounts) accountsById.set(a.id, a.name);
 
@@ -104,8 +109,13 @@ export function buildSearchIndex(data: UserData): SearchEntry[] {
         const type =
           row.typeId !== undefined ? typesById.get(row.typeId) : undefined;
         const category = type ? categoriesById.get(type.categoryId) : undefined;
+        const company =
+          row.companyId !== undefined
+            ? companiesById.get(row.companyId)
+            : undefined;
         const typeName = type?.name ?? "";
         const categoryName = category?.name ?? "";
+        const companyName = company?.name ?? "";
         entries.push({
           sheetId: sheet.id,
           sheetName: sheet.name,
@@ -117,10 +127,12 @@ export function buildSearchIndex(data: UserData): SearchEntry[] {
           description,
           typeName,
           categoryName,
+          companyName,
           amount,
           descriptionLc: description.toLowerCase(),
           typeNameLc: typeName.toLowerCase(),
           categoryNameLc: categoryName.toLowerCase(),
+          companyNameLc: companyName.toLowerCase(),
         });
       }
     }
@@ -155,15 +167,21 @@ function visibleRowsFor(
 const AMOUNT_TOLERANCE = 0.2;
 
 // Score weights for text matches, lower = better. Description hits
-// outrank type-name hits, which outrank category-name hits — the
-// description is the most specific identifier on a row.
+// outrank everything else — it's the most specific identifier on a
+// row — followed by company name, type name, and category name in
+// that order. Company sits above type / category because the
+// merchant the row paid is a more specific signal than the bucket
+// it falls into, but below description because the user's own
+// words on the row beat a tag they share with every other row to
+// the same merchant.
 const FIELD_WEIGHT: Record<
-  "description" | "typeName" | "categoryName",
+  "description" | "companyName" | "typeName" | "categoryName",
   number
 > = {
   description: 0,
-  typeName: 1,
-  categoryName: 2,
+  companyName: 1,
+  typeName: 2,
+  categoryName: 3,
 };
 
 // Cap the result list so a query like "a" doesn't render thousands of
@@ -189,10 +207,11 @@ export function runSearch(
   // every keystroke; `buildSearchIndex` now caches the lc forms so
   // each text-match check collapses to a plain `indexOf`.
   const TEXT_FIELDS: {
-    name: "description" | "typeName" | "categoryName";
-    lcKey: "descriptionLc" | "typeNameLc" | "categoryNameLc";
+    name: "description" | "typeName" | "categoryName" | "companyName";
+    lcKey: "descriptionLc" | "typeNameLc" | "categoryNameLc" | "companyNameLc";
   }[] = [
     { name: "description", lcKey: "descriptionLc" },
+    { name: "companyName", lcKey: "companyNameLc" },
     { name: "typeName", lcKey: "typeNameLc" },
     { name: "categoryName", lcKey: "categoryNameLc" },
   ];

@@ -186,6 +186,12 @@ function ResultRow({
         <span className="flex items-baseline gap-2 text-xs text-muted">
           <span className="truncate">
             {entry.sheetName}
+            {entry.companyName ? (
+              <>
+                {" · "}
+                {renderHighlighted(entry.companyName, match, "companyName")}
+              </>
+            ) : null}
             {entry.typeName ? (
               <>
                 {" · "}
@@ -218,7 +224,7 @@ function ResultRow({
 function renderHighlighted(
   text: string,
   match: SearchMatch,
-  field: "description" | "typeName" | "categoryName",
+  field: "description" | "typeName" | "categoryName" | "companyName",
 ) {
   if (match.field !== field) return text;
   const { start, end } = match;

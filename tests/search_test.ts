@@ -6,6 +6,7 @@ import type {
   AccountBudget,
   Category,
   Column,
+  Company,
   EntryType,
   Row,
   Sheet,
@@ -20,7 +21,11 @@ const cols: Column[] = [
 
 function withItem(
   rows: Row[],
-  options: { types?: EntryType[]; categories?: Category[] } = {},
+  options: {
+    types?: EntryType[];
+    categories?: Category[];
+    companies?: Company[];
+  } = {},
 ): UserData {
   const item: AccountBudget = {
     id: "ab",
@@ -43,7 +48,7 @@ function withItem(
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],
-    companies: [],
+    companies: options.companies ?? [],
     categories: options.categories ?? [],
     types: options.types ?? [],
     hiddenPresetTypeIds: [],
@@ -111,6 +116,86 @@ describe("runSearch — text matches", () => {
     // r2's description starts with "Groceries"; r1 only matches via
     // typeName. Description hits outrank typeName hits.
     expect(out[0].entry.rowId).toBe("r2");
+  });
+
+  it("matches against the row's company name", () => {
+    const hm: Company = { id: "hm", name: "H&M" };
+    const data = withItem(
+      [
+        {
+          id: "r1",
+          cells: { d: "2026-05-01", x: "Sunglasses", a: -299 },
+          companyId: "hm",
+        },
+        { id: "r2", cells: { d: "2026-05-02", x: "Lunch", a: -120 } },
+      ],
+      { companies: [hm] },
+    );
+    const idx = buildSearchIndex(data);
+    const out = runSearch(idx, "H&M");
+    expect(out).toHaveLength(1);
+    expect(out[0].entry.rowId).toBe("r1");
+    expect(out[0].match.field).toBe("companyName");
+  });
+
+  it("description hits outrank company hits at the same position", () => {
+    const ica: Company = { id: "ica", name: "ICA" };
+    const data = withItem(
+      [
+        {
+          id: "r1",
+          cells: { d: "2026-05-01", x: "Lunch", a: -120 },
+          companyId: "ica",
+        },
+        { id: "r2", cells: { d: "2026-05-02", x: "ICA Maxi", a: -250 } },
+      ],
+      { companies: [ica] },
+    );
+    const idx = buildSearchIndex(data);
+    const out = runSearch(idx, "ica");
+    // r1 matches via companyName ("ICA") and r2 via description ("ICA
+    // Maxi"); description is the higher-priority field so r2 ranks
+    // ahead of r1 even though both hits land at offset 0.
+    expect(out[0].entry.rowId).toBe("r2");
+    expect(out[0].match.field).toBe("description");
+    expect(out[1].entry.rowId).toBe("r1");
+    expect(out[1].match.field).toBe("companyName");
+  });
+
+  it("company hits outrank type-name hits at the same position", () => {
+    const groc: EntryType = {
+      id: "t1",
+      name: "Spotify",
+      color: "#fff",
+      glyph: "music",
+      categoryId: "cat",
+    };
+    const cat: Category = { id: "cat", name: "Entertainment", color: "#fff" };
+    const spotify: Company = { id: "sp", name: "Spotify" };
+    const data = withItem(
+      [
+        {
+          id: "r1",
+          cells: { d: "2026-05-01", x: "Music sub", a: -119 },
+          companyId: "sp",
+        },
+        {
+          id: "r2",
+          cells: { d: "2026-05-02", x: "Misc", a: -50 },
+          typeId: "t1",
+        },
+      ],
+      { companies: [spotify], types: [groc], categories: [cat] },
+    );
+    const idx = buildSearchIndex(data);
+    const out = runSearch(idx, "spotify");
+    // Both rows match "spotify" at offset 0, r1 via companyName and
+    // r2 via typeName. Company is higher priority than type, so r1
+    // ranks first.
+    expect(out[0].entry.rowId).toBe("r1");
+    expect(out[0].match.field).toBe("companyName");
+    expect(out[1].entry.rowId).toBe("r2");
+    expect(out[1].match.field).toBe("typeName");
   });
 
   it("returns nothing for empty queries", () => {
