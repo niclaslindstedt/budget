@@ -26,6 +26,7 @@ import {
   tryReadUserDataFromText,
 } from "./local";
 import { createSaveChain } from "./save-chain";
+import { useLoadState } from "./useLoadState";
 import { type ActionHistoryEntry, useUndoRedo } from "./useUndoRedo";
 
 // Re-exported so existing consumers that import the type from this
@@ -199,7 +200,7 @@ export type UserDataStorage<Action> = {
 // reachable state explicit in one place and makes the load / save /
 // reload / watch / conflict / shrink-warning paths share the same
 // vocabulary.
-type StatusAction =
+export type StatusAction =
   | { kind: "load-start" }
   | { kind: "save-start" }
   // Save completed against the remote; the timestamp is read off the
@@ -627,177 +628,23 @@ export function useUserDataStorage<Action extends { type: string }>(
     [adapter, data, migrationCtx],
   );
 
-  // Async load. Skipped when `loadSync` already handed us data.
-  useEffect(() => {
-    if (adapter.loadSync) {
-      // When the previous adapter was async (no `loadSync`) and its
-      // in-flight load got cancelled by this adapter swap, `hasLoadedRef`
-      // is still false and state is the empty `freshUserData()` seeded
-      // by the `useState` initializer with status:"loading". Run the
-      // sync load now so the swap actually populates state — otherwise
-      // the spinner never clears.
-      if (!hasLoadedRef.current) {
-        const snap = adapter.loadSync();
-        log.info(
-          `adapter mount [${adapter.id}] sync — recovering from cancelled async load ${
-            snap
-              ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"}`
-              : "<empty>"
-          }`,
-        );
-        lastSnapshot.current = snap;
-        skipNextSave.current = true;
-        hasLoadedRef.current = true;
-        const parsed = snap
-          ? tryReadUserDataFromText(snap.text, migrationCtx)
-          : ({ data: freshUserData(), status: "fresh" } as const);
-        setData(parsed.data);
-        resetHistory(parsed.data);
-        setLastSavedData(snap ? parsed.data : null);
-        if (parsed.status === "parse-failed") {
-          dispatchStatus({ kind: "parse-error", message: parsed.error });
-        } else {
-          dispatchStatus({ kind: "idle" });
-        }
-        return;
-      }
-      log.info(`adapter mount [${adapter.id}] sync — load skipped`);
-      return;
-    }
-    let cancelled = false;
-    dispatchStatus({ kind: "load-start" });
-    log.info(`adapter mount [${adapter.id}] async — load start`);
-    const start = performance.now();
-    adapter
-      .load()
-      .then((snap) => {
-        const ms = (performance.now() - start).toFixed(0);
-        if (cancelled) {
-          log.info(`load ok (${ms}ms) [${adapter.id}] but cancelled`);
-          return;
-        }
-        log.info(
-          `load ok (${ms}ms) [${adapter.id}] ${
-            snap
-              ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"} offline=${Boolean(snap.offline)}`
-              : "<empty>"
-          }`,
-        );
-        // Whether this is the first load for this hook instance.
-        // Adapter swaps (browser → folder, dropbox → gdrive) re-run
-        // the effect with `hasLoadedRef` already true; the very
-        // first call after mount finds it false.
-        const wasInitialLoad = !hasLoadedRef.current;
-        lastSnapshot.current = snap;
-        hasLoadedRef.current = true;
-        if (snap) {
-          // Loaded the user's bytes — these are the canonical state,
-          // so suppress the immediate save the upcoming setData would
-          // otherwise trigger (no point round-tripping what we just
-          // read).
-          skipNextSave.current = true;
-          const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
-          setData(parsed.data);
-          resetHistory(parsed.data);
-          setLastSavedData(parsed.data);
-          if (parsed.status === "parse-failed") {
-            // Real bytes came back from the adapter but this build
-            // can't parse them. The autosave guard refuses to write
-            // the fresh fallback over the user's real data on disk —
-            // the user reconnects via the sync details panel.
-            dispatchStatus({ kind: "parse-error", message: parsed.error });
-          } else if (snap.offline) {
-            dispatchStatus({ kind: "save-offline" });
-          } else {
-            dispatchStatus({ kind: "idle" });
-          }
-        } else if (wasInitialLoad) {
-          // No bytes on disk for a brand-new user. The `useState`
-          // initializer already seeded `data` with `freshUserData()`,
-          // so re-setting here would only blow away any dispatches
-          // that landed during the async load — most importantly,
-          // `recordAchievementUnlock("localHero")` fired by the
-          // App.tsx auth handler before the watcher subscribed to
-          // the bus. Leaving state alone lets the unlock survive
-          // long enough to reach the next save.
-          //
-          // Each of those dispatches re-ran the save effect while
-          // `hasLoadedRef.current` was still false, so every save
-          // bailed at the gate. We deliberately leave
-          // `skipNextSave.current` at false and re-publish `data` with
-          // a fresh top-level reference so the save effect runs one
-          // more time with the gate finally open — that pass picks up
-          // every change since mount and writes them out as the
-          // user's first persisted snapshot.
-          setLastSavedData(null);
-          dispatchStatus({ kind: "idle" });
-          setData((prev) => ({ ...prev }));
-        } else {
-          // Adapter swap to a backend that has no data yet — the
-          // previous adapter's bytes are stale, so wipe to a fresh
-          // baseline (parity with the snap-bearing branch's
-          // `setData(parsed.data)`).
-          skipNextSave.current = true;
-          const fresh = freshUserData();
-          setData(fresh);
-          resetHistory(fresh);
-          setLastSavedData(null);
-          dispatchStatus({ kind: "idle" });
-        }
-      })
-      .catch((err: unknown) => {
-        const ms = (performance.now() - start).toFixed(0);
-        if (cancelled) {
-          log.info(`load failed (${ms}ms) [${adapter.id}] but cancelled`, err);
-          return;
-        }
-        if (err instanceof ConflictError) {
-          log.warn(
-            `load conflict (${ms}ms) [${adapter.id}] remoteRev=${
-              err.remote.revision ?? "<none>"
-            } hasLocal=${Boolean(err.local)}`,
-          );
-          const remote = readUserDataFromText(err.remote.text, migrationCtx);
-          const localText = err.local?.text;
-          const local = localText
-            ? readUserDataFromText(localText, migrationCtx)
-            : freshUserData();
-          lastSnapshot.current = err.remote;
-          // Seed in-memory state with the local copy so the user
-          // sees what they were editing while the modal asks them
-          // to pick a side; the alternative (seeding remote) would
-          // make "keep mine" look like it discarded their work.
-          hasLoadedRef.current = true;
-          skipNextSave.current = true;
-          setData(local);
-          resetHistory(local);
-          setLastSavedData(localText ? local : null);
-          dispatchStatus({ kind: "conflict", local, remote });
-          return;
-        }
-        if (err instanceof AuthError) {
-          log.warn(`load auth failed (${ms}ms) [${adapter.id}]`, err);
-          dispatchStatus({ kind: "auth-error", message: err.message });
-          return;
-        }
-        log.error(`load failed (${ms}ms) [${adapter.id}]`, err);
-        dispatchStatus({
-          kind: "error",
-          message: err instanceof Error ? err.message : String(err),
-        });
-      });
-    return () => {
-      cancelled = true;
-      log.info(`adapter unmount [${adapter.id}] (in-flight load cancelled)`);
-      // Drop any pending rate-limit resume timer so a backend swap
-      // (or sign-out) doesn't leave a setTimeout firing into the new
-      // adapter and flipping its status to `idle` mid-load.
-      if (throttleResumeRef.current !== null) {
-        window.clearTimeout(throttleResumeRef.current);
-        throttleResumeRef.current = null;
-      }
-    };
-  }, [adapter, resetHistory, migrationCtx]);
+  const { reload } = useLoadState({
+    adapter,
+    data,
+    migrationCtx,
+    beforeSerializeRef,
+    performSave,
+    statusRef,
+    lastSnapshotRef: lastSnapshot,
+    skipNextSaveRef: skipNextSave,
+    hasLoadedRef,
+    pendingTimerRef,
+    throttleResumeRef,
+    setData,
+    setLastSavedData,
+    dispatchStatus,
+    resetHistory,
+  });
 
   // Debounced save. Each state change schedules a write; subsequent
   // changes inside the debounce window replace the pending write.
@@ -982,139 +829,6 @@ export function useUserDataStorage<Action extends { type: string }>(
     // would re-surface the conflict.
     adapter.markSynced?.(lastSnapshot.current);
   }, [status, adapter, resetHistory]);
-
-  // Manual refresh from the adapter — pull-to-refresh, "reload" button.
-  // Two phases: (1) flush any pending debounced save so the reload
-  // doesn't quietly drop unsynced local edits; (2) re-issue
-  // `adapter.load()` and replace in-memory state. Mirrors the initial-
-  // load body (lines 558-639) and the watch callback (lines 813-833)
-  // — same lastSnapshot / skipNextSave / hasLoadedRef bookkeeping so
-  // the autosave effect doesn't immediately push the freshly-loaded
-  // bytes back out. Skips the `load-start` flip the initial load
-  // does — that triggers the full-screen `AppLoading`
-  // splash, which is wrong for a manual refresh on top of an already-
-  // populated app. The pull-to-refresh indicator owns its own
-  // "refreshing…" pip instead.
-  const reload = useCallback(async (): Promise<void> => {
-    log.info(
-      `reload requested [${adapter.id}] status=${statusRef.current.kind}`,
-    );
-    if (pendingTimerRef.current !== null) {
-      window.clearTimeout(pendingTimerRef.current);
-      pendingTimerRef.current = null;
-    }
-    // If the in-memory state differs from the last bytes we read or
-    // wrote, push them through the adapter first so a fresh remote
-    // read doesn't clobber them. The save can surface a conflict /
-    // auth error / parse error; in those cases the existing
-    // resolution UI owns the flow and we bail before reloading.
-    const transform = beforeSerializeRef.current;
-    const currentText = serializeUserData(transform ? transform(data) : data);
-    const lastText = lastSnapshot.current?.text ?? null;
-    const isDirty = lastText !== null && currentText !== lastText;
-    if (
-      isDirty &&
-      hasLoadedRef.current &&
-      !isBailStatus(statusRef.current) &&
-      statusRef.current.kind !== "saving"
-    ) {
-      log.info(`reload: flushing dirty state before pull [${adapter.id}]`);
-      await performSave(currentText, data, () => false);
-      if (isBailStatus(statusRef.current)) {
-        log.info(
-          `reload aborted — status=${statusRef.current.kind} after pre-flush save`,
-        );
-        return;
-      }
-    }
-    log.info(`reload start [${adapter.id}]`);
-    const start = performance.now();
-    try {
-      const snap = await adapter.load();
-      const ms = (performance.now() - start).toFixed(0);
-      log.info(
-        `reload ok (${ms}ms) [${adapter.id}] ${
-          snap
-            ? `bytes=${snap.text.length} rev=${snap.revision ?? "<none>"} offline=${Boolean(snap.offline)}`
-            : "<empty>"
-        }`,
-      );
-      lastSnapshot.current = snap;
-      skipNextSave.current = true;
-      hasLoadedRef.current = true;
-      const parsed = snap
-        ? tryReadUserDataFromText(snap.text, migrationCtx)
-        : ({ data: freshUserData(), status: "fresh" } as const);
-      setData(parsed.data);
-      resetHistory(parsed.data);
-      setLastSavedData(snap ? parsed.data : null);
-      if (parsed.status === "parse-failed") {
-        dispatchStatus({ kind: "parse-error", message: parsed.error });
-      } else if (snap?.offline) {
-        dispatchStatus({ kind: "save-offline" });
-      } else {
-        dispatchStatus({ kind: "idle" });
-      }
-    } catch (err) {
-      const ms = (performance.now() - start).toFixed(0);
-      if (err instanceof ConflictError) {
-        log.warn(
-          `reload conflict (${ms}ms) [${adapter.id}] remoteRev=${
-            err.remote.revision ?? "<none>"
-          } hasLocal=${Boolean(err.local)}`,
-        );
-        const remote = readUserDataFromText(err.remote.text, migrationCtx);
-        const local = err.local
-          ? readUserDataFromText(err.local.text, migrationCtx)
-          : data;
-        lastSnapshot.current = err.remote;
-        dispatchStatus({ kind: "conflict", local, remote });
-        return;
-      }
-      if (err instanceof AuthError) {
-        log.warn(`reload auth failed (${ms}ms) [${adapter.id}]`, err);
-        dispatchStatus({ kind: "auth-error", message: err.message });
-        return;
-      }
-      log.error(`reload failed (${ms}ms) [${adapter.id}]`, err);
-      dispatchStatus({
-        kind: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }, [adapter, data, performSave, resetHistory, migrationCtx]);
-
-  // Remote-change subscription. Cloud adapters call this when
-  // another device pushes; local adapters typically don't supply it.
-  useEffect(() => {
-    if (!adapter.watch) return;
-    log.info(`watch subscribe [${adapter.id}]`);
-    const unsubscribe = adapter.watch((snap) => {
-      log.info(
-        `watch fired [${adapter.id}] bytes=${snap.text.length} rev=${
-          snap.revision ?? "<none>"
-        } offline=${Boolean(snap.offline)}`,
-      );
-      lastSnapshot.current = snap;
-      skipNextSave.current = true;
-      hasLoadedRef.current = true;
-      const parsed = tryReadUserDataFromText(snap.text, migrationCtx);
-      setData(parsed.data);
-      resetHistory(parsed.data);
-      setLastSavedData(parsed.data);
-      if (parsed.status === "parse-failed") {
-        dispatchStatus({ kind: "parse-error", message: parsed.error });
-      } else if (snap.offline) {
-        dispatchStatus({ kind: "save-offline" });
-      } else {
-        dispatchStatus({ kind: "idle" });
-      }
-    });
-    return () => {
-      log.info(`watch unsubscribe [${adapter.id}]`);
-      unsubscribe();
-    };
-  }, [adapter, resetHistory, migrationCtx]);
 
   // Ref-equality dirty check. Every reducer action produces a new
   // top-level `UserData` reference, so `data !== lastSavedData` is the
