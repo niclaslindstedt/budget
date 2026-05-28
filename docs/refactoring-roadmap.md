@@ -81,6 +81,52 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
+- **`Row` as a discriminated union (`kind: "user" | "historic" | "transfer" | "correction"`)** —
+  `Row` is currently one type with ~15 optional fields and uses _field
+  presence_ as an implicit discriminator: `transferId` set → synthesized
+  transfer row; `historyEntryId` set → synthesized history row;
+  `isCorrection` true → balance correction; none of the above → vanilla
+  user-authored row. **93 sites** across `src/components/`,
+  `src/components/AppShell/`, and `src/data/` re-assert the convention
+  by hand (`if (row.transferId || row.historyEntryId || row.isCorrection) return`,
+  `if (row.historyEntryId) { /* history path */ } else { /* user path */ }`,
+  etc.). The most common shape is a bail-on-non-user guard at the top
+  of every callback that only makes sense on a user-authored row — and
+  those guards rot silently when a new synthesized kind lands (every
+  consumer that wasn't updated treats the new kind as a vanilla user
+  row). TypeScript also can't narrow the related fields: the synthesis
+  guarantees that an `historyEntryId`-set row also carries
+  `bankDescription` / `descriptionPlaceholder`, and a `transferId`-set
+  row also carries `peerAccountId` / `peerAccountName`, but the type
+  doesn't encode that, so every consumer re-checks. **Severity: 7.**
+  The cost compounds on the feature wave — savings projections, loan
+  amortization schedules, scenario rows, and prognosis projections all
+  want to synthesize "kind-of-budget-row-but-not-user-authored" rows
+  into the same view; each one would add another field to the implicit
+  discriminator set and another ~93 guards to keep in sync.
+  - Plan: introduce a `kind: "user" | "historic" | "transfer" | "correction"`
+    discriminator on `Row` and split into `UserRow | HistoricRow |
+TransferRow | CorrectionRow`. `HistoricRow` carries
+    `historyEntryId` / `bankDescription` / `descriptionPlaceholder` as
+    required fields; `TransferRow` carries `transferId` /
+    `peerAccountId` / `peerAccountName`. `synthesizeHistoryRow` and
+    `synthesizeTransferRow` set the `kind`; user-authored rows from
+    `item.rows[]` get `kind: "user"` (or `"correction"` derived from
+    `isCorrection`) when they enter the synthesis pipeline.
+    **Persisted shape is unchanged** — the four synthesized-only fields
+    are runtime-only (see comments on `src/data/types/budget.ts:49-77`),
+    and the discriminator is derived at synthesis time. Migrate the 93
+    call sites by directory: budget components first, then AppShell
+    hooks, then `src/data/` consumers.
+  - Risk: medium-low. Diff is large (multi-PR plan is mandatory —
+    aim for one directory per PR). No data risk because nothing
+    persists. The main hazard is missing a call site during migration
+    and leaving it on the old field-presence shape; once the union
+    lands and the bail-on-non-user guards become `switch (row.kind)`
+    statements, TS exhaustiveness flags the rest. Smoke-test history
+    row interactions (inline edit, promote-to-series, splits,
+    metadata mode, "needs attention" filter) after each PR.
+
 - **`AppShell.tsx` modal-mount registry** — the JSX-relocation half
   of the original severity-8 modal-host item landed 2026-05 (see
   Landed: three modal hosts). AppShell dropped from 1849 to ~930
@@ -136,6 +182,91 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 5–6 — friction
 
+- **`AppShell.tsx` budget-row mutation callbacks should lift into
+  `useRowMutations`** — AppShell still owns ~150 lines of budget-row
+  mutation callbacks that close over `data.history`,
+  `companyTypeSuggestions`, `activeItem.accountId`, and `effectiveSettings`:
+  `onToggleRowTransfer` (22 lines, `AppShell.tsx:339-360`),
+  `onSetRowCompany` (55 lines, `:437-491`), `onSetRowNoCompany`
+  (19 lines, `:497-515`), `onCorrectionDeleteRequest` (24 lines,
+  `:516-539`), `onEditHistoryRequest` + `onUpdateHistoryEntry`
+  (26 lines, `:403-428`). Each one has the same "if this is a
+  synthesized history row, dispatch `updateHistoryEntry`; else
+  dispatch a budget-row action" branch shape. `useRowMutations`
+  (`src/components/AppShell/hooks/useRowMutations.ts`) already owns
+  7 similar mutation callbacks; these are page-routing siblings that
+  belong in the same hook. AppShell grew from 930 → 1007 lines since
+  the modal-host split landed (see Landed), and these callbacks are
+  the largest cluster of code that has crept back in. **Severity: 5.**
+  Lands well after the `Row` discriminator union (7-8 band) — each
+  branch becomes a `switch (row.kind)` arm and the helpers become
+  much shorter. Without the union, the extraction is still worthwhile
+  (it just preserves the field-presence shape).
+  - Plan: move the 6 callbacks into `useRowMutations` (or a sibling
+    `useHistoryRowMutations` if the merge inflates the hook beyond
+    300 lines). The hook signature widens to take `data.history`,
+    `companyTypeSuggestions`, and `activeItem.accountId` /
+    `activeItem.columns` / `effectiveSettings`. AppShell drops
+    ~150 lines and the prop bundle threaded into `BudgetModalHost`
+    / `BudgetPage` carries the same callbacks unchanged.
+  - Risk: low. Pure refactor — no behaviour change, no new code
+    paths. Smoke-test history-row toggle, set-company-on-history-row
+    (auto-typeId path), correction-delete flow, edit-history-entry
+    modal opener.
+
+- **`BudgetPage.tsx` display-machinery hooks** — `BudgetPage.tsx`
+  dropped from 1540 → 1326 lines after the `computeBudgetState`
+  consolidation (see Landed), but ~400 lines of display-side
+  machinery still live in the page as inline refs / effects /
+  callbacks. They fall into 5 cohesive sub-systems, each big enough
+  to lift into its own hook under `src/components/budget/`:
+  - **`useRowFlashing`** (~125 lines, `BudgetPage.tsx:474-596`) —
+    the heartbeat pulse on cell commit + new-row add: `flashRow`,
+    `handleUpdateCell` wrapper (with the history-row routing branch),
+    `handleCommitCell`, `handleSetRowCompany`, `handleSetRowNoCompany`,
+    plus the `prevRowIdsRef` diff effect that fires on single-row
+    additions.
+  - **`useScrollToToday`** (~80 lines, `BudgetPage.tsx:720-800`) —
+    `scrollTargetRef`, `lastScrolledKey`, the `scrollToToday`
+    callback with its rAF + 3s polling refine, plus the
+    sheet+currentMonth-keyed auto-scroll effect.
+  - **`useRevealAnchorPreservation`** (~65 lines,
+    `BudgetPage.tsx:802-865`) — the `captureRevealAnchor` callback,
+    the `onShowMoreFutureClick` / `onShowMoreHistoryClick` callbacks,
+    and the 8-frame `useLayoutEffect` that re-applies the scroll
+    delta as `BudgetMonthTable` placeholders settle.
+  - **`useVisibleMonthRange`** (~75 lines,
+    `BudgetPage.tsx:867-940`) — the IntersectionObserver setup
+    that tracks `oldest` / `newest` visible months + the
+    `todayButtonDirection` memo + `showTodayButton` derivation.
+  - **`useScrollToRowRequest`** (~50 lines,
+    `BudgetPage.tsx:942-997`) — the effect that responds to a
+    search-modal `scrollToRowRequest` (grows `extraHistory` enough,
+    then scrolls + pulses the target row).
+
+  Each one is self-contained — most of the page-internal coupling is
+  via refs that the hooks can own and return. **Severity: 5** as a
+  multi-PR plan; **3** for any single hook in isolation. The win is
+  on the feature wave: savings / loans / scenario pages will want
+  the same "scroll to today / pulse on edit / preserve reveal anchor
+  / show today button when scrolled away" behaviours, and today
+  they'd duplicate ~400 lines verbatim. Land at least the row-
+  flashing and scroll-to-today hooks before the second
+  budget-style page type ships.
+  - Plan: one PR per hook, in the order listed above (smallest
+    coupling first, biggest IO surface last). Each hook lives at
+    `src/components/budget/use<Name>.ts`. After all five land,
+    `BudgetPage.tsx` drops to ~900 lines and the page reads as
+    "compose data, compose chrome, render visible months".
+  - Risk: low-medium per PR. Each hook touches DOM refs and
+    requestAnimationFrame timing; the row-flash and scroll-to-today
+    flows in particular are subtle (the `scrollToToday` refine /
+    poll cascade exists because Chrome's smooth-scroll interpolates
+    by distance — see the comments). Preserve the comments verbatim
+    when moving. Smoke-test on mobile + desktop after each PR
+    (pull-to-refresh, scroll into deep past via search, "Show more
+    history" click, type into a cell to see the flash).
+
 - **`budget/formula.ts` function registry** — the tokenizer / parser
   / evaluator file split landed 2026-05 (see Landed); what remains
   of the original severity-6 candidate is the function-registry idea
@@ -148,13 +279,26 @@ new sheet type, but feature work can ship through them.
   **Severity: 3** — re-rate when the first loan/savings flavour
   needs a domain-specific function.
 
-- **No `useReducer` in any of the ~20 modal state machines** —
-  search for `useReducer` in `src/components/`: zero hits.
-  `useState` pyramids in modals with 5+ fields (`BudgetMatchRuleModal`,
-  `BudgetSplitEntryModal`, `BudgetBulkEditModal`, `BudgetMetadataModal`,
-  `ImportHistoryModal`, …). **Severity: 5.** Per-modal value is
-  moderate but the cumulative readability gain is significant.
-  Apply opportunistically when a modal is otherwise being touched.
+- **No `useReducer` in most modal state machines** — `useReducer`
+  now has **one** real hit (`AccountReconciliationModal`, see Landed),
+  but the broader pattern is still pervasive: `useState` pyramids with
+  5+ fields plus a multi-setter reset effect. Confirmed sites:
+  `BudgetEditEntryFullModal` (13 setters at lines 185–222),
+  `AccountTransferModal` (9 setters at lines 113–123),
+  `BudgetRecurrenceForm` (11 setters at lines 156–176 with a
+  `Mode = "once" | "every-n-days" | "monthly"` discriminator that's
+  the **textbook useReducer fit** — half the fields only matter for
+  one mode), `BudgetSplitEntryModal`, `BudgetBulkEditModal`,
+  `BudgetMetadataModal`, `ImportHistoryModal`, `BudgetMatchRuleModal`
+  (residual after `useMatchRuleAmountFilter` landed), `SettingsModal`
+  (4-piece state pyramid). **Severity: 5.** Per-modal value is
+  moderate but the cumulative readability gain is significant — and
+  `BudgetRecurrenceForm` in particular would benefit (the mode-change
+  side-effect of clearing dependent fields becomes an explicit reducer
+  arm rather than a sequence of 11 setter calls). Apply opportunistically
+  when a modal is otherwise being touched; prioritise the
+  discriminated-mode shapes (`BudgetRecurrenceForm`) where the reducer
+  catches mode-vs-fields invariants the current setters silently allow.
 
 - **`useStorageBackend.ts` token state machine entangled with
   adapter selection** — token refresh, OAuth completion, and
@@ -247,6 +391,26 @@ T | null` for "explicitly cleared by the user, distinct from
   `parseDecimal(text, lang)` use case appears. **Severity: 3.**
 
 ### Easy wins (mechanical, land regardless of rating)
+
+- **`indexById<T>(items)` helper** — the 5-line `const xById =
+useMemo(() => { const m = new Map<string, X>(); for (const x of
+items) m.set(x.id, x); return m; }, [items]);` pattern appears at
+  **17 sites** across 8 files: `typesById` × 7 (`BudgetPage:369`,
+  `BudgetMetadataModal:154`, `BudgetFindConflictsModal:121`,
+  `BudgetViewerModal:122`, `SettingsModal/tabs/patterns:45`,
+  `AccountReconciliationModal:133`, `AccountsPage:130`),
+  `companiesById` × 2 (`BudgetPage:374`, `BudgetMetadataModal:149`),
+  `accountsById` × 2 (`BudgetPage:379`, `AccountsPage:114`),
+  `categoriesById` × 3 (`BudgetFindConflictsModal:127`,
+  `patterns:50`, `AccountsPage:119`), plus 3 one-off shapes
+  (`rowsById`, `entriesById`, `accountNameById`). Add
+  `indexById<T extends { id: string }>(items: readonly T[]):
+Map<string, T>` to `src/utils/` (or `src/data/` if the helper
+  graduates to data-layer use too — `src/data/budget/rows.ts:372-375`
+  has the same pattern inline). Call sites collapse to
+  `const typesById = useMemo(() => indexById(types), [types]);`.
+  Consumes ~50 lines of cross-file boilerplate. **Severity: 3**
+  (easy-win category — mechanical, lands regardless).
 
 - The inline `todayIso` / `addMonthsIso` duplication (7 + 2 sites)
   was consumed 2026-05 — see Landed. New ISO date helpers should
