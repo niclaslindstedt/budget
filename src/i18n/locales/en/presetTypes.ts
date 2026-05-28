@@ -22,6 +22,7 @@ const presetTypes = {
   cafe: "Cafe",
   systembolaget: "Alcohol",
   takeaway: "Takeaway",
+  snacks: "Snacks",
   fuel: "Fuel",
   "public-transport": "Public transport",
   parking: "Parking",
