@@ -577,6 +577,19 @@ export function BudgetPage({
     };
   }, [mergedItem, openingBalance, data, settings.startOfMonth]);
 
+  // Sort the full rows array once. Both the running-balance pass below
+  // and the per-month display path consume this view — previously each
+  // call site sorted independently (`computeBalances` did its own sort
+  // and `sortedMonthGroups` sorted each month bucket again with the same
+  // comparator). `groupRowsByMonth` preserves input order within each
+  // bucket, so feeding it a globally date-sorted array delivers
+  // per-month sorted buckets for free. Trades two O(N log N) sorts per
+  // keystroke for one.
+  const sortedRows = useMemo(() => {
+    if (!dateCol) return decoratedItem.rows;
+    return sortRowsByDate(decoratedItem.rows, dateCol.id, sortContext);
+  }, [decoratedItem.rows, dateCol, sortContext]);
+
   const balances = useMemo(
     () =>
       computeBalances(
@@ -585,6 +598,7 @@ export function BudgetPage({
         effectiveAmounts,
         balanceOverrides,
         sortContext,
+        sortedRows,
       ),
     [
       decoratedItem,
@@ -592,6 +606,7 @@ export function BudgetPage({
       effectiveAmounts,
       balanceOverrides,
       sortContext,
+      sortedRows,
     ],
   );
 
@@ -660,31 +675,29 @@ export function BudgetPage({
     return { amountChars, balanceChars };
   }, [decoratedItem.rows, decoratedItem.columns, balances, settings]);
 
+  // Bucket the already-sorted rows by fiscal month. Because
+  // `groupRowsByMonth` preserves input order, each bucket comes out
+  // in the same date order the global sort produced — so the per-month
+  // sort the next memo used to do collapses to a no-op (or just a
+  // reversal for the newest-first preference).
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
-    return groupRowsByMonth(
-      decoratedItem.rows,
-      dateCol.id,
-      settings.startOfMonth,
-    );
-  }, [decoratedItem.rows, dateCol, settings.startOfMonth]);
+    return groupRowsByMonth(sortedRows, dateCol.id, settings.startOfMonth);
+  }, [sortedRows, dateCol, settings.startOfMonth]);
 
-  // Pre-sort each month's rows once per data change. Sorting inline in
-  // the render path (one .sort() call per visible month) cost ~O(N log
-  // N) on every parent re-render and produced a fresh array reference
-  // each time — defeating React.memo on BudgetMonthTable. The memoized map
-  // lets each BudgetMonthTable receive a stable rows array, so memo's shallow
-  // compare can skip the months that didn't change.
+  // Each bucket is already date-sorted thanks to `sortedRows` above;
+  // only the newest-first preference needs an extra reverse pass.
+  // Stable array refs per month so React.memo on BudgetMonthTable can
+  // skip months whose rows didn't change.
   const sortedMonthGroups = useMemo(() => {
     if (!dateCol) return monthGroups;
+    if (settings.transactionSortOrder !== "newestFirst") return monthGroups;
     const out = new Map<string, Row[]>();
-    const reverse = settings.transactionSortOrder === "newestFirst";
     for (const [key, rows] of monthGroups) {
-      const sorted = sortRowsByDate(rows, dateCol.id, sortContext);
-      out.set(key, reverse ? reverseRowsByDay(sorted, dateCol.id) : sorted);
+      out.set(key, reverseRowsByDay(rows, dateCol.id));
     }
     return out;
-  }, [monthGroups, dateCol, sortContext, settings.transactionSortOrder]);
+  }, [monthGroups, dateCol, settings.transactionSortOrder]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),

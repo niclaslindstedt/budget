@@ -144,43 +144,71 @@ export function BudgetViewerModal({
     if (!open) setQuery("");
   }, [open]);
 
-  // Honour the same hide-transfers filter the main view uses. Running
-  // balances were computed upstream against the unfiltered rows so the
-  // totals stay correct even when transfer rows are suppressed.
-  const visibleRows = useMemo(() => {
-    const transferFiltered = settings.hideTransfers
+  // Pre-lowercased + pre-formatted search haystacks for every row that
+  // could ever show up in the filtered output. Built once per change to
+  // the source data (or the hide-transfers preference) so the
+  // per-keystroke filter below collapses to a string of cheap `indexOf`
+  // calls — the previous shape re-lowercased every description / type
+  // name AND re-formatted every amount on every keystroke, which on a
+  // 3000-row ledger meant ~9000 fresh string allocations and ~3000
+  // `formatNumber` calls per typed character. Mirrors the same
+  // optimisation `buildSearchIndex` in `src/data/search.ts` already
+  // applies for the global transfer-search modal.
+  const searchIndex = useMemo(() => {
+    const candidates = settings.hideTransfers
       ? item.rows.filter((r) => !isTransferRow(r))
       : item.rows;
-    const q = query.trim().toLowerCase();
-    if (q === "") return transferFiltered;
-    return transferFiltered.filter((row) => {
-      if (row.isCorrection) return false;
+    return candidates.map((row) => {
+      let descLc = "";
+      let typeNameLc = "";
+      let amountTextLc = "";
+      let dateStr = "";
       if (descCol) {
         const v = row.cells[descCol.id];
-        if (typeof v === "string" && v.toLowerCase().includes(q)) return true;
+        if (typeof v === "string") descLc = v.toLowerCase();
       }
       const typeId = row.typeId ?? null;
       if (typeId) {
         const type = typesById.get(typeId);
-        if (type && type.name.toLowerCase().includes(q)) return true;
+        if (type) typeNameLc = type.name.toLowerCase();
       }
       if (amountCol) {
         const v = row.cells[amountCol.id];
         if (typeof v === "number") {
-          const text = withCurrency(
+          amountTextLc = withCurrency(
             formatNumber(Math.abs(v), settings),
             settings,
-          );
-          if (text.toLowerCase().includes(q)) return true;
+          ).toLowerCase();
         }
       }
       if (dateCol) {
         const v = row.cells[dateCol.id];
-        if (typeof v === "string" && v.includes(q)) return true;
+        if (typeof v === "string") dateStr = v;
       }
-      return false;
+      return { row, descLc, typeNameLc, amountTextLc, dateStr };
     });
-  }, [item.rows, settings, query, descCol, amountCol, dateCol, typesById]);
+  }, [item.rows, settings, descCol, amountCol, dateCol, typesById]);
+
+  // Honour the same hide-transfers filter the main view uses. Running
+  // balances were computed upstream against the unfiltered rows so the
+  // totals stay correct even when transfer rows are suppressed.
+  const visibleRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q === "") return searchIndex.map((e) => e.row);
+    const out: Row[] = [];
+    for (const e of searchIndex) {
+      if (e.row.isCorrection) continue;
+      if (
+        e.descLc.includes(q) ||
+        e.typeNameLc.includes(q) ||
+        e.amountTextLc.includes(q) ||
+        e.dateStr.includes(q)
+      ) {
+        out.push(e.row);
+      }
+    }
+    return out;
+  }, [searchIndex, query]);
 
   const monthGroups = useMemo(() => {
     if (!dateCol) return new Map<string, Row[]>();
