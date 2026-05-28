@@ -3,11 +3,13 @@ import type { Widen } from "./_widen";
 const searchTransaction = {
   open: "Search entries",
   title: "Search entries",
-  placeholder: "Search by description, company, type, category, or amount",
+  placeholder:
+    "Search by description, bank text, company, type, category, or amount",
   clear: "Clear search",
   emptyHint: "Start typing to search across every sheet.",
   noResults: "No matching entries",
   resultAria: "Open {description} on {sheet}",
+  bankLabel: "Bank",
   sortMenuAria: "Change sort order",
   sortMenuTitle: "Sort by",
   sortRelevance: "Relevance",

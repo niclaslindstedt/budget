@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
 import { buildSearchIndex, runSearch } from "../src/data/search";
 import type {
+  Account,
   AccountBudget,
   Category,
   Column,
   Company,
   EntryType,
+  HistoryEntry,
   Row,
   Sheet,
   UserData,
@@ -33,12 +35,15 @@ function withItem(
     types?: EntryType[];
     categories?: Category[];
     companies?: Company[];
+    accounts?: Account[];
+    accountId?: string | null;
+    history?: Record<string, HistoryEntry[]>;
   } = {},
 ): UserData {
   const item: AccountBudget = {
     id: "ab",
     type: "accountBudget",
-    accountId: null,
+    accountId: options.accountId ?? null,
     columns: cols,
     rows,
   };
@@ -55,7 +60,7 @@ function withItem(
     version: 44,
     sheets: [sheet],
     activeSheetId: "s",
-    accounts: [],
+    accounts: options.accounts ?? [],
     companies: options.companies ?? [],
     categories: options.categories ?? [],
     types: options.types ?? [],
@@ -63,7 +68,7 @@ function withItem(
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
     transfers: [],
-    history: {},
+    history: options.history ?? {},
     historyImports: {},
     merchantHints: {},
     recurringDismissals: [],
@@ -225,6 +230,56 @@ describe("runSearch — text matches", () => {
     expect(out).toHaveLength(1);
     expect(out[0].entry.rowId).toBe("r1");
     expect(out[0].match.field).toBe("typeName");
+  });
+
+  it("matches the raw bank text on a synthesized history row", () => {
+    // The visible description on the synthesized row is the user
+    // override ("Meds"), so a search for "Apoteket" wouldn't find it
+    // via any of the visible-field haystacks. The bank-description
+    // index lets the user still locate the row by what the bank
+    // reported on the original statement line.
+    const account: Account = { id: "acc-1", name: "Checking" };
+    const entry: HistoryEntry = {
+      id: "hist-1",
+      date: "2026-05-22",
+      description: "APOTEKET HJARTAT GOTEBORG",
+      amount: -744,
+      importedAt: 0,
+      userDescription: "Meds",
+    };
+    const data = withItem([], {
+      accounts: [account],
+      accountId: "acc-1",
+      history: { "acc-1": [entry] },
+    });
+    const out = runSearch(buildSearchIndex(data, t), "apoteket");
+    expect(out).toHaveLength(1);
+    expect(out[0].entry.description).toBe("Meds");
+    expect(out[0].entry.bankDescription).toBe("APOTEKET HJARTAT GOTEBORG");
+    expect(out[0].match.field).toBe("bankDescription");
+  });
+
+  it("description hits outrank bank-text hits on the same row", () => {
+    // When the same query matches both the user-typed description
+    // and the underlying bank text, the visible field wins — the
+    // user is looking at what they typed, not at the hidden memo.
+    const account: Account = { id: "acc-1", name: "Checking" };
+    const entry: HistoryEntry = {
+      id: "hist-1",
+      date: "2026-05-22",
+      description: "Apoteket Hjartat",
+      amount: -744,
+      importedAt: 0,
+      userDescription: "Apoteket refill",
+    };
+    const data = withItem([], {
+      accounts: [account],
+      accountId: "acc-1",
+      history: { "acc-1": [entry] },
+    });
+    const out = runSearch(buildSearchIndex(data, t), "apoteket");
+    expect(out).toHaveLength(1);
+    expect(out[0].match.field).toBe("description");
   });
 
   it("returns nothing for empty queries", () => {
