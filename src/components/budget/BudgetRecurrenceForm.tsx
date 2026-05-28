@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 import { Plus, X } from "lucide-react";
 
 import { DEFAULT_RECURRENCE_MONTHS } from "../../data/constants/defaults";
@@ -10,8 +10,11 @@ import {
 } from "../../data/recurrence";
 import { addMonthsIso, todayIso } from "../../utils/date";
 import { ClearableInput } from "../form";
-
-type Mode = "once" | "dates" | "everyNDays" | "monthly";
+import {
+  budgetRecurrenceFormReducer,
+  initialRecurrenceFormState,
+  type Mode,
+} from "./budget-recurrence-form-reducer";
 
 type Props = {
   seedDate: string;
@@ -32,15 +35,6 @@ type Props = {
   onChange: (rule: RecurrenceRule | null, dates: string[]) => void;
 };
 
-function todayDayOfMonth(): string {
-  return String(new Date().getDate());
-}
-
-function seedDayOfMonth(seed: string): string {
-  if (!isIsoDate(seed)) return todayDayOfMonth();
-  return String(Number(seed.slice(8, 10)));
-}
-
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
 function isIsoMonth(value: string): boolean {
@@ -59,80 +53,6 @@ function endOfMonth(yyyyMm: string): string {
   return `${yyyyMm}-${String(last).padStart(2, "0")}`;
 }
 
-type RecurrenceFormState = {
-  mode: Mode;
-  onceDate: string;
-  datesList: string[];
-  everyNStart: string;
-  everyNEnd: string;
-  everyNDays: string;
-  monthlyStride: string;
-  monthlyDay: string;
-  monthlyOffset: string;
-  monthlyStartMonth: string;
-  monthlyEndMonth: string;
-};
-
-function initialStateFor(
-  seedRule: RecurrenceRule | null,
-  seedDate: string,
-  horizonEnd: string,
-  includeOnce: boolean,
-): RecurrenceFormState {
-  const defaults: RecurrenceFormState = {
-    mode: includeOnce ? "once" : "monthly",
-    onceDate: seedDate,
-    datesList: [seedDate],
-    everyNStart: seedDate,
-    everyNEnd: horizonEnd,
-    everyNDays: "14",
-    monthlyStride: "1",
-    monthlyDay: seedDayOfMonth(seedDate),
-    monthlyOffset: "0",
-    monthlyStartMonth: seedDate.slice(0, 7),
-    monthlyEndMonth: horizonEnd.slice(0, 7),
-  };
-  if (!seedRule) return defaults;
-  switch (seedRule.kind) {
-    case "once":
-      return includeOnce
-        ? { ...defaults, mode: "once", onceDate: seedRule.date }
-        : { ...defaults, mode: "dates", datesList: [seedRule.date] };
-    case "dates": {
-      const valid = seedRule.dates.filter(isIsoDate);
-      return {
-        ...defaults,
-        mode: "dates",
-        datesList: valid.length > 0 ? valid : [seedDate],
-      };
-    }
-    case "everyNDays":
-      return {
-        ...defaults,
-        mode: "everyNDays",
-        everyNStart: isIsoDate(seedRule.start) ? seedRule.start : seedDate,
-        everyNEnd: isIsoDate(seedRule.end) ? seedRule.end : horizonEnd,
-        everyNDays: String(Math.max(1, Math.floor(seedRule.intervalDays))),
-      };
-    case "everyNMonths":
-      return {
-        ...defaults,
-        mode: "monthly",
-        monthlyStride: String(Math.max(1, Math.floor(seedRule.intervalMonths))),
-        monthlyDay: String(
-          Math.min(31, Math.max(1, Math.floor(seedRule.dayOfMonth))),
-        ),
-        monthlyOffset: String(Math.floor(seedRule.offsetDays)),
-        monthlyStartMonth: isIsoDate(seedRule.start)
-          ? seedRule.start.slice(0, 7)
-          : seedDate.slice(0, 7),
-        monthlyEndMonth: isIsoDate(seedRule.end)
-          ? seedRule.end.slice(0, 7)
-          : horizonEnd.slice(0, 7),
-      };
-  }
-}
-
 export function BudgetRecurrenceForm({
   seedDate: rawSeed,
   resetKey,
@@ -145,54 +65,45 @@ export function BudgetRecurrenceForm({
   const seedDate = isIsoDate(rawSeed) ? rawSeed : todayIso();
   const horizonEnd = addMonthsIso(seedDate, DEFAULT_RECURRENCE_MONTHS);
 
-  const initial = useMemo(
-    () => initialStateFor(seedRule ?? null, seedDate, horizonEnd, includeOnce),
-    // We only want to recompute the initial state for the first render
-    // and on `resetKey` changes — captured by the reset effect below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+  const [state, dispatch] = useReducer(
+    budgetRecurrenceFormReducer,
+    null,
+    // Initialised lazily so we only call the factory on first render; the
+    // reset effect below handles all subsequent `resetKey` changes via a
+    // single atomic `reset` dispatch.
+    () =>
+      initialRecurrenceFormState(
+        seedRule ?? null,
+        seedDate,
+        horizonEnd,
+        includeOnce,
+      ),
   );
 
-  const [mode, setMode] = useState<Mode>(initial.mode);
-
-  const [onceDate, setOnceDate] = useState(initial.onceDate);
-
-  const [datesList, setDatesList] = useState<string[]>(initial.datesList);
-
-  const [everyNStart, setEveryNStart] = useState(initial.everyNStart);
-  const [everyNEnd, setEveryNEnd] = useState(initial.everyNEnd);
-  const [everyNDays, setEveryNDays] = useState(initial.everyNDays);
-
-  const [monthlyStride, setMonthlyStride] = useState<string>(
-    initial.monthlyStride,
-  );
-  const [monthlyDay, setMonthlyDay] = useState(initial.monthlyDay);
-  const [monthlyOffset, setMonthlyOffset] = useState(initial.monthlyOffset);
-  const [monthlyStartMonth, setMonthlyStartMonth] = useState(
-    initial.monthlyStartMonth,
-  );
-  const [monthlyEndMonth, setMonthlyEndMonth] = useState(
-    initial.monthlyEndMonth,
-  );
+  const {
+    mode,
+    onceDate,
+    datesList,
+    everyNStart,
+    everyNEnd,
+    everyNDays,
+    monthlyStride,
+    monthlyDay,
+    monthlyOffset,
+    monthlyStartMonth,
+    monthlyEndMonth,
+  } = state;
 
   useEffect(() => {
-    const next = initialStateFor(
-      seedRule ?? null,
-      seedDate,
-      horizonEnd,
-      includeOnce,
-    );
-    setMode(next.mode);
-    setOnceDate(next.onceDate);
-    setDatesList(next.datesList);
-    setEveryNStart(next.everyNStart);
-    setEveryNEnd(next.everyNEnd);
-    setEveryNDays(next.everyNDays);
-    setMonthlyStride(next.monthlyStride);
-    setMonthlyDay(next.monthlyDay);
-    setMonthlyOffset(next.monthlyOffset);
-    setMonthlyStartMonth(next.monthlyStartMonth);
-    setMonthlyEndMonth(next.monthlyEndMonth);
+    dispatch({
+      kind: "reset",
+      state: initialRecurrenceFormState(
+        seedRule ?? null,
+        seedDate,
+        horizonEnd,
+        includeOnce,
+      ),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
@@ -281,7 +192,7 @@ export function BudgetRecurrenceForm({
           <button
             key={key}
             type="button"
-            onClick={() => setMode(key)}
+            onClick={() => dispatch({ kind: "setMode", mode: key })}
             aria-pressed={mode === key}
             className={`cursor-pointer rounded border px-2.5 py-1 text-xs ${
               mode === key
@@ -301,7 +212,9 @@ export function BudgetRecurrenceForm({
             <input
               type="date"
               value={onceDate}
-              onChange={(e) => setOnceDate(e.target.value)}
+              onChange={(e) =>
+                dispatch({ kind: "setOnceDate", value: e.target.value })
+              }
               className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
             />
           </label>
@@ -317,18 +230,18 @@ export function BudgetRecurrenceForm({
                 <input
                   type="date"
                   value={d}
-                  onChange={(e) => {
-                    const next = [...datesList];
-                    next[i] = e.target.value;
-                    setDatesList(next);
-                  }}
+                  onChange={(e) =>
+                    dispatch({
+                      kind: "setDateAt",
+                      index: i,
+                      value: e.target.value,
+                    })
+                  }
                   className="field-input flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setDatesList(datesList.filter((_, j) => j !== i))
-                  }
+                  onClick={() => dispatch({ kind: "removeDateAt", index: i })}
                   disabled={datesList.length === 1}
                   aria-label={t("recurrenceForm.removeDate")}
                   className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-danger disabled:cursor-not-allowed disabled:opacity-30"
@@ -339,12 +252,7 @@ export function BudgetRecurrenceForm({
             ))}
             <button
               type="button"
-              onClick={() =>
-                setDatesList([
-                  ...datesList,
-                  datesList[datesList.length - 1] ?? seedDate,
-                ])
-              }
+              onClick={() => dispatch({ kind: "addDate", fallback: seedDate })}
               className="inline-flex w-fit cursor-pointer items-center gap-1 rounded border border-line px-2 py-1 text-xs text-muted hover:border-accent hover:text-accent"
             >
               <Plus size={12} aria-hidden focusable={false} />
@@ -360,7 +268,9 @@ export function BudgetRecurrenceForm({
               <input
                 type="date"
                 value={everyNStart}
-                onChange={(e) => setEveryNStart(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ kind: "setEveryNStart", value: e.target.value })
+                }
                 className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
               />
             </label>
@@ -370,7 +280,9 @@ export function BudgetRecurrenceForm({
                 type="number"
                 min={1}
                 value={everyNDays}
-                onValueChange={setEveryNDays}
+                onValueChange={(value) =>
+                  dispatch({ kind: "setEveryNDays", value })
+                }
                 className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
               />
             </label>
@@ -379,7 +291,9 @@ export function BudgetRecurrenceForm({
               <input
                 type="date"
                 value={everyNEnd}
-                onChange={(e) => setEveryNEnd(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ kind: "setEveryNEnd", value: e.target.value })
+                }
                 className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
               />
             </label>
@@ -401,7 +315,9 @@ export function BudgetRecurrenceForm({
                   <button
                     key={val}
                     type="button"
-                    onClick={() => setMonthlyStride(val)}
+                    onClick={() =>
+                      dispatch({ kind: "setMonthlyStride", value: val })
+                    }
                     aria-pressed={monthlyStride === val}
                     className={`cursor-pointer rounded border px-2.5 py-1 text-xs ${
                       monthlyStride === val
@@ -418,7 +334,9 @@ export function BudgetRecurrenceForm({
                     type="number"
                     min={1}
                     value={monthlyStride}
-                    onValueChange={setMonthlyStride}
+                    onValueChange={(value) =>
+                      dispatch({ kind: "setMonthlyStride", value })
+                    }
                     wrapperClassName="w-14"
                     className="field-input w-full rounded border border-line bg-surface px-2 py-1 text-right font-mono text-sm text-meta tabular-nums"
                   />
@@ -432,7 +350,9 @@ export function BudgetRecurrenceForm({
                 min={1}
                 max={31}
                 value={monthlyDay}
-                onValueChange={setMonthlyDay}
+                onValueChange={(value) =>
+                  dispatch({ kind: "setMonthlyDay", value })
+                }
                 className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
               />
             </label>
@@ -441,7 +361,9 @@ export function BudgetRecurrenceForm({
               <ClearableInput
                 type="number"
                 value={monthlyOffset}
-                onValueChange={setMonthlyOffset}
+                onValueChange={(value) =>
+                  dispatch({ kind: "setMonthlyOffset", value })
+                }
                 className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-right font-mono text-sm text-meta tabular-nums"
                 placeholder="-2"
               />
@@ -452,7 +374,12 @@ export function BudgetRecurrenceForm({
                 <input
                   type="month"
                   value={monthlyStartMonth}
-                  onChange={(e) => setMonthlyStartMonth(e.target.value)}
+                  onChange={(e) =>
+                    dispatch({
+                      kind: "setMonthlyStartMonth",
+                      value: e.target.value,
+                    })
+                  }
                   aria-label={t("recurrenceForm.startMonth")}
                   className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
                 />
@@ -462,7 +389,12 @@ export function BudgetRecurrenceForm({
                 <input
                   type="month"
                   value={monthlyEndMonth}
-                  onChange={(e) => setMonthlyEndMonth(e.target.value)}
+                  onChange={(e) =>
+                    dispatch({
+                      kind: "setMonthlyEndMonth",
+                      value: e.target.value,
+                    })
+                  }
                   aria-label={t("recurrenceForm.endMonth")}
                   className="field-input min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
                 />
