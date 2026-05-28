@@ -39,6 +39,8 @@ export function DescriptionCell({
   onChange,
   onCommit,
   onSetCompany,
+  noCompany,
+  onSetNoCompany,
   onCreateCompany,
 }: {
   rowId: string;
@@ -80,6 +82,11 @@ export function DescriptionCell({
   // history rows. Optional — when omitted the popover's CompanyPicker
   // is hidden.
   onSetCompany?: (companyId: string | null) => void;
+  // Current omit-company flag. Only meaningful when `onSetNoCompany` is
+  // also wired; together they surface the "Omit company" option on the
+  // popover's inline picker. Both are undefined for non-history rows.
+  noCompany?: boolean;
+  onSetNoCompany?: (next: boolean) => void;
   onCreateCompany?: (draft: Omit<Company, "id">) => Company;
 }) {
   const t = useT();
@@ -103,6 +110,8 @@ export function DescriptionCell({
         onChange={onChange}
         onCommit={onCommit}
         onSetCompany={pickerEnabled ? onSetCompany : undefined}
+        noCompany={pickerEnabled ? noCompany : undefined}
+        onSetNoCompany={pickerEnabled ? onSetNoCompany : undefined}
         onCreateCompany={pickerEnabled ? onCreateCompany : undefined}
         renderTrigger={({ ref, onClick, open, displayValue }) => {
           const hasValue = displayValue.length > 0;
@@ -224,6 +233,8 @@ function DescriptionPopover({
   onChange,
   onCommit,
   onSetCompany,
+  noCompany,
+  onSetNoCompany,
   onCreateCompany,
   renderTrigger,
 }: {
@@ -256,6 +267,8 @@ function DescriptionPopover({
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   onSetCompany?: (companyId: string | null) => void;
+  noCompany?: boolean;
+  onSetNoCompany?: (next: boolean) => void;
   onCreateCompany?: (draft: Omit<Company, "id">) => Company;
   renderTrigger: (ctx: {
     ref: React.Ref<HTMLButtonElement>;
@@ -328,7 +341,9 @@ function DescriptionPopover({
               rowId={rowId}
               companies={companies}
               selectedId={company?.id ?? null}
+              noCompany={noCompany}
               onSelect={onSetCompany}
+              onOmitChange={onSetNoCompany}
               onCreate={onCreateCompany}
               variant="field"
             />

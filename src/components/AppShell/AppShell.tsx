@@ -439,6 +439,30 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     },
     [dispatch, sheetId, itemId, activeItem.accountId],
   );
+  // Row-level "omit company" writer fired by the description popover's
+  // inline CompanyPicker when the user picks "Omit company". Only the
+  // synthesized history row carries the flag; user-authored budget rows
+  // have no equivalent so the prop chain leaves the picker without an
+  // `onOmitChange` and the option doesn't surface there.
+  const onSetRowNoCompany = useCallback(
+    (row: Row, next: boolean) => {
+      if (!row.historyEntryId || !activeItem.accountId) return;
+      const patch: {
+        noCompany: boolean;
+        userCompanyId?: string | null;
+      } = { noCompany: next };
+      // Enabling omit contradicts any explicit company override on the
+      // entry — clear it so the resolver doesn't keep tagging the row.
+      if (next) patch.userCompanyId = null;
+      dispatch({
+        type: "updateHistoryEntry",
+        accountId: activeItem.accountId,
+        entryId: row.historyEntryId,
+        patch,
+      });
+    },
+    [dispatch, activeItem.accountId],
+  );
   const onCorrectionDeleteRequest = useCallback(
     (row: Row) => {
       // Pre-format the signed delta so the prompt reads naturally even
@@ -818,6 +842,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onMergeConflictUserRows={onMergeConflictUserRows}
                   onTriageMonth={onTriageMonth}
                   onSetRowCompany={onSetRowCompany}
+                  onSetRowNoCompany={onSetRowNoCompany}
                 />
               </>
             )}

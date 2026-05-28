@@ -31,6 +31,8 @@ type Props = {
   // BudgetMonthTable is the only path that mounts rows, so the prop is
   // pure-passthrough here.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
+  // Row-level "omit company" writer — see `BudgetRow.Props.onSetRowNoCompany`.
+  onSetRowNoCompany: (row: Row, next: boolean) => void;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   canTransfer: boolean;
@@ -125,6 +127,7 @@ function MonthTableImpl({
   columns,
   balances,
   onSetRowCompany,
+  onSetRowNoCompany,
   selectMode,
   selectedIds,
   canTransfer,
@@ -460,6 +463,7 @@ function MonthTableImpl({
                           columns={columns}
                           balances={balances}
                           onSetRowCompany={onSetRowCompany}
+                          onSetRowNoCompany={onSetRowNoCompany}
                           selectMode={selectMode}
                           selected={selectedIds.has(hidden.id)}
                           canTransfer={canTransfer}
@@ -484,6 +488,7 @@ function MonthTableImpl({
                       columns={columns}
                       balances={balances}
                       onSetRowCompany={onSetRowCompany}
+                      onSetRowNoCompany={onSetRowNoCompany}
                       selectMode={selectMode}
                       selected={selectedIds.has(row.id)}
                       canTransfer={canTransfer}
