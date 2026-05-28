@@ -1,5 +1,5 @@
 User-agent: *
 Disallow: /preview/
-Disallow: /branches/
+Disallow: /branch/
 
 Sitemap: https://budget.niclaslindstedt.se/sitemap.xml

@@ -26,38 +26,51 @@ import {
 import { emitChangelogData } from "./vite/changelog-plugin";
 
 // Multi-build deploy: production goes at "/", a preview of `main` goes
-// at "/preview/", and an optional per-branch build goes at
-// "/branches/<slug>/". `pages.yml` invokes vite once per slot with
-// different `VITE_BASE_PATH` values and merges the resulting `dist/`
-// trees into a single Pages artifact. `IS_PREVIEW` flips on for every
-// non-production slot (preview and branch builds), so the gates that
-// already exist — noindex meta, goatcounter skip, Dev settings tab —
-// fire for branch builds too. Per-slot data isolation is finer-grained:
-// `STORAGE_NS` is "" for production, "preview" for `/preview/`, and
-// `branch-<slug>` for `/branches/<slug>/`, so each branch keeps its
-// own localStorage / cloud / IndexedDB world distinct from preview AND
-// from every other branch.
+// at "/preview/", and an optional **stable** branch slot lives at
+// "/branch/". The slot's URL never changes — only what's parked in it
+// does — so a maintainer can install the `/branch/` PWA once and let
+// new dispatches arrive as ordinary SW updates. `pages.yml` invokes
+// vite once per slot with different `VITE_BASE_PATH` values and
+// merges the resulting `dist/` trees into a single Pages artifact.
+// `IS_PREVIEW` flips on for every non-production slot (preview and
+// branch), so the gates that already exist — noindex meta,
+// goatcounter skip, Dev settings tab — fire for branch builds too.
+// Per-slot data isolation goes through `STORAGE_NS`: "" for
+// production, "preview" for `/preview/`, "branch" for `/branch/`.
+// The branch slot's namespace is stable across feature-branch swaps,
+// so the PWA's stored data carries forward — accepting that a branch
+// with a breaking schema change will be read by whatever lands next.
 const BASE_PATH = process.env.VITE_BASE_PATH || "/";
 const IS_PREVIEW = BASE_PATH !== "/";
-const BRANCH_MATCH = BASE_PATH.match(/^\/branches\/([^/]+)\/$/);
-const IS_BRANCH = BRANCH_MATCH !== null;
-const BRANCH_SLUG = BRANCH_MATCH?.[1] ?? "";
+const IS_BRANCH = BASE_PATH === "/branch/";
 const STORAGE_NS = IS_BRANCH
-  ? `branch-${BRANCH_SLUG}`
+  ? "branch"
   : BASE_PATH === "/preview/"
     ? "preview"
     : "";
+
+// `pages.yml` exposes the source branch ref that produced the build
+// via `VITE_BRANCH_SOURCE` so the `/branch/` slot's BUILD_LABEL can
+// still reveal which feature branch is currently parked there even
+// though the URL is stable. Trimmed and slug-safe-ified for display.
+const BRANCH_SOURCE_RAW = process.env.VITE_BRANCH_SOURCE?.trim() ?? "";
+const BRANCH_SOURCE_LABEL = BRANCH_SOURCE_RAW.replace(
+  /[^a-zA-Z0-9._-]+/g,
+  "-",
+).slice(0, 20);
 
 // Short build identifier rendered next to the "budget" header on
 // the page and suffixed onto the browser-tab title. Shape is
 // `<pkg.version>[.<run>][-<suffix>]`, where `<run>` is the
 // `GITHUB_RUN_NUMBER` GitHub Actions populates automatically (so
-// local builds drop it). `<suffix>` is `pre` for the `/preview/`
-// slot and `<branch-slug>` for a `/branches/<slug>/` slot, omitted
-// for the production `/` slot.
+// local builds drop it). `<suffix>` is `pre` for `/preview/`, and
+// `br[-<source>]` for `/branch/` (with the source branch name when
+// the CI step provides it), omitted for the production `/` slot.
 const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
 const BUILD_SUFFIX = IS_BRANCH
-  ? BRANCH_SLUG
+  ? BRANCH_SOURCE_LABEL
+    ? `br-${BRANCH_SOURCE_LABEL}`
+    : "br"
   : BASE_PATH === "/preview/"
     ? "pre"
     : "";
@@ -320,10 +333,11 @@ function emitPathAliasWithSeo(
 // Rewrite the static `apple-mobile-web-app-title` meta in `index.html`
 // for non-production slots. iOS shows this string under the
 // home-screen icon; without per-slot differentiation, a user who
-// installs `/`, `/preview/`, and any `/branches/<slug>/` would see
-// identical "Budget" tiles. Preview becomes "Budget pre"; a branch
-// build becomes `Budget <slug>` (truncated to keep iOS's tile label
-// readable). The rewrite runs in `transformIndexHtml`, which fires
+// installs `/`, `/preview/`, and `/branch/` would see identical
+// "Budget" tiles. Preview becomes "Budget pre"; the branch slot
+// becomes "Budget br" (stable across feature-branch swaps so the
+// installed tile keeps the same label every time a fresh ref is
+// parked). The rewrite runs in `transformIndexHtml`, which fires
 // before vite-plugin-pwa's own head-injection and before the
 // alias-emitting `closeBundle` step — so the SEO alias HTMLs inherit
 // the patched value automatically.
@@ -333,10 +347,10 @@ function patchAppleTitle(): Plugin {
     apply: "build",
     transformIndexHtml(html) {
       if (!IS_PREVIEW) return html;
-      const suffix = IS_BRANCH ? BRANCH_SLUG.slice(0, 10) : "pre";
+      const suffix = IS_BRANCH ? "br" : "pre";
       return html.replace(
         '<meta name="apple-mobile-web-app-title" content="Budget" />',
-        `<meta name="apple-mobile-web-app-title" content="Budget ${escapeHtmlAttr(suffix)}" />`,
+        `<meta name="apple-mobile-web-app-title" content="Budget ${suffix}" />`,
       );
     },
   };
@@ -394,22 +408,23 @@ function injectGoatcounter(): Plugin {
 // next full navigation.
 function pwaPlugin(): Plugin[] {
   // W3C app identity is BASE_PATH — distinct per slot ("/",
-  // "/preview/", "/branches/<slug>/") so each install registers as
-  // its own app.
+  // "/preview/", "/branch/") so each install registers as its own
+  // app. The branch slot's identity is stable across feature-branch
+  // swaps: a fresh ref parked in /branch/ arrives as a new SW build,
+  // not a new app, so the installed tile and its data stay put.
   const id = BASE_PATH;
-  const slotLabel = IS_BRANCH
-    ? BRANCH_SLUG
+  const name = IS_BRANCH
+    ? "Budget (branch)"
     : BASE_PATH === "/preview/"
-      ? "preview"
-      : "";
-  const name = slotLabel ? `Budget (${slotLabel})` : "Budget";
+      ? "Budget (preview)"
+      : "Budget";
   const shortName = IS_BRANCH
-    ? `Budget ${BRANCH_SLUG.slice(0, 10)}`
+    ? "Budget br"
     : BASE_PATH === "/preview/"
       ? "Budget pre"
       : "Budget";
   const cacheId = IS_BRANCH
-    ? `budget-branch-${BRANCH_SLUG}`
+    ? "budget-branch"
     : BASE_PATH === "/preview/"
       ? "budget-preview"
       : "budget";
@@ -420,7 +435,7 @@ function pwaPlugin(): Plugin[] {
   const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const navigateFallbackDenylist =
     BASE_PATH === "/"
-      ? [/^\/preview\//, /^\/branches\//]
+      ? [/^\/preview\//, /^\/branch\//]
       : [new RegExp(`^/(?!${escapeRegex(BASE_PATH.slice(1))})`)];
 
   return VitePWA({

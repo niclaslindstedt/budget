@@ -34,17 +34,17 @@ interface ImportMeta {
 // Build-time constants injected via `vite.config.ts`'s `define` block.
 // `__APP_VERSION__` is the version string from `package.json`.
 // `__IS_PREVIEW__` is true when the bundle is built for any non-root
-// slot (`/preview/`, `/branches/<slug>/`); gates the dev surfaces and
+// slot (`/preview/`, `/branch/`); gates the dev surfaces and
 // noindex / no-tracker behaviour.
 // `__BUILD_LABEL__` is a short identifier appended to the browser-tab
 // title — `vX.Y.Z` for production, `vX.Y.Z-pre` (+ optional CI run
-// number) for the `/preview/` slot, `vX.Y.Z-<slug>` for a branch slot.
+// number) for `/preview/`, `vX.Y.Z-br[-<source>]` for the `/branch/`
+// slot (with the source branch name when CI provides it).
 // `__STORAGE_NS__` is the namespace segment that threads through every
 // persistence helper in `src/data/constants/storage.ts`. Empty for
-// production, "preview" for the preview slot, `branch-<slug>` for a
-// branch slot — keeps each deploy slot's localStorage / cloud paths /
-// IndexedDB databases distinct so visiting one slot can never migrate
-// or overwrite another's data.
+// production, "preview" for `/preview/`, "branch" for `/branch/` —
+// the branch namespace is stable across feature-branch swaps so the
+// installed PWA's data carries forward.
 declare const __APP_VERSION__: string;
 declare const __IS_PREVIEW__: boolean;
 declare const __BUILD_LABEL__: string;

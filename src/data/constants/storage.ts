@@ -2,20 +2,21 @@ import { STORAGE_NS } from "../../utils/build-env";
 
 // Build-time namespace segment inserted into every persistence key,
 // cloud path, and IndexedDB DB name. Production = "" (untouched
-// legacy keys); preview = "preview"; branch deploy = `branch-<slug>`.
-// The string drives `nsKey` / `nsCloudPath` / `nsIdbName` so adding a
+// legacy keys); preview = "preview"; branch slot = "branch". The
+// string drives `nsKey` / `nsCloudPath` / `nsIdbName` so adding a
 // new persisted surface only requires routing it through these
 // helpers — no further wiring.
 //
 // Why this matters: the `/` slot serves the latest released tag, the
-// `/preview/` slot serves current `main`, and any `/branches/<slug>/`
-// slot serves an in-flight feature branch. Without isolation, a visit
-// to `/preview/` (or any branch slot) would migrate the shared
-// localStorage / cloud file to the (possibly newer) schema; reloading
-// `/` would then fail to read its own data. Namespacing every key
-// keeps each slot in a completely separate world on the same machine
-// and the same cloud account, including between distinct branch
-// deploys.
+// `/preview/` slot serves current `main`, and the `/branch/` slot
+// serves whatever feature branch the maintainer last dispatched.
+// Without isolation, a visit to a non-production slot would migrate
+// the shared localStorage / cloud file to the (possibly newer)
+// schema; reloading `/` would then fail to read its own data.
+// Namespacing every key keeps each slot in a completely separate
+// world on the same machine and the same cloud account. The branch
+// namespace is stable across feature-branch swaps so the installed
+// `/branch/` PWA's data carries forward.
 
 // Insert the namespace segment after the leading "budget." in any
 // storage key, e.g. "budget.users.v1" → "budget.preview.users.v1".
