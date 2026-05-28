@@ -5,11 +5,7 @@ import type { SearchEntry, SearchMatch, SearchResult } from "../../data/search";
 import { runSearch } from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import {
-  formatNumber,
-  formatShortDate,
-  withCurrency,
-} from "../../utils/format";
+import { formatDate, formatNumber, withCurrency } from "../../utils/format";
 import { ClearableInput } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
@@ -141,7 +137,7 @@ function ResultRow({
   const lang = useLang();
   const { entry, match } = result;
   const dateLabel = entry.iso
-    ? formatShortDate(entry.iso, settings.shortDateFormat, lang)
+    ? formatDate(entry.iso, settings.dateFormat, lang)
     : t("common.notSet");
   const amountLabel =
     entry.amount !== null
