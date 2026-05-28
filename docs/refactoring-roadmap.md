@@ -192,11 +192,6 @@ T | null` for "explicitly cleared by the user, distinct from
   because the 4xx semantics legitimately differ; revisit only if a
   third OAuth backend (e.g. iCloud Drive) lands.
 
-- **`BudgetViewerModal.tsx` (816 lines) inline search filter**
-  duplicates ~200 lines from `BudgetTransferSearchModal.tsx`. **Severity: 4.**
-  Easy seam: extract `<RowSearchForm>`. (The `monthFormatCache`
-  consolidation half of this item landed 2026-05 — see Landed.)
-
 - **`BudgetMonthTable.tsx` orphan-count + transfer-visibility logic
   scattered** — both halves now landed (see Landed:
   `collectHiddenTransfersByAnchor` extraction 2026-05 and
@@ -1072,6 +1067,38 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   (Note: the **modal-mount** decomposition is a separate
   severity-8 item above — that's not "another sub-hook", it's a
   `<ModalHost>` component.)
+
+- **`<RowSearchForm>` extraction from `BudgetViewerModal.tsx` +
+  `BudgetTransferSearchModal.tsx`** (2026-05, was severity 4):
+  the original "duplicates ~200 lines" claim doesn't survive
+  contact with the code. `BudgetTransferSearchModal` is 255 lines
+  total — half of which is the highlighted-result rendering — so
+  there were never 200 lines to share. The actual overlap is
+  small: `useState("")` + the close-resets-query effect, plus the
+  per-row pre-lowercasing pattern. The two modals diverge on
+  match strategy (viewer does a plain `includes` over description /
+  type name / formatted amount / ISO date; transfer modal calls
+  `runSearch` from `src/data/search.ts`, which scores hits, ranges
+  them for highlighting, and matches description / type name /
+  category name / numeric-amount distance), on index source
+  (viewer builds its index inline over a single `AccountBudget`'s
+  rows that `BudgetPage` decorated upstream; transfer modal
+  consumes a `SearchEntry[]` pre-built from the whole `UserData`
+  via `buildSearchIndex`, which walks every sheet and re-runs
+  `buildVisibleRows`), and on result rendering (viewer interleaves
+  the filtered rows into its month-grouped budget table; transfer
+  modal renders a flat result list with highlighted `<mark>`
+  spans). A shared "build the index" helper would have to either
+  fan into both call sites with different selectors and different
+  output shapes, or collapse them — collapsing forces the viewer
+  to depend on `UserData` instead of just its own decorated rows,
+  which is the wrong direction. The search-input chrome itself
+  (`ModalSearchBar` / `ClearableInput`) is already extracted and
+  re-used at every other in-modal search surface. There's no
+  remaining lever big enough to justify a shared `<RowSearchForm>`.
+  Revisit only if a third sheet-type ships an inline filter with
+  the same shape as the viewer's (single-sheet, includes-based,
+  results interleaved into the page's own table).
 
 ---
 
