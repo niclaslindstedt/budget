@@ -1,8 +1,8 @@
 import type { Widen } from "./_widen";
 
 const searchTransaction = {
-  open: "Search entries",
-  title: "Search entries",
+  open: "Search",
+  title: "Search",
   placeholder:
     "Search by description, bank text, company, type, category, or amount",
   clear: "Clear search",
@@ -17,6 +17,20 @@ const searchTransaction = {
   sortDateAsc: "Date · Oldest first",
   sortAmountDesc: "Amount · Highest first",
   sortAmountAsc: "Amount · Lowest first",
+  filterMenuAria: "Filter results",
+  filterMenuTitle: "Filters",
+  filterExcludeTransfers: "Exclude transfers",
+  filterExcludeHistory: "Exclude history",
+  filterExcludeUnconfirmed: "Exclude unconfirmed",
+  filterSheets: "Sheets",
+  filterSheetsAll: "No sheets selected — searching all.",
+  filterAmount: "Amount",
+  filterAmountMin: "Minimum amount",
+  filterAmountMax: "Maximum amount",
+  filterDates: "Dates",
+  filterDateMin: "Earliest date",
+  filterDateMax: "Latest date",
+  filterReset: "Reset filters",
 } as const;
 
 export type SearchTransactionCatalog = Widen<typeof searchTransaction>;

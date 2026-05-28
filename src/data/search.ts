@@ -8,6 +8,7 @@ import type {
   EntryType,
   HistoryEntry,
   Row,
+  RowKind,
   Sheet,
   UserData,
 } from "./types";
@@ -44,6 +45,14 @@ export type SearchEntry = {
   // fields contain that string. Empty for non-historic rows.
   bankDescription: string;
   amount: number | null;
+  // Row kind + transfer flag, mirrored from the synthesized Row so the
+  // filter popover can drop bank-history rows ("historic"), synthesized
+  // transfer rows ("transfer"), or rows flagged as inter-account
+  // transfers without re-deriving anything at query time. `isTransfer`
+  // folds in the implicit `kind === "transfer"` case at build time so
+  // the predicate stays a single boolean check.
+  kind: RowKind;
+  isTransfer: boolean;
   // Pre-lowercased mirrors of the searchable string fields, built once
   // in `buildSearchIndex` so `runSearch` does a plain `indexOf` on the
   // cached form per keystroke.
@@ -91,6 +100,88 @@ export type SearchSort =
   | "date-desc"
   | "amount-asc"
   | "amount-desc";
+
+// Caller-selected refinements applied on top of the query inside
+// `runSearch`, BEFORE the MAX_RESULTS cap so a deliberately narrowed
+// range can't be starved by 50 unrelated rows scoring higher. An
+// all-default filter is a no-op; `isFilterActive` detects that to drive
+// the accent highlight on the Filter glyph and to keep the empty-query
+// "start typing" hint.
+export type SearchFilter = {
+  // Drop synthesized transfer rows + rows flagged as inter-account
+  // transfers.
+  excludeTransfers: boolean;
+  // Drop synthesized bank-history rows (kind: "historic").
+  excludeHistory: boolean;
+  // Keep ONLY bank-history rows — everything that isn't imported bank
+  // history counts as "unconfirmed".
+  excludeUnconfirmed: boolean;
+  // Inclusive absolute-amount band. null = that side is unbounded. The
+  // comparison is on |amount| so a band matches both income and spend
+  // of the same magnitude, mirroring amount-sort / amount-match.
+  amountMin: number | null;
+  amountMax: number | null;
+  // Inclusive ISO date band. null = that side is unbounded. ISO strings
+  // compare lexically, which matches chronological order.
+  dateMin: string | null;
+  dateMax: string | null;
+  // Restrict to these sheet ids. Empty = every budget sheet (default).
+  sheetIds: readonly string[];
+};
+
+export const EMPTY_FILTER: SearchFilter = {
+  excludeTransfers: false,
+  excludeHistory: false,
+  excludeUnconfirmed: false,
+  amountMin: null,
+  amountMax: null,
+  dateMin: null,
+  dateMax: null,
+  sheetIds: [],
+};
+
+export function isFilterActive(filter: SearchFilter): boolean {
+  return (
+    filter.excludeTransfers ||
+    filter.excludeHistory ||
+    filter.excludeUnconfirmed ||
+    filter.amountMin !== null ||
+    filter.amountMax !== null ||
+    filter.dateMin !== null ||
+    filter.dateMax !== null ||
+    filter.sheetIds.length > 0
+  );
+}
+
+// Natural min/max of the absolute amounts and ISO dates present in the
+// index, used by the filter popover to seed the range sliders. A null
+// bound means the index carries no amounts / no dates, so the caller
+// can hide that slider. Computed once per index via `useMemo` upstream.
+export type IndexBounds = {
+  amountMin: number | null;
+  amountMax: number | null;
+  dateMin: string | null;
+  dateMax: string | null;
+};
+
+export function indexBounds(index: readonly SearchEntry[]): IndexBounds {
+  let amountMin: number | null = null;
+  let amountMax: number | null = null;
+  let dateMin: string | null = null;
+  let dateMax: string | null = null;
+  for (const entry of index) {
+    if (entry.amount !== null) {
+      const v = Math.abs(entry.amount);
+      if (amountMin === null || v < amountMin) amountMin = v;
+      if (amountMax === null || v > amountMax) amountMax = v;
+    }
+    if (entry.iso !== "") {
+      if (dateMin === null || entry.iso < dateMin) dateMin = entry.iso;
+      if (dateMax === null || entry.iso > dateMax) dateMax = entry.iso;
+    }
+  }
+  return { amountMin, amountMax, dateMin, dateMax };
+}
 
 // Build a flat searchable list across every sheet the user has. Pulls
 // in user-authored rows plus the same synthesized rows that
@@ -178,6 +269,8 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           companyName,
           bankDescription,
           amount,
+          kind: row.kind,
+          isTransfer: row.kind === "transfer" || row.isTransfer === true,
           descriptionLc: description.toLowerCase(),
           typeNameLc: typeName.toLowerCase(),
           categoryNameLc: categoryName.toLowerCase(),
@@ -263,13 +356,60 @@ const FIELD_WEIGHT: Record<
 // want.
 const MAX_RESULTS = 50;
 
+// Placeholder match for filter-only browsing (empty query): there's no
+// matched substring to highlight, and a zero-length range renders no
+// <mark>. The field is "description" purely to satisfy the union — the
+// ResultRow's bank-label branch keys off "bankDescription" so this
+// stays inert.
+const NEUTRAL_MATCH: SearchMatch = { field: "description", start: 0, end: 0 };
+
+// Filter predicate applied before scoring so the result cap counts only
+// rows the user wants to see. See `SearchFilter` for per-field meaning.
+function matchesFilter(entry: SearchEntry, filter: SearchFilter): boolean {
+  if (filter.excludeUnconfirmed && entry.kind !== "historic") return false;
+  if (filter.excludeHistory && entry.kind === "historic") return false;
+  if (filter.excludeTransfers && entry.isTransfer) return false;
+  if (filter.sheetIds.length > 0 && !filter.sheetIds.includes(entry.sheetId))
+    return false;
+  if (filter.amountMin !== null || filter.amountMax !== null) {
+    // A row without an amount can't satisfy an amount band — drop it
+    // rather than letting it slip past a deliberate narrowing.
+    if (entry.amount === null) return false;
+    const v = Math.abs(entry.amount);
+    if (filter.amountMin !== null && v < filter.amountMin) return false;
+    if (filter.amountMax !== null && v > filter.amountMax) return false;
+  }
+  if (filter.dateMin !== null || filter.dateMax !== null) {
+    if (entry.iso === "") return false;
+    if (filter.dateMin !== null && entry.iso < filter.dateMin) return false;
+    if (filter.dateMax !== null && entry.iso > filter.dateMax) return false;
+  }
+  return true;
+}
+
 export function runSearch(
   index: readonly SearchEntry[],
   query: string,
   sortBy: SearchSort = "relevance",
+  filter: SearchFilter = EMPTY_FILTER,
 ): SearchResult[] {
   const trimmed = query.trim();
-  if (trimmed === "") return [];
+  if (trimmed === "") {
+    // Filter-only browsing: with no query there's nothing to score, so
+    // surface the filtered rows directly (a no-op match keeps the
+    // SearchResult shape without highlighting anything). When the filter
+    // is also default we return [] so the modal shows its "start
+    // typing" hint instead of dumping the entire workspace.
+    if (!isFilterActive(filter)) return [];
+    const browsed: SearchResult[] = [];
+    for (const entry of index) {
+      if (!matchesFilter(entry, filter)) continue;
+      browsed.push({ entry, match: NEUTRAL_MATCH });
+    }
+    const ordered =
+      sortBy === "relevance" ? browsed : reorderResults(browsed, sortBy);
+    return ordered.slice(0, MAX_RESULTS);
+  }
   const needle = trimmed.toLowerCase();
   const parsedAmount = parseAmount(trimmed);
 
@@ -301,6 +441,7 @@ export function runSearch(
     { name: "bankDescription", lcKey: "bankDescriptionLc" },
   ];
   for (const entry of index) {
+    if (!matchesFilter(entry, filter)) continue;
     let best: { match: SearchMatch; score: number } | null = null;
 
     // Text matches first — find earliest hit across fields, weighted

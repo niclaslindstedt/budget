@@ -5,23 +5,30 @@ import {
   BanknoteArrowUp,
   CalendarArrowDown,
   CalendarArrowUp,
+  Filter,
   Search,
   Sparkles,
 } from "lucide-react";
 
 import type {
   SearchEntry,
+  SearchFilter,
   SearchMatch,
   SearchResult,
   SearchSort,
 } from "../../data/search";
-import { runSearch } from "../../data/search";
+import {
+  EMPTY_FILTER,
+  indexBounds,
+  isFilterActive,
+  runSearch,
+} from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
 import { useLang, useT, type TFunction } from "../../i18n";
 import { formatDate, formatNumber, withCurrency } from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
-import { ClearableInput } from "../form";
+import { Checkbox, ClearableInput, RangeSlider } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 
@@ -36,6 +43,10 @@ type Props = {
   // survives modal close like `query` does.
   sort: SearchSort;
   onSortChange: (next: SearchSort) => void;
+  // Caller-controlled filter, persisted on the parent like sort / query
+  // so the choice survives modal close.
+  filter: SearchFilter;
+  onFilterChange: (next: SearchFilter) => void;
   index: readonly SearchEntry[];
   settings: Settings;
   onPick: (entry: SearchEntry) => void;
@@ -46,6 +57,29 @@ const SORT_MENU_PLACEMENT: FloatingPlacement = {
   anchor: "right",
   coordinateSpace: "viewport",
 };
+
+const FILTER_MENU_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 288 },
+  anchor: "right",
+  coordinateSpace: "viewport",
+};
+
+// The hook seeds the sort at "date-desc"; the glyph only highlights when
+// the user has moved away from that default.
+const DEFAULT_SORT: SearchSort = "date-desc";
+
+// One UTC day in milliseconds — the date range slider works in whole
+// days so it can drive `RangeSlider`'s numeric domain. The FilterMenu
+// maps ISO dates to/from day indices around this constant.
+const MS_PER_DAY = 86_400_000;
+
+function isoToDayNum(iso: string): number {
+  return Math.floor(Date.parse(`${iso}T00:00:00Z`) / MS_PER_DAY);
+}
+
+function dayNumToIso(day: number): string {
+  return new Date(day * MS_PER_DAY).toISOString().slice(0, 10);
+}
 
 // Cap a long string with an ellipsis so the result row stays in a
 // single line on narrow viewports. Used as a fallback when a match
@@ -60,6 +94,8 @@ export function BudgetTransferSearchModal({
   onQueryChange,
   sort,
   onSortChange,
+  filter,
+  onFilterChange,
   index,
   settings,
   onPick,
@@ -67,9 +103,10 @@ export function BudgetTransferSearchModal({
   const t = useT();
 
   const results = useMemo(
-    () => runSearch(index, query, sort),
-    [index, query, sort],
+    () => runSearch(index, query, sort, filter),
+    [index, query, sort, filter],
   );
+  const filterActive = isFilterActive(filter);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && results.length > 0) {
@@ -90,23 +127,33 @@ export function BudgetTransferSearchModal({
         onClose={onClose}
       />
       <Modal.Body noPadding>
-        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
-          <ClearableInput
-            value={query}
-            onValueChange={onQueryChange}
-            onKeyDown={handleKeyDown}
-            placeholder={t("searchTransaction.placeholder")}
-            aria-label={t("searchTransaction.placeholder")}
-            clearLabel={t("searchTransaction.clear")}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            wrapperClassName="min-w-0 flex-1"
-            className="field-input w-full min-w-0 rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
-          />
-          <SortMenu sort={sort} onSortChange={onSortChange} />
+        <div className="border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
+          <div className="flex items-stretch rounded border border-line bg-surface focus-within:border-accent">
+            <ClearableInput
+              value={query}
+              onValueChange={onQueryChange}
+              onKeyDown={handleKeyDown}
+              placeholder={t("searchTransaction.placeholder")}
+              aria-label={t("searchTransaction.placeholder")}
+              clearLabel={t("searchTransaction.clear")}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              wrapperClassName="min-w-0 flex-1"
+              className="field-input w-full min-w-0 border-0 bg-transparent px-2 py-1.5 text-sm text-fg focus:outline-none"
+            />
+            <div className="flex items-center gap-1 border-l border-line px-1">
+              <FilterMenu
+                filter={filter}
+                onFilterChange={onFilterChange}
+                index={index}
+                settings={settings}
+              />
+              <SortMenu sort={sort} onSortChange={onSortChange} />
+            </div>
+          </div>
         </div>
-        {query.trim() === "" ? (
+        {query.trim() === "" && !filterActive ? (
           <p className="px-4 py-6 text-center text-sm text-muted">
             {t("searchTransaction.emptyHint")}
           </p>
@@ -336,6 +383,10 @@ function SortMenu({
   const triggerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   const current = SORT_OPTIONS.find((o) => o.value === sort) ?? SORT_OPTIONS[0];
+  // Highlight whenever a non-default sort is chosen (or the menu is
+  // open). The current choice is intentionally not shown in the trigger
+  // — the glyph just signals "sort is active".
+  const active = sort !== DEFAULT_SORT || open;
   return (
     <div ref={triggerRef} className="relative shrink-0">
       <button
@@ -345,16 +396,13 @@ function SortMenu({
         aria-expanded={open}
         aria-label={t("searchTransaction.sortMenuAria")}
         title={current.label(t)}
-        className={`inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded border px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-          open
-            ? "border-accent bg-accent/15 text-accent"
-            : "border-line bg-surface text-muted hover:border-fg hover:bg-surface-2 hover:text-fg"
+        className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+          active
+            ? "bg-accent/15 text-accent"
+            : "text-muted hover:bg-surface-2 hover:text-fg"
         }`}
       >
         <ArrowDownUp size={16} aria-hidden focusable={false} />
-        <span aria-hidden className="text-muted">
-          {current.glyph}
-        </span>
       </button>
       <FloatingPanel
         open={open}
@@ -398,6 +446,253 @@ function SortMenu({
               );
             })}
           </ul>
+        </div>
+      </FloatingPanel>
+    </div>
+  );
+}
+
+function FilterMenu({
+  filter,
+  onFilterChange,
+  index,
+  settings,
+}: {
+  filter: SearchFilter;
+  onFilterChange: (next: SearchFilter) => void;
+  index: readonly SearchEntry[];
+  settings: Settings;
+}) {
+  const t = useT();
+  const lang = useLang();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  const active = isFilterActive(filter) || open;
+
+  // Unique budget sheets present in the index, in first-seen order.
+  const sheets = useMemo(() => {
+    const seen = new Map<
+      string,
+      { id: string; name: string; glyph: string; color: string }
+    >();
+    for (const e of index) {
+      if (!seen.has(e.sheetId))
+        seen.set(e.sheetId, {
+          id: e.sheetId,
+          name: e.sheetName,
+          glyph: e.sheetGlyph,
+          color: e.sheetColor,
+        });
+    }
+    return [...seen.values()];
+  }, [index]);
+
+  const bounds = useMemo(() => indexBounds(index), [index]);
+
+  const hasAmount =
+    bounds.amountMin !== null &&
+    bounds.amountMax !== null &&
+    bounds.amountMax > bounds.amountMin;
+  const hasDate =
+    bounds.dateMin !== null &&
+    bounds.dateMax !== null &&
+    bounds.dateMax > bounds.dateMin;
+
+  const amountValue: [number, number] = [
+    filter.amountMin ?? bounds.amountMin ?? 0,
+    filter.amountMax ?? bounds.amountMax ?? 0,
+  ];
+  const dateMinNum = bounds.dateMin !== null ? isoToDayNum(bounds.dateMin) : 0;
+  const dateMaxNum = bounds.dateMax !== null ? isoToDayNum(bounds.dateMax) : 0;
+  const dateValue: [number, number] = [
+    filter.dateMin !== null ? isoToDayNum(filter.dateMin) : dateMinNum,
+    filter.dateMax !== null ? isoToDayNum(filter.dateMax) : dateMaxNum,
+  ];
+
+  const amountLabel = (v: number) =>
+    withCurrency(formatNumber(v, settings), settings);
+  const dateLabel = (day: number) =>
+    formatDate(dayNumToIso(day), settings.dateFormat, lang);
+
+  // Store a bound as null when its thumb sits at the natural edge so the
+  // filter stays "default" on that side and the Filter glyph dims back.
+  function commitAmount(next: [number, number]) {
+    onFilterChange({
+      ...filter,
+      amountMin:
+        bounds.amountMin !== null && next[0] <= bounds.amountMin
+          ? null
+          : next[0],
+      amountMax:
+        bounds.amountMax !== null && next[1] >= bounds.amountMax
+          ? null
+          : next[1],
+    });
+  }
+  function commitDate(next: [number, number]) {
+    onFilterChange({
+      ...filter,
+      dateMin: next[0] <= dateMinNum ? null : dayNumToIso(next[0]),
+      dateMax: next[1] >= dateMaxNum ? null : dayNumToIso(next[1]),
+    });
+  }
+  function toggleSheet(id: string, checked: boolean) {
+    const set = new Set(filter.sheetIds);
+    if (checked) set.add(id);
+    else set.delete(id);
+    onFilterChange({ ...filter, sheetIds: [...set] });
+  }
+
+  return (
+    <div ref={triggerRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={t("searchTransaction.filterMenuAria")}
+        title={t("searchTransaction.filterMenuTitle")}
+        className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+          active
+            ? "bg-accent/15 text-accent"
+            : "text-muted hover:bg-surface-2 hover:text-fg"
+        }`}
+      >
+        <Filter size={16} aria-hidden focusable={false} />
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={close}
+        triggerRef={triggerRef}
+        placement={FILTER_MENU_PLACEMENT}
+        className="overflow-hidden"
+      >
+        <div
+          role="dialog"
+          aria-label={t("searchTransaction.filterMenuTitle")}
+          className="flex flex-col"
+        >
+          <p className="border-b border-line bg-surface-3 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted">
+            {t("searchTransaction.filterMenuTitle")}
+          </p>
+          <div className="flex flex-col gap-3 px-3 py-3">
+            <div className="flex flex-col gap-2">
+              <Checkbox
+                checked={filter.excludeTransfers}
+                onChange={(v) =>
+                  onFilterChange({ ...filter, excludeTransfers: v })
+                }
+                label={t("searchTransaction.filterExcludeTransfers")}
+              />
+              <Checkbox
+                checked={filter.excludeHistory}
+                onChange={(v) =>
+                  onFilterChange({ ...filter, excludeHistory: v })
+                }
+                label={t("searchTransaction.filterExcludeHistory")}
+              />
+              <Checkbox
+                checked={filter.excludeUnconfirmed}
+                onChange={(v) =>
+                  onFilterChange({ ...filter, excludeUnconfirmed: v })
+                }
+                label={t("searchTransaction.filterExcludeUnconfirmed")}
+              />
+            </div>
+
+            {sheets.length > 1 && (
+              <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+                <p className="text-xs font-medium text-fg-bright">
+                  {t("searchTransaction.filterSheets")}
+                </p>
+                <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+                  {sheets.map((sheet) => (
+                    <Checkbox
+                      key={sheet.id}
+                      checked={filter.sheetIds.includes(sheet.id)}
+                      onChange={(v) => toggleSheet(sheet.id, v)}
+                      label={
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            aria-hidden
+                            className="inline-flex h-4 w-4 items-center justify-center"
+                            style={{ color: sheet.color }}
+                          >
+                            <CategoryIconGlyph
+                              name={sheet.glyph as CategoryIcon}
+                              size={14}
+                            />
+                          </span>
+                          <span className="truncate">{sheet.name}</span>
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
+                {filter.sheetIds.length === 0 && (
+                  <p className="text-xs text-muted">
+                    {t("searchTransaction.filterSheetsAll")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {hasAmount && (
+              <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="font-medium text-fg-bright">
+                    {t("searchTransaction.filterAmount")}
+                  </span>
+                  <span className="font-mono text-muted">
+                    {amountLabel(amountValue[0])} –{" "}
+                    {amountLabel(amountValue[1])}
+                  </span>
+                </div>
+                <RangeSlider
+                  min={bounds.amountMin ?? 0}
+                  max={bounds.amountMax ?? 0}
+                  value={amountValue}
+                  onChange={commitAmount}
+                  ariaLabelMin={t("searchTransaction.filterAmountMin")}
+                  ariaLabelMax={t("searchTransaction.filterAmountMax")}
+                  formatValueText={amountLabel}
+                />
+              </div>
+            )}
+
+            {hasDate && (
+              <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="font-medium text-fg-bright">
+                    {t("searchTransaction.filterDates")}
+                  </span>
+                  <span className="font-mono text-muted">
+                    {dateLabel(dateValue[0])} – {dateLabel(dateValue[1])}
+                  </span>
+                </div>
+                <RangeSlider
+                  min={dateMinNum}
+                  max={dateMaxNum}
+                  value={dateValue}
+                  onChange={commitDate}
+                  ariaLabelMin={t("searchTransaction.filterDateMin")}
+                  ariaLabelMax={t("searchTransaction.filterDateMax")}
+                  formatValueText={dateLabel}
+                />
+              </div>
+            )}
+
+            {isFilterActive(filter) && (
+              <button
+                type="button"
+                onClick={() => onFilterChange(EMPTY_FILTER)}
+                className="self-start text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+              >
+                {t("searchTransaction.filterReset")}
+              </button>
+            )}
+          </div>
         </div>
       </FloatingPanel>
     </div>

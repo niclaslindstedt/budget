@@ -188,6 +188,8 @@ export function UniversalModalHost(props: Props) {
     setSearchQuery,
     searchSort,
     setSearchSort,
+    searchFilter,
+    setSearchFilter,
     searchIndex,
     setScrollToRowRequest,
   } = searchModal;
@@ -407,6 +409,8 @@ export function UniversalModalHost(props: Props) {
         onQueryChange={setSearchQuery}
         sort={searchSort}
         onSortChange={setSearchSort}
+        filter={searchFilter}
+        onFilterChange={setSearchFilter}
         index={searchIndex}
         settings={effectiveSettings}
         onPick={(entry) => {

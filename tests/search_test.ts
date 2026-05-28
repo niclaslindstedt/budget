@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
-import { buildSearchIndex, runSearch } from "../src/data/search";
+import {
+  buildSearchIndex,
+  EMPTY_FILTER,
+  indexBounds,
+  isFilterActive,
+  runSearch,
+  type SearchFilter,
+} from "../src/data/search";
 import type {
   Account,
   AccountBudget,
@@ -357,6 +364,168 @@ describe("runSearch — sort overrides", () => {
     expect(desc.map((r) => r.entry.rowId)).toEqual(["r2", "r1"]);
     const asc = runSearch(idx, "spotify", "date-asc");
     expect(asc.map((r) => r.entry.rowId)).toEqual(["r2", "r1"]);
+  });
+});
+
+function filter(overrides: Partial<SearchFilter>): SearchFilter {
+  return { ...EMPTY_FILTER, ...overrides };
+}
+
+describe("runSearch — filters", () => {
+  // Data with a user row, a transfer-flagged user row, and a
+  // synthesized history row, so the kind / transfer filters have one
+  // of each to act on. Browsed with an empty query so the filter is
+  // what does all the work.
+  function mixed(): UserData {
+    const account: Account = { id: "acc-1", name: "Checking" };
+    const hist: HistoryEntry = {
+      id: "hist-1",
+      date: "2026-05-03",
+      description: "ICA",
+      amount: -200,
+      importedAt: 0,
+    };
+    return withItem(
+      [
+        { id: "r1", cells: { d: "2026-05-01", x: "Groceries", a: -100 } },
+        {
+          id: "r2",
+          cells: { d: "2026-05-02", x: "To savings", a: -500 },
+          isTransfer: true,
+        },
+      ],
+      { accounts: [account], accountId: "acc-1", history: { "acc-1": [hist] } },
+    );
+  }
+
+  it("excludeUnconfirmed keeps only bank-history rows", () => {
+    const idx = buildSearchIndex(mixed(), t);
+    const out = runSearch(
+      idx,
+      "",
+      "date-desc",
+      filter({ excludeUnconfirmed: true }),
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].entry.kind).toBe("historic");
+  });
+
+  it("excludeHistory drops bank-history rows", () => {
+    const idx = buildSearchIndex(mixed(), t);
+    const out = runSearch(
+      idx,
+      "",
+      "date-desc",
+      filter({ excludeHistory: true }),
+    );
+    expect(out.map((r) => r.entry.rowId).sort()).toEqual(["r1", "r2"]);
+    expect(out.every((r) => r.entry.kind !== "historic")).toBe(true);
+  });
+
+  it("excludeTransfers drops rows flagged as transfers", () => {
+    const idx = buildSearchIndex(mixed(), t);
+    const out = runSearch(
+      idx,
+      "",
+      "date-desc",
+      filter({ excludeTransfers: true }),
+    );
+    expect(out.some((r) => r.entry.rowId === "r2")).toBe(false);
+  });
+
+  it("amount range matches by magnitude across both signs", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-05-01", x: "small", a: -100 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "refund", a: 300 } },
+      { id: "r3", cells: { d: "2026-05-03", x: "big", a: -500 } },
+      { id: "r4", cells: { d: "2026-05-04", x: "no amount" } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(
+      idx,
+      "",
+      "date-asc",
+      filter({ amountMin: 200, amountMax: 400 }),
+    );
+    // |300| is in band; |100| and |500| are out; the amountless row is
+    // dropped because it can't satisfy a numeric band.
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r2"]);
+  });
+
+  it("date range drops undated rows and rows outside the band", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-01-01", x: "early", a: -1 } },
+      { id: "r2", cells: { d: "2026-05-15", x: "mid", a: -1 } },
+      { id: "r3", cells: { d: "2026-12-31", x: "late", a: -1 } },
+      { id: "r4", cells: { d: "", x: "undated", a: -1 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(
+      idx,
+      "",
+      "date-asc",
+      filter({ dateMin: "2026-05-01", dateMax: "2026-06-01" }),
+    );
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r2"]);
+  });
+
+  it("sheetIds restricts to the chosen sheets; empty means all", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    expect(
+      runSearch(idx, "spotify", "relevance", filter({ sheetIds: ["s"] })),
+    ).toHaveLength(1);
+    expect(
+      runSearch(idx, "spotify", "relevance", filter({ sheetIds: ["other"] })),
+    ).toHaveLength(0);
+  });
+
+  it("an active filter narrows a non-empty query before the result cap", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "Spotify", a: -800 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(
+      idx,
+      "spotify",
+      "relevance",
+      filter({ amountMax: 200 }),
+    );
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r1"]);
+  });
+
+  it("empty query browses filtered rows but stays empty when no filter is set", () => {
+    const idx = buildSearchIndex(mixed(), t);
+    expect(runSearch(idx, "", "date-desc", EMPTY_FILTER)).toEqual([]);
+    expect(
+      runSearch(idx, "", "date-desc", filter({ excludeHistory: true })).length,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe("filter helpers", () => {
+  it("isFilterActive is false only for the empty filter", () => {
+    expect(isFilterActive(EMPTY_FILTER)).toBe(false);
+    expect(isFilterActive(filter({ excludeTransfers: true }))).toBe(true);
+    expect(isFilterActive(filter({ amountMin: 5 }))).toBe(true);
+    expect(isFilterActive(filter({ dateMax: "2026-01-01" }))).toBe(true);
+    expect(isFilterActive(filter({ sheetIds: ["s"] }))).toBe(true);
+  });
+
+  it("indexBounds reports absolute-amount and ISO-date extents", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-02-01", x: "a", a: -100 } },
+      { id: "r2", cells: { d: "2026-08-01", x: "b", a: 750 } },
+      { id: "r3", cells: { d: "", x: "no date" } },
+    ]);
+    const bounds = indexBounds(buildSearchIndex(data, t));
+    expect(bounds.amountMin).toBe(100);
+    expect(bounds.amountMax).toBe(750);
+    expect(bounds.dateMin).toBe("2026-02-01");
+    expect(bounds.dateMax).toBe("2026-08-01");
   });
 });
 
