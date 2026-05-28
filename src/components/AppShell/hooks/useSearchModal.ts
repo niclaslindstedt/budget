@@ -32,8 +32,9 @@ type Result = {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   // Sort order survives modal close like `searchQuery` does — never
-  // persisted to localStorage. Default is `"relevance"` so the score-
-  // based ranking from `runSearch` shows up unchanged on first open.
+  // persisted to localStorage. Default is `"date-desc"` so the most
+  // recent matching entry surfaces first — the row the user is most
+  // likely looking for in a ledger that grows over time.
   searchSort: SearchSort;
   setSearchSort: (sort: SearchSort) => void;
   // Memoised search index against the whole `data` reference so it
@@ -61,7 +62,7 @@ export function useSearchModal({ data }: Params): Result {
   const lang = useLang();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchSort, setSearchSort] = useState<SearchSort>("relevance");
+  const [searchSort, setSearchSort] = useState<SearchSort>("date-desc");
   const [scrollToRowRequest, setScrollToRowRequest] =
     useState<ScrollToRowRequest | null>(null);
   // Lazy: the search index is a flattened projection of every sheet's
