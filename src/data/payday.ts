@@ -66,7 +66,7 @@ function collectPositiveSeries(data: UserData): SeriesAggregate[] {
       if (item.type !== "accountBudget") continue;
       for (const row of item.rows) {
         if (!row.seriesId) continue;
-        if (row.isCorrection) continue;
+        if (row.kind === "correction") continue;
         const ra = readRow(row, item.columns);
         if (!ra) continue;
         if (ra.amount <= 0) continue;

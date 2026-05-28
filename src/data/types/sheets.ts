@@ -14,6 +14,10 @@ export type AccountBudget = {
   type: "accountBudget";
   accountId: string | null;
   columns: Column[];
+  // Persisted rows live here as `Row` (the union); the validator
+  // ensures only `UserRow | CorrectionRow` ever reach storage, and
+  // synthesizers (`synthesizeHistoryRow`, `synthesizeTransferRow`)
+  // never write into `item.rows[]`.
   rows: Row[];
 };
 

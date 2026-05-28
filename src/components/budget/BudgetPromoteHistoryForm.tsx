@@ -223,7 +223,7 @@ export function BudgetPromoteHistoryForm({
   }
 
   function handleSubmit() {
-    if (!row.historyEntryId) return;
+    if (row.kind !== "historic") return;
     if (parsedAmount === null) return;
     onSubmit(row.historyEntryId, rawCellDescription, {
       description: description.trim(),

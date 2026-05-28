@@ -213,7 +213,7 @@ export function useRowMutations({
       // through the entry-update path so the flag lands on the
       // underlying `HistoryEntry` (and propagates back via
       // `synthesizeHistoryRow` on the next render).
-      if (row.historyEntryId) {
+      if (row.kind === "historic") {
         if (!activeAccountId) return;
         dispatch({
           type: "updateHistoryEntry",
@@ -230,7 +230,7 @@ export function useRowMutations({
 
   const onEditHistoryRequest = useCallback(
     (row: Row) => {
-      if (!row.historyEntryId) return;
+      if (row.kind !== "historic") return;
       setHistoryEditPrompt({ entryId: row.historyEntryId });
     },
     [setHistoryEditPrompt],
@@ -267,7 +267,7 @@ export function useRowMutations({
   // apply when the user picks a company there.
   const onSetRowCompany = useCallback(
     (row: Row, companyId: string | null) => {
-      if (row.historyEntryId && activeAccountId) {
+      if (row.kind === "historic" && activeAccountId) {
         const entry = history[activeAccountId]?.find(
           (e) => e.id === row.historyEntryId,
         );
@@ -328,7 +328,7 @@ export function useRowMutations({
   // `onOmitChange` and the option doesn't surface there.
   const onSetRowNoCompany = useCallback(
     (row: Row, next: boolean) => {
-      if (!row.historyEntryId || !activeAccountId) return;
+      if (row.kind !== "historic" || !activeAccountId) return;
       const patch: {
         noCompany: boolean;
         userCompanyId?: string | null;

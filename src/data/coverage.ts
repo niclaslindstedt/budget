@@ -65,8 +65,8 @@ function indexUserRowsByMonth(
   const out = new Map<string, Row[]>();
   if (!dateCol) return out;
   for (const row of rows) {
-    if (row.historyEntryId) continue;
-    if (row.transferId) continue;
+    if (row.kind === "historic") continue;
+    if (row.kind === "transfer") continue;
     const key = getMonthKey(row.cells[dateCol.id], startOfMonth);
     if (!MONTH_KEY_RE.test(key)) continue;
     const list = out.get(key);

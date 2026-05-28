@@ -2,7 +2,7 @@ import { mintBudgetRow } from "../budget/rows";
 import { newId, updateAccountBudget } from "../sheet";
 import { recordMerchantHints } from "../merchant-hints";
 import type { Action } from "../reducer";
-import type { Row, Sheet, UserData } from "../types";
+import type { Sheet, UserData, UserRow } from "../types";
 
 // Shared row-minting body for the two recurring-promote actions
 // (`promoteRecurringCandidate` and `promoteHistoryToRecurring`).
@@ -23,7 +23,7 @@ function appendSeriesRowsToBudget(
 ): Sheet[] {
   const seriesId = action.dates.length > 1 ? newId() : undefined;
   return updateAccountBudget(sheets, action.sheetId, action.itemId, (item) => {
-    const newRows: Row[] = [];
+    const newRows: UserRow[] = [];
     for (const date of action.dates) {
       const row = mintBudgetRow(item.columns, {
         date,

@@ -14,25 +14,60 @@ const descCol: Column = { id: "x", type: "description", label: "Desc" };
 const amtCol: Column = { id: "a", type: "amount", label: "Amount" };
 const columns: Column[] = [dateCol, descCol, amtCol];
 
-function row(
-  over: Partial<Row> & {
-    date?: string;
-    amount?: number;
-    description?: string;
-  },
-): Row {
+function row(over: {
+  id?: string;
+  date?: string;
+  amount?: number;
+  description?: string;
+  seriesId?: string;
+  typeId?: string;
+  historyEntryId?: string;
+  transferId?: string;
+  isCorrection?: boolean;
+}): Row {
+  const cells: Record<string, string | number | boolean | null> = {
+    [dateCol.id]: over.date ?? "2026-04-15",
+    [descCol.id]: over.description ?? "",
+    [amtCol.id]: over.amount ?? -1000,
+  };
+  const id = over.id ?? "r1";
+  if (over.historyEntryId) {
+    return {
+      kind: "historic",
+      id,
+      cells,
+      historyEntryId: over.historyEntryId,
+      ...(over.seriesId ? { seriesId: over.seriesId } : {}),
+      ...(over.typeId ? { typeId: over.typeId } : {}),
+    };
+  }
+  if (over.transferId) {
+    return {
+      kind: "transfer",
+      id,
+      cells,
+      transferId: over.transferId,
+      peerAccountId: "peer",
+      peerAccountName: "Peer",
+      ...(over.typeId ? { typeId: over.typeId } : {}),
+    };
+  }
+  if (over.isCorrection) {
+    return {
+      kind: "correction",
+      isCorrection: true,
+      id,
+      cells,
+      ...(over.seriesId ? { seriesId: over.seriesId } : {}),
+      ...(over.typeId ? { typeId: over.typeId } : {}),
+    };
+  }
   return {
-    id: over.id ?? "r1",
-    cells: {
-      [dateCol.id]: over.date ?? "2026-04-15",
-      [descCol.id]: over.description ?? "",
-      [amtCol.id]: over.amount ?? -1000,
-    },
+    kind: "user",
+    id,
+    cells,
     ...(over.seriesId ? { seriesId: over.seriesId } : {}),
     ...(over.typeId ? { typeId: over.typeId } : {}),
-    ...(over.historyEntryId ? { historyEntryId: over.historyEntryId } : {}),
-    ...(over.transferId ? { transferId: over.transferId } : {}),
-    ...(over.isCorrection ? { isCorrection: over.isCorrection } : {}),
   };
 }
 

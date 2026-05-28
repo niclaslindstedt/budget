@@ -67,8 +67,8 @@ export function useMatchRuleUi({
     // Synthesized transfer / correction rows have no editable
     // description for a rule to key off; the menu hides the item on
     // them but guard the entry path too so a stray dispatch is a no-op.
-    if (row.transferId || row.isCorrection) return;
-    if (row.historyEntryId) {
+    if (row.kind === "transfer" || row.kind === "correction") return;
+    if (row.kind === "historic") {
       log.info(`open modal entryId=${row.historyEntryId}`);
       setMatchRulePrompt({ kind: "history", entryId: row.historyEntryId });
       return;

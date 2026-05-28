@@ -101,7 +101,7 @@ const hasFormulaRow = (s: UserData) =>
     (r) => typeof r.amountFormula === "string" && r.amountFormula !== "",
   );
 const hasCorrection = (s: UserData) =>
-  eachRow(s, (r) => r.isCorrection === true);
+  eachRow(s, (r) => r.kind === "correction");
 const hasTransferRow = (s: UserData) =>
   eachRow(s, (r) => r.isTransfer === true);
 const hasTypedRow = (s: UserData) =>
@@ -164,7 +164,7 @@ const hasPrimaryIncomeSeries = (s: UserData) =>
   Object.values(s.seriesMetadata).some((m) => m.isPrimaryIncome === true);
 const hasMultipartItem = (s: UserData) =>
   eachAccountBudget(s, (i) => {
-    const corrections = i.rows.filter((r) => r.isCorrection).length;
+    const corrections = i.rows.filter((r) => r.kind === "correction").length;
     return corrections > 0;
   });
 

@@ -114,7 +114,7 @@ export function usePromptDerivations({
 
   const splitHistoryEntry = useMemo<HistoryEntry | null>(() => {
     const row = splitPrompt?.row;
-    if (!row?.historyEntryId || !activeItem.accountId) return null;
+    if (row?.kind !== "historic" || !activeItem.accountId) return null;
     const entries = data.history[activeItem.accountId] ?? [];
     return entries.find((e) => e.id === row.historyEntryId) ?? null;
   }, [splitPrompt, activeItem.accountId, data.history]);
@@ -140,7 +140,7 @@ export function usePromptDerivations({
 
   const editHistoryHintPrefill = useMemo<HistoryPromotePrefill | null>(() => {
     const row = editPrompt?.row;
-    if (!row?.historyEntryId) return null;
+    if (row?.kind !== "historic") return null;
     const accountId = activeItem.accountId;
     if (!accountId) return null;
     const entries = data.history[accountId] ?? [];
@@ -168,7 +168,7 @@ export function usePromptDerivations({
     if (!accountId) return null;
     const entries = data.history[accountId] ?? [];
     let targetKey: string;
-    if (row.historyEntryId) {
+    if (row.kind === "historic") {
       const entry = entries.find((e) => e.id === row.historyEntryId);
       if (!entry) return null;
       targetKey = normaliseDescription(entry.description);

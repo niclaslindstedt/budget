@@ -16,6 +16,7 @@ const columns: Column[] = [dateCol, amtCol];
 
 function row(seriesId: string, date: string, amount: number): Row {
   return {
+    kind: "user",
     id: `${seriesId}-${date}`,
     cells: { [dateCol.id]: date, [amtCol.id]: amount },
     seriesId,

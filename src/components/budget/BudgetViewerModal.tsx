@@ -216,7 +216,7 @@ export function BudgetViewerModal({
     if (q === "") return searchIndex.map((e) => e.row);
     const out: Row[] = [];
     for (const e of searchIndex) {
-      if (e.row.isCorrection) continue;
+      if (e.row.kind === "correction") continue;
       if (
         e.descLc.includes(q) ||
         e.typeNameLc.includes(q) ||
@@ -612,7 +612,7 @@ export function BudgetViewerModal({
                     </tr>
                   ) : (
                     rows.map((row) =>
-                      row.isCorrection ? (
+                      row.kind === "correction" ? (
                         <CorrectionRow
                           key={row.id}
                           row={row}

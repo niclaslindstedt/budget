@@ -222,7 +222,7 @@ export function BudgetModalHost(props: Props) {
         setSplitPrompt(null);
         return;
       }
-      if (row.historyEntryId && activeItem.accountId) {
+      if (row.kind === "historic" && activeItem.accountId) {
         // History rows can't be replaced inline — the entry is the
         // bank's authoritative record and its amount must be preserved.
         // Fold any remainder into a final split that keeps the entry's
@@ -287,7 +287,7 @@ export function BudgetModalHost(props: Props) {
   // to the original.
   const onSplitRevert = useCallback(() => {
     const row = splitPrompt?.row;
-    if (!row?.historyEntryId || !activeItem.accountId) {
+    if (row?.kind !== "historic" || !activeItem.accountId) {
       setSplitPrompt(null);
       return;
     }

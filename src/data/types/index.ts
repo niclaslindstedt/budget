@@ -1,4 +1,14 @@
-export type { CellValue, Column, ColumnType, Row } from "./budget";
+export type {
+  CellValue,
+  Column,
+  ColumnType,
+  CorrectionRow,
+  HistoricRow,
+  Row,
+  RowKind,
+  TransferRow,
+  UserRow,
+} from "./budget";
 
 export type {
   Category,

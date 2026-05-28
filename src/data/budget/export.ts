@@ -109,10 +109,10 @@ export function buildBudgetExportRows(
         )
     : [];
 
-  const merged: AccountBudget = {
-    ...item,
-    rows: [...item.rows, ...transferRows, ...historyRows],
-  };
+  // Concatenated view including synthesized rows. Fed straight to
+  // `computeBalances` via the `presortedRows` parameter instead of
+  // rebuilding a fake `AccountBudget` around it.
+  const allRows: Row[] = [...item.rows, ...transferRows, ...historyRows];
 
   // Mirror BudgetPage's silent balance-correction pinning so the
   // exported running balance lines up with what's on screen — each
@@ -138,9 +138,9 @@ export function buildBudgetExportRows(
   // Sort once. `computeBalances` accepts the pre-sorted view so the
   // running-balance walk and the export iteration below share a single
   // O(N log N) pass instead of each sorting independently.
-  const sorted = sortRowsByDate(merged.rows, dateCol.id, sortContext);
+  const sorted = sortRowsByDate(allRows, dateCol.id, sortContext);
   const balances = computeBalances(
-    merged,
+    item,
     openingBalance,
     undefined,
     balanceOverrides,
@@ -171,7 +171,7 @@ export function buildBudgetExportRows(
     // than the raw statement noise.
     let description: string;
     const rawDesc = row.cells[descCol.id];
-    if (row.historyEntryId && type) {
+    if (row.kind === "historic" && type) {
       description = type.name;
     } else {
       description = typeof rawDesc === "string" ? rawDesc : "";

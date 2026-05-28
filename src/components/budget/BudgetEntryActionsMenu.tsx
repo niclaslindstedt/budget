@@ -92,7 +92,7 @@ export function BudgetEntryActionsMenu({
   // manually-typed entry the user creates from here on. Hide it on
   // synthesized transfer rows and balance-correction rows, which
   // have no editable description for the rule to key off.
-  if (!row.transferId && !row.isCorrection) {
+  if (row.kind !== "transfer" && row.kind !== "correction") {
     items.push({
       key: "labelByPattern",
       icon: <Tags size={16} aria-hidden focusable={false} />,
@@ -145,7 +145,7 @@ export function BudgetEntryActionsMenu({
   // opts in by passing `onSetFiscalMonthShift`. The current state of
   // `row.fiscalMonthShift` decides which of the three entries appear so
   // the menu stays compact.
-  if (onSetFiscalMonthShift && !isHistory && !row.transferId) {
+  if (onSetFiscalMonthShift && !isHistory && row.kind !== "transfer") {
     const shift = row.fiscalMonthShift;
     if (shift !== 1) {
       items.push({

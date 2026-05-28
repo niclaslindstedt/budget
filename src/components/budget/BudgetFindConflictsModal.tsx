@@ -129,7 +129,7 @@ export function BudgetFindConflictsModal({
       if (!winner) return;
       const losers = conflict.rows.filter((r) => r.id !== conflict.winnerId);
       if (losers.length === 0) return;
-      if (typeof winner.historyEntryId === "string") {
+      if (winner.kind === "historic") {
         if (!accountId) return;
         const stamp: ConflictHistoryStamp = {
           historyEntryId: winner.historyEntryId,
@@ -314,7 +314,7 @@ function ConflictCard({
       <ul className="divide-y divide-line">
         {conflict.rows.map((row) => {
           const isWinner = row.id === conflict.winnerId;
-          const fromHistory = typeof row.historyEntryId === "string";
+          const fromHistory = row.kind === "historic";
           const ty =
             typeof row.typeId === "string"
               ? (typesById.get(row.typeId) ?? null)

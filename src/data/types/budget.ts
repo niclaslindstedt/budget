@@ -14,7 +14,11 @@ export type Column = {
   label: string;
 };
 
-export type Row = {
+// Row variants share this base. Fields here apply to every kind — date
+// cell, optional series grouping, optional fiscal-month shift, optional
+// type / company tags, etc. Kind-specific fields live on the variants
+// below.
+type RowBase = {
   id: string;
   cells: Record<string, CellValue>;
   // Optional grouping id shared by every row generated from the same
@@ -38,52 +42,6 @@ export type Row = {
   // types subsume that role with a name and colour attached, which
   // makes them usable for grouping and stats.
   typeId?: string;
-  // True when this row was minted by the "update balance" flow on the
-  // Accounts page: its amount is the delta needed to bring the account's
-  // running total to a user-asserted value. Rendered as a full-width
-  // divider line ("——— balance correction ±X ———") in place of the
-  // normal columned row, and excluded from bulk-edit selection. The
-  // running balance reads `amount` like any other row, so the correction
-  // shifts the total without further special casing.
-  isCorrection?: boolean;
-  // Runtime-only markers populated by `synthesizeTransferRow` when a
-  // Transfer is interleaved into a budget view. Never persisted —
-  // synthesized rows live outside `item.rows` (the budget view merges
-  // them in at render time), and the validator/schema do not list
-  // these fields. The cell renderer reads them to disable inline
-  // editing, swap the row glyph, and offer the transfer-edit modal
-  // in place of the usual delete/recurring actions.
-  transferId?: string;
-  peerAccountId?: string;
-  peerAccountName?: string;
-  // Runtime-only marker populated by `synthesizeHistoryRow` when an
-  // imported bank-statement entry is projected into a budget view.
-  // Like the transfer markers, this is never persisted — history
-  // rows live in `UserData.history`, not in `item.rows`. The cell
-  // renderer reads it to disable inline editing and surface a
-  // "promote to recurring" action in place of the usual edit dialog.
-  historyEntryId?: string;
-  // Runtime-only marker populated by `synthesizeHistoryRow` when the
-  // resolved description in `cells[descColumnId]` is a fallback
-  // (company / type / bank text) — i.e. the underlying HistoryEntry
-  // has no userDescription / rule.description / hint.description
-  // override. Carries the raw bank text so the description cell can
-  // (a) render the fallback in italic + glyph color, signalling that
-  // the row has no user-authored description, and (b) seed the inline
-  // editor with an empty textarea + this string as the placeholder
-  // when the user opens it to type a real description. Undefined on
-  // every other row (regular budget rows, transfers, splits, and
-  // history rows whose underlying entry already has an override).
-  descriptionPlaceholder?: string;
-  // Runtime-only carrier for the underlying bank entry's raw memo on
-  // history rows where the user (or a rule / hint) has overridden it
-  // — i.e. the inverse of `descriptionPlaceholder`. The description
-  // popover renders this as a read-only "original from bank" line
-  // beneath the textarea so the user can still see what the bank
-  // reported even after relabelling the row. Skipped when the bank
-  // text is already serving as the cell's display value (covered by
-  // `descriptionPlaceholder`) and on every non-history row.
-  bankDescription?: string;
   // Optional dynamic amount: a small formula string whose evaluation
   // produces this row's effective amount at render time. When set, it
   // overrides the numeric value in `cells[amountColumnId]` (which is
@@ -102,8 +60,8 @@ export type Row = {
   // while their amounts continue to contribute to the running balance.
   // Set via the per-row "mark as transfer" (eye-slash) action and
   // mirrored from `HistoryEntry.isTransfer` by `synthesizeHistoryRow`.
-  // Synthesized transfer rows (those carrying `peerAccountId`) are
-  // implicitly transfers and don't need this flag set.
+  // Synthesized transfer rows (kind: "transfer") are implicitly
+  // transfers and don't need this flag set.
   isTransfer?: boolean;
   // True when the user has manually assigned `typeId` for this row
   // (via the type cell picker, the edit-row modal, or any other
@@ -121,10 +79,87 @@ export type Row = {
   // to the company name; when no company is set, it falls back to the
   // type name; absent both, to the raw bank text for history rows.
   companyId?: string;
-  // Runtime-only mirror of `HistoryEntry.noCompany`, propagated by
+};
+
+// Vanilla user-authored row. The default kind for anything in
+// `item.rows[]` that isn't a balance correction.
+export type UserRow = RowBase & { kind: "user" };
+
+// Balance correction minted by the "update balance" flow on the
+// Accounts page: its amount is the delta needed to bring the account's
+// running total to a user-asserted value. Rendered as a full-width
+// divider line ("——— balance correction ±X ———") in place of the
+// normal columned row, and excluded from bulk-edit selection. The
+// running balance reads `amount` like any other row, so the correction
+// shifts the total without further special casing. The `isCorrection`
+// literal stays alongside `kind` so older builds reading a snapshot
+// can still recognise the row.
+export type CorrectionRow = RowBase & {
+  kind: "correction";
+  isCorrection: true;
+};
+
+// Runtime-only row synthesized by `synthesizeHistoryRow` when an
+// imported bank-statement entry is projected into a budget view.
+// Never persisted — history rows live in `UserData.history`, not in
+// `item.rows`. The cell renderer narrows on `kind === "historic"` to
+// disable inline editing, swap in the "promote to recurring" action
+// in place of the usual edit dialog, and surface the bank-original
+// strings in the description popover.
+export type HistoricRow = RowBase & {
+  kind: "historic";
+  // The HistoryEntry this row was synthesized from.
+  historyEntryId: string;
+  // Carrier for the underlying bank entry's raw memo when the user
+  // (or a rule / hint) has overridden it. The description popover
+  // renders this as a read-only "original from bank" line beneath the
+  // textarea so the user can still see what the bank reported even
+  // after relabelling the row. Skipped when the bank text is already
+  // serving as the cell's display value (covered by
+  // `descriptionPlaceholder`).
+  bankDescription?: string;
+  // Populated when the resolved description in `cells[descColumnId]`
+  // is a fallback (company / type / bank text) — i.e. the underlying
+  // HistoryEntry has no userDescription / rule.description /
+  // hint.description override. Carries the raw bank text so the
+  // description cell can (a) render the fallback in italic + glyph
+  // colour, signalling that the row has no user-authored description,
+  // and (b) seed the inline editor with an empty textarea + this
+  // string as the placeholder when the user opens it to type a real
+  // description.
+  descriptionPlaceholder?: string;
+  // Mirror of `HistoryEntry.noCompany`, propagated by
   // `synthesizeHistoryRow` so the description popover's inline picker
-  // can offer "Omit company" with the right initial state. Never
-  // persisted on user-authored rows — only history-derived rows
-  // carry it.
+  // can offer "Omit company" with the right initial state.
   noCompany?: boolean;
 };
+
+// Runtime-only row synthesized by `synthesizeTransferRow` when a
+// Transfer is interleaved into a budget view. Never persisted —
+// synthesized rows live outside `item.rows`. The cell renderer narrows
+// on `kind === "transfer"` to disable inline editing, swap the row
+// glyph, and offer the transfer-edit modal in place of the usual
+// delete/recurring actions.
+export type TransferRow = RowBase & {
+  kind: "transfer";
+  // The Transfer this row was synthesized from.
+  transferId: string;
+  // The other end of the transfer; the cell renderer uses this to
+  // show "→ Savings" / "← Salary".
+  peerAccountId: string;
+  peerAccountName: string;
+};
+
+// Discriminated union of every row a budget view can render. Callers
+// narrow on `kind` to pick the right shape: `"user"` and `"correction"`
+// are persisted in `AccountBudget.rows`; `"historic"` and `"transfer"`
+// are synthesized at render time from `UserData.history` / `transfers`
+// and never reach storage. The validator (`validateRow`) and the
+// synthesizers (`synthesizeHistoryRow`, `synthesizeTransferRow`) are
+// the only sites that mint a fresh `kind`; every other helper either
+// spreads existing rows (preserving the discriminator) or builds new
+// `UserRow`s via `createEmptyRow` / `mintBudgetRow`.
+export type Row = UserRow | CorrectionRow | HistoricRow | TransferRow;
+
+// Discriminator literal used to switch on row kind.
+export type RowKind = Row["kind"];

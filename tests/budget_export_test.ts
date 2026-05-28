@@ -41,6 +41,7 @@ function buildItem(
   const amountId = findCol(item, "amount");
   const rows: Row[] = entries.map((e) => {
     const row: Row = {
+      kind: "user",
       id: e.id,
       cells: {
         [dateId]: e.date,
