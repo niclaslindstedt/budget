@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useReducer, useRef } from "react";
 import { Pencil } from "lucide-react";
 
 import { sortRowsByDate } from "../../data/budget/rows";
@@ -15,12 +15,7 @@ import type {
 } from "../../data/types";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
-import {
-  formatAmount,
-  formatAmountForInput,
-  formatShortDate,
-  parseAmount,
-} from "../../utils/format";
+import { formatAmount, formatShortDate, parseAmount } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import {
   Checkbox,
@@ -33,6 +28,10 @@ import {
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
+import {
+  budgetEditEntryFullModalReducer,
+  initialEditFullState,
+} from "./budget-edit-entry-full-modal-reducer";
 
 // Generic editor for a single budget row. Opened by long-pressing a row
 // or pressing the pen action button. Edits date, description, amount,
@@ -137,12 +136,12 @@ export function BudgetEditEntryFullModal({
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
-  const descCol = useMemo(
-    () => findColumnByType(columns, "description"),
-    [columns],
-  );
   const amountCol = useMemo(
     () => findColumnByType(columns, "amount"),
+    [columns],
+  );
+  const descCol = useMemo(
+    () => findColumnByType(columns, "description"),
     [columns],
   );
   const completedCol = useMemo(
@@ -150,95 +149,59 @@ export function BudgetEditEntryFullModal({
     [columns],
   );
 
-  const initialDescription =
-    descCol && row && typeof row.cells[descCol.id] === "string"
-      ? (row.cells[descCol.id] as string)
-      : "";
-  const initialAmountText =
-    amountCol && row && typeof row.cells[amountCol.id] === "number"
-      ? formatAmountForInput(
-          Math.abs(row.cells[amountCol.id] as number),
-          settings,
-        )
-      : "";
-  // Sign lives on a +/- toggle button; default to negative when no
-  // amount is set, otherwise mirror the stored sign (treating 0 as
-  // negative too).
-  const initialNegative =
-    amountCol && row && typeof row.cells[amountCol.id] === "number"
-      ? (row.cells[amountCol.id] as number) <= 0
-      : true;
-  const initialDate =
-    dateCol && row && typeof row.cells[dateCol.id] === "string"
-      ? (row.cells[dateCol.id] as string)
-      : "";
-  const initialTypeId = row?.typeId ?? null;
-  const initialCompanyId = row?.companyId ?? null;
-  const initialIsTransfer = row?.isTransfer === true;
-  const initialCompleted =
-    completedCol && row && typeof row.cells[completedCol.id] === "boolean"
-      ? (row.cells[completedCol.id] as boolean)
-      : false;
+  // Snapshot the props into a single initial state. The `useReducer`
+  // initialiser captures the first snapshot at mount; `useResetOnOpen`
+  // dispatches a `reset` carrying a fresh snapshot when the row id
+  // changes. The same snapshot is used as the reference point for the
+  // "touched" comparisons in `handleSave`.
+  const initialState = useMemo(
+    () =>
+      initialEditFullState(
+        row,
+        columns,
+        settings,
+        seriesMetadata,
+        lastSeriesDate,
+      ),
+    [row, columns, settings, seriesMetadata, lastSeriesDate],
+  );
 
   const isSeries = !!row?.seriesId;
 
-  const [description, setDescription] = useState(initialDescription);
-  const [amount, setAmount] = useState(initialAmountText);
-  const [negative, setNegative] = useState(initialNegative);
-  const [date, setDate] = useState(initialDate);
-  const [typeId, setTypeId] = useState<string | null>(initialTypeId);
-  const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const [state, dispatch] = useReducer(
+    budgetEditEntryFullModalReducer,
+    initialState,
+  );
+  const {
+    description,
+    amount,
+    negative,
+    date,
+    typeId,
+    companyId,
+    isTransfer,
+    completed,
+    isPrimaryIncome,
+    anchorDayText,
+    scopeKind,
+    untilEnabled,
+    untilDate,
+    shiftDaysText,
+  } = state;
+
   const handlePickCompany = useCallback(
     (next: string | null) => {
-      setCompanyId(next);
       const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
-      if (auto !== undefined) setTypeId(auto);
+      dispatch({ kind: "pickCompany", companyId: next, autoTypeId: auto });
     },
     [typeId, companyTypeSuggestions],
   );
-  const [isTransfer, setIsTransfer] = useState(initialIsTransfer);
-  const [completed, setCompleted] = useState(initialCompleted);
-
-  // Primary-income toggle state. Initialised from the persisted
-  // metadata so the toggle reflects whatever the user picked last time;
-  // saved straight to the workspace through `onSetSeriesPrimaryIncome`
-  // when the user changes it (no need to wait for the row save).
-  const initialIsPrimary = seriesMetadata?.isPrimaryIncome === true;
-  const initialAnchorDay = seriesMetadata?.anchorDayOfMonth ?? 25;
-  const [isPrimaryIncome, setIsPrimaryIncome] = useState(initialIsPrimary);
-  const [anchorDayText, setAnchorDayText] = useState(String(initialAnchorDay));
-
-  const [scopeKind, setScopeKind] = useState<"just-this" | "future" | "all">(
-    "just-this",
-  );
-  const [untilEnabled, setUntilEnabled] = useState(false);
-  const [untilDate, setUntilDate] = useState(
-    lastSeriesDate ?? initialDate ?? "",
-  );
-  // Signed day-offset applied to every row in the chosen scope so the
-  // user can nudge a recurring series whose anchor day was off (e.g.
-  // landed on day 24 but should be day 25). Stored as a string so the
-  // input can hold transient state (lone `-`, empty) without snapping.
-  const [shiftDaysText, setShiftDaysText] = useState("0");
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open && !!row, row?.id);
 
   useResetOnOpen(open, row?.id, () => {
-    setDescription(initialDescription);
-    setAmount(initialAmountText);
-    setNegative(initialNegative);
-    setDate(initialDate);
-    setTypeId(initialTypeId);
-    setCompanyId(initialCompanyId);
-    setIsTransfer(initialIsTransfer);
-    setCompleted(initialCompleted);
-    setIsPrimaryIncome(initialIsPrimary);
-    setAnchorDayText(String(initialAnchorDay));
-    setScopeKind("just-this");
-    setUntilEnabled(false);
-    setUntilDate(lastSeriesDate ?? initialDate ?? "");
-    setShiftDaysText("0");
+    dispatch({ kind: "reset", state: initialState });
   });
 
   // Rows that the chosen scope will touch. Recomputed on every render
@@ -251,7 +214,7 @@ export function BudgetEditEntryFullModal({
     if (scopeKind === "just-this") return [];
     const sorted = sortRowsByDate([...seriesRows], dateCol.id);
     if (scopeKind === "all") return sorted;
-    const anchorDate = initialDate;
+    const anchorDate = initialState.date;
     if (!anchorDate) return [];
     const until = untilEnabled ? untilDate : null;
     return sorted.filter((r) => {
@@ -266,7 +229,7 @@ export function BudgetEditEntryFullModal({
     dateCol,
     scopeKind,
     seriesRows,
-    initialDate,
+    initialState.date,
     untilEnabled,
     untilDate,
   ]);
@@ -302,7 +265,7 @@ export function BudgetEditEntryFullModal({
           : "any";
 
   function toggleSign() {
-    setNegative((s) => !s);
+    dispatch({ kind: "toggleNegative" });
   }
 
   const parsedShiftDays = parseInt32(shiftDaysText);
@@ -314,8 +277,8 @@ export function BudgetEditEntryFullModal({
     // in the UI so the user can see why, but force-null it here too
     // in case anything ever bypasses the disabled state.
     const patchAmount = scopeKind === "all" ? null : parsedAmount;
-    const companyTouched = companyId !== initialCompanyId;
-    const transferTouched = isTransfer !== initialIsTransfer;
+    const companyTouched = companyId !== initialState.companyId;
+    const transferTouched = isTransfer !== initialState.isTransfer;
     onSave(
       row.id,
       {
@@ -357,7 +320,9 @@ export function BudgetEditEntryFullModal({
             <ClearableInput
               ref={descriptionRef}
               value={description}
-              onValueChange={setDescription}
+              onValueChange={(v) =>
+                dispatch({ kind: "setDescription", value: v })
+              }
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
@@ -367,7 +332,9 @@ export function BudgetEditEntryFullModal({
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ kind: "setDate", value: e.target.value })
+                }
                 className="field-input min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-path"
               />
             </label>
@@ -380,7 +347,7 @@ export function BudgetEditEntryFullModal({
               <SignedAmountInput
                 value={amount}
                 negative={negative}
-                onValueChange={setAmount}
+                onValueChange={(v) => dispatch({ kind: "setAmount", value: v })}
                 onToggleSign={toggleSign}
                 settings={settings}
                 ariaLabel={t("editEntry.amount")}
@@ -400,7 +367,7 @@ export function BudgetEditEntryFullModal({
               types={types}
               categories={categories}
               selectedId={typeId}
-              onSelect={setTypeId}
+              onSelect={(v) => dispatch({ kind: "setTypeId", value: v })}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               amountSign={pickerSign}
@@ -419,7 +386,7 @@ export function BudgetEditEntryFullModal({
           <div className="col-span-2">
             <Checkbox
               checked={isTransfer}
-              onChange={setIsTransfer}
+              onChange={(v) => dispatch({ kind: "setIsTransfer", value: v })}
               label={t("editRow.isTransfer")}
               className="items-center"
             />
@@ -428,7 +395,7 @@ export function BudgetEditEntryFullModal({
             <div className="col-span-2">
               <Checkbox
                 checked={completed}
-                onChange={setCompleted}
+                onChange={(v) => dispatch({ kind: "setCompleted", value: v })}
                 label={t("editRow.completed")}
                 className="items-center"
               />
@@ -445,13 +412,16 @@ export function BudgetEditEntryFullModal({
               name="edit-row-scope"
               value={scopeKind}
               onChange={(v) =>
-                setScopeKind(v as "just-this" | "future" | "all")
+                dispatch({
+                  kind: "setScopeKind",
+                  value: v as "just-this" | "future" | "all",
+                })
               }
             >
               <Radio
                 value="just-this"
                 label={t("editRow.scopeJustThisDate", {
-                  date: initialDate || t("editEntry.noDate"),
+                  date: initialState.date || t("editEntry.noDate"),
                 })}
               />
               <Radio value="future" label={t("editRow.scopeThisAndFuture")} />
@@ -459,7 +429,9 @@ export function BudgetEditEntryFullModal({
                 <div className="ml-6 mt-1 flex flex-col gap-1.5 rounded border border-line bg-surface px-2.5 py-2 text-xs text-muted">
                   <Checkbox
                     checked={untilEnabled}
-                    onChange={setUntilEnabled}
+                    onChange={(v) =>
+                      dispatch({ kind: "setUntilEnabled", value: v })
+                    }
                     label={t("editEntry.stopAfterDate")}
                     className="items-center"
                   />
@@ -467,7 +439,12 @@ export function BudgetEditEntryFullModal({
                     <input
                       type="date"
                       value={untilDate}
-                      onChange={(e) => setUntilDate(e.target.value)}
+                      onChange={(e) =>
+                        dispatch({
+                          kind: "setUntilDate",
+                          value: e.target.value,
+                        })
+                      }
                       className="field-input rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"
                     />
                   )}
@@ -561,7 +538,9 @@ export function BudgetEditEntryFullModal({
                 inputMode="numeric"
                 step={1}
                 value={shiftDaysText}
-                onValueChange={setShiftDaysText}
+                onValueChange={(v) =>
+                  dispatch({ kind: "setShiftDaysText", value: v })
+                }
                 aria-label={t("editEntry.shiftDaysBy")}
                 wrapperClassName="min-w-0"
                 className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
@@ -584,7 +563,7 @@ export function BudgetEditEntryFullModal({
               <Checkbox
                 checked={isPrimaryIncome}
                 onChange={(next) => {
-                  setIsPrimaryIncome(next);
+                  dispatch({ kind: "setIsPrimaryIncome", value: next });
                   const day = parseInt32(anchorDayText);
                   const dayClamped =
                     day !== null && day >= 1 && day <= 31 ? day : 25;
@@ -613,7 +592,7 @@ export function BudgetEditEntryFullModal({
                     max={31}
                     value={anchorDayText}
                     onValueChange={(next) => {
-                      setAnchorDayText(next);
+                      dispatch({ kind: "setAnchorDayText", value: next });
                       const day = parseInt32(next);
                       if (day !== null && day >= 1 && day <= 31) {
                         onSetSeriesPrimaryIncome(

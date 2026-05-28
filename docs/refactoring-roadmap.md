@@ -149,13 +149,12 @@ new sheet type, but feature work can ship through them.
   needs a domain-specific function.
 
 - **No `useReducer` in most modal state machines** — `useReducer`
-  now has **two** real hits (`AccountReconciliationModal` and
-  `BudgetRecurrenceForm`, see Landed), but the broader pattern is
-  still pervasive: `useState` pyramids with 5+ fields plus a
-  multi-setter reset effect. Remaining sites:
-  `BudgetEditEntryFullModal` (13 setters at lines 185–222),
-  `AccountTransferModal` (9 setters at lines 113–123),
-  `BudgetSplitEntryModal`, `BudgetBulkEditModal`,
+  now has **three** real hits (`AccountReconciliationModal`,
+  `BudgetRecurrenceForm`, and `BudgetEditEntryFullModal`, see
+  Landed), but the broader pattern is still pervasive: `useState`
+  pyramids with 5+ fields plus a multi-setter reset effect.
+  Remaining sites: `AccountTransferModal` (9 setters at lines
+  113–123), `BudgetSplitEntryModal`, `BudgetBulkEditModal`,
   `BudgetMetadataModal`, `ImportHistoryModal`, `BudgetMatchRuleModal`
   (residual after `useMatchRuleAmountFilter` landed), `SettingsModal`
   (4-piece state pyramid). **Severity: 5.** Per-modal value is
@@ -165,13 +164,6 @@ new sheet type, but feature work can ship through them.
   landed; re-survey for new prioritisation hooks if a different
   modal grows a mode discriminator that the current setters silently
   allow drift through.
-
-- **`useStorageBackend.ts` token state machine entangled with
-  adapter selection** — token refresh, OAuth completion, and
-  adapter rebuilds share state. A future "Reauth dialog" can't
-  easily trigger a refresh without reaching into the hook.
-  **Severity: 6** (folds into the 8-rating split above; same PR
-  family).
 
 - **`useUserDataStorage.ts` save chain has no retry strategy** —
   network failures are caught into `RateLimitError` and pause
@@ -294,6 +286,41 @@ T | null` for "explicitly cleared by the user, distinct from
 ---
 
 ## Landed
+
+- **`BudgetEditEntryFullModal` `useReducer` extraction** (2026-05):
+  the 14 parallel `useState` setters in `BudgetEditEntryFullModal.tsx`
+  (`description`, `amount`, `negative`, `date`, `typeId`, `companyId`,
+  `isTransfer`, `completed`, `isPrimaryIncome`, `anchorDayText`,
+  `scopeKind`, `untilEnabled`, `untilDate`, `shiftDaysText`) collapsed
+  onto a single `useReducer` driven by an `EditFullState` shape and
+  a named-action union. The win is the same as the previous reducer
+  extractions: the reset effect previously fired 14 sequential
+  `setState` calls (atomic in React's batching, but explicit-as-atomic
+  in code); now it's a single `reset` dispatch carrying a memoised
+  `initialState` snapshot. The snapshot doubles as the reference
+  point for the "touched" comparisons in `handleSave`
+  (`companyId !== initialState.companyId`, etc.), replacing the
+  recurring `initialCompanyId` / `initialIsTransfer` derivations that
+  ran on every render. The `pickCompany` action folds the
+  `setCompanyId(next)` + conditional `setTypeId(auto)` pair into one
+  atomic transition, removing the brief intermediate render where
+  the company changed but the auto-filled type hadn't landed yet.
+  The reducer + initial-state factory + types live in
+  `src/components/budget/budget-edit-entry-full-modal-reducer.ts`;
+  the component file keeps the JSX + the `affectedRows` /
+  `parsedAmount` derivations + the `handleSave` dispatch glue. 13
+  unit tests landed in `tests/budget_edit_entry_full_modal_reducer_test.ts`
+  to lock in the row-to-state snapshot, the sign-toggle, the
+  `pickCompany` autoTypeId conditional, and the atomic reset.
+  `BudgetEditEntryFullModal.tsx` drops from 645 → 628 lines; the
+  new reducer file is 159 lines. Pure refactor — same behaviour,
+  same i18n keys, same payload shape; `BudgetModalHost` and the
+  `useEditPrompts` hook consume the public component unchanged.
+  Mirrors the precedent set by `BudgetRecurrenceForm`'s reducer
+  (same `kind`-discriminated action shape; side-effect-free reducer;
+  the dispatcher computes the imperative side-effects — the
+  primary-income notification — outside the reducer).
+  typecheck + lint + fmt-check + 901 tests + build pass.
 
 - **`BudgetRecurrenceForm` `useReducer` extraction** (2026-05): the
   11 parallel `useState` setters in `BudgetRecurrenceForm.tsx`
@@ -1207,6 +1234,27 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
 ---
 
 ## Investigated and skipped
+
+- **`useStorageBackend.ts` token state machine entangled with
+  adapter selection** (2026-05, was severity 6): the candidate was
+  rated 6 on the premise that "token refresh, OAuth completion,
+  and adapter rebuilds share state" and that a future Reauth dialog
+  couldn't easily trigger a refresh without reaching into the hook.
+  On re-verification after the per-backend split fully landed
+  (`useFolderHandle`, `useDropboxAuth`, `useGdriveAuth`), that
+  premise no longer holds. Token state lives inside the per-backend
+  hooks (each runs its own auth-sync effect against the active
+  user). `reconnectCloud()` is exposed on the public hook return as
+  a two-arm dispatch — gdrive → `reauthorizeGdrive`, dropbox →
+  `startDropboxAuth` — so any "Reauth dialog" surface can call it
+  without reaching into the implementation. The `pendingCloudLink`
+  state is now the only cross-provider piece, and it exists for the
+  link-confirmation dialog (which is a separate flow from refresh).
+  The outer hook's adapter `useMemo` reads token state from its
+  per-backend collaborators, not the other way around — there's no
+  entanglement left to untangle. Re-create if a third cloud
+  backend lands and the per-backend split's seams start to feel
+  arbitrary.
 
 - **`src/data/forecasting/` directory creation** (2026-05): the
   candidate was rated severity 9 on the premise that
