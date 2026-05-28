@@ -6,6 +6,7 @@ import type {
   Category,
   Company,
   EntryType,
+  HistoryEntry,
   Row,
   Sheet,
   UserData,
@@ -34,6 +35,14 @@ export type SearchEntry = {
   typeName: string;
   categoryName: string;
   companyName: string;
+  // Raw bank-statement memo for rows synthesized from imported history
+  // entries. The visible description on a historic row is the user
+  // override, matching rule, merchant hint, company name, or type
+  // name (in that priority chain) — the original bank text is hidden
+  // once any tag attaches. Indexing it separately lets the user find
+  // a row by what the bank reported even when none of the visible
+  // fields contain that string. Empty for non-historic rows.
+  bankDescription: string;
   amount: number | null;
   // Pre-lowercased mirrors of the searchable string fields.
   // `runSearch` previously lowercased every haystack on every
@@ -43,6 +52,7 @@ export type SearchEntry = {
   typeNameLc: string;
   categoryNameLc: string;
   companyNameLc: string;
+  bankDescriptionLc: string;
 };
 
 // Where the match landed and the offset / length inside the matched
@@ -50,7 +60,12 @@ export type SearchEntry = {
 // range because the score is distance-based, not substring-based.
 export type SearchMatch =
   | {
-      field: "description" | "typeName" | "categoryName" | "companyName";
+      field:
+        | "description"
+        | "typeName"
+        | "categoryName"
+        | "companyName"
+        | "bankDescription";
       start: number;
       end: number;
     }
@@ -115,6 +130,10 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
         "description",
       )?.id;
       const amountColId = findColumnByType(accountBudget.columns, "amount")?.id;
+      // Index the underlying HistoryEntry by id so each historic row
+      // can attach its raw bank memo. Built per-item so the lookup
+      // stays bounded by the account's own history length.
+      const historyById = historyEntriesFor(accountBudget, data);
       for (const row of rows) {
         const iso =
           dateColId !== undefined && typeof row.cells[dateColId] === "string"
@@ -139,6 +158,10 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
         const typeName = type ? displayTypeName(type, t) : "";
         const categoryName = category ? displayCategoryName(category, t) : "";
         const companyName = company?.name ?? "";
+        const bankDescription =
+          row.kind === "historic"
+            ? (historyById.get(row.historyEntryId)?.description ?? "")
+            : "";
         entries.push({
           sheetId: sheet.id,
           sheetName: sheet.name,
@@ -151,17 +174,33 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           typeName,
           categoryName,
           companyName,
+          bankDescription,
           amount,
           descriptionLc: description.toLowerCase(),
           typeNameLc: typeName.toLowerCase(),
           categoryNameLc: categoryName.toLowerCase(),
           companyNameLc: companyName.toLowerCase(),
+          bankDescriptionLc: bankDescription.toLowerCase(),
         });
       }
     }
   }
 
   return entries;
+}
+
+const EMPTY_HISTORY_BY_ID: ReadonlyMap<string, HistoryEntry> = new Map();
+
+function historyEntriesFor(
+  item: AccountBudget,
+  data: UserData,
+): ReadonlyMap<string, HistoryEntry> {
+  if (!item.accountId) return EMPTY_HISTORY_BY_ID;
+  const history = data.history[item.accountId];
+  if (!history || history.length === 0) return EMPTY_HISTORY_BY_ID;
+  const map = new Map<string, HistoryEntry>();
+  for (const e of history) map.set(e.id, e);
+  return map;
 }
 
 function visibleRowsFor(
@@ -196,15 +235,24 @@ const AMOUNT_TOLERANCE = 0.2;
 // merchant the row paid is a more specific signal than the bucket
 // it falls into, but below description because the user's own
 // words on the row beat a tag they share with every other row to
-// the same merchant.
+// the same merchant. Bank description sits at the bottom of the
+// text tier: it's a fallback signal for historic rows whose
+// visible description got replaced by a company / type tag, so a
+// hit there should only surface when none of the visible fields
+// match.
 const FIELD_WEIGHT: Record<
-  "description" | "companyName" | "typeName" | "categoryName",
+  | "description"
+  | "companyName"
+  | "typeName"
+  | "categoryName"
+  | "bankDescription",
   number
 > = {
   description: 0,
   companyName: 1,
   typeName: 2,
   categoryName: 3,
+  bankDescription: 4,
 };
 
 // Cap the result list so a query like "a" doesn't render thousands of
@@ -231,13 +279,24 @@ export function runSearch(
   // every keystroke; `buildSearchIndex` now caches the lc forms so
   // each text-match check collapses to a plain `indexOf`.
   const TEXT_FIELDS: {
-    name: "description" | "typeName" | "categoryName" | "companyName";
-    lcKey: "descriptionLc" | "typeNameLc" | "categoryNameLc" | "companyNameLc";
+    name:
+      | "description"
+      | "typeName"
+      | "categoryName"
+      | "companyName"
+      | "bankDescription";
+    lcKey:
+      | "descriptionLc"
+      | "typeNameLc"
+      | "categoryNameLc"
+      | "companyNameLc"
+      | "bankDescriptionLc";
   }[] = [
     { name: "description", lcKey: "descriptionLc" },
     { name: "companyName", lcKey: "companyNameLc" },
     { name: "typeName", lcKey: "typeNameLc" },
     { name: "categoryName", lcKey: "categoryNameLc" },
+    { name: "bankDescription", lcKey: "bankDescriptionLc" },
   ];
   for (const entry of index) {
     let best: { match: SearchMatch; score: number } | null = null;

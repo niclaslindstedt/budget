@@ -4,10 +4,12 @@ type: Added
 
 A new magnifier button on the bottom bar opens a transaction-search
 modal that looks across every sheet at once. Type any part of a
-description, company name, type name, or category — or a number —
-and matching rows appear newest-first by default, with the matched
-substring highlighted, so the most recent entry surfaces straight
-away.
+description, the raw bank-statement text, company name, type name,
+or category — or a number — and matching rows appear newest-first by
+default, with the matched substring highlighted, so the most recent
+entry surfaces straight away. Bank-text hits surface the original
+bank memo on a third line so you can see why a row matched even
+when its visible description is a user override or a company tag.
 Number queries also match rows whose amount lands within ±20% of the
 value, so "100" finds a 95 rent payment alongside the exact-100 ones.
 Clicking a result switches to that row's sheet, scrolls it into view
