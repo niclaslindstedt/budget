@@ -13,16 +13,79 @@ import type { UserData } from "../types";
 // those accounts are still listed on the Accounts sheet at zero so
 // the user can add transfers against them later.
 //
-// For computing balances for every account at once, prefer
-// `computeAccountBalances` — calling this in a loop re-walks every
-// sheet / transfer / history for each account, while the batched
-// helper amortises those walks across all accounts in a single pass.
+// Direct single-account computation: only touches the slices that
+// matter for `accountId` (its own history, transfers it's a leg of,
+// budget sheets pointing at it). Routing through
+// `computeAccountBalances` would walk every other account's history,
+// every other sheet's budget rows, and every transfer between two
+// unrelated accounts — wasted O(workspace) work when the caller only
+// needs one number. For workspaces with K accounts the saved factor
+// is K. When computing balances for every account at once, prefer
+// `computeAccountBalances` — that path amortises the shared sheet /
+// transfer walks across all K accounts in one pass.
 export function accountBalance(
   data: UserData,
   accountId: string,
   today: string = todayIso(),
 ): number {
-  return computeAccountBalances(data, today).get(accountId) ?? 0;
+  const account = data.accounts.find((a) => a.id === accountId);
+  if (!account) return 0;
+  let total = account.openingBalance ?? 0;
+
+  // History anchor: the latest entry on or before `today` with a
+  // stored balance wins. Walks this account's entries once to find
+  // it, then a second pass sums amounts strictly after the anchor.
+  // Two short passes over one account's history beats one big pass
+  // over every account's history when the caller only wants one.
+  const history = data.history[accountId] ?? [];
+  let anchorDate = "";
+  let anchorTotal = 0;
+  let anchored = false;
+  for (const entry of history) {
+    if (entry.date > today) continue;
+    if (entry.balance !== undefined && entry.date >= anchorDate) {
+      anchorDate = entry.date;
+      anchorTotal = entry.balance;
+      anchored = true;
+    }
+  }
+  if (anchored) total = anchorTotal;
+
+  for (const entry of history) {
+    if (entry.date > today) continue;
+    if (anchored && entry.date <= anchorDate) continue;
+    total += entry.amount;
+  }
+
+  // Only the budget items pointing at this account contribute. Other
+  // sheets' rows aren't even visited.
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      if (item.accountId !== accountId) continue;
+      const amountCol = findColumnByType(item.columns, "amount");
+      const dateCol = findColumnByType(item.columns, "date");
+      if (!amountCol || !dateCol) continue;
+      for (const row of item.rows) {
+        const d = row.cells[dateCol.id];
+        if (typeof d !== "string" || d === "" || d > today) continue;
+        if (anchored && d <= anchorDate) continue;
+        const v = row.cells[amountCol.id];
+        if (typeof v === "number") total += v;
+      }
+    }
+  }
+
+  // Only transfers touching this account contribute. Cross-account
+  // transfers between two other accounts are skipped entirely.
+  for (const tx of data.transfers) {
+    if (tx.date > today) continue;
+    if (anchored && tx.date <= anchorDate) continue;
+    if (tx.fromAccountId === accountId) total -= tx.amount;
+    else if (tx.toAccountId === accountId) total += tx.amount;
+  }
+
+  return total;
 }
 
 // Compute every account's balance in a single pass over the workspace.

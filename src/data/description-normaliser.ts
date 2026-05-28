@@ -42,13 +42,23 @@ const WS_RE = /\s+/g;
 // that touches the active budget — without a cache, each render paid
 // 7 regex replacements per entry. The transform is pure, so caching
 // by input is sound. Bounded to keep memory predictable across long
-// sessions; eviction is FIFO (Map preserves insertion order).
+// sessions; eviction is LRU — on every read or write we re-insert the
+// key so it moves to the end of the Map's insertion order, and on
+// overflow we evict the first (least-recently-used) entry. The
+// previous FIFO scheme could permanently evict a frequently-used
+// merchant key after a single bulk import flooded the cache with
+// one-off descriptions.
 const CACHE_LIMIT = 4096;
 const cache = new Map<string, string>();
 
 export function normaliseDescription(input: string): string {
   const cached = cache.get(input);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) {
+    // Move to end of insertion order so it counts as most-recently-used.
+    cache.delete(input);
+    cache.set(input, cached);
+    return cached;
+  }
   const result = input
     .toLowerCase()
     .replace(ISO_DATE_RE, " ")
