@@ -43,10 +43,7 @@ import { SaveStateButton } from "../SaveStateButton";
 import { SyncStatus } from "../SyncStatus";
 import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
-import {
-  autoTypeForCompany,
-  computeCompanyTypeSuggestions,
-} from "../../data/company-type-suggestions";
+import { computeCompanyTypeSuggestions } from "../../data/company-type-suggestions";
 import {
   isRowSavable,
   userDataHasUnsavableRows,
@@ -68,7 +65,6 @@ import {
   usePullToRefresh,
   useToast,
 } from "../../hooks";
-import { formatNumber, withCurrency } from "../../utils/format";
 type AppShellProps = {
   auth: AppShellAuth;
   storage: AppShellStorage;
@@ -320,7 +316,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     itemId,
     activeRows: activeItem.rows,
     activeColumns: activeItem.columns,
+    activeAccountId: activeItem.accountId,
+    history: data.history,
+    companyTypeSuggestions,
+    effectiveSettings,
     setPendingSeriesEdit,
+    setHistoryEditPrompt,
+    setCorrectionDeletePrompt,
     dispatch,
   });
   const {
@@ -331,32 +333,16 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
+    onToggleRowTransfer,
+    onEditHistoryRequest,
+    onUpdateHistoryEntry,
+    onSetRowCompany,
+    onSetRowNoCompany,
+    onCorrectionDeleteRequest,
   } = rowMutations;
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
-  );
-  const onToggleRowTransfer = useCallback(
-    (row: Row) => {
-      // Synthesized history rows can't be flipped via the budget-row
-      // reducer — they're derived from `UserData.history`. Route those
-      // through the entry-update path so the flag lands on the
-      // underlying `HistoryEntry` (and propagates back via
-      // `synthesizeHistoryRow` on the next render).
-      if (row.historyEntryId) {
-        const accountId = activeItem.accountId;
-        if (!accountId) return;
-        dispatch({
-          type: "updateHistoryEntry",
-          accountId,
-          entryId: row.historyEntryId,
-          patch: { isTransfer: !row.isTransfer },
-        });
-        return;
-      }
-      dispatch({ type: "toggleRowTransfer", sheetId, itemId, rowId: row.id });
-    },
-    [dispatch, sheetId, itemId, activeItem.accountId],
   );
   const onDeleteRequest = useCallback(
     (row: Row) => {
@@ -399,144 +385,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       setSplitPrompt({ kind: "split", row });
     },
     [setSplitPrompt],
-  );
-  const onEditHistoryRequest = useCallback(
-    (row: Row) => {
-      if (!row.historyEntryId) return;
-      setHistoryEditPrompt({ entryId: row.historyEntryId });
-    },
-    [setHistoryEditPrompt],
-  );
-  const onUpdateHistoryEntry = useCallback(
-    (
-      accountId: string,
-      entryId: string,
-      patch: {
-        userDescription?: string;
-        userTypeId?: string | null;
-        userCompanyId?: string | null;
-        isTransfer?: boolean;
-        noCompany?: boolean;
-      },
-    ) =>
-      dispatch({
-        type: "updateHistoryEntry",
-        accountId,
-        entryId,
-        patch,
-      }),
-    [dispatch],
-  );
-  // Row-level company writer fired by the description popover's inline
-  // CompanyPicker. Routes synthesized history rows through
-  // `updateHistoryEntry` (clearing `noCompany` on assignment so the
-  // metadata walkthrough's "needs attention" filter releases the
-  // entry) and falls through to a single-row `bulkUpdate` for
-  // user-authored budget rows. Also auto-fills the type when the row
-  // has none and the company qualifies — same rule the edit modals
-  // apply when the user picks a company there.
-  const onSetRowCompany = useCallback(
-    (row: Row, companyId: string | null) => {
-      if (row.historyEntryId && activeItem.accountId) {
-        const entry = data.history[activeItem.accountId]?.find(
-          (e) => e.id === row.historyEntryId,
-        );
-        const userTypeId = entry?.userTypeId ?? null;
-        const autoTypeId = autoTypeForCompany(
-          userTypeId,
-          companyId,
-          companyTypeSuggestions,
-        );
-        const patch: {
-          userCompanyId: string | null;
-          noCompany?: boolean;
-          userTypeId?: string;
-        } = { userCompanyId: companyId };
-        if (companyId !== null) patch.noCompany = false;
-        if (autoTypeId !== undefined) patch.userTypeId = autoTypeId;
-        dispatch({
-          type: "updateHistoryEntry",
-          accountId: activeItem.accountId,
-          entryId: row.historyEntryId,
-          patch,
-        });
-        return;
-      }
-      const rowTypeId = row.typeId ?? null;
-      const autoTypeId = autoTypeForCompany(
-        rowTypeId,
-        companyId,
-        companyTypeSuggestions,
-      );
-      const patch: {
-        companyId: string | null;
-        typeId?: string;
-      } = { companyId };
-      if (autoTypeId !== undefined) patch.typeId = autoTypeId;
-      dispatch({
-        type: "bulkUpdate",
-        sheetId,
-        itemId,
-        rowIds: [row.id],
-        patch,
-      });
-    },
-    [
-      dispatch,
-      sheetId,
-      itemId,
-      activeItem.accountId,
-      data.history,
-      companyTypeSuggestions,
-    ],
-  );
-  // Row-level "omit company" writer fired by the description popover's
-  // inline CompanyPicker when the user picks "Omit company". Only the
-  // synthesized history row carries the flag; user-authored budget rows
-  // have no equivalent so the prop chain leaves the picker without an
-  // `onOmitChange` and the option doesn't surface there.
-  const onSetRowNoCompany = useCallback(
-    (row: Row, next: boolean) => {
-      if (!row.historyEntryId || !activeItem.accountId) return;
-      const patch: {
-        noCompany: boolean;
-        userCompanyId?: string | null;
-      } = { noCompany: next };
-      // Enabling omit contradicts any explicit company override on the
-      // entry — clear it so the resolver doesn't keep tagging the row.
-      if (next) patch.userCompanyId = null;
-      dispatch({
-        type: "updateHistoryEntry",
-        accountId: activeItem.accountId,
-        entryId: row.historyEntryId,
-        patch,
-      });
-    },
-    [dispatch, activeItem.accountId],
-  );
-  const onCorrectionDeleteRequest = useCallback(
-    (row: Row) => {
-      // Pre-format the signed delta so the prompt reads naturally even
-      // after the row is gone (the dialog body keeps showing the text
-      // until React unmounts it on close).
-      const amountCol = findColumnByType(activeItem.columns, "amount");
-      const amount =
-        amountCol && typeof row.cells[amountCol.id] === "number"
-          ? (row.cells[amountCol.id] as number)
-          : 0;
-      const sign = amount >= 0 ? "+" : "−";
-      const deltaText = `${sign}${withCurrency(
-        formatNumber(Math.abs(amount), effectiveSettings),
-        effectiveSettings,
-      )}`;
-      setCorrectionDeletePrompt({
-        sheetId,
-        itemId: activeItem.id,
-        rowId: row.id,
-        deltaText,
-      });
-    },
-    [activeItem, sheetId, effectiveSettings, setCorrectionDeletePrompt],
   );
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>

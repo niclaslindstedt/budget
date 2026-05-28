@@ -182,38 +182,6 @@ TransferRow | CorrectionRow`. `HistoricRow` carries
 
 ### Severity 5–6 — friction
 
-- **`AppShell.tsx` budget-row mutation callbacks should lift into
-  `useRowMutations`** — AppShell still owns ~150 lines of budget-row
-  mutation callbacks that close over `data.history`,
-  `companyTypeSuggestions`, `activeItem.accountId`, and `effectiveSettings`:
-  `onToggleRowTransfer` (22 lines, `AppShell.tsx:339-360`),
-  `onSetRowCompany` (55 lines, `:437-491`), `onSetRowNoCompany`
-  (19 lines, `:497-515`), `onCorrectionDeleteRequest` (24 lines,
-  `:516-539`), `onEditHistoryRequest` + `onUpdateHistoryEntry`
-  (26 lines, `:403-428`). Each one has the same "if this is a
-  synthesized history row, dispatch `updateHistoryEntry`; else
-  dispatch a budget-row action" branch shape. `useRowMutations`
-  (`src/components/AppShell/hooks/useRowMutations.ts`) already owns
-  7 similar mutation callbacks; these are page-routing siblings that
-  belong in the same hook. AppShell grew from 930 → 1007 lines since
-  the modal-host split landed (see Landed), and these callbacks are
-  the largest cluster of code that has crept back in. **Severity: 5.**
-  Lands well after the `Row` discriminator union (7-8 band) — each
-  branch becomes a `switch (row.kind)` arm and the helpers become
-  much shorter. Without the union, the extraction is still worthwhile
-  (it just preserves the field-presence shape).
-  - Plan: move the 6 callbacks into `useRowMutations` (or a sibling
-    `useHistoryRowMutations` if the merge inflates the hook beyond
-    300 lines). The hook signature widens to take `data.history`,
-    `companyTypeSuggestions`, and `activeItem.accountId` /
-    `activeItem.columns` / `effectiveSettings`. AppShell drops
-    ~150 lines and the prop bundle threaded into `BudgetModalHost`
-    / `BudgetPage` carries the same callbacks unchanged.
-  - Risk: low. Pure refactor — no behaviour change, no new code
-    paths. Smoke-test history-row toggle, set-company-on-history-row
-    (auto-typeId path), correction-delete flow, edit-history-entry
-    modal opener.
-
 - **`BudgetPage.tsx` display-machinery hooks** — `BudgetPage.tsx`
   dropped from 1540 → 1326 lines after the `computeBudgetState`
   consolidation (see Landed), but ~400 lines of display-side
@@ -429,6 +397,31 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`AppShell.tsx` budget-row mutation callbacks lifted into
+  `useRowMutations`** (2026-05): the 6 row-level mutation callbacks
+  still defined inline in `AppShell.tsx` after the modal-host split
+  (`onToggleRowTransfer`, `onEditHistoryRequest`,
+  `onUpdateHistoryEntry`, `onSetRowCompany`, `onSetRowNoCompany`,
+  `onCorrectionDeleteRequest`) moved into the existing
+  `useRowMutations` hook. The hook's `Params` widened to take
+  `activeAccountId`, `history`, `companyTypeSuggestions`,
+  `effectiveSettings`, `setHistoryEditPrompt`, and
+  `setCorrectionDeletePrompt`; its `Result` widened to return the
+  six new callbacks alongside the existing seven. The
+  history-row routing branches (`if (row.historyEntryId) dispatch
+updateHistoryEntry; else dispatch budget-row action`) moved
+  verbatim — pure relocation, no behaviour change. AppShell.tsx
+  drops from 1008 → 856 lines; `useRowMutations.ts` grows from
+  160 → 395 lines, leaving a single named source for every
+  row-level mutation flowing into `BudgetPage`. The sibling
+  `useHistoryRowMutations` half of the original plan was rejected:
+  the merged hook is 395 lines but mostly callback bodies + comment
+  headers, and the routing callbacks (`onToggleRowTransfer`,
+  `onSetRowCompany`) branch on history-vs-budget so they can't
+  cleanly live in one sub-hook anyway. The unused `autoTypeForCompany`,
+  `formatNumber`, and `withCurrency` imports dropped from AppShell
+  in the same change. Pure refactor — typecheck + lint + fmt-check
+  + 861 tests + build pass.
 - **`indexById<T>(items)` helper adoption across 8 files** (2026-05):
   the recurring 5-line `useMemo(() => { const m = new Map<string,
 T>(); for (const x of items) m.set(x.id, x); return m; }, [items])`
