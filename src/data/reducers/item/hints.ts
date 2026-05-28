@@ -117,31 +117,49 @@ export function applyPatch(
 // `pattern-apply.ts`: when no rule wins, the row's existing typeId
 // is preserved. Returns next unchanged when no row moves
 // (referentially identical so the outer reducer can short-circuit).
+//
+// Hot path: this runs on every cell edit. Two perf moves keep its
+// per-keystroke cost bounded by the rows that actually changed
+// instead of the budget's size. (1) A reference-identity check skips
+// every row whose object reference is the same as the previous
+// snapshot — the cell-update reducer only re-allocates the one row
+// it edits, so for a typical budget with R rows we look at 1 instead
+// of R. (2) We materialise a new rows array lazily, only when a rule
+// actually wants to overlay a label — the previous `.map(...)` paid
+// the O(R) allocation on every keystroke even when nothing fired.
 export function applyPatternsAfterCellEdit(
   prev: AccountBudget,
   next: AccountBudget,
   rules: readonly MatchRule[],
 ): AccountBudget {
   if (rules.length === 0) return next;
+  if (prev.rows === next.rows) return next;
   const cols = resolveCandidateColumns(next.columns);
   if (cols.descId === undefined && cols.amountId === undefined) return next;
   const prevById = new Map<string, Row>();
   for (const r of prev.rows) prevById.set(r.id, r);
-  let changed = false;
-  const nextRows = next.rows.map((row) => {
-    if (row.typeIdLocked) return row;
-    const candidate = candidateFromRow(row, cols);
-    if (!candidate) return row;
+  let nextRows: Row[] | null = null;
+  for (let i = 0; i < next.rows.length; i += 1) {
+    const row = next.rows[i];
+    if (row.typeIdLocked) continue;
     const before = prevById.get(row.id);
+    // Reference-identity short-circuit: the cell-update reducer
+    // returns the same row object when nothing on it changed, so a
+    // single keystroke only ever flips one row's reference. Every
+    // other row can skip the candidate construction and the cell
+    // comparisons below.
+    if (before === row) continue;
+    const candidate = candidateFromRow(row, cols);
+    if (!candidate) continue;
     const descChanged =
       cols.descId !== undefined &&
       (!before || before.cells[cols.descId] !== row.cells[cols.descId]);
     const amountChanged =
       cols.amountId !== undefined &&
       (!before || before.cells[cols.amountId] !== row.cells[cols.amountId]);
-    if (!descChanged && !amountChanged) return row;
+    if (!descChanged && !amountChanged) continue;
     const rule = findMatchingRuleForCandidate(rules, candidate);
-    if (!rule || !rule.typeId) return row;
+    if (!rule || !rule.typeId) continue;
     const ruleCompanyId =
       rule.companyId !== undefined && rule.companyId !== null
         ? rule.companyId
@@ -149,12 +167,12 @@ export function applyPatternsAfterCellEdit(
     const typeNeedsUpdate = rule.typeId !== row.typeId;
     const companyNeedsUpdate =
       ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
-    if (!typeNeedsUpdate && !companyNeedsUpdate) return row;
-    changed = true;
+    if (!typeNeedsUpdate && !companyNeedsUpdate) continue;
+    if (nextRows === null) nextRows = next.rows.slice();
     const nextRow: Row = { ...row, typeId: rule.typeId };
     if (ruleCompanyId !== undefined) nextRow.companyId = ruleCompanyId;
-    return nextRow;
-  });
-  if (!changed) return next;
+    nextRows[i] = nextRow;
+  }
+  if (nextRows === null) return next;
   return { ...next, rows: nextRows };
 }
