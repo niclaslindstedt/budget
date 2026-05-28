@@ -29,56 +29,19 @@ import { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
 import { useToastEffects } from "./hooks/useToastEffects";
 import { useUndoRedo } from "./hooks/useUndoRedo";
 
-import { AccountModal } from "../accounts/AccountModal";
-import { ActionHistoryModal } from "../ActionHistoryModal";
-import { UpdateBalanceModal } from "../accounts/UpdateBalanceModal";
+import { AccountsModalHost } from "./AccountsModalHost";
 import { AccountsPage } from "../accounts/AccountsPage";
-import { AccountCutHistoryModal } from "../accounts/AccountCutHistoryModal";
-import { BudgetApplySeriesDialog } from "../budget/BudgetApplySeriesDialog";
-import { BudgetDeleteRecurringDialog } from "../budget/BudgetDeleteRecurringDialog";
 import { AppLoading } from "../AppLoading";
-import { ChangelogModal } from "../ChangelogModal";
 import { BottomBar } from "../BottomBar";
-import { BudgetBulkEditModal } from "../budget/BudgetBulkEditModal";
-import { SheetModal } from "../SheetModal";
-import { BudgetTransferSearchModal } from "../budget/BudgetTransferSearchModal";
-import { AccountTransferModal } from "../accounts/AccountTransferModal";
-import { BudgetComplexEntryModal } from "../budget/BudgetComplexEntryModal";
-import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
-import {
-  BudgetEditEntryModal,
-  type EditPatch,
-  type EditScope,
-} from "../budget/BudgetEditEntryModal";
-import {
-  BudgetEditEntryFullModal,
-  type EditRowPatch,
-  type EditRowScope,
-} from "../budget/BudgetEditEntryFullModal";
-import {
-  BudgetSplitEntryModal,
-  type SplitSubmission,
-} from "../budget/BudgetSplitEntryModal";
-import { DownloadModal } from "../DownloadModal";
-import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
-import { HistoryModal } from "../accounts/HistoryModal";
-import { ImportHistoryModal } from "../accounts/ImportHistoryModal";
-import { AccountReconciliationModal } from "../accounts/AccountReconciliationModal";
-import { AccountRenamePredictorModal } from "../accounts/AccountRenamePredictorModal";
-import { BudgetMatchRuleModal } from "../budget/BudgetMatchRuleModal";
-import { BudgetMoveCopyModal } from "../budget/BudgetMoveCopyModal";
-import { AchievementUnlockModal } from "../AchievementUnlockModal";
-import { AchievementsModal } from "../AchievementsModal";
+import { BudgetModalHost } from "./BudgetModalHost";
+import { BudgetPage } from "../budget/BudgetPage";
+import { BudgetRecurringCandidatesPanel } from "../budget/BudgetRecurringCandidatesPanel";
 import { HeaderMenu } from "../HeaderMenu";
 import { HeaderStar } from "../HeaderStar";
 import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
-import { SettingsModal } from "../SettingsModal";
-import { BudgetPage } from "../budget/BudgetPage";
-import { ConflictResolutionModal } from "../ConflictResolutionModal";
-import { ReconnectCloudModal } from "../ReconnectCloudModal";
-import { SyncDetailsModal } from "../SyncDetailsModal";
 import { SyncStatus } from "../SyncStatus";
+import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import {
   isRowSavable,
@@ -86,15 +49,7 @@ import {
   userDataWithSavableRows,
 } from "../../data/budget/rows";
 import { findColumnByType } from "../../data/sheet";
-import type {
-  AccountBudget,
-  HistoryEntrySplit,
-  Row,
-  Settings,
-  UserData,
-} from "../../data/types";
-import { BudgetRecurringCandidatesPanel } from "../budget/BudgetRecurringCandidatesPanel";
-import { AccountTransferCollapseModal } from "../accounts/AccountTransferCollapseModal";
+import type { AccountBudget, Row, Settings, UserData } from "../../data/types";
 import { reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
@@ -134,24 +89,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const {
     adapter,
     backend,
-    encryption,
-    cloudOfflineMode,
     dropboxConnected,
     gdriveConnected,
     folderConnected,
-    folderAvailable,
-    folderReconnectNeeded,
-    onConnectDropbox,
-    onDisconnectDropbox,
-    onConnectGdrive,
-    onDisconnectGdrive,
-    onReconnectCloud,
-    onConnectFolder,
-    onReconnectFolder,
-    onDisconnectFolder,
-    onSelectBrowser,
-    onSetEncryption,
-    onSetCloudOfflineMode,
   } = storage;
   const t = useT();
   const toast = useToast();
@@ -200,12 +140,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // off again the moment the adapter replaces state with the
   // persisted bucket.
   useAchievementWatcher(data, dispatch, status.kind !== "loading");
-  const {
-    achievementsModalOpen,
-    setAchievementsModalOpen,
-    achievementsListOpen,
-    setAchievementsListOpen,
-  } = useAchievementsModal();
+  const achievementsModal = useAchievementsModal();
+  const { setAchievementsModalOpen, setAchievementsListOpen } =
+    achievementsModal;
   // Mirror in-memory data into the App-owned ref so the cloud-link
   // conflict path can upload the latest budget. Updated on every render
   // because both data changes and ref-identity changes (after a sign-
@@ -213,33 +150,16 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   useEffect(() => {
     currentDataRef.current = data;
   }, [currentDataRef, data]);
-  const {
-    settingsOpen,
-    setSettingsOpen,
-    settingsInitialTab,
-    setSettingsInitialTab,
-    previewSettings,
-    setPreviewSettings,
-  } = useSettingsModal();
+  const settingsModal = useSettingsModal();
+  const { setSettingsOpen, previewSettings } = settingsModal;
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
-  const {
-    searchOpen,
-    setSearchOpen,
-    searchQuery,
-    setSearchQuery,
-    searchIndex,
-    scrollToRowRequest,
-    setScrollToRowRequest,
-  } = useSearchModal({ data });
-  const {
-    syncDetailsOpen,
-    setSyncDetailsOpen,
-    reconnectCloudOpen,
-    setReconnectCloudOpen,
-  } = useSyncAutoOpens({
+  const searchModal = useSearchModal({ data });
+  const { setSearchOpen, scrollToRowRequest } = searchModal;
+  const syncAutoOpens = useSyncAutoOpens({
     status,
     cloudReauthAutoOpen: data.settings.cloudReauthAutoOpen,
   });
+  const { setSyncDetailsOpen } = syncAutoOpens;
 
   useToastEffects({
     dropboxConnected,
@@ -249,14 +169,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     toast,
   });
   // Account ids for the import-history and view-history modals.
+  const deletePrompts = useDeletePrompts();
   const {
-    deletePrompt,
     setDeletePrompt,
-    correctionDeletePrompt,
     setCorrectionDeletePrompt,
     historyEditPrompt,
     setHistoryEditPrompt,
-  } = useDeletePrompts();
+  } = deletePrompts;
   // null = closed; otherwise the sheet the user is downloading. The
 
   const activeSheet =
@@ -288,20 +207,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const sheetId = activeSheet.id;
   const itemId = activeItem.id;
 
-  const {
-    editPrompt,
-    setEditPrompt,
-    editRowPrompt,
-    setEditRowPrompt,
-    splitPrompt,
-    setSplitPrompt,
-    pendingSeriesEdit,
-    setPendingSeriesEdit,
-  } = useEditPrompts({
+  const editPrompts = useEditPrompts({
     activeRows: activeItem.rows,
     activeAccountId: activeItem.accountId,
     history: data.history,
   });
+  const {
+    setEditPrompt,
+    setEditRowPrompt,
+    setSplitPrompt,
+    setPendingSeriesEdit,
+  } = editPrompts;
 
   // Merged category / type lists exposed to every picker, renderer,
   // and resolver. Built-in `PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES`
@@ -380,6 +296,14 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onSignOut,
   });
 
+  const rowMutations = useRowMutations({
+    sheetId,
+    itemId,
+    activeRows: activeItem.rows,
+    activeColumns: activeItem.columns,
+    setPendingSeriesEdit,
+    dispatch,
+  });
   const {
     onUpdateCell,
     onCommitCell,
@@ -388,34 +312,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
-  } = useRowMutations({
-    sheetId,
-    itemId,
-    activeRows: activeItem.rows,
-    activeColumns: activeItem.columns,
-    setPendingSeriesEdit,
-    dispatch,
-  });
-  const onApplyPendingToFuture = useCallback(
-    (untilIso: string | null) => {
-      if (!pendingSeriesEdit) return;
-      dispatch({
-        type: "propagateCellToFuture",
-        sheetId,
-        itemId,
-        rowId: pendingSeriesEdit.rowId,
-        columnId: pendingSeriesEdit.columnId,
-        value: pendingSeriesEdit.value,
-        untilIso,
-      });
-      setPendingSeriesEdit(null);
-    },
-    [dispatch, pendingSeriesEdit, sheetId, itemId, setPendingSeriesEdit],
-  );
-  const onDismissPendingSeriesEdit = useCallback(() => {
-    setPendingSeriesEdit(null);
-  }, [setPendingSeriesEdit]);
-
+  } = rowMutations;
   const onAddRow = useCallback(
     (date: string) => dispatch({ type: "addRow", sheetId, itemId, date }),
     [dispatch, sheetId, itemId],
@@ -575,20 +472,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     (next: UserData) => dispatch({ type: "replace", data: next }),
     [dispatch],
   );
-  const {
-    onCreateCategory,
-    onUpdateCategory,
-    onDeleteCategory,
-    onSetPresetCategoryHidden,
-    onCreateType,
-    onUpdateType,
-    onDeleteType,
-    onSetPresetTypeHidden,
-    onSetPresetTypeKind,
-    onCreateCompany,
-    onUpdateCompany,
-    onDeleteCompany,
-  } = useTaxonomyCrud({ dispatch });
+  const taxonomyCrud = useTaxonomyCrud({ dispatch });
+  const { onCreateCategory, onCreateType, onCreateCompany } = taxonomyCrud;
   const onSaveSettings = useCallback(
     (draft: Settings) =>
       dispatch({
@@ -598,15 +483,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       }),
     [dispatch, isMobile],
   );
-  const {
-    changelogOpen,
-    changelogSince,
-    setChangelogManualOpen,
-    onCloseChangelog,
-  } = useChangelogState({
+  const changelog = useChangelogState({
     lastSeenChangelogVersion: data.settings.lastSeenChangelogVersion,
     dispatch,
   });
+  const { setChangelogManualOpen } = changelog;
 
   const { sheetPanelRef, onSelectSheet, onClickHeaderTitle } = useSheetNav({
     sheets: data.sheets,
@@ -614,23 +495,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     effectiveSettings,
     dispatch,
   });
-  const {
-    sheetModal,
-    setSheetModal,
-    deleteSheetPrompt,
-    setDeleteSheetPrompt,
-    deleteSheetActions,
-    onOpenNewSheet,
-    onOpenEditSheet,
-    onSaveSheet,
-    onDeleteSheet,
-  } = useSheetMetaDialog({ sheets: data.sheets, dispatch, toast });
-  const {
-    downloadPrompt,
-    onOpenDownloadSheet,
-    onCloseDownload,
-    onConfirmDownload,
-  } = useDownloadFlow({
+  const sheetMetaDialog = useSheetMetaDialog({
+    sheets: data.sheets,
+    dispatch,
+    toast,
+  });
+  const { onOpenNewSheet, onOpenEditSheet } = sheetMetaDialog;
+  const downloadFlow = useDownloadFlow({
     data,
     effectiveSettings,
     dispatch,
@@ -639,310 +510,63 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     allTypesMerged,
     allCategoriesMerged,
   });
+  const { onOpenDownloadSheet } = downloadFlow;
   // Account / transfer modal handlers. Kept on the AppShell so
   // they share the same dispatch and Account state as the rest of the
   // workspace — the modals themselves stay pure presentational shells.
+  const accountDialog = useAccountDialog({ data, dispatch, toast });
   const {
-    accountModal,
-    setAccountModal,
-    deleteAccountPrompt,
-    setDeleteAccountPrompt,
-    deleteAccountActions,
     onOpenCreateAccount,
     onOpenEditAccount,
-    onSaveAccount,
-    onDeleteFinancialAccount,
     onRequestDeleteAccount,
-    setUpdateBalanceForId,
-    updateBalanceAccount,
-    updateBalanceCurrent,
-    updateBalanceHasBudget,
-    updateBalanceDate,
     onOpenUpdateBalance,
-    onConfirmUpdateBalance,
-  } = useAccountDialog({ data, dispatch, toast });
+  } = accountDialog;
 
   // Bank-history import / viewer flows. The Accounts page surfaces a
   // per-row Upload button (always enabled) and a History viewer
   // button (enabled when entries exist). Both are scoped to the
   // clicked account so the import flow never has to ask "which
   // account is this for?".
+  const importFlow = useImportFlow({
+    data,
+    activeItem,
+    sheetId,
+    itemId,
+    dispatch,
+  });
   const {
-    importHistoryAccount,
-    setImportHistoryForId,
     onOpenImportHistory,
-    onConfirmImportHistory,
-    viewHistoryAccount,
-    setViewHistoryForId,
     onOpenViewHistory,
-    cutHistoryAccount,
-    setCutHistoryForId,
     onOpenCutHistory,
-    onConfirmCutHistory,
-    reconciliation,
-    onApplyReconciliation,
-    onCancelReconciliation,
-    manualTriage,
-    setManualTriage,
     onTriageMonth,
-    onApplyManualTriage,
-    renamePredictor,
-    onCommitRenamePredictor,
-    onCancelRenamePredictor,
     onMergeConflictIntoHistory,
     onMergeConflictUserRows,
-  } = useImportFlow({ data, activeItem, sheetId, itemId, dispatch });
+  } = importFlow;
 
-  const {
-    transferRequest,
-    setTransferRequest,
-    onTransferRequest,
-    onOpenCreateTransfer,
-    onOpenEditTransfer,
-    onCreateTransfer,
-    onEditTransferSave,
-    onDeleteTransferFromModal,
-    uncollapsePrompt,
-    setUncollapsePrompt,
-    uncollapseActions,
-    onUncollapseTransfer,
-    transferModalOpen,
-    setTransferModalOpen,
-    onCollapseTransferPair,
-    onDismissTransferPair,
-  } = useTransferFlow({ data, activeBudget, dispatch });
+  const transferFlow = useTransferFlow({ data, activeBudget, dispatch });
+  const { onTransferRequest, onOpenCreateTransfer, onOpenEditTransfer } =
+    transferFlow;
 
-  const {
-    complexOpen,
-    setComplexOpen,
-    complexSeedDate,
-    complexSeed,
-    setComplexSeed,
-    recurringPromoteContext,
-    setRecurringPromoteContext,
-    onAddComplex,
-    onComplexSubmit,
-    onPromoteRecurringCandidate,
-    onDismissRecurringCandidate,
-    onDismissAllRecurringCandidates,
-    onPromoteHistory,
-  } = useComplexEntry({
+  const complexEntry = useComplexEntry({
     activeBudget,
     sheetId,
     itemId,
     dispatch,
     closeEditPrompt: useCallback(() => setEditPrompt(null), [setEditPrompt]),
   });
-
-  const onConvertToRecurring = useCallback(
-    (
-      rowId: string,
-      futureDates: string[],
-      typeId: string | null,
-      companyId: string | null,
-    ) => {
-      dispatch({
-        type: "convertToRecurring",
-        sheetId,
-        itemId,
-        rowId,
-        futureDates,
-        typeId,
-        companyId,
-      });
-      setEditPrompt(null);
-    },
-    [dispatch, sheetId, itemId, setEditPrompt],
-  );
-  const onEditSeries = useCallback(
-    (rowId: string, patch: EditPatch, scope: EditScope) => {
-      unlockAchievement("secondDraft");
-      dispatch({ type: "editSeries", sheetId, itemId, rowId, patch, scope });
-      setEditPrompt(null);
-    },
-    [dispatch, sheetId, itemId, setEditPrompt],
-  );
-  const onSplitSubmit = useCallback(
-    (rowId: string, splits: SplitSubmission[], remainderAmount: number) => {
-      const row = splitPrompt?.row;
-      if (!row) {
-        setSplitPrompt(null);
-        return;
-      }
-      if (row.historyEntryId && activeItem.accountId) {
-        // History rows can't be replaced inline — the entry is the
-        // bank's authoritative record and its amount must be preserved.
-        // Fold any remainder into a final split that keeps the entry's
-        // raw bank description so the on-screen presentation still
-        // mirrors what the bank reported. The splits' signed amounts
-        // sum exactly to `entry.amount` after this fold.
-        const entries = data.history[activeItem.accountId] ?? [];
-        const entry = entries.find((e) => e.id === row.historyEntryId);
-        if (!entry) {
-          setSplitPrompt(null);
-          return;
-        }
-        const fullSplits: HistoryEntrySplit[] = splits.map((s) => ({
-          description: s.description,
-          amount: s.amount,
-          typeId: s.typeId,
-        }));
-        if (remainderAmount !== 0) {
-          fullSplits.push({
-            description: entry.description,
-            amount: remainderAmount,
-            typeId: null,
-          });
-        }
-        dispatch({
-          type: "splitHistoryEntry",
-          accountId: activeItem.accountId,
-          entryId: row.historyEntryId,
-          splits: fullSplits,
-        });
-        unlockAchievement("splitTheBill");
-        setSplitPrompt(null);
-        return;
-      }
-      dispatch({
-        type: "splitRow",
-        sheetId,
-        itemId,
-        rowId,
-        splits,
-        remainderAmount,
-      });
-      unlockAchievement("splitTheBill");
-      setSplitPrompt(null);
-    },
-    [
-      dispatch,
-      sheetId,
-      itemId,
-      splitPrompt,
-      activeItem.accountId,
-      data.history,
-      setSplitPrompt,
-    ],
-  );
-  // Drop a history entry's persisted split decomposition. The
-  // reducer's `splitHistoryEntry` action treats an empty splits
-  // array as "clear the field", so the synthesizer falls back to
-  // rendering a single row for the bank entry on the next pass.
-  // Only history rows can be reverted — regular row splits create
-  // independent rows that no longer share an id linking them back
-  // to the original.
-  const onSplitRevert = useCallback(() => {
-    const row = splitPrompt?.row;
-    if (!row?.historyEntryId || !activeItem.accountId) {
-      setSplitPrompt(null);
-      return;
-    }
-    dispatch({
-      type: "splitHistoryEntry",
-      accountId: activeItem.accountId,
-      entryId: row.historyEntryId,
-      splits: [],
-    });
-    setSplitPrompt(null);
-  }, [dispatch, splitPrompt, activeItem.accountId, setSplitPrompt]);
-  const onSaveEditRow = useCallback(
-    (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
-      // Description / amount / category / type are series-wide fields —
-      // `editSeries` with a `just-this` scope is the same as a single-
-      // row write, so the same dispatch covers both the one-off and
-      // recurring cases uniformly. `dateShiftDays` also rides this
-      // dispatch so a series-wide nudge lands on every row in scope.
-      // Completed is inherently per-occurrence and always lands on the
-      // anchor via `updateCell` regardless of scope.
-      dispatch({
-        type: "editSeries",
-        sheetId,
-        itemId,
-        rowId,
-        patch: {
-          description: patch.description,
-          amount: patch.amount,
-          typeId: patch.typeId,
-          companyId: patch.companyId,
-          isTransfer: patch.isTransfer,
-          dateShiftDays:
-            patch.dateShiftDays !== 0 ? patch.dateShiftDays : undefined,
-        },
-        scope,
-      });
-      const dateCol = findColumnByType(activeItem.columns, "date");
-      const row = activeItem.rows.find((r) => r.id === rowId);
-      const currentDate =
-        dateCol && row && typeof row.cells[dateCol.id] === "string"
-          ? (row.cells[dateCol.id] as string)
-          : "";
-      // Only stamp the date when the user actually typed a new one — a
-      // redundant write here would overwrite (and undo) the shift the
-      // editSeries dispatch just applied to the anchor row.
-      if (dateCol && patch.date !== currentDate) {
-        dispatch({
-          type: "updateCell",
-          sheetId,
-          itemId,
-          rowId,
-          columnId: dateCol.id,
-          value: patch.date,
-        });
-      }
-      const completedCol = findColumnByType(activeItem.columns, "completed");
-      if (completedCol) {
-        dispatch({
-          type: "updateCell",
-          sheetId,
-          itemId,
-          rowId,
-          columnId: completedCol.id,
-          value: patch.completed,
-        });
-      }
-      setEditRowPrompt(null);
-    },
-    [
-      activeItem.columns,
-      activeItem.rows,
-      dispatch,
-      sheetId,
-      itemId,
-      setEditRowPrompt,
-    ],
-  );
+  const {
+    onAddComplex,
+    onPromoteRecurringCandidate,
+    onDismissRecurringCandidate,
+    onDismissAllRecurringCandidates,
+  } = complexEntry;
 
   const dateCol = useMemo(
     () => findColumnByType(activeItem.columns, "date"),
     [activeItem.columns],
   );
 
-  const {
-    selectMode,
-    selectedIds,
-    selectedRows,
-    onToggleSelect,
-    onToggleSelectMonth,
-    onToggleSelectMode,
-    onCancelSelect,
-    bulkEditOpen,
-    setBulkEditOpen,
-    onBulkEdit,
-    onApplyBulkPatch,
-    onApplyBulkRecurring,
-    bulkDeletePrompt,
-    setBulkDeletePrompt,
-    bulkDeleteActions,
-    onBulkDelete,
-    moveCopyPrompt,
-    setMoveCopyPrompt,
-    moveCopySourceMonths,
-    onBulkMove,
-    onBulkCopy,
-    onCopyRequest,
-    handleMoveCopySubmit,
-  } = useBulkSelection({
+  const bulkSelection = useBulkSelection({
     sheetId,
     itemId,
     activeItem,
@@ -951,102 +575,40 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     toast,
     dateCol,
   });
-
   const {
-    editLastSeriesDate,
-    editRowLastSeriesDate,
-    deleteLastSeriesDate,
-    editRowSeriesRows,
-    splitInitialSplits,
-    splitAuthoritativeAmount,
-    splitAuthoritativeDescription,
-    historyEditEntry,
-    editHistoryHintPrefill,
-    editHistoryMatches,
-  } = usePromptDerivations({
-    editPrompt,
-    editRowPrompt,
-    splitPrompt,
-    deletePrompt,
+    selectMode,
+    selectedIds,
+    onToggleSelect,
+    onToggleSelectMonth,
+    onToggleSelectMode,
+    onCancelSelect,
+    onBulkEdit,
+    onBulkDelete,
+    onBulkMove,
+    onBulkCopy,
+    onCopyRequest,
+  } = bulkSelection;
+
+  const promptDerivations = usePromptDerivations({
+    editPrompt: editPrompts.editPrompt,
+    editRowPrompt: editPrompts.editRowPrompt,
+    splitPrompt: editPrompts.splitPrompt,
+    deletePrompt: deletePrompts.deletePrompt,
     historyEditPrompt,
     activeItem,
     dateCol,
     data,
   });
 
-  const {
-    matchRulePrompt,
-    setMatchRulePrompt,
-    matchRuleSeed,
-    matchRuleExisting,
-    matchRuleAllEntries,
-    onMatchRuleRequest,
-    onSubmitMatchRule,
-    onDeleteMatchRule,
-    onEditMatchRule,
-    onMoveMatchRule,
-    onReapplyMatchRules,
-  } = useMatchRuleUi({ data, activeItem, dispatch, toast });
+  const matchRuleUi = useMatchRuleUi({ data, activeItem, dispatch, toast });
+  const { onMatchRuleRequest } = matchRuleUi;
 
-  const { onSubmitHistoryEdit, onSetHistoryEntryPrimaryIncome } =
-    useHistoryEntryActions({
-      activeAccountId: activeItem.accountId,
-      historyEditPrompt,
-      dispatch,
-      setHistoryEditPrompt,
-    });
-
-  // Series rows are handled by `BudgetDeleteRecurringDialog` (which owns its
-  // own scope picker, optional date bound, and button labels). This
-  // memo only feeds `ConfirmDialog` for the single-row fallback path
-  // (one-off rows, or series rows on a sheet with no date column).
-  const deleteActions: ConfirmAction[] = useMemo(() => {
-    if (!deletePrompt) return [];
-    const row = deletePrompt.row;
-    return [
-      {
-        label: t("app.deleteThisRow"),
-        tone: "danger",
-        onSelect: () => {
-          dispatch({
-            type: "deleteRows",
-            sheetId,
-            itemId,
-            rowIds: [row.id],
-          });
-          setDeletePrompt(null);
-        },
-      },
-    ];
-  }, [deletePrompt, dispatch, sheetId, itemId, t, setDeletePrompt]);
-
-  const onDeleteRecurringRows = useCallback(
-    (rowIds: string[]) => {
-      dispatch({ type: "deleteRows", sheetId, itemId, rowIds });
-      setDeletePrompt(null);
-    },
-    [dispatch, sheetId, itemId, setDeletePrompt],
-  );
-
-  const correctionDeleteActions: ConfirmAction[] = useMemo(() => {
-    if (!correctionDeletePrompt) return [];
-    const target = correctionDeletePrompt;
-    return [
-      {
-        label: t("app.removeCorrection"),
-        tone: "danger",
-        onSelect: () => {
-          dispatch({
-            type: "deleteRows",
-            sheetId: target.sheetId,
-            itemId: target.itemId,
-            rowIds: [target.rowId],
-          });
-          setCorrectionDeletePrompt(null);
-        },
-      },
-    ];
-  }, [correctionDeletePrompt, dispatch, t, setCorrectionDeletePrompt]);
+  const historyEntryActions = useHistoryEntryActions({
+    activeAccountId: activeItem.accountId,
+    historyEditPrompt,
+    dispatch,
+    setHistoryEditPrompt,
+  });
 
   return (
     // The BottomBar is `position: sticky; bottom: 0` in browser
@@ -1291,558 +853,77 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           />
         )}
       </div>
-      <SheetModal
-        open={sheetModal !== null}
-        sheet={sheetModal?.sheet ?? null}
-        currentAccountId={
-          sheetModal?.sheet
-            ? (sheetModal.sheet.items.find(
-                (it): it is AccountBudget => it.type === "accountBudget",
-              )?.accountId ?? null)
-            : null
-        }
-        accounts={data.accounts}
-        canDelete={data.sheets.length > 1}
-        // The Accounts flavour is a singleton. The picker greys it out
-        // when one already exists (unless the current draft is editing
-        // that very sheet).
-        accountsSheetTaken={data.sheets.some(
-          (s) => s.type === "accounts" && s.id !== sheetModal?.sheet?.id,
-        )}
-        onClose={() => setSheetModal(null)}
-        onSave={onSaveSheet}
-        onDelete={onDeleteSheet}
-      />
-      {downloadPrompt !== null &&
-        (() => {
-          const target = data.sheets.find(
-            (s) => s.id === downloadPrompt.sheetId,
-          );
-          if (!target) return null;
-          if (target.type === "accounts") {
-            return (
-              <DownloadModal
-                open
-                kind="accounts"
-                accounts={data.accounts}
-                initial={downloadPrompt.accountsPrefs}
-                onClose={onCloseDownload}
-                onSubmit={onConfirmDownload}
-              />
-            );
-          }
-          const budgetItem = target.items.find(
-            (it): it is AccountBudget => it.type === "accountBudget",
-          );
-          const accountId = budgetItem?.accountId ?? null;
-          const hasHistory = accountId
-            ? (data.history[accountId]?.length ?? 0) > 0
-            : false;
-          return (
-            <DownloadModal
-              open
-              kind="budget"
-              initial={downloadPrompt.budgetPrefs}
-              hasHistory={hasHistory}
-              sheetName={target.name}
-              onClose={onCloseDownload}
-              onSubmit={onConfirmDownload}
-            />
-          );
-        })()}
-      <AccountModal
-        open={accountModal !== null}
-        account={accountModal?.account ?? null}
-        onClose={() => setAccountModal(null)}
-        onSave={onSaveAccount}
-        onDelete={onDeleteFinancialAccount}
-      />
-      <UpdateBalanceModal
-        open={updateBalanceAccount !== null}
-        account={updateBalanceAccount}
-        currentBalance={updateBalanceCurrent}
-        settings={effectiveSettings}
-        date={updateBalanceDate}
-        canRecord={updateBalanceHasBudget}
-        onConfirm={onConfirmUpdateBalance}
-        onCancel={() => setUpdateBalanceForId(null)}
-      />
-      <ImportHistoryModal
-        open={importHistoryAccount !== null}
-        account={importHistoryAccount}
-        existing={
-          importHistoryAccount
-            ? (data.history[importHistoryAccount.id] ?? [])
-            : []
-        }
-        settings={effectiveSettings}
-        onCancel={() => setImportHistoryForId(null)}
-        onConfirm={onConfirmImportHistory}
-      />
-      <AccountReconciliationModal
-        open={reconciliation !== null}
-        onCancel={onCancelReconciliation}
-        onApply={onApplyReconciliation}
-        accountId={reconciliation?.accountId ?? ""}
-        preImportData={reconciliation?.preImportData ?? data}
-        newEntries={reconciliation?.newEntries ?? []}
-        candidates={reconciliation?.candidates ?? []}
-        orphans={reconciliation?.orphans ?? []}
-        settings={effectiveSettings}
-      />
-      {/* Second mount, scoped to the retrospective orphan-triage CTA
-          fired from the budget-page BudgetMonthTable footer. Same modal
-          component as the import-time one — just fed an empty
-          `newEntries` / `candidates` so only the orphan section
-          renders, and committed via `onApplyManualTriage` which
-          dispatches `applyReconciliation` standalone (no
-          `importBankHistory` in flight). */}
-      <AccountReconciliationModal
-        open={manualTriage !== null}
-        onCancel={() => setManualTriage(null)}
-        onApply={onApplyManualTriage}
-        accountId={manualTriage?.accountId ?? ""}
-        preImportData={manualTriage?.preImportData ?? data}
-        newEntries={[]}
-        candidates={[]}
-        orphans={manualTriage?.orphans ?? []}
-        settings={effectiveSettings}
-      />
-      <AccountRenamePredictorModal
-        open={renamePredictor !== null}
-        suggestions={renamePredictor?.suggestions ?? []}
-        onCancel={onCancelRenamePredictor}
-        onCommit={onCommitRenamePredictor}
-      />
-      <AccountCutHistoryModal
-        open={cutHistoryAccount !== null}
-        account={cutHistoryAccount}
-        history={
-          cutHistoryAccount ? (data.history[cutHistoryAccount.id] ?? []) : []
-        }
-        transfers={data.transfers}
-        onCancel={() => setCutHistoryForId(null)}
-        onConfirm={onConfirmCutHistory}
-      />
-      <HistoryModal
-        open={viewHistoryAccount !== null}
-        account={viewHistoryAccount}
-        entries={
-          viewHistoryAccount ? (data.history[viewHistoryAccount.id] ?? []) : []
-        }
-        settings={effectiveSettings}
-        onCancel={() => setViewHistoryForId(null)}
-      />
-      <AccountTransferCollapseModal
-        open={transferModalOpen}
-        history={data.history}
-        accounts={data.accounts}
-        dismissedPairKeys={data.transferCollapseDismissals}
-        settings={effectiveSettings}
-        onClose={() => setTransferModalOpen(false)}
-        onCollapse={onCollapseTransferPair}
-        onDismiss={onDismissTransferPair}
-      />
-      <AccountTransferModal
-        open={transferRequest !== null}
-        request={transferRequest}
-        accounts={data.accounts}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        settings={effectiveSettings}
-        onClose={() => setTransferRequest(null)}
-        onCreate={onCreateTransfer}
-        onEdit={onEditTransferSave}
-        onDelete={onDeleteTransferFromModal}
-        onUncollapse={onUncollapseTransfer}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-      />
-      <BudgetComplexEntryModal
-        open={complexOpen}
-        initialDate={complexSeedDate}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        companies={data.companies}
-        settings={effectiveSettings}
-        sheets={data.sheets}
-        currentSheetId={activeSheet.id}
-        seed={complexSeed}
-        title={
-          recurringPromoteContext ? t("complex.promoteCandidate") : undefined
-        }
-        submitVerb={
-          recurringPromoteContext ? t("complex.promoteVerb") : undefined
-        }
-        onClose={() => {
-          setComplexOpen(false);
-          setComplexSeed(null);
-          setRecurringPromoteContext(null);
-        }}
-        onCreate={onComplexSubmit}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-        onCreateCompany={onCreateCompany}
-      />
-      <BudgetEditEntryModal
-        open={editPrompt !== null}
-        row={editPrompt?.row ?? null}
-        columns={activeItem.columns}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        companies={data.companies}
-        settings={effectiveSettings}
-        lastSeriesDate={editLastSeriesDate}
-        historyHintPrefill={editHistoryHintPrefill}
-        historyMatches={editHistoryMatches ?? undefined}
-        onClose={() => setEditPrompt(null)}
-        onConvertToRecurring={onConvertToRecurring}
-        onEditSeries={onEditSeries}
-        onPromoteHistory={onPromoteHistory}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-        onCreateCompany={onCreateCompany}
-      />
-      <BudgetEditEntryFullModal
-        open={editRowPrompt !== null}
-        row={editRowPrompt?.row ?? null}
-        columns={activeItem.columns}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        companies={data.companies}
-        settings={effectiveSettings}
-        lastSeriesDate={editRowLastSeriesDate}
-        seriesRows={editRowSeriesRows}
-        seriesMetadata={
-          editRowPrompt?.row.seriesId
-            ? data.seriesMetadata[editRowPrompt.row.seriesId]
-            : undefined
-        }
-        onClose={() => setEditRowPrompt(null)}
-        onSave={onSaveEditRow}
-        onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-        onCreateCompany={onCreateCompany}
-      />
-      <BudgetSplitEntryModal
-        open={splitPrompt !== null}
-        row={splitPrompt?.row ?? null}
-        columns={activeItem.columns}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        settings={effectiveSettings}
-        initialSplits={splitInitialSplits}
-        authoritativeAmount={splitAuthoritativeAmount}
-        authoritativeDescription={splitAuthoritativeDescription}
-        onClose={() => setSplitPrompt(null)}
-        onSplit={onSplitSubmit}
-        onRevert={onSplitRevert}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-      />
-      <BudgetMatchRuleModal
-        open={
-          matchRulePrompt !== null &&
-          (matchRulePrompt.kind === "edit"
-            ? matchRuleExisting !== null
-            : matchRuleSeed !== null)
-        }
-        seedEntry={matchRuleSeed}
-        allEntries={matchRuleAllEntries}
-        existing={matchRuleExisting}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        companies={data.companies}
-        settings={effectiveSettings}
-        onClose={() => setMatchRulePrompt(null)}
-        onSubmit={onSubmitMatchRule}
-        onDelete={
-          matchRulePrompt?.kind === "edit" ? onDeleteMatchRule : undefined
-        }
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-        onCreateCompany={onCreateCompany}
-      />
-      <EditHistoryEntryModal
-        open={historyEditPrompt !== null && historyEditEntry !== null}
-        entry={historyEditEntry}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        companies={data.companies}
-        settings={effectiveSettings}
-        primaryIncomeMerchants={data.primaryIncomeMerchants}
-        onClose={() => setHistoryEditPrompt(null)}
-        onSubmit={onSubmitHistoryEdit}
-        onSetPrimaryIncome={onSetHistoryEntryPrimaryIncome}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-        onCreateCompany={onCreateCompany}
-      />
-      <BudgetApplySeriesDialog
-        open={pendingSeriesEdit !== null}
-        fieldLabel={pendingSeriesEdit?.fieldLabel ?? ""}
-        anchorDate={pendingSeriesEdit?.anchorDate ?? ""}
-        lastSeriesDate={pendingSeriesEdit?.lastSeriesDate ?? null}
-        onCancel={onDismissPendingSeriesEdit}
-        onApplyToFuture={onApplyPendingToFuture}
-      />
-      <BudgetBulkEditModal
-        open={bulkEditOpen && selectedRows.length > 0}
-        rows={selectedRows}
-        columns={activeItem.columns}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        settings={effectiveSettings}
-        onClose={() => setBulkEditOpen(false)}
-        onApplyPatch={onApplyBulkPatch}
-        onApplyRecurring={onApplyBulkRecurring}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-      />
-      <BudgetMoveCopyModal
-        open={moveCopyPrompt !== null}
-        mode={moveCopyPrompt?.kind ?? "move"}
-        rows={moveCopyPrompt?.rows ?? []}
-        sourceMonths={moveCopySourceMonths}
-        onClose={() => setMoveCopyPrompt(null)}
-        onSubmit={handleMoveCopySubmit}
-      />
-      <ConfirmDialog
-        open={
-          deletePrompt !== null &&
-          !(deletePrompt.row.seriesId && dateCol !== undefined)
-        }
-        title={t("confirm.deleteRow")}
-        description={t("confirm.deleteRowHint")}
-        actions={deleteActions}
-        onCancel={() => setDeletePrompt(null)}
-      />
-      <BudgetDeleteRecurringDialog
-        open={
-          deletePrompt !== null &&
-          !!deletePrompt.row.seriesId &&
-          dateCol !== undefined
-        }
-        row={deletePrompt?.row ?? null}
-        rows={activeItem.rows}
-        dateColumnId={dateCol?.id ?? null}
-        lastSeriesDate={deleteLastSeriesDate}
-        settings={effectiveSettings}
-        onCancel={() => setDeletePrompt(null)}
-        onDelete={onDeleteRecurringRows}
-      />
-      <ConfirmDialog
-        open={bulkDeletePrompt !== null}
-        title={t("app.deleteSelected")}
-        description={
-          (bulkDeletePrompt?.rowIds.length ?? 0) === 1
-            ? t("confirm.deleteSelectedHintOne", {
-                n: bulkDeletePrompt?.rowIds.length ?? 0,
-              })
-            : t("confirm.deleteSelectedHintOther", {
-                n: bulkDeletePrompt?.rowIds.length ?? 0,
-              })
-        }
-        actions={bulkDeleteActions}
-        onCancel={() => setBulkDeletePrompt(null)}
-      />
-      <ConfirmDialog
-        open={deleteSheetPrompt !== null}
-        title={t("app.deleteSheet")}
-        description={
-          deleteSheetPrompt
-            ? t("confirm.deleteSheetHint", { name: deleteSheetPrompt.name })
-            : null
-        }
-        actions={deleteSheetActions}
-        onCancel={() => setDeleteSheetPrompt(null)}
-      />
-      <ConfirmDialog
-        open={deleteAccountPrompt !== null}
-        title={t("app.deleteAccount")}
-        description={
-          deleteAccountPrompt
-            ? t("confirm.deleteAccountHint", { name: deleteAccountPrompt.name })
-            : null
-        }
-        actions={deleteAccountActions}
-        onCancel={() => setDeleteAccountPrompt(null)}
-      />
-      <ConfirmDialog
-        open={uncollapsePrompt !== null}
-        title={t("transfer.uncollapseTitle")}
-        description={t("transfer.uncollapseHint")}
-        actions={uncollapseActions}
-        onCancel={() => setUncollapsePrompt(null)}
-      />
-      <ConfirmDialog
-        open={correctionDeletePrompt !== null}
-        title={t("app.removeBalanceCorrection")}
-        description={
-          correctionDeletePrompt
-            ? t("confirm.correctionRemoveHint", {
-                delta: correctionDeletePrompt.deltaText,
-              })
-            : ""
-        }
-        actions={correctionDeleteActions}
-        onCancel={() => setCorrectionDeletePrompt(null)}
-      />
-      <SyncDetailsModal
-        open={syncDetailsOpen}
-        backend={backend}
-        status={status}
-        dirty={dirty}
-        onSaveNow={saveNow}
-        onReconnect={
-          backend === "dropbox" || backend === "gdrive"
-            ? onReconnectCloud
-            : null
-        }
-        onConfirmShrink={confirmShrinkSave}
-        onDiscardShrink={discardShrinkSave}
-        onClose={() => setSyncDetailsOpen(false)}
-      />
-      <AchievementUnlockModal
-        open={achievementsModalOpen}
-        unseenIds={data.settings.unseenAchievements}
-        onClose={() => {
-          setAchievementsModalOpen(false);
-          dispatch({ type: "clearUnseenAchievements" });
-        }}
-      />
-      <AchievementsModal
-        open={achievementsListOpen}
-        onClose={() => setAchievementsListOpen(false)}
-        unlocked={data.settings.achievements}
-      />
-      <ReconnectCloudModal
-        open={reconnectCloudOpen}
-        backend={backend}
-        onConfirm={onReconnectCloud}
-        onClose={() => setReconnectCloudOpen(false)}
-      />
-      <ConflictResolutionModal
-        open={status.kind === "conflict"}
-        providerName={
-          backend === "dropbox"
-            ? "Dropbox"
-            : backend === "gdrive"
-              ? "Google Drive"
-              : t("settings.storage.cloudConnect")
-        }
-        local={status.kind === "conflict" ? status.local : data}
-        remote={status.kind === "conflict" ? status.remote : data}
-        onKeepLocal={resolveKeepLocal}
-        onKeepRemote={resolveKeepRemote}
-      />
-      <SettingsModal
-        open={settingsOpen}
-        initialTab={settingsInitialTab}
-        settings={effectiveSettings}
-        backend={backend}
-        dropboxConnected={dropboxConnected}
-        gdriveConnected={gdriveConnected}
-        folderConnected={folderConnected}
-        folderAvailable={folderAvailable}
-        folderReconnectNeeded={folderReconnectNeeded}
-        encryption={encryption}
-        cloudOfflineMode={cloudOfflineMode}
-        isGuest={isGuest}
-        username={user.username}
-        merchantHintCount={Object.keys(data.merchantHints).length}
-        recurringDismissalCount={data.recurringDismissals.length}
-        transferDismissalCount={data.transferCollapseDismissals.length}
+      <UniversalModalHost
         data={data}
-        onImport={onImport}
-        adapter={adapter}
-        getEncryptionPassword={getEncryptionPassword}
-        onClose={() => {
-          setSettingsOpen(false);
-          setSettingsInitialTab(undefined);
+        effectiveSettings={effectiveSettings}
+        dispatch={dispatch}
+        user={user}
+        isGuest={isGuest}
+        storageState={{
+          status,
+          dirty,
+          saveNow,
+          resolveKeepLocal,
+          resolveKeepRemote,
+          confirmShrinkSave,
+          discardShrinkSave,
+          historyEntries,
+          historyIndex,
+          jumpToHistory,
         }}
-        onSave={onSaveSettings}
-        onPreviewAppearance={setPreviewSettings}
-        onConnectDropbox={onConnectDropbox}
-        onDisconnectDropbox={onDisconnectDropbox}
-        onConnectGdrive={onConnectGdrive}
-        onDisconnectGdrive={onDisconnectGdrive}
-        onConnectFolder={onConnectFolder}
-        onReconnectFolder={onReconnectFolder}
-        onDisconnectFolder={onDisconnectFolder}
-        onSelectBrowser={onSelectBrowser}
-        onSetEncryption={onSetEncryption}
-        onSetCloudOfflineMode={onSetCloudOfflineMode}
+        storage={storage}
+        auth={{ getEncryptionPassword, onDeleteAccount }}
+        warningSecondsLeft={warningSecondsLeft}
+        onStaySignedIn={onStaySignedIn}
+        sheetMetaDialog={sheetMetaDialog}
+        downloadFlow={downloadFlow}
+        settingsModal={settingsModal}
+        changelog={changelog}
+        syncAutoOpens={syncAutoOpens}
+        achievementsModal={achievementsModal}
+        searchModal={searchModal}
+        taxonomyCrud={taxonomyCrud}
+        matchRuleUi={matchRuleUi}
+        actionHistoryOpen={actionHistoryOpen}
+        setActionHistoryOpen={setActionHistoryOpen}
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
-        onCreateCategory={onCreateCategory}
-        onUpdateCategory={onUpdateCategory}
-        onDeleteCategory={onDeleteCategory}
-        onSetPresetCategoryHidden={onSetPresetCategoryHidden}
+        onSaveSettings={onSaveSettings}
+        onImport={onImport}
+      />
+      <AccountsModalHost
+        data={data}
+        effectiveSettings={effectiveSettings}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
+        accountDialog={accountDialog}
+        importFlow={importFlow}
+        transferFlow={transferFlow}
         onCreateType={onCreateType}
-        onUpdateType={onUpdateType}
-        onDeleteType={onDeleteType}
-        onSetPresetTypeHidden={onSetPresetTypeHidden}
-        onSetPresetTypeKind={onSetPresetTypeKind}
+        onCreateCategory={onCreateCategory}
+      />
+      <BudgetModalHost
+        data={data}
+        effectiveSettings={effectiveSettings}
+        categories={allCategoriesMerged}
+        types={allTypesMerged}
+        sheetId={sheetId}
+        itemId={itemId}
+        activeItem={activeItem}
+        dateCol={dateCol}
+        dispatch={dispatch}
+        editPrompts={editPrompts}
+        deletePrompts={deletePrompts}
+        promptDerivations={promptDerivations}
+        complexEntry={complexEntry}
+        matchRuleUi={matchRuleUi}
+        bulkSelection={bulkSelection}
+        historyEntryActions={historyEntryActions}
+        onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
-        onUpdateCompany={onUpdateCompany}
-        onDeleteCompany={onDeleteCompany}
-        onEditMatchRule={onEditMatchRule}
-        onMoveMatchRule={onMoveMatchRule}
-        onReapplyMatchRules={onReapplyMatchRules}
-        onDeleteAccount={onDeleteAccount}
-      />
-      <ChangelogModal
-        open={changelogOpen}
-        onClose={onCloseChangelog}
-        since={changelogSince}
-      />
-      <ActionHistoryModal
-        open={actionHistoryOpen}
-        onClose={() => setActionHistoryOpen(false)}
-        entries={historyEntries}
-        currentIndex={historyIndex}
-        onJump={(index) => {
-          unlockAchievement("timeMachine");
-          jumpToHistory(index);
-          setActionHistoryOpen(false);
-        }}
-      />
-      <BudgetTransferSearchModal
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        index={searchIndex}
-        settings={effectiveSettings}
-        onPick={(entry) => {
-          if (entry.sheetId !== data.activeSheetId) {
-            dispatch({ type: "selectSheet", sheetId: entry.sheetId });
-          }
-          setScrollToRowRequest((prev) => ({
-            sheetId: entry.sheetId,
-            rowId: entry.rowId,
-            iso: entry.iso,
-            tick: (prev?.tick ?? 0) + 1,
-          }));
-          setSearchOpen(false);
-        }}
-      />
-      <ConfirmDialog
-        open={warningSecondsLeft !== null}
-        title={t("app.aboutToSignOut")}
-        description={
-          warningSecondsLeft !== null
-            ? warningSecondsLeft === 1
-              ? t("confirm.signOutWarningOne", { n: warningSecondsLeft })
-              : t("confirm.signOutWarningOther", { n: warningSecondsLeft })
-            : null
-        }
-        actions={[{ label: t("confirm.stayActive"), onSelect: onStaySignedIn }]}
-        hideCancel
-        onCancel={onStaySignedIn}
+        onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
       />
     </div>
   );
