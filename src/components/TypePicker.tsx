@@ -322,6 +322,8 @@ export function TypePicker({
                 categories={visibleCategories}
                 selectedCategoryId={selected?.categoryId ?? null}
                 onPick={handlePickCategory}
+                onClear={selected ? () => handlePickType(null) : undefined}
+                clearLabel={t("type.clearType")}
                 emptyLabel={t("type.noTypesYet")}
               />
             </div>
@@ -371,11 +373,15 @@ function CategoryPane({
   categories,
   selectedCategoryId,
   onPick,
+  onClear,
+  clearLabel,
   emptyLabel,
 }: {
   categories: readonly Category[];
   selectedCategoryId: string | null;
   onPick: (id: string) => void;
+  onClear?: () => void;
+  clearLabel: string;
   emptyLabel: string;
 }) {
   const initialIdx = Math.max(
@@ -414,6 +420,18 @@ function CategoryPane({
           </button>
         </li>
       ))}
+      {onClear && (
+        <li>
+          <button
+            type="button"
+            onClick={onClear}
+            className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-xs text-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            <X size={12} aria-hidden focusable={false} />
+            {clearLabel}
+          </button>
+        </li>
+      )}
     </ul>
   );
 }
