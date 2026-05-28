@@ -95,6 +95,7 @@ const presetTypes: PresetTypesCatalog = {
   tools: "Verktyg",
   stationery: "Kontorsmaterial",
   appliances: "Vitvaror",
+  kitchenware: "Husgeråd",
   "digital-services": "Digitala tjänster",
   unknown: "Okänt",
   forgotten: "Bortglömt",
