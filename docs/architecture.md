@@ -35,6 +35,7 @@ src/
 │   │   ├── BudgetPage.tsx              # page root — month grouping + balances
 │   │   ├── BudgetViewerModal.tsx       # read-only viewer
 │   │   ├── BudgetMonthTable.tsx              # one month's table
+│   │   ├── OrphanIndicator.tsx               # covered-month tfoot indicator
 │   │   ├── BudgetColumnHeader.tsx            # draggable column header
 │   │   ├── BudgetCell.tsx              # per-type cell editor
 │   │   ├── BudgetRow.tsx               # row body — swipe-to-act + cell wiring
