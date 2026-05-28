@@ -619,28 +619,110 @@ export function BudgetPage({
   // short-circuits for synthesized rows (no `seriesId`), so it
   // doesn't need a parallel intercept.
   const accountId = item.accountId;
+
+  // Brief double-heartbeat highlight on a row after an inline edit
+  // commits — or after a brand-new row is added via the inline "+"
+  // button. On mobile the soft keyboard collapsing after a commit can
+  // leave the user momentarily unsure which row they were just editing;
+  // a pulse on the affected row anchors the change visually. Driven by
+  // a DOM attribute toggled directly (rather than a React state on each
+  // row) so a single keystroke commit doesn't ripple a re-render
+  // through every memoised BudgetRow in the sheet. The reflow + re-set
+  // restarts the animation on rapid successive commits.
+  const flashRow = useCallback((rowId: string) => {
+    if (typeof document === "undefined") return;
+    const fire = () => {
+      const selector = `[data-row-id="${CSS.escape(rowId)}"]`;
+      const row = document.querySelector<HTMLElement>(selector);
+      if (!row) return;
+      row.removeAttribute("data-row-flash");
+      // Force reflow so the keyframes restart from 0 when the same row
+      // commits twice in quick succession.
+      void row.offsetWidth;
+      row.setAttribute("data-row-flash", "true");
+      window.setTimeout(() => {
+        if (row.getAttribute("data-row-flash") === "true") {
+          row.removeAttribute("data-row-flash");
+        }
+      }, 950);
+    };
+    // Small delay so a freshly-added row has time to mount before we
+    // query for it. Same rationale as the scroll-to-row pulse below.
+    window.setTimeout(fire, 50);
+  }, []);
+
   const handleUpdateCell = useCallback(
     (rowId: string, columnId: string, value: CellValue) => {
       if (!rowId.startsWith("hist:") || !accountId) {
         onUpdateCell(rowId, columnId, value);
-        return;
+      } else {
+        const entryId = rowId.slice("hist:".length);
+        const col = decoratedItem.columns.find((c) => c.id === columnId);
+        if (col?.type === "description") {
+          onUpdateHistoryEntry(accountId, entryId, {
+            userDescription: typeof value === "string" ? value : "",
+          });
+        } else if (col?.type === "type") {
+          onUpdateHistoryEntry(accountId, entryId, {
+            userTypeId:
+              typeof value === "string" && value !== "" ? value : null,
+          });
+        } else {
+          return;
+        }
       }
-      const entryId = rowId.slice("hist:".length);
+      // Date and completed cells have no `onCommit` path (the date
+      // picker fires discrete onChange events; the completed toggle is
+      // a single click), so the heartbeat hooks into `onUpdate` for
+      // those two column types. Text inputs (description, amount) and
+      // the type picker route their heartbeat through `handleCommitCell`
+      // below instead — flashing on every keystroke would be noise.
       const col = decoratedItem.columns.find((c) => c.id === columnId);
-      if (col?.type === "description") {
-        onUpdateHistoryEntry(accountId, entryId, {
-          userDescription: typeof value === "string" ? value : "",
-        });
-        return;
-      }
-      if (col?.type === "type") {
-        onUpdateHistoryEntry(accountId, entryId, {
-          userTypeId: typeof value === "string" && value !== "" ? value : null,
-        });
+      if (col?.type === "date" || col?.type === "completed") {
+        flashRow(rowId);
       }
     },
-    [accountId, decoratedItem.columns, onUpdateCell, onUpdateHistoryEntry],
+    [
+      accountId,
+      decoratedItem.columns,
+      onUpdateCell,
+      onUpdateHistoryEntry,
+      flashRow,
+    ],
   );
+
+  const handleCommitCell = useCallback(
+    (rowId: string, columnId: string, value: CellValue) => {
+      onCommitCell(rowId, columnId, value);
+      flashRow(rowId);
+    },
+    [onCommitCell, flashRow],
+  );
+
+  // Flash newly-added rows. Diffs `item.rows` ids across renders and
+  // fires the heartbeat on a single new id — the shape produced by the
+  // inline "+" button (and a non-series complex entry). Multi-row
+  // additions (series, paste, bulk copy) intentionally skip the
+  // heartbeat; flashing N rows at once reads as chaos rather than
+  // confirmation, and the user already saw the form they submitted.
+  // The ref is null on first mount so the initial load doesn't pulse
+  // every existing row; the sheet-key on BudgetPage means switching
+  // sheets resets this state.
+  const prevRowIdsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const current = new Set(item.rows.map((r) => r.id));
+    const prev = prevRowIdsRef.current;
+    prevRowIdsRef.current = current;
+    if (prev === null) return;
+    let newId: string | null = null;
+    for (const id of current) {
+      if (!prev.has(id)) {
+        if (newId !== null) return; // more than one new id — skip
+        newId = id;
+      }
+    }
+    if (newId !== null) flashRow(newId);
+  }, [item.rows, flashRow]);
 
   // Each month renders as its own CSS grid, so amount/balance columns
   // sized with `max-content` end up different widths per month. Compute
@@ -1272,7 +1354,7 @@ export function BudgetPage({
                     onToggleTransferAnchor={toggleTransferAnchor}
                     onToggleRowTransfer={onToggleRowTransfer}
                     onUpdateCell={handleUpdateCell}
-                    onCommitCell={onCommitCell}
+                    onCommitCell={handleCommitCell}
                     onAddRow={slotAdd}
                     onAddComplex={slotAddComplex}
                     onDeleteRequest={onDeleteRequest}

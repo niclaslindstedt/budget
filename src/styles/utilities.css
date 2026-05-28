@@ -86,6 +86,45 @@
   animation: row-pulse 1500ms ease-out;
 }
 
+/* Double-heartbeat highlight applied to a budget row after an inline
+   edit commits (cell blur, discrete picker selection, date / completed
+   change) or after a new row is added via the inline "+" button.
+   Distinct from `[data-row-pulse]` (single 1500ms fade — used by the
+   transaction-search "navigate to row" affordance) so the two reads
+   don't blur together when the same row gets both signals over time.
+   The attribute is added by BudgetPage's flash effect and removed once
+   the animation finishes, so the same row can heartbeat again on the
+   next edit. Cells participate via `[data-row-flash] > td` for the
+   same reason `row-pulse` does — the grid distributes the row
+   background across cells on mobile. `color-mix` keeps the tint
+   tracking the Custom-theme accent token. The reduce-motion guard at
+   `theme.css` zeroes the duration when the user opts in, collapsing
+   the heartbeat to a single static frame. */
+@keyframes row-flash {
+  0% {
+    background-color: transparent;
+  }
+  8% {
+    background-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  }
+  22% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  }
+  44% {
+    background-color: transparent;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+[data-row-flash],
+[data-row-flash] > td {
+  animation: row-flash 900ms ease-out;
+}
+
 /* One-shot ring pulse around a metadata-mode form field after the user
    tapped the gated Save button. The save handler removes + re-adds the
    attribute (forcing a reflow in between) so the animation replays on
