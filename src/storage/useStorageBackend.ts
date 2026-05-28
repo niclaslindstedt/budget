@@ -8,8 +8,6 @@ import {
   type BackendId,
   type EncryptionMode,
   clearCloudOfflineMode,
-  clearDropboxRefreshToken,
-  clearDropboxToken,
   clearGdriveToken,
   getBackend,
   getCloudOfflineMode,
@@ -19,19 +17,12 @@ import {
   getGdriveToken,
   setBackend,
   setCloudOfflineMode,
-  setDropboxRefreshToken,
   setDropboxToken,
   setEncryption,
   setGdriveToken,
 } from "./backend-preference";
 import { withCloudMirror } from "./cloud-mirror";
-import {
-  type DropboxAuthResult,
-  completeDropboxAuth,
-  createDropboxAdapter,
-  hasPendingDropboxAuth,
-  startDropboxAuth,
-} from "./dropbox-adapter";
+import { createDropboxAdapter, startDropboxAuth } from "./dropbox-adapter";
 import { withEncryption } from "./encrypting-adapter";
 import { serializeUserData } from "./file";
 import { createFolderAdapter } from "./folder-adapter";
@@ -42,6 +33,7 @@ import {
   createIdbCloudMirrorStorage,
 } from "./idb-adapter";
 import type { StoredUser } from "../data/types";
+import { useDropboxAuth } from "./useDropboxAuth";
 import { useFolderHandle } from "./useFolderHandle";
 import { wrapForActive } from "./wrap-for-active";
 import { createLogger } from "../utils/logger";
@@ -177,17 +169,6 @@ export function useStorageBackend({
   const [backend, setBackendState] = useState<BackendId>(() =>
     auth.kind === "signed-in" ? getBackend(auth.user.id) : "browser",
   );
-  const [dropboxToken, setDropboxTokenState] = useState<string | null>(() =>
-    auth.kind === "signed-in" ? getDropboxToken(auth.user.id) : null,
-  );
-  // The refresh token is held in a ref rather than React state because
-  // silent refreshes update the access token in localStorage and inside
-  // the adapter's closure — bouncing it through `setState` would
-  // rebuild the `adapter` useMemo and trigger a needless reload of the
-  // user's data.
-  const dropboxRefreshTokenRef = useRef<string | null>(
-    auth.kind === "signed-in" ? getDropboxRefreshToken(auth.user.id) : null,
-  );
   const [gdriveToken, setGdriveTokenState] = useState<string | null>(() =>
     auth.kind === "signed-in" ? getGdriveToken(auth.user.id) : null,
   );
@@ -230,68 +211,32 @@ export function useStorageBackend({
   // Sync state with the active user every time auth flips. The
   // default (no-password) user is pinned to plaintext storage — there
   // is no password to derive a key from, and the user explicitly
-  // opted out of accounts.
+  // opted out of accounts. `useDropboxAuth` runs its own parallel
+  // sync effect for the Dropbox token state so this one doesn't bloat
+  // with provider-specific token resets.
   useEffect(() => {
     if (auth.kind !== "signed-in") {
       log.info("auth: signed-out — clearing per-user preferences");
       setBackendState("browser");
-      setDropboxTokenState(null);
-      dropboxRefreshTokenRef.current = null;
       setGdriveTokenState(null);
       setEncryptionState("encrypted");
       setCloudOfflineModeState(false);
       return;
     }
     const nextBackend = getBackend(auth.user.id);
-    const nextDropboxToken = getDropboxToken(auth.user.id);
-    const nextRefresh = getDropboxRefreshToken(auth.user.id);
     const nextGdriveToken = getGdriveToken(auth.user.id);
     const nextEncryption = auth.user.isDefault
       ? "plaintext"
       : getEncryption(auth.user.id);
     const nextOffline = getCloudOfflineMode(auth.user.id);
     log.info(
-      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} hasDropboxToken=${Boolean(nextDropboxToken)} hasDropboxRefresh=${Boolean(nextRefresh)} hasGdriveToken=${Boolean(nextGdriveToken)} encryption=${nextEncryption} cloudOffline=${nextOffline}`,
+      `auth: signed-in user=${auth.user.username} isDefault=${Boolean(auth.user.isDefault)} backend=${nextBackend} hasGdriveToken=${Boolean(nextGdriveToken)} encryption=${nextEncryption} cloudOffline=${nextOffline}`,
     );
     setBackendState(nextBackend);
-    setDropboxTokenState(nextDropboxToken);
-    dropboxRefreshTokenRef.current = nextRefresh;
     setGdriveTokenState(nextGdriveToken);
     setEncryptionState(nextEncryption);
     setCloudOfflineModeState(nextOffline);
   }, [auth]);
-
-  // Persist the OAuth tokens and flip the active backend in one batch,
-  // so the adapter `useMemo` below rebuilds against the new cloud
-  // backend exactly once. Split out from the OAuth effect because both
-  // the "no remote file" branch and the conflict-resolution dialog
-  // need the same commit step.
-  const commitDropboxLink = useCallback(
-    (userId: string, result: DropboxAuthResult) => {
-      log.info(
-        `commitDropboxLink: persisting tokens hasRefresh=${Boolean(result.refreshToken)}`,
-      );
-      setDropboxToken(userId, result.accessToken);
-      if (result.refreshToken) {
-        setDropboxRefreshToken(userId, result.refreshToken);
-        dropboxRefreshTokenRef.current = result.refreshToken;
-      } else {
-        log.warn(
-          "commitDropboxLink: no refresh token in response — silent refresh will not work",
-        );
-        // Shouldn't happen — `token_access_type=offline` should always
-        // return one — but clear stale state if it does so we don't
-        // try to refresh with the previous account's token.
-        clearDropboxRefreshToken(userId);
-        dropboxRefreshTokenRef.current = null;
-      }
-      setBackend(userId, "dropbox");
-      setDropboxTokenState(result.accessToken);
-      setBackendState("dropbox");
-      unlock("cloudWalker");
-    },
-    [],
-  );
 
   const commitGdriveLink = useCallback((userId: string, token: string) => {
     log.info("commitGdriveLink: persisting token");
@@ -381,142 +326,19 @@ export function useStorageBackend({
     [buildSourceRawAdapter, wrapWithActiveEncryption, currentDataRef],
   );
 
-  // Complete the Dropbox OAuth round-trip when the redirect lands
-  // back here. The user signed in before clicking Connect, so by the
-  // time this fires they should already be signed-in again (or about
-  // to be — we wait for that transition). Errors surface in the
-  // console only; a future polish pass can surface them in UI.
-  //
-  // Google Drive uses a popup-based GIS token client (no redirect),
-  // so only Dropbox arrives via this codepath. Pending-verifier check
-  // guards against picking up a stray `?code=` from some other source
-  // before kicking off the token exchange.
-  //
-  // Before flipping the backend we probe both sides — the target
-  // cloud (so the dialog knows whether it already holds a budget)
-  // and the source backend (so we have authoritative bytes to push,
-  // independent of whether AppShell has finished its async load
-  // into `currentDataRef`). The result is always parked in
-  // `pendingCloudLink` so the user sees an explicit confirmation
-  // dialog for the switch, even in the no-conflict cases — silently
-  // flipping the backend has been the source of "did it work?"
-  // confusion.
-  useEffect(() => {
-    if (auth.kind !== "signed-in") return;
-    const rawSearch = window.location.search;
-    const params = new URLSearchParams(rawSearch);
-    const code = params.get("code");
-    if (!code) return;
-    // Pin the narrowed string into a local — TypeScript's
-    // `if (!code) return` narrowing doesn't reach the nested function
-    // declarations below, which would otherwise see `string | null`.
-    const authCode = code;
-    const state = params.get("state");
-    const oauthErr = params.get("error");
-    const dropboxPending = hasPendingDropboxAuth();
-    // Echo the raw query string (sans the code, which is a secret) so
-    // a misbehaving redirect chain — extra params, dropped `state`,
-    // unexpected fragments — shows up in the console verbatim instead
-    // of being inferred from the routing decision below.
-    const sanitisedSearch = rawSearch.replace(/(code=)[^&]*/, "$1<redacted>");
-    log.info(
-      `oauth: redirect landed — search=${sanitisedSearch || "<empty>"} state=${state ?? "<none>"} error=${oauthErr ?? "<none>"} dropboxPending=${dropboxPending}`,
-    );
-    if (oauthErr) {
-      log.error(
-        `oauth: provider returned error=${oauthErr} desc=${params.get("error_description") ?? "<none>"}; aborting and cleaning URL`,
-      );
-      cleanCodeFromUrl();
-      return;
-    }
-    if (!dropboxPending) {
-      log.error(
-        `oauth: ?code= present but no Dropbox verifier — ignoring and cleaning URL (state=${state ?? "<none>"})`,
-      );
-      cleanCodeFromUrl();
-      return;
-    }
-    let cancelled = false;
-    const userId = auth.user.id;
-    const fromBackend = getBackend(userId);
-    log.info(
-      `oauth: ?code= present provider=dropbox (state=${state ?? "<none>"}) fromBackend=${fromBackend}`,
-    );
-
-    void doDropbox()
-      .catch((err: unknown) => {
-        log.error("oauth: dropbox connect failed", err);
-      })
-      .finally(cleanCodeFromUrl);
-
-    async function doDropbox(): Promise<void> {
-      log.info("oauth(dropbox): exchanging code for tokens");
-      const result = await completeDropboxAuth(authCode);
-      if (cancelled || auth.kind !== "signed-in") {
-        log.info("oauth(dropbox): aborted after token exchange (cancelled)");
-        return;
-      }
-      log.info("oauth(dropbox): probing remote + source in parallel");
-      const probe = createDropboxAdapter({
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-        // Refresh-token swaps before commit have nowhere durable to
-        // land — the user hasn't accepted the link yet. Drop the new
-        // token on the floor; the post-commit adapter will mint its
-        // own on the next 401.
-        onAccessTokenRefreshed: () => {},
-      });
-      const [remote, sourceText] = await Promise.all([
-        probe.load().catch((err: unknown) => {
-          log.error("oauth(dropbox): probe failed", err);
-          return null;
-        }),
-        loadSourceText(userId, fromBackend),
-      ]);
-      if (cancelled || auth.kind !== "signed-in") {
-        log.info("oauth(dropbox): aborted after probe (cancelled)");
-        return;
-      }
-      log.info(
-        `oauth(dropbox): probe done remoteHasBytes=${Boolean(remote)} sourceHasBytes=${Boolean(sourceText)} — opening confirmation`,
-      );
-      setPendingCloudLink({
-        provider: "dropbox",
-        auth: result,
-        fromBackend,
-        remoteSnapshot: remote,
-        sourceText,
-      });
-    }
-
-    function cleanCodeFromUrl() {
-      // Clean the OAuth round-trip params out of the URL regardless
-      // of outcome so a page reload doesn't re-trigger the exchange
-      // and so the URL bar isn't left littered with provider-specific
-      // junk. `code`/`state` are ours; `error`/`error_description` are
-      // standard OAuth 2.0 error fields; `iss` is RFC 9207 issuer
-      // identification (Google sets it); `scope`, `authuser`, `prompt`,
-      // and `hd` are Google-specific extras.
-      const url = new URL(window.location.href);
-      for (const key of [
-        "code",
-        "state",
-        "error",
-        "error_description",
-        "iss",
-        "scope",
-        "authuser",
-        "prompt",
-        "hd",
-      ]) {
-        url.searchParams.delete(key);
-      }
-      window.history.replaceState({}, "", url.toString());
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [auth, loadSourceText]);
+  const {
+    dropboxToken,
+    dropboxRefreshTokenRef,
+    connectDropbox,
+    commitDropboxLink,
+    markDisconnected: markDropboxDisconnected,
+    applySignedInUser: applyDropboxSignedInUser,
+  } = useDropboxAuth({
+    auth,
+    loadSourceText,
+    setPendingCloudLink,
+    setBackendState,
+  });
 
   // Resolve a parked cloud-link confirmation. "use-cloud" just flips
   // the backend and lets the storage hook reload from the cloud (which
@@ -710,6 +532,7 @@ export function useStorageBackend({
     auth,
     backend,
     dropboxToken,
+    dropboxRefreshTokenRef,
     gdriveToken,
     folderHandle,
     folderHandleLoaded,
@@ -718,10 +541,6 @@ export function useStorageBackend({
     passwordRef,
     markFolderPermissionLost,
   ]);
-
-  const connectDropbox = useCallback(() => {
-    void startDropboxAuth();
-  }, []);
 
   // Re-issue OAuth for the active cloud backend after an
   // `auth-error` status. Distinct from `connectGdrive` /
@@ -858,10 +677,10 @@ export function useStorageBackend({
           log.error(`${provider} disconnect: failed to mirror to local`, err);
         }
       }
-      if (provider === "dropbox") {
-        clearDropboxToken(userId);
-        clearDropboxRefreshToken(userId);
-      } else {
+      // Provider-specific cleanup: useDropboxAuth owns its own token
+      // state and persisted clears; GDrive still lives here until its
+      // own hook lands.
+      if (provider === "gdrive") {
         clearGdriveToken(userId);
       }
       setBackend(userId, "browser");
@@ -870,14 +689,21 @@ export function useStorageBackend({
       // surface a stale conflict against the new remote.
       await clearCloudMirrorBytes(userId);
       if (provider === "dropbox") {
-        setDropboxTokenState(null);
-        dropboxRefreshTokenRef.current = null;
+        markDropboxDisconnected(userId);
       } else {
         setGdriveTokenState(null);
       }
       setBackendState("browser");
     },
-    [auth, dropboxToken, gdriveToken, encryption, passwordRef],
+    [
+      auth,
+      dropboxToken,
+      dropboxRefreshTokenRef,
+      gdriveToken,
+      encryption,
+      passwordRef,
+      markDropboxDisconnected,
+    ],
   );
 
   const disconnectDropbox = useCallback(
@@ -941,6 +767,7 @@ export function useStorageBackend({
       auth,
       backend,
       dropboxToken,
+      dropboxRefreshTokenRef,
       gdriveToken,
       folderHandle,
       encryption,
@@ -979,12 +806,14 @@ export function useStorageBackend({
   // window otherwise. The sign-out path doesn't need an equivalent
   // helper because the auth-effect's `signed-out` branch handles the
   // clear before any post-flip render that consults this state.
-  const applySignedInUser = useCallback((user: StoredUser) => {
-    setBackendState(getBackend(user.id));
-    setDropboxTokenState(getDropboxToken(user.id));
-    dropboxRefreshTokenRef.current = getDropboxRefreshToken(user.id);
-    setEncryptionState(user.isDefault ? "plaintext" : getEncryption(user.id));
-  }, []);
+  const applySignedInUser = useCallback(
+    (user: StoredUser) => {
+      setBackendState(getBackend(user.id));
+      applyDropboxSignedInUser(user);
+      setEncryptionState(user.isDefault ? "plaintext" : getEncryption(user.id));
+    },
+    [applyDropboxSignedInUser],
+  );
 
   return {
     adapter,
