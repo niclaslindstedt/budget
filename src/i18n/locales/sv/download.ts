@@ -4,7 +4,7 @@ const download: DownloadCatalog = {
   budgetTitle: "Ladda ner {name}",
   accountsTitle: "Ladda ner konton",
   downloadBudget: "Ladda ner budget",
-  downloadAccountData: "Ladda ner kontodata",
+  downloadAccountData: "Ladda ner",
   formatLabel: "Format",
   contentsLabel: "Inkludera",
   includeHistory: "Historik (tidigare poster)",
@@ -14,6 +14,7 @@ const download: DownloadCatalog = {
   includeUnconfirmed: "Inkludera obekräftade poster",
   includeFutureEntries: "Inkludera framtida poster",
   noAccountsToExport: "Inga konton att inkludera ännu.",
+  legend: "Teckenförklaring",
   submit: "Ladda ner",
   column: {
     account: "Konto",

@@ -22,9 +22,12 @@ type Props = {
   items: SheetTitleMenuItem[];
 };
 
+// Right-anchored: the title menu trigger sits centered under the sheet
+// name, so growing the panel leftward keeps it inside the viewport on
+// narrow screens instead of spilling off the right edge.
 const PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 180 },
-  anchor: "left",
+  anchor: "right",
   coordinateSpace: "document",
 };
 

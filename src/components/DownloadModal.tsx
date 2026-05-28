@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Download, Wallet } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Download,
+  History,
+  Info,
+  Wallet,
+} from "lucide-react";
 
 import { unlock } from "../data/achievements";
 import type { FloatingPlacement } from "../hooks";
@@ -284,12 +291,14 @@ function AccountsDownloadModal({
             <div className="overflow-clip rounded border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-surface-3 text-xs tracking-wider uppercase text-muted">
+                  <tr className="border-b border-line bg-surface-3 text-muted">
                     <th className="px-2 py-2 text-left">
                       <button
                         type="button"
                         onClick={toggleAllSelected}
-                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-xs uppercase text-muted hover:text-fg-bright"
+                        aria-label={t("download.column.account")}
+                        title={t("download.column.account")}
+                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
                       >
                         <input
                           type="checkbox"
@@ -298,14 +307,16 @@ function AccountsDownloadModal({
                           tabIndex={-1}
                           className="h-4 w-4 cursor-pointer"
                         />
-                        {t("download.column.account")}
+                        <Wallet size={14} aria-hidden focusable={false} />
                       </button>
                     </th>
                     <th className="px-2 py-2 text-center">
                       <button
                         type="button"
                         onClick={toggleAllInfo}
-                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-xs uppercase text-muted hover:text-fg-bright"
+                        aria-label={t("download.column.accountInfo")}
+                        title={t("download.column.accountInfo")}
+                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
                       >
                         <input
                           type="checkbox"
@@ -314,14 +325,16 @@ function AccountsDownloadModal({
                           tabIndex={-1}
                           className="h-4 w-4 cursor-pointer"
                         />
-                        {t("download.column.accountInfo")}
+                        <Info size={14} aria-hidden focusable={false} />
                       </button>
                     </th>
                     <th className="px-2 py-2 text-center">
                       <button
                         type="button"
                         onClick={toggleAllTx}
-                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-xs uppercase text-muted hover:text-fg-bright"
+                        aria-label={t("download.column.transactions")}
+                        title={t("download.column.transactions")}
+                        className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-fg-bright"
                       >
                         <input
                           type="checkbox"
@@ -330,7 +343,7 @@ function AccountsDownloadModal({
                           tabIndex={-1}
                           className="h-4 w-4 cursor-pointer"
                         />
-                        {t("download.column.transactions")}
+                        <History size={14} aria-hidden focusable={false} />
                       </button>
                     </th>
                   </tr>
@@ -380,60 +393,61 @@ function AccountsDownloadModal({
                         </label>
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
-                        <label className="inline-flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={info[account.id] ?? true}
-                            onChange={(e) =>
-                              setInfo((prev) => ({
-                                ...prev,
-                                [account.id]: e.target.checked,
-                              }))
-                            }
-                            aria-label={t("download.accountInfoFor", {
-                              name: account.name,
-                            })}
-                            className="h-4 w-4 cursor-pointer"
-                          />
-                          {/* Invisible mirror of the header label keeps the
-                              row checkbox aligned with the centered header
-                              button regardless of label length. */}
-                          <span
-                            aria-hidden
-                            className="invisible text-xs tracking-wider uppercase"
-                          >
-                            {t("download.column.accountInfo")}
-                          </span>
-                        </label>
+                        <input
+                          type="checkbox"
+                          checked={info[account.id] ?? true}
+                          onChange={(e) =>
+                            setInfo((prev) => ({
+                              ...prev,
+                              [account.id]: e.target.checked,
+                            }))
+                          }
+                          aria-label={t("download.accountInfoFor", {
+                            name: account.name,
+                          })}
+                          className="h-4 w-4 cursor-pointer"
+                        />
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
-                        <label className="inline-flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={transactions[account.id] ?? true}
-                            onChange={(e) =>
-                              setTransactions((prev) => ({
-                                ...prev,
-                                [account.id]: e.target.checked,
-                              }))
-                            }
-                            aria-label={t("download.accountTransactionsFor", {
-                              name: account.name,
-                            })}
-                            className="h-4 w-4 cursor-pointer"
-                          />
-                          <span
-                            aria-hidden
-                            className="invisible text-xs tracking-wider uppercase"
-                          >
-                            {t("download.column.transactions")}
-                          </span>
-                        </label>
+                        <input
+                          type="checkbox"
+                          checked={transactions[account.id] ?? true}
+                          onChange={(e) =>
+                            setTransactions((prev) => ({
+                              ...prev,
+                              [account.id]: e.target.checked,
+                            }))
+                          }
+                          aria-label={t("download.accountTransactionsFor", {
+                            name: account.name,
+                          })}
+                          className="h-4 w-4 cursor-pointer"
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {accounts.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-xs text-muted">
+              <span className="uppercase tracking-wider">
+                {t("download.legend")}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Wallet size={12} aria-hidden focusable={false} />
+                {t("download.column.account")}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Info size={12} aria-hidden focusable={false} />
+                {t("download.column.accountInfo")}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <History size={12} aria-hidden focusable={false} />
+                {t("download.column.transactions")}
+              </span>
             </div>
           )}
 
