@@ -427,19 +427,23 @@ function DescriptionPopover({
 // of the Building2 prefix used when a company IS tagged — the two
 // states are mutually exclusive (CompanyPicker clears one when the
 // other is set), so this never co-exists with the bare Building2.
+//
+// Rendered in `text-muted` with thinned strokes so the mark stays
+// quieter than the description text it precedes — the omitted state
+// is meta-information, not the primary content of the cell.
 function OmittedGlyph() {
   return (
     <span
       className="relative inline-flex shrink-0 items-center justify-center text-muted"
-      style={{ width: 14, height: 14 }}
+      style={{ width: 12, height: 12 }}
       aria-hidden
     >
-      <Building2 size={10} focusable={false} />
+      <Building2 size={8} focusable={false} strokeWidth={1.5} />
       <Ban
-        size={14}
+        size={12}
         focusable={false}
         className="absolute inset-0"
-        strokeWidth={1.75}
+        strokeWidth={1.25}
       />
     </span>
   );
