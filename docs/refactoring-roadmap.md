@@ -81,15 +81,16 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **`useUserDataStorage.ts` (1247 lines) is a god hook** — the
+- **`useUserDataStorage.ts` (1157 lines) is a god hook** — the
   persistence engine of the app. Braids load / save / conflict
   resolution / shrink-warning with parallel `useRef` variables and
   `useEffect` blocks whose dependency arrays each span 20+ entries.
   The `performSave` callback alone spans ~180 lines. Bugs here
-  corrupt user data or leak auth tokens. **Severity: 8** (was 9 —
-  dropped one band now that step 1 is complete; the remaining
-  sibling-hook extraction is still high-leverage but no longer
-  blocks the feature wave on its own).
+  corrupt user data or leak auth tokens. **Severity: 7** (was 8 —
+  dropped one band now that the `useUndoRedo` sibling has been
+  extracted; what's left is the load / save / conflict triad,
+  which doesn't touch in-memory history at all so each remaining
+  extraction has a smaller blast radius).
   - Plan:
     1. ~~Split the remaining in-hook state into named slices~~ —
        **done.** The `historyReducer` half landed 2026-05; the
@@ -97,16 +98,19 @@ new sheet type, but feature work can ship through them.
        SaveStatus transitions and history mutations now flow
        through named-action reducers.
     2. Extract `useLoadState`, `useSaveStateMachine`, and
-       `useUndoRedo` as siblings; the outer hook becomes a thin
-       composer that wires their outputs together. The
-       reducer-first split is what makes this tractable — each
-       sibling now has a self-contained state machine to lift
-       out, not a setState braid threaded through three effects.
+       ~~`useUndoRedo`~~ as siblings. `useUndoRedo` landed
+       2026-05 (see Landed). What remains is `useLoadState` (the
+       initial / async load / reload paths plus the
+       `loadingRef` / `lastSnapshot` machinery) and
+       `useSaveStateMachine` (the debounced auto-save + manual
+       `saveNow` + shrink-warning + conflict surfacing pipeline,
+       which is what owns `performSave` and `saveChainRef`).
   - Risk: **high**. Storage hot path. Needs smoke-test of all four
     backends (IDB, Dropbox, GDrive, Folder) before merging plus a
-    full Playwright regression run. The previous-roadmap note about
-    "reducer split first, hook extraction as a consumer" still
-    stands.
+    full Playwright regression run. (The `useUndoRedo` extraction
+    didn't need that gate — it's a pure in-memory state machine
+    that doesn't touch adapters or OAuth — but the load / save
+    extractions still do.)
 
 - **`useStorageBackend.ts` (1256 lines)** — split into
   `useDropboxAuth`, `useGdriveAuth`, `useFolderHandle`, leaving the
@@ -370,6 +374,31 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`useUndoRedo` sibling-hook extraction from `useUserDataStorage.ts`**
+  (2026-05): the in-memory undo / redo / jump-to-history machinery
+  (the `historyReducer`, `initialHistoryState`, `HistoryState` /
+  `HistoryAction` types, the `useReducer(historyReducer, …)` slot,
+  the `historyStateRef` mirror, the `undo` / `redo` /
+  `jumpToHistory` / `resetHistory` callbacks, the `historyEntries`
+  derivation, plus the `UNDO_HISTORY_LIMIT` / `INITIAL_ACTION_TYPE`
+  constants) lifted into `src/storage/useUndoRedo.ts` as its own
+  hook. The outer storage hook now calls `useUndoRedo({
+initialSeed, setData })` and threads the returned `appendEntry`
+  callback into `dispatch` (gated on `UI_ONLY_ACTION_TYPES` as
+  before). `ActionHistoryEntry` moves with the hook and is
+  re-exported from `useUserDataStorage.ts` so consumers don't
+  chase the type. `useUserDataStorage.ts` drops from 1310 → 1157
+  lines. **Closes the `useUndoRedo` arm of the original
+  severity-8 sibling-hook plan; `useLoadState` and
+  `useSaveStateMachine` remain Pending at severity 7 with a
+  narrower scope.** Pure refactor — no behaviour change; the
+  reducer / cursor semantics, the cap at `UNDO_HISTORY_LIMIT + 1`
+  entries, and the redo-truncation-on-append rule are all
+  preserved verbatim. **The extraction did not need cloud-backend
+  smoke testing**: the new hook is a pure in-memory state machine
+  that doesn't touch adapters, OAuth, or the save chain. The
+  remaining `useLoadState` / `useSaveStateMachine` extractions
+  still do.
 - **`AppShell.tsx` modal-mount extraction → three hosts** (2026-05):
   the 553-line modal-mount JSX tail of `AppShell.tsx` lifted into
   three sibling host components — `AccountsModalHost`,
