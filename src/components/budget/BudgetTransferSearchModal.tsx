@@ -19,9 +19,9 @@ import type {
 } from "../../data/search";
 import {
   EMPTY_FILTER,
-  indexBounds,
   isFilterActive,
   runSearch,
+  searchBounds,
 } from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
@@ -147,6 +147,7 @@ export function BudgetTransferSearchModal({
                 filter={filter}
                 onFilterChange={onFilterChange}
                 index={index}
+                query={query}
                 settings={settings}
               />
               <SortMenu sort={sort} onSortChange={onSortChange} />
@@ -456,11 +457,13 @@ function FilterMenu({
   filter,
   onFilterChange,
   index,
+  query,
   settings,
 }: {
   filter: SearchFilter;
   onFilterChange: (next: SearchFilter) => void;
   index: readonly SearchEntry[];
+  query: string;
   settings: Settings;
 }) {
   const t = useT();
@@ -488,7 +491,13 @@ function FilterMenu({
     return [...seen.values()];
   }, [index]);
 
-  const bounds = useMemo(() => indexBounds(index), [index]);
+  // Seed the range sliders from the rows the current query + categorical
+  // filters surface, not the whole workspace — so a four-row "Meds"
+  // search shows a 100–500 amount slider instead of 0–981K.
+  const bounds = useMemo(
+    () => searchBounds(index, query, filter),
+    [index, query, filter],
+  );
 
   const hasAmount =
     bounds.amountMin !== null &&

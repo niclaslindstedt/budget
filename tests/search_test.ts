@@ -7,6 +7,7 @@ import {
   indexBounds,
   isFilterActive,
   runSearch,
+  searchBounds,
   type SearchFilter,
 } from "../src/data/search";
 import type {
@@ -526,6 +527,48 @@ describe("filter helpers", () => {
     expect(bounds.amountMax).toBe(750);
     expect(bounds.dateMin).toBe("2026-02-01");
     expect(bounds.dateMax).toBe("2026-08-01");
+  });
+
+  it("searchBounds narrows the extents to the query's matching rows", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-02-01", x: "Meds", a: -100 } },
+      { id: "r2", cells: { d: "2026-03-01", x: "Meds refill", a: -500 } },
+      { id: "r3", cells: { d: "2021-01-04", x: "Rent", a: -981_000 } },
+      { id: "r4", cells: { d: "2029-01-28", x: "Bonus", a: 50_000 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const bounds = searchBounds(idx, "meds", EMPTY_FILTER);
+    expect(bounds.amountMin).toBe(100);
+    expect(bounds.amountMax).toBe(500);
+    expect(bounds.dateMin).toBe("2026-02-01");
+    expect(bounds.dateMax).toBe("2026-03-01");
+  });
+
+  it("searchBounds ignores the filter's own range but honours excludes", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-02-01", x: "Meds", a: -100 } },
+      { id: "r2", cells: { d: "2026-03-01", x: "Meds refill", a: -500 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    // A narrowed amount band must not collapse the slider's own domain.
+    const bounds = searchBounds(
+      idx,
+      "meds",
+      filter({ amountMin: 200, amountMax: 300 }),
+    );
+    expect(bounds.amountMin).toBe(100);
+    expect(bounds.amountMax).toBe(500);
+  });
+
+  it("searchBounds with an empty query spans the categorically-matching rows", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-02-01", x: "a", a: -100 } },
+      { id: "r2", cells: { d: "2026-08-01", x: "b", a: 750 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const bounds = searchBounds(idx, "", EMPTY_FILTER);
+    expect(bounds.amountMin).toBe(100);
+    expect(bounds.amountMax).toBe(750);
   });
 });
 
