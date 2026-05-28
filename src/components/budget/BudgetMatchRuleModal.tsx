@@ -19,6 +19,7 @@ import { formatBalance, formatShortDate } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
 import {
   Button,
+  Checkbox,
   ClearableInput,
   FormSection,
   SignedAmountInput,
@@ -468,17 +469,14 @@ export function BudgetMatchRuleModal({
 
         {!isEdit && (
           <div className="mt-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
-              <input
-                type="checkbox"
-                checked={saveRule}
-                onChange={(e) =>
-                  dispatch({ kind: "setSaveRule", value: e.target.checked })
-                }
-                className="h-4 w-4 cursor-pointer"
-              />
-              {t("matchRule.savePattern")}
-            </label>
+            <Checkbox
+              align="center"
+              checked={saveRule}
+              onChange={(checked) =>
+                dispatch({ kind: "setSaveRule", value: checked })
+              }
+              label={t("matchRule.savePattern")}
+            />
             <p className="mt-1 ml-6 text-xs text-muted">
               {saveRule
                 ? t("matchRule.savePatternHintOn")

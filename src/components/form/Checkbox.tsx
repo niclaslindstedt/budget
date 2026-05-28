@@ -16,6 +16,11 @@ type Props = {
   // Accessible label when no visible `label` is rendered (e.g. the
   // checkbox sits in a row that already labels itself).
   ariaLabel?: string;
+  // Vertical alignment of the box against its label. Defaults to
+  // "start" so a two-line label keeps the box aligned with the first
+  // line; pass "center" for single-line labels with tall content
+  // (e.g. an account glyph) that should sit centred on the box.
+  align?: "start" | "center";
 };
 
 // Accessible custom checkbox. The native input is visually hidden
@@ -31,12 +36,13 @@ export function Checkbox({
   id,
   className = "",
   ariaLabel,
+  align = "start",
 }: Props) {
   return (
     <label
-      className={`inline-flex cursor-pointer items-start gap-2 ${
-        disabled ? "cursor-not-allowed opacity-60" : ""
-      } ${className}`.trim()}
+      className={`inline-flex cursor-pointer gap-2 ${
+        align === "center" ? "items-center" : "items-start"
+      } ${disabled ? "cursor-not-allowed opacity-60" : ""} ${className}`.trim()}
     >
       <input
         id={id}
@@ -49,7 +55,9 @@ export function Checkbox({
       />
       <span
         aria-hidden
-        className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-line bg-surface-2 text-surface transition-colors peer-checked:border-accent peer-checked:bg-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+        className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-line bg-surface-2 text-surface transition-colors peer-checked:border-accent peer-checked:bg-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent ${
+          align === "center" ? "" : "mt-0.5"
+        }`.trim()}
       >
         <Check
           size={12}
@@ -60,7 +68,7 @@ export function Checkbox({
         />
       </span>
       {(label || description) && (
-        <span className="flex flex-col gap-0.5 text-left">
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
           {label && (
             <span className="text-sm text-fg-bright select-none">{label}</span>
           )}
