@@ -274,12 +274,12 @@ T | null` for "explicitly cleared by the user, distinct from
   consolidation half of this item landed 2026-05 — see Landed.)
 
 - **`BudgetMonthTable.tsx` orphan-count + transfer-visibility logic
-  scattered** — orphan rendering coordinates between AppShell,
-  BudgetMonthTable, and a footer subcomponent. **Severity: 3** (was 4;
-  the `hiddenBefore`-Map extraction half landed 2026-05 — see
-  Landed). What's left is extracting the `<tfoot>` orphan-indicator
-  JSX (~25 lines) into an `<OrphanIndicator>` sibling; opportunistic,
-  not worth a dedicated PR.
+  scattered** — both halves now landed (see Landed:
+  `collectHiddenTransfersByAnchor` extraction 2026-05 and
+  `<OrphanIndicator>` sibling 2026-05). The remaining footer
+  composition in `BudgetMonthTable` is a two-arm ternary (covered →
+  `<OrphanIndicator>` | else → `<BudgetAddEntryButton>`) and reads
+  cleanly.
 
 - **`TypePicker.tsx` (716 lines) hardcoded `amountSign` filter** —
   branches on income-only / expense-only types inline. **Severity: 3**
@@ -358,6 +358,22 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`<OrphanIndicator>` sibling extraction from `BudgetMonthTable.tsx`**
+  (2026-05): the covered-month tfoot indicator (~30 lines of nested
+  ternary: orphan-count > 0 + onTriage → orange triage button; else
+  → green "history covers this month" line) moved into a sibling
+  `src/components/budget/OrphanIndicator.tsx`. The component owns its
+  own `useT()` call and the two `lucide-react` icons it uses
+  (`AlertTriangle`, `Check`); `BudgetMonthTable` drops both imports
+  and the tfoot becomes a two-arm ternary: covered ?
+  `<OrphanIndicator orphanCount onTriage />` : `<BudgetAddEntryButton …>`.
+  Pure refactor — same JSX, same i18n keys, same colour and aria
+  semantics. The dictionary entry for "Covered-month footer" now
+  points at the new file alongside its parent mount in
+  `BudgetMonthTable`; the architecture-tree gained an `OrphanIndicator`
+  line under `src/components/budget/`. Closes the second half of the
+  original "BudgetMonthTable orphan-count + transfer-visibility logic
+  scattered" candidate.
 - **`conflicts.ts` relocated under `src/data/budget/`** (2026-05): the
   last unambiguously budget-only module sitting at the `src/data/`
   root moved to `src/data/budget/conflicts.ts`. Only consumer was

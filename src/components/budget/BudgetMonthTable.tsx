@@ -1,11 +1,5 @@
 import { Fragment, memo, useLayoutEffect, useMemo, useRef } from "react";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Wrench,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
 
 import {
   collectHiddenTransfersByAnchor,
@@ -26,6 +20,7 @@ import { BudgetAddEntryButton } from "./BudgetAddEntryButton";
 import { useBudgetContext } from "./BudgetContext";
 import { BudgetColumnHeader } from "./BudgetColumnHeader";
 import { BudgetRow } from "./BudgetRow";
+import { OrphanIndicator } from "./OrphanIndicator";
 
 type Props = {
   monthKey: string;
@@ -522,27 +517,10 @@ function MonthTableImpl({
                 className="border-r-0 bg-surface-3 p-0"
               >
                 {covered ? (
-                  orphanCount > 0 && onTriage ? (
-                    <button
-                      type="button"
-                      onClick={onTriage}
-                      className="flex w-full cursor-pointer select-none items-center justify-center gap-2 py-3 text-flag hover:bg-flag/10 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-flag"
-                    >
-                      <AlertTriangle size={22} aria-hidden focusable={false} />
-                      <span>
-                        {orphanCount === 1
-                          ? t("budget.triageInCoveredMonthOne")
-                          : t("budget.triageInCoveredMonthOther", {
-                              n: orphanCount,
-                            })}
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="flex w-full select-none items-center justify-center gap-2 py-3 text-success">
-                      <Check size={22} aria-hidden focusable={false} />
-                      <span>{t("budget.historyCoversMonth")}</span>
-                    </div>
-                  )
+                  <OrphanIndicator
+                    orphanCount={orphanCount}
+                    onTriage={onTriage}
+                  />
                 ) : (
                   <BudgetAddEntryButton
                     onAdd={onAddRow}
