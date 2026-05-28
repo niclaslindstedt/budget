@@ -97,10 +97,8 @@ export function reduceAccounts(
     const addedIds = mergeResult.addedIds;
     let merged = mergeResult.merged;
     if (merchants.length > 0 && addedIds.size > 0) {
-      // Index merchants once outside the per-entry loop — without this
-      // the `.find()` inside `computePrimaryIncomeShiftForHistory` ran
-      // for every imported entry, making the stamp pass O(H × M). A
-      // 500-entry import against 10 merchants now runs in O(H + M).
+      // Index merchants once outside the per-entry loop so each entry's
+      // primary-income lookup is O(1) rather than a linear scan.
       const merchantsByKey = indexPrimaryIncomeMerchants(merchants);
       const stamped = merged.map((entry) => {
         if (!addedIds.has(entry.id)) return entry;

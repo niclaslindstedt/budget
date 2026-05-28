@@ -358,11 +358,9 @@ function applyResolvedFormulaToCache(
   }
   // Cascade the carry-forward opening to every strictly-later month.
   // monthKeysAsc is sorted lexically (which agrees with calendar order
-  // for `YYYY-MM` keys and parks "undated" at the end). The
-  // precomputed index map drops the pre-month scan: previously, F
-  // formulas across M months each walked all M keys checking
-  // equality, costing F × M; now each formula visits only the
-  // strictly-later months it actually has to update.
+  // for `YYYY-MM` keys and parks "undated" at the end). The precomputed
+  // index map gives the start position so each formula visits only the
+  // strictly-later months it has to update.
   const startIdx = monthKeyToIndex.get(monthKey);
   if (startIdx === undefined) return;
   for (let i = startIdx + 1; i < monthKeysAsc.length; i += 1) {
