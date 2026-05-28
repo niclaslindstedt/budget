@@ -18,6 +18,7 @@ import {
   formatShortDate,
   formatYearMonth,
 } from "../../utils/format";
+import { indexById } from "../../utils/indexById";
 import { CompanyPicker } from "../CompanyPicker";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
@@ -147,16 +148,8 @@ export function BudgetMetadataModal({
   // the maps at the loop boundary avoids the per-entry linear array
   // scans that the resolver's company-name / type-name fallbacks would
   // otherwise repeat.
-  const companiesById = useMemo(() => {
-    const m = new Map<string, Company>();
-    for (const c of companies) m.set(c.id, c);
-    return m;
-  }, [companies]);
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const t of types) m.set(t.id, t);
-    return m;
-  }, [types]);
+  const companiesById = useMemo(() => indexById(companies), [companies]);
+  const typesById = useMemo(() => indexById(types), [types]);
 
   // Queue is derived from props every render — saving an entry makes
   // it resolve and fall out naturally on the next render.

@@ -38,6 +38,7 @@ import {
   formatYearMonth,
   withCurrency,
 } from "../../utils/format";
+import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
@@ -119,11 +120,7 @@ export function BudgetViewerModal({
     [item.columns],
   );
 
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const tp of types) m.set(tp.id, tp);
-    return m;
-  }, [types]);
+  const typesById = useMemo(() => indexById(types), [types]);
 
   // Mirror the sort context BudgetPage builds so multi-entry days agree
   // between the editable and viewer surfaces.

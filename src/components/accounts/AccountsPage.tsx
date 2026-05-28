@@ -17,16 +17,10 @@ import {
 import { allCategories, allTypes } from "../../data/presets/merge";
 import { computeAccountBalances } from "../../data/accounts/balance";
 import { compareDateStrings } from "../../data/fiscal-month";
-import type {
-  Account,
-  Category,
-  EntryType,
-  Settings,
-  Sheet,
-  UserData,
-} from "../../data/types";
+import type { Settings, Sheet, UserData } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { formatYearMonth } from "../../utils/format";
+import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AccountRow } from "./AccountRow";
 import { AccountTransferRow } from "./AccountTransferRow";
@@ -111,27 +105,15 @@ export function AccountsPage({
     }
     return m;
   }, [data.transfers]);
-  const accountsById = useMemo(() => {
-    const m = new Map<string, Account>();
-    for (const a of data.accounts) m.set(a.id, a);
-    return m;
-  }, [data.accounts]);
-  const categoriesById = useMemo(() => {
-    const m = new Map<string, Category>();
-    // Resolve both user-added and built-in preset categories so the
-    // transfer log renders a chip even when its typeId resolves
-    // to a preset category.
-    for (const c of allCategories(data)) m.set(c.id, c);
-    return m;
-  }, [data]);
+  const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
+  // Resolve both user-added and built-in preset categories so the
+  // transfer log renders a chip even when its typeId resolves
+  // to a preset category.
+  const categoriesById = useMemo(() => indexById(allCategories(data)), [data]);
   // Types indexed by id so the transfer log can resolve a
   // `tx.typeId` to its parent category for the chip rendering. The
   // map covers presets + user-added types via `allTypes`.
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const t of allTypes(data)) m.set(t.id, t);
-    return m;
-  }, [data]);
+  const typesById = useMemo(() => indexById(allTypes(data)), [data]);
   // Switching to the accounts overview from another sheet should land
   // the user at the top of the page — the accounts table is the
   // headline content here, not the transfer log that scrolls in below.

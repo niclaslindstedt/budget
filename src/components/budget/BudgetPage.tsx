@@ -46,6 +46,7 @@ import type {
 } from "../../data/types";
 import { suppressScrollHide } from "../../hooks";
 import { todayIso } from "../../utils/date";
+import { indexById } from "../../utils/indexById";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
@@ -367,16 +368,8 @@ export function BudgetPage({
   // `budgetContextValue` reads them through and any row edit would
   // otherwise force a fresh context reference, re-rendering every
   // memoised descendant.
-  const typesById = useMemo(() => {
-    const m = new Map<string, EntryType>();
-    for (const t of types) m.set(t.id, t);
-    return m;
-  }, [types]);
-  const companiesById = useMemo(() => {
-    const m = new Map<string, Company>();
-    for (const c of companies) m.set(c.id, c);
-    return m;
-  }, [companies]);
+  const typesById = useMemo(() => indexById(types), [types]);
+  const companiesById = useMemo(() => indexById(companies), [companies]);
   const accountsById = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of accounts) m.set(a.id, a.name);
