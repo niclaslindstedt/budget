@@ -19,7 +19,7 @@ import {
   formatYearMonth,
 } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableInput } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
 
@@ -66,6 +66,7 @@ type Props = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      isTransfer?: boolean;
       noCompany?: boolean;
     },
   ) => void;
@@ -228,6 +229,7 @@ export function BudgetMetadataModal({
     [typeId, companyTypeSuggestions],
   );
   const [noCompany, setNoCompany] = useState(false);
+  const [isTransfer, setIsTransfer] = useState(false);
   // Snapshot of the values the form was pre-populated with, so the
   // save handler only stamps per-entry overrides for fields the user
   // actually changed. Otherwise "review and Save" on a rule-resolved
@@ -239,6 +241,7 @@ export function BudgetMetadataModal({
     typeId: null as string | null,
     companyId: null as string | null,
     noCompany: false,
+    isTransfer: false,
   });
 
   // Pre-populate the form with whatever is already resolved for the
@@ -258,11 +261,13 @@ export function BudgetMetadataModal({
       setTypeId(null);
       setCompanyId(null);
       setNoCompany(false);
+      setIsTransfer(false);
       initialRef.current = {
         description: "",
         typeId: null,
         companyId: null,
         noCompany: false,
+        isTransfer: false,
       };
       return;
     }
@@ -284,11 +289,13 @@ export function BudgetMetadataModal({
     setTypeId(resolved.typeId);
     setCompanyId(resolved.companyId);
     setNoCompany(current.noCompany ?? false);
+    setIsTransfer(current.isTransfer ?? false);
     initialRef.current = {
       description: initDescription,
       typeId: resolved.typeId,
       companyId: resolved.companyId,
       noCompany: current.noCompany ?? false,
+      isTransfer: current.isTransfer ?? false,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
@@ -310,6 +317,7 @@ export function BudgetMetadataModal({
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      isTransfer?: boolean;
       noCompany?: boolean;
     } = {};
     if (trimmed !== initial.description.trim()) {
@@ -320,6 +328,9 @@ export function BudgetMetadataModal({
     }
     if (companyId !== initial.companyId) {
       patch.userCompanyId = companyId;
+    }
+    if (isTransfer !== initial.isTransfer) {
+      patch.isTransfer = isTransfer;
     }
     // Setting a company implicitly clears the "no company" flag — the
     // user changed their mind and tagged a merchant after all.
@@ -332,6 +343,7 @@ export function BudgetMetadataModal({
       patch.userDescription === undefined &&
       patch.userTypeId === undefined &&
       patch.userCompanyId === undefined &&
+      patch.isTransfer === undefined &&
       patch.noCompany === undefined
     ) {
       return;
@@ -349,6 +361,7 @@ export function BudgetMetadataModal({
     typeId,
     companyId,
     noCompany,
+    isTransfer,
     onUpdateHistoryEntry,
   ]);
 
@@ -357,7 +370,8 @@ export function BudgetMetadataModal({
     (description.trim() !== initialRef.current.description.trim() ||
       typeId !== initialRef.current.typeId ||
       companyId !== initialRef.current.companyId ||
-      noCompany !== initialRef.current.noCompany);
+      noCompany !== initialRef.current.noCompany ||
+      isTransfer !== initialRef.current.isTransfer);
   const canSave = !!accountId && !!current && dirty;
 
   // The field that's still blocking this entry from leaving the queue,
@@ -373,10 +387,13 @@ export function BudgetMetadataModal({
   // sole reason an entry stays in the queue.
   const stillMissingField = useMemo<"type" | "company" | null>(() => {
     if (!current) return null;
+    // A transfer is just money moving between accounts — no type or
+    // company applies, so suppress the missing-field gating.
+    if (isTransfer) return null;
     if (!typeId) return "type";
     if (!companyId && !noCompany) return "company";
     return null;
-  }, [current, typeId, companyId, noCompany]);
+  }, [current, typeId, companyId, noCompany, isTransfer]);
 
   const typeFieldRef = useRef<HTMLDivElement | null>(null);
   const companyFieldRef = useRef<HTMLDivElement | null>(null);
@@ -507,6 +524,12 @@ export function BudgetMetadataModal({
                   {t("metadata.descriptionHint")}
                 </span>
               </label>
+              <Checkbox
+                checked={isTransfer}
+                onChange={setIsTransfer}
+                label={t("metadata.markAsTransfer")}
+                description={t("metadata.markAsTransferHint")}
+              />
             </div>
           </>
         )}

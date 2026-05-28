@@ -11,6 +11,9 @@ const metadata = {
   descriptionLabel: "Description",
   descriptionPlaceholder: "Leave blank to keep the bank's text",
   descriptionHint: "Blank keeps the bank's text.",
+  markAsTransfer: "Mark as transfer",
+  markAsTransferHint:
+    "Transfers are just money moving between accounts — no type or company needed.",
   skip: "Skip",
   needsTypePrompt: "Pick a type to save.",
   needsCompanyPrompt: 'Pick a company — or "Omit company" — to save.',

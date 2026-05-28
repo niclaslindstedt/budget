@@ -14,6 +14,9 @@ you actually changed, and surfaces a hint plus a one-shot pulse on
 the next blocker if you tap it before there's anything to save. An
 "Omit company" item at the top of the company dropdown marks entries
 where tagging a merchant doesn't apply (salary, internal transfers,
-…) so they stop surfacing here over a missing company. Built for the
-spare-minute case on mobile — entries covered by a match rule or a
-merchant hint are skipped so only the genuinely unknown ones surface.
+…) so they stop surfacing here over a missing company. A "Mark as
+transfer" checkbox lets you flag an entry as money moving between
+accounts and continue to the next item without picking a type or a
+company. Built for the spare-minute case on mobile — entries covered
+by a match rule or a merchant hint are skipped so only the genuinely
+unknown ones surface.
