@@ -16,6 +16,7 @@ import {
   normaliseDescription,
 } from "../description-normaliser";
 import type { HistoryEntry } from "../types";
+import { todayIso } from "../../utils/date";
 
 // Cadence kinds the detector recognises. Each maps to a
 // `RecurrenceRule` the reducer can hand to `expandRecurrence`.
@@ -284,9 +285,4 @@ function parseIso(iso: string): number | null {
     return null;
   }
   return Date.UTC(y, m - 1, d);
-}
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

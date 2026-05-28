@@ -15,6 +15,7 @@ import type {
 } from "../../data/types";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
+import { todayIso } from "../../utils/date";
 import {
   formatAmount,
   formatAmountForInput,
@@ -80,11 +81,6 @@ type Props = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export type HistoryPromotePrefill = {
   description: string | null;

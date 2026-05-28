@@ -298,6 +298,10 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ### Easy wins (mechanical, land regardless of rating)
 
+- The inline `todayIso` / `addMonthsIso` duplication (7 + 2 sites)
+  was consumed 2026-05 — see Landed. New ISO date helpers should
+  live in `src/utils/date.ts` and import from there.
+
 - Move the remaining unprefixed budget-only modules under
   `src/data/budget/` (folds into the severity-9 item above; the
   directory move itself is the easy part). The prefix-rename pass
@@ -327,6 +331,26 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **Inline `todayIso` / `addMonthsIso` adoption of the shared
+  `src/utils/date.ts` helpers** (2026-05): the seven inline copies of
+  `todayIso()` (`BudgetPage.tsx`, `BudgetEditEntryModal.tsx`,
+  `BudgetRecurrenceForm.tsx`, `BudgetRecurringCandidatesPanel.tsx`,
+  `DatePickerModal.tsx`, `data/budget/recurring-detection.ts`,
+  `data/budget/export.ts`) and two inline copies of `addMonthsIso(iso, n)`
+  (`BudgetRecurrenceForm.tsx`, `BudgetRecurringCandidatesPanel.tsx`) all
+  imported from `src/utils/date.ts` and the local definitions removed.
+  Mechanical adoption pass: every removed local was byte-equivalent to
+  the shared helper (modulo `BudgetRecurrenceForm`'s `isIsoDate(iso)`
+  pre-guard, which short-circuits to the same `iso` the shared helper
+  returns from the `Number.isFinite` fall-through). `DatePickerModal`
+  kept its `toIso(y, m, d)` local because that helper builds an ISO
+  from three numeric pieces rather than reading today's date — a
+  different shape — and its `todayIso()` simply delegated to it.
+  Reduces the drift surface for the next agent introducing a new ISO
+  date helper and for the upcoming feature wave when new sheet types
+  will need date-anchored seeding too. Pure refactor — typecheck +
+  lint + 846 tests pass. The "Easy wins" entry in this file now
+  reflects the consumed pattern.
 - **`useGdriveAuth` extraction from `useStorageBackend.ts`**
   (2026-05): the final slice of the per-backend auth split. GDrive
   token state, the GIS popup-based OAuth flow (`connectGdrive`),

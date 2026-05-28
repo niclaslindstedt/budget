@@ -8,6 +8,7 @@ import {
   isIsoDate,
   type RecurrenceRule,
 } from "../../data/recurrence";
+import { addMonthsIso, todayIso } from "../../utils/date";
 import { ClearableInput } from "../form";
 
 type Mode = "once" | "dates" | "everyNDays" | "monthly";
@@ -31,11 +32,6 @@ type Props = {
   onChange: (rule: RecurrenceRule | null, dates: string[]) => void;
 };
 
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function todayDayOfMonth(): string {
   return String(new Date().getDate());
 }
@@ -43,16 +39,6 @@ function todayDayOfMonth(): string {
 function seedDayOfMonth(seed: string): string {
   if (!isIsoDate(seed)) return todayDayOfMonth();
   return String(Number(seed.slice(8, 10)));
-}
-
-function addMonthsIso(iso: string, months: number): string {
-  if (!isIsoDate(iso)) return iso;
-  const [y, m, d] = iso.split("-").map(Number);
-  const target = new Date(Date.UTC(y, m - 1 + months, d));
-  const ty = target.getUTCFullYear();
-  const tm = String(target.getUTCMonth() + 1).padStart(2, "0");
-  const td = String(target.getUTCDate()).padStart(2, "0");
-  return `${ty}-${tm}-${td}`;
 }
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
