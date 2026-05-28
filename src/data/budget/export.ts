@@ -139,14 +139,18 @@ export function buildBudgetExportRows(
     amountColumnId: amountCol.id,
     typesById,
   };
+  // Sort once. `computeBalances` accepts the pre-sorted view so the
+  // running-balance walk and the export iteration below share a single
+  // O(N log N) pass instead of each sorting independently.
+  const sorted = sortRowsByDate(merged.rows, dateCol.id, sortContext);
   const balances = computeBalances(
     merged,
     openingBalance,
     undefined,
     balanceOverrides,
     sortContext,
+    sorted,
   );
-  const sorted = sortRowsByDate(merged.rows, dateCol.id, sortContext);
 
   const out: ExportRow[] = [];
   for (const row of sorted) {

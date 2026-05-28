@@ -1,5 +1,6 @@
 import { todayIso } from "../../utils/date";
 import {
+  newRuleMatchCache,
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
@@ -211,12 +212,20 @@ export function computeBalances(
   effectiveAmounts?: ReadonlyMap<string, number>,
   balanceOverrides?: ReadonlyMap<string, number>,
   sortContext?: RowSortContext,
+  // Pre-sorted view of `item.rows` produced by `sortRowsByDate(item.rows,
+  // dateCol.id, sortContext)`. Callers that also need the sorted array
+  // for display (BudgetPage, the XLSX exporter) pass it in to avoid
+  // paying for the same O(N log N) sort twice — the running-balance pass
+  // and the display path used to each sort independently. When omitted,
+  // the function sorts internally as before.
+  presortedRows?: readonly Row[],
 ): Map<string, number> {
   const result = new Map<string, number>();
   const dateCol = findColumnByType(item.columns, "date");
   const amountCol = findColumnByType(item.columns, "amount");
   if (!dateCol || !amountCol) return result;
-  const sorted = sortRowsByDate(item.rows, dateCol.id, sortContext);
+  const sorted =
+    presortedRows ?? sortRowsByDate(item.rows, dateCol.id, sortContext);
   let running = openingBalance;
   for (const row of sorted) {
     const override = balanceOverrides?.get(row.id);
@@ -364,6 +373,13 @@ export function buildSynthesizedRows(
   for (const c of companies) companiesById.set(c.id, c);
   const typesById = new Map<string, EntryType>();
   for (const t of types) typesById.set(t.id, t);
+  // Reuse one rule-match cache across every history entry in this call
+  // so a recurring merchant (Spotify charging the same amount every
+  // month for years) pays a single rule walk instead of one per
+  // occurrence. Empties when this function returns. See the type and
+  // helper definitions in `synthesis.ts` for the key shape and why
+  // it's correct to share within a single call.
+  const ruleCache = newRuleMatchCache();
   const historyRows: Row[] = [];
   for (const e of history) {
     if (e.hidden) continue;
@@ -374,6 +390,7 @@ export function buildSynthesizedRows(
       matchRules,
       companiesById,
       typesById,
+      ruleCache,
     );
     for (const r of rows) historyRows.push(r);
   }
