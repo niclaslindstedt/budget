@@ -26,6 +26,17 @@ test.describe("Transaction search", () => {
     await page.keyboard.press("Tab");
   }
 
+  test("search field is focused when the modal opens", async ({ page }) => {
+    await signInAsGuest(page);
+    await addRow(page, "Rent payment", "100");
+
+    await page.getByRole("button", { name: "Search entries" }).click();
+    const input = page.getByPlaceholder(
+      "Search by description, bank text, company, type, category, or amount",
+    );
+    await expect(input).toBeFocused();
+  });
+
   test("description search highlights the match and lists the row", async ({
     page,
   }) => {

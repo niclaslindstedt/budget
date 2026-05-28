@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
   BanknoteArrowDown,
@@ -65,19 +65,6 @@ export function BudgetTransferSearchModal({
   onPick,
 }: Props) {
   const t = useT();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // Focus the input on every open. The Modal portals into <body> so a
-  // ref + autoFocus would race the portal mount; use an effect keyed
-  // on `open` instead. The X button on the input handles "drop the
-  // pre-filled value" — no select() needed.
-  useEffect(() => {
-    if (!open) return;
-    const id = window.setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [open]);
 
   const results = useMemo(
     () => runSearch(index, query, sort),
@@ -105,7 +92,6 @@ export function BudgetTransferSearchModal({
       <Modal.Body noPadding>
         <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
           <ClearableInput
-            ref={inputRef}
             value={query}
             onValueChange={onQueryChange}
             onKeyDown={handleKeyDown}
