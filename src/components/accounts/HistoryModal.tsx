@@ -12,6 +12,7 @@ import {
   formatYearMonth,
   withCurrency,
 } from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
@@ -24,13 +25,14 @@ type Props = {
   onCancel: () => void;
 };
 
-// Read-only viewer for an account's imported history. Renders as a
-// plain bank statement: only the raw bank-statement fields the
-// import carried (date, bank description, amount, balance) — no
-// resolved type, no user-curated description override, no per-month
-// or amount coloring. User-curated metadata (types, merchant hints,
-// renames) belongs to the budget view; this is the unmodified bank
-// statement.
+// Read-only viewer for an account's imported history. Shows only the
+// raw bank-statement fields the import carried (date, bank
+// description, amount, balance) — no resolved type, no user-curated
+// description override. User-curated metadata (types, merchant
+// hints, renames) belongs to the budget view; this is the unmodified
+// bank statement. Visually it mirrors the budget view's coloring
+// (per-month tint on the date column and month headers, signed
+// green/red on amount and balance) so the columns scan as easily.
 export function HistoryModal({
   open,
   account,
@@ -194,7 +196,7 @@ export function HistoryModal({
               <tr className="border-b border-line">
                 <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-2 md:text-left">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon type="date" className="shrink-0 text-muted" />
+                    <ColumnIcon type="date" className="shrink-0 text-accent" />
                     <span className="hidden md:inline">
                       {t("history.date")}
                     </span>
@@ -204,7 +206,7 @@ export function HistoryModal({
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
                     <ColumnIcon
                       type="description"
-                      className="shrink-0 text-muted"
+                      className="shrink-0 text-accent"
                     />
                     <span className="hidden md:inline">
                       {t("history.description")}
@@ -213,7 +215,10 @@ export function HistoryModal({
                 </th>
                 <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:px-2">
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon type="amount" className="shrink-0 text-muted" />
+                    <ColumnIcon
+                      type="amount"
+                      className="shrink-0 text-accent"
+                    />
                     <span className="hidden md:inline">
                       {t("history.amount")}
                     </span>
@@ -224,7 +229,7 @@ export function HistoryModal({
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
-                        className="shrink-0 text-muted"
+                        className="shrink-0 text-accent"
                       />
                       <span className="hidden md:inline">
                         {t("history.balance")}
@@ -240,47 +245,79 @@ export function HistoryModal({
                 stacking every label at the same offset. */}
             {groups.map((group) => {
               const colSpan = 3 + (hasAnyBalance ? 1 : 0);
+              const monthNum = monthNumberFromKey(group.monthKey);
+              const monthColor =
+                monthNum !== null ? monthColorVar(monthNum) : undefined;
+              const monthColorStyle: CSSProperties | undefined = monthColor
+                ? { color: monthColor }
+                : undefined;
               return (
                 <tbody key={group.monthKey}>
                   <tr className="budget-viewer-fullspan budget-viewer-month-header">
                     <td
                       colSpan={colSpan}
-                      className="border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase text-muted"
+                      className={`border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase ${monthColor ? "" : "text-muted"}`}
+                      style={monthColorStyle}
                     >
                       <span className="flex h-7 items-center">
                         {formatYearMonth(group.monthKey, lang)}
                       </span>
                     </td>
                   </tr>
-                  {group.entries.map((e) => (
-                    <tr
-                      key={e.id}
-                      className={`border-b border-line last:border-b-0 ${
-                        e.hidden ? "opacity-50" : ""
-                      }`}
-                    >
-                      <td className="px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap text-muted md:px-2">
-                        {formatShortDate(
-                          e.date,
-                          settings.shortDateFormat,
-                          lang,
-                        )}
-                      </td>
-                      <td className="px-2 py-1.5 align-top break-words md:pl-4">
-                        {e.description}
-                      </td>
-                      <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2">
-                        {formatBalance(e.amount, accountSettings)}
-                      </td>
-                      {hasAnyBalance && (
-                        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
-                          {e.balance !== undefined
-                            ? formatBalance(e.balance, accountSettings)
-                            : ""}
+                  {group.entries.map((e) => {
+                    const entryMonthNum = monthNumberFromKey(e.date);
+                    const entryMonthColor =
+                      entryMonthNum !== null
+                        ? monthColorVar(entryMonthNum)
+                        : undefined;
+                    const dateStyle: CSSProperties | undefined = entryMonthColor
+                      ? { color: entryMonthColor }
+                      : undefined;
+                    return (
+                      <tr
+                        key={e.id}
+                        className={`border-b border-line last:border-b-0 ${
+                          e.hidden ? "opacity-50" : ""
+                        }`}
+                      >
+                        <td
+                          className={`px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap md:px-2 ${entryMonthColor ? "" : "text-muted"}`}
+                          style={dateStyle}
+                        >
+                          {formatShortDate(
+                            e.date,
+                            settings.shortDateFormat,
+                            lang,
+                          )}
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td className="px-2 py-1.5 align-top break-words md:pl-4">
+                          {e.description}
+                        </td>
+                        <td
+                          className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
+                            e.amount < 0 ? "text-negative" : "text-positive"
+                          }`}
+                        >
+                          {formatBalance(e.amount, accountSettings)}
+                        </td>
+                        {hasAnyBalance && (
+                          <td
+                            className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:pr-2 md:pl-4 ${
+                              e.balance === undefined
+                                ? "text-muted"
+                                : e.balance < 0
+                                  ? "text-negative"
+                                  : "text-positive"
+                            }`}
+                          >
+                            {e.balance !== undefined
+                              ? formatBalance(e.balance, accountSettings)
+                              : ""}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               );
             })}
