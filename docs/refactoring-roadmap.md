@@ -156,16 +156,6 @@ new sheet type, but feature work can ship through them.
   moderate but the cumulative readability gain is significant.
   Apply opportunistically when a modal is otherwise being touched.
 
-- **`BudgetMatchRuleModal.tsx` (770 lines) state machine spread + tight
-  coupling to `HistoryEntry`** — amount-mode toggles between
-  "any / exact / range" with inline render branching; pattern
-  derivation runs inside a `useEffect` and assumes a `HistoryEntry`
-  seed. New sheet types with custom transaction sources need
-  generic input. **Severity: 5.**
-  - Plan: extract `<AmountModeSelector>` with its own state machine;
-    move pattern derivation into a `usePatternDerivation(seed)`
-    hook accepting `{description, amount}`.
-
 - **`useStorageBackend.ts` token state machine entangled with
   adapter selection** — token refresh, OAuth completion, and
   adapter rebuilds share state. A future "Reauth dialog" can't
@@ -296,6 +286,31 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`useMatchRuleAmountFilter` hook extraction from `BudgetMatchRuleModal.tsx`**
+  (2026-05): the amount-filter sub-state machine (7 `useState` calls
+  for `signMode` + 6 `(text, negative)` input fields, the reset-on-open
+  arm that re-seeds them from `existing` rule or `seedEntry`, plus the
+  3 derived `useMemo`s that resolve `amountMin` / `amountMax` /
+  `amountExact` to signed numbers) lifted into a co-located
+  `src/components/budget/useMatchRuleAmountFilter.ts` hook. The hook
+  returns `{ state, setSignMode, setMinText, toggleMinNegative,
+setMaxText, toggleMaxNegative, setExactText, toggleExactNegative,
+derived }` where `derived` is a memoized bundle of
+  `{ isRangeMode, isExactMode, amountMin, amountMax, amountSign,
+rangeInverted, exactBlank }`. The parent's `useEffect` reset shrinks
+  to just the pattern / description / type / company / transferFilter
+  fields; the JSX FormSection rendering the amount filter reads from
+  `amountFilter.state.*` and dispatches via the hook's setters. The
+  `SignMode` type and the `parseSignedAmount` helper moved with the
+  hook. `BudgetMatchRuleModal.tsx` drops from 771 → 648 lines; the hook
+  is 230 lines including types and comments. Pure refactor — same
+  behaviour, same i18n keys, same payload shape; `MatchRuleDraft` /
+  `MatchRuleSeed` stay exported from the modal so external consumers
+  (`useMatchRuleUi`, `BudgetModalHost`) are unchanged. The "tight
+  coupling to `HistoryEntry`" half of the original rating was already
+  obsolete — `MatchRuleSeed` is `{id, description, amount}` and doesn't
+  reach into history fields. typecheck + lint + fmt-check + build +
+  858 tests pass.
 - **`BudgetPage.tsx` derived-state memo pyramid consolidation** (2026-05):
   the 13 overlapping `useMemo`s that derived the budget page's row
   pipeline (`dateCol`, `sortContext`, `synthesizedRows`, `mergedItem`,
