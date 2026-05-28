@@ -52,6 +52,7 @@ import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
 import { useBudgetLayoutState } from "./hooks/useBudgetLayoutState";
 import { useRowFlashing } from "./useRowFlashing";
+import { useScrollToToday } from "./useScrollToToday";
 import { BudgetMonthTable } from "./BudgetMonthTable";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 import { BudgetMetadataModal } from "./BudgetMetadataModal";
@@ -211,94 +212,6 @@ type Props = {
   // running balances at this row's month.
   data: UserData;
 };
-
-// Pick the row that should anchor a "scroll to today" jump.
-//
-// The Today button asks the sheet to return the user to the current
-// fiscal month, so rows IN the current month win over rows in adjacent
-// months even when an adjacent-month row is closer to today by date —
-// otherwise a recurring bill dated a day or two into next month yanks
-// the viewport into that next month instead of showing the user's
-// in-progress current month. Within the chosen month (or, as a last
-// resort, across all mounted months) prefer the earliest row dated on
-// or after today so today's position sits at the top of the viewport
-// with upcoming entries below; fall back to the most recent past row
-// when everything is behind today.
-//
-// Pick by date and month, not DOM order, so the result stays correct
-// under both oldest-first and newest-first transaction sort orders.
-function findRowNearestToday(
-  section: HTMLElement | null,
-  today: string,
-  currentMonth: string,
-): HTMLElement | null {
-  if (!section) return null;
-  const candidates = section.querySelectorAll<HTMLElement>("[data-row-date]");
-  let inCurrentFuture: HTMLElement | null = null;
-  let inCurrentFutureDate: string | null = null;
-  let inCurrentPast: HTMLElement | null = null;
-  let inCurrentPastDate: string | null = null;
-  let anyFuture: HTMLElement | null = null;
-  let anyFutureDate: string | null = null;
-  let anyPast: HTMLElement | null = null;
-  let anyPastDate: string | null = null;
-  for (const el of candidates) {
-    const d = el.getAttribute("data-row-date");
-    if (!d) continue;
-    const monthEl = el.closest<HTMLElement>("[data-month-key]");
-    const monthKey = monthEl?.getAttribute("data-month-key") ?? null;
-    if (monthKey === "undated") continue;
-    const inCurrent = monthKey === currentMonth;
-    if (d >= today) {
-      if (anyFutureDate === null || d < anyFutureDate) {
-        anyFuture = el;
-        anyFutureDate = d;
-      }
-      if (
-        inCurrent &&
-        (inCurrentFutureDate === null || d < inCurrentFutureDate)
-      ) {
-        inCurrentFuture = el;
-        inCurrentFutureDate = d;
-      }
-    } else {
-      if (anyPastDate === null || d > anyPastDate) {
-        anyPast = el;
-        anyPastDate = d;
-      }
-      if (inCurrent && (inCurrentPastDate === null || d > inCurrentPastDate)) {
-        inCurrentPast = el;
-        inCurrentPastDate = d;
-      }
-    }
-  }
-  return inCurrentFuture ?? inCurrentPast ?? anyFuture ?? anyPast;
-}
-
-// Scroll a row to the top of the viewport, accounting for the three
-// stacked sticky bands above it (app header → month header → column
-// header thead). `scrollIntoView({ block: "start" })` would land the
-// row underneath all three; offsetting by their combined height pulls
-// it just below them so today's date is the first thing the user sees.
-// Measure the app header off the live element instead of parsing
-// `--app-header-h` — in standalone mode that variable resolves to a
-// `calc(... + env(safe-area-inset-top))` whose literal string
-// parseFloat can't decode.
-function scrollRowToTop(row: HTMLElement, behavior: ScrollBehavior) {
-  const thead = row.closest("table")?.querySelector("thead");
-  const theadH = thead?.getBoundingClientRect().height ?? 0;
-  const appHeader = document.querySelector<HTMLElement>("[data-app-header]");
-  const appH = appHeader?.getBoundingClientRect().height ?? 0;
-  const monthH =
-    parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--month-header-h",
-      ),
-    ) || 0;
-  const top =
-    row.getBoundingClientRect().top + window.scrollY - appH - monthH - theadH;
-  window.scrollTo({ top: Math.max(0, top), behavior });
-}
 
 // History pagination: the view starts with the current fiscal month plus
 // one previous month, and "Show more" reveals three additional months
@@ -601,86 +514,12 @@ export function BudgetPage({
     return false;
   }, [monthGroups, oldestVisibleMonth]);
 
-  // Scroll today's row to the top of the viewport on first mount and any
-  // time the user changes `startOfMonth` (which shifts which month
-  // "current" resolves to). The ref guards against re-running after the
-  // user has scrolled away on their own — we only auto-scroll for
-  // sheet+month identity changes, not on every render.
-  const scrollTargetRef = useRef<HTMLDivElement | null>(null);
-  const lastScrolledKey = useRef<string | null>(null);
-  const scrollToToday = (behavior: ScrollBehavior) => {
-    // Tell the BottomBar's hide-on-scroll hook to ignore the scroll
-    // events we're about to fire — without this the initial jump to
-    // today reads as a fast user scroll-down and the bar slides off
-    // for a beat before the polling refine settles. AccountsPage's
-    // mount-time scroll lands at the TOP_BAND so it never hit this.
-    suppressScrollHide();
-    const target = scrollTargetRef.current;
-    // First pass: today's row may already be mounted (the user is on
-    // or near the current month). Trust it only when its month is
-    // current or later AND the current month's own rows are mounted —
-    // when the user is scrolled deep into history, BudgetMonthTable's near-
-    // viewport gate replaces the current-month row tree with a
-    // placeholder, so `findRowNearestToday` returns the latest *past*
-    // row (already on-screen) and scrolling to it would be a no-op.
-    // When the user is scrolled deep into the future the same gate
-    // hides earlier rows, so `findRowNearestToday` returns the first
-    // mounted row ≥ today (e.g. a Sept row when today is in May) — not
-    // the actual next-row-after-today. In both cases fall through to
-    // the container scroll, which mounts the current month and lets
-    // refine find the true target on the second pass.
-    const refine = (): boolean => {
-      const section = sectionRef.current;
-      const row = findRowNearestToday(section, today, currentMonth);
-      if (!row) return false;
-      const rowMonthEl = row.closest<HTMLElement>("[data-month-key]");
-      const rowMonth = rowMonthEl?.getAttribute("data-month-key") ?? null;
-      if (rowMonth === "undated") return false;
-      if (rowMonth !== null && rowMonth < currentMonth) return false;
-      if (rowMonth !== null && rowMonth > currentMonth) {
-        const currentMonthEl = scrollTargetRef.current;
-        if (!currentMonthEl?.querySelector("[data-row-date]")) return false;
-      }
-      scrollRowToTop(row, behavior);
-      return true;
-    };
-    requestAnimationFrame(() => {
-      if (refine()) return;
-      // Today's row isn't in the DOM. Scroll to the current-month
-      // container (always rendered, even when its rows are lazy-
-      // unmounted) — that brings the section under the viewport so
-      // BudgetMonthTable's IntersectionObserver flips and the row tree
-      // mounts. Refine to today's row once the smooth-scroll tail
-      // and lazy-mount commit have landed.
-      //
-      // `scrollIntoView({ behavior: "smooth" })` has no fixed
-      // duration — Chrome interpolates roughly with distance, so a
-      // jump from deep-future months to today can run well past a
-      // second. A single deadline (we used to wait 450 ms) silently
-      // misses long jumps: the current-month container isn't yet in
-      // BudgetMonthTable's intersection-observer margin, its rows are
-      // still unmounted, `refine` returns false, and the user is
-      // parked short of today — they had to click Today several
-      // times to step closer. Poll every frame until the row mounts
-      // and refine commits, capped at 3 s so we never spin forever.
-      if (!target) return;
-      target.scrollIntoView({ behavior, block: "start" });
-      const deadline = performance.now() + 3000;
-      const poll = () => {
-        if (refine()) return;
-        if (performance.now() > deadline) return;
-        requestAnimationFrame(poll);
-      };
-      requestAnimationFrame(poll);
-    });
-  };
-  useEffect(() => {
-    const key = `${sheet.id}:${currentMonth}`;
-    if (lastScrolledKey.current === key) return;
-    lastScrolledKey.current = key;
-    scrollToToday("auto");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheet.id, currentMonth]);
+  const { scrollTargetRef, scrollToToday } = useScrollToToday({
+    sheetId: sheet.id,
+    today,
+    currentMonth,
+    sectionRef,
+  });
 
   // Preserve the user's visual position when either reveal toggle
   // ("Show 3 future months" / "Show 3 earlier months") steps its cutoff.
@@ -699,7 +538,7 @@ export function BudgetPage({
     revealAnchorRef.current = anchor
       ? anchor.getBoundingClientRect().top
       : null;
-  }, []);
+  }, [scrollTargetRef]);
   const onShowMoreFutureClick = useCallback(() => {
     captureRevealAnchor();
     setExtraFuture((n) => n + FUTURE_PAGE_SIZE);
@@ -745,7 +584,7 @@ export function BudgetPage({
     return () => {
       cancelAnimationFrame(raf);
     };
-  }, [extraFuture, extraHistory]);
+  }, [extraFuture, extraHistory, scrollTargetRef]);
 
   // Track which rendered month containers are currently intersecting
   // the viewport so the floating "Today" button below can decide when
