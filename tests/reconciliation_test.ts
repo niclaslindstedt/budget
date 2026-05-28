@@ -38,6 +38,8 @@ function row(over: Partial<Row> & { date?: string; amount?: number }): Row {
     },
     ...(over.seriesId ? { seriesId: over.seriesId } : {}),
     ...(over.typeId ? { typeId: over.typeId } : {}),
+    ...(over.amountMin !== undefined ? { amountMin: over.amountMin } : {}),
+    ...(over.amountMax !== undefined ? { amountMax: over.amountMax } : {}),
   };
 }
 
@@ -188,6 +190,55 @@ describe("findCandidates — boundaries", () => {
   });
 });
 
+describe("findCandidates — estimate spans", () => {
+  // Estimate row: −800 estimate with a −1200…−600 band.
+  const banded = () =>
+    row({
+      id: "rb",
+      date: "2026-03-27",
+      amount: -800,
+      amountMin: -1200,
+      amountMax: -600,
+    });
+
+  it("matches a bank amount inside the band but outside tolerance", () => {
+    const e = entry({ date: "2026-03-30", amount: -1100 });
+    // A plain −800 row would never catch −1100 (≫ 1% tolerance)…
+    expect(
+      findCandidates([e], [row({ id: "rx", amount: -800 })], columns),
+    ).toHaveLength(0);
+    // …but the banded row does.
+    const m = findCandidates([e], [banded()], columns);
+    expect(m).toHaveLength(1);
+    expect(m[0].rowId).toBe("rb");
+    // Outside tolerance ⇒ user-confirmed low confidence.
+    expect(m[0].confidence).toBe("low");
+  });
+
+  it("matches at both inclusive band edges", () => {
+    const lo = entry({ id: "lo", date: "2026-03-30", amount: -1200 });
+    const hi = entry({ id: "hi", date: "2026-03-30", amount: -600 });
+    expect(findCandidates([lo], [banded()], columns)).toHaveLength(1);
+    expect(findCandidates([hi], [banded()], columns)).toHaveLength(1);
+  });
+
+  it("rejects an amount outside the band and tolerance", () => {
+    const e = entry({ date: "2026-03-30", amount: -1500 });
+    expect(findCandidates([e], [banded()], columns)).toHaveLength(0);
+  });
+
+  it("keeps high confidence when the entry is also within tolerance", () => {
+    const e = entry({ date: "2026-03-28", amount: -800 });
+    const m = findCandidates([e], [banded()], columns);
+    expect(m[0].confidence).toBe("high");
+  });
+
+  it("ignores a band on the opposite sign", () => {
+    const e = entry({ date: "2026-03-30", amount: 1100 });
+    expect(findCandidates([e], [banded()], columns)).toHaveLength(0);
+  });
+});
+
 describe("findOrphans", () => {
   it("flags rows in newly-covered months that didn't reconcile", () => {
     const r = row({ id: "r1", date: "2026-03-20" });
@@ -307,6 +358,33 @@ describe("inferSeriesRule + expandToSeries", () => {
       new Set(["r2", "hist:e2"]),
     );
     expect(expansions.map((m) => m.rowId).sort()).toEqual(["r1", "r3"]);
+  });
+
+  it("expandToSeries honours a per-row estimate band past the tolerance", () => {
+    const r1 = row({
+      id: "r1",
+      date: "2026-02-27",
+      seriesId: "elec",
+      amount: -800,
+      amountMin: -1200,
+      amountMax: -600,
+    });
+    // −1100 is far outside 1% of −800 but sits inside the band.
+    const e1 = entry({
+      id: "e1",
+      date: "2026-02-28",
+      description: "FORTUM 1",
+      amount: -1100,
+    });
+    const rule: SeriesMatchRule = {
+      id: "rule",
+      seriesId: "elec",
+      pattern: "*fortum*",
+      amountTolerancePct: RECONCILIATION_AMOUNT_PCT,
+      dateLagDays: RECONCILIATION_DATE_LAG_DAYS,
+    };
+    const expansions = expandToSeries(rule, [e1], [r1], columns, new Set());
+    expect(expansions.map((m) => m.rowId)).toEqual(["r1"]);
   });
 });
 

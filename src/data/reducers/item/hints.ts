@@ -73,6 +73,19 @@ export function applyPatch<R extends Row>(
     // BudgetComplexEntryModal (delete + re-add for v1).
     if (next.amountFormula !== undefined) delete next.amountFormula;
   }
+  // Estimate-range bounds ride alongside the amount. `undefined` leaves
+  // the row's range untouched; explicit `null` clears it back to an
+  // exact row. The modal sends both bounds together (both numbers or
+  // both nulls), so keying off `amountMin` is enough.
+  if (patch.amountMin !== undefined) {
+    if (patch.amountMin === null || patch.amountMax === null) {
+      delete next.amountMin;
+      delete next.amountMax;
+    } else if (patch.amountMax !== undefined) {
+      next.amountMin = patch.amountMin;
+      next.amountMax = patch.amountMax;
+    }
+  }
   // `undefined` means "don't touch"; explicit `null` clears the type
   // and the row falls back to its description as the primary label.
   if (patch.typeId !== undefined) {

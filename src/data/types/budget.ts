@@ -54,6 +54,18 @@ type RowBase = {
   // order they appear in `item.rows`"; a row's own contribution is
   // excluded from its own variables to avoid self-reference.
   amountFormula?: string;
+  // Optional inclusive amount range for an "estimate" row — a bill the
+  // user knows varies within a band (electricity, water, …). The
+  // estimate itself lives in `cells[amountColumnId]` and drives the
+  // running balance and the table cell; these bounds only widen what an
+  // imported bank amount may be and still reconcile to this row (see
+  // `rowAmountMatches` in `src/data/reconciliation.ts`). Stored signed
+  // and numerically ordered (`amountMin <= amountMax`), mirroring
+  // `MatchRule.amountMin/amountMax`. Absent on a plain "exact" row; a
+  // row is in estimate mode iff BOTH bounds are present. Edited only
+  // through the add / edit modals, never the inline amount cell.
+  amountMin?: number;
+  amountMax?: number;
   // True when the user has flagged this row as an inter-account
   // transfer that should not show as real income / expense. The
   // setting `hideTransfers` filters such rows out of the budget table

@@ -60,6 +60,20 @@ export function amountsWithinTolerance(a: number, b: number): boolean {
   return deltaCents <= tolerance;
 }
 
+// True iff `amount` falls inside a row's inclusive estimate band. Bounds
+// are stored signed and ordered (`amountMin <= amountMax`) on rows the
+// user marked as an estimate; both must be present for a band to exist.
+// A row with a band still reconciles to a bank amount the normal
+// tolerance would reject — that's the whole point of an estimate range.
+export function amountWithinSpan(
+  amount: number,
+  min: number | undefined,
+  max: number | undefined,
+): boolean {
+  if (min === undefined || max === undefined) return false;
+  return amount >= min && amount <= max;
+}
+
 // Inclusive day difference between two ISO dates (`YYYY-MM-DD`).
 // Returns `aDate - bDate` so a positive number means `a` is later.
 // Uses UTC noon to dodge DST cliffs.
@@ -131,16 +145,26 @@ export function findCandidates(
     absCents: number;
   };
   const projected: Projected[] = [];
+  // Estimate rows (those carrying a signed [min, max] band) are matched
+  // by a separate linear pass below — the binary-search band keys on the
+  // estimate's `absCents`, so a wide band whose bounds sit outside that
+  // window would be skipped. They're rare, so a linear scan is cheap.
+  const spanProjected: Projected[] = [];
   for (const row of rows) {
     if (row.kind !== "user") continue;
     const ra = readRowDateAmount(row, dateCol.id, amountCol.id);
     if (!ra) continue;
-    projected.push({
+    const entry: Projected = {
       row,
       date: ra.date,
       amount: ra.amount,
       absCents: Math.round(Math.abs(ra.amount) * 100),
-    });
+    };
+    if (row.amountMin !== undefined && row.amountMax !== undefined) {
+      spanProjected.push(entry);
+    } else {
+      projected.push(entry);
+    }
   }
   projected.sort((a, b) => a.absCents - b.absCents);
   const absCentsArr = new Array<number>(projected.length);
@@ -195,6 +219,49 @@ export function findCandidates(
       const halfTolerance = Math.max(halfFloor, halfPct);
       const confidence: MatchCandidate["confidence"] =
         amountDelta <= halfTolerance && lag <= 2 ? "high" : "low";
+      pool.push({
+        historyEntryId: entry.id,
+        rowId: row.id,
+        amountDelta,
+        dateLagDays: lag,
+        confidence,
+        seriesId: row.seriesId ?? null,
+      });
+    }
+
+    // Estimate-row pass: an entry matches a banded row when it's within
+    // the band OR within the normal tolerance of the estimate. The
+    // amountDelta is still measured against the estimate so ordering and
+    // the inferred series tolerance stay sensible; a pure in-band match
+    // (outside tolerance) is always "low" confidence so the user
+    // confirms it.
+    for (const p of spanProjected) {
+      if (!sameSign(entry.amount, p.amount)) continue;
+      const lag = daysBetween(entry.date, p.date);
+      if (!Number.isFinite(lag)) continue;
+      if (lag < 0 || lag > RECONCILIATION_DATE_LAG_DAYS) continue;
+      const inTolerance = amountsWithinTolerance(entry.amount, p.amount);
+      const inSpan = amountWithinSpan(
+        entry.amount,
+        p.row.amountMin,
+        p.row.amountMax,
+      );
+      if (!inTolerance && !inSpan) continue;
+      const row = p.row;
+      const amountDelta = Math.abs(
+        Math.round(entry.amount * 100) - Math.round(p.amount * 100),
+      );
+      const halfFloor = RECONCILIATION_AMOUNT_FLOOR_CENTS / 2;
+      const halfPct =
+        (Math.max(Math.abs(entry.amount), Math.abs(p.amount)) *
+          RECONCILIATION_AMOUNT_PCT *
+          100) /
+        2;
+      const halfTolerance = Math.max(halfFloor, halfPct);
+      const confidence: MatchCandidate["confidence"] =
+        inTolerance && amountDelta <= halfTolerance && lag <= 2
+          ? "high"
+          : "low";
       pool.push({
         historyEntryId: entry.id,
         rowId: row.id,
@@ -366,7 +433,14 @@ export function expandToSeries(
         Math.max(entryAbsCents, p.absCents) * rule.amountTolerancePct,
       );
       const deltaCents = Math.abs(entryCents - p.amountCents);
-      if (deltaCents > tolerance) continue;
+      // An estimate row also matches when the entry lands inside its
+      // signed [min, max] band, even past the rule's tolerance.
+      if (
+        deltaCents > tolerance &&
+        !amountWithinSpan(entry.amount, p.row.amountMin, p.row.amountMax)
+      ) {
+        continue;
+      }
       pool.push({
         historyEntryId: entry.id,
         rowId: p.row.id,
@@ -475,7 +549,14 @@ export function findRuleDrivenCandidates(
           Math.max(entryAbsCents, p.absCents) * c.rule.amountTolerancePct,
         );
         const deltaCents = Math.abs(entryCents - p.amountCents);
-        if (deltaCents > tolerance) continue;
+        // An estimate row also matches when the entry lands inside its
+        // signed [min, max] band, even past the rule's tolerance.
+        if (
+          deltaCents > tolerance &&
+          !amountWithinSpan(entry.amount, p.row.amountMin, p.row.amountMax)
+        ) {
+          continue;
+        }
         pool.push({
           historyEntryId: entry.id,
           rowId: p.row.id,
