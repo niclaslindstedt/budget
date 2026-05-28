@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { Wand2 } from "lucide-react";
 
 import { compilePattern, ruleMatchesEntry } from "../../data/match-rules";
 import { normalizeOptional } from "../../data/normalize";
-import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import { useDesktopAutoFocus } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
@@ -30,10 +29,16 @@ import {
   useMatchRuleAmountFilter,
   type SignMode,
 } from "./useMatchRuleAmountFilter";
+import {
+  budgetMatchRuleModalReducer,
+  initialMatchRuleFormState,
+  type MatchRuleSeed,
+  type TransferFilter,
+} from "./budget-match-rule-modal-reducer";
 
 const log = createLogger("match-rules");
 
-type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
+export type { MatchRuleSeed };
 
 export type MatchRuleDraft = {
   pattern: string;
@@ -54,19 +59,6 @@ export type MatchRuleDraft = {
   // checkbox is the "Save pattern" toggle in the modal. Ignored when
   // editing an existing rule.
   saveRule: boolean;
-};
-
-// Minimum surface the modal needs from whatever row the user invoked
-// the rule from. Both `HistoryEntry` and a budget-row projection map
-// onto this shape so the modal doesn't have to branch on which kind it
-// got. Either origin gets the same date / ref-number stripping in
-// `pattern-derive.ts` — bank exports and manually-typed descriptions
-// both embed dates that would otherwise pin the pattern to a single
-// transaction.
-export type MatchRuleSeed = {
-  id: string;
-  description: string;
-  amount: number;
 };
 
 type Props = {
@@ -115,16 +107,6 @@ function previewEntries(
   return ordered.slice(0, PREVIEW_LIMIT);
 }
 
-// Seed the pattern from the source row. Both history entries and
-// budget rows go through the date / ref-number stripper in
-// `pattern-derive.ts` — bank exports routinely embed the transaction
-// date in the description (Skandia ships `<date> <merchant>`) and
-// manually-typed descriptions tend to read `<merchant> <date>`. Either
-// would otherwise pin the pattern to a single transaction.
-function seedPatternFromSeed(seed: MatchRuleSeed): string {
-  return derivePatternFromDescription(seed.description);
-}
-
 export function BudgetMatchRuleModal({
   open,
   seedEntry,
@@ -145,18 +127,13 @@ export function BudgetMatchRuleModal({
   const lang = useLang();
   const isEdit = existing !== null;
 
-  const [pattern, setPattern] = useState("");
-  const [description, setDescription] = useState("");
-  const [typeId, setTypeId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [transferFilter, setTransferFilter] = useState<TransferFilter>("any");
-  // "Save pattern" — when checked (the default) the rule is persisted
-  // alongside the labels it applies; when unchecked the parent stamps
-  // matching rows / history once and throws the rule away. The latter
-  // is the right tool for bulk-labelling older entries from a merchant
-  // that's never coming back (the canonical example in the project
-  // brief: a pizzeria the user moved away from).
-  const [saveRule, setSaveRule] = useState(true);
+  const [form, dispatch] = useReducer(
+    budgetMatchRuleModalReducer,
+    { existing, seedEntry },
+    initialMatchRuleFormState,
+  );
+  const { pattern, description, typeId, companyId, transferFilter, saveRule } =
+    form;
 
   const amountFilter = useMatchRuleAmountFilter(
     open,
@@ -179,20 +156,7 @@ export function BudgetMatchRuleModal({
 
   useEffect(() => {
     if (!open) return;
-    setSaveRule(true);
-    if (existing) {
-      setPattern(existing.pattern);
-      setDescription(existing.description ?? "");
-      setTypeId(existing.typeId ?? null);
-      setCompanyId(existing.companyId ?? null);
-      setTransferFilter(existing.transferFilter ?? "any");
-      return;
-    }
-    setPattern(seedEntry ? seedPatternFromSeed(seedEntry) : "");
-    setDescription("");
-    setTypeId(null);
-    setCompanyId(null);
-    setTransferFilter("exclude");
+    dispatch({ kind: "reset", seed: { existing, seedEntry } });
   }, [open, existing, seedEntry]);
 
   // Compile the regex once per pattern; an empty pattern yields no
@@ -371,7 +335,7 @@ export function BudgetMatchRuleModal({
             <ClearableInput
               ref={patternRef}
               value={pattern}
-              onValueChange={setPattern}
+              onValueChange={(value) => dispatch({ kind: "setPattern", value })}
               spellCheck={false}
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-sm text-fg"
               placeholder={t("matchRule.patternPlaceholder")}
@@ -383,7 +347,9 @@ export function BudgetMatchRuleModal({
             </span>
             <ClearableInput
               value={description}
-              onValueChange={setDescription}
+              onValueChange={(value) =>
+                dispatch({ kind: "setDescription", value })
+              }
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
               placeholder={t("matchRule.descriptionPlaceholder")}
             />
@@ -395,7 +361,7 @@ export function BudgetMatchRuleModal({
               types={types}
               categories={categories}
               selectedId={typeId}
-              onSelect={setTypeId}
+              onSelect={(value) => dispatch({ kind: "setTypeId", value })}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
             />
@@ -406,7 +372,7 @@ export function BudgetMatchRuleModal({
               variant="field"
               companies={companies}
               selectedId={companyId}
-              onSelect={setCompanyId}
+              onSelect={(value) => dispatch({ kind: "setCompanyId", value })}
               onCreate={onCreateCompany}
             />
           </div>
@@ -485,7 +451,12 @@ export function BudgetMatchRuleModal({
             <SegmentedRadio
               name="transfer-filter"
               value={transferFilter}
-              onChange={(v) => setTransferFilter(v as TransferFilter)}
+              onChange={(v) =>
+                dispatch({
+                  kind: "setTransferFilter",
+                  value: v as TransferFilter,
+                })
+              }
               options={[
                 { value: "any", label: t("matchRule.transferAny") },
                 { value: "exclude", label: t("matchRule.transferExclude") },
@@ -501,7 +472,9 @@ export function BudgetMatchRuleModal({
               <input
                 type="checkbox"
                 checked={saveRule}
-                onChange={(e) => setSaveRule(e.target.checked)}
+                onChange={(e) =>
+                  dispatch({ kind: "setSaveRule", value: e.target.checked })
+                }
                 className="h-4 w-4 cursor-pointer"
               />
               {t("matchRule.savePattern")}

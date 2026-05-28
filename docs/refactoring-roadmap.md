@@ -149,23 +149,28 @@ new sheet type, but feature work can ship through them.
   needs a domain-specific function.
 
 - **No `useReducer` in most modal state machines** — `useReducer`
-  now has **five** real hits (`AccountReconciliationModal`,
+  now has **seven** real hits (`AccountReconciliationModal`,
   `BudgetRecurrenceForm`, `BudgetEditEntryFullModal`,
-  `AccountTransferModal`, `BudgetBulkEditModal`, and
-  `BudgetMetadataModal`, see Landed), but the broader pattern is still
-  present: `useState` pyramids with 5+ fields plus a multi-setter reset
-  effect. Remaining sites: `ImportHistoryModal`, `BudgetMatchRuleModal`
-  (residual after `useMatchRuleAmountFilter` landed), `SettingsModal`
-  (4-piece state pyramid).
-  `BudgetSplitEntryModal` dropped off the list — re-verified 2026-05
-  at 2 `useState` calls (459 lines), no longer a pyramid. **Severity: 5.**
-  Per-modal value is moderate but the cumulative readability gain
-  is significant. Apply opportunistically when a modal is otherwise
-  being touched. The textbook discriminated-mode candidate
-  (`BudgetRecurrenceForm`) has landed; re-survey for new
-  prioritisation hooks if a different modal grows a mode
-  discriminator that the current setters silently allow drift
-  through.
+  `AccountTransferModal`, `BudgetBulkEditModal`, `BudgetMetadataModal`,
+  and `BudgetMatchRuleModal`, see Landed). The textbook reset-on-open
+  pyramids are now exhausted — the remaining named sites have decayed:
+  - `ImportHistoryModal` — re-verified 2026-05 at 3 `useState` calls
+    (314 lines), one of which is already a discriminated `PreviewState`
+    union (`{ kind: "idle" | … }`) plus a `dragOver` toggle. Not a
+    reset-together form pyramid.
+  - `SettingsModal` — re-verified 2026-05 at 5 `useState` calls (775
+    lines): `draft`, `currencyPresetId`, `backupsOpen`, `activeTab`,
+    `menuOpen`. These are independent UI toggles that reset on
+    different triggers, not one form pyramid that resets together — a
+    reducer would obscure more than it consolidates.
+  - `BudgetSplitEntryModal` dropped off earlier — re-verified at 2
+    `useState` calls (459 lines), no longer a pyramid.
+
+  **Severity: 3** (was 5 — the high-value reset-on-open candidates have
+  all landed; what's left is opportunistic). Apply `useReducer` to a
+  new modal only when it grows a 5+-field reset-together pyramid, or
+  when a modal already being touched grows a mode discriminator that
+  the current setters silently allow drift through.
 
 - **`useUserDataStorage.ts` save chain has no retry strategy** —
   network failures are caught into `RateLimitError` and pause
@@ -288,6 +293,42 @@ T | null` for "explicitly cleared by the user, distinct from
 ---
 
 ## Landed
+
+- **`BudgetMatchRuleModal` form-field `useReducer` extraction** (2026-05):
+  the 6 non-amount form-field `useState` calls in
+  `BudgetMatchRuleModal.tsx` (`pattern`, `description`, `typeId`,
+  `companyId`, `transferFilter`, `saveRule`) collapsed onto a single
+  `useReducer` driven by a `MatchRuleFormState` shape and a named-action
+  union (`reset | setPattern | setDescription | setTypeId | setCompanyId
+| setTransferFilter | setSaveRule`). The win is the reset-on-open
+  effect: previously six sequential `setState` calls (including the
+  edit-vs-new branch that seeds `transferFilter` to `"any"` for an
+  existing rule but `"exclude"` for a fresh one, and the
+  `seedPatternFromSeed` derivation); now one `reset` dispatch carrying
+  `{ existing, seedEntry }`, with the edit/new branch and the pattern
+  derivation moved into the colocated `initialMatchRuleFormState`
+  factory. `useReducer`'s lazy-init third argument seeds the form so the
+  first render already reflects the open request. The amount filter was
+  already extracted to `useMatchRuleAmountFilter` and is untouched. The
+  `TransferFilter` type, the `MatchRuleSeed` type, and the
+  `seedPatternFromSeed` helper moved to the reducer file; the modal
+  re-exports `MatchRuleSeed` so `useMatchRuleAmountFilter` and
+  `useMatchRuleUi` keep importing it unchanged, and `MatchRuleDraft`
+  (the submit payload, not form state) stays in the modal. The reducer +
+  factory live in
+  `src/components/budget/budget-match-rule-modal-reducer.ts`; the modal
+  keeps the compiled-regex / live-preview / `handleSubmit` glue. 10 unit
+  tests landed in `tests/budget_match_rule_modal_reducer_test.ts` to lock
+  in the existing-rule seed, the sparse-rule defaults, the
+  seed-entry-derived pattern, the blank new rule, the reset-discards-edits
+  behaviour, and that each setter only touches its own field.
+  `BudgetMatchRuleModal.tsx` drops from 648 → 621 lines; the new reducer
+  file is 103 lines. Pure refactor — same behaviour, same i18n keys, same
+  `MatchRuleDraft` payload shape; `BudgetModalHost` / `useMatchRuleUi`
+  consume the public component unchanged. Closes the high-value
+  reset-on-open candidates in the severity-5 modal-`useReducer` item,
+  which drops to severity 3. typecheck + lint + fmt-check + 935 tests +
+  build + icons-check pass.
 
 - **`BudgetMetadataModal` form-field `useReducer` extraction** (2026-05):
   the 5 per-entry form-field `useState` calls in
