@@ -81,35 +81,31 @@ new sheet type, but feature work can ship through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **`useStorageBackend.ts` (1018 lines) per-backend auth split** —
-  split into ~~`useFolderHandle`~~, `useDropboxAuth`, `useGdriveAuth`,
-  leaving the main hook as an orchestrator. The folder slice
-  (`useFolderHandle`) landed 2026-05 (see Landed), shrinking the
-  outer hook from 1253 → 1018 lines and pulling out the
-  FileSystemDirectoryHandle lifecycle (IDB-backed handle storage,
-  boot-time permission probe, pick-and-link flow, post-revoke
-  reconnect path, disconnect mirror back to browser). The
-  `wrapForActive` utility relocated to its own file
-  (`src/storage/wrap-for-active.ts`) so per-backend hooks can call
-  it without importing from the orchestrator. What remains is the
-  `useDropboxAuth` and `useGdriveAuth` splits — each owns its OAuth
-  start / complete / refresh flow, token state, the per-backend
-  disconnect, and the cloud-link confirmation seeding. Natural
-  seams at `buildInnerAdapter` lines 92–101 — each branch is ~10
-  lines with its own token-refresh / permission logic.
-  Token-refresh side channel (`dropboxRefreshTokenRef`) is a
-  correctness hazard: a ref bypasses React state so the adapter
-  `useMemo` doesn't rebuild on refresh. **Severity: 7** (was 8 —
-  dropped one band now that the folder slice is out; the cloud
-  splits are still high-leverage but no longer the whole picture).
-  Disentanglement caveats: `disconnectCloud` is shared between
-  Dropbox + GDrive, `pendingCloudLink` flows through OAuth
-  completion in two places, and `loadSourceText` is consumed by
-  both `connectGdrive` and the Dropbox OAuth effect — sub-hooks
-  must take injected callbacks for these orchestration points
-  rather than owning them. Storage hot path — **needs
-  smoke-testing of the affected cloud backend before merging each
-  slice.**
+- **`useStorageBackend.ts` (846 lines) per-backend auth split** —
+  split into ~~`useFolderHandle`~~, ~~`useDropboxAuth`~~,
+  `useGdriveAuth`, leaving the main hook as an orchestrator. The
+  folder slice (`useFolderHandle`) and the Dropbox slice
+  (`useDropboxAuth`) both landed 2026-05 (see Landed), shrinking
+  the outer hook from 1253 → 846 lines and pulling out the
+  FileSystemDirectoryHandle lifecycle plus the entire Dropbox
+  OAuth + token-refresh + commit pipeline. The `wrapForActive`
+  utility lives in its own file (`src/storage/wrap-for-active.ts`)
+  so per-backend hooks call it without importing from the
+  orchestrator. What remains is `useGdriveAuth` — owns the GIS
+  popup-based OAuth flow, token state, and per-backend disconnect
+  cleanup. The shared cloud orchestration (`pendingCloudLink`
+  resolution, `disconnectCloud(provider)`, `reconnectCloud`,
+  `loadSourceText`) stays in the outer hook and receives provider-
+  specific callbacks from the per-backend hooks. Natural seam at
+  `buildInnerAdapter` lines 91–93 — the GDrive branch is ~3 lines
+  with no refresh-token machinery (GIS tokens are short-lived; the
+  outer flow re-prompts on auth-error rather than refreshing).
+  **Severity: 5** (was 7 — dropped two bands across the two
+  landed slices; what's left is a small, focused extraction).
+  Disentanglement caveats: `disconnectCloud` and `reconnectCloud`
+  stay in the orchestrator and take a `markDisconnected` callback
+  plus a token getter from `useGdriveAuth`. Storage hot path —
+  **needs smoke-testing of GDrive before merging.**
 
 - **`AppShell.tsx` modal-mount registry** — the JSX-relocation half
   of the original severity-8 modal-host item landed 2026-05 (see
@@ -357,6 +353,35 @@ T | null` for "explicitly cleared by the user, distinct from
 
 ## Landed
 
+- **`useDropboxAuth` extraction from `useStorageBackend.ts`**
+  (2026-05): the second slice of the per-backend auth split lifts
+  Dropbox-specific state, OAuth start / completion (URL-redirect
+  path), the token-refresh-ref correctness pattern, and the
+  commit-on-link step into `src/storage/useDropboxAuth.ts`. The
+  outer hook keeps the shared cloud orchestration (the parked
+  `pendingCloudLink` state, the cross-provider `resolveCloudLink`
+  / `disconnectCloud` / `reconnectCloud` flows, `loadSourceText`)
+  and receives Dropbox-specific callbacks from the hook
+  (`commitDropboxLink`, `connectDropbox`,
+  `markDisconnected: markDropboxDisconnected`,
+  `applySignedInUser`) plus the token state
+  (`dropboxToken`, `dropboxRefreshTokenRef`). The outer hook's
+  auth-sync effect drops its Dropbox arms; the hook installs a
+  parallel auth-sync effect of its own. The OAuth completion
+  effect (~140 lines) — the URL-redirect handler that catches
+  `?code=` on return, exchanges for tokens, probes both sides,
+  and parks `pendingCloudLink` — moved verbatim into the hook.
+  `useStorageBackend.ts` drops from 1018 → 846 lines. **Closes
+  the `useDropboxAuth` arm of the original severity-7
+  per-backend split**; only `useGdriveAuth` remains Pending,
+  re-rated to severity 5. Pure refactor — no behaviour change;
+  the OAuth completion's pending-verifier check, the
+  on-refresh-token-missing fallback, the probe race window, and
+  the URL cleanup are all preserved verbatim. **Needs
+  smoke-testing of the Dropbox backend** (connect from Settings,
+  edit a row, autosave, disconnect, reconnect, exercise the
+  conflict modal from a second device) before merge; IDB /
+  GDrive / Folder paths are unaffected.
 - **`useFolderHandle` extraction from `useStorageBackend.ts`**
   (2026-05): the folder-backend lifecycle lifted into its own hook
   at `src/storage/useFolderHandle.ts` — the
