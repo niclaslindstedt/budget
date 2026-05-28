@@ -1207,6 +1207,7 @@ export function BudgetPage({
             item={decoratedItem}
             balances={balances}
             types={types}
+            companies={companies}
             settings={settings}
           />
           <BudgetFindConflictsModal

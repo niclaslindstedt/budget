@@ -24,6 +24,7 @@ import {
 import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
+  Company,
   EntryType,
   Row,
   Settings,
@@ -57,6 +58,7 @@ type Props = {
   // view shows.
   balances: Map<string, number>;
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
 };
 
@@ -90,6 +92,7 @@ export function BudgetViewerModal({
   item,
   balances,
   types,
+  companies,
   settings,
 }: Props) {
   const t = useT();
@@ -122,6 +125,8 @@ export function BudgetViewerModal({
 
   const typesById = useMemo(() => indexById(types), [types]);
 
+  const companiesById = useMemo(() => indexById(companies), [companies]);
+
   // Mirror the sort context BudgetPage builds so multi-entry days agree
   // between the editable and viewer surfaces.
   const sortContext = useMemo<RowSortContext | undefined>(() => {
@@ -133,9 +138,10 @@ export function BudgetViewerModal({
     };
   }, [descCol, amountCol, typesById]);
 
-  // In-place filter against description, type name, and the formatted
-  // amount text. Resets on every modal close so re-opening starts
-  // unfiltered. Applied on top of the hide-transfers filter below.
+  // In-place filter against description, type name, company name,
+  // and the formatted amount text. Resets on every modal close so
+  // re-opening starts unfiltered. Applied on top of the hide-
+  // transfers filter below.
   const [query, setQuery] = useState("");
   useEffect(() => {
     if (!open) setQuery("");
@@ -158,6 +164,7 @@ export function BudgetViewerModal({
     return candidates.map((row) => {
       let descLc = "";
       let typeNameLc = "";
+      let companyNameLc = "";
       let amountTextLc = "";
       let dateStr = "";
       if (descCol) {
@@ -168,6 +175,11 @@ export function BudgetViewerModal({
       if (typeId) {
         const type = typesById.get(typeId);
         if (type) typeNameLc = type.name.toLowerCase();
+      }
+      const companyId = row.companyId ?? null;
+      if (companyId) {
+        const company = companiesById.get(companyId);
+        if (company) companyNameLc = company.name.toLowerCase();
       }
       if (amountCol) {
         const v = row.cells[amountCol.id];
@@ -182,9 +194,17 @@ export function BudgetViewerModal({
         const v = row.cells[dateCol.id];
         if (typeof v === "string") dateStr = v;
       }
-      return { row, descLc, typeNameLc, amountTextLc, dateStr };
+      return { row, descLc, typeNameLc, companyNameLc, amountTextLc, dateStr };
     });
-  }, [item.rows, settings, descCol, amountCol, dateCol, typesById]);
+  }, [
+    item.rows,
+    settings,
+    descCol,
+    amountCol,
+    dateCol,
+    typesById,
+    companiesById,
+  ]);
 
   // Honour the same hide-transfers filter the main view uses. Running
   // balances were computed upstream against the unfiltered rows so the
@@ -198,6 +218,7 @@ export function BudgetViewerModal({
       if (
         e.descLc.includes(q) ||
         e.typeNameLc.includes(q) ||
+        e.companyNameLc.includes(q) ||
         e.amountTextLc.includes(q) ||
         e.dateStr.includes(q)
       ) {
