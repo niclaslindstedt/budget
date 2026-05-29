@@ -144,28 +144,35 @@ through them.
 
 - **`AppShell.tsx` modal-mount state-ownership shift** — the
   JSX-relocation half of the original severity-8 modal-host item
-  landed 2026-05 (see Landed: three modal hosts). Re-verified
-  2026-05: `AppShell.tsx` is now **878 lines** (the roadmap's old
-  "~930" decayed further), and the three hosts still receive
-  prompt / modal-open setters as props — `AccountsModalHost.tsx`
-  takes **10** setters, `BudgetModalHost.tsx` takes **14**,
-  `UniversalModalHost.tsx` the rest. The sub-hooks in
-  `src/components/AppShell/hooks/` still own those `useState`s.
-  The remaining "registered modals from a registry" plan moves
-  that state into each host and exposes a typed
-  `dispatchModal({ kind: "open-edit-row", row })` so AppShell stops
-  threading 24+ setters down. **Severity: 5.**
-  - Plan: hoist the `useEditPrompts` / `useDeletePrompts` /
-    `useBulkSelection` / etc. state into the matching host (or a
-    pair of `useReducer`-style contexts colocated with each host).
-    AppShell becomes a routing switch + three host mounts with no
-    prompt-setter props at all. The hosts become the dispatch
-    target every modal-opening flow routes through.
+  landed 2026-05 (see Landed: three modal hosts), and the
+  host-only-hook relocation slice landed 2026-05 (see Landed:
+  `usePromptDerivations` + `useHistoryEntryActions` into
+  `BudgetModalHost`), dropping `AppShell.tsx` to **852 lines**.
+  Re-verified 2026-05: the "10/14 setters as props" framing was
+  **stale** — the hosts already receive _grouped hook-result
+  objects_ (`editPrompts`, `deletePrompts`, `complexEntry`,
+  `matchRuleUi`, `bulkSelection`, the account / import / transfer
+  flows, etc.), not 24 individual setters. The real remaining smell
+  is that AppShell still _calls_ every modal hook and forwards the
+  whole result, even though most hooks' state is consumed by both a
+  host (to render) and chrome / page callbacks (to open). The clean
+  host-only hooks were the only ones movable without rewiring; the
+  rest are genuinely cross-cutting (open-trigger in the header /
+  bottom bar / page, state + render in the host). **Severity: 5.**
+  - Plan: introduce a typed modal-dispatch context (the
+    "registered modals from a registry" end-state) so chrome and
+    pages call `dispatchModal({ kind: "open-edit-row", row })`
+    instead of receiving opener callbacks as props, and each host
+    owns its modal state via a `useReducer`-style context colocated
+    with it. AppShell collapses toward a routing switch + host
+    mounts. This is the larger remaining work; slice it per host.
   - Risk: low-medium. Mechanical but touches `BudgetPage` /
     `AccountsPage` prop wiring because some prompts are set from
-    page-level callbacks (`onDeleteRequest`, `onEditRequest`).
-    Either keep the callbacks in AppShell calling into a
-    host-exposed dispatch, or move the callbacks into the hosts.
+    page-level callbacks (`onDeleteRequest`, `onEditRequest`) and
+    chrome (`setSettingsOpen`, `setSearchOpen` in the header /
+    bottom bar). The open-triggers live in chrome / pages, so a
+    full hoist needs the dispatch context to bridge them — that's
+    why the bridge is the next slice, not another host-only move.
 
 - **Optional fields on persisted types — `undefined` vs `null`
   drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
@@ -365,6 +372,27 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`usePromptDerivations` + `useHistoryEntryActions` relocated into
+  `BudgetModalHost`** (2026-05): the first slice of the severity-5
+  `AppShell.tsx` modal-mount state-ownership shift. Both hooks are
+  consumed by exactly one host (`BudgetModalHost`) and were called in
+  `AppShell` purely to forward their results down as the
+  `promptDerivations` / `historyEntryActions` props. Their inputs
+  (`editPrompts` / `deletePrompts` prompt state, `activeItem`,
+  `dateCol`, `data`, `dispatch`) are all already props the host
+  receives, so the hook calls moved inside the host, deleting two
+  AppShell hook calls, two value imports, two host props, and the now
+  unused `historyEditPrompt` AppShell destructure. `AppShell.tsx`
+  drops 878 → 852 lines; `BudgetModalHost.tsx` grows 645 → 661 (the
+  inlined hook calls). Pure refactor — the hooks produce identical
+  `useMemo`/`useCallback` values from the same inputs, just one
+  render level down (the host is AppShell's child, so the derivation
+  timing is unchanged); same JSX output, no behaviour change. The
+  remaining cross-cutting hooks (whose open-triggers live in chrome /
+  pages) stay in `AppShell` pending the modal-dispatch-context bridge
+  — see the narrowed Pending entry. fmt-check + lint + typecheck +
+  1045 tests + build + icons-check pass.
 
 - **`indexById` adoption in `buildSearchIndex` (`src/data/search.ts`)**
   (2026-05): the four inline `new Map<string, T>()` + `for … .set(x.id,

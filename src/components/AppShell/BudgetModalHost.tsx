@@ -39,9 +39,9 @@ import type { useBulkSelection } from "./hooks/useBulkSelection";
 import type { useComplexEntry } from "./hooks/useComplexEntry";
 import type { useDeletePrompts } from "./hooks/useDeletePrompts";
 import type { useEditPrompts } from "./hooks/useEditPrompts";
-import type { useHistoryEntryActions } from "./hooks/useHistoryEntryActions";
+import { useHistoryEntryActions } from "./hooks/useHistoryEntryActions";
 import type { useMatchRuleUi } from "./hooks/useMatchRuleUi";
-import type { usePromptDerivations } from "./hooks/usePromptDerivations";
+import { usePromptDerivations } from "./hooks/usePromptDerivations";
 import type { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
 
 type Props = {
@@ -61,11 +61,9 @@ type Props = {
   dispatch: (action: Action) => void;
   editPrompts: ReturnType<typeof useEditPrompts>;
   deletePrompts: ReturnType<typeof useDeletePrompts>;
-  promptDerivations: ReturnType<typeof usePromptDerivations>;
   complexEntry: ReturnType<typeof useComplexEntry>;
   matchRuleUi: ReturnType<typeof useMatchRuleUi>;
   bulkSelection: ReturnType<typeof useBulkSelection>;
-  historyEntryActions: ReturnType<typeof useHistoryEntryActions>;
   onCreateType: ReturnType<typeof useTaxonomyCrud>["onCreateType"];
   onCreateCategory: ReturnType<typeof useTaxonomyCrud>["onCreateCategory"];
   onCreateCompany: ReturnType<typeof useTaxonomyCrud>["onCreateCompany"];
@@ -91,11 +89,9 @@ export function BudgetModalHost(props: Props) {
     dispatch,
     editPrompts,
     deletePrompts,
-    promptDerivations,
     complexEntry,
     matchRuleUi,
     bulkSelection,
-    historyEntryActions,
     onCreateType,
     onCreateCategory,
     onCreateCompany,
@@ -121,6 +117,26 @@ export function BudgetModalHost(props: Props) {
     historyEditPrompt,
     setHistoryEditPrompt,
   } = deletePrompts;
+  // Pure props derived from the currently-open prompt + the active
+  // budget item, and the history-entry edit / primary-income actions.
+  // Both depend only on state this host already receives, so they're
+  // computed here rather than threaded down from AppShell.
+  const promptDerivations = usePromptDerivations({
+    editPrompt,
+    editRowPrompt,
+    splitPrompt,
+    deletePrompt,
+    historyEditPrompt,
+    activeItem,
+    dateCol,
+    data,
+  });
+  const historyEntryActions = useHistoryEntryActions({
+    activeAccountId: activeItem.accountId,
+    historyEditPrompt,
+    dispatch,
+    setHistoryEditPrompt,
+  });
   const {
     editLastSeriesDate,
     editRowLastSeriesDate,
