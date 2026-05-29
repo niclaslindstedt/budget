@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Building2, Filter } from "lucide-react";
+import { Building2, ChevronDown, Filter } from "lucide-react";
 
 import type { SearchEntry, SearchFilter } from "../../data/search";
 import { EMPTY_FILTER, isFilterActive, searchBounds } from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
-import { useLang, useT } from "../../i18n";
+import { usePointerOutside } from "../../hooks";
+import { useLang, useT, type TFunction } from "../../i18n";
 import {
   formatMonthLabel,
   formatNumber,
@@ -71,6 +72,93 @@ function monthNumToIsoEnd(month: number): string {
   const m = month % 12;
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   return `${monthNumToKey(month)}-${String(lastDay).padStart(2, "0")}`;
+}
+
+// Quick-pick calendar windows for the "exclude old data" dropdown. Each
+// value is a count of calendar years to keep, current year inclusive (1
+// = this year only, 2 = this year + last, …); null = no age limit. The
+// list intentionally skips 4 — beyond "last 3 years" the user is browsing
+// in coarser strides, so 5 / 10 cover the long tail without a long menu.
+const MAX_AGE_OPTIONS: readonly (number | null)[] = [null, 1, 2, 3, 5, 10];
+
+function maxAgeLabel(value: number | null, t: TFunction): string {
+  if (value === null) return t("searchTransaction.filterMaxAgeAll");
+  if (value === 1) return t("searchTransaction.filterMaxAgeThisYear");
+  return t("searchTransaction.filterMaxAgeYears", { n: value });
+}
+
+// Custom button + listbox (never a native <select>, per the project's
+// dropdown rule) for the `maxAgeYears` filter. The list renders inline
+// rather than absolutely-positioned so the popover's own
+// `overflow-y-auto` scrolls it into view instead of clipping it — the
+// same trick the token filter uses for its match list.
+function MaxAgeDropdown({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (next: number | null) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  usePointerOutside(open, [ref], () => setOpen(false));
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+      <p className="text-xs font-medium text-fg-bright">
+        {t("searchTransaction.filterMaxAge")}
+      </p>
+      <div ref={ref}>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={t("searchTransaction.filterMaxAgeAria")}
+          className="field-input flex w-full cursor-pointer items-center justify-between gap-2 border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+        >
+          <span className="truncate">{maxAgeLabel(value, t)}</span>
+          <ChevronDown
+            size={14}
+            aria-hidden
+            focusable={false}
+            className="shrink-0 text-muted"
+          />
+        </button>
+        {open && (
+          <ul
+            role="listbox"
+            aria-label={t("searchTransaction.filterMaxAge")}
+            className="mt-1 max-h-56 overflow-y-auto rounded border border-line bg-surface-2 py-1"
+          >
+            {MAX_AGE_OPTIONS.map((option) => {
+              const selected = option === value;
+              return (
+                <li key={option ?? "all"} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      onChange(option);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full cursor-pointer items-center px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+                      selected
+                        ? "bg-accent/10 text-accent"
+                        : "text-fg hover:bg-surface"
+                    }`}
+                  >
+                    {maxAgeLabel(option, t)}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // One sheet option in the sheet multi-select.
@@ -354,6 +442,11 @@ export function BudgetTransferSearchFilterMenu({
                 label={t("searchTransaction.filterExcludeUnconfirmed")}
               />
             </div>
+
+            <MaxAgeDropdown
+              value={filter.maxAgeYears}
+              onChange={(v) => onFilterChange({ ...filter, maxAgeYears: v })}
+            />
 
             {sheets.length > 1 && (
               <OptionList
