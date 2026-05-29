@@ -4,8 +4,10 @@ type: Added
 
 Search now has a filter popover beside the sort menu, both tucked inside
 the search bar. Exclude transfers, bank history, or unconfirmed entries
-(leaving only imported history), restrict to specific budget sheets, and
-narrow results to an amount or date range with dual-thumb sliders. The
+(leaving only imported history), restrict to specific budget sheets,
+companies, types, categories, or tags (match any tag or require all of
+them), and narrow results to an amount or date range with dual-thumb
+sliders. The
 sliders span only what your current search actually contains — a search
 that turns up four 100–500 kr rows gives you a 100–500 amount slider, not
 the whole workspace's range — and the date slider steps by month.
