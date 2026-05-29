@@ -128,6 +128,18 @@ export function BudgetTransferSearchModal({
     ? t("app.exitSelectMode")
     : t("app.selectRows");
 
+  // Bulk ops dispatch against a single (active) sheet, so select-many is
+  // ambiguous when the result set spans several sheets. Require the user
+  // to scope the search to one sheet (via the filter menu's sheet
+  // dropdown) before entering select mode. Only blocks *entering* — once
+  // in select mode the toggle must stay live so it can exit.
+  const sheetCount = useMemo(
+    () => new Set(index.map((e) => e.sheetId)).size,
+    [index],
+  );
+  const selectModeBlocked =
+    !selectMode && sheetCount > 1 && filter.sheetIds.length !== 1;
+
   // "Select all" reaches the full match set — not just the rendered top
   // 50 — but bulk ops are single-sheet, so it selects only the active
   // sheet's selectable (user-kind) matches. The first manual pick on a
@@ -227,13 +239,20 @@ export function BudgetTransferSearchModal({
               <button
                 type="button"
                 onClick={onToggleSelectMode}
+                disabled={selectModeBlocked}
                 aria-pressed={selectMode}
                 aria-label={selectLabel}
-                title={selectLabel}
-                className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-                  selectMode
-                    ? "bg-accent/15 text-accent"
-                    : "text-muted hover:bg-surface-2 hover:text-fg"
+                title={
+                  selectModeBlocked
+                    ? t("searchTransaction.selectNeedsSheet")
+                    : selectLabel
+                }
+                className={`inline-flex h-7 w-7 items-center justify-center rounded text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+                  selectModeBlocked
+                    ? "cursor-not-allowed text-muted opacity-40"
+                    : selectMode
+                      ? "cursor-pointer bg-accent/15 text-accent"
+                      : "cursor-pointer text-muted hover:bg-surface-2 hover:text-fg"
                 }`}
               >
                 <ListChecks size={16} aria-hidden focusable={false} />
