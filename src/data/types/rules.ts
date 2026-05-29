@@ -67,6 +67,14 @@ export type MatchRule = {
   // company". Validator drops a dangling reference to a deleted
   // company silently — same contract as `typeId`.
   companyId?: string | null;
+  // Tags stamped onto every matching row / history entry. A set rather
+  // than a single value, so application is additive (UNION) wherever it
+  // lands — a matching budget row keeps its existing `tagIds` and gains
+  // the rule's, and a synthesized history row merges these with the
+  // entry's own `userTagIds`. Absent / empty means "don't touch tags".
+  // Dangling references to deleted tags are dropped silently by the
+  // validator, same contract as `typeId` / `companyId`.
+  tagIds?: string[];
   amountSign?: "any" | "positive" | "negative";
   transferFilter?: "any" | "exclude" | "only";
   // Signed lower / upper bounds on the entry amount, applied on top

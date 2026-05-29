@@ -54,6 +54,7 @@ export function validateMatchRule(
   raw: unknown,
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
+  knownTagIds: ReadonlySet<string>,
 ): MatchRule | null {
   if (!isObject(raw)) return null;
   const { id, pattern } = raw;
@@ -80,6 +81,20 @@ export function validateMatchRule(
     knownCompanyIds.has(raw.companyId)
   ) {
     rule.companyId = raw.companyId;
+  }
+  if (Array.isArray(raw.tagIds)) {
+    // Drop dangling references to deleted tags and dedup defensively;
+    // only persist a non-empty result so an all-dangling array
+    // collapses back to "no tags". Same contract as `Row.tagIds`.
+    const seen = new Set<string>();
+    const kept: string[] = [];
+    for (const tagId of raw.tagIds) {
+      if (typeof tagId !== "string" || tagId === "") continue;
+      if (!knownTagIds.has(tagId) || seen.has(tagId)) continue;
+      seen.add(tagId);
+      kept.push(tagId);
+    }
+    if (kept.length > 0) rule.tagIds = kept;
   }
   if (
     raw.amountSign === "any" ||

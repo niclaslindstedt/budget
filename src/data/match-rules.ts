@@ -117,3 +117,28 @@ export function findMatchingRule(
 ): MatchRule | null {
   return findMatchingRuleForCandidate(rules, candidateFromHistoryEntry(entry));
 }
+
+// Merge a rule's `tagIds` into an existing set of tags, preserving the
+// existing order and appending only the rule's tags that aren't
+// already present. Tags are additive — a matching rule never strips a
+// tag the user (or another rule) put on the row, it only adds its own.
+// Returns the original `existing` array reference unchanged when the
+// rule contributes nothing new so callers can short-circuit a no-op
+// row clone. Both inputs are optional / possibly empty.
+export function mergeTagIds(
+  existing: readonly string[] | undefined,
+  ruleTagIds: readonly string[] | undefined,
+): readonly string[] | undefined {
+  if (!ruleTagIds || ruleTagIds.length === 0) return existing;
+  const base = existing ?? [];
+  const present = new Set(base);
+  const added: string[] = [];
+  for (const id of ruleTagIds) {
+    if (id !== "" && !present.has(id)) {
+      present.add(id);
+      added.push(id);
+    }
+  }
+  if (added.length === 0) return existing;
+  return [...base, ...added];
+}

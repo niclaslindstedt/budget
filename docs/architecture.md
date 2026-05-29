@@ -392,6 +392,9 @@ type HistoryEntry = {
   // every other entry with the same merchant key along.
   userDescription?: string;
   userTypeId?: string;
+  // Per-entry tag override (edit-history modal). Unioned with any
+  // matching MatchRule.tagIds when the row is synthesized.
+  userTagIds?: string[];
 };
 
 type Transaction = {

@@ -133,6 +133,16 @@ export type HistoryEntry = {
   // validator so the synthesizer doesn't render a chip pointing at
   // nothing.
   userCompanyId?: string;
+  // Per-entry override for the synthesized row's `tagIds`. Set by the
+  // per-entry edit modal (pen button on a history row). Unlike
+  // `userTypeId` / `userCompanyId` — single values that fully override
+  // the rule / hint — tags are a set, so the synthesizer UNIONs these
+  // with any matching `MatchRule.tagIds` rather than replacing them: a
+  // rule that tags every "Spotify" row "Subscriptions" and a per-entry
+  // "Cancel me" tag both land on the row. Dangling ids (deleted tags)
+  // are dropped silently by the validator, same contract as
+  // `userTypeId`. Absent / empty means "no per-entry tags".
+  userTagIds?: string[];
   // True when the user has explicitly opted this entry out of the
   // merchant-hint overlay. Set per-entry from the "Past matches" list
   // in the promote-to-recurring modal — checking off a row there

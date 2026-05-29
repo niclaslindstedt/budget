@@ -14,6 +14,7 @@ import type {
   HistoryEntry,
   MatchRule,
   Settings,
+  Tag,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
@@ -25,6 +26,7 @@ import {
   SignedAmountInput,
 } from "../form";
 import { Modal } from "../Modal";
+import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 import {
   useMatchRuleAmountFilter,
@@ -49,6 +51,9 @@ export type MatchRuleDraft = {
   // override (clears any prior pick on matching budget rows); a string
   // assigns the company.
   companyId: string | null;
+  // Tags stamped on matching rows / history entries. Additive — empty
+  // means "don't touch tags".
+  tagIds: string[];
   amountSign: NonNullable<MatchRule["amountSign"]>;
   transferFilter: TransferFilter;
   // Signed bounds. `undefined` means "no constraint" — either end of
@@ -81,6 +86,7 @@ type Props = {
   categories: readonly Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  tags: readonly Tag[];
   settings: Settings;
   onClose: () => void;
   onSubmit: (draft: MatchRuleDraft) => void;
@@ -88,6 +94,7 @@ type Props = {
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
 };
 
 const PREVIEW_LIMIT = 8;
@@ -116,6 +123,7 @@ export function BudgetMatchRuleModal({
   categories,
   types,
   companies,
+  tags,
   settings,
   onClose,
   onSubmit,
@@ -123,6 +131,7 @@ export function BudgetMatchRuleModal({
   onCreateType,
   onCreateCategory,
   onCreateCompany,
+  onCreateTag,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -133,8 +142,15 @@ export function BudgetMatchRuleModal({
     { existing, seedEntry },
     initialMatchRuleFormState,
   );
-  const { pattern, description, typeId, companyId, transferFilter, saveRule } =
-    form;
+  const {
+    pattern,
+    description,
+    typeId,
+    companyId,
+    tagIds,
+    transferFilter,
+    saveRule,
+  } = form;
 
   const amountFilter = useMatchRuleAmountFilter(
     open,
@@ -179,6 +195,7 @@ export function BudgetMatchRuleModal({
       description: normalizeOptional(description),
       typeId,
       companyId,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
       amountSign,
       transferFilter,
       amountMin: rangeInverted ? undefined : amountMin,
@@ -190,6 +207,7 @@ export function BudgetMatchRuleModal({
       description,
       typeId,
       companyId,
+      tagIds,
       amountSign,
       transferFilter,
       amountMin,
@@ -282,6 +300,7 @@ export function BudgetMatchRuleModal({
       description: description.trim(),
       typeId,
       companyId,
+      tagIds,
       amountSign,
       transferFilter,
       amountMin,
@@ -295,6 +314,7 @@ export function BudgetMatchRuleModal({
     description,
     typeId,
     companyId,
+    tagIds,
     amountFilter.state.signMode,
     amountSign,
     transferFilter,
@@ -375,6 +395,15 @@ export function BudgetMatchRuleModal({
               selectedId={companyId}
               onSelect={(value) => dispatch({ kind: "setCompanyId", value })}
               onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">{t("matchRule.tags")}</span>
+            <TagsPicker
+              tags={tags}
+              selectedIds={tagIds}
+              onChange={(value) => dispatch({ kind: "setTagIds", value })}
+              onCreate={onCreateTag}
             />
           </div>
         </div>

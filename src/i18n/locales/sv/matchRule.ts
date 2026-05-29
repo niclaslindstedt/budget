@@ -19,6 +19,7 @@ const matchRule: MatchRuleCatalog = {
   type: "Typ",
   typeOptional: "Typ (valfritt)",
   company: "Företag (valfritt)",
+  tags: "Taggar (valfritt)",
   filters: "Filter",
   amountSign: "Beloppstecken",
   amountLabel: "Belopp",

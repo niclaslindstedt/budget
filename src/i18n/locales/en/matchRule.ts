@@ -19,6 +19,7 @@ const matchRule = {
   type: "Type",
   typeOptional: "Type (optional)",
   company: "Company (optional)",
+  tags: "Tags (optional)",
   filters: "Filters",
   amountSign: "Amount sign",
   amountLabel: "Amount",

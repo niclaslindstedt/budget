@@ -6,6 +6,7 @@ const editHistory: EditHistoryCatalog = {
   descriptionPlaceholder: "Skriv över bankens beskrivning",
   type: "Typ",
   company: "Företag",
+  tags: "Taggar",
   originalDescription: "Original från banken",
   hint:
     "Byter namn på bara denna post. Bankens text lämnas orörd så du " +

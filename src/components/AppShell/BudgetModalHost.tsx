@@ -527,6 +527,7 @@ export function BudgetModalHost(props: Props) {
         categories={categories}
         types={types}
         companies={data.companies}
+        tags={data.tags}
         settings={effectiveSettings}
         onClose={() => setMatchRulePrompt(null)}
         onSubmit={onSubmitMatchRule}
@@ -536,6 +537,7 @@ export function BudgetModalHost(props: Props) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
+        onCreateTag={onCreateTag}
       />
       <EditHistoryEntryModal
         open={historyEditPrompt !== null && historyEditEntry !== null}
@@ -543,6 +545,7 @@ export function BudgetModalHost(props: Props) {
         categories={categories}
         types={types}
         companies={data.companies}
+        tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
         settings={effectiveSettings}
         primaryIncomeMerchants={data.primaryIncomeMerchants}
@@ -552,6 +555,7 @@ export function BudgetModalHost(props: Props) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
+        onCreateTag={onCreateTag}
       />
       <BudgetApplySeriesDialog
         open={pendingSeriesEdit !== null}

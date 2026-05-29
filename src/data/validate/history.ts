@@ -11,6 +11,7 @@ export function validateHistoryEntry(
   path: string,
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
+  knownTagIds: ReadonlySet<string>,
 ): Result<HistoryEntry> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, description, amount, balance, importedAt } = raw;
@@ -79,6 +80,22 @@ export function validateHistoryEntry(
       return fail(`${path}.userCompanyId`, "expected a non-empty string");
     if (knownCompanyIds.has(raw.userCompanyId))
       entry.userCompanyId = raw.userCompanyId;
+  }
+  if (raw.userTagIds !== undefined && raw.userTagIds !== null) {
+    if (!Array.isArray(raw.userTagIds))
+      return fail(`${path}.userTagIds`, "expected an array");
+    // Drop dangling references to deleted tags and dedup defensively;
+    // only persist a non-empty result so an all-dangling array
+    // collapses back to "no tags". Same contract as `Row.tagIds`.
+    const seen = new Set<string>();
+    const kept: string[] = [];
+    for (const tagId of raw.userTagIds) {
+      if (typeof tagId !== "string" || tagId === "") continue;
+      if (!knownTagIds.has(tagId) || seen.has(tagId)) continue;
+      seen.add(tagId);
+      kept.push(tagId);
+    }
+    if (kept.length > 0) entry.userTagIds = kept;
   }
   if (raw.isTransfer !== undefined) {
     if (typeof raw.isTransfer !== "boolean")

@@ -33,6 +33,7 @@
 import {
   findMatchingRule,
   findMatchingRuleForCandidate,
+  mergeTagIds,
   ruleMatchesEntry,
 } from "../match-rules";
 import { candidateFromRow, resolveCandidateColumns } from "../row-candidate";
@@ -58,21 +59,29 @@ export function reapplyPatternsToBudget(
     const candidate = candidateFromRow(row, cols);
     if (!candidate) return row;
     const rule = findMatchingRuleForCandidate(rules, candidate);
-    // Additive only: if no rule wins (or the winning rule itself
-    // carries no typeId), keep whatever the row already had. See the
-    // header note — rules add types, they never strip them.
-    if (!rule || !rule.typeId) return row;
+    // Additive only: if no rule wins, keep whatever the row already
+    // had. A rule that carries no labels of its own (no type, company,
+    // or tags) leaves the row untouched too. See the header note —
+    // rules add labels, they never strip them.
+    if (!rule) return row;
     const ruleCompanyId =
       rule.companyId !== undefined && rule.companyId !== null
         ? rule.companyId
         : undefined;
-    const typeNeedsUpdate = rule.typeId !== row.typeId;
+    const nextTagIds = mergeTagIds(row.tagIds, rule.tagIds);
+    const typeNeedsUpdate =
+      rule.typeId !== undefined &&
+      rule.typeId !== null &&
+      rule.typeId !== row.typeId;
     const companyNeedsUpdate =
       ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
-    if (!typeNeedsUpdate && !companyNeedsUpdate) return row;
+    const tagsNeedUpdate = nextTagIds !== row.tagIds;
+    if (!typeNeedsUpdate && !companyNeedsUpdate && !tagsNeedUpdate) return row;
     changed = true;
-    const next: Row = { ...row, typeId: rule.typeId };
+    const next: Row = { ...row };
+    if (typeNeedsUpdate && rule.typeId) next.typeId = rule.typeId;
     if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
+    if (tagsNeedUpdate && nextTagIds) next.tagIds = [...nextTagIds];
     return next;
   });
   if (!changed) return item;
@@ -88,10 +97,11 @@ export function reapplyPatternsToAllSheets(
   );
 }
 
-// Count budget rows whose persisted typeId would be touched by a
-// fresh reapply. Locked rows are excluded — they don't move on
-// reapply, so counting them as "changed" would mislead the toast
-// preview the caller usually shows.
+// Count budget rows whose persisted labels would be touched by a
+// fresh reapply — the type, company, or tag set changing all count, so
+// a tags-only or company-only rule still reports honest numbers in the
+// toast the caller shows. Locked rows are excluded — they don't move
+// on reapply, so counting them as "changed" would mislead the preview.
 export function countRowsAffectedByReapply(
   prev: readonly Sheet[],
   next: readonly Sheet[],
@@ -113,11 +123,33 @@ export function countRowsAffectedByReapply(
       for (const nextRow of nextItem.rows) {
         const prevRow = prevById.get(nextRow.id);
         if (!prevRow) continue;
-        if ((prevRow.typeId ?? null) !== (nextRow.typeId ?? null)) count += 1;
+        if (
+          (prevRow.typeId ?? null) !== (nextRow.typeId ?? null) ||
+          (prevRow.companyId ?? null) !== (nextRow.companyId ?? null) ||
+          !sameTagIds(prevRow.tagIds, nextRow.tagIds)
+        ) {
+          count += 1;
+        }
       }
     }
   }
   return count;
+}
+
+// Order-insensitive equality for two optional tag-id arrays. A reapply
+// only ever appends (never reorders) so a length + membership check is
+// enough to tell a real change from a no-op.
+function sameTagIds(
+  a: readonly string[] | undefined,
+  b: readonly string[] | undefined,
+): boolean {
+  const aLen = a?.length ?? 0;
+  const bLen = b?.length ?? 0;
+  if (aLen !== bLen) return false;
+  if (aLen === 0) return true;
+  const setA = new Set(a);
+  for (const id of b ?? []) if (!setA.has(id)) return false;
+  return true;
 }
 
 // Fold a single walk over every unlocked budget row plus every visible
@@ -195,9 +227,10 @@ export function applyMatchRuleOnceToBudget(
     rule.companyId !== undefined && rule.companyId !== null
       ? rule.companyId
       : undefined;
-  // Bail when the rule has no labels to stamp — both the type and
-  // company are missing.
-  if (!ruleTypeId && ruleCompanyId === undefined) return item;
+  const hasRuleTags = rule.tagIds !== undefined && rule.tagIds.length > 0;
+  // Bail when the rule has no labels to stamp — type, company, and
+  // tags are all missing.
+  if (!ruleTypeId && ruleCompanyId === undefined && !hasRuleTags) return item;
   const cols = resolveCandidateColumns(item.columns);
   if (cols.descId === undefined) return item;
   let changed = false;
@@ -215,7 +248,9 @@ export function applyMatchRuleOnceToBudget(
       : true;
     const companyMatches =
       ruleCompanyId === undefined || row.companyId === ruleCompanyId;
-    if (typeMatches && companyMatches) return row;
+    const nextTagIds = mergeTagIds(row.tagIds, rule.tagIds);
+    const tagsMatch = nextTagIds === row.tagIds;
+    if (typeMatches && companyMatches && tagsMatch) return row;
     changed = true;
     const next: Row = { ...row };
     if (ruleTypeId) {
@@ -223,6 +258,7 @@ export function applyMatchRuleOnceToBudget(
       next.typeIdLocked = true;
     }
     if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
+    if (!tagsMatch && nextTagIds) next.tagIds = [...nextTagIds];
     return next;
   });
   if (!changed) return item;
@@ -257,10 +293,12 @@ export function applyMatchRuleOnceToHistory(
     typeof rule.description === "string" && rule.description !== ""
       ? rule.description
       : undefined;
+  const hasRuleTags = rule.tagIds !== undefined && rule.tagIds.length > 0;
   if (
     ruleTypeId === undefined &&
     ruleCompanyId === undefined &&
-    ruleDescription === undefined
+    ruleDescription === undefined &&
+    !hasRuleTags
   )
     return history as Record<string, HistoryEntry[]>;
   let mapChanged = false;
@@ -291,6 +329,11 @@ export function applyMatchRuleOnceToHistory(
         next.userDescription !== ruleDescription
       ) {
         next.userDescription = ruleDescription;
+        touched = true;
+      }
+      const nextTagIds = mergeTagIds(entry.userTagIds, rule.tagIds);
+      if (nextTagIds !== entry.userTagIds && nextTagIds) {
+        next.userTagIds = [...nextTagIds];
         touched = true;
       }
       if (!touched) return entry;

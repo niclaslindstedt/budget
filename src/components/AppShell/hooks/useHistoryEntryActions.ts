@@ -20,6 +20,7 @@ type Result = {
     userDescription: string;
     userTypeId: string | null;
     userCompanyId: string | null;
+    userTagIds: string[];
     noCompany: boolean;
   }) => void;
   onSetHistoryEntryPrimaryIncome: (

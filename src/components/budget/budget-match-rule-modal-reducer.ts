@@ -25,6 +25,9 @@ export type MatchRuleFormState = {
   description: string;
   typeId: string | null;
   companyId: string | null;
+  // Tags the rule stamps on every match. A set — the picker hands back
+  // the full selection. Empty means "don't touch tags".
+  tagIds: string[];
   transferFilter: TransferFilter;
   // "Save pattern" — when checked (the default) the rule is persisted
   // alongside the labels it applies; when unchecked the parent stamps
@@ -43,6 +46,7 @@ export type MatchRuleFormAction =
   | { kind: "setDescription"; value: string }
   | { kind: "setTypeId"; value: string | null }
   | { kind: "setCompanyId"; value: string | null }
+  | { kind: "setTagIds"; value: string[] }
   | { kind: "setTransferFilter"; value: TransferFilter }
   | { kind: "setSaveRule"; value: boolean };
 
@@ -66,6 +70,7 @@ export function initialMatchRuleFormState({
       description: existing.description ?? "",
       typeId: existing.typeId ?? null,
       companyId: existing.companyId ?? null,
+      tagIds: existing.tagIds ?? [],
       transferFilter: existing.transferFilter ?? "any",
       saveRule: true,
     };
@@ -75,6 +80,7 @@ export function initialMatchRuleFormState({
     description: "",
     typeId: null,
     companyId: null,
+    tagIds: [],
     transferFilter: "exclude",
     saveRule: true,
   };
@@ -95,6 +101,8 @@ export function budgetMatchRuleModalReducer(
       return { ...state, typeId: action.value };
     case "setCompanyId":
       return { ...state, companyId: action.value };
+    case "setTagIds":
+      return { ...state, tagIds: action.value };
     case "setTransferFilter":
       return { ...state, transferFilter: action.value };
     case "setSaveRule":

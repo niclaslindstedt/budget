@@ -12,12 +12,14 @@ import type {
   HistoryEntry,
   PrimaryIncomeMerchant,
   Settings,
+  Tag,
 } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
+import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 
 // Per-entry edit modal opened by the pen button on a synthesized
@@ -36,6 +38,7 @@ type Props = {
   categories: readonly Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill. See
   // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
@@ -46,6 +49,7 @@ type Props = {
     userDescription: string;
     userTypeId: string | null;
     userCompanyId: string | null;
+    userTagIds: string[];
     noCompany: boolean;
   }) => void;
   // Toggle the primary-income flag for the merchant this entry
@@ -61,6 +65,7 @@ type Props = {
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
 };
 
 export function EditHistoryEntryModal({
@@ -69,6 +74,7 @@ export function EditHistoryEntryModal({
   categories,
   types,
   companies,
+  tags,
   companyTypeSuggestions,
   settings,
   primaryIncomeMerchants,
@@ -78,6 +84,7 @@ export function EditHistoryEntryModal({
   onCreateType,
   onCreateCategory,
   onCreateCompany,
+  onCreateTag,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -85,6 +92,7 @@ export function EditHistoryEntryModal({
   const initialDescription = entry?.userDescription ?? "";
   const initialTypeId = entry?.userTypeId ?? null;
   const initialCompanyId = entry?.userCompanyId ?? null;
+  const initialTagIds = entry?.userTagIds ?? [];
   const initialNoCompany = entry?.noCompany ?? false;
 
   // Resolve the persisted primary-income flag for this entry's
@@ -111,6 +119,7 @@ export function EditHistoryEntryModal({
     [typeId, companyTypeSuggestions],
   );
   const [noCompany, setNoCompany] = useState(initialNoCompany);
+  const [tagIds, setTagIds] = useState<string[]>(initialTagIds);
   const [isPrimaryIncome, setIsPrimaryIncome] = useState(initialIsPrimary);
   const [anchorDayText, setAnchorDayText] = useState(String(initialAnchorDay));
 
@@ -122,6 +131,7 @@ export function EditHistoryEntryModal({
     setTypeId(initialTypeId);
     setCompanyId(initialCompanyId);
     setNoCompany(initialNoCompany);
+    setTagIds(initialTagIds);
     setIsPrimaryIncome(initialIsPrimary);
     setAnchorDayText(String(initialAnchorDay));
   });
@@ -135,9 +145,10 @@ export function EditHistoryEntryModal({
       userDescription: description.trim(),
       userTypeId: typeId,
       userCompanyId: companyId,
+      userTagIds: tagIds,
       noCompany,
     });
-  }, [entry, description, typeId, companyId, noCompany, onSubmit]);
+  }, [entry, description, typeId, companyId, tagIds, noCompany, onSubmit]);
 
   if (!open || !entry) return null;
 
@@ -200,6 +211,15 @@ export function EditHistoryEntryModal({
               onSelect={handlePickCompany}
               onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("editHistory.tags")}</span>
+            <TagsPicker
+              tags={tags}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+              onCreate={onCreateTag}
             />
           </div>
           <label className="flex flex-col gap-1">

@@ -842,6 +842,36 @@ describe("synthesizeHistoryRow", () => {
     expect(row.typeId).toBe("type-1");
   });
 
+  it("stamps the matching rule's tags onto the synthesized row", () => {
+    const rule: MatchRule = {
+      id: "r1",
+      pattern: "*App Store*",
+      tagIds: ["tag-a", "tag-b"],
+    };
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, [rule]);
+    expect(row.tagIds).toEqual(["tag-a", "tag-b"]);
+  });
+
+  it("unions per-entry tags with the matching rule's tags, deduped", () => {
+    const rule: MatchRule = {
+      id: "r1",
+      pattern: "*App Store*",
+      tagIds: ["tag-a", "tag-b"],
+    };
+    const tagged: HistoryEntry = {
+      ...baseEntry,
+      userTagIds: ["tag-a", "tag-c"],
+    };
+    const [row] = synthesizeHistoryRow(tagged, item.columns, {}, [rule]);
+    // Entry tags first, then the rule tags not already present.
+    expect(row.tagIds).toEqual(["tag-a", "tag-c", "tag-b"]);
+  });
+
+  it("leaves tagIds undefined when neither entry nor rule carries tags", () => {
+    const [row] = synthesizeHistoryRow(baseEntry, item.columns, {}, []);
+    expect(row.tagIds).toBeUndefined();
+  });
+
   it("rule labels override hint labels when both match", () => {
     const hint: MerchantHint = {
       hitCount: 1,

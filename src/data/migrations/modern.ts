@@ -318,6 +318,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // seeded empty; rows gain `tagIds` only when the user assigns a tag
   // in the entry edit / bulk-edit modal. See the Tags tab in Settings.
   44: (v44) => ({ ...v44, version: 45, tags: [] }),
+
+  // v45 → v46: introduces optional `HistoryEntry.userTagIds` (per-entry
+  // tag override set from the edit-history modal) and `MatchRule.tagIds`
+  // (tags stamped on every match by the label-by-pattern modal). Both
+  // are additive and reference the already-existing `tags` array — a
+  // v45 record simply lacks them and passes the v46 validator
+  // unchanged, so this is a bare version bump.
+  45: (v45) => ({ ...v45, version: 46 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

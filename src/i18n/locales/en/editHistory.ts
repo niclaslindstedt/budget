@@ -6,6 +6,7 @@ const editHistory = {
   descriptionPlaceholder: "Override the bank's description",
   type: "Type",
   company: "Company",
+  tags: "Tags",
   originalDescription: "Original from bank",
   hint:
     "Renames just this one entry. The bank's record stays untouched " +
