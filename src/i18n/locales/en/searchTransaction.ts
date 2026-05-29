@@ -32,6 +32,10 @@ const searchTransaction = {
   filterDateMin: "Earliest date",
   filterDateMax: "Latest date",
   filterReset: "Reset filters",
+  hitsOne: "{n} hit",
+  hitsOther: "{n} hits",
+  hitsShowing: "{total} hits, showing {shown}",
+  selectAll: "Select all",
   selectResult: "Select {description}",
 } as const;
 

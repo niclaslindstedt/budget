@@ -93,6 +93,14 @@ export type SearchResult = {
   match: SearchMatch;
 };
 
+// What `runSearch` returns: the capped, sorted list the modal renders
+// plus the total number of matches before the cap, so the modal can
+// show a "{total} hits, showing {results.length}" count row.
+export type SearchOutcome = {
+  results: SearchResult[];
+  total: number;
+};
+
 // Caller-selected ordering applied after the relevance scoring pass.
 // `relevance` (default) keeps the score-sorted order; the date /
 // amount variants re-sort by the corresponding cell value, pushing
@@ -548,7 +556,7 @@ export function runSearch(
   query: string,
   sortBy: SearchSort = "relevance",
   filter: SearchFilter = EMPTY_FILTER,
-): SearchResult[] {
+): SearchOutcome {
   const trimmed = query.trim();
   if (trimmed === "") {
     // Filter-only browsing: with no query there's nothing to score, so
@@ -556,7 +564,7 @@ export function runSearch(
     // SearchResult shape without highlighting anything). When the filter
     // is also default we return [] so the modal shows its "start
     // typing" hint instead of dumping the entire workspace.
-    if (!isFilterActive(filter)) return [];
+    if (!isFilterActive(filter)) return { results: [], total: 0 };
     const browsed: SearchResult[] = [];
     for (const entry of index) {
       if (!matchesFilter(entry, filter)) continue;
@@ -564,7 +572,7 @@ export function runSearch(
     }
     const ordered =
       sortBy === "relevance" ? browsed : reorderResults(browsed, sortBy);
-    return ordered.slice(0, MAX_RESULTS);
+    return { results: ordered.slice(0, MAX_RESULTS), total: browsed.length };
   }
   const needle = trimmed.toLowerCase();
   const parsedAmount = parseAmount(trimmed);
@@ -589,8 +597,34 @@ export function runSearch(
   // which is fine for a transaction ledger.
   scored.sort((a, b) => a.score - b.score);
   const top = scored.slice(0, MAX_RESULTS).map((s) => s.result);
-  if (sortBy === "relevance") return top;
-  return reorderResults(top, sortBy);
+  const results = sortBy === "relevance" ? top : reorderResults(top, sortBy);
+  return { results, total: scored.length };
+}
+
+// Every entry matching the query + filter, uncapped and unscored — the
+// raw match set behind the MAX_RESULTS display cap. "Select all" uses
+// this so a bulk operation can reach matches beyond the rendered top N,
+// not just the rows currently on screen. Order is irrelevant to the
+// caller (it maps to a selection set), so this skips the relevance sort
+// `runSearch` does.
+export function matchingEntries(
+  index: readonly SearchEntry[],
+  query: string,
+  filter: SearchFilter = EMPTY_FILTER,
+): SearchEntry[] {
+  const trimmed = query.trim();
+  if (trimmed === "") {
+    if (!isFilterActive(filter)) return [];
+    return index.filter((entry) => matchesFilter(entry, filter));
+  }
+  const needle = trimmed.toLowerCase();
+  const parsedAmount = parseAmount(trimmed);
+  const out: SearchEntry[] = [];
+  for (const entry of index) {
+    if (!matchesFilter(entry, filter)) continue;
+    if (scoreEntry(entry, needle, parsedAmount) !== null) out.push(entry);
+  }
+  return out;
 }
 
 // Re-sort the relevance-trimmed list by the user-picked field. Rows
