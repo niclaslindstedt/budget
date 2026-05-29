@@ -641,11 +641,10 @@ export function BudgetPage({
     <ActiveRowProvider>
       <BudgetContextProvider value={budgetContextValue}>
         <section ref={sectionRef} data-sheet-content>
-          <header className="mb-2 flex items-center justify-center gap-2 md:mb-6">
-            <h2 className="m-0 text-base font-bold text-fg-bright">
-              {sheet.name}
+          <header className="mb-2 flex items-center justify-center md:mb-6">
+            <h2 className="m-0">
+              <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
             </h2>
-            <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
           </header>
           <div className="flex flex-col gap-3 md:gap-6">
             {hasMoreHistory &&
