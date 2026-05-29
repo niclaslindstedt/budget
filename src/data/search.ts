@@ -41,11 +41,29 @@ export type SearchEntry = {
   typeGlyph: string;
   typeColor: string;
   categoryName: string;
+  // Glyph + colour of the row's `Category`, mirrored like the type pair
+  // so the filter popover can render a category option without
+  // re-resolving the catalog. Empty when the row has no type / category.
+  categoryGlyph: string;
+  categoryColor: string;
   companyName: string;
+  // Ids of the row's type / category / company, kept alongside the
+  // display names so the filter popover can match on identity (an
+  // empty string when the row carries none). Filtering by id rather
+  // than name avoids collapsing two same-named-but-distinct entries.
+  typeId: string;
+  categoryId: string;
+  companyId: string;
   // Space-joined names of the row's tags. Tags never render on the
   // sheet, so this field exists purely to make a tagged row findable
   // by a tag's name even when no visible field contains the query.
   tagNames: string;
+  // Resolved tags carried by the row ({id, name, color}), in row order.
+  // Backs the tag filter's identity match and the coloured option chips
+  // in the filter popover — a structured form is needed because tag
+  // names can contain spaces, so the joined `tagNames` can't be split
+  // back apart reliably.
+  tags: readonly { id: string; name: string; color: string }[];
   // Raw bank-statement memo for rows synthesized from imported history
   // entries. The visible description on a historic row is the user
   // override, matching rule, merchant hint, company name, or type
@@ -151,6 +169,18 @@ export type SearchFilter = {
   dateMax: string | null;
   // Restrict to these sheet ids. Empty = every budget sheet (default).
   sheetIds: readonly string[];
+  // Restrict to rows carrying one of these company / type / category
+  // ids. Empty = no constraint on that axis (default). A row whose id
+  // is absent (no company / no type) never satisfies a non-empty
+  // constraint, so picking a company narrows to rows that have it.
+  companyIds: readonly string[];
+  typeIds: readonly string[];
+  categoryIds: readonly string[];
+  // Restrict to rows carrying these tag ids. `tagMatchAll` toggles the
+  // combinator: false (default) keeps rows with ANY of the picked tags,
+  // true keeps only rows carrying ALL of them (the "&&" mode).
+  tagIds: readonly string[];
+  tagMatchAll: boolean;
 };
 
 export const EMPTY_FILTER: SearchFilter = {
@@ -162,6 +192,11 @@ export const EMPTY_FILTER: SearchFilter = {
   dateMin: null,
   dateMax: null,
   sheetIds: [],
+  companyIds: [],
+  typeIds: [],
+  categoryIds: [],
+  tagIds: [],
+  tagMatchAll: false,
 };
 
 export function isFilterActive(filter: SearchFilter): boolean {
@@ -173,7 +208,11 @@ export function isFilterActive(filter: SearchFilter): boolean {
     filter.amountMax !== null ||
     filter.dateMin !== null ||
     filter.dateMax !== null ||
-    filter.sheetIds.length > 0
+    filter.sheetIds.length > 0 ||
+    filter.companyIds.length > 0 ||
+    filter.typeIds.length > 0 ||
+    filter.categoryIds.length > 0 ||
+    filter.tagIds.length > 0
   );
 }
 
@@ -322,14 +361,21 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
         const typeGlyph = type ? type.glyph : "";
         const typeColor = type ? type.color : "";
         const categoryName = category ? displayCategoryName(category, t) : "";
+        const categoryGlyph = category ? category.icon : "";
+        const categoryColor = category ? category.color : "";
         const companyName = company?.name ?? "";
-        const tagNames =
+        const tags =
           row.tagIds && row.tagIds.length > 0
             ? row.tagIds
-                .map((tagId) => tagsById.get(tagId)?.name ?? "")
-                .filter((name) => name !== "")
-                .join(" ")
-            : "";
+                .map((tagId) => tagsById.get(tagId))
+                .filter((tag): tag is Tag => tag !== undefined)
+                .map((tag) => ({
+                  id: tag.id,
+                  name: tag.name,
+                  color: tag.color,
+                }))
+            : [];
+        const tagNames = tags.map((tag) => tag.name).join(" ");
         const bankDescription =
           row.kind === "historic"
             ? (historyById.get(row.historyEntryId)?.description ?? "")
@@ -347,8 +393,14 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           typeGlyph,
           typeColor,
           categoryName,
+          categoryGlyph,
+          categoryColor,
           companyName,
+          typeId: type?.id ?? "",
+          categoryId: category?.id ?? "",
+          companyId: company?.id ?? "",
           tagNames,
+          tags,
           bankDescription,
           amount,
           kind: row.kind,
@@ -549,6 +601,28 @@ function matchesFilter(entry: SearchEntry, filter: SearchFilter): boolean {
   if (filter.excludeTransfers && entry.isTransfer) return false;
   if (filter.sheetIds.length > 0 && !filter.sheetIds.includes(entry.sheetId))
     return false;
+  if (
+    filter.companyIds.length > 0 &&
+    !filter.companyIds.includes(entry.companyId)
+  )
+    return false;
+  if (filter.typeIds.length > 0 && !filter.typeIds.includes(entry.typeId))
+    return false;
+  if (
+    filter.categoryIds.length > 0 &&
+    !filter.categoryIds.includes(entry.categoryId)
+  )
+    return false;
+  if (filter.tagIds.length > 0) {
+    const has = (id: string) => entry.tags.some((tag) => tag.id === id);
+    // "All" (&&) requires every picked tag on the row; "Any" (default)
+    // requires at least one. A row with no tags fails both, so a tag
+    // filter always narrows to tagged rows.
+    const ok = filter.tagMatchAll
+      ? filter.tagIds.every(has)
+      : filter.tagIds.some(has);
+    if (!ok) return false;
+  }
   if (filter.amountMin !== null || filter.amountMax !== null) {
     // A row without an amount can't satisfy an amount band — drop it
     // rather than letting it slip past a deliberate narrowing.
