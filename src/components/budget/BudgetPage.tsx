@@ -139,21 +139,12 @@ type Props = {
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: (date: string) => void;
   onAddComplex: (date: string) => void;
-  onDeleteRequest: (row: Row) => void;
-  onEditRequest: (row: Row) => void;
-  onEditRowRequest: (row: Row) => void;
-  onSplitRequest: (row: Row) => void;
-  onTransferRequest: (row: Row) => void;
   // Flip the per-row `isTransfer` flag on a budget row. Used by the
   // eye-toggle action button to mark or unmark a one-off entry as an
   // inter-account transfer so the `hideTransfers` setting can suppress
   // it without converting it into a full Transfer.
   onToggleRowTransfer: (row: Row) => void;
-  onMatchRuleRequest: (row: Row) => void;
-  onEditHistoryRequest: (row: Row) => void;
-  onCopyRequest: (row: Row) => void;
   onSetFiscalMonthShift: (row: Row, shift: -1 | 1 | null) => void;
-  onCorrectionDeleteRequest: (row: Row) => void;
   // Inline per-cell write for a synthesized history row. Routed by
   // `BudgetPage` when the user edits the description or type cell on a
   // history row — `onUpdateCell` would no-op on the underlying
@@ -266,17 +257,8 @@ export function BudgetPage({
   onCommitCell,
   onAddRow,
   onAddComplex,
-  onDeleteRequest,
-  onEditRequest,
-  onEditRowRequest,
-  onSplitRequest,
-  onTransferRequest,
   onToggleRowTransfer,
-  onMatchRuleRequest,
-  onEditHistoryRequest,
-  onCopyRequest,
   onSetFiscalMonthShift,
-  onCorrectionDeleteRequest,
   onUpdateHistoryEntry,
   onApplyMetadataToMatchingHistory,
   tags,
@@ -742,16 +724,7 @@ export function BudgetPage({
                     onCommitCell={handleCommitCell}
                     onAddRow={slotAdd}
                     onAddComplex={slotAddComplex}
-                    onDeleteRequest={onDeleteRequest}
-                    onEditRequest={onEditRequest}
-                    onEditRowRequest={onEditRowRequest}
-                    onSplitRequest={onSplitRequest}
-                    onTransferRequest={onTransferRequest}
-                    onMatchRuleRequest={onMatchRuleRequest}
-                    onEditHistoryRequest={onEditHistoryRequest}
-                    onCopyRequest={onCopyRequest}
                     onSetFiscalMonthShift={onSetFiscalMonthShift}
-                    onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                     onReorderColumns={onReorderColumns}
                     onToggleSelect={onToggleSelect}
                     onToggleSelectMonth={onToggleSelectMonth}

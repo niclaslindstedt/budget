@@ -16,16 +16,13 @@ import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import type { Row } from "../../data/types";
 import { FloatingPanel } from "../FloatingPanel";
+import { useModalDispatch } from "../modal-dispatch";
 
 type Props = {
   row: Row;
   isHistory: boolean;
   isSeries: boolean;
-  onEditRequest: (row: Row) => void;
-  onMatchRuleRequest: (row: Row) => void;
   onToggleRowTransfer?: (row: Row) => void;
-  onSplitRequest: (row: Row) => void;
-  onCopyRequest: (row: Row) => void;
   // Manual fiscal-month override. Null clears the override; ±1 sets it.
   // Hidden on synthesized history / transfer rows — they have no
   // editable persisted form and the shift would have nothing to attach
@@ -56,15 +53,12 @@ export function BudgetEntryActionsMenu({
   row,
   isHistory,
   isSeries,
-  onEditRequest,
-  onMatchRuleRequest,
   onToggleRowTransfer,
-  onSplitRequest,
-  onCopyRequest,
   onSetFiscalMonthShift,
   onAction,
 }: Props) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -81,7 +75,7 @@ export function BudgetEntryActionsMenu({
     key: "recurring",
     icon: <Repeat size={16} aria-hidden focusable={false} />,
     label: isSeries ? t("cell.editRecurring") : t("cell.makeRecurring"),
-    onClick: () => pick(() => onEditRequest(row)),
+    onClick: () => pick(() => dispatchModal({ kind: "open-edit-entry", row })),
   });
 
   // Available on every editable row, not just history. For a history
@@ -98,7 +92,8 @@ export function BudgetEntryActionsMenu({
       icon: <Tags size={16} aria-hidden focusable={false} />,
       label: t("cell.labelSimilar"),
       title: t("cell.labelSimilarTitle"),
-      onClick: () => pick(() => onMatchRuleRequest(row)),
+      onClick: () =>
+        pick(() => dispatchModal({ kind: "open-match-rule", row })),
     });
   }
 
@@ -124,7 +119,7 @@ export function BudgetEntryActionsMenu({
     key: "split",
     icon: <Scissors size={16} aria-hidden focusable={false} />,
     label: t("cell.split"),
-    onClick: () => pick(() => onSplitRequest(row)),
+    onClick: () => pick(() => dispatchModal({ kind: "open-split-row", row })),
   });
 
   // Copy stamps fresh manual rows into other months. Available on
@@ -137,7 +132,7 @@ export function BudgetEntryActionsMenu({
     key: "copy",
     icon: <Copy size={16} aria-hidden focusable={false} />,
     label: t("cell.copy"),
-    onClick: () => pick(() => onCopyRequest(row)),
+    onClick: () => pick(() => dispatchModal({ kind: "open-copy-row", row })),
   });
 
   // Manual fiscal-month override. Hidden on synthesized rows (history /

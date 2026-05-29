@@ -8,6 +8,7 @@ import { useLang, useT } from "../../i18n";
 import type { CellValue, Column, Row } from "../../data/types";
 import { formatShortDate } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { useModalDispatch } from "../modal-dispatch";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { BudgetCell } from "./BudgetCell";
 import { useBudgetContext } from "./BudgetContext";
@@ -60,36 +61,6 @@ type Props = {
   // Used to prompt for series-wide propagation on recurring rows; the
   // parent ignores the signal for one-off rows.
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
-  onDeleteRequest: (row: Row) => void;
-  onEditRequest: (row: Row) => void;
-  // Opens the generic edit-row modal that edits every field at once.
-  // Fired by the pen action button and by long-pressing the row.
-  // Suppressed for synthesized rows (transfers / history) since
-  // those have their own edit flows.
-  onEditRowRequest: (row: Row) => void;
-  // Opens the split modal for the row. Works on both authored budget
-  // rows and synthesized history rows — splitting a bank entry writes
-  // a `HistoryEntry.splits` array that the synthesizer fans out into
-  // one row per split. Suppressed only for transfer rows (those
-  // have a dedicated edit modal) and correction lines.
-  onSplitRequest: (row: Row) => void;
-  onTransferRequest: (row: Row) => void;
-  // Fires when the user clicks the pattern button on a synthesized
-  // history row. Opens the wildcard rule modal seeded from the row's
-  // bank text; ignored when called on non-history rows since the
-  // button only renders there.
-  onMatchRuleRequest: (row: Row) => void;
-  // Fires when the user clicks the pen button on a synthesized history
-  // row. Opens the per-entry edit modal — description + type, plus
-  // the original bank text for reference. The button only renders on
-  // history rows; called on a non-history row, the parent guards the
-  // dispatch.
-  onEditHistoryRequest: (row: Row) => void;
-  // Open the copy modal seeded with just this row. The modal is
-  // shared with the bulk-select toolbar — single-row copy goes through
-  // the same dispatch path with a one-element rowIds array. Moving a
-  // row to another month is done by editing its date cell.
-  onCopyRequest: (row: Row) => void;
   // Manual fiscal-month override for the row. Threaded through to
   // `BudgetEntryActionsMenu` so the "Push to next month" / "Push to previous
   // month" / "Reset month override" entries can dispatch the reducer
@@ -117,19 +88,12 @@ function BudgetRowImpl({
   onToggleRowTransfer,
   onUpdateCell,
   onCommitCell,
-  onDeleteRequest,
-  onEditRequest,
-  onEditRowRequest,
-  onSplitRequest,
-  onTransferRequest,
-  onMatchRuleRequest,
-  onEditHistoryRequest,
-  onCopyRequest,
   onSetFiscalMonthShift,
   onToggleSelect,
 }: Props) {
   const tr = useT();
   const lang = useLang();
+  const dispatchModal = useModalDispatch();
   const { typesById, companiesById, settings } = useBudgetContext();
   const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
   const company = row.companyId
@@ -262,7 +226,7 @@ function BudgetRowImpl({
       longPressTriggered.current = true;
       longPressTimer.current = null;
       setSwiped(false);
-      onEditRowRequest(row);
+      dispatchModal({ kind: "open-edit-row", row });
     }, LONG_PRESS_MS);
   }
 
@@ -297,7 +261,7 @@ function BudgetRowImpl({
     clearLongPress();
     longPressTriggered.current = true;
     setSwiped(false);
-    onEditRowRequest(row);
+    dispatchModal({ kind: "open-edit-row", row });
   }
 
   function onClickCapture(e: React.MouseEvent<HTMLTableRowElement>) {
@@ -437,7 +401,7 @@ function BudgetRowImpl({
               onClick={() => {
                 if (!transferEnabled) return;
                 setSwiped(false);
-                onTransferRequest(row);
+                dispatchModal({ kind: "open-transfer-row", row });
               }}
             >
               <ArrowLeftRight size={16} aria-hidden focusable={false} />
@@ -451,7 +415,7 @@ function BudgetRowImpl({
               title={tr("cell.editHistoryEntry")}
               onClick={() => {
                 setSwiped(false);
-                onEditHistoryRequest(row);
+                dispatchModal({ kind: "open-edit-history", row });
               }}
             >
               <Pencil size={16} aria-hidden focusable={false} />
@@ -464,7 +428,7 @@ function BudgetRowImpl({
               aria-label={tr("cell.editRow")}
               onClick={() => {
                 setSwiped(false);
-                onEditRowRequest(row);
+                dispatchModal({ kind: "open-edit-row", row });
               }}
             >
               <Pencil size={16} aria-hidden focusable={false} />
@@ -478,7 +442,7 @@ function BudgetRowImpl({
               title={tr("cell.deleteRow")}
               onClick={() => {
                 setSwiped(false);
-                onDeleteRequest(row);
+                dispatchModal({ kind: "open-delete-row", row });
               }}
             >
               <Trash2 size={16} aria-hidden focusable={false} />
@@ -503,11 +467,7 @@ function BudgetRowImpl({
               row={row}
               isHistory={isHistory}
               isSeries={isSeries}
-              onEditRequest={onEditRequest}
-              onMatchRuleRequest={onMatchRuleRequest}
               onToggleRowTransfer={onToggleRowTransfer}
-              onSplitRequest={onSplitRequest}
-              onCopyRequest={onCopyRequest}
               onSetFiscalMonthShift={onSetFiscalMonthShift}
               onAction={() => setSwiped(false)}
             />
