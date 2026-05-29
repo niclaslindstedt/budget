@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -100,6 +107,19 @@ type RootProps = {
   // shrinks — e.g. SettingsModal, whose tallest tabs would otherwise
   // scroll beyond the visible card.
   fixedHeight?: boolean;
+  // When true, focus the first body focusable synchronously on open
+  // (in a layout effect, within the same task as the discrete tap that
+  // flipped `open`) instead of after a frame. This keeps the focus
+  // attributed to the user gesture so iOS opens the soft keyboard for a
+  // text input — the default requestAnimationFrame-deferred focus lands
+  // the caret (the field shows focus) but iOS suppresses the keyboard
+  // because the focus is no longer tied to the originating tap. Set this
+  // on modals whose first action is typing into a text field that should
+  // be ready on open (the transfer-search modal). Leave it off for
+  // modals whose first focusable isn't a keyboard-opening input —
+  // focusing a button a frame later is fine and the deferred path keeps
+  // the portal settled first.
+  focusOnOpen?: boolean;
   children: React.ReactNode;
 };
 
@@ -112,6 +132,7 @@ export function Modal({
   scrollableBody = true,
   centered = false,
   fixedHeight = false,
+  focusOnOpen = false,
   children,
 }: RootProps) {
   useBodyScrollLock(open);
@@ -140,47 +161,67 @@ export function Modal({
     };
   }, [open]);
 
-  // Focus management — runs on every open / close transition:
+  // Focus management — on every open / close transition:
   //  1. Capture the opener (the button or input that had focus before
   //     the modal showed up) so we can hand control back when it
   //     closes.
-  //  2. Move focus into the modal shell. We prefer the first
-  //     focusable inside the body (e.g. a form input) but fall back
-  //     to the shell itself (`tabIndex={-1}`) so Tab still walks into
-  //     the modal even if it has no focusable content.
+  //  2. Move focus into the modal shell, preferring the first focusable
+  //     inside the body (e.g. a form input) but falling back to the
+  //     shell itself (`tabIndex={-1}`) so Tab still walks into the modal
+  //     even if it has no focusable content. The timing of this step is
+  //     what splits into two effects below: deferred for most modals,
+  //     synchronous for `focusOnOpen` ones (iOS soft-keyboard handling).
   //  3. On close, restore focus to the opener if it's still in the
-  //     document. `preventScroll: true` because we don't want the
-  //     browser's default focus-into-view behaviour to fight the
-  //     scroll-position restore `useBodyScrollLock` does on release —
-  //     the user opened the modal from somewhere, the page should
-  //     land back exactly there.
+  //     document.
+  // Move focus to the first focusable inside the modal body. Skips the
+  // header close button — it's a dismiss control, not the user's likely
+  // first action — falling back to close-button → shell.
+  const focusInitial = useCallback(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const focusables = getFocusables(shell);
+    const body = shell.querySelector<HTMLElement>("[data-modal-body]");
+    const bodyFocusables = body ? getFocusables(body) : [];
+    const target = bodyFocusables[0] ?? focusables[0] ?? shell;
+    target.focus();
+  }, []);
+
+  const restoreOpener = useCallback(() => {
+    const opener = openerRef.current;
+    if (opener && document.contains(opener)) {
+      // `preventScroll: true` because we don't want the browser's
+      // default focus-into-view behaviour to fight the scroll-position
+      // restore `useBodyScrollLock` does on release.
+      opener.focus({ preventScroll: true });
+    }
+  }, []);
+
+  // Default (deferred) focus-into-modal path — every modal that doesn't
+  // opt into `focusOnOpen`. Waits a frame for the portal to settle before
+  // reaching for the first focusable, then restores the opener on close.
   useEffect(() => {
-    if (!open) return;
+    if (!open || focusOnOpen) return;
     openerRef.current = document.activeElement as HTMLElement | null;
-    // Wait a frame for the portal to mount and the children to render
-    // before reaching for the first focusable — the ref is set after
-    // the first commit.
-    const raf = requestAnimationFrame(() => {
-      const shell = shellRef.current;
-      if (!shell) return;
-      const focusables = getFocusables(shell);
-      // Skip the header close button as the auto-focus target — it's
-      // a dismiss control, not the user's likely first action. Prefer
-      // the first focusable inside the modal body, falling back to
-      // close-button → shell.
-      const body = shell.querySelector<HTMLElement>("[data-modal-body]");
-      const bodyFocusables = body ? getFocusables(body) : [];
-      const target = bodyFocusables[0] ?? focusables[0] ?? shell;
-      target.focus();
-    });
+    const raf = requestAnimationFrame(focusInitial);
     return () => {
       cancelAnimationFrame(raf);
-      const opener = openerRef.current;
-      if (opener && document.contains(opener)) {
-        opener.focus({ preventScroll: true });
-      }
+      restoreOpener();
     };
-  }, [open]);
+  }, [open, focusOnOpen, focusInitial, restoreOpener]);
+
+  // iOS-friendly synchronous focus path — `focusOnOpen` modals. A layout
+  // effect fires within the same task as the discrete tap that flipped
+  // `open`, so the focus stays attributed to the user gesture and iOS is
+  // allowed to open the soft keyboard. The opener is captured here
+  // before focus moves (still the trigger at this point) and restored on
+  // close. See the `focusOnOpen` prop docs for why the deferred path above
+  // can't be used for a text input that should type-ready on open.
+  useLayoutEffect(() => {
+    if (!open || !focusOnOpen) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    focusInitial();
+    return restoreOpener;
+  }, [open, focusOnOpen, focusInitial, restoreOpener]);
 
   // Focus trap — cycles Tab / Shift+Tab inside the shell so keyboard
   // users can't accidentally Tab into the inert background. Without

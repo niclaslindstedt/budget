@@ -173,6 +173,7 @@ export function BudgetTransferSearchModal({
       open={open}
       onClose={onClose}
       labelledBy="transaction-search-modal-title"
+      focusOnOpen
     >
       <Modal.Header
         icon={<Search size={14} aria-hidden focusable={false} />}
