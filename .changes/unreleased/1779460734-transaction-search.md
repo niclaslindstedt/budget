@@ -35,7 +35,9 @@ A select button turns the results into a multi-pick list: tick several
 entries and edit, move, copy, or delete them all at once with the same
 toolbar the sheet uses. Selection stays within a single sheet at a time
 and covers only entries you added (imported bank lines and transfers
-aren't selectable). A "Select all" action grabs every match on the
+aren't selectable); when your workspace has more than one sheet the
+select button stays disabled until you scope the search to a single
+sheet with the filter, so a bulk action can't span sheets by accident. A "Select all" action grabs every match on the
 active sheet in one tap — including matches past the 50 shown — so a
 search that turns up hundreds of rows can be acted on without ticking
 each one.

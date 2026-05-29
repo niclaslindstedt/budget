@@ -4,7 +4,8 @@ type: Added
 
 Search now has a filter popover beside the sort menu, both tucked inside
 the search bar. Exclude transfers, bank history, or unconfirmed entries
-(leaving only imported history), restrict to specific budget sheets,
+(leaving only imported history), scope the search to a single budget
+sheet (a dropdown picks one sheet, or all), restrict to specific
 companies, types, categories, or tags (match any tag or require all of
 them), and narrow results to an amount or date range with dual-thumb
 sliders, or pick a time range to exclude data older than a chosen number
