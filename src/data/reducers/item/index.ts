@@ -109,6 +109,9 @@ export function reduceAccountBudget(
           row.typeIdLocked = true;
         }
         if (draft.companyId) row.companyId = draft.companyId;
+        if (draft.tagIds && draft.tagIds.length > 0) {
+          row.tagIds = [...draft.tagIds];
+        }
         if (draft.isTransfer) row.isTransfer = true;
         // Formula rows carry the canonical id-keyed form so renames of
         // a referenced sheet don't break the formula; the renderer

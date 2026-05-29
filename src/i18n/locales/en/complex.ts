@@ -9,6 +9,7 @@ const complex = {
   amountPlaceholder: "1200",
   type: "Type",
   company: "Company",
+  tags: "Tags",
   isTransfer: "Mark as transfer",
   pickType: "Pick a type",
   schedule: "Schedule",

@@ -87,6 +87,9 @@ export type ComplexEntryDraft = {
   // Optional company id stamped on every generated row alongside the
   // type. `null` (or absent) leaves the row's `companyId` blank.
   companyId?: string | null;
+  // Optional tag ids stamped on every generated row. Absent (or an
+  // empty array) leaves the row's `tagIds` unset.
+  tagIds?: string[];
   // When true, every generated row is flagged as an inter-account
   // transfer so the `hideTransfers` setting can suppress it.
   isTransfer?: boolean;

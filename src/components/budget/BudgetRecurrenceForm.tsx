@@ -404,67 +404,73 @@ export function BudgetRecurrenceForm({
         )}
       </div>
 
-      <div className="mt-4 rounded border border-line bg-surface-3 p-3 text-xs">
-        <div className="mb-1 text-muted">
-          {t("recurrenceForm.previewLabel")}{" "}
-          <span className="text-fg-bright">
-            {dates.length === 1
-              ? t("recurrenceForm.previewEntryOne", { n: dates.length })
-              : t("recurrenceForm.previewEntryOther", { n: dates.length })}
-          </span>
-          {historicDates && historicDates.length > 0 && (
-            <>
-              {" + "}
-              <span className="text-muted">
-                {historicDates.length === 1
-                  ? t("recurrenceForm.previewHistoricOne", {
-                      n: historicDates.length,
-                    })
-                  : t("recurrenceForm.previewHistoricOther", {
-                      n: historicDates.length,
-                    })}
-              </span>
-            </>
-          )}
-        </div>
-        {dates.length === 0 &&
-        (!historicDates || historicDates.length === 0) ? (
-          <div className="text-muted">{t("recurrenceForm.noDatesYet")}</div>
-        ) : (
-          <div className="flex flex-wrap gap-1.5 font-mono">
-            {historicDates &&
-              historicDates.slice(0, 24).map((d, i) => (
+      {/* A "once" entry is fully described by the single date field above,
+          so a preview block listing that same date is just noise — skip
+          it. Other modes (and the promote flow's historic-date overlay,
+          which only runs with `includeOnce={false}`) keep the preview. */}
+      {mode !== "once" && (
+        <div className="mt-4 rounded border border-line bg-surface-3 p-3 text-xs">
+          <div className="mb-1 text-muted">
+            {t("recurrenceForm.previewLabel")}{" "}
+            <span className="text-fg-bright">
+              {dates.length === 1
+                ? t("recurrenceForm.previewEntryOne", { n: dates.length })
+                : t("recurrenceForm.previewEntryOther", { n: dates.length })}
+            </span>
+            {historicDates && historicDates.length > 0 && (
+              <>
+                {" + "}
+                <span className="text-muted">
+                  {historicDates.length === 1
+                    ? t("recurrenceForm.previewHistoricOne", {
+                        n: historicDates.length,
+                      })
+                    : t("recurrenceForm.previewHistoricOther", {
+                        n: historicDates.length,
+                      })}
+                </span>
+              </>
+            )}
+          </div>
+          {dates.length === 0 &&
+          (!historicDates || historicDates.length === 0) ? (
+            <div className="text-muted">{t("recurrenceForm.noDatesYet")}</div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 font-mono">
+              {historicDates &&
+                historicDates.slice(0, 24).map((d, i) => (
+                  <span
+                    key={`hist-${i}-${d}`}
+                    className="rounded border border-line bg-surface-2 px-1.5 py-0.5 text-muted opacity-70"
+                    title={t("recurrenceForm.previewHistoricTitle")}
+                  >
+                    {d}
+                  </span>
+                ))}
+              {historicDates && historicDates.length > 24 && (
+                <span className="text-muted opacity-70">
+                  {t("recurrenceForm.morePrefix", {
+                    n: historicDates.length - 24,
+                  })}
+                </span>
+              )}
+              {dates.slice(0, 24).map((d) => (
                 <span
-                  key={`hist-${i}-${d}`}
-                  className="rounded border border-line bg-surface-2 px-1.5 py-0.5 text-muted opacity-70"
-                  title={t("recurrenceForm.previewHistoricTitle")}
+                  key={d}
+                  className="rounded border border-line bg-surface px-1.5 py-0.5 text-path"
                 >
                   {d}
                 </span>
               ))}
-            {historicDates && historicDates.length > 24 && (
-              <span className="text-muted opacity-70">
-                {t("recurrenceForm.morePrefix", {
-                  n: historicDates.length - 24,
-                })}
-              </span>
-            )}
-            {dates.slice(0, 24).map((d) => (
-              <span
-                key={d}
-                className="rounded border border-line bg-surface px-1.5 py-0.5 text-path"
-              >
-                {d}
-              </span>
-            ))}
-            {dates.length > 24 && (
-              <span className="text-muted">
-                {t("recurrenceForm.morePrefix", { n: dates.length - 24 })}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+              {dates.length > 24 && (
+                <span className="text-muted">
+                  {t("recurrenceForm.morePrefix", { n: dates.length - 24 })}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
