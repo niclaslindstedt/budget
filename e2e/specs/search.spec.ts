@@ -30,7 +30,7 @@ test.describe("Transaction search", () => {
     await signInAsGuest(page);
     await addRow(page, "Rent payment", "100");
 
-    await page.getByRole("button", { name: "Search entries" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     const input = page.getByPlaceholder(
       "Search by description, bank text, company, type, category, or amount",
     );
@@ -44,17 +44,20 @@ test.describe("Transaction search", () => {
     await addRow(page, "Rent payment", "100");
     await addRow(page, "Groceries Coop", "250");
 
-    await page.getByRole("button", { name: "Search transactions" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Search transactions" }),
+      page.getByRole("heading", { name: "Search", exact: true }),
     ).toBeVisible();
 
     const input = page.getByPlaceholder(
-      "Search by description, type, category, or amount",
+      "Search by description, bank text, company, type, category, or amount",
     );
     await input.fill("Groc");
+    // Match the result's full aria-label ("Open {description} on
+    // {sheet}") so the assertion can't collide with the budget row's
+    // own description button behind the modal.
     await expect(
-      page.getByRole("button", { name: /Groceries Coop/i }),
+      page.getByRole("button", { name: /^Open Groceries Coop on/i }),
     ).toBeVisible();
     // Highlighted substring renders inside a <mark>.
     await expect(page.locator("mark", { hasText: "Groc" })).toBeVisible();
@@ -69,18 +72,18 @@ test.describe("Transaction search", () => {
     await addRow(page, "Rent payment", "100");
     await addRow(page, "Coffee shop", "45");
 
-    await page.getByRole("button", { name: "Search transactions" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     const input = page.getByPlaceholder(
-      "Search by description, type, category, or amount",
+      "Search by description, bank text, company, type, category, or amount",
     );
     await input.fill("100");
     await expect(
-      page.getByRole("button", { name: /Rent payment/i }),
+      page.getByRole("button", { name: /^Open Rent payment on/i }),
     ).toBeVisible();
     // 45 is outside the ±20 band around 100, so Coffee shop must not
     // be in the list.
     await expect(
-      page.getByRole("button", { name: /Coffee shop/i }),
+      page.getByRole("button", { name: /^Open Coffee shop on/i }),
     ).not.toBeVisible();
   });
 
@@ -88,9 +91,9 @@ test.describe("Transaction search", () => {
     await signInAsGuest(page);
     await addRow(page, "Rent payment", "100");
 
-    await page.getByRole("button", { name: "Search transactions" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     const input = page.getByPlaceholder(
-      "Search by description, type, category, or amount",
+      "Search by description, bank text, company, type, category, or amount",
     );
     await input.fill("Rent");
     await page.getByRole("button", { name: "Clear search" }).click();
@@ -105,16 +108,16 @@ test.describe("Transaction search", () => {
     await signInAsGuest(page);
     await addRow(page, "Groceries Coop", "250");
 
-    await page.getByRole("button", { name: "Search transactions" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     const input = page.getByPlaceholder(
-      "Search by description, type, category, or amount",
+      "Search by description, bank text, company, type, category, or amount",
     );
     await input.fill("Groc");
     await page.keyboard.press("Escape");
     await expect(
-      page.getByRole("heading", { name: "Search transactions" }),
+      page.getByRole("heading", { name: "Search", exact: true }),
     ).not.toBeVisible();
-    await page.getByRole("button", { name: "Search transactions" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     await expect(input).toHaveValue("Groc");
   });
 
@@ -126,16 +129,16 @@ test.describe("Transaction search", () => {
     await addRow(page, "Groceries Coop", "250");
     await addRow(page, "Coffee shop", "45");
 
-    await page.getByRole("button", { name: "Search transactions" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
     const input = page.getByPlaceholder(
-      "Search by description, type, category, or amount",
+      "Search by description, bank text, company, type, category, or amount",
     );
     await input.fill("Coffee");
-    await page.getByRole("button", { name: /Coffee shop/i }).click();
+    await page.getByRole("button", { name: /^Open Coffee shop on/i }).click();
 
     // Modal closes.
     await expect(
-      page.getByRole("heading", { name: "Search transactions" }),
+      page.getByRole("heading", { name: "Search", exact: true }),
     ).not.toBeVisible();
     // Pulse attribute lands on exactly one row mid-animation.
     await expect(page.locator("[data-row-pulse]")).toHaveCount(1);
