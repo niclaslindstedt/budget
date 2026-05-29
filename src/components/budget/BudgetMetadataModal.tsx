@@ -402,6 +402,20 @@ export function BudgetMetadataModal({
     });
   }, [trail.length]);
 
+  // The counterpart to Back: step the review cursor toward the live
+  // front without saving or skipping. Without it, the only way to
+  // leave a reviewed entry is Save (gated off when nothing changed) or
+  // Skip (which wrongly drops the entry) — so revisiting a finished
+  // entry would otherwise strand the walk. `null` once it passes the
+  // newest trail entry, returning to the live front.
+  const handleForward = useCallback(() => {
+    setReviewIndex((idx) =>
+      idx === null || idx + 1 >= trail.length ? null : idx + 1,
+    );
+  }, [trail.length]);
+  // Forward is reachable whenever the cursor is parked on a past entry.
+  const canGoForward = reviewIndex !== null;
+
   const handleSkip = useCallback(() => {
     if (!current) return;
     // Mark skipped so the entry stays out of the queue (harmless re-add
@@ -776,6 +790,11 @@ export function BudgetMetadataModal({
               >
                 {t("metadata.back")}
               </Button>
+              {canGoForward && (
+                <Button variant="secondary" onClick={handleForward}>
+                  {t("metadata.forward")}
+                </Button>
+              )}
               <Button variant="secondary" onClick={handleSkip}>
                 {t("metadata.skip")}
               </Button>
