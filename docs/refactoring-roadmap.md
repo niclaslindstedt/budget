@@ -368,7 +368,7 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 
 - **`indexById` adoption in `buildSearchIndex` (`src/data/search.ts`)**
   (2026-05): the four inline `new Map<string, T>()` + `for … .set(x.id,
-  x)` indexers at the top of `buildSearchIndex` (`typesById`,
+x)` indexers at the top of `buildSearchIndex` (`typesById`,
   `categoriesById`, `companiesById`, `tagsById`) replaced with
   `indexById(...)` calls from `src/utils/indexById.ts`. `accountsById`
   stays inline — it maps id→name (a `Map<string, string>`), not
