@@ -380,6 +380,30 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           row.kind === "historic"
             ? (historyById.get(row.historyEntryId)?.description ?? "")
             : "";
+        // On a synthesized history row with no user-authored
+        // description, the description cell is a fallback echo of the
+        // company or type name (resolveEntryLabels' chain:
+        // userDescription → companyName → typeName → bank text;
+        // `descriptionPlaceholder` is set exactly in that fallback
+        // case). Indexing that echo in the top-priority `description`
+        // field would let a substring of the *type* name — "car" inside
+        // "Childcare" — outrank a row the user deliberately tagged
+        // `car`. Suppress the description-tier match when the cell
+        // merely repeats the company or type name; the dedicated
+        // `companyName` / `typeName` fields still surface the row at
+        // their own (lower) priority, so a tag (weight 2) beats a type
+        // (weight 3) as the user expects. A raw-bank-text fallback is
+        // left indexed — that memo is the row's only human-readable
+        // description, so it earns the description tier.
+        const descriptionIsLabelEcho =
+          row.kind === "historic" &&
+          row.descriptionPlaceholder !== undefined &&
+          description !== "" &&
+          ((company !== undefined && description === company.name) ||
+            (type !== undefined && description === type.name));
+        const descriptionLc = descriptionIsLabelEcho
+          ? ""
+          : description.toLowerCase();
         entries.push({
           sheetId: sheet.id,
           sheetName: sheet.name,
@@ -406,7 +430,7 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           kind: row.kind,
           isTransfer: row.kind === "transfer" || row.isTransfer === true,
           isRecurring: !!row.seriesId,
-          descriptionLc: description.toLowerCase(),
+          descriptionLc,
           typeNameLc: typeName.toLowerCase(),
           categoryNameLc: categoryName.toLowerCase(),
           companyNameLc: companyName.toLowerCase(),

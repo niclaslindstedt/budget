@@ -333,6 +333,85 @@ describe("runSearch — text matches", () => {
     expect(out[0].match.field).toBe("description");
   });
 
+  it("a tag outranks a type-name echo in a history row's description", () => {
+    // A synthesized history row with a type but no user description
+    // falls back to the type name in its description cell
+    // (resolveEntryLabels: userDescription → companyName → typeName →
+    // bank text). The custom type "Childcare" contains the substring
+    // "car", so before the fix that echo matched at description weight
+    // (0) and buried a row the user deliberately tagged "car" (tag
+    // weight 2). The echo must match through `typeName` instead, so the
+    // tag ranks first.
+    const childcare: EntryType = {
+      id: "tc",
+      name: "Childcare",
+      color: "#fff",
+      glyph: "baby",
+      categoryId: "cat",
+    };
+    const cat: Category = { id: "cat", name: "Family", color: "#fff" };
+    const carTag: Tag = { id: "tg-car", name: "car", color: "#f00" };
+    const account: Account = { id: "acc-1", name: "Checking" };
+    const histEntry: HistoryEntry = {
+      id: "h1",
+      date: "2026-05-10",
+      description: "OKQ8 MACK GOTEBORG",
+      amount: -512,
+      importedAt: 0,
+      userTypeId: "tc",
+    };
+    const data = withItem(
+      [
+        {
+          id: "rTag",
+          cells: { d: "2026-05-02", x: "Bensin", a: -700 },
+          tagIds: ["tg-car"],
+        },
+      ],
+      {
+        types: [childcare],
+        categories: [cat],
+        tags: [carTag],
+        accounts: [account],
+        accountId: "acc-1",
+        history: { "acc-1": [histEntry] },
+      },
+    );
+    const out = runSearch(buildSearchIndex(data, t), "car");
+    expect(out[0].entry.rowId).toBe("rTag");
+    expect(out[0].match.field).toBe("tagNames");
+    // The history row still shows "Childcare" as its description (the
+    // fallback echo is suppressed for *matching* only), and it surfaces
+    // through its type field at the lower type weight.
+    const hist = out.find((r) => r.entry.rowId === "hist:h1");
+    expect(hist?.entry.description).toBe("Childcare");
+    expect(hist?.match.field).toBe("typeName");
+  });
+
+  it("keeps the description tier for a raw bank-text fallback", () => {
+    // The label-echo suppression must NOT touch a history row whose
+    // description fell all the way back to the raw bank text (no user
+    // override, no company, no type). That memo is the row's only
+    // human-readable description, so a query for it still earns the
+    // top description tier rather than dropping to bankDescription.
+    const account: Account = { id: "acc-1", name: "Checking" };
+    const histEntry: HistoryEntry = {
+      id: "h1",
+      date: "2026-05-10",
+      description: "ICA MAXI",
+      amount: -250,
+      importedAt: 0,
+    };
+    const data = withItem([], {
+      accounts: [account],
+      accountId: "acc-1",
+      history: { "acc-1": [histEntry] },
+    });
+    const out = runSearch(buildSearchIndex(data, t), "ica");
+    expect(out).toHaveLength(1);
+    expect(out[0].match.field).toBe("description");
+  });
+
   it("returns nothing for empty queries", () => {
     const data = withItem([
       { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
