@@ -140,6 +140,12 @@ export function FloatingPanel({
   // Cap the panel at that width too, otherwise wide intrinsic content
   // (e.g. a sizing ghost) lets the panel grow past `maxPx`.
   const fixedWidth = placement.width.kind === "max";
+  // `kind: "max"` panels pin to their computed width. `kind: "min"`
+  // panels may grow past `position.width` to fit content, so bound them
+  // by the room left to the viewport edge — otherwise a long-hinted
+  // listbox in a narrow column (the amount-mode picker in the entry
+  // modals) renders off-screen instead of truncating.
+  const maxWidth = fixedWidth ? position.width : position.maxWidth;
   return createPortal(
     <>
       <DismissBackdrop onDismiss={onClose} />
@@ -150,7 +156,7 @@ export function FloatingPanel({
           top: position.top,
           left: position.left,
           minWidth: position.width,
-          maxWidth: fixedWidth ? position.width : undefined,
+          maxWidth,
           maxHeight: position.maxHeight,
           transform: flipUp ? "translateY(-100%)" : undefined,
         }}
