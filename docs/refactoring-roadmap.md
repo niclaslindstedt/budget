@@ -167,28 +167,6 @@ through them.
     Either keep the callbacks in AppShell calling into a
     host-exposed dispatch, or move the callbacks into the hosts.
 
-- **`useImportFlow.ts` monolithic import-flow state machine** —
-  discovered 2026-05. `src/components/AppShell/hooks/useImportFlow.ts`
-  (597 lines) coordinates six orthogonal modal flows (importHistory,
-  viewHistory, cutHistory, reconciliation, manualTriage,
-  renamePredictor) through six parallel `useState` calls plus a
-  ~155-line `onConfirmImportHistory` (lines ~175-330) that runs the
-  pre-import snapshot → history merge → candidate-finding →
-  orphan-detection → coverage-delta → rename-prediction pipeline
-  inline. Every new bank parser or reconciliation-like flow threads
-  more state + callbacks through the same dense closure.
-  **Severity: 5.**
-  - Plan: collapse the six modal-open/pending-data `useState`s onto a
-    `useReducer` with a `kind`-discriminated action union (the same
-    precedent as the landed modal reducers), and extract the
-    `onConfirmImportHistory` pipeline into a pure orchestration
-    helper in `src/data/` that returns the staged result for the hook
-    to dispatch. Mirrors the reconciliation reducer split.
-  - Risk: medium. Deep integration point on the deferred-import
-    path; the Cancel / success / Escape transitions on every modal
-    switch need testing. Not on a cloud-OAuth hot path, so no
-    backend smoke-test required.
-
 - **`useUserDataStorage.ts` save chain has no retry strategy** —
   re-verified 2026-05: `src/storage/useSaveStateMachine.ts` (559
   lines) catches `RateLimitError` (line ~293), computes
@@ -215,6 +193,30 @@ through them.
     once and stamp the validator to enforce.
 
 ### Severity 3–4 — nits with leverage
+
+- **`useImportFlow.ts` six-modal `useState` collapse** — the
+  pipeline-extraction half of the original severity-5 item landed
+  2026-05 (see Landed: `stageHistoryImport`), dropping the hook from
+  597 → 473 lines and moving the ~155-line `onConfirmImportHistory`
+  matcher closure into a pure, unit-tested `src/data/import-staging.ts`.
+  What remains is the six parallel `useState` calls (importHistory,
+  viewHistory, cutHistory, reconciliation, manualTriage,
+  renamePredictor) coordinating six orthogonal modal flows.
+  **Severity: 4** (dropped from 5 — the dense business-logic closure
+  was the bulk of the weight; the remaining `useState`s are orthogonal
+  modal flags, not a reset-together pyramid).
+  - Plan: collapse the six modal-open/pending-data `useState`s onto a
+    `useReducer` with a `kind`-discriminated action union (the same
+    precedent as the landed modal reducers). The win is modest — the
+    states are independent — but the reconciliation→renamePredictor
+    handoff (`setReconciliation(null); setRenamePredictor({…})`) and the
+    import→reconciliation handoff become atomic transitions instead of
+    setter pairs, and a discriminated union documents "one import modal
+    open at a time".
+  - Risk: low-medium. Deep integration point on the deferred-import
+    path; the Cancel / success / Escape transitions on every modal
+    switch need testing. Not on a cloud-OAuth hot path, so no backend
+    smoke-test required.
 
 - **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
   half of the previous duplicated-editor item; the `<EntityForm>`
@@ -375,6 +377,41 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`stageHistoryImport` pure pipeline extraction from
+  `useImportFlow.ts`** (2026-05): the ~155-line `onConfirmImportHistory`
+  closure that ran the bank-import matcher pipeline — pre-import
+  snapshot → `mergeHistory` → silent auto-rule pass → coverage delta →
+  candidate / orphan detection → rename prediction — lifted out of the
+  hook's `useCallback` into a pure `stageHistoryImport(preImportData,
+accountId, parsed, filename, now)` function in
+  `src/data/import-staging.ts`. The helper returns a `StagedImport`
+  (`{ dedupeOccurred, newEntries, pendingImport, outcome }`) whose
+  `outcome` is a `kind`-discriminated union — `commit` /
+  `renamePredictor` / `reconciliation` — and the hook now just fires the
+  `dedupe` achievement, closes the import modal, and dispatches or opens
+  the modal each outcome calls for. `now` is a parameter (was an inline
+  `Date.now()`) so the pipeline is deterministic under test. The
+  `PendingImport` shape moved to the helper as the single source of
+  truth; `ReconciliationState.pendingImport` in
+  `src/components/AppShell/types.ts` now references it (dropping the
+  duplicated inline type and the now-unused `ParsedBankEntry` import).
+  The hook shed five now-unused imports (`coverageDelta`,
+  `coveredMonths`, `findCandidates`, `findRuleDrivenCandidates`,
+  `mergeHistory`, `Column`/`Row` types) and dropped from 597 → 473
+  lines; the new helper is 218 lines. 7 unit tests landed in
+  `tests/import_staging_test.ts` covering the commit / reconciliation /
+  rename-predictor branches, the reconciliation-over-rename precedence,
+  within-file dedupe detection, and the bank-extracted
+  clearing/account-number passthrough — none of which were reachable
+  before because the pipeline was locked in a closure. Added
+  `import-staging.ts` to the `data/` inventory in `docs/architecture.md`.
+  This is the pipeline half of the severity-5 `useImportFlow.ts` item;
+  the six-`useState`→`useReducer` collapse stays in Pending, re-rated to
+  severity 4. Pure refactor — same behaviour, same dispatch order, same
+  modal-open transitions; `BudgetModalHost` / `AccountsModalHost` consume
+  the hook's result unchanged. fmt-check + lint + typecheck + 1035 tests
+  - build + icons-check pass.
 
 - **`BudgetComplexEntryModal` `useReducer` extraction** (2026-05): the
   15 parallel `useState` calls in `BudgetComplexEntryModal.tsx` with

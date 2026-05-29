@@ -1,7 +1,7 @@
 import type { ReconciliationApply } from "../accounts/AccountReconciliationModal";
 import type { RenameSuggestion } from "../../data/rename-patterns";
 import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
-import type { ParsedBankEntry } from "../../storage/banks";
+import type { PendingImport } from "../../data/import-staging";
 import type { StorageAdapter } from "../../storage/adapter";
 import type {
   BackendId,
@@ -107,14 +107,7 @@ export type ReconciliationState = {
   // Parsed bank file held in memory until commit. Dispatched verbatim
   // as the `importBankHistory` payload when the user clicks Apply or
   // Skip all; dropped on cancel.
-  pendingImport: {
-    bankParserId: string;
-    bankClearing?: string;
-    bankAccountNumber?: string;
-    filename: string;
-    entries: ParsedBankEntry[];
-    now: number;
-  };
+  pendingImport: PendingImport;
 };
 
 // Rename-predictor modal state. Populated as the last step of every
