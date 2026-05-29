@@ -4,8 +4,41 @@ import type {
   BudgetDownloadPrefs,
   DeviceSettings,
   PersistedSettings,
+  SearchRankingSettings,
   Settings,
 } from "../types";
+
+// Out-of-the-box search ranking. Match quality dominates so a clean
+// whole-word hit beats a mid-word substring even in a "lesser" field;
+// the field weights encode description > tag > company > type >
+// category > bank text (the user controls the first five, the bank
+// controls the last); recency breaks ties newest-first; amounts match
+// within ±20%; 50 rows render. Every value is re-tunable from the
+// Search settings tab.
+export const DEFAULT_SEARCH_RANKING: SearchRankingSettings = {
+  priority: "quality",
+  recency: "tiebreak",
+  fieldWeights: {
+    description: 5,
+    tag: 4,
+    company: 3,
+    type: 2,
+    category: 1,
+    bankDescription: 0,
+  },
+  amountTolerancePct: 20,
+  maxResults: 50,
+};
+
+// Allowed values for the "results shown" picker. Kept here so the
+// validator (which snaps an out-of-range number back to the default)
+// and the Search tab's dropdown read from one list.
+export const SEARCH_MAX_RESULTS_OPTIONS = [25, 50, 100, 200] as const;
+
+// Inclusive bounds for a per-field importance weight. The Search tab's
+// sliders and the validator share these.
+export const SEARCH_FIELD_WEIGHT_MIN = 0;
+export const SEARCH_FIELD_WEIGHT_MAX = 10;
 
 // Default download-modal preferences. Lifted from the legacy
 // `src/storage/download-preferences.ts` (deleted in v35) so the
@@ -73,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showFutureEntries: false,
   futureEntryMonths: 1,
   companyTypeAutoFillMinOccurrences: 11,
+  searchRanking: DEFAULT_SEARCH_RANKING,
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -130,6 +164,7 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
   companyTypeAutoFillMinOccurrences:
     DEFAULT_SETTINGS.companyTypeAutoFillMinOccurrences,
+  searchRanking: DEFAULT_SETTINGS.searchRanking,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,

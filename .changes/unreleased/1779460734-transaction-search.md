@@ -6,11 +6,17 @@ A new magnifier button on the bottom bar opens a transaction-search
 modal that looks across every sheet at once. Type any part of a
 description, the raw bank-statement text, company name, type name,
 or category, or a tag, or a number — and matching rows appear ranked
-by relevance by default, with the matched substring highlighted. The
-ranking weighs where the match landed (your own description first,
-then company, then tag, then type, then category), so a row you
-deliberately tagged "Car" outranks one that merely has "car" inside
-its "Childcare" type name. Bank-text hits surface the original
+by relevance by default, with the matched substring highlighted.
+Relevance favours clean whole-word matches over letters buried
+mid-word — searching "Car" surfaces a row you tagged or described
+"Car" ahead of one that merely starts "Carlo" or hides "car" inside
+"Childcare" — then weighs where the match landed (your own
+description first, then tag, company, type, and category), and
+finally how recent the row is, so the newest of otherwise-equal
+matches leads. All of that is adjustable in the new Settings → Search
+tab: match-quality-vs-field priority, the per-field weights, how much
+recency counts, the amount tolerance, and how many results show.
+Bank-text hits surface the original
 bank memo on a third line so you can see why a row matched even
 when its visible description is a user override or a company tag.
 Number queries also match rows whose amount lands within ±20% of the

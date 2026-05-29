@@ -8,6 +8,7 @@ import {
   DEFAULT_DEVICE_SETTINGS_MOBILE,
   DEFAULT_DOWNLOAD_ACCOUNTS,
   DEFAULT_DOWNLOAD_BUDGET,
+  DEFAULT_SEARCH_RANKING,
   DEFAULT_SETTINGS,
 } from "../constants/defaults";
 import { nsKey } from "../constants/storage";
@@ -326,6 +327,24 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // v45 record simply lacks them and passes the v46 validator
   // unchanged, so this is a bare version bump.
   45: (v45) => ({ ...v45, version: 46 }),
+
+  // v46 → v47: add `Settings.searchRanking`, the user-tunable knobs for
+  // the transaction-search ranker (field weights, match-quality vs
+  // field priority, recency mode, amount tolerance, result cap). Seed
+  // existing buckets with the defaults so search behaves identically
+  // until the user opens the new Search settings tab; the validator
+  // coerces a malformed block back to the same defaults.
+  46: (v46) => {
+    const settings = isObj(v46.settings) ? v46.settings : {};
+    return {
+      ...v46,
+      version: 47,
+      settings: {
+        ...settings,
+        searchRanking: DEFAULT_SEARCH_RANKING,
+      },
+    };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

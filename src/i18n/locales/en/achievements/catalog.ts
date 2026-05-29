@@ -211,6 +211,10 @@ const catalog = {
     name: "Swiper",
     condition: "Swipe left or right to switch sheets.",
   },
+  searchSmith: {
+    name: "Search Smith",
+    condition: "Tune the search ranking settings.",
+  },
   importExport: {
     name: "Import / Export",
     condition: "Import your first bank statement.",

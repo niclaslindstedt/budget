@@ -53,6 +53,7 @@ import {
   Search,
   Share2,
   Sigma,
+  SlidersHorizontal,
   Smartphone,
   Split,
   Tag,
@@ -196,6 +197,34 @@ function headerActionMovedAwayFromDefault(
   if (p.kind !== n.kind) return n.kind !== "top";
   if (p.kind === "sheet" && n.kind === "sheet") return p.sheetId !== n.sheetId;
   return false;
+}
+
+// Did any search-ranking knob change in this `(prev, next)` step? Backs
+// the `searchSmith` achievement, which fires the first time the user
+// re-tunes the search relevance settings. Compares each field by value
+// (not reference) so an unrelated settings save that happens to clone
+// the block doesn't count.
+function searchRankingChanged(prev: UserData, next: UserData): boolean {
+  const p = prev.settings.searchRanking;
+  const n = next.settings.searchRanking;
+  if (
+    p.priority !== n.priority ||
+    p.recency !== n.recency ||
+    p.amountTolerancePct !== n.amountTolerancePct ||
+    p.maxResults !== n.maxResults
+  ) {
+    return true;
+  }
+  const pw = p.fieldWeights;
+  const nw = n.fieldWeights;
+  return (
+    pw.description !== nw.description ||
+    pw.tag !== nw.tag ||
+    pw.company !== nw.company ||
+    pw.type !== nw.type ||
+    pw.category !== nw.category ||
+    pw.bankDescription !== nw.bankDescription
+  );
 }
 
 // Display strings (name / condition / optional learnMore) live in
@@ -595,6 +624,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   // ────────────────────────────────────────────────────────────
   // Pro — "Stop typing things the bank already knows."
   // ────────────────────────────────────────────────────────────
+  {
+    id: "searchSmith",
+    tier: "pro",
+    glyph: SlidersHorizontal,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings],
+      predicate: searchRankingChanged,
+    },
+  },
   {
     id: "importExport",
     tier: "pro",

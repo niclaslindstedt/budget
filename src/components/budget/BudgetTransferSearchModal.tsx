@@ -65,7 +65,7 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
   // Batch-select a set of row ids on the active sheet. Backs "Select
   // all", which reaches every match on the active sheet — including the
-  // ones past the MAX_RESULTS display cap, not just the rows on screen.
+  // ones past the result display cap, not just the rows on screen.
   onSelectMany: (rowIds: string[]) => void;
   onSelectSheet: (sheetId: string) => void;
   onBulkEdit: () => void;
@@ -119,8 +119,8 @@ export function BudgetTransferSearchModal({
   const t = useT();
 
   const { results, total } = useMemo(
-    () => runSearch(index, query, sort, filter),
-    [index, query, sort, filter],
+    () => runSearch(index, query, sort, filter, settings.searchRanking),
+    [index, query, sort, filter, settings.searchRanking],
   );
   const filterActive = isFilterActive(filter);
   const selectLabel = selectMode
@@ -133,11 +133,18 @@ export function BudgetTransferSearchModal({
   // result switches the active sheet, so the flow is: tap one row on the
   // sheet you want, then Select all to grab the rest.
   const selectAll = useCallback(() => {
-    const ids = matchingEntries(index, query, filter)
+    const ids = matchingEntries(index, query, filter, settings.searchRanking)
       .filter((e) => e.kind === "user" && e.sheetId === activeSheetId)
       .map((e) => e.rowId);
     onSelectMany(ids);
-  }, [index, query, filter, activeSheetId, onSelectMany]);
+  }, [
+    index,
+    query,
+    filter,
+    settings.searchRanking,
+    activeSheetId,
+    onSelectMany,
+  ]);
 
   // Toggle a result's selection, first switching the active sheet to its
   // sheet when starting a fresh selection — bulk ops dispatch against the

@@ -34,12 +34,12 @@ type Result = {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   // Sort order survives modal close like `searchQuery` does — never
-  // persisted to localStorage. Default is `"relevance"` so the field-
-  // priority ranking (description > company > tag > type > category)
-  // drives the order: a row the user deliberately tagged `Car` outranks
-  // one that merely has `car` inside its `Childcare` type name. Sorting
-  // by date instead buries that signal, so it's an opt-in, not the
-  // default.
+  // persisted to localStorage. Default is `"relevance"` so the
+  // user-tunable ranker (match quality + field weights + recency, see
+  // `Settings.searchRanking`) drives the order: a row the user
+  // deliberately tagged `Car` outranks one that merely has `car` inside
+  // its `Childcare` type name. Sorting by date instead buries that
+  // signal, so it's an opt-in, not the default.
   searchSort: SearchSort;
   setSearchSort: (sort: SearchSort) => void;
   // Filter refinements survive modal close like `searchQuery` / sort do

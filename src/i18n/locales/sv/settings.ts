@@ -5,6 +5,7 @@ const settings: SettingsCatalog = {
   chooseSection: "Välj inställningssektion",
   tabs: {
     general: "Allmänt",
+    search: "Sök",
     appearance: "Utseende",
     format: "Format",
     storage: "Lagring",
@@ -40,6 +41,36 @@ const settings: SettingsCatalog = {
     futureEntryMonths: "Antal framtida månader",
     futureEntryMonthsHint:
       "Antal budgetmånader efter den aktuella som visas direkt. Allt längre fram dyker upp först när man klickar på ”Visa 3 framtida månader”-knappen i bladet — varje klick visar tre månader till.",
+  },
+  search: {
+    rankingSection: "Rangordning",
+    priority: "Prioritet vid rangordning",
+    priorityHint:
+      "Vad som väger tyngst när träffar ordnas. Matchningskvalitet sätter en ren helordsträff före bokstäver inbäddade mitt i ett ord, även i ett lägre rankat fält. Fältordning behåller fältprioriteten överst och använder matchningskvalitet endast för att skilja träffar inom samma fält.",
+    priorityQuality: "Matchningskvalitet först",
+    priorityField: "Fältordning först",
+    recency: "Färskhet",
+    recencyHint:
+      "Hur mycket en transaktions datum räknas. Endast utslagsfaktor skiljer bara träffar som annars är lika, nyast först. Förstärk låter en nyare träff gå om en något starkare äldre. Av ignorerar datum.",
+    recencyOff: "Av",
+    recencyTiebreak: "Utslagsfaktor",
+    recencyBoost: "Förstärk",
+    weightsSection: "Fältens vikt",
+    weightsHint:
+      "Hur starkt en träff i varje fält räknas. Högre rankas tidigare. Dra ett fält till 0 för att fortfarande matcha det men ranka det sist.",
+    fieldDescription: "Beskrivning",
+    fieldTag: "Tagg",
+    fieldCompany: "Företag",
+    fieldType: "Typ",
+    fieldCategory: "Kategori",
+    fieldBank: "Banktext",
+    matchingSection: "Matchning",
+    amountTolerance: "Beloppstolerans",
+    amountToleranceHint:
+      "När söktexten är ett tal, matcha även rader vars belopp ligger inom den här procentandelen av det. 0 % matchar bara det exakta beloppet.",
+    maxResults: "Antal träffar",
+    maxResultsHint:
+      "Hur många träffar som visas. Räknaren visar fortfarande totalen.",
   },
   companyTypeAutoFill: {
     title: "Fyll i typ automatiskt från företag",
