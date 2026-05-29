@@ -3,11 +3,14 @@ import {
   ArrowDownUp,
   BanknoteArrowDown,
   BanknoteArrowUp,
+  Building2,
   CalendarArrowDown,
   CalendarArrowUp,
   Filter,
+  Landmark,
   Search,
   Sparkles,
+  Tag,
 } from "lucide-react";
 
 import type {
@@ -276,6 +279,12 @@ function ResultRow({
             {entry.companyName ? (
               <>
                 {" · "}
+                <Building2
+                  size={12}
+                  aria-hidden
+                  focusable={false}
+                  className="mb-0.5 mr-0.5 inline align-middle"
+                />
                 {renderHighlighted(entry.companyName, match, "companyName")}
               </>
             ) : null}
@@ -299,17 +308,34 @@ function ResultRow({
           )}
         </span>
         {match.field === "bankDescription" && entry.bankDescription ? (
-          <span className="truncate text-xs italic text-muted">
-            {t("searchTransaction.bankLabel")}
-            {": "}
-            {renderHighlighted(entry.bankDescription, match, "bankDescription")}
+          <span
+            className="flex items-center gap-1.5 text-xs italic text-muted"
+            title={t("searchTransaction.bankLabel")}
+          >
+            <Landmark
+              size={12}
+              aria-hidden
+              focusable={false}
+              className="shrink-0"
+            />
+            <span className="truncate">
+              {renderHighlighted(
+                entry.bankDescription,
+                match,
+                "bankDescription",
+              )}
+            </span>
           </span>
         ) : null}
         {match.field === "tagNames" && entry.tagNames ? (
-          <span className="truncate text-xs italic text-muted">
-            {t("searchTransaction.tagsLabel")}
-            {": "}
-            {renderHighlighted(entry.tagNames, match, "tagNames")}
+          <span
+            className="flex items-center gap-1.5 text-xs italic text-muted"
+            title={t("searchTransaction.tagsLabel")}
+          >
+            <Tag size={12} aria-hidden focusable={false} className="shrink-0" />
+            <span className="truncate">
+              {renderHighlighted(entry.tagNames, match, "tagNames")}
+            </span>
           </span>
         ) : null}
       </span>
