@@ -5,8 +5,10 @@ type: Added
 Metadata mode: the budget title `…` menu now offers a focused walk
 through the imported entries that still need annotation. One entry at
 a time, biggest absolute amount first, newest month first. Shows the
-raw bank line read-only and lets you pick a type, tag a company,
-optionally write a custom description, and move on. The form
+raw bank line read-only and lets you pick a type, tag a company, add
+optional tags, optionally write a custom description, and move on.
+Tags never bring an entry back to the list — they're an extra label,
+not something the walk waits on. The form
 pre-populates with whatever is already resolved for the entry (from
 rules, hints, or per-entry overrides) so you see existing metadata
 and can edit it instead of typing it again — Save only commits what
@@ -17,6 +19,10 @@ where tagging a merchant doesn't apply (salary, internal transfers,
 …) so they stop surfacing here over a missing company. A "Mark as
 transfer" checkbox lets you flag an entry as money moving between
 accounts and continue to the next item without picking a type or a
-company. Built for the spare-minute case on mobile — entries covered
-by a match rule or a merchant hint are skipped so only the genuinely
-unknown ones surface.
+company. When an entry has lookalikes — older imports whose bank text
+matches once dates and reference numbers are stripped — an "Also apply
+to N similar entries" checkbox lets you fan the same labels out to all
+of them in one save, filling only the fields they're still missing so
+nothing you tagged earlier gets overwritten. Built for the
+spare-minute case on mobile — entries covered by a match rule or a
+merchant hint are skipped so only the genuinely unknown ones surface.

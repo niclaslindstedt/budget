@@ -1,3 +1,4 @@
+import { applyMetadataToMatchingEntries } from "../budget/pattern-apply";
 import { findColumnByType, updateHistoryEntry } from "../sheet";
 import {
   bumpRenamePattern,
@@ -181,6 +182,21 @@ export function reduceHistory(
         ? { ...state.history, [action.accountId]: patched }
         : state.history,
       renamePatterns,
+    };
+  }
+  if (action.type === "applyMetadataToMatchingHistory") {
+    const existing = state.history[action.accountId];
+    if (!existing) return state;
+    const next = applyMetadataToMatchingEntries(
+      existing,
+      action.pattern,
+      action.patch,
+      action.excludeEntryId,
+    );
+    if (next === existing) return state;
+    return {
+      ...state,
+      history: { ...state.history, [action.accountId]: next },
     };
   }
   if (action.type === "splitHistoryEntry") {

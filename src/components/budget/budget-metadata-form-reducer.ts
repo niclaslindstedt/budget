@@ -10,6 +10,10 @@ export type MetadataFormFields = {
   description: string;
   typeId: string | null;
   companyId: string | null;
+  // Per-entry tags. Optional — tags never gate an entry out of the
+  // metadata queue, they're just an extra label the user can add while
+  // walking. The full selection the picker hands back (not a diff).
+  tagIds: string[];
   noCompany: boolean;
   isTransfer: boolean;
 };
@@ -38,6 +42,7 @@ export type MetadataFormAction =
       companyId: string | null;
       autoTypeId: string | undefined;
     }
+  | { kind: "setTagIds"; value: string[] }
   | { kind: "setNoCompany"; value: boolean }
   | { kind: "setIsTransfer"; value: boolean };
 
@@ -45,6 +50,7 @@ export const EMPTY_METADATA_FORM_FIELDS: MetadataFormFields = {
   description: "",
   typeId: null,
   companyId: null,
+  tagIds: [],
   noCompany: false,
   isTransfer: false,
 };
@@ -66,6 +72,8 @@ export function budgetMetadataFormReducer(
       return { ...state, description: action.value };
     case "setTypeId":
       return { ...state, typeId: action.value };
+    case "setTagIds":
+      return { ...state, tagIds: action.value };
     case "pickCompany": {
       const next: MetadataFormState = { ...state, companyId: action.companyId };
       if (action.autoTypeId !== undefined) {

@@ -11,9 +11,15 @@ const metadata = {
   descriptionLabel: "Description",
   descriptionPlaceholder: "Leave blank to keep the bank's text",
   descriptionHint: "Blank keeps the bank's text.",
+  tagsLabel: "Tags",
+  tagsHint: "Optional — tags never bring an entry back to this list.",
   markAsTransfer: "Mark as transfer",
   markAsTransferHint:
     "Transfers are just money moving between accounts — no type or company needed.",
+  bulkApplyOne: "Also apply to {n} similar entry",
+  bulkApplyOther: "Also apply to {n} similar entries",
+  bulkApplyHint:
+    "Matches the bank text of older entries and fills only the fields they're still missing.",
   skip: "Skip",
   needsTypePrompt: "Pick a type to save.",
   needsCompanyPrompt: 'Pick a company — or "Omit company" — to save.',

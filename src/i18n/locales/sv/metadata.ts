@@ -11,9 +11,16 @@ const metadata: MetadataCatalog = {
   descriptionLabel: "Beskrivning",
   descriptionPlaceholder: "Lämna tomt för att behålla bankens text",
   descriptionHint: "Tomt fält behåller bankens text.",
+  tagsLabel: "Taggar",
+  tagsHint:
+    "Valfritt — taggar tar aldrig tillbaka en post till den här listan.",
   markAsTransfer: "Markera som överföring",
   markAsTransferHint:
     "Överföringar är bara pengar som flyttas mellan konton — varken typ eller företag behövs.",
+  bulkApplyOne: "Använd även på {n} liknande post",
+  bulkApplyOther: "Använd även på {n} liknande poster",
+  bulkApplyHint:
+    "Matchar banktexten i äldre poster och fyller bara i de fält som fortfarande saknas.",
   skip: "Hoppa över",
   needsTypePrompt: "Välj en typ för att spara.",
   needsCompanyPrompt:

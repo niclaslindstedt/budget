@@ -31,6 +31,7 @@
 // long before the patterns feature existed.
 
 import {
+  compilePattern,
   findMatchingRule,
   findMatchingRuleForCandidate,
   mergeTagIds,
@@ -280,6 +281,154 @@ export function applyMatchRuleOnceToAllSheets(
 // rule's labels don't apply to them, matching the contract in
 // `countRuleHitsOnSheets`. Returns the input map unchanged when
 // nothing moves.
+// Metadata-mode bulk apply. Stamps the labels the user just gave one
+// history entry onto its lookalikes — every other entry on the same
+// account whose RAW bank description matches a glob `pattern` derived
+// from the source entry (dates / ref numbers stripped, see
+// `pattern-derive.ts`). Unlike `applyMatchRuleOnceToHistory`, which
+// overwrites, this fills BLANK fields only: an entry that already
+// carries its own type / company / description override is left alone,
+// so the sweep never clobbers a deliberate per-entry label. Tags are
+// additive (unioned). Companies are skipped on entries the user already
+// flagged `noCompany`. The source entry is excluded — it's saved
+// through `updateHistoryEntry` separately so its rename-learning and
+// changed-only-field semantics still apply.
+export type HistoryMetadataPatch = {
+  // Each field is "apply this value where the entry lacks it". Absent
+  // means "don't touch this field". Description / type / company fill
+  // blanks; tags union.
+  userDescription?: string;
+  userTypeId?: string;
+  userCompanyId?: string;
+  userTagIds?: readonly string[];
+};
+
+// Structural exclusions mirror `entryNeedsMetadata` in
+// `BudgetMetadataModal`: hidden / collapsed / transfer / split entries
+// never take a metadata stamp.
+function isMetadataBulkCandidate(
+  entry: HistoryEntry,
+  compiled: RegExp,
+  excludeEntryId: string,
+): boolean {
+  if (entry.id === excludeEntryId) return false;
+  if (entry.hidden) return false;
+  if (entry.collapsedIntoTransferId) return false;
+  if (entry.isTransfer) return false;
+  if (entry.splits && entry.splits.length > 0) return false;
+  return compiled.test(entry.description);
+}
+
+// The patch fills `userDescription` when the entry has neither a real
+// override nor the explicit-clear empty string — an entry the user
+// deliberately blanked keeps its blank.
+function lacksDescription(entry: HistoryEntry): boolean {
+  return entry.userDescription === undefined;
+}
+
+function metadataPatchChangesEntry(
+  entry: HistoryEntry,
+  patch: HistoryMetadataPatch,
+): boolean {
+  if (patch.userTypeId !== undefined && entry.userTypeId === undefined) {
+    return true;
+  }
+  if (
+    patch.userCompanyId !== undefined &&
+    entry.userCompanyId === undefined &&
+    !entry.noCompany
+  ) {
+    return true;
+  }
+  if (patch.userDescription !== undefined && lacksDescription(entry)) {
+    return true;
+  }
+  if (patch.userTagIds && patch.userTagIds.length > 0) {
+    if (mergeTagIds(entry.userTagIds, patch.userTagIds) !== entry.userTagIds) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function applyMetadataPatch(
+  entry: HistoryEntry,
+  patch: HistoryMetadataPatch,
+): HistoryEntry {
+  let next: HistoryEntry | null = null;
+  const draft = (): HistoryEntry => (next ??= { ...entry });
+  if (patch.userTypeId !== undefined && entry.userTypeId === undefined) {
+    draft().userTypeId = patch.userTypeId;
+  }
+  if (
+    patch.userCompanyId !== undefined &&
+    entry.userCompanyId === undefined &&
+    !entry.noCompany
+  ) {
+    draft().userCompanyId = patch.userCompanyId;
+  }
+  if (patch.userDescription !== undefined && lacksDescription(entry)) {
+    draft().userDescription = patch.userDescription;
+  }
+  if (patch.userTagIds && patch.userTagIds.length > 0) {
+    const merged = mergeTagIds(entry.userTagIds, patch.userTagIds);
+    if (merged !== entry.userTagIds && merged) {
+      draft().userTagIds = [...merged];
+    }
+  }
+  return next ?? entry;
+}
+
+// How many entries the bulk apply would actually change — drives the
+// "apply to N similar entries" count in the modal. A bad pattern (or
+// one that compiles to nothing) counts zero rather than throwing.
+export function countMatchingMetadataTargets(
+  entries: readonly HistoryEntry[],
+  pattern: string,
+  patch: HistoryMetadataPatch,
+  excludeEntryId: string,
+): number {
+  if (pattern.length === 0) return 0;
+  let compiled: RegExp;
+  try {
+    compiled = compilePattern(pattern);
+  } catch {
+    return 0;
+  }
+  let count = 0;
+  for (const entry of entries) {
+    if (!isMetadataBulkCandidate(entry, compiled, excludeEntryId)) continue;
+    if (metadataPatchChangesEntry(entry, patch)) count += 1;
+  }
+  return count;
+}
+
+// Apply the fill-blanks stamp to every matching entry. Returns the
+// input array reference unchanged when nothing moves so the reducer can
+// short-circuit a no-op dispatch.
+export function applyMetadataToMatchingEntries(
+  entries: readonly HistoryEntry[],
+  pattern: string,
+  patch: HistoryMetadataPatch,
+  excludeEntryId: string,
+): HistoryEntry[] {
+  if (pattern.length === 0) return entries as HistoryEntry[];
+  let compiled: RegExp;
+  try {
+    compiled = compilePattern(pattern);
+  } catch {
+    return entries as HistoryEntry[];
+  }
+  let changed = false;
+  const next = entries.map((entry) => {
+    if (!isMetadataBulkCandidate(entry, compiled, excludeEntryId)) return entry;
+    const updated = applyMetadataPatch(entry, patch);
+    if (updated !== entry) changed = true;
+    return updated;
+  });
+  return changed ? next : (entries as HistoryEntry[]);
+}
+
 export function applyMatchRuleOnceToHistory(
   history: Readonly<Record<string, HistoryEntry[]>>,
   rule: MatchRule,

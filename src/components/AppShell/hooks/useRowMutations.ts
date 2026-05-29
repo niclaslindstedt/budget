@@ -84,8 +84,24 @@ type Result = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      userTagIds?: string[];
       isTransfer?: boolean;
       noCompany?: boolean;
+    },
+  ) => void;
+  // Metadata-mode bulk apply: stamp the labels the user gave one
+  // history entry onto every lookalike on the same account whose raw
+  // bank description matches `pattern`. Fills blank fields only; tags
+  // union. The source entry is excluded (saved separately).
+  onApplyMetadataToMatchingHistory: (
+    accountId: string,
+    pattern: string,
+    excludeEntryId: string,
+    patch: {
+      userDescription?: string;
+      userTypeId?: string;
+      userCompanyId?: string;
+      userTagIds?: readonly string[];
     },
   ) => void;
   // Row-level company writer fired by the description popover's inline
@@ -257,6 +273,28 @@ export function useRowMutations({
     [dispatch],
   );
 
+  const onApplyMetadataToMatchingHistory = useCallback(
+    (
+      accountId: string,
+      pattern: string,
+      excludeEntryId: string,
+      patch: {
+        userDescription?: string;
+        userTypeId?: string;
+        userCompanyId?: string;
+        userTagIds?: readonly string[];
+      },
+    ) =>
+      dispatch({
+        type: "applyMetadataToMatchingHistory",
+        accountId,
+        pattern,
+        excludeEntryId,
+        patch,
+      }),
+    [dispatch],
+  );
+
   // Row-level company writer fired by the description popover's inline
   // CompanyPicker. Routes synthesized history rows through
   // `updateHistoryEntry` (clearing `noCompany` on assignment so the
@@ -388,6 +426,7 @@ export function useRowMutations({
     onToggleRowTransfer,
     onEditHistoryRequest,
     onUpdateHistoryEntry,
+    onApplyMetadataToMatchingHistory,
     onSetRowCompany,
     onSetRowNoCompany,
     onCorrectionDeleteRequest,
