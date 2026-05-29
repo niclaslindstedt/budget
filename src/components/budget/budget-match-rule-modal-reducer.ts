@@ -8,10 +8,26 @@ export type TransferFilter = NonNullable<MatchRule["transferFilter"]>;
 // onto this shape so the modal doesn't have to branch on which kind it
 // got. Re-exported by BudgetMatchRuleModal so external callers keep
 // importing it from the modal.
+//
+// The label fields (`typeId` / `companyId` / `tagIds` /
+// `userDescription`) carry whatever the source row already shows so a
+// "label similar" invocation prefills the new rule with the labels the
+// user just assigned — pressing it on a row that's already typed
+// `Banking` + `Skandiabanken` seeds the type and company instead of
+// making the user re-pick them. They're the *resolved* values (after
+// the rule / hint / per-entry override chain), so prefilling carries
+// forward exactly what the row renders. `userDescription` is the
+// custom description before the company / type / bank-text fallbacks —
+// `null` when the row has no real override, which leaves the modal's
+// "Description (optional)" field blank so the bank text is kept.
 export type MatchRuleSeed = {
   id: string;
   description: string;
   amount: number;
+  typeId?: string | null;
+  companyId?: string | null;
+  tagIds?: readonly string[];
+  userDescription?: string | null;
 };
 
 // The non-amount form fields live in one slice so the reset-on-open
@@ -77,10 +93,15 @@ export function initialMatchRuleFormState({
   }
   return {
     pattern: seedEntry ? seedPatternFromSeed(seedEntry) : "",
-    description: "",
-    typeId: null,
-    companyId: null,
-    tagIds: [],
+    // Prefill the relabel fields from the source row's resolved labels
+    // so "label similar" carries the type / company / tags / custom
+    // description forward. The description stays blank when the source
+    // has no real override (`userDescription` null) so the bank text is
+    // kept.
+    description: seedEntry?.userDescription ?? "",
+    typeId: seedEntry?.typeId ?? null,
+    companyId: seedEntry?.companyId ?? null,
+    tagIds: seedEntry?.tagIds ? [...seedEntry.tagIds] : [],
     transferFilter: "exclude",
     saveRule: true,
   };
