@@ -182,6 +182,7 @@ type Props = {
       userTypeId?: string;
       userCompanyId?: string;
       userTagIds?: readonly string[];
+      noCompany?: boolean;
     },
   ) => void;
   // Tag catalog + creator, threaded to the metadata modal so the user

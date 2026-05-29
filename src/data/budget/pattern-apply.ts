@@ -296,12 +296,25 @@ export function applyMatchRuleOnceToAllSheets(
 export type HistoryMetadataPatch = {
   // Each field is "apply this value where the entry lacks it". Absent
   // means "don't touch this field". Description / type / company fill
-  // blanks; tags union.
+  // blanks; tags union; `noCompany` fills the "no company applies"
+  // decision on entries that don't yet have a company (or an explicit
+  // omit). `userCompanyId` and `noCompany` are mutually exclusive — the
+  // metadata form only ever sets one, and company wins if both arrive.
   userDescription?: string;
   userTypeId?: string;
   userCompanyId?: string;
   userTagIds?: readonly string[];
+  noCompany?: boolean;
 };
+
+// An entry "lacks a company decision" when it neither carries a company
+// override nor has been flagged as not needing one — the same blank the
+// metadata walk surfaces. Both the company-fill and the omit-company
+// stamp gate on this so neither overrides a decision the user (or a
+// previous sweep) already made on the matching entry.
+function lacksCompanyDecision(entry: HistoryEntry): boolean {
+  return entry.userCompanyId === undefined && !entry.noCompany;
+}
 
 // Structural exclusions mirror `entryNeedsMetadata` in
 // `BudgetMetadataModal`: hidden / collapsed / transfer / split entries
@@ -333,10 +346,13 @@ function metadataPatchChangesEntry(
   if (patch.userTypeId !== undefined && entry.userTypeId === undefined) {
     return true;
   }
+  if (patch.userCompanyId !== undefined && lacksCompanyDecision(entry)) {
+    return true;
+  }
   if (
-    patch.userCompanyId !== undefined &&
-    entry.userCompanyId === undefined &&
-    !entry.noCompany
+    patch.noCompany === true &&
+    patch.userCompanyId === undefined &&
+    lacksCompanyDecision(entry)
   ) {
     return true;
   }
@@ -360,12 +376,14 @@ function applyMetadataPatch(
   if (patch.userTypeId !== undefined && entry.userTypeId === undefined) {
     draft().userTypeId = patch.userTypeId;
   }
-  if (
-    patch.userCompanyId !== undefined &&
-    entry.userCompanyId === undefined &&
-    !entry.noCompany
-  ) {
+  if (patch.userCompanyId !== undefined && lacksCompanyDecision(entry)) {
     draft().userCompanyId = patch.userCompanyId;
+  } else if (
+    patch.noCompany === true &&
+    patch.userCompanyId === undefined &&
+    lacksCompanyDecision(entry)
+  ) {
+    draft().noCompany = true;
   }
   if (patch.userDescription !== undefined && lacksDescription(entry)) {
     draft().userDescription = patch.userDescription;

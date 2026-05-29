@@ -143,6 +143,61 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
     expect(m1?.userTagIds).toEqual(["keep", "add"]);
   });
 
+  it("propagates an 'omit company' decision to undecided matches", () => {
+    const entries = [
+      entry({ id: "src" }),
+      entry({ id: "blank", date: "2026-03-20" }),
+      entry({ id: "hasCompany", date: "2026-02-20", userCompanyId: "c1" }),
+      entry({ id: "alreadyOmit", date: "2026-01-20", noCompany: true }),
+    ];
+    const next = applyMetadataToMatchingEntries(
+      entries,
+      PATTERN,
+      { noCompany: true },
+      "src",
+    );
+    // Only the undecided match takes the omit flag.
+    expect(next.find((e) => e.id === "blank")?.noCompany).toBe(true);
+    // An entry that already tagged a company keeps it and stays unflagged.
+    const hasCompany = next.find((e) => e.id === "hasCompany");
+    expect(hasCompany?.noCompany).toBeUndefined();
+    expect(hasCompany?.userCompanyId).toBe("c1");
+    // An entry already flagged omit is left as-is (same reference).
+    expect(next.find((e) => e.id === "alreadyOmit")).toBe(entries[3]);
+  });
+
+  it("counts an omit-company-only patch", () => {
+    const entries = [
+      entry({ id: "src" }),
+      entry({ id: "m1", date: "2026-03-20" }),
+      entry({ id: "decided", date: "2026-02-20", userCompanyId: "c1" }),
+    ];
+    expect(
+      countMatchingMetadataTargets(
+        entries,
+        PATTERN,
+        { noCompany: true },
+        "src",
+      ),
+    ).toBe(1);
+  });
+
+  it("prefers a real company over omit when a patch carries both", () => {
+    const entries = [
+      entry({ id: "src" }),
+      entry({ id: "m1", date: "2026-03-20" }),
+    ];
+    const next = applyMetadataToMatchingEntries(
+      entries,
+      PATTERN,
+      { userCompanyId: "company-fk", noCompany: true },
+      "src",
+    );
+    const m1 = next.find((e) => e.id === "m1");
+    expect(m1?.userCompanyId).toBe("company-fk");
+    expect(m1?.noCompany).toBeUndefined();
+  });
+
   it("counts only entries the patch would actually change", () => {
     const entries = [
       entry({ id: "src" }),

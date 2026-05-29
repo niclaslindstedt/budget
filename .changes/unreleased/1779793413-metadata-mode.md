@@ -21,8 +21,9 @@ transfer" checkbox lets you flag an entry as money moving between
 accounts and continue to the next item without picking a type or a
 company. When an entry has lookalikes — older imports whose bank text
 matches once dates and reference numbers are stripped — an "Also apply
-to N similar entries" checkbox lets you fan the same labels out to all
-of them in one save, filling only the fields they're still missing so
+to N similar entries" checkbox lets you fan that entry's type, company
+(or its "omit company" decision), description, and tags out to all of
+them in one save, filling only the fields they're still missing so
 nothing you tagged earlier gets overwritten. Built for the
 spare-minute case on mobile — entries covered by a match rule or a
 merchant hint are skipped so only the genuinely unknown ones surface.

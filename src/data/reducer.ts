@@ -383,6 +383,7 @@ export type Action =
         userTypeId?: string;
         userCompanyId?: string;
         userTagIds?: readonly string[];
+        noCompany?: boolean;
       };
     }
   | {
