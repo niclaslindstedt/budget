@@ -229,21 +229,6 @@ through them.
   `useState` lines, not a sub-machine); re-rate up when a
   `<LoanTypeAdmin>` lands and the pattern shows up a third time.
 
-- **`BudgetComplexEntryModal.tsx` 14-field reset-on-open pyramid →
-  `useReducer`** — discovered 2026-05. `BudgetComplexEntryModal.tsx`
-  (464 lines) declares **15 `useState` calls** with a 14-field
-  reset-together pyramid in its reset-on-open effect (lines ~147-176:
-  `description`, `amountText`, `negative`, `amountMode`,
-  `amountMinText`, `amountMaxText`, `typeId`, `companyId`, `tagIds`,
-  `isTransfer`, `dates`, `formulaMode`, `formulaText`, `resetKey`).
-  This is the first new reset-together pyramid since the last sweep
-  exhausted the textbook candidates. **Severity: 4.** Same fix shape
-  as the seven landed modal-reducer extractions: a
-  `complex-entry-modal-reducer.ts` with a `kind`-discriminated action
-  union, a colocated `initialComplexEntryState` factory, and unit
-  tests; the modal keeps the formula/amount derivations and the
-  submit glue. Pure refactor, low-medium risk.
-
 - **`BudgetTransferSearchModal` + `BudgetTransferSearchFilterMenu`
   filter-state extraction** — discovered 2026-05.
   `BudgetTransferSearchModal.tsx` (687 lines) +
@@ -390,6 +375,47 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`BudgetComplexEntryModal` `useReducer` extraction** (2026-05): the
+  15 parallel `useState` calls in `BudgetComplexEntryModal.tsx` with
+  their 14-field reset-on-open pyramid (`description`, `amountText`,
+  `negative`, `amountMode`, `amountMinText`, `amountMaxText`, `typeId`,
+  `companyId`, `tagIds`, `isTransfer`, `dates`, `formulaMode`,
+  `formulaText`, `resetKey`) collapsed onto a single `useReducer`
+  driven by a `ComplexEntryState` shape and a `kind`-discriminated
+  action union. The reset-on-open effect previously fired 14 sequential
+  `setState` calls (including the seed-vs-blank branch, the
+  `normalizeAmountInput(String(abs), settings)` amount-text formatting,
+  and the `setResetKey((k) => k + 1)` bump); now one `reset` dispatch
+  carrying `{ seed, settings }`, with the seed/blank branch + amount
+  formatting moved into the colocated `initialComplexEntryState`
+  factory and `resetKey` kept monotonic inside the reducer (the `reset`
+  arm reads the prior key and adds one so `BudgetRecurrenceForm`
+  re-seeds on every re-open). `useReducer`'s lazy-init third argument
+  seeds the form so the first render already reflects the open request.
+  The `pickCompany` action folds the `setCompanyId(next)` + conditional
+  `setTypeId(auto)` pair into one atomic transition (same precedent as
+  `BudgetEditEntryFullModal` / `BudgetMetadataModal`); the
+  `autoTypeForCompany` lookup stays in the component because it needs
+  the `companyTypeSuggestions` prop the reducer doesn't see. The
+  `ComplexEntrySeed` public type moved to the reducer file (re-exported
+  from the modal so `useComplexEntry` imports unchanged) to avoid a
+  circular import. The reducer + factory live in
+  `src/components/budget/budget-complex-entry-modal-reducer.ts`; the
+  modal keeps the formula/amount derivations (`parsedAmount`,
+  `formulaError`, `formulaResolves`, `canSubmit`) and the `handleSubmit`
+  glue. 13 unit tests landed in
+  `tests/budget_complex_entry_modal_reducer_test.ts` to lock in the
+  blank/seed snapshots, the sign + zero-amount + tagIds seeding, the
+  monotonic reset, the atomic `pickCompany` conditional, and that each
+  setter only touches its own field. `BudgetComplexEntryModal.tsx` goes
+  from 464 → 484 lines (the dispatch-wrapping `useCallback`s offset the
+  removed `useState`s); the new reducer file is 162 lines. Pure
+  refactor — same behaviour, same i18n keys, same `ComplexEntryDraft`
+  payload shape; `BudgetModalHost` consumes the public component
+  unchanged. Closes the severity-4 `BudgetComplexEntryModal` reset
+  pyramid candidate. fmt-check + lint + typecheck + 1029 tests + build
+  - icons-check pass.
 
 - **Relocate `payday.ts` + `company-type-suggestions.ts` into
   `src/data/budget/`** (2026-05): both modules walk every sheet only to

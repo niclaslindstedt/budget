@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { Sigma } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
@@ -14,10 +14,15 @@ import type {
   Tag,
 } from "../../data/types";
 import { useT } from "../../i18n";
-import { normalizeAmountInput, parseAmount } from "../../utils/format";
+import { parseAmount } from "../../utils/format";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
 import { resolveAmountSpan, type AmountMode } from "./budget-amount-span";
+import {
+  budgetComplexEntryModalReducer,
+  initialComplexEntryState,
+  type ComplexEntrySeed,
+} from "./budget-complex-entry-modal-reducer";
 import { BudgetFormulaHelpButton } from "./BudgetFormulaHelpButton";
 import {
   BudgetFormulaInput,
@@ -72,16 +77,7 @@ type Props = {
   onCreateTag: (draft: Omit<Tag, "id">) => Tag;
 };
 
-export type ComplexEntrySeed = {
-  description: string;
-  // Signed: negative seeds the sign toggle as "−"; positive as "+".
-  amount: number;
-  typeId: string | null;
-  companyId: string | null;
-  tagIds?: string[];
-  isTransfer: boolean;
-  rule: import("../../data/recurrence").RecurrenceRule | null;
-};
+export type { ComplexEntrySeed } from "./budget-complex-entry-modal-reducer";
 
 export type { ComplexEntryDraft } from "../../data/action-payloads";
 import type { ComplexEntryDraft } from "../../data/action-payloads";
@@ -108,76 +104,96 @@ export function BudgetComplexEntryModal({
   onCreateTag,
 }: Props) {
   const t = useT();
-  const [description, setDescription] = useState("");
-  const [amountText, setAmountText] = useState("");
-  const [negative, setNegative] = useState(true);
-  // Exact vs estimate band; the estimate stays in `amountText`, the band
-  // magnitudes (positive strings, sign from `negative`) live here.
-  const [amountMode, setAmountMode] = useState<AmountMode>("exact");
-  const [amountMinText, setAmountMinText] = useState("");
-  const [amountMaxText, setAmountMaxText] = useState("");
-  const [typeId, setTypeId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    budgetComplexEntryModalReducer,
+    { seed: seed ?? null, settings },
+    initialComplexEntryState,
+  );
+  const {
+    description,
+    amountText,
+    negative,
+    // Exact vs estimate band; the estimate stays in `amountText`, the band
+    // magnitudes (positive strings, sign from `negative`) live in state.
+    amountMode,
+    amountMinText,
+    amountMaxText,
+    typeId,
+    companyId,
+    tagIds,
+    isTransfer,
+    dates,
+    // fx mode swaps the numeric amount input for a formula textarea
+    // (`endOfMonthBalance - 5000`, `sheet("Wife", endOfMonthBalance)`, …).
+    // The displayed text shows sheet **names** for readability; on
+    // submit, `formulaToStored` rewrites them to stable sheet ids so
+    // renames don't break the formula.
+    formulaMode,
+    formulaText,
+    // resetKey bumps when the modal re-opens so BudgetRecurrenceForm re-seeds.
+    resetKey,
+  } = state;
+
+  const setDescription = useCallback(
+    (value: string) => dispatch({ kind: "setDescription", value }),
+    [],
+  );
+  const setAmountText = useCallback(
+    (value: string) => dispatch({ kind: "setAmountText", value }),
+    [],
+  );
+  const setAmountMinText = useCallback(
+    (value: string) => dispatch({ kind: "setAmountMinText", value }),
+    [],
+  );
+  const setAmountMaxText = useCallback(
+    (value: string) => dispatch({ kind: "setAmountMaxText", value }),
+    [],
+  );
+  const setTypeId = useCallback(
+    (value: string | null) => dispatch({ kind: "setTypeId", value }),
+    [],
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
-      setCompanyId(next);
-      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
-      if (auto !== undefined) setTypeId(auto);
+      // The auto-type lookup needs `companyTypeSuggestions` (a prop the
+      // reducer doesn't see), so compute it here and fold the company +
+      // type write into one atomic dispatch.
+      const autoTypeId = autoTypeForCompany(
+        typeId,
+        next,
+        companyTypeSuggestions,
+      );
+      dispatch({ kind: "pickCompany", companyId: next, autoTypeId });
     },
     [typeId, companyTypeSuggestions],
   );
-  const [tagIds, setTagIds] = useState<string[]>([]);
-  const [isTransfer, setIsTransfer] = useState(false);
-  const [dates, setDates] = useState<string[]>([]);
-  // fx mode swaps the numeric amount input for a formula textarea
-  // (`endOfMonthBalance - 5000`, `sheet("Wife", endOfMonthBalance)`, …).
-  // The displayed text shows sheet **names** for readability; on
-  // submit, `formulaToStored` rewrites them to stable sheet ids so
-  // renames don't break the formula.
-  const [formulaMode, setFormulaMode] = useState(false);
-  const [formulaText, setFormulaText] = useState("");
+  const setTagIds = useCallback(
+    (value: string[]) => dispatch({ kind: "setTagIds", value }),
+    [],
+  );
+  const setIsTransfer = useCallback(
+    (value: boolean) => dispatch({ kind: "setIsTransfer", value }),
+    [],
+  );
+  const setFormulaText = useCallback(
+    (value: string) => dispatch({ kind: "setFormulaText", value }),
+    [],
+  );
   // Lets the variable-helper dropdown splice tokens at the caret and
   // restore focus + cursor position afterwards. The BudgetFormulaInput is a
   // contentEditable pill renderer so the ref points at its imperative
   // handle, not a raw DOM input.
   const formulaInputRef = useRef<FormulaInputHandle>(null);
-  // resetKey bumps when the modal re-opens so BudgetRecurrenceForm re-seeds.
-  const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
     if (!open) return;
-    if (seed) {
-      setDescription(seed.description);
-      const abs = Math.abs(seed.amount);
-      setAmountText(
-        abs === 0 ? "" : normalizeAmountInput(String(abs), settings),
-      );
-      setNegative(seed.amount < 0);
-      setTypeId(seed.typeId);
-      setCompanyId(seed.companyId);
-      setTagIds(seed.tagIds ?? []);
-      setIsTransfer(seed.isTransfer);
-    } else {
-      setDescription("");
-      setAmountText("");
-      setNegative(true);
-      setTypeId(null);
-      setCompanyId(null);
-      setTagIds([]);
-      setIsTransfer(false);
-    }
-    setDates([]);
-    setAmountMode("exact");
-    setAmountMinText("");
-    setAmountMaxText("");
-    setFormulaMode(false);
-    setFormulaText("");
-    setResetKey((k) => k + 1);
+    dispatch({ kind: "reset", seed: { seed: seed ?? null, settings } });
   }, [open, seed, settings]);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, nextDates: string[]) => {
-      setDates(nextDates);
+      dispatch({ kind: "setDates", value: nextDates });
     },
     [],
   );
@@ -207,8 +223,12 @@ export function BudgetComplexEntryModal({
     return r.ok ? null : r.error;
   }, [formulaMode, formulaText]);
 
-  const toggleSign = () => setNegative((s) => !s);
-  const toggleFormulaMode = () => setFormulaMode((m) => !m);
+  const setAmountMode = useCallback(
+    (value: AmountMode) => dispatch({ kind: "setAmountMode", value }),
+    [],
+  );
+  const toggleSign = () => dispatch({ kind: "toggleSign" });
+  const toggleFormulaMode = () => dispatch({ kind: "toggleFormulaMode" });
 
   const insertFormulaToken = useCallback((text: string) => {
     // BudgetFormulaInput owns its own caret model (text-offset, not DOM
