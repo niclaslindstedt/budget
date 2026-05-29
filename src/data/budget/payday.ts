@@ -21,9 +21,9 @@
 // Returns `fallback` when the algorithm can't make a confident
 // pick — empty data, no salary series, all amounts negative, etc.
 
-import { compilePattern } from "./match-rules";
-import { findColumnByType } from "./sheet";
-import type { Column, HistoryEntry, Row, UserData } from "./types";
+import { compilePattern } from "../match-rules";
+import { findColumnByType } from "../sheet";
+import type { Column, HistoryEntry, Row, UserData } from "../types";
 
 const PAYDAY_MIN = 1;
 const PAYDAY_MAX = 28;

@@ -127,9 +127,14 @@ src/
 │   │   ├── recurring-detection.ts  # surfaces "looks recurring"
 │   │   │                           # candidates from HistoryEntry
 │   │   │                           # clusters (detectRecurringCandidates)
-│   │   └── conflicts.ts        # duplicate-finder for an AccountBudget
-│   │                           # (findConflicts, pickWinner) consumed
-│   │                           # by BudgetFindConflictsModal
+│   │   ├── conflicts.ts        # duplicate-finder for an AccountBudget
+│   │   │                       # (findConflicts, pickWinner) consumed
+│   │   │                       # by BudgetFindConflictsModal
+│   │   ├── payday.ts     # salary detection over budget rows
+│   │   │                 # (detectPaydayDayOfMonth, nextPaydayDate)
+│   │   └── company-type-suggestions.ts  # company→type hints from
+│   │                     # budget rows (computeCompanyTypeSuggestions,
+│   │                     # autoTypeForCompany)
 │   ├── accounts/
 │   │   ├── balance.ts    # account-level aggregation (accountBalance)
 │   │   ├── export.ts     # JSON export builder for the accounts sheet

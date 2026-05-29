@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
-import { detectPaydayDayOfMonth, nextPaydayDate } from "../src/data/payday";
+import {
+  detectPaydayDayOfMonth,
+  nextPaydayDate,
+} from "../src/data/budget/payday";
 import type {
   Column,
   HistoryEntry,

@@ -108,13 +108,11 @@ through them.
     `Action` union in `src/data/reducer.ts`.
   - **Budget-only traversals masquerading as universal** — modules
     at `src/data/` root that read `item.type === "accountBudget"`
-    despite not living under `budget/`: `payday.ts:66`,
-    `company-type-suggestions.ts:36`, `search.ts:369`,
+    despite not living under `budget/`: `search.ts:369`,
     `achievements/catalog.ts:84`, `storage/backup-metadata.ts:17`.
-    `payday` and `company-type-suggestions` are genuinely budget-only
-    (salary detection / type-company hints over budget rows) and
-    should simply **move into `src/data/budget/`** (mechanical, an
-    easy win — see Easy wins). `search`, `achievements`, and
+    (`payday` and `company-type-suggestions` were genuinely
+    budget-only and **moved into `src/data/budget/`** 2026-05 — see
+    Landed.) `search`, `achievements`, and
     `backup-metadata` are conceptually cross-page (you'll want to
     search / count / back up rows from every sheet type) and want a
     registry callback (`rowsForBackup?` / `searchableRows?` /
@@ -369,16 +367,9 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   was consumed 2026-05 — see Landed. New ISO date helpers should
   live in `src/utils/date.ts` and import from there.
 
-- **Relocate two genuinely-budget-only modules under
-  `src/data/budget/`** — folds into the sheet-type-registry cluster
-  (7–8 band) but the move itself is mechanical. Re-audited 2026-05
-  and **corrected**: `payday.ts` and `company-type-suggestions.ts`
-  both walk sheets only to filter to `item.type === "accountBudget"`
-  and read budget rows (salary detection / company→type hints) —
-  they are budget-only despite sitting at `src/data/` root (an
-  earlier audit mislabelled `payday.ts` as universal). Move both into
-  `src/data/budget/`, rewire imports, update the `docs/architecture.md`
-  inventory. `search.ts`, `achievements/`, and `backup-metadata.ts`
+- **Relocate genuinely-budget-only modules under `src/data/budget/`** —
+  `payday.ts` + `company-type-suggestions.ts` landed 2026-05 (see
+  Landed). `search.ts`, `achievements/`, and `backup-metadata.ts`
   stay at root / in storage — they're conceptually cross-page and
   want a registry callback instead (see the cluster). The remaining
   root modules (`coverage.ts`, `match-rules.ts`, `merchant-hints.ts`,
@@ -399,6 +390,24 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Relocate `payday.ts` + `company-type-suggestions.ts` into
+  `src/data/budget/`** (2026-05): both modules walk every sheet only to
+  filter to `item.type === "accountBudget"` and read budget rows
+  (salary detection / company→type hints), so they were budget-only
+  despite sitting at `src/data/` root. `git mv`'d both into
+  `src/data/budget/`, fixed their internal relative imports
+  (`./match-rules`/`./sheet`/`./types` → `../`), and rewired all 12
+  importers (10 components + 2 test files) plus the four doc-comment
+  path references in `BudgetMetadataModal` / `BudgetComplexEntryModal` /
+  `BudgetEditEntryFullModal` / `EditHistoryEntryModal`. Added both to
+  the `data/budget/` subtree in `docs/architecture.md`. This is the
+  mechanical "move" half of the sheet-type-registry cluster's
+  "budget-only traversals masquerading as universal" sub-point; the
+  cross-page modules (`search.ts`, `achievements/`, `backup-metadata.ts`)
+  stay put and want a registry callback instead. Pure file relocation —
+  no behaviour change, no persisted-shape change; fmt-check + lint +
+  typecheck + 1020 tests + build + icons-check pass.
 
 - **`BudgetMatchRuleModal` form-field `useReducer` extraction** (2026-05):
   the 6 non-amount form-field `useState` calls in

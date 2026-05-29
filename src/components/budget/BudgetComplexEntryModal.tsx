@@ -3,7 +3,7 @@ import { Sigma } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
 import { formulaToStored, parseFormula } from "../../data/budget/formula";
-import { autoTypeForCompany } from "../../data/company-type-suggestions";
+import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import type { RecurrenceRule } from "../../data/recurrence";
 import type {
   Category,
@@ -38,7 +38,7 @@ type Props = {
   companies: readonly Company[];
   tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill. See
-  // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
+  // `computeCompanyTypeSuggestions` in `src/data/budget/company-type-suggestions.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   // All sheets in the workspace. Used by the formula editor's
