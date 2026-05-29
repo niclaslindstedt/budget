@@ -1,21 +1,10 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import {
-  Copy,
-  History,
-  ListChecks,
-  MoveRight,
-  Pencil,
-  Plus,
-  Redo2,
-  Search,
-  Trash2,
-  Undo2,
-  X,
-} from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
+import { History, ListChecks, Plus, Redo2, Search, Undo2 } from "lucide-react";
 
 import type { Sheet } from "../data/types";
 import { useIsStandalone, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
+import { BulkActionBar } from "./BulkActionBar";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -78,7 +67,6 @@ export function BottomBar({
   const selectLabel = selectMode
     ? t("app.exitSelectMode")
     : t("app.selectRows");
-  const bulkDisabled = bulkSelectedCount === 0;
 
   // Browser mode already gets a "hide on scroll" feel for free —
   // mobile Safari / Chrome's URL bar collapses on scroll down and
@@ -160,55 +148,14 @@ export function BottomBar({
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {selectMode ? (
-            <>
-              <span className="shrink-0 px-2 text-xs font-bold tracking-wider text-fg-bright tabular-nums uppercase">
-                {bulkSelectedCount}
-                <span className="ml-1 text-muted">
-                  {t("bulkBar.selectedSuffix")}
-                </span>
-              </span>
-              <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
-              <BulkButton
-                tone="text-accent"
-                icon={<Pencil size={16} aria-hidden focusable={false} />}
-                onClick={onBulkEdit}
-                disabled={bulkDisabled}
-                ariaLabel={t("bulkBar.editSelected")}
-                title={t("common.edit")}
-              />
-              <BulkButton
-                tone="text-meta"
-                icon={<MoveRight size={16} aria-hidden focusable={false} />}
-                onClick={onBulkMove}
-                disabled={bulkDisabled}
-                ariaLabel={t("bulkBar.moveSelected")}
-                title={t("bulkBar.move")}
-              />
-              <BulkButton
-                tone="text-link"
-                icon={<Copy size={16} aria-hidden focusable={false} />}
-                onClick={onBulkCopy}
-                disabled={bulkDisabled}
-                ariaLabel={t("bulkBar.copySelected")}
-                title={t("bulkBar.copy")}
-              />
-              <BulkButton
-                tone="text-danger"
-                icon={<Trash2 size={16} aria-hidden focusable={false} />}
-                onClick={onBulkDelete}
-                disabled={bulkDisabled}
-                ariaLabel={t("bulkBar.deleteSelected")}
-                title={t("common.delete")}
-              />
-              <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
-              <BulkButton
-                tone="text-muted"
-                icon={<X size={16} aria-hidden focusable={false} />}
-                onClick={onBulkCancel}
-                ariaLabel={t("bulkBar.cancelSelection")}
-                title={t("common.cancel")}
-              />
-            </>
+            <BulkActionBar
+              selectedCount={bulkSelectedCount}
+              onEdit={onBulkEdit}
+              onMove={onBulkMove}
+              onCopy={onBulkCopy}
+              onDelete={onBulkDelete}
+              onCancel={onBulkCancel}
+            />
           ) : (
             // Sheet picker as an ARIA tablist — each tab carries
             // `aria-selected`, the inactive tabs roll `tabIndex={-1}`
@@ -304,38 +251,6 @@ export function BottomBar({
         </div>
       </div>
     </div>
-  );
-}
-
-const bulkIconButton =
-  "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40";
-
-function BulkButton({
-  tone,
-  icon,
-  onClick,
-  disabled,
-  ariaLabel,
-  title,
-}: {
-  tone: string;
-  icon: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  ariaLabel: string;
-  title: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      title={title}
-      className={`${bulkIconButton} ${tone}`}
-    >
-      {icon}
-    </button>
   );
 }
 

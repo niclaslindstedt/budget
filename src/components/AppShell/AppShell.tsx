@@ -808,6 +808,19 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         syncAutoOpens={syncAutoOpens}
         achievementsModal={achievementsModal}
         searchModal={searchModal}
+        searchBulk={{
+          selectMode,
+          selectedIds,
+          activeSheetId: activeSheet.id,
+          onToggleSelectMode,
+          onToggleSelect,
+          onSelectSheet,
+          onBulkEdit,
+          onBulkMove,
+          onBulkCopy,
+          onBulkDelete,
+          onBulkCancel: onCancelSelect,
+        }}
         taxonomyCrud={taxonomyCrud}
         matchRuleUi={matchRuleUi}
         actionHistoryOpen={actionHistoryOpen}

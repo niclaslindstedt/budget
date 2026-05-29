@@ -32,6 +32,7 @@ const searchTransaction: SearchTransactionCatalog = {
   filterDateMin: "Tidigaste datum",
   filterDateMax: "Senaste datum",
   filterReset: "Återställ filter",
+  selectResult: "Markera {description}",
 };
 
 export default searchTransaction;

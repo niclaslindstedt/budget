@@ -72,6 +72,22 @@ type Props = {
   syncAutoOpens: ReturnType<typeof useSyncAutoOpens>;
   achievementsModal: ReturnType<typeof useAchievementsModal>;
   searchModal: ReturnType<typeof useSearchModal>;
+  // Select-many wiring for the search modal — the same bulk-selection
+  // handlers the BottomBar uses, plus the active sheet id + a sheet
+  // switcher so the first pick can lock selection to its sheet.
+  searchBulk: {
+    selectMode: boolean;
+    selectedIds: ReadonlySet<string>;
+    activeSheetId: string;
+    onToggleSelectMode: () => void;
+    onToggleSelect: (rowId: string) => void;
+    onSelectSheet: (sheetId: string) => void;
+    onBulkEdit: () => void;
+    onBulkMove: () => void;
+    onBulkCopy: () => void;
+    onBulkDelete: () => void;
+    onBulkCancel: () => void;
+  };
   taxonomyCrud: ReturnType<typeof useTaxonomyCrud>;
   matchRuleUi: Pick<
     ReturnType<typeof useMatchRuleUi>,
@@ -105,6 +121,7 @@ export function UniversalModalHost(props: Props) {
     syncAutoOpens,
     achievementsModal,
     searchModal,
+    searchBulk,
     taxonomyCrud,
     matchRuleUi,
     actionHistoryOpen,
@@ -419,6 +436,17 @@ export function UniversalModalHost(props: Props) {
         onFilterChange={setSearchFilter}
         index={searchIndex}
         settings={effectiveSettings}
+        selectMode={searchBulk.selectMode}
+        selectedIds={searchBulk.selectedIds}
+        activeSheetId={searchBulk.activeSheetId}
+        onToggleSelectMode={searchBulk.onToggleSelectMode}
+        onToggleSelect={searchBulk.onToggleSelect}
+        onSelectSheet={searchBulk.onSelectSheet}
+        onBulkEdit={searchBulk.onBulkEdit}
+        onBulkMove={searchBulk.onBulkMove}
+        onBulkCopy={searchBulk.onBulkCopy}
+        onBulkDelete={searchBulk.onBulkDelete}
+        onBulkCancel={searchBulk.onBulkCancel}
         onPick={(entry) => {
           if (entry.sheetId !== data.activeSheetId) {
             dispatch({ type: "selectSheet", sheetId: entry.sheetId });
