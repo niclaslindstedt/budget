@@ -559,9 +559,11 @@ export function BudgetPage({
     scrollToRowRequest,
     sheetId: sheet.id,
     currentMonth,
+    futureCutoff,
     startOfMonth: settings.startOfMonth,
     defaultHistoryMonths: DEFAULT_HISTORY_MONTHS,
     setExtraHistory,
+    setExtraFuture,
   });
 
   // Stable per-month closure bundles, keyed by monthKey. Without this
