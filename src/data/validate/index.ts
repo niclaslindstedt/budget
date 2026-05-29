@@ -204,6 +204,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
         `history.${accountId}[${i}]`,
         knownTypeIds,
         knownCompanyIds,
+        knownTagIds,
       );
       if (!r.ok) return r;
       if (seenIds.has(r.value.id)) continue;
@@ -262,7 +263,12 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const matchRules: MatchRule[] = [];
   const seenRuleIds = new Set<string>();
   for (const rawRule of rawRules) {
-    const rule = validateMatchRule(rawRule, knownTypeIds, knownCompanyIds);
+    const rule = validateMatchRule(
+      rawRule,
+      knownTypeIds,
+      knownCompanyIds,
+      knownTagIds,
+    );
     if (!rule) continue;
     if (seenRuleIds.has(rule.id)) continue;
     seenRuleIds.add(rule.id);

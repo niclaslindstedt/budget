@@ -1,7 +1,7 @@
 import type { AccountBudget, MatchRule, Row } from "../../types";
 import type { EditPatch } from "../../action-payloads";
 import { findColumnByType } from "../../sheet";
-import { findMatchingRuleForCandidate } from "../../match-rules";
+import { findMatchingRuleForCandidate, mergeTagIds } from "../../match-rules";
 import { candidateFromRow, resolveCandidateColumns } from "../../row-candidate";
 import { type HintRecording } from "../../merchant-hints";
 import { addDaysIso } from "../../../utils/date";
@@ -179,18 +179,25 @@ export function applyPatternsAfterCellEdit(
       (!before || before.cells[cols.amountId] !== row.cells[cols.amountId]);
     if (!descChanged && !amountChanged) continue;
     const rule = findMatchingRuleForCandidate(rules, candidate);
-    if (!rule || !rule.typeId) continue;
+    if (!rule) continue;
     const ruleCompanyId =
       rule.companyId !== undefined && rule.companyId !== null
         ? rule.companyId
         : undefined;
-    const typeNeedsUpdate = rule.typeId !== row.typeId;
+    const nextTagIds = mergeTagIds(row.tagIds, rule.tagIds);
+    const typeNeedsUpdate =
+      rule.typeId !== undefined &&
+      rule.typeId !== null &&
+      rule.typeId !== row.typeId;
     const companyNeedsUpdate =
       ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
-    if (!typeNeedsUpdate && !companyNeedsUpdate) continue;
+    const tagsNeedUpdate = nextTagIds !== row.tagIds;
+    if (!typeNeedsUpdate && !companyNeedsUpdate && !tagsNeedUpdate) continue;
     if (nextRows === null) nextRows = next.rows.slice();
-    const nextRow: Row = { ...row, typeId: rule.typeId };
+    const nextRow: Row = { ...row };
+    if (typeNeedsUpdate && rule.typeId) nextRow.typeId = rule.typeId;
     if (ruleCompanyId !== undefined) nextRow.companyId = ruleCompanyId;
+    if (tagsNeedUpdate && nextTagIds) nextRow.tagIds = [...nextTagIds];
     nextRows[i] = nextRow;
   }
   if (nextRows === null) return next;

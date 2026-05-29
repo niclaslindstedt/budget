@@ -353,6 +353,12 @@ export type Action =
         userDescription?: string;
         userTypeId?: string | null;
         userCompanyId?: string | null;
+        // Full replacement of the entry's per-entry tag override.
+        // `undefined` leaves the existing `userTagIds` untouched; an
+        // empty array clears it. The synthesizer unions these with any
+        // matching rule's tags, so clearing the per-entry set still
+        // leaves the row carrying whatever a rule contributes.
+        userTagIds?: string[];
         isTransfer?: boolean;
         // `true` stamps the "no company applies" flag so metadata
         // mode stops surfacing the entry over a missing company.

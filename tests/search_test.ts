@@ -67,7 +67,7 @@ function withItem(
     items: [item],
   };
   return {
-    version: 45,
+    version: 46,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: options.accounts ?? [],

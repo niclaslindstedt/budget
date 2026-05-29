@@ -50,6 +50,13 @@ export function reduceHistory(
           if (action.patch.userCompanyId === null) delete next.userCompanyId;
           else next.userCompanyId = action.patch.userCompanyId;
         }
+        if (action.patch.userTagIds !== undefined) {
+          // An empty array clears the per-entry override; a non-empty
+          // one replaces it wholesale (the picker hands back the full
+          // selection, not a diff).
+          if (action.patch.userTagIds.length === 0) delete next.userTagIds;
+          else next.userTagIds = action.patch.userTagIds;
+        }
         if (action.patch.isTransfer !== undefined) {
           // Only persist `true` — absent means "not a transfer".
           if (action.patch.isTransfer) next.isTransfer = true;
@@ -61,10 +68,15 @@ export function reduceHistory(
           else delete next.noCompany;
         }
         // Bail if the patch is a no-op so React skips a wasted render.
+        // `userTagIds` is compared by reference — the spread above keeps
+        // the same array when the patch didn't touch tags, and hands a
+        // fresh array (or `undefined` after delete) when it did, so a
+        // tags-only edit never collapses into this short-circuit.
         if (
           next.userDescription === prev.userDescription &&
           next.userTypeId === prev.userTypeId &&
           next.userCompanyId === prev.userCompanyId &&
+          next.userTagIds === prev.userTagIds &&
           next.isTransfer === prev.isTransfer &&
           next.noCompany === prev.noCompany
         ) {

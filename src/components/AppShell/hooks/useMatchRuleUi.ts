@@ -142,6 +142,7 @@ export function useMatchRuleUi({
       if (draft.description) rule.description = draft.description;
       if (draft.typeId) rule.typeId = draft.typeId;
       if (draft.companyId) rule.companyId = draft.companyId;
+      if (draft.tagIds.length > 0) rule.tagIds = [...draft.tagIds];
       if (draft.amountSign !== "any") rule.amountSign = draft.amountSign;
       if (draft.transferFilter !== "any")
         rule.transferFilter = draft.transferFilter;
