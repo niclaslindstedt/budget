@@ -14,6 +14,7 @@ import { SheetModal } from "../SheetModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
 import { useRegisterModalHandlers } from "../modal-dispatch";
 import { useAchievementsModal } from "./hooks/useAchievementsModal";
+import { useChangelogState } from "./hooks/useChangelogState";
 import { unlock as unlockAchievement } from "../../data/achievements";
 import type { Action } from "../../data/reducer";
 import type {
@@ -28,7 +29,6 @@ import type {
 } from "../../storage/useUserDataStorage";
 import { useT } from "../../i18n";
 import type { AppShellAuth, AppShellStorage } from "./types";
-import type { useChangelogState } from "./hooks/useChangelogState";
 import type { useDownloadFlow } from "./hooks/useDownloadFlow";
 import type { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import type { useSearchModal } from "./hooks/useSearchModal";
@@ -71,7 +71,6 @@ type Props = {
   sheetMetaDialog: ReturnType<typeof useSheetMetaDialog>;
   downloadFlow: ReturnType<typeof useDownloadFlow>;
   settingsModal: ReturnType<typeof useSettingsModal>;
-  changelog: ReturnType<typeof useChangelogState>;
   syncAutoOpens: ReturnType<typeof useSyncAutoOpens>;
   searchModal: ReturnType<typeof useSearchModal>;
   // Select-many wiring for the search modal — the same bulk-selection
@@ -118,7 +117,6 @@ export function UniversalModalHost(props: Props) {
     sheetMetaDialog,
     downloadFlow,
     settingsModal,
-    changelog,
     syncAutoOpens,
     searchModal,
     searchBulk,
@@ -131,10 +129,12 @@ export function UniversalModalHost(props: Props) {
     onImport,
   } = props;
   const t = useT();
-  // The action-history and achievements modals open only from chrome (via
-  // the dispatch context) and render only here, so the host owns their
-  // open state outright and registers the open handlers rather than
-  // threading a boolean + setter down from AppShell.
+  // The action-history, achievements, and changelog modals open only from
+  // chrome (via the dispatch context) and render only here, so the host owns
+  // their open state outright and registers the open handlers rather than
+  // threading a boolean + setter down from AppShell. The changelog hook also
+  // drives the per-version auto-open on upgrade — `data` / `dispatch` are
+  // already host props, so it lives here cleanly.
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   const {
     achievementsModalOpen,
@@ -142,10 +142,20 @@ export function UniversalModalHost(props: Props) {
     achievementsListOpen,
     setAchievementsListOpen,
   } = useAchievementsModal();
+  const {
+    changelogOpen,
+    changelogSince,
+    setChangelogManualOpen,
+    onCloseChangelog,
+  } = useChangelogState({
+    lastSeenChangelogVersion: data.settings.lastSeenChangelogVersion,
+    dispatch,
+  });
   useRegisterModalHandlers({
     openActionHistory: () => setActionHistoryOpen(true),
     openAchievementsList: () => setAchievementsListOpen(true),
     openAchievementsUnlock: () => setAchievementsModalOpen(true),
+    openChangelog: () => setChangelogManualOpen(true),
   });
   const {
     status,
@@ -199,7 +209,6 @@ export function UniversalModalHost(props: Props) {
     setSettingsInitialTab,
     setPreviewSettings,
   } = settingsModal;
-  const { changelogOpen, changelogSince, onCloseChangelog } = changelog;
   const {
     syncDetailsOpen,
     setSyncDetailsOpen,

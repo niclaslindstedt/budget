@@ -8,7 +8,6 @@ import {
 import { useAccountDialog } from "./hooks/useAccountDialog";
 import { useAppearanceProjection } from "./hooks/useAppearanceProjection";
 import { useBulkSelection } from "./hooks/useBulkSelection";
-import { useChangelogState } from "./hooks/useChangelogState";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
 import { useEditPrompts } from "./hooks/useEditPrompts";
@@ -399,12 +398,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       }),
     [dispatch, isMobile],
   );
-  const changelog = useChangelogState({
-    lastSeenChangelogVersion: data.settings.lastSeenChangelogVersion,
-    dispatch,
-  });
-  const { setChangelogManualOpen } = changelog;
-
   const { sheetPanelRef, onSelectSheet, onClickHeaderTitle } = useSheetNav({
     sheets: data.sheets,
     activeSheetId: data.activeSheetId,
@@ -524,7 +517,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const modalHandlers = useMemo<Partial<ModalCommandHandlers>>(
     () => ({
       openSettings: () => setSettingsOpen(true),
-      openChangelog: () => setChangelogManualOpen(true),
       openSearch: () => {
         unlockAchievement("detective");
         setSearchOpen(true);
@@ -545,7 +537,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     }),
     [
       setSettingsOpen,
-      setChangelogManualOpen,
       setSearchOpen,
       setSyncDetailsOpen,
       onOpenNewSheet,
@@ -814,7 +805,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           sheetMetaDialog={sheetMetaDialog}
           downloadFlow={downloadFlow}
           settingsModal={settingsModal}
-          changelog={changelog}
           syncAutoOpens={syncAutoOpens}
           searchModal={searchModal}
           searchBulk={{
