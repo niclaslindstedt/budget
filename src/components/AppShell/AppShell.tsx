@@ -36,6 +36,12 @@ import { BudgetPage } from "../budget/BudgetPage";
 import { BudgetRecurringCandidatesPanel } from "../budget/BudgetRecurringCandidatesPanel";
 import { HeaderMenu } from "../HeaderMenu";
 import { HeaderStar } from "../HeaderStar";
+import {
+  ModalDispatchProvider,
+  applyModalCommand,
+  type ModalCommand,
+  type ModalCommandHandlers,
+} from "../modal-dispatch";
 import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
 import { SyncStatus } from "../SyncStatus";
@@ -408,6 +414,41 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   });
   const { setChangelogManualOpen } = changelog;
 
+  // Universal modal opens dispatched by the page chrome (header menu,
+  // bottom bar, header star, sync status) through ModalDispatchProvider,
+  // so those components name the modal they want instead of each
+  // carrying an opener callback prop. The state still lives in the
+  // hooks above; this just routes the open-trigger. Open-side achievement
+  // unlocks (the search "detective") ride along here so the chrome stays
+  // unaware of them.
+  const modalHandlers = useMemo<ModalCommandHandlers>(
+    () => ({
+      openSettings: () => setSettingsOpen(true),
+      openChangelog: () => setChangelogManualOpen(true),
+      openSearch: () => {
+        unlockAchievement("detective");
+        setSearchOpen(true);
+      },
+      openActionHistory: () => setActionHistoryOpen(true),
+      openAchievementsList: () => setAchievementsListOpen(true),
+      openAchievementsUnlock: () => setAchievementsModalOpen(true),
+      openSyncDetails: () => setSyncDetailsOpen(true),
+    }),
+    [
+      setSettingsOpen,
+      setChangelogManualOpen,
+      setSearchOpen,
+      setActionHistoryOpen,
+      setAchievementsListOpen,
+      setAchievementsModalOpen,
+      setSyncDetailsOpen,
+    ],
+  );
+  const dispatchModal = useCallback(
+    (command: ModalCommand) => applyModalCommand(command, modalHandlers),
+    [modalHandlers],
+  );
+
   const { sheetPanelRef, onSelectSheet, onClickHeaderTitle } = useSheetNav({
     sheets: data.sheets,
     activeSheetId: data.activeSheetId,
@@ -512,35 +553,36 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const { onMatchRuleRequest } = matchRuleUi;
 
   return (
-    // The BottomBar is `position: sticky; bottom: 0` in browser
-    // mode (so the AddRow at the foot of the last month ends its
-    // scroll just above the bar) and `position: fixed; inset: auto
-    // 0 0 0` in installed-PWA mode (see `src/styles.css`). The
-    // `data-budget-shell` and `data-budget-main` attributes are the
-    // hooks the standalone-mode rules target — wrapper pinned to
-    // `min-height: 100dvh`, main given a `padding-bottom` reserve
-    // so the AddRow clears the now-out-of-flow bar.
-    <div
-      data-budget-shell
-      className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
-    >
-      {/* Pull-to-refresh pip lives outside the `data-modal-background`
+    <ModalDispatchProvider value={dispatchModal}>
+      {/* The BottomBar is `position: sticky; bottom: 0` in browser
+          mode (so the AddRow at the foot of the last month ends its
+          scroll just above the bar) and `position: fixed; inset: auto
+          0 0 0` in installed-PWA mode (see `src/styles.css`). The
+          `data-budget-shell` and `data-budget-main` attributes are the
+          hooks the standalone-mode rules target — wrapper pinned to
+          `min-height: 100dvh`, main given a `padding-bottom` reserve
+          so the AddRow clears the now-out-of-flow bar. */}
+      <div
+        data-budget-shell
+        className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
+      >
+        {/* Pull-to-refresh pip lives outside the `data-modal-background`
           wrapper so an open modal's `inert` doesn't disable its
           fixed-position rendering. The hook itself gates on
           `[aria-modal="true"]` so the gesture is suppressed while a
           modal is up — this is purely so the pip can finish its
           slide-out animation if a modal opens mid-pull. */}
-      <PullToRefreshIndicator
-        state={ptr.state}
-        pullDistance={ptr.pullDistance}
-      />
-      {/* `data-modal-background` is the toggle target for the modal
+        <PullToRefreshIndicator
+          state={ptr.state}
+          pullDistance={ptr.pullDistance}
+        />
+        {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
           flips `inert` on every match, freezing focus and pointer
           events on the chrome behind the backdrop. `display: contents`
           keeps the flex column layout unchanged. */}
-      <div className="contents" data-modal-background>
-        {/* `pt` adds `env(safe-area-inset-top)` so the header content
+        <div className="contents" data-modal-background>
+          {/* `pt` adds `env(safe-area-inset-top)` so the header content
             clears the iOS status bar / Dynamic Island when running as
             an installed PWA (where `apple-mobile-web-app-status-bar-style`
             is `black-translucent` and the page extends edge-to-edge under
@@ -549,304 +591,295 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             standalone-mode block in `styles.css` shave the extra
             breathing room so the gap above the header matches the
             Dynamic Island's tiny margin to the top edge. */}
-        <header
-          data-app-header
-          className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-[calc(1rem+env(safe-area-inset-top))] md:pb-4"
-        >
-          <button
-            type="button"
-            onClick={onClickHeaderTitle}
-            title={headerActionDescription(
-              effectiveSettings.headerAction,
-              data.sheets,
-              t,
-            )}
-            className="inline-flex cursor-pointer items-center gap-2 rounded border border-transparent bg-transparent p-0 text-left hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+          <header
+            data-app-header
+            className="sticky top-0 z-30 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-page-bg px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 md:mb-6 md:gap-x-4 md:gap-y-3 md:px-0 md:pt-[calc(1rem+env(safe-area-inset-top))] md:pb-4"
           >
-            <img
-              src="/icons/icon-64.png"
-              srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
-              alt=""
-              aria-hidden
-              width={24}
-              height={24}
-              className="h-6 w-6 rounded-sm"
-            />
-            <h1 className="m-0 text-base font-bold tracking-wide text-fg-bright">
-              budget
-            </h1>
-          </button>
-          <div
-            role="toolbar"
-            aria-label={t("app.headerToolbar")}
-            className="ml-auto inline-flex items-center gap-2"
-          >
-            <HeaderStar
-              unseenCount={data.settings.unseenAchievements.length}
-              onOpenList={() => setAchievementsListOpen(true)}
-              onOpenUnlockModal={() => setAchievementsModalOpen(true)}
-            />
-            {backend === "dropbox" || backend === "gdrive" ? (
-              <SyncStatus
-                providerName={
-                  backend === "dropbox" ? "Dropbox" : "Google Drive"
-                }
-                status={status}
-                dirty={dirty}
-                onSave={saveNow}
-                onOpenDetails={() => setSyncDetailsOpen(true)}
+            <button
+              type="button"
+              onClick={onClickHeaderTitle}
+              title={headerActionDescription(
+                effectiveSettings.headerAction,
+                data.sheets,
+                t,
+              )}
+              className="inline-flex cursor-pointer items-center gap-2 rounded border border-transparent bg-transparent p-0 text-left hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+            >
+              <img
+                src="/icons/icon-64.png"
+                srcSet="/icons/icon-64.png 1x, /icons/icon-256.png 4x"
+                alt=""
+                aria-hidden
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded-sm"
               />
-            ) : (
-              <SaveStateButton
-                dirty={dirty}
-                saving={status.kind === "saving"}
-                onSave={saveNow}
+              <h1 className="m-0 text-base font-bold tracking-wide text-fg-bright">
+                budget
+              </h1>
+            </button>
+            <div
+              role="toolbar"
+              aria-label={t("app.headerToolbar")}
+              className="ml-auto inline-flex items-center gap-2"
+            >
+              <HeaderStar
+                unseenCount={data.settings.unseenAchievements.length}
               />
-            )}
-            <HeaderMenu
-              user={user}
-              hasOtherUsers={hasOtherUsers}
-              onOpenSettings={() => setSettingsOpen(true)}
-              onOpenChangelog={() => setChangelogManualOpen(true)}
-              onSignOut={onSignOut}
-              onSwitchUser={onSwitchUser}
-              onCreateAccount={onCreateAccount}
-            />
-          </div>
-        </header>
-        {/* `<main>` stays as the page-level landmark; the inner wrapper
+              {backend === "dropbox" || backend === "gdrive" ? (
+                <SyncStatus
+                  providerName={
+                    backend === "dropbox" ? "Dropbox" : "Google Drive"
+                  }
+                  status={status}
+                  dirty={dirty}
+                  onSave={saveNow}
+                />
+              ) : (
+                <SaveStateButton
+                  dirty={dirty}
+                  saving={status.kind === "saving"}
+                  onSave={saveNow}
+                />
+              )}
+              <HeaderMenu
+                user={user}
+                hasOtherUsers={hasOtherUsers}
+                onSignOut={onSignOut}
+                onSwitchUser={onSwitchUser}
+                onCreateAccount={onCreateAccount}
+              />
+            </div>
+          </header>
+          {/* `<main>` stays as the page-level landmark; the inner wrapper
             carries `role="tabpanel"` so the tablist in `BottomBar`
             has a target to bind to via `aria-labelledby`. `tabIndex={-1}`
             on the inner wrapper lets `Skip to content`-style jumps move
             focus into the panel without it being part of the normal
             keyboard tour. */}
-        <main data-budget-main className="flex-1 [overflow-x:clip]">
-          <div
-            ref={sheetPanelRef}
-            role="tabpanel"
-            id={`sheet-tabpanel-${activeSheet.id}`}
-            aria-labelledby={`sheet-tab-${activeSheet.id}`}
-            tabIndex={-1}
-            className="h-full will-change-transform"
-          >
-            {status.kind === "loading" ? (
-              <AppLoading />
-            ) : activeSheet.type === "accounts" ? (
-              <AccountsPage
-                sheet={activeSheet}
-                data={data}
-                settings={effectiveSettings}
-                onCreateAccount={onOpenCreateAccount}
-                onEditAccount={onOpenEditAccount}
-                onDeleteAccount={onRequestDeleteAccount}
-                onUpdateBalance={onOpenUpdateBalance}
-                onCreateTransfer={onOpenCreateTransfer}
-                onEditTransfer={onOpenEditTransfer}
-                onImportHistory={onOpenImportHistory}
-                onViewHistory={onOpenViewHistory}
-                onCutHistory={onOpenCutHistory}
-                onEditSheet={onOpenEditSheet}
-                onDownloadSheet={onOpenDownloadSheet}
-              />
-            ) : (
-              <>
-                <BudgetRecurringCandidatesPanel
-                  history={
-                    activeItem.accountId
-                      ? (data.history[activeItem.accountId] ?? [])
-                      : []
-                  }
-                  dismissedKeys={data.recurringDismissals}
-                  merchantHints={data.merchantHints}
-                  types={allTypesMerged}
-                  settings={effectiveSettings}
-                  onPromote={onPromoteRecurringCandidate}
-                  onDismiss={onDismissRecurringCandidate}
-                  onDismissAll={onDismissAllRecurringCandidates}
-                />
-                <BudgetPage
+          <main data-budget-main className="flex-1 [overflow-x:clip]">
+            <div
+              ref={sheetPanelRef}
+              role="tabpanel"
+              id={`sheet-tabpanel-${activeSheet.id}`}
+              aria-labelledby={`sheet-tab-${activeSheet.id}`}
+              tabIndex={-1}
+              className="h-full will-change-transform"
+            >
+              {status.kind === "loading" ? (
+                <AppLoading />
+              ) : activeSheet.type === "accounts" ? (
+                <AccountsPage
                   sheet={activeSheet}
-                  item={activeItem}
                   data={data}
-                  types={allTypesMerged}
-                  categories={allCategoriesMerged}
-                  companies={data.companies}
-                  companyTypeSuggestions={companyTypeSuggestions}
-                  onCreateType={onCreateType}
-                  onCreateCategory={onCreateCategory}
-                  onCreateCompany={onCreateCompany}
-                  accounts={data.accounts}
-                  transfers={data.transfers}
-                  history={
-                    activeItem.accountId
-                      ? (data.history[activeItem.accountId] ?? [])
-                      : []
-                  }
-                  merchantHints={data.merchantHints}
-                  matchRules={data.matchRules}
-                  openingBalance={
-                    activeItem.accountId
-                      ? (data.accounts.find(
-                          (a) => a.id === activeItem.accountId,
-                        )?.openingBalance ?? 0)
-                      : 0
-                  }
                   settings={effectiveSettings}
-                  selectMode={selectMode}
-                  selectedIds={selectedIds}
-                  scrollToRowRequest={scrollToRowRequest}
-                  onUpdateCell={onUpdateCell}
-                  onCommitCell={onCommitCell}
-                  onAddRow={onAddRow}
-                  onAddComplex={onAddComplex}
-                  onDeleteRequest={onDeleteRequest}
-                  onEditRequest={onEditRequest}
-                  onEditRowRequest={onEditRowRequest}
-                  onSplitRequest={onSplitRequest}
-                  onTransferRequest={onTransferRequest}
-                  onToggleRowTransfer={onToggleRowTransfer}
-                  onMatchRuleRequest={onMatchRuleRequest}
-                  onEditHistoryRequest={onEditHistoryRequest}
-                  onCopyRequest={onCopyRequest}
-                  onSetFiscalMonthShift={onSetFiscalMonthShift}
-                  onUpdateHistoryEntry={onUpdateHistoryEntry}
-                  onApplyMetadataToMatchingHistory={
-                    onApplyMetadataToMatchingHistory
-                  }
-                  tags={data.tags}
-                  onCreateTag={onCreateTag}
-                  onCorrectionDeleteRequest={onCorrectionDeleteRequest}
-                  onReorderColumns={onReorderColumns}
-                  onToggleSelect={onToggleSelect}
-                  onToggleSelectMonth={onToggleSelectMonth}
+                  onCreateAccount={onOpenCreateAccount}
+                  onEditAccount={onOpenEditAccount}
+                  onDeleteAccount={onRequestDeleteAccount}
+                  onUpdateBalance={onOpenUpdateBalance}
+                  onCreateTransfer={onOpenCreateTransfer}
+                  onEditTransfer={onOpenEditTransfer}
+                  onImportHistory={onOpenImportHistory}
+                  onViewHistory={onOpenViewHistory}
+                  onCutHistory={onOpenCutHistory}
                   onEditSheet={onOpenEditSheet}
                   onDownloadSheet={onOpenDownloadSheet}
-                  onMergeConflictIntoHistory={onMergeConflictIntoHistory}
-                  onMergeConflictUserRows={onMergeConflictUserRows}
-                  onTriageMonth={onTriageMonth}
-                  onSetRowCompany={onSetRowCompany}
-                  onSetRowNoCompany={onSetRowNoCompany}
                 />
-              </>
-            )}
-          </div>
-        </main>
-        {status.kind === "loading" ? null : (
-          <BottomBar
-            sheets={data.sheets}
-            activeSheetId={activeSheet.id}
-            onSelectSheet={onSelectSheet}
-            onEditSheet={onOpenEditSheet}
-            onAddSheet={onOpenNewSheet}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            selectMode={selectMode}
-            onUndo={() => {
-              unlockAchievement("secondThoughts");
-              handleUndo();
-            }}
-            onRedo={handleRedo}
-            onOpenHistory={() => setActionHistoryOpen(true)}
-            onOpenSearch={() => {
-              unlockAchievement("detective");
-              setSearchOpen(true);
-            }}
-            onToggleSelectMode={onToggleSelectMode}
-            bulkSelectedCount={selectedIds.size}
-            onBulkEdit={onBulkEdit}
-            onBulkMove={onBulkMove}
-            onBulkCopy={onBulkCopy}
-            onBulkDelete={onBulkDelete}
-            onBulkCancel={onCancelSelect}
-          />
-        )}
+              ) : (
+                <>
+                  <BudgetRecurringCandidatesPanel
+                    history={
+                      activeItem.accountId
+                        ? (data.history[activeItem.accountId] ?? [])
+                        : []
+                    }
+                    dismissedKeys={data.recurringDismissals}
+                    merchantHints={data.merchantHints}
+                    types={allTypesMerged}
+                    settings={effectiveSettings}
+                    onPromote={onPromoteRecurringCandidate}
+                    onDismiss={onDismissRecurringCandidate}
+                    onDismissAll={onDismissAllRecurringCandidates}
+                  />
+                  <BudgetPage
+                    sheet={activeSheet}
+                    item={activeItem}
+                    data={data}
+                    types={allTypesMerged}
+                    categories={allCategoriesMerged}
+                    companies={data.companies}
+                    companyTypeSuggestions={companyTypeSuggestions}
+                    onCreateType={onCreateType}
+                    onCreateCategory={onCreateCategory}
+                    onCreateCompany={onCreateCompany}
+                    accounts={data.accounts}
+                    transfers={data.transfers}
+                    history={
+                      activeItem.accountId
+                        ? (data.history[activeItem.accountId] ?? [])
+                        : []
+                    }
+                    merchantHints={data.merchantHints}
+                    matchRules={data.matchRules}
+                    openingBalance={
+                      activeItem.accountId
+                        ? (data.accounts.find(
+                            (a) => a.id === activeItem.accountId,
+                          )?.openingBalance ?? 0)
+                        : 0
+                    }
+                    settings={effectiveSettings}
+                    selectMode={selectMode}
+                    selectedIds={selectedIds}
+                    scrollToRowRequest={scrollToRowRequest}
+                    onUpdateCell={onUpdateCell}
+                    onCommitCell={onCommitCell}
+                    onAddRow={onAddRow}
+                    onAddComplex={onAddComplex}
+                    onDeleteRequest={onDeleteRequest}
+                    onEditRequest={onEditRequest}
+                    onEditRowRequest={onEditRowRequest}
+                    onSplitRequest={onSplitRequest}
+                    onTransferRequest={onTransferRequest}
+                    onToggleRowTransfer={onToggleRowTransfer}
+                    onMatchRuleRequest={onMatchRuleRequest}
+                    onEditHistoryRequest={onEditHistoryRequest}
+                    onCopyRequest={onCopyRequest}
+                    onSetFiscalMonthShift={onSetFiscalMonthShift}
+                    onUpdateHistoryEntry={onUpdateHistoryEntry}
+                    onApplyMetadataToMatchingHistory={
+                      onApplyMetadataToMatchingHistory
+                    }
+                    tags={data.tags}
+                    onCreateTag={onCreateTag}
+                    onCorrectionDeleteRequest={onCorrectionDeleteRequest}
+                    onReorderColumns={onReorderColumns}
+                    onToggleSelect={onToggleSelect}
+                    onToggleSelectMonth={onToggleSelectMonth}
+                    onEditSheet={onOpenEditSheet}
+                    onDownloadSheet={onOpenDownloadSheet}
+                    onMergeConflictIntoHistory={onMergeConflictIntoHistory}
+                    onMergeConflictUserRows={onMergeConflictUserRows}
+                    onTriageMonth={onTriageMonth}
+                    onSetRowCompany={onSetRowCompany}
+                    onSetRowNoCompany={onSetRowNoCompany}
+                  />
+                </>
+              )}
+            </div>
+          </main>
+          {status.kind === "loading" ? null : (
+            <BottomBar
+              sheets={data.sheets}
+              activeSheetId={activeSheet.id}
+              onSelectSheet={onSelectSheet}
+              onEditSheet={onOpenEditSheet}
+              onAddSheet={onOpenNewSheet}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              selectMode={selectMode}
+              onUndo={() => {
+                unlockAchievement("secondThoughts");
+                handleUndo();
+              }}
+              onRedo={handleRedo}
+              onToggleSelectMode={onToggleSelectMode}
+              bulkSelectedCount={selectedIds.size}
+              onBulkEdit={onBulkEdit}
+              onBulkMove={onBulkMove}
+              onBulkCopy={onBulkCopy}
+              onBulkDelete={onBulkDelete}
+              onBulkCancel={onCancelSelect}
+            />
+          )}
+        </div>
+        <UniversalModalHost
+          data={data}
+          effectiveSettings={effectiveSettings}
+          dispatch={dispatch}
+          user={user}
+          isGuest={isGuest}
+          storageState={{
+            status,
+            dirty,
+            saveNow,
+            resolveKeepLocal,
+            resolveKeepRemote,
+            confirmShrinkSave,
+            discardShrinkSave,
+            historyEntries,
+            historyIndex,
+            jumpToHistory,
+          }}
+          storage={storage}
+          auth={{ getEncryptionPassword, onDeleteAccount }}
+          warningSecondsLeft={warningSecondsLeft}
+          onStaySignedIn={onStaySignedIn}
+          sheetMetaDialog={sheetMetaDialog}
+          downloadFlow={downloadFlow}
+          settingsModal={settingsModal}
+          changelog={changelog}
+          syncAutoOpens={syncAutoOpens}
+          achievementsModal={achievementsModal}
+          searchModal={searchModal}
+          searchBulk={{
+            selectMode,
+            selectedIds,
+            activeSheetId: activeSheet.id,
+            onToggleSelectMode,
+            onToggleSelect,
+            onSelectMany: (rowIds) => onToggleSelectMonth(rowIds, true),
+            onSelectSheet,
+            onBulkEdit,
+            onBulkMove,
+            onBulkCopy,
+            onBulkDelete,
+            onBulkCancel: onCancelSelect,
+          }}
+          taxonomyCrud={taxonomyCrud}
+          matchRuleUi={matchRuleUi}
+          actionHistoryOpen={actionHistoryOpen}
+          setActionHistoryOpen={setActionHistoryOpen}
+          onClearMerchantHints={onClearMerchantHints}
+          onClearRecurringDismissals={onClearRecurringDismissals}
+          onClearTransferDismissals={onClearTransferDismissals}
+          onSaveSettings={onSaveSettings}
+          onImport={onImport}
+        />
+        <AccountsModalHost
+          data={data}
+          effectiveSettings={effectiveSettings}
+          categories={allCategoriesMerged}
+          types={allTypesMerged}
+          accountDialog={accountDialog}
+          importFlow={importFlow}
+          transferFlow={transferFlow}
+          onCreateType={onCreateType}
+          onCreateCategory={onCreateCategory}
+        />
+        <BudgetModalHost
+          data={data}
+          effectiveSettings={effectiveSettings}
+          categories={allCategoriesMerged}
+          types={allTypesMerged}
+          companyTypeSuggestions={companyTypeSuggestions}
+          sheetId={sheetId}
+          itemId={itemId}
+          activeItem={activeItem}
+          dateCol={dateCol}
+          dispatch={dispatch}
+          editPrompts={editPrompts}
+          deletePrompts={deletePrompts}
+          complexEntry={complexEntry}
+          matchRuleUi={matchRuleUi}
+          bulkSelection={bulkSelection}
+          onCreateType={onCreateType}
+          onCreateCategory={onCreateCategory}
+          onCreateCompany={onCreateCompany}
+          onCreateTag={onCreateTag}
+          onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
+        />
       </div>
-      <UniversalModalHost
-        data={data}
-        effectiveSettings={effectiveSettings}
-        dispatch={dispatch}
-        user={user}
-        isGuest={isGuest}
-        storageState={{
-          status,
-          dirty,
-          saveNow,
-          resolveKeepLocal,
-          resolveKeepRemote,
-          confirmShrinkSave,
-          discardShrinkSave,
-          historyEntries,
-          historyIndex,
-          jumpToHistory,
-        }}
-        storage={storage}
-        auth={{ getEncryptionPassword, onDeleteAccount }}
-        warningSecondsLeft={warningSecondsLeft}
-        onStaySignedIn={onStaySignedIn}
-        sheetMetaDialog={sheetMetaDialog}
-        downloadFlow={downloadFlow}
-        settingsModal={settingsModal}
-        changelog={changelog}
-        syncAutoOpens={syncAutoOpens}
-        achievementsModal={achievementsModal}
-        searchModal={searchModal}
-        searchBulk={{
-          selectMode,
-          selectedIds,
-          activeSheetId: activeSheet.id,
-          onToggleSelectMode,
-          onToggleSelect,
-          onSelectMany: (rowIds) => onToggleSelectMonth(rowIds, true),
-          onSelectSheet,
-          onBulkEdit,
-          onBulkMove,
-          onBulkCopy,
-          onBulkDelete,
-          onBulkCancel: onCancelSelect,
-        }}
-        taxonomyCrud={taxonomyCrud}
-        matchRuleUi={matchRuleUi}
-        actionHistoryOpen={actionHistoryOpen}
-        setActionHistoryOpen={setActionHistoryOpen}
-        onClearMerchantHints={onClearMerchantHints}
-        onClearRecurringDismissals={onClearRecurringDismissals}
-        onClearTransferDismissals={onClearTransferDismissals}
-        onSaveSettings={onSaveSettings}
-        onImport={onImport}
-      />
-      <AccountsModalHost
-        data={data}
-        effectiveSettings={effectiveSettings}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        accountDialog={accountDialog}
-        importFlow={importFlow}
-        transferFlow={transferFlow}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-      />
-      <BudgetModalHost
-        data={data}
-        effectiveSettings={effectiveSettings}
-        categories={allCategoriesMerged}
-        types={allTypesMerged}
-        companyTypeSuggestions={companyTypeSuggestions}
-        sheetId={sheetId}
-        itemId={itemId}
-        activeItem={activeItem}
-        dateCol={dateCol}
-        dispatch={dispatch}
-        editPrompts={editPrompts}
-        deletePrompts={deletePrompts}
-        complexEntry={complexEntry}
-        matchRuleUi={matchRuleUi}
-        bulkSelection={bulkSelection}
-        onCreateType={onCreateType}
-        onCreateCategory={onCreateCategory}
-        onCreateCompany={onCreateCompany}
-        onCreateTag={onCreateTag}
-        onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
-      />
-    </div>
+    </ModalDispatchProvider>
   );
 }

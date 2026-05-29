@@ -1,11 +1,10 @@
 import { Star } from "lucide-react";
 
 import { useT } from "../i18n";
+import { useModalDispatch } from "./modal-dispatch";
 
 type Props = {
   unseenCount: number;
-  onOpenList: () => void;
-  onOpenUnlockModal: () => void;
 };
 
 // Slots into the header flex row to the left of SaveStateButton /
@@ -22,12 +21,9 @@ type Props = {
 // Styled to match `SaveStateButton` / `SyncStatus` so the header
 // chrome stays uniform: 36 × 36 button, 18-pixel icon, border that
 // echoes the accent or muted tone of its sibling buttons.
-export function HeaderStar({
-  unseenCount,
-  onOpenList,
-  onOpenUnlockModal,
-}: Props) {
+export function HeaderStar({ unseenCount }: Props) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const filled = unseenCount > 0;
   const label = filled
     ? unseenCount === 1
@@ -37,7 +33,11 @@ export function HeaderStar({
   return (
     <button
       type="button"
-      onClick={filled ? onOpenUnlockModal : onOpenList}
+      onClick={
+        filled
+          ? () => dispatchModal({ kind: "open-achievements-unlock" })
+          : () => dispatchModal({ kind: "open-achievements-list" })
+      }
       aria-label={label}
       title={label}
       className={

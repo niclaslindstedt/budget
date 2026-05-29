@@ -159,20 +159,36 @@ through them.
   host-only hooks were the only ones movable without rewiring; the
   rest are genuinely cross-cutting (open-trigger in the header /
   bottom bar / page, state + render in the host). **Severity: 5.**
-  - Plan: introduce a typed modal-dispatch context (the
-    "registered modals from a registry" end-state) so chrome and
-    pages call `dispatchModal({ kind: "open-edit-row", row })`
-    instead of receiving opener callbacks as props, and each host
-    owns its modal state via a `useReducer`-style context colocated
-    with it. AppShell collapses toward a routing switch + host
-    mounts. This is the larger remaining work; slice it per host.
-  - Risk: low-medium. Mechanical but touches `BudgetPage` /
-    `AccountsPage` prop wiring because some prompts are set from
-    page-level callbacks (`onDeleteRequest`, `onEditRequest`) and
-    chrome (`setSettingsOpen`, `setSearchOpen` in the header /
-    bottom bar). The open-triggers live in chrome / pages, so a
-    full hoist needs the dispatch context to bridge them — that's
-    why the bridge is the next slice, not another host-only move.
+  - **Slice 1 — the modal-dispatch bridge for universal chrome —
+    landed 2026-05** (see Landed: `ModalDispatchProvider`). The
+    `src/components/modal-dispatch.ts` context now carries the seven
+    chrome-only modal opens (settings, changelog, search,
+    action-history, achievements list / unlock, sync-details), so
+    `HeaderMenu` / `BottomBar` / `HeaderStar` / `SyncStatus` no longer
+    take opener-callback props. The bridge the remaining slices need
+    now exists.
+  - Plan (remaining): extend the dispatch context to the
+    **page-level** open-triggers that thread through prop chains —
+    `onEditSheet` / `onDownloadSheet` (passed to both `BudgetPage`
+    and `AccountsPage`, and `onAddSheet` / `onEditSheet` on the bottom
+    bar), then the deep budget-page triggers (`onEditRequest`,
+    `onDeleteRequest`, `onSplitRequest`, `onMatchRuleRequest`, …) that
+    `BudgetPage` drills down to `BudgetRow`. Add the matching
+    `ModalCommand` kinds (e.g. `open-edit-sheet`, `open-edit-row`) and
+    have pages pull `useModalDispatch()` instead of receiving the
+    callbacks. Once a page no longer forwards opener props, fold its
+    modal hook's state ownership into the colocated host
+    (`useReducer`-style) so AppShell stops calling that hook. AppShell
+    collapses toward a routing switch + host mounts. Slice per host /
+    per page so each PR leaves the app working.
+  - Risk: low-medium. The page-trigger slices touch `BudgetPage` /
+    `AccountsPage` prop wiring and the deep `BudgetRow` chain, so the
+    behaviour-preserving check is wider than slice 1 (which only
+    touched four chrome components, all consumed solely by AppShell).
+    Not on a cloud-OAuth hot path; modal opens have no persisted-shape
+    impact. Mind the open-side achievement unlocks (the search
+    "detective", undo "secondThoughts") — keep them on the AppShell
+    handler side of the dispatch, not in the chrome.
 
 - **Optional fields on persisted types — `undefined` vs `null`
   drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
@@ -333,6 +349,35 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`ModalDispatchProvider` — modal-dispatch bridge for universal
+  chrome** (2026-05): slice 1 of the `AppShell.tsx` modal-mount
+  state-ownership shift (the candidate stays in Pending with the
+  remaining page-trigger slices narrowed). New
+  `src/components/modal-dispatch.ts` exports a `ModalCommand` union for
+  the seven modals opened only from chrome (settings, changelog,
+  search, action-history, achievements list / unlock, sync-details), a
+  pure `applyModalCommand(command, handlers)` dispatcher, the
+  `ModalDispatchProvider` context, and a `useModalDispatch()` hook that
+  throws outside the provider. AppShell builds a memoised
+  `ModalCommandHandlers` object wired to the existing modal-state
+  setters (the open-side `unlockAchievement("detective")` for search
+  rides along in the `openSearch` handler) and provides `dispatchModal`
+  through the provider wrapping the shell. `HeaderMenu` (−2 props),
+  `BottomBar` (−2), `HeaderStar` (−2), and `SyncStatus` (−1) drop their
+  opener-callback props and call `useModalDispatch()` instead — all
+  four are consumed solely by AppShell, so the boundary change is
+  contained. The modal `set…(false)` closes stay in `UniversalModalHost`
+  (no dual open / close path). 7 unit tests landed in
+  `tests/modal_dispatch_test.ts` driving a command→handler table so a
+  new command without a wired handler is a compile error and a
+  mis-routed switch arm is a test failure. Pure refactor — same
+  behaviour, same i18n keys, same modal opens; adding a universal modal
+  is now a command kind + a handler, not a new prop on four chrome
+  components. fmt-check + lint + typecheck + 1073 tests + build +
+  icons-check pass; the Playwright chrome flows (settings / search /
+  achievements opens) were not run in this environment and stay a
+  reviewer-side check.
 
 - **`useImportFlow.ts` six-modal `useState` → `useReducer` collapse**
   (2026-05): the six parallel `useState` calls coordinating the
