@@ -339,34 +339,6 @@ function lacksDescription(entry: HistoryEntry): boolean {
   return entry.userDescription === undefined;
 }
 
-function metadataPatchChangesEntry(
-  entry: HistoryEntry,
-  patch: HistoryMetadataPatch,
-): boolean {
-  if (patch.userTypeId !== undefined && entry.userTypeId === undefined) {
-    return true;
-  }
-  if (patch.userCompanyId !== undefined && lacksCompanyDecision(entry)) {
-    return true;
-  }
-  if (
-    patch.noCompany === true &&
-    patch.userCompanyId === undefined &&
-    lacksCompanyDecision(entry)
-  ) {
-    return true;
-  }
-  if (patch.userDescription !== undefined && lacksDescription(entry)) {
-    return true;
-  }
-  if (patch.userTagIds && patch.userTagIds.length > 0) {
-    if (mergeTagIds(entry.userTagIds, patch.userTagIds) !== entry.userTagIds) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function applyMetadataPatch(
   entry: HistoryEntry,
   patch: HistoryMetadataPatch,
@@ -397,13 +369,16 @@ function applyMetadataPatch(
   return next ?? entry;
 }
 
-// How many entries the bulk apply would actually change — drives the
-// "apply to N similar entries" count in the modal. A bad pattern (or
+// How many OTHER entries on the account the bank-description pattern
+// matches — the "N similar entries" the modal offers to fan labels out
+// to. Counts every eligible lookalike regardless of what it's already
+// labelled with: the offer surfaces whenever similar entries exist, and
+// `applyMetadataToMatchingEntries` then fills only the blanks (an
+// already-labelled match simply keeps what it has). A bad pattern (or
 // one that compiles to nothing) counts zero rather than throwing.
-export function countMatchingMetadataTargets(
+export function countMatchingBankDescription(
   entries: readonly HistoryEntry[],
   pattern: string,
-  patch: HistoryMetadataPatch,
   excludeEntryId: string,
 ): number {
   if (pattern.length === 0) return 0;
@@ -415,8 +390,7 @@ export function countMatchingMetadataTargets(
   }
   let count = 0;
   for (const entry of entries) {
-    if (!isMetadataBulkCandidate(entry, compiled, excludeEntryId)) continue;
-    if (metadataPatchChangesEntry(entry, patch)) count += 1;
+    if (isMetadataBulkCandidate(entry, compiled, excludeEntryId)) count += 1;
   }
   return count;
 }

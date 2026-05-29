@@ -19,11 +19,13 @@ where tagging a merchant doesn't apply (salary, internal transfers,
 …) so they stop surfacing here over a missing company. A "Mark as
 transfer" checkbox lets you flag an entry as money moving between
 accounts and continue to the next item without picking a type or a
-company. When an entry has lookalikes — older imports whose bank text
-matches once dates and reference numbers are stripped — an "Also apply
-to N similar entries" checkbox lets you fan that entry's type, company
-(or its "omit company" decision), description, and tags out to all of
-them in one save, filling only the fields they're still missing so
-nothing you tagged earlier gets overwritten. Built for the
-spare-minute case on mobile — entries covered by a match rule or a
-merchant hint are skipped so only the genuinely unknown ones surface.
+company. As soon as you set any field, if the entry has lookalikes —
+older imports whose bank text matches once dates and reference numbers
+are stripped — an "Also apply to N similar entries" checkbox appears
+and lets you fan that entry's type, company (or its "omit company"
+decision), description, and tags out to all of them in one save. It
+fills only the fields each match is still missing, so nothing you
+tagged earlier gets overwritten and already-labelled lookalikes keep
+what they have. Built for the spare-minute case on mobile — entries
+covered by a match rule or a merchant hint are skipped so only the
+genuinely unknown ones surface.
