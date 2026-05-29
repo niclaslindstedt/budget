@@ -21,6 +21,7 @@ const metadata = {
   bulkApplyHint:
     "Matches the bank text of older entries and fills only the fields they're still missing.",
   skip: "Skip",
+  back: "Back",
   needsTypePrompt: "Pick a type to save.",
   needsCompanyPrompt: 'Pick a company — or "Omit company" — to save.',
   allCaught: "All caught up.",
