@@ -14,7 +14,6 @@ import { useEditPrompts } from "./hooks/useEditPrompts";
 import { useRowMutations } from "./hooks/useRowMutations";
 import { useSearchModal } from "./hooks/useSearchModal";
 import { useSettingsModal } from "./hooks/useSettingsModal";
-import { useSyncAutoOpens } from "./hooks/useSyncAutoOpens";
 import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
@@ -149,11 +148,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const { setSettingsOpen, previewSettings } = settingsModal;
   const searchModal = useSearchModal({ data });
   const { setSearchOpen, scrollToRowRequest } = searchModal;
-  const syncAutoOpens = useSyncAutoOpens({
-    status,
-    cloudReauthAutoOpen: data.settings.cloudReauthAutoOpen,
-  });
-  const { setSyncDetailsOpen } = syncAutoOpens;
 
   useToastEffects({
     dropboxConnected,
@@ -521,7 +515,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         unlockAchievement("detective");
         setSearchOpen(true);
       },
-      openSyncDetails: () => setSyncDetailsOpen(true),
       openNewSheet: onOpenNewSheet,
       openEditSheet: onOpenEditSheet,
       openDownloadSheet: onOpenDownloadSheet,
@@ -538,7 +531,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     [
       setSettingsOpen,
       setSearchOpen,
-      setSyncDetailsOpen,
       onOpenNewSheet,
       onOpenEditSheet,
       onOpenDownloadSheet,
@@ -805,7 +797,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           sheetMetaDialog={sheetMetaDialog}
           downloadFlow={downloadFlow}
           settingsModal={settingsModal}
-          syncAutoOpens={syncAutoOpens}
           searchModal={searchModal}
           searchBulk={{
             selectMode,
