@@ -195,3 +195,23 @@ export type Company = {
   id: string;
   name: string;
 };
+
+// A user-defined label assigned to budget rows to group entries that
+// cut across categories and types — "Vacation 2026", "Work expenses",
+// "Reimbursable". Sits in `UserData.tags`; rows reference it through
+// `Row.tagIds` (a row can carry several). Unlike `Company`, a tag is
+// many-per-row and carries a `color` so the picker / search can render
+// it as a coloured chip. No presets ship — tags are entirely
+// user-curated through the inline create row on the `TagsPicker` and
+// the Tags tab in Settings.
+//
+// Tags are intentionally invisible on the sheet itself: they never
+// render in the row table or any cell. They surface only while editing
+// an entry (the full-edit and bulk-edit modals) and in the search
+// modal, where a tag name match makes an otherwise-unmatched row
+// findable.
+export type Tag = {
+  id: string;
+  name: string;
+  color: string;
+};

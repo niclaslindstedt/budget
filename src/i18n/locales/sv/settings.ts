@@ -10,6 +10,7 @@ const settings: SettingsCatalog = {
     storage: "Lagring",
     categories: "Kategorier",
     companies: "Företag",
+    tags: "Taggar",
     patterns: "Mönster",
     memory: "Minne",
     developer: "Utvecklare",
@@ -294,6 +295,22 @@ const settings: SettingsCatalog = {
     deleteCompanyTitle: "Ta bort företag",
     deleteCompanyHint:
       "Ta bort ”{name}”? Poster taggade med det tappar taggen; deras beskrivning och typ behålls.",
+  },
+  tagsTab: {
+    title: "Taggar",
+    intro:
+      "Taggar är dina egna etiketter för att gruppera poster tvärs över kategorier — ”Semester 2026”, ”Ersätts”, ”Jobb”. Tilldela dem i redigeringsdialogen eller när du redigerar flera rader samtidigt. Taggar syns inte i tabellen; de visas bara vid redigering och låter dig hitta poster i sökningen.",
+    empty: "Inga taggar än. Lägg till en för att börja etikettera poster.",
+    addTag: "Lägg till tagg",
+    editTag: "Redigera tagg",
+    deleteTag: "Ta bort tagg",
+    name: "Namn",
+    namePlaceholder: "Semester 2026",
+    color: "Färg",
+    duplicateName: "En tagg med detta namn finns redan.",
+    deleteTagTitle: "Ta bort tagg",
+    deleteTagHint:
+      "Ta bort ”{name}”? Poster med den tappar taggen; allt annat på dem behålls.",
   },
   patterns: {
     title: "Mönsterregler",

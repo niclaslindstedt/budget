@@ -6,7 +6,7 @@ import type { HistoryEntry, UserData } from "../src/data/types";
 
 function baseState(history: Record<string, HistoryEntry[]> = {}): UserData {
   return {
-    version: 44,
+    version: 45,
     sheets: [
       {
         id: "s",
@@ -21,6 +21,7 @@ function baseState(history: Record<string, HistoryEntry[]> = {}): UserData {
     activeSheetId: "s",
     accounts: [{ id: "acct-1", name: "Checking" }],
     companies: [],
+    tags: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],

@@ -32,6 +32,7 @@ export type EditFullState = {
   date: string;
   typeId: string | null;
   companyId: string | null;
+  tagIds: string[];
   isTransfer: boolean;
   completed: boolean;
   isPrimaryIncome: boolean;
@@ -62,6 +63,7 @@ export type EditFullAction =
       companyId: string | null;
       autoTypeId: string | undefined;
     }
+  | { kind: "setTagIds"; value: string[] }
   | { kind: "setIsTransfer"; value: boolean }
   | { kind: "setCompleted"; value: boolean }
   | { kind: "setIsPrimaryIncome"; value: boolean }
@@ -128,6 +130,7 @@ export function initialEditFullState(
     date,
     typeId: row?.typeId ?? null,
     companyId: row?.companyId ?? null,
+    tagIds: row?.tagIds ? [...row.tagIds] : [],
     isTransfer: row?.isTransfer === true,
     completed,
     isPrimaryIncome: seriesMetadata?.isPrimaryIncome === true,
@@ -169,6 +172,8 @@ export function budgetEditEntryFullModalReducer(
       }
       return next;
     }
+    case "setTagIds":
+      return { ...state, tagIds: action.value };
     case "setIsTransfer":
       return { ...state, isTransfer: action.value };
     case "setCompleted":

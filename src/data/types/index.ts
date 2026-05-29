@@ -16,6 +16,7 @@ export type {
   Company,
   EntryType,
   EntryTypeKind,
+  Tag,
 } from "./categories";
 
 export type {

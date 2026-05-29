@@ -108,6 +108,13 @@ export function applyPatch<R extends Row>(
       next.companyId = patch.companyId;
     }
   }
+  // `undefined` leaves tags alone; an array replaces them. Persist only
+  // a non-empty array so a cleared selection drops the field rather
+  // than storing `tagIds: []`.
+  if (patch.tagIds !== undefined) {
+    if (patch.tagIds.length > 0) next.tagIds = [...patch.tagIds];
+    else delete next.tagIds;
+  }
   // Only persist `true` — absent means "not a transfer". `false`
   // explicitly clears the flag.
   if (patch.isTransfer !== undefined) {

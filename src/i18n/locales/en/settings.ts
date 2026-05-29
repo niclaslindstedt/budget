@@ -10,6 +10,7 @@ const settings = {
     storage: "Storage",
     categories: "Categories",
     companies: "Companies",
+    tags: "Tags",
     patterns: "Patterns",
     memory: "Memory",
     developer: "Developer",
@@ -294,6 +295,22 @@ const settings = {
     deleteCompanyTitle: "Delete company",
     deleteCompanyHint:
       'Remove "{name}"? Entries tagged with it lose the tag; their description and type are kept intact.',
+  },
+  tagsTab: {
+    title: "Tags",
+    intro:
+      'Tags are your own labels for grouping entries that cut across categories — "Vacation 2026", "Reimbursable", "Work". Assign them in the entry edit modal or when editing many rows at once. Tags stay out of the table; they only show while editing and let you find entries in search.',
+    empty: "No tags yet. Add one to start labelling entries.",
+    addTag: "Add tag",
+    editTag: "Edit tag",
+    deleteTag: "Delete tag",
+    name: "Name",
+    namePlaceholder: "Vacation 2026",
+    color: "Color",
+    duplicateName: "A tag with this name already exists.",
+    deleteTagTitle: "Delete tag",
+    deleteTagHint:
+      'Remove "{name}"? Entries carrying it lose the tag; everything else on them is kept intact.',
   },
   patterns: {
     title: "Pattern rules",

@@ -206,6 +206,9 @@ export function UniversalModalHost(props: Props) {
     onCreateCompany,
     onUpdateCompany,
     onDeleteCompany,
+    onCreateTag,
+    onUpdateTag,
+    onDeleteTag,
   } = taxonomyCrud;
   const { onEditMatchRule, onMoveMatchRule, onReapplyMatchRules } = matchRuleUi;
 
@@ -381,6 +384,9 @@ export function UniversalModalHost(props: Props) {
         onCreateCompany={onCreateCompany}
         onUpdateCompany={onUpdateCompany}
         onDeleteCompany={onDeleteCompany}
+        onCreateTag={onCreateTag}
+        onUpdateTag={onUpdateTag}
+        onDeleteTag={onDeleteTag}
         onEditMatchRule={onEditMatchRule}
         onMoveMatchRule={onMoveMatchRule}
         onReapplyMatchRules={onReapplyMatchRules}

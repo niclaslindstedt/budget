@@ -305,6 +305,13 @@ function ResultRow({
             {renderHighlighted(entry.bankDescription, match, "bankDescription")}
           </span>
         ) : null}
+        {match.field === "tagNames" && entry.tagNames ? (
+          <span className="truncate text-xs italic text-muted">
+            {t("searchTransaction.tagsLabel")}
+            {": "}
+            {renderHighlighted(entry.tagNames, match, "tagNames")}
+          </span>
+        ) : null}
       </span>
     </button>
   );
@@ -323,6 +330,7 @@ function renderHighlighted(
     | "typeName"
     | "categoryName"
     | "companyName"
+    | "tagNames"
     | "bankDescription",
 ) {
   if (match.field !== field) return text;

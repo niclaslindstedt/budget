@@ -5,6 +5,7 @@ import {
   ArrowRightLeft,
   ArrowUpDown,
   BarChart3,
+  Bookmark,
   BookOpen,
   Brain,
   Calculator,
@@ -106,6 +107,8 @@ const hasTransferRow = (s: UserData) =>
   eachRow(s, (r) => r.isTransfer === true);
 const hasTypedRow = (s: UserData) =>
   eachRow(s, (r) => typeof r.typeId === "string" && r.typeId !== "");
+const hasTaggedRow = (s: UserData) =>
+  eachRow(s, (r) => Array.isArray(r.tagIds) && r.tagIds.length > 0);
 const hasMultipleSheetTabs = (s: UserData) => s.sheets.length > 1;
 const hasAccount = (s: UserData) => s.accounts.length > 0;
 const hasLinkedSheet = (s: UserData) =>
@@ -450,6 +453,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.types],
       predicate: (prev, next) => !hasUserType(prev) && hasUserType(next),
+    },
+  },
+  {
+    id: "tagger",
+    tier: "intermediate",
+    glyph: Bookmark,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) => !hasTaggedRow(prev) && hasTaggedRow(next),
     },
   },
   {

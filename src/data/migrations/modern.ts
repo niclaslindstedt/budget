@@ -312,6 +312,12 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // array is seeded empty and the per-entry shift is undefined until
   // a user marks an entry as primary income.
   43: (v43) => ({ ...v43, version: 44, primaryIncomeMerchants: [] }),
+
+  // v44 → v45: introduces user-curated `tags` (cross-cutting labels
+  // assigned to budget rows via `Row.tagIds`). Additive — the array is
+  // seeded empty; rows gain `tagIds` only when the user assigns a tag
+  // in the entry edit / bulk-edit modal. See the Tags tab in Settings.
+  44: (v44) => ({ ...v44, version: 45, tags: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

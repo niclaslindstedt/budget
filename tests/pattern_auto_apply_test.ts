@@ -16,11 +16,12 @@ function workspace(rows: Row[] = [], matchRules: MatchRule[] = []): UserData {
   const item = sheet.items[0] as AccountBudget;
   item.rows = rows;
   return {
-    version: 44,
+    version: 45,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [{ id: "checking-id", name: "Checking" }],
     companies: [],
+    tags: [],
     categories: [],
     types: [
       {

@@ -15,6 +15,7 @@ import type {
   SeriesMatchRule,
   SeriesMetadata,
   Sheet,
+  Tag,
   Transfer,
   UserData,
 } from "../types";
@@ -23,6 +24,7 @@ import {
   validateCategory,
   validateCompany,
   validateEntryType,
+  validateTag,
 } from "./account";
 import { fail, isObject, sanitizeStringArray, type Result } from "./helpers";
 import {
@@ -80,6 +82,19 @@ export function validateUserData(raw: unknown): Result<UserData> {
     companies.push(r.value);
   }
   const knownCompanyIds: ReadonlySet<string> = seenCompanyIds;
+
+  const rawTags = Array.isArray(raw.tags) ? raw.tags : [];
+  const tags: Tag[] = [];
+  const seenTagIds = new Set<string>();
+  for (let i = 0; i < rawTags.length; i++) {
+    const r = validateTag(rawTags[i], `tags[${i}]`);
+    if (!r.ok) return r;
+    if (seenTagIds.has(r.value.id))
+      return fail(`tags[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenTagIds.add(r.value.id);
+    tags.push(r.value);
+  }
+  const knownTagIds: ReadonlySet<string> = seenTagIds;
 
   const rawCategories = Array.isArray(raw.categories) ? raw.categories : [];
   const categories: Category[] = [];
@@ -157,6 +172,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       seenAccountIds,
       knownTypeIds,
       knownCompanyIds,
+      knownTagIds,
     );
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
@@ -347,6 +363,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       activeSheetId,
       accounts,
       companies,
+      tags,
       categories,
       types,
       hiddenPresetTypeIds,

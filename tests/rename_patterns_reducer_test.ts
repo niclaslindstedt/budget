@@ -17,11 +17,12 @@ const ACCOUNT_ID = "acct-1";
 function makeState(entries: HistoryEntry[] = []): UserData {
   const sheet = createDefaultSheet("Budget", ACCOUNT_ID);
   return {
-    version: 44,
+    version: 45,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [{ id: ACCOUNT_ID, name: "Checking" }],
     companies: [],
+    tags: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],

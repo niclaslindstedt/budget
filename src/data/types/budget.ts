@@ -91,6 +91,14 @@ type RowBase = {
   // to the company name; when no company is set, it falls back to the
   // type name; absent both, to the raw bank text for history rows.
   companyId?: string;
+  // Optional references to reusable `Tag`s in `UserData.tags`. A row can
+  // carry several user-defined labels that cut across categories/types
+  // (e.g. "Vacation 2026", "Reimbursable"). Persisted only when
+  // non-empty — an absent or empty array means "no tags". Tags never
+  // render on the sheet; they're editable only in the entry edit /
+  // bulk-edit modals and surface as a searchable field in the search
+  // modal.
+  tagIds?: string[];
 };
 
 // Vanilla user-authored row. The default kind for anything in

@@ -4,7 +4,13 @@ import type {
   HistoryImport,
   Transfer,
 } from "./accounts";
-import type { Category, Company, EntryType, EntryTypeKind } from "./categories";
+import type {
+  Category,
+  Company,
+  EntryType,
+  EntryTypeKind,
+  Tag,
+} from "./categories";
 import type {
   MatchRule,
   MerchantHint,
@@ -23,10 +29,18 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 44;
+  version: 45;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
+  // User-added tags (cross-cutting labels). Referenced from
+  // `Row.tagIds` — a row can carry several. No presets ship; tags are
+  // entirely user-curated through the inline create row on the
+  // `TagsPicker` and the Tags tab in Settings. Empty on a fresh
+  // budget. Unlike companies/types/categories, tags never render on the
+  // sheet — they surface only in the entry edit/bulk-edit modals and as
+  // a searchable field in the search modal.
+  tags: Tag[];
   // User-added companies (merchants / organisations). Referenced from
   // `Row.companyId`, `HistoryEntry.userCompanyId`,
   // `MatchRule.companyId`, and `MerchantHint.companyId`. No presets

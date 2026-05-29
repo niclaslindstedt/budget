@@ -213,6 +213,12 @@ type UserData = {
   accounts: Account[];
   categories: Category[]; // analysis buckets; each type belongs to one of these
   types: EntryType[]; // concrete labels, parented by `EntryType.categoryId`
+  // User-defined colour-coded labels that cut across categories/types;
+  // a row references several via `Row.tagIds`. Never rendered on the
+  // sheet — editable only in the entry edit / bulk-edit modals, and
+  // exposed as a searchable field in the search modal. Administered in
+  // Settings → Tags. Added in the v44 → v45 migration.
+  tags: Tag[];
   hiddenPresetTypeIds: string[];
   hiddenPresetCategoryIds: string[];
   transactions: Transaction[]; // cross-account transfers; see below

@@ -207,5 +207,42 @@ export function reduceCategoriesAndTypes(
       renamePatterns: nextRenamePatterns,
     };
   }
+  if (action.type === "addTag") {
+    return { ...state, tags: [...state.tags, action.tag] };
+  }
+  if (action.type === "updateTag") {
+    return {
+      ...state,
+      tags: state.tags.map((t) =>
+        t.id === action.tagId ? { ...t, ...action.patch } : t,
+      ),
+    };
+  }
+  if (action.type === "deleteTag") {
+    const id = action.tagId;
+    // Strip the id from every row's `tagIds`, dropping the field when
+    // the array empties so a row never persists an empty `tagIds: []`.
+    return {
+      ...state,
+      tags: state.tags.filter((t) => t.id !== id),
+      sheets: state.sheets.map((sheet) => ({
+        ...sheet,
+        items: sheet.items.map((item) => {
+          if (item.type !== "accountBudget") return item;
+          return {
+            ...item,
+            rows: item.rows.map((r) => {
+              if (!r.tagIds || !r.tagIds.includes(id)) return r;
+              const next = r.tagIds.filter((tagId) => tagId !== id);
+              if (next.length > 0) return { ...r, tagIds: next };
+              const { tagIds: _drop, ...rest } = r;
+              void _drop;
+              return rest;
+            }),
+          };
+        }),
+      })),
+    };
+  }
   return null;
 }

@@ -9,6 +9,8 @@ import { formatAmountForInput } from "../../utils/format";
 export type BulkEditState = {
   typeEnabled: boolean;
   typeId: string | null;
+  tagsEnabled: boolean;
+  tagIds: string[];
   dateEnabled: boolean;
   dateValue: string;
   amountEnabled: boolean;
@@ -33,6 +35,8 @@ export type BulkEditAction =
   | { kind: "reset"; seed: BulkEditSeed }
   | { kind: "setTypeEnabled"; value: boolean }
   | { kind: "setTypeId"; value: string | null }
+  | { kind: "setTagsEnabled"; value: boolean }
+  | { kind: "setTagIds"; value: string[] }
   | { kind: "setDateEnabled"; value: boolean }
   | { kind: "setDateValue"; value: string }
   | { kind: "setAmountEnabled"; value: boolean }
@@ -53,6 +57,8 @@ export function initialBulkEditState(seed: BulkEditSeed): BulkEditState {
   return {
     typeEnabled: false,
     typeId: null,
+    tagsEnabled: false,
+    tagIds: [],
     dateEnabled: false,
     dateValue: seed.seedDate,
     amountEnabled: false,
@@ -79,6 +85,10 @@ export function budgetBulkEditModalReducer(
       return { ...state, typeEnabled: action.value };
     case "setTypeId":
       return { ...state, typeId: action.value };
+    case "setTagsEnabled":
+      return { ...state, tagsEnabled: action.value };
+    case "setTagIds":
+      return { ...state, tagIds: action.value };
     case "setDateEnabled":
       return { ...state, dateEnabled: action.value };
     case "setDateValue":

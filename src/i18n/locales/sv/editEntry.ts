@@ -17,6 +17,7 @@ const editEntry: EditEntryCatalog = {
   amountMax: "Mest",
   type: "Typ",
   company: "Företag",
+  tags: "Taggar",
   pickType: "Välj en typ",
   scope: "Omfattning",
   scopeJustThis: "Bara denna post",

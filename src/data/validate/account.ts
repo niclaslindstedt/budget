@@ -5,6 +5,7 @@ import type {
   CategoryIcon,
   Company,
   EntryType,
+  Tag,
 } from "../types";
 import {
   CATEGORY_ICONS,
@@ -59,6 +60,18 @@ export function validateCompany(raw: unknown, path: string): Result<Company> {
   if (typeof name !== "string")
     return fail(`${path}.name`, "expected a string");
   return { ok: true, value: { id, name } };
+}
+
+export function validateTag(raw: unknown, path: string): Result<Tag> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, color } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  if (typeof color !== "string" || color === "")
+    return fail(`${path}.color`, "expected a non-empty string");
+  return { ok: true, value: { id, name, color } };
 }
 
 export function validateCategory(raw: unknown, path: string): Result<Category> {

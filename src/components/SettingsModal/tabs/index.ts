@@ -1,4 +1,5 @@
 import {
+  Bookmark,
   Building2,
   Hash,
   HardDrive,
@@ -22,6 +23,7 @@ import { LogsTab } from "./logs";
 import { MemoryTab } from "./memory";
 import { PatternsTab } from "./patterns";
 import { StorageTab } from "./storage";
+import { TagsTab } from "./tags";
 
 export {
   AppearanceTab,
@@ -34,6 +36,7 @@ export {
   MemoryTab,
   PatternsTab,
   StorageTab,
+  TagsTab,
 };
 
 // Single source of truth for the Settings modal's tab strip. Adding a
@@ -64,6 +67,7 @@ export const TAB_REGISTRY: readonly TabEntry[] = [
   { id: "storage", icon: HardDrive },
   { id: "categories", icon: Tag },
   { id: "companies", icon: Building2 },
+  { id: "tags", icon: Bookmark },
   { id: "patterns", icon: Tags },
   { id: "memory", icon: SettingsIcon },
   {
@@ -85,6 +89,7 @@ export type SettingsTabId =
   | "storage"
   | "categories"
   | "companies"
+  | "tags"
   | "patterns"
   | "memory"
   | "developer"

@@ -10,6 +10,7 @@ import type {
   Row,
   RowKind,
   Sheet,
+  Tag,
   UserData,
 } from "./types";
 import type { TFunction } from "../i18n";
@@ -36,6 +37,10 @@ export type SearchEntry = {
   typeName: string;
   categoryName: string;
   companyName: string;
+  // Space-joined names of the row's tags. Tags never render on the
+  // sheet, so this field exists purely to make a tagged row findable
+  // by a tag's name even when no visible field contains the query.
+  tagNames: string;
   // Raw bank-statement memo for rows synthesized from imported history
   // entries. The visible description on a historic row is the user
   // override, matching rule, merchant hint, company name, or type
@@ -60,6 +65,7 @@ export type SearchEntry = {
   typeNameLc: string;
   categoryNameLc: string;
   companyNameLc: string;
+  tagNamesLc: string;
   bankDescriptionLc: string;
 };
 
@@ -73,6 +79,7 @@ export type SearchMatch =
         | "typeName"
         | "categoryName"
         | "companyName"
+        | "tagNames"
         | "bankDescription";
       start: number;
       end: number;
@@ -253,6 +260,8 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
   for (const c of categories) categoriesById.set(c.id, c);
   const companiesById = new Map<string, Company>();
   for (const c of data.companies) companiesById.set(c.id, c);
+  const tagsById = new Map<string, Tag>();
+  for (const tag of data.tags) tagsById.set(tag.id, tag);
   const accountsById = new Map<string, string>();
   for (const a of data.accounts) accountsById.set(a.id, a.name);
 
@@ -295,6 +304,13 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
         const typeName = type ? displayTypeName(type, t) : "";
         const categoryName = category ? displayCategoryName(category, t) : "";
         const companyName = company?.name ?? "";
+        const tagNames =
+          row.tagIds && row.tagIds.length > 0
+            ? row.tagIds
+                .map((tagId) => tagsById.get(tagId)?.name ?? "")
+                .filter((name) => name !== "")
+                .join(" ")
+            : "";
         const bankDescription =
           row.kind === "historic"
             ? (historyById.get(row.historyEntryId)?.description ?? "")
@@ -311,6 +327,7 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           typeName,
           categoryName,
           companyName,
+          tagNames,
           bankDescription,
           amount,
           kind: row.kind,
@@ -319,6 +336,7 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           typeNameLc: typeName.toLowerCase(),
           categoryNameLc: categoryName.toLowerCase(),
           companyNameLc: companyName.toLowerCase(),
+          tagNamesLc: tagNames.toLowerCase(),
           bankDescriptionLc: bankDescription.toLowerCase(),
         });
       }
@@ -382,6 +400,7 @@ const AMOUNT_TOLERANCE = 0.2;
 const FIELD_WEIGHT: Record<
   | "description"
   | "companyName"
+  | "tagNames"
   | "typeName"
   | "categoryName"
   | "bankDescription",
@@ -389,9 +408,13 @@ const FIELD_WEIGHT: Record<
 > = {
   description: 0,
   companyName: 1,
-  typeName: 2,
-  categoryName: 3,
-  bankDescription: 4,
+  // Tags sit just below the company: a user-applied label is a strong,
+  // deliberate signal — more specific than the type/category bucket but
+  // less specific than the merchant the row paid.
+  tagNames: 2,
+  typeName: 3,
+  categoryName: 4,
+  bankDescription: 5,
 };
 
 // The searchable text fields paired with their pre-lowercased mirror,
@@ -404,16 +427,19 @@ const TEXT_FIELDS: {
     | "typeName"
     | "categoryName"
     | "companyName"
+    | "tagNames"
     | "bankDescription";
   lcKey:
     | "descriptionLc"
     | "typeNameLc"
     | "categoryNameLc"
     | "companyNameLc"
+    | "tagNamesLc"
     | "bankDescriptionLc";
 }[] = [
   { name: "description", lcKey: "descriptionLc" },
   { name: "companyName", lcKey: "companyNameLc" },
+  { name: "tagNames", lcKey: "tagNamesLc" },
   { name: "typeName", lcKey: "typeNameLc" },
   { name: "categoryName", lcKey: "categoryNameLc" },
   { name: "bankDescription", lcKey: "bankDescriptionLc" },

@@ -346,6 +346,13 @@ export function reduceAccountBudget(
             if (action.patch.companyId === null) delete next.companyId;
             else next.companyId = action.patch.companyId;
           }
+          if (action.patch.tagIds !== undefined) {
+            // An array replaces the row's tags; a non-empty result
+            // persists, an empty one drops the field.
+            if (action.patch.tagIds.length > 0)
+              next.tagIds = [...action.patch.tagIds];
+            else delete next.tagIds;
+          }
           if (action.patch.isTransfer !== undefined) {
             // Only persist `true` — absent means "not a transfer".
             if (action.patch.isTransfer) next.isTransfer = true;
@@ -397,6 +404,7 @@ export function reduceAccountBudget(
           };
           if (r.typeId) next.typeId = r.typeId;
           if (r.companyId) next.companyId = r.companyId;
+          if (r.tagIds && r.tagIds.length > 0) next.tagIds = [...r.tagIds];
           newRows.push(next);
         }
       }
