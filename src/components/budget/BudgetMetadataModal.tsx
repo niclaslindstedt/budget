@@ -182,6 +182,17 @@ export function BudgetMetadataModal({
   const [completed, setCompleted] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  // The entries the user has already advanced past this session, in the
+  // order they were left behind (oldest first). Each Save / Skip from
+  // the live front pushes the entry here so Back can walk back to it —
+  // the queue itself drops a handled entry, so without this trail there
+  // would be nothing to return to. Cleared on close alongside the rest.
+  const [trail, setTrail] = useState<readonly string[]>(() => []);
+  // Cursor into `trail` while reviewing a past entry. `null` means we're
+  // at the live front (showing `queue[0]`). Back moves it toward the
+  // start of the trail; Save / Skip on a reviewed entry moves it forward
+  // again, falling back to `null` once it passes the newest trail entry.
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   // "Also apply to N similar entries" — opt-in per entry, defaults off
   // so a bulk sweep is never a surprise. Reset when the entry changes
   // (the save / skip handler advances to a new entry) and on close.
@@ -190,6 +201,8 @@ export function BudgetMetadataModal({
     if (!open) {
       setSkipped(new Set());
       setCompleted(new Set());
+      setTrail([]);
+      setReviewIndex(null);
       setBulkApply(false);
     }
   }, [open]);
@@ -228,7 +241,23 @@ export function BudgetMetadataModal({
     return filtered;
   }, [entries, merchantHints, matchRules, companiesById, typesById, skipped]);
 
-  const current = queue[0] ?? null;
+  // The live front of the queue — the next genuinely-unhandled entry.
+  const liveCurrent = queue[0] ?? null;
+  // The entry being reviewed, if Back walked the cursor into the trail.
+  // Looked up by id so it works whether the entry was skipped (still in
+  // the queue's source but filtered out) or saved (already resolved and
+  // gone from the queue). A stale id (entry no longer present) falls
+  // back to the live front.
+  const reviewEntry =
+    reviewIndex !== null
+      ? (entries.find((e) => e.id === trail[reviewIndex]) ?? null)
+      : null;
+  const current = reviewEntry ?? liveCurrent;
+  const isReviewing = reviewEntry !== null;
+  // Back is reachable whenever there's an older entry to step to: from
+  // the live front, any trail entry; while reviewing, any earlier one.
+  const canGoBack =
+    reviewIndex === null ? trail.length > 0 : isReviewing && reviewIndex > 0;
   const currentMonth = current ? monthKeyOf(current.date) : null;
   const monthRemaining = currentMonth
     ? queue.filter((e) => monthKeyOf(e.date) === currentMonth).length
@@ -351,14 +380,39 @@ export function BudgetMetadataModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
+  // Move off the current entry to the next one. From the live front
+  // this remembers the entry in the trail (the queue drops it on its
+  // own once skipped or resolved); while reviewing it just steps the
+  // cursor forward, returning to the live front past the newest entry.
+  const advance = useCallback(() => {
+    if (!current) return;
+    if (reviewIndex === null) {
+      setTrail((prev) => [...prev, current.id]);
+    } else {
+      setReviewIndex((idx) =>
+        idx === null || idx + 1 >= trail.length ? null : idx + 1,
+      );
+    }
+  }, [current, reviewIndex, trail.length]);
+
+  const handleBack = useCallback(() => {
+    setReviewIndex((idx) => {
+      if (idx === null) return trail.length > 0 ? trail.length - 1 : null;
+      return idx > 0 ? idx - 1 : 0;
+    });
+  }, [trail.length]);
+
   const handleSkip = useCallback(() => {
     if (!current) return;
+    // Mark skipped so the entry stays out of the queue (harmless re-add
+    // for an already-skipped or already-resolved entry under review).
     setSkipped((prev) => {
       const next = new Set(prev);
       next.add(current.id);
       return next;
     });
-  }, [current]);
+    advance();
+  }, [current, advance]);
 
   const handleSave = useCallback(() => {
     if (!current || !accountId) return;
@@ -519,6 +573,7 @@ export function BudgetMetadataModal({
           bulkPatch,
         );
       }
+      advance();
       return;
     }
     // Save is gated. Pulse a ring around the next blocker so the user
@@ -537,6 +592,7 @@ export function BudgetMetadataModal({
   }, [
     canSave,
     handleSave,
+    advance,
     stillMissingField,
     bulkApply,
     canBulkApply,
@@ -713,6 +769,13 @@ export function BudgetMetadataModal({
                   : ""}
             </p>
             <div className="flex shrink-0 items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleBack}
+                disabled={!canGoBack}
+              >
+                {t("metadata.back")}
+              </Button>
               <Button variant="secondary" onClick={handleSkip}>
                 {t("metadata.skip")}
               </Button>
