@@ -152,9 +152,10 @@ through them.
   `modalHandlers` `useMemo` + `dispatchModal` back into `AppShell`,
   so it sat at 898 lines; the first per-host hook relocation (slice 5,
   `useAchievementsModal` → `UniversalModalHost`, see Landed) then dropped
-  it to 878 lines, and slice 6 (`useChangelogState` →
-  `UniversalModalHost`, see Landed) dropped it to **868 lines**.
-  Re-verified 2026-05: the "10/14
+  it to 878 lines, slice 6 (`useChangelogState` →
+  `UniversalModalHost`, see Landed) dropped it to 868 lines, and slice 7
+  (`useSyncAutoOpens` → `UniversalModalHost`, see Landed) dropped it to
+  **859 lines**. Re-verified 2026-05: the "10/14
   setters as props" framing was
   **stale** — the hosts already receive _grouped hook-result
   objects_ (`editPrompts`, `deletePrompts`, `complexEntry`,
@@ -240,22 +241,34 @@ through them.
     AppShell dropped the hook call + `setChangelogManualOpen` destructure,
     the `openChangelog` base-slice entry + its dep, the import, and the
     `changelog` prop on the host (868 lines).
+  - **Slice 7 — `useSyncAutoOpens` into `UniversalModalHost` —
+    landed 2026-05** (see Landed: `useSyncAutoOpens` relocation). The
+    third per-host hook relocation following the slice-4/5/6 pattern: the
+    hook owns two `useState`s (sync-details + reconnect-cloud opens) plus
+    the status-driven auto-opens (sync-details on `shrink-warning` /
+    `parse-error`, reconnect on `auth-error` gated on `cloudReauthAutoOpen`),
+    all consumed only by `UniversalModalHost` (render) and opened from chrome
+    only via the dispatch (`open-sync-details`). Its inputs
+    (`storageState.status`, `data.settings.cloudReauthAutoOpen`) are already
+    host props, so the call moved in cleanly; `reconnectCloudOpen` had no
+    AppShell reader (confirmed — AppShell only destructured `setSyncDetailsOpen`
+    to wire `openSyncDetails`). The host extends its `useRegisterModalHandlers`
+    call with `openSyncDetails`. AppShell dropped the hook call + destructure,
+    the `openSyncDetails` base-slice entry + its dep, the import, and the
+    `syncAutoOpens` prop on the host (859 lines).
   - Plan (remaining): repeat the slice-4/5 pattern per host for each modal
     hook whose open path is now _only_ the dispatch (no chrome / page
     caller left): move the hook call (and its `useState` / `useReducer`)
     into the colocated host and have the host register its open slice via
     `useRegisterModalHandlers`. AppShell drops the hook call, the base-slice
-    handler entry, and the forwarded prop in the same move. Candidates that
-    look clean (open only via dispatch, render only in one host):
-    `useSettingsModal` (UniversalModalHost — but
-    `previewSettings` is read by AppShell's `useAppearanceProjection`, so
-    settings can't move without also relocating that projection),
-    `useSyncAutoOpens` (sync-details half — but `reconnectCloudOpen` is an
-    auto-open driven by `status`, so verify it has no AppShell reader
-    first). Hooks
-    whose state AppShell or a page still _reads_ (not just opens) stay put
-    until that read is untangled. AppShell collapses toward a routing
-    switch + host mounts. Slice per host so each PR leaves the app working.
+    handler entry, and the forwarded prop in the same move. The remaining
+    candidate that looked clean is now blocked: `useSettingsModal`
+    (UniversalModalHost — but `previewSettings` is read by AppShell's
+    `useAppearanceProjection`, so settings can't move without also relocating
+    that projection). Hooks whose state AppShell or a page still _reads_ (not
+    just opens) stay put until that read is untangled. AppShell collapses
+    toward a routing switch + host mounts. Slice per host so each PR leaves
+    the app working.
   - Risk: low. The seam is a pure refactor — AppShell registers the same
     complete handler set as a base slice, so the merged table dispatched is
     identical. Not on a cloud-OAuth hot path; modal opens have no
@@ -427,6 +440,43 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`useSyncAutoOpens` relocated into `UniversalModalHost`** (2026-05):
+  slice 7 of the `AppShell.tsx` modal-mount state-ownership shift — the
+  third full per-host hook relocation following the slice-4/5/6 seam (the
+  candidate stays in Pending with the remaining host moves narrowed; the
+  last clean candidate `useSettingsModal` is blocked by AppShell's
+  `previewSettings` reader). The `useSyncAutoOpens` hook owns two `useState`s
+  (the sync-details modal and the reconnect-cloud modal) plus the
+  status-driven auto-opens: it surfaces sync-details on a `shrink-warning` /
+  `parse-error` status and the reconnect modal on a cloud `auth-error` (gated
+  on the synced `cloudReauthAutoOpen` preference, auto-closing when the status
+  leaves `auth-error`). Its `syncDetailsOpen` / `reconnectCloudOpen` outputs
+  are consumed only by `UniversalModalHost` to render `<SyncDetailsModal>` /
+  `<ReconnectCloudModal>`, and the only chrome opener is the dispatch context's
+  `open-sync-details` command (from `SyncStatus`). AppShell called the hook
+  purely to forward its result down as the `syncAutoOpens` prop and to wire
+  `setSyncDetailsOpen` into the `openSyncDetails` base handler slice; the
+  `reconnectCloudOpen` half had no AppShell reader. Its inputs (`status`,
+  `data.settings.cloudReauthAutoOpen`) are already `UniversalModalHost` props
+  (`storageState.status` + the `data` prop), so the hook call moved inside the
+  host, which now extends its `useRegisterModalHandlers` call (action-history +
+  achievements + changelog) with `openSyncDetails: () => setSyncDetailsOpen(true)`.
+  AppShell shed the `useSyncAutoOpens` import + call + `setSyncDetailsOpen`
+  destructure, the `openSyncDetails` base-slice entry and its `useMemo` dep, and
+  the `syncAutoOpens` prop on the host; `UniversalModalHost` dropped the prop
+  from its `Props` type and the destructure, switching the hook from a type-only
+  to a value import. `AppShell.tsx` drops 868 → 859 lines. Pure refactor — same
+  behaviour, same modal opens, same status-driven auto-open gating, same
+  dispatch routing (the `mergeHandlerSlices` table is identical, just with
+  `openSyncDetails` now contributed by the host's slice instead of AppShell's
+  base slice). The existing `mergeHandlerSlices` unit tests in
+  `tests/modal_dispatch_test.ts` already cover a slice filling base keys and
+  later slices winning collisions, so the routing is locked in; no new test
+  needed for a pure relocation. fmt-check + lint + typecheck + 1093 tests +
+  build + icons-check pass; the Playwright sync-details / reconnect flows
+  (status pill → sync-details modal, cloud auth-error → auto-open) were not run
+  in this environment and stay a reviewer-side check.
 
 - **`useChangelogState` relocated into `UniversalModalHost`** (2026-05):
   slice 6 of the `AppShell.tsx` modal-mount state-ownership shift — the
