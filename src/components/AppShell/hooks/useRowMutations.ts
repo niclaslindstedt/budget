@@ -102,6 +102,7 @@ type Result = {
       userTypeId?: string;
       userCompanyId?: string;
       userTagIds?: readonly string[];
+      noCompany?: boolean;
     },
   ) => void;
   // Row-level company writer fired by the description popover's inline

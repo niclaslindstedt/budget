@@ -445,12 +445,16 @@ export function BudgetMetadataModal({
   const bulkPatch = useMemo<HistoryMetadataPatch>(() => {
     const patch: HistoryMetadataPatch = {};
     if (typeId) patch.userTypeId = typeId;
+    // Company and "omit company" are mutually exclusive — propagate
+    // whichever the user chose so picking "Omit company" also offers to
+    // fan out, not just a real company pick.
     if (companyId) patch.userCompanyId = companyId;
+    else if (noCompany) patch.noCompany = true;
     const trimmed = description.trim();
     if (trimmed !== "") patch.userDescription = trimmed;
     if (tagIds.length > 0) patch.userTagIds = tagIds;
     return patch;
-  }, [typeId, companyId, description, tagIds]);
+  }, [typeId, companyId, noCompany, description, tagIds]);
   const matchCount = useMemo(() => {
     if (!current) return 0;
     return countMatchingMetadataTargets(
