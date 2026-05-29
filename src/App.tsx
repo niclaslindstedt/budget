@@ -118,7 +118,6 @@ export function App() {
 
   const handleCreateAccount = useCallback(
     async (username: string, password: string, importLegacy: boolean) => {
-      unlock("localHero");
       const user = await createUser(username, password);
       const existingDefault = findDefaultUser(users);
       const realUsers = users.filter((u) => !u.isDefault);
@@ -167,7 +166,6 @@ export function App() {
   );
 
   const handleContinueWithoutAccount = useCallback(async () => {
-    unlock("localHero");
     // Re-use an existing guest account if one is already in the
     // registry (e.g. user signed out then changed their mind). Only
     // mint a new one when there isn't one — keeps the data intact

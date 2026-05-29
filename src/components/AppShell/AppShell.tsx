@@ -140,6 +140,19 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // off again the moment the adapter replaces state with the
   // persisted bucket.
   useAchievementWatcher(data, dispatch, status.kind !== "loading");
+  // Local Hero — "use the app as a guest, or create an account".
+  // Reaching AppShell at all means the user is past the auth screen on
+  // some user (guest or real), so the unlock fires the moment the
+  // budget finishes loading. Firing here rather than in the App.tsx
+  // auth handlers covers the returning-session case too: a guest whose
+  // session is restored on boot never re-enters `continueWithoutAccount`,
+  // so a handler-only unlock would silently skip them. The bus dedupes
+  // and the watcher skips ids already in `settings.achievements`, so
+  // re-firing on every load is a no-op once earned.
+  const loaded = status.kind !== "loading";
+  useEffect(() => {
+    if (loaded) unlockAchievement("localHero");
+  }, [loaded]);
   const achievementsModal = useAchievementsModal();
   const { setAchievementsModalOpen, setAchievementsListOpen } =
     achievementsModal;

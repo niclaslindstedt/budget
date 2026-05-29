@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type RefObject } from "react";
 
+import { unlock } from "../../data/achievements";
+
 // Track which rendered month containers are currently intersecting the
 // viewport, then derive a floating "Today" button direction from that.
 // The IntersectionObserver tracks `data-month-key` elements inside the
@@ -106,6 +108,15 @@ export function useVisibleMonthRange({
     return null;
   }, [visibleMonthRange, currentMonth, transactionSortOrder]);
   const showTodayButton = todayButtonDirection !== null;
+
+  // Time Traveller — "discover the Today pill by scrolling away from
+  // this month". Scrolling the current fiscal month off-screen surfaces
+  // the pill; the first time that happens is the discovery. The bus
+  // dedupes, so keying the effect on the boolean fires the unlock once
+  // when it flips true and never again.
+  useEffect(() => {
+    if (showTodayButton) unlock("timeTraveller");
+  }, [showTodayButton]);
 
   return { todayButtonDirection, showTodayButton };
 }

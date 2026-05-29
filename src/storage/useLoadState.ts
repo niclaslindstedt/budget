@@ -196,11 +196,10 @@ export function useLoadState(params: Params): LoadState {
           // No bytes on disk for a brand-new user. The `useState`
           // initializer already seeded `data` with `freshUserData()`,
           // so re-setting here would only blow away any dispatches
-          // that landed during the async load — most importantly,
-          // `recordAchievementUnlock("localHero")` fired by the
-          // App.tsx auth handler before the watcher subscribed to
-          // the bus. Leaving state alone lets the unlock survive
-          // long enough to reach the next save.
+          // that landed during the async load — most importantly, a
+          // `recordAchievementUnlock` queued on the manual-unlock bus
+          // before the watcher subscribed. Leaving state alone lets
+          // the unlock survive long enough to reach the next save.
           //
           // Each of those dispatches re-ran the save effect while
           // `hasLoadedRef.current` was still false, so every save
