@@ -176,23 +176,45 @@ through them.
     and call `useModalDispatch()` instead. AppShell wires the existing
     `sheetMetaDialog` / `downloadFlow` openers into the
     `ModalCommandHandlers`.
-  - Plan (remaining): extend the dispatch context to the **deep
-    budget-page row triggers** (`onEditRequest`, `onDeleteRequest`,
-    `onSplitRequest`, `onMatchRuleRequest`, …) that `BudgetPage` drills
-    down to `BudgetRow`. Add the matching `ModalCommand` kinds (e.g.
-    `open-edit-row`) and have the row chain pull `useModalDispatch()`
-    instead of receiving the callbacks. Once a page no longer forwards
-    opener props, fold its modal hook's state ownership into the
-    colocated host (`useReducer`-style) so AppShell stops calling that
-    hook. AppShell collapses toward a routing switch + host mounts.
-    Slice per host / per page so each PR leaves the app working.
-  - Risk: low-medium. The remaining row-trigger slice touches the deep
-    `BudgetRow` chain, so the behaviour-preserving check is wider than
-    the sheet-meta slice (whose triggers lived only on the title menus
-    and the bottom bar). Not on a cloud-OAuth hot path; modal opens
-    have no persisted-shape impact. Mind the open-side achievement
-    unlocks (the search "detective", undo "secondThoughts") — keep them
-    on the AppShell handler side of the dispatch, not in the chrome.
+  - **Slice 3 — the deep budget-row triggers — landed 2026-05** (see
+    Landed: budget-row dispatch commands). The `ModalCommand` union
+    gained nine `Row`-carrying kinds (`open-edit-entry` / `open-edit-row`
+    / `open-delete-row` / `open-split-row` / `open-transfer-row` /
+    `open-match-rule` / `open-edit-history` / `open-copy-row` /
+    `open-correction-delete`), so `BudgetRow`, `BudgetMonthTable`, and
+    `BudgetEntryActionsMenu` call `useModalDispatch()` and the
+    `BudgetPage → BudgetMonthTable → BudgetRow → BudgetEntryActionsMenu`
+    chain drops all nine opener props. The AppShell handlers keep their
+    guards (savable-row discard, synthesized-row suppression). The
+    decision to extend the **universal** union (rather than spin up a
+    budget-scoped context) followed the file's own documented intent and
+    reused the tested `applyModalCommand` dispatcher — splitting the
+    union per-page is non-speculative only once a **second** row-bearing
+    sheet type exists.
+  - Plan (remaining): now that no page forwards opener props, fold each
+    modal hook's state ownership into the colocated host
+    (`useReducer`-style) so AppShell stops calling the hook purely to
+    forward its result. The blocker is that most hooks' state is consumed
+    by **both** a host (render) and the dispatch handler (open) — e.g.
+    `useEditPrompts` feeds `BudgetModalHost` _and_ the `editEntry` /
+    `editRow` command handlers — so the state can't move into the host
+    without the host also exposing the open path back to AppShell's
+    `modalHandlers`. The clean next step is per-host: move a hook whose
+    open path is now _only_ the dispatch (no chrome / page caller left)
+    down into its host and have the host build that slice of
+    `ModalCommandHandlers`. AppShell collapses toward a routing switch +
+    host mounts. Slice per host so each PR leaves the app working.
+  - Risk: low. Slice 3 touched the deep `BudgetRow` chain but the move is
+    prop → stable-context-dispatch (the memoized `BudgetRow` /
+    `BudgetMonthTable` shed nine props, shrinking their compare surface;
+    `dispatchModal` is a stable `useCallback`). Not on a cloud-OAuth hot
+    path; modal opens have no persisted-shape impact. The open-side
+    achievement unlocks (the search "detective", undo "secondThoughts")
+    stay on the AppShell handler side — no row trigger carried one, and
+    the bulk-toolbar `moverShaker` / `bulkOps` unlocks were untouched
+    (they're not row triggers). One negligible cost: `dispatchModal`'s
+    identity now changes on a column reorder (the `deleteRow` guard reads
+    `activeItem.columns`), so the chrome re-renders on that rare action.
 
 - **Optional fields on persisted types — `undefined` vs `null`
   drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
@@ -353,6 +375,43 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Budget-row triggers through the modal-dispatch context** (2026-05):
+  slice 3 of the `AppShell.tsx` modal-mount state-ownership shift (the
+  candidate stays in Pending with only the fold-hook-state-into-hosts
+  slice remaining — see the narrowed entry). The
+  `src/components/modal-dispatch.ts` `ModalCommand` union gained nine
+  `Row`-carrying kinds — `open-edit-entry`, `open-edit-row`,
+  `open-delete-row`, `open-split-row`, `open-transfer-row`,
+  `open-match-rule`, `open-edit-history`, `open-copy-row`, and
+  `open-correction-delete` — plus the matching `editEntry` / `editRow` /
+  `deleteRow` / `splitRow` / `transferRow` / `matchRule` / `editHistory`
+  / `copyRow` / `correctionDelete` handler fields and switch arms in
+  `applyModalCommand`. `BudgetRow` (action buttons + long-press +
+  context-menu), `BudgetEntryActionsMenu` (the overflow menu items), and
+  `BudgetMonthTable` (the correction-line divider) now call
+  `useModalDispatch()`, so the
+  `BudgetPage → BudgetMonthTable → BudgetRow → BudgetEntryActionsMenu`
+  chain drops all nine opener props (`BudgetPage` −9, `BudgetMonthTable`
+  −9, `BudgetRow` −8, `BudgetEntryActionsMenu` −4). AppShell stopped
+  forwarding the nine props to `<BudgetPage>` and wired its existing
+  row-mutation / transfer-flow / bulk-selection / match-rule openers into
+  the `ModalCommandHandlers` object; the `modalHandlers` `useMemo` +
+  `dispatchModal` `useCallback` moved below the `transferFlow` /
+  `bulkSelection` / `matchRuleUi` hooks so their `on*Request` openers are
+  in scope (same relocation slice 2 made). The guards stay AppShell-side:
+  `deleteRow` still discards an unsaved placeholder row instead of
+  prompting, `editRow` / `splitRow` still suppress synthesized rows. The
+  two non-modal row callbacks (`onSetFiscalMonthShift`, a reducer
+  dispatch; `onToggleRowTransfer`, a flag toggle) stayed as props. 11 new
+  rows added to `tests/modal_dispatch_test.ts` (nine command→handler
+  routing rows plus two asserting the `Row` reference forwards unchanged
+  so the AppShell guard sees the real row). Pure refactor — same
+  behaviour, same i18n keys, same modal opens; the memoized `BudgetRow` /
+  `BudgetMonthTable` shed props (shrinking their compare surface) and read
+  a stable `dispatchModal` from context. fmt-check + lint + typecheck +
+  1089 tests + build + icons-check pass; the Playwright budget row-action
+  flows were not run in this environment and stay a reviewer-side check.
 
 - **Sheet-meta / download page-triggers through the modal-dispatch
   context** (2026-05): slice 2 of the `AppShell.tsx` modal-mount

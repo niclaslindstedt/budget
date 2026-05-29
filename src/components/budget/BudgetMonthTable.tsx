@@ -16,6 +16,7 @@ import {
   withCurrency,
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { useModalDispatch } from "../modal-dispatch";
 import { BudgetAddEntryButton } from "./BudgetAddEntryButton";
 import { useBudgetContext } from "./BudgetContext";
 import { BudgetColumnHeader } from "./BudgetColumnHeader";
@@ -84,16 +85,7 @@ type Props = {
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onAddRow: () => void;
   onAddComplex: () => void;
-  onDeleteRequest: (row: Row) => void;
-  onEditRequest: (row: Row) => void;
-  onEditRowRequest: (row: Row) => void;
-  onSplitRequest: (row: Row) => void;
-  onTransferRequest: (row: Row) => void;
-  onMatchRuleRequest: (row: Row) => void;
-  onEditHistoryRequest: (row: Row) => void;
-  onCopyRequest: (row: Row) => void;
   onSetFiscalMonthShift?: (row: Row, shift: -1 | 1 | null) => void;
-  onCorrectionDeleteRequest: (row: Row) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -147,22 +139,14 @@ function MonthTableImpl({
   onCommitCell,
   onAddRow,
   onAddComplex,
-  onDeleteRequest,
-  onEditRequest,
-  onEditRowRequest,
-  onSplitRequest,
-  onTransferRequest,
-  onMatchRuleRequest,
-  onEditHistoryRequest,
-  onCopyRequest,
   onSetFiscalMonthShift,
-  onCorrectionDeleteRequest,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const dispatchModal = useModalDispatch();
   const { settings } = useBudgetContext();
   // Track whether this month's wrapper is near the viewport. When it
   // isn't, the tbody renders a single height-matched placeholder row
@@ -448,7 +432,9 @@ function MonthTableImpl({
                       colSpan={correctionColSpan}
                       amount={amount}
                       settings={settings}
-                      onClick={() => onCorrectionDeleteRequest(row)}
+                      onClick={() =>
+                        dispatchModal({ kind: "open-correction-delete", row })
+                      }
                     />
                   );
                 }
@@ -474,15 +460,7 @@ function MonthTableImpl({
                           revealedTransfer
                           onUpdateCell={onUpdateCell}
                           onCommitCell={onCommitCell}
-                          onDeleteRequest={onDeleteRequest}
-                          onEditRequest={onEditRequest}
-                          onEditRowRequest={onEditRowRequest}
-                          onSplitRequest={onSplitRequest}
-                          onTransferRequest={onTransferRequest}
                           onToggleRowTransfer={onToggleRowTransfer}
-                          onMatchRuleRequest={onMatchRuleRequest}
-                          onEditHistoryRequest={onEditHistoryRequest}
-                          onCopyRequest={onCopyRequest}
                           onSetFiscalMonthShift={onSetFiscalMonthShift}
                           onToggleSelect={onToggleSelect}
                         />
@@ -503,15 +481,7 @@ function MonthTableImpl({
                       }
                       onUpdateCell={onUpdateCell}
                       onCommitCell={onCommitCell}
-                      onDeleteRequest={onDeleteRequest}
-                      onEditRequest={onEditRequest}
-                      onEditRowRequest={onEditRowRequest}
-                      onSplitRequest={onSplitRequest}
-                      onTransferRequest={onTransferRequest}
                       onToggleRowTransfer={onToggleRowTransfer}
-                      onMatchRuleRequest={onMatchRuleRequest}
-                      onEditHistoryRequest={onEditHistoryRequest}
-                      onCopyRequest={onCopyRequest}
                       onSetFiscalMonthShift={onSetFiscalMonthShift}
                       onToggleSelect={onToggleSelect}
                     />

@@ -437,47 +437,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   });
   const { onOpenDownloadSheet } = downloadFlow;
 
-  // Modal opens dispatched through ModalDispatchProvider — the page
-  // chrome (header menu, bottom bar, header star, sync status) and the
-  // page title menus (budget / accounts) name the modal they want
-  // instead of each carrying an opener callback prop. The state still
-  // lives in the hooks above; this just routes the open-trigger.
-  // Open-side achievement unlocks (the search "detective") ride along
-  // here so the chrome stays unaware of them.
-  const modalHandlers = useMemo<ModalCommandHandlers>(
-    () => ({
-      openSettings: () => setSettingsOpen(true),
-      openChangelog: () => setChangelogManualOpen(true),
-      openSearch: () => {
-        unlockAchievement("detective");
-        setSearchOpen(true);
-      },
-      openActionHistory: () => setActionHistoryOpen(true),
-      openAchievementsList: () => setAchievementsListOpen(true),
-      openAchievementsUnlock: () => setAchievementsModalOpen(true),
-      openSyncDetails: () => setSyncDetailsOpen(true),
-      openNewSheet: onOpenNewSheet,
-      openEditSheet: onOpenEditSheet,
-      openDownloadSheet: onOpenDownloadSheet,
-    }),
-    [
-      setSettingsOpen,
-      setChangelogManualOpen,
-      setSearchOpen,
-      setActionHistoryOpen,
-      setAchievementsListOpen,
-      setAchievementsModalOpen,
-      setSyncDetailsOpen,
-      onOpenNewSheet,
-      onOpenEditSheet,
-      onOpenDownloadSheet,
-    ],
-  );
-  const dispatchModal = useCallback(
-    (command: ModalCommand) => applyModalCommand(command, modalHandlers),
-    [modalHandlers],
-  );
-
   // Account / transfer modal handlers. Kept on the AppShell so
   // they share the same dispatch and Account state as the rest of the
   // workspace — the modals themselves stay pure presentational shells.
@@ -558,6 +517,68 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
 
   const matchRuleUi = useMatchRuleUi({ data, activeItem, dispatch, toast });
   const { onMatchRuleRequest } = matchRuleUi;
+
+  // Modal opens dispatched through ModalDispatchProvider — the page
+  // chrome (header menu, bottom bar, header star, sync status), the page
+  // title menus (budget / accounts), and the budget table's per-row
+  // affordances name the modal they want instead of each carrying an
+  // opener callback prop. The state still lives in the hooks above; this
+  // just routes the open-trigger. Defined below the transfer / bulk /
+  // match-rule hooks so their `on*Request` openers are in scope. Open-side
+  // achievement unlocks (the search "detective") ride along here so the
+  // chrome stays unaware of them; the budget-row handlers keep their own
+  // guards (e.g. `deleteRow` discards an unsaved placeholder row).
+  const modalHandlers = useMemo<ModalCommandHandlers>(
+    () => ({
+      openSettings: () => setSettingsOpen(true),
+      openChangelog: () => setChangelogManualOpen(true),
+      openSearch: () => {
+        unlockAchievement("detective");
+        setSearchOpen(true);
+      },
+      openActionHistory: () => setActionHistoryOpen(true),
+      openAchievementsList: () => setAchievementsListOpen(true),
+      openAchievementsUnlock: () => setAchievementsModalOpen(true),
+      openSyncDetails: () => setSyncDetailsOpen(true),
+      openNewSheet: onOpenNewSheet,
+      openEditSheet: onOpenEditSheet,
+      openDownloadSheet: onOpenDownloadSheet,
+      editEntry: onEditRequest,
+      editRow: onEditRowRequest,
+      deleteRow: onDeleteRequest,
+      splitRow: onSplitRequest,
+      transferRow: onTransferRequest,
+      matchRule: onMatchRuleRequest,
+      editHistory: onEditHistoryRequest,
+      copyRow: onCopyRequest,
+      correctionDelete: onCorrectionDeleteRequest,
+    }),
+    [
+      setSettingsOpen,
+      setChangelogManualOpen,
+      setSearchOpen,
+      setActionHistoryOpen,
+      setAchievementsListOpen,
+      setAchievementsModalOpen,
+      setSyncDetailsOpen,
+      onOpenNewSheet,
+      onOpenEditSheet,
+      onOpenDownloadSheet,
+      onEditRequest,
+      onEditRowRequest,
+      onDeleteRequest,
+      onSplitRequest,
+      onTransferRequest,
+      onMatchRuleRequest,
+      onEditHistoryRequest,
+      onCopyRequest,
+      onCorrectionDeleteRequest,
+    ],
+  );
+  const dispatchModal = useCallback(
+    (command: ModalCommand) => applyModalCommand(command, modalHandlers),
+    [modalHandlers],
+  );
 
   return (
     <ModalDispatchProvider value={dispatchModal}>
@@ -741,15 +762,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onCommitCell={onCommitCell}
                     onAddRow={onAddRow}
                     onAddComplex={onAddComplex}
-                    onDeleteRequest={onDeleteRequest}
-                    onEditRequest={onEditRequest}
-                    onEditRowRequest={onEditRowRequest}
-                    onSplitRequest={onSplitRequest}
-                    onTransferRequest={onTransferRequest}
                     onToggleRowTransfer={onToggleRowTransfer}
-                    onMatchRuleRequest={onMatchRuleRequest}
-                    onEditHistoryRequest={onEditHistoryRequest}
-                    onCopyRequest={onCopyRequest}
                     onSetFiscalMonthShift={onSetFiscalMonthShift}
                     onUpdateHistoryEntry={onUpdateHistoryEntry}
                     onApplyMetadataToMatchingHistory={
@@ -757,7 +770,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     }
                     tags={data.tags}
                     onCreateTag={onCreateTag}
-                    onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                     onReorderColumns={onReorderColumns}
                     onToggleSelect={onToggleSelect}
                     onToggleSelectMonth={onToggleSelectMonth}
