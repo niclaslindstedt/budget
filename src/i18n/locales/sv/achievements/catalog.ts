@@ -149,6 +149,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Taggar är dina egna färgkodade etiketter som går tvärs över kategorier — en rad kan bära flera. De skräpar aldrig ner tabellen; de visas bara vid redigering och låter dig plocka fram allt som är taggat på samma sätt via sökningen. Hantera dem under Inställningar → Taggar.",
   },
+  companies: {
+    name: "Skyltfönster",
+    condition: "Märk en post med ett företag.",
+    learnMore:
+      "Företag är handlarna dina pengar går till — Fortum, H&M, caféet runt hörnet. Välj ett från beskrivningspopupen eller någon redigeringsmodal så visar raden vem den betalade även när den saknar en egen beskrivning. Hantera dem under Inställningar → Företag.",
+  },
   moverShaker: {
     name: "Flyttkarl",
     condition: "Flytta eller kopiera rader mellan månader.",
@@ -162,6 +168,13 @@ const catalog: AchievementsCatalogEntries = {
   bulkOps: {
     name: "Massåtgärd",
     condition: "Massredigera två eller fler rader i en åtgärd.",
+  },
+  estimateRange: {
+    name: "Plus minus",
+    condition:
+      "Lägg till en post med ett uppskattat intervall i stället för ett exakt belopp.",
+    learnMore:
+      "Växla beloppet från Exakt till Uppskattat och ange ett lågt, ett troligt och ett högt värde — praktiskt för räkningar som vandrar månad till månad, som elen. Uppskattningen är den som visas i tabellen och räknas mot saldot, och ett importerat belopp inom intervallet matchar ändå posten.",
   },
   reckoner: {
     name: "Räknaren",
