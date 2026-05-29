@@ -152,7 +152,9 @@ through them.
   `modalHandlers` `useMemo` + `dispatchModal` back into `AppShell`,
   so it sat at 898 lines; the first per-host hook relocation (slice 5,
   `useAchievementsModal` → `UniversalModalHost`, see Landed) then dropped
-  it to **878 lines**. Re-verified 2026-05: the "10/14
+  it to 878 lines, and slice 6 (`useChangelogState` →
+  `UniversalModalHost`, see Landed) dropped it to **868 lines**.
+  Re-verified 2026-05: the "10/14
   setters as props" framing was
   **stale** — the hosts already receive _grouped hook-result
   objects_ (`editPrompts`, `deletePrompts`, `complexEntry`,
@@ -226,6 +228,18 @@ through them.
     `openAchievementsUnlock`; AppShell dropped the hook call + destructure,
     the two base-slice entries + their deps, the import, and the
     `achievementsModal` prop on the host (878 lines).
+  - **Slice 6 — `useChangelogState` into `UniversalModalHost` —
+    landed 2026-05** (see Landed: `useChangelogState` relocation). The
+    second per-host hook relocation following the slice-4/5 pattern: the
+    hook owns one `useState` (the header-menu manual open) plus the
+    per-version auto-open on upgrade, both consumed only by
+    `UniversalModalHost` (render) and opened only via the dispatch
+    (`open-changelog`). Its inputs (`data.settings.lastSeenChangelogVersion`,
+    `dispatch`) are already host props, so the call moved in cleanly; the
+    host extends its `useRegisterModalHandlers` call with `openChangelog`.
+    AppShell dropped the hook call + `setChangelogManualOpen` destructure,
+    the `openChangelog` base-slice entry + its dep, the import, and the
+    `changelog` prop on the host (868 lines).
   - Plan (remaining): repeat the slice-4/5 pattern per host for each modal
     hook whose open path is now _only_ the dispatch (no chrome / page
     caller left): move the hook call (and its `useState` / `useReducer`)
@@ -233,7 +247,7 @@ through them.
     `useRegisterModalHandlers`. AppShell drops the hook call, the base-slice
     handler entry, and the forwarded prop in the same move. Candidates that
     look clean (open only via dispatch, render only in one host):
-    `useChangelogState` / `useSettingsModal` (UniversalModalHost — but
+    `useSettingsModal` (UniversalModalHost — but
     `previewSettings` is read by AppShell's `useAppearanceProjection`, so
     settings can't move without also relocating that projection),
     `useSyncAutoOpens` (sync-details half — but `reconnectCloudOpen` is an
@@ -413,6 +427,37 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`useChangelogState` relocated into `UniversalModalHost`** (2026-05):
+  slice 6 of the `AppShell.tsx` modal-mount state-ownership shift — the
+  second full per-host hook relocation following the slice-4/5 seam (the
+  candidate stays in Pending with the remaining host moves narrowed). The
+  `useChangelogState` hook owns one `useState` (the header-menu manual
+  changelog open) and wraps `useChangelogAutoOpen` (the per-version
+  "What's new" auto-open on upgrade); its `changelogOpen` / `changelogSince`
+  / `onCloseChangelog` outputs are consumed only by `UniversalModalHost` to
+  render `<ChangelogModal>`, and the only opener is the dispatch context's
+  `open-changelog` command. AppShell called the hook purely to forward its
+  result down as the `changelog` prop and to wire `setChangelogManualOpen`
+  into the `openChangelog` base handler slice. Its inputs
+  (`data.settings.lastSeenChangelogVersion`, `dispatch`) are already
+  `UniversalModalHost` props, so the hook call moved inside the host, which
+  now extends its existing `useRegisterModalHandlers` call (action-history +
+  achievements) with `openChangelog: () => setChangelogManualOpen(true)`.
+  AppShell shed the `useChangelogState` import + call + `setChangelogManualOpen`
+  destructure, the `openChangelog` base-slice entry and its `useMemo` dep, and
+  the `changelog` prop on the host; `UniversalModalHost` dropped the prop from
+  its `Props` type and the destructure, switching the hook from a type-only to
+  a value import. `AppShell.tsx` drops 878 → 868 lines. Pure refactor — same
+  behaviour, same modal opens, same auto-open gating, same dispatch routing
+  (the `mergeHandlerSlices` table is identical, just with `openChangelog` now
+  contributed by the host's slice instead of AppShell's base slice). The
+  existing `mergeHandlerSlices` unit tests in `tests/modal_dispatch_test.ts`
+  already cover a slice filling base keys and later slices winning collisions,
+  so the routing is locked in; no new test needed for a pure relocation.
+  fmt-check + lint + typecheck + 1093 tests + build + icons-check pass; the
+  Playwright changelog-open flow (burger → full-history modal, upgrade →
+  auto-open) was not run in this environment and stays a reviewer-side check.
 
 - **`useAchievementsModal` relocated into `UniversalModalHost`** (2026-05):
   slice 5 of the `AppShell.tsx` modal-mount state-ownership shift — the
