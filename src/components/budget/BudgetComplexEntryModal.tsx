@@ -10,6 +10,7 @@ import type {
   EntryType,
   Settings,
   Sheet,
+  Tag,
 } from "../../data/types";
 import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
@@ -25,6 +26,7 @@ import { BudgetFormulaVariableHelper } from "./BudgetFormulaVariableHelper";
 import { Modal } from "../Modal";
 import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
 import { CompanyPicker } from "../CompanyPicker";
+import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 
 type Props = {
@@ -33,6 +35,7 @@ type Props = {
   categories: Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill. See
   // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
@@ -65,6 +68,7 @@ type Props = {
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
 };
 
 export type ComplexEntrySeed = {
@@ -73,6 +77,7 @@ export type ComplexEntrySeed = {
   amount: number;
   typeId: string | null;
   companyId: string | null;
+  tagIds?: string[];
   isTransfer: boolean;
   rule: import("../../data/recurrence").RecurrenceRule | null;
 };
@@ -86,6 +91,7 @@ export function BudgetComplexEntryModal({
   categories,
   types,
   companies,
+  tags,
   companyTypeSuggestions,
   settings,
   sheets,
@@ -98,6 +104,7 @@ export function BudgetComplexEntryModal({
   onCreateType,
   onCreateCategory,
   onCreateCompany,
+  onCreateTag,
 }: Props) {
   const t = useT();
   const [description, setDescription] = useState("");
@@ -118,6 +125,7 @@ export function BudgetComplexEntryModal({
     },
     [typeId, companyTypeSuggestions],
   );
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [isTransfer, setIsTransfer] = useState(false);
   const [dates, setDates] = useState<string[]>([]);
   // fx mode swaps the numeric amount input for a formula textarea
@@ -146,6 +154,7 @@ export function BudgetComplexEntryModal({
       setNegative(seed.amount < 0);
       setTypeId(seed.typeId);
       setCompanyId(seed.companyId);
+      setTagIds(seed.tagIds ?? []);
       setIsTransfer(seed.isTransfer);
     } else {
       setDescription("");
@@ -153,6 +162,7 @@ export function BudgetComplexEntryModal({
       setNegative(true);
       setTypeId(null);
       setCompanyId(null);
+      setTagIds([]);
       setIsTransfer(false);
     }
     setDates([]);
@@ -223,6 +233,7 @@ export function BudgetComplexEntryModal({
         amount: 0,
         typeId,
         companyId,
+        ...(tagIds.length > 0 ? { tagIds } : {}),
         isTransfer,
         dates,
         amountFormula: stored.formula,
@@ -242,6 +253,7 @@ export function BudgetComplexEntryModal({
       amount: parsedAmount,
       typeId,
       companyId,
+      ...(tagIds.length > 0 ? { tagIds } : {}),
       isTransfer,
       dates,
       // Only attach a band when both bounds parsed (estimate mode).
@@ -393,6 +405,15 @@ export function BudgetComplexEntryModal({
               selectedId={companyId}
               onSelect={handlePickCompany}
               onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">{t("complex.tags")}</span>
+            <TagsPicker
+              tags={tags}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+              onCreate={onCreateTag}
             />
           </div>
           <div className="sm:col-span-2">

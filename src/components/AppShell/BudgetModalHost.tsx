@@ -430,6 +430,7 @@ export function BudgetModalHost(props: Props) {
         categories={categories}
         types={types}
         companies={data.companies}
+        tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
         settings={effectiveSettings}
         sheets={data.sheets}
@@ -450,6 +451,7 @@ export function BudgetModalHost(props: Props) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
+        onCreateTag={onCreateTag}
       />
       <BudgetEditEntryModal
         open={editPrompt !== null}
