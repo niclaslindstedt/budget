@@ -150,7 +150,9 @@ through them.
   `BudgetModalHost`), dropping `AppShell.tsx` to 852 lines — though
   the three modal-dispatch slices (1–3, see Landed) then wired the
   `modalHandlers` `useMemo` + `dispatchModal` back into `AppShell`,
-  so it now sits at **898 lines**. Re-verified 2026-05: the "10/14
+  so it sat at 898 lines; the first per-host hook relocation (slice 5,
+  `useAchievementsModal` → `UniversalModalHost`, see Landed) then dropped
+  it to **878 lines**. Re-verified 2026-05: the "10/14
   setters as props" framing was
   **stale** — the hosts already receive _grouped hook-result
   objects_ (`editPrompts`, `deletePrompts`, `complexEntry`,
@@ -213,7 +215,18 @@ through them.
     `{ openActionHistory }` — dropping the AppShell `useState`, the
     `openActionHistory` base-slice entry, and the two
     `actionHistoryOpen` / `setActionHistoryOpen` props on the host.
-  - Plan (remaining): repeat the slice-4 pattern per host for each modal
+  - **Slice 5 — `useAchievementsModal` into `UniversalModalHost` —
+    landed 2026-05** (see Landed: `useAchievementsModal` relocation). The
+    first full per-host hook relocation following the slice-4 pattern: the
+    hook's two `useState`s (unlock-notification + full-list opens) are
+    consumed only by `UniversalModalHost` (render) and were called on
+    AppShell purely to forward the result and wire the two opens into the
+    base slice. The hook call moved into the host, which extends its
+    existing `useRegisterModalHandlers` call with `openAchievementsList` /
+    `openAchievementsUnlock`; AppShell dropped the hook call + destructure,
+    the two base-slice entries + their deps, the import, and the
+    `achievementsModal` prop on the host (878 lines).
+  - Plan (remaining): repeat the slice-4/5 pattern per host for each modal
     hook whose open path is now _only_ the dispatch (no chrome / page
     caller left): move the hook call (and its `useState` / `useReducer`)
     into the colocated host and have the host register its open slice via
@@ -223,7 +236,9 @@ through them.
     `useChangelogState` / `useSettingsModal` (UniversalModalHost — but
     `previewSettings` is read by AppShell's `useAppearanceProjection`, so
     settings can't move without also relocating that projection),
-    `useAchievementsModal`, `useSyncAutoOpens` (sync-details half). Hooks
+    `useSyncAutoOpens` (sync-details half — but `reconnectCloudOpen` is an
+    auto-open driven by `status`, so verify it has no AppShell reader
+    first). Hooks
     whose state AppShell or a page still _reads_ (not just opens) stay put
     until that read is untangled. AppShell collapses toward a routing
     switch + host mounts. Slice per host so each PR leaves the app working.
@@ -398,6 +413,37 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`useAchievementsModal` relocated into `UniversalModalHost`** (2026-05):
+  slice 5 of the `AppShell.tsx` modal-mount state-ownership shift — the
+  first full per-host hook relocation following the slice-4 seam (the
+  candidate stays in Pending with the remaining host moves narrowed). The
+  `useAchievementsModal` hook owns two `useState`s (the unlock-notification
+  modal opened from the HeaderStar, and the full achievements-list tour),
+  both consumed only by `UniversalModalHost` to render and opened only via
+  the dispatch context (`open-achievements-list` /
+  `open-achievements-unlock`). AppShell called the hook purely to forward
+  its result down as the `achievementsModal` prop and to wire the two opens
+  into its base handler slice. The hook call moved inside
+  `UniversalModalHost`, which now extends its existing
+  `useRegisterModalHandlers` call (already registering `openActionHistory`)
+  with `openAchievementsList: () => setAchievementsListOpen(true)` and
+  `openAchievementsUnlock: () => setAchievementsModalOpen(true)`. AppShell
+  shed the `useAchievementsModal` import + call + destructure, the two
+  base-slice handler entries and their `useMemo` deps, and the
+  `achievementsModal` prop on the host; `UniversalModalHost` dropped the
+  prop from its `Props` type and the now-redundant destructure, switching
+  the hook from a type-only import to a value import. `AppShell.tsx` drops
+  898 → 878 lines. Pure refactor — same behaviour, same modal opens, same
+  dispatch routing (the `mergeHandlerSlices` table is identical, just with
+  the two achievement handlers now contributed by the host's slice instead
+  of AppShell's base slice). The existing 4 `mergeHandlerSlices` unit tests
+  in `tests/modal_dispatch_test.ts` already cover a slice filling base keys
+  and later slices winning collisions, so the routing is locked in; no new
+  test needed for a pure relocation. fmt-check + lint + typecheck + 1093
+  tests + build + icons-check pass; the Playwright achievements-open flow
+  (HeaderStar → unlock modal, burger → list tour) was not run in this
+  environment and stays a reviewer-side check.
 
 - **Handler-registration seam for the modal-dispatch context** (2026-05):
   slice 4 of the `AppShell.tsx` modal-mount state-ownership shift (the
