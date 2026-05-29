@@ -15,6 +15,9 @@ function makeHandlers(): ModalCommandHandlers {
     openAchievementsList: vi.fn(),
     openAchievementsUnlock: vi.fn(),
     openSyncDetails: vi.fn(),
+    openNewSheet: vi.fn(),
+    openEditSheet: vi.fn(),
+    openDownloadSheet: vi.fn(),
   };
 }
 
@@ -29,6 +32,9 @@ const cases: ReadonlyArray<[ModalCommand, keyof ModalCommandHandlers]> = [
   [{ kind: "open-achievements-list" }, "openAchievementsList"],
   [{ kind: "open-achievements-unlock" }, "openAchievementsUnlock"],
   [{ kind: "open-sync-details" }, "openSyncDetails"],
+  [{ kind: "open-new-sheet" }, "openNewSheet"],
+  [{ kind: "open-edit-sheet", sheetId: "s1" }, "openEditSheet"],
+  [{ kind: "open-download-sheet", sheetId: "s1" }, "openDownloadSheet"],
 ];
 
 describe("applyModalCommand", () => {
@@ -43,4 +49,21 @@ describe("applyModalCommand", () => {
       }
     });
   }
+
+  // The sheet-meta / download commands carry the id they act on; the
+  // dispatcher must forward it to the handler unchanged.
+  it("forwards sheetId to openEditSheet", () => {
+    const handlers = makeHandlers();
+    applyModalCommand({ kind: "open-edit-sheet", sheetId: "abc" }, handlers);
+    expect(handlers.openEditSheet).toHaveBeenCalledWith("abc");
+  });
+
+  it("forwards sheetId to openDownloadSheet", () => {
+    const handlers = makeHandlers();
+    applyModalCommand(
+      { kind: "open-download-sheet", sheetId: "xyz" },
+      handlers,
+    );
+    expect(handlers.openDownloadSheet).toHaveBeenCalledWith("xyz");
+  });
 });

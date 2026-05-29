@@ -167,28 +167,32 @@ through them.
     `HeaderMenu` / `BottomBar` / `HeaderStar` / `SyncStatus` no longer
     take opener-callback props. The bridge the remaining slices need
     now exists.
-  - Plan (remaining): extend the dispatch context to the
-    **page-level** open-triggers that thread through prop chains —
-    `onEditSheet` / `onDownloadSheet` (passed to both `BudgetPage`
-    and `AccountsPage`, and `onAddSheet` / `onEditSheet` on the bottom
-    bar), then the deep budget-page triggers (`onEditRequest`,
-    `onDeleteRequest`, `onSplitRequest`, `onMatchRuleRequest`, …) that
-    `BudgetPage` drills down to `BudgetRow`. Add the matching
-    `ModalCommand` kinds (e.g. `open-edit-sheet`, `open-edit-row`) and
-    have pages pull `useModalDispatch()` instead of receiving the
-    callbacks. Once a page no longer forwards opener props, fold its
-    modal hook's state ownership into the colocated host
-    (`useReducer`-style) so AppShell stops calling that hook. AppShell
-    collapses toward a routing switch + host mounts. Slice per host /
-    per page so each PR leaves the app working.
-  - Risk: low-medium. The page-trigger slices touch `BudgetPage` /
-    `AccountsPage` prop wiring and the deep `BudgetRow` chain, so the
-    behaviour-preserving check is wider than slice 1 (which only
-    touched four chrome components, all consumed solely by AppShell).
-    Not on a cloud-OAuth hot path; modal opens have no persisted-shape
-    impact. Mind the open-side achievement unlocks (the search
-    "detective", undo "secondThoughts") — keep them on the AppShell
-    handler side of the dispatch, not in the chrome.
+  - **Slice 2 — the sheet-meta / download page-triggers — landed
+    2026-05** (see Landed: sheet-meta dispatch commands). The dispatch
+    context gained `open-new-sheet` / `open-edit-sheet` /
+    `open-download-sheet` (the latter two carrying `sheetId`), so
+    `BottomBar` (−2 props), `BudgetPage` (−2), and `AccountsPage` (−2)
+    drop their `onEditSheet` / `onDownloadSheet` / `onAddSheet` props
+    and call `useModalDispatch()` instead. AppShell wires the existing
+    `sheetMetaDialog` / `downloadFlow` openers into the
+    `ModalCommandHandlers`.
+  - Plan (remaining): extend the dispatch context to the **deep
+    budget-page row triggers** (`onEditRequest`, `onDeleteRequest`,
+    `onSplitRequest`, `onMatchRuleRequest`, …) that `BudgetPage` drills
+    down to `BudgetRow`. Add the matching `ModalCommand` kinds (e.g.
+    `open-edit-row`) and have the row chain pull `useModalDispatch()`
+    instead of receiving the callbacks. Once a page no longer forwards
+    opener props, fold its modal hook's state ownership into the
+    colocated host (`useReducer`-style) so AppShell stops calling that
+    hook. AppShell collapses toward a routing switch + host mounts.
+    Slice per host / per page so each PR leaves the app working.
+  - Risk: low-medium. The remaining row-trigger slice touches the deep
+    `BudgetRow` chain, so the behaviour-preserving check is wider than
+    the sheet-meta slice (whose triggers lived only on the title menus
+    and the bottom bar). Not on a cloud-OAuth hot path; modal opens
+    have no persisted-shape impact. Mind the open-side achievement
+    unlocks (the search "detective", undo "secondThoughts") — keep them
+    on the AppShell handler side of the dispatch, not in the chrome.
 
 - **Optional fields on persisted types — `undefined` vs `null`
   drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
@@ -349,6 +353,37 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Sheet-meta / download page-triggers through the modal-dispatch
+  context** (2026-05): slice 2 of the `AppShell.tsx` modal-mount
+  state-ownership shift (the candidate stays in Pending with only the
+  deep `BudgetRow` row-trigger slice remaining). The
+  `src/components/modal-dispatch.ts` `ModalCommand` union gained three
+  kinds — `open-new-sheet`, `open-edit-sheet`, and
+  `open-download-sheet` (the latter two carrying the `sheetId` they act
+  on) — plus the matching `openNewSheet` / `openEditSheet` /
+  `openDownloadSheet` handler fields and switch arms in
+  `applyModalCommand`. `BottomBar` (dropped `onEditSheet` /
+  `onAddSheet`), `BudgetPage` (dropped `onEditSheet` /
+  `onDownloadSheet`), and `AccountsPage` (same two) now call
+  `useModalDispatch()` from their sheet-title menus / new-sheet button
+  instead of receiving opener-callback props; AppShell stopped
+  forwarding the six props and instead wires its existing
+  `sheetMetaDialog.onOpenNewSheet` / `onOpenEditSheet` and
+  `downloadFlow.onOpenDownloadSheet` into the `ModalCommandHandlers`
+  object (the `modalHandlers` `useMemo` moved below those hooks so the
+  openers are in scope). The dispatch-bridge comment in
+  `modal-dispatch.ts` now documents that the context covers both
+  chrome-only modals and the sheet-meta/download triggers shared by the
+  bottom bar and the page title menus. 5 unit tests added to
+  `tests/modal_dispatch_test.ts` — three command→handler routing rows
+  plus two asserting the `sheetId` forwards unchanged to the handler.
+  Pure refactor — same behaviour, same i18n keys, same modal opens;
+  adding a sheet-meta modal trigger is now a command kind + a handler
+  rather than a prop threaded down the page / chrome trees. fmt-check +
+  lint + typecheck + 1078 tests + build + icons-check pass; the
+  Playwright sheet-meta / download flows were not run in this
+  environment and stay a reviewer-side check.
 
 - **`ModalDispatchProvider` — modal-dispatch bridge for universal
   chrome** (2026-05): slice 1 of the `AppShell.tsx` modal-mount

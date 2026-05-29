@@ -414,41 +414,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   });
   const { setChangelogManualOpen } = changelog;
 
-  // Universal modal opens dispatched by the page chrome (header menu,
-  // bottom bar, header star, sync status) through ModalDispatchProvider,
-  // so those components name the modal they want instead of each
-  // carrying an opener callback prop. The state still lives in the
-  // hooks above; this just routes the open-trigger. Open-side achievement
-  // unlocks (the search "detective") ride along here so the chrome stays
-  // unaware of them.
-  const modalHandlers = useMemo<ModalCommandHandlers>(
-    () => ({
-      openSettings: () => setSettingsOpen(true),
-      openChangelog: () => setChangelogManualOpen(true),
-      openSearch: () => {
-        unlockAchievement("detective");
-        setSearchOpen(true);
-      },
-      openActionHistory: () => setActionHistoryOpen(true),
-      openAchievementsList: () => setAchievementsListOpen(true),
-      openAchievementsUnlock: () => setAchievementsModalOpen(true),
-      openSyncDetails: () => setSyncDetailsOpen(true),
-    }),
-    [
-      setSettingsOpen,
-      setChangelogManualOpen,
-      setSearchOpen,
-      setActionHistoryOpen,
-      setAchievementsListOpen,
-      setAchievementsModalOpen,
-      setSyncDetailsOpen,
-    ],
-  );
-  const dispatchModal = useCallback(
-    (command: ModalCommand) => applyModalCommand(command, modalHandlers),
-    [modalHandlers],
-  );
-
   const { sheetPanelRef, onSelectSheet, onClickHeaderTitle } = useSheetNav({
     sheets: data.sheets,
     activeSheetId: data.activeSheetId,
@@ -471,6 +436,48 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     allCategoriesMerged,
   });
   const { onOpenDownloadSheet } = downloadFlow;
+
+  // Modal opens dispatched through ModalDispatchProvider — the page
+  // chrome (header menu, bottom bar, header star, sync status) and the
+  // page title menus (budget / accounts) name the modal they want
+  // instead of each carrying an opener callback prop. The state still
+  // lives in the hooks above; this just routes the open-trigger.
+  // Open-side achievement unlocks (the search "detective") ride along
+  // here so the chrome stays unaware of them.
+  const modalHandlers = useMemo<ModalCommandHandlers>(
+    () => ({
+      openSettings: () => setSettingsOpen(true),
+      openChangelog: () => setChangelogManualOpen(true),
+      openSearch: () => {
+        unlockAchievement("detective");
+        setSearchOpen(true);
+      },
+      openActionHistory: () => setActionHistoryOpen(true),
+      openAchievementsList: () => setAchievementsListOpen(true),
+      openAchievementsUnlock: () => setAchievementsModalOpen(true),
+      openSyncDetails: () => setSyncDetailsOpen(true),
+      openNewSheet: onOpenNewSheet,
+      openEditSheet: onOpenEditSheet,
+      openDownloadSheet: onOpenDownloadSheet,
+    }),
+    [
+      setSettingsOpen,
+      setChangelogManualOpen,
+      setSearchOpen,
+      setActionHistoryOpen,
+      setAchievementsListOpen,
+      setAchievementsModalOpen,
+      setSyncDetailsOpen,
+      onOpenNewSheet,
+      onOpenEditSheet,
+      onOpenDownloadSheet,
+    ],
+  );
+  const dispatchModal = useCallback(
+    (command: ModalCommand) => applyModalCommand(command, modalHandlers),
+    [modalHandlers],
+  );
+
   // Account / transfer modal handlers. Kept on the AppShell so
   // they share the same dispatch and Account state as the rest of the
   // workspace — the modals themselves stay pure presentational shells.
@@ -682,8 +689,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onImportHistory={onOpenImportHistory}
                   onViewHistory={onOpenViewHistory}
                   onCutHistory={onOpenCutHistory}
-                  onEditSheet={onOpenEditSheet}
-                  onDownloadSheet={onOpenDownloadSheet}
                 />
               ) : (
                 <>
@@ -756,8 +761,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onReorderColumns={onReorderColumns}
                     onToggleSelect={onToggleSelect}
                     onToggleSelectMonth={onToggleSelectMonth}
-                    onEditSheet={onOpenEditSheet}
-                    onDownloadSheet={onOpenDownloadSheet}
                     onMergeConflictIntoHistory={onMergeConflictIntoHistory}
                     onMergeConflictUserRows={onMergeConflictUserRows}
                     onTriageMonth={onTriageMonth}
@@ -773,8 +776,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
               sheets={data.sheets}
               activeSheetId={activeSheet.id}
               onSelectSheet={onSelectSheet}
-              onEditSheet={onOpenEditSheet}
-              onAddSheet={onOpenNewSheet}
               canUndo={canUndo}
               canRedo={canRedo}
               selectMode={selectMode}

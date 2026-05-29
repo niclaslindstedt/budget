@@ -12,8 +12,6 @@ type Props = {
   sheets: Sheet[];
   activeSheetId: string;
   onSelectSheet: (sheetId: string) => void;
-  onEditSheet: (sheetId: string) => void;
-  onAddSheet: () => void;
 
   canUndo: boolean;
   canRedo: boolean;
@@ -45,8 +43,6 @@ export function BottomBar({
   sheets,
   activeSheetId,
   onSelectSheet,
-  onEditSheet,
-  onAddSheet,
   canUndo,
   canRedo,
   selectMode,
@@ -178,7 +174,12 @@ export function BottomBar({
                     active={sheet.id === activeSheetId}
                     index={idx}
                     onSelect={() => onSelectSheet(sheet.id)}
-                    onEdit={() => onEditSheet(sheet.id)}
+                    onEdit={() =>
+                      dispatchModal({
+                        kind: "open-edit-sheet",
+                        sheetId: sheet.id,
+                      })
+                    }
                     onTabKey={onTabKey}
                   />
                 ))}
@@ -186,7 +187,7 @@ export function BottomBar({
               <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
               <button
                 type="button"
-                onClick={onAddSheet}
+                onClick={() => dispatchModal({ kind: "open-new-sheet" })}
                 aria-label={t("sheetTabs.newSheet")}
                 title={t("sheetTabs.newSheet")}
                 className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-accent hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
