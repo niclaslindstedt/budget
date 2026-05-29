@@ -34,9 +34,12 @@ type Result = {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   // Sort order survives modal close like `searchQuery` does — never
-  // persisted to localStorage. Default is `"date-desc"` so the most
-  // recent matching entry surfaces first — the row the user is most
-  // likely looking for in a ledger that grows over time.
+  // persisted to localStorage. Default is `"relevance"` so the field-
+  // priority ranking (description > company > tag > type > category)
+  // drives the order: a row the user deliberately tagged `Car` outranks
+  // one that merely has `car` inside its `Childcare` type name. Sorting
+  // by date instead buries that signal, so it's an opt-in, not the
+  // default.
   searchSort: SearchSort;
   setSearchSort: (sort: SearchSort) => void;
   // Filter refinements survive modal close like `searchQuery` / sort do
@@ -70,7 +73,7 @@ export function useSearchModal({ data }: Params): Result {
   const lang = useLang();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchSort, setSearchSort] = useState<SearchSort>("date-desc");
+  const [searchSort, setSearchSort] = useState<SearchSort>("relevance");
   const [searchFilter, setSearchFilter] = useState<SearchFilter>(EMPTY_FILTER);
   const [scrollToRowRequest, setScrollToRowRequest] =
     useState<ScrollToRowRequest | null>(null);
