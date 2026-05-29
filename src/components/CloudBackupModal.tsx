@@ -8,6 +8,7 @@ import {
   Upload,
 } from "lucide-react";
 
+import { unlock } from "../data/achievements";
 import type { UserData } from "../data/types";
 import { type TFunction, useT } from "../i18n";
 import { Button } from "./form";
@@ -130,6 +131,7 @@ export function CloudBackupModal({
         return;
       }
       onRestore(parsed.data);
+      unlock("snapshotter");
       setStatus({
         kind: "ok",
         message: parsed.migrated

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sigma } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { formulaToStored, parseFormula } from "../../data/budget/formula";
 import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import type { RecurrenceRule } from "../../data/recurrence";
@@ -218,6 +219,11 @@ export function BudgetComplexEntryModal({
 
   function handleSubmit() {
     if (dates.length === 0) return;
+    // A complex entry that lands on more than one date is a compound
+    // entry with multiple parts — the `compoundInterest` gesture.
+    // Fired only on the committed paths below, never on a validation
+    // bail-out.
+    const compound = dates.length > 1;
     if (formulaMode) {
       const trimmed = formulaText.trim();
       if (trimmed === "") return;
@@ -225,6 +231,7 @@ export function BudgetComplexEntryModal({
       if (!parsed.ok) return;
       const stored = formulaToStored(trimmed, sheets);
       if (!stored.ok) return;
+      if (compound) unlock("compoundInterest");
       onCreate({
         description: description.trim(),
         // `amount` carries a 0 placeholder so the row is savable; the
@@ -248,6 +255,7 @@ export function BudgetComplexEntryModal({
       amountMinText,
       amountMaxText,
     );
+    if (compound) unlock("compoundInterest");
     onCreate({
       description: description.trim(),
       amount: parsedAmount,

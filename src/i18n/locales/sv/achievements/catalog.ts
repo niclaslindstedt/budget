@@ -328,10 +328,6 @@ const catalog: AchievementsCatalogEntries = {
     name: "Datumknuffare",
     condition: "Knuffa en återkommande serie med fältet Förskjut dagar med.",
   },
-  auditor: {
-    name: "Revisor",
-    condition: "Läs täckningsrapporten.",
-  },
   fineSieve: {
     name: "Finmaskig sil",
     condition: "Skriv en matchningsregel med belopps- eller överföringsfilter.",
@@ -359,12 +355,6 @@ const catalog: AchievementsCatalogEntries = {
   underTheHood: {
     name: "Under huven",
     condition: "Slå på Utvecklarläget.",
-  },
-  cleanSlate: {
-    name: "Blanka tavlan",
-    condition: "Nollställ dina bedrifter.",
-    learnMore:
-      "Ett påskägg: nollställ dina upplåsningar från bedriftsmodalen för att börja resan om från början. Datan stannar, bara troféerna nollställs.",
   },
   completionist: {
     name: "Komplettist",

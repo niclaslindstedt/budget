@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer } from "react";
 import { Plus, X } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { DEFAULT_RECURRENCE_MONTHS } from "../../data/constants/defaults";
 import { useT } from "../../i18n";
 import {
@@ -15,6 +16,19 @@ import {
   initialRecurrenceFormState,
   type Mode,
 } from "./budget-recurrence-form-reducer";
+
+// Whether a rule reaches past a plain monthly-on-a-day cadence — a
+// day-based interval, a non-monthly stride (quarterly / yearly /
+// every-N), or a day clamped to month-end (29–31, i.e. last day of
+// month). Backs the `calendarBender` achievement.
+function isCalendarBendingRule(rule: RecurrenceRule | null): boolean {
+  if (!rule) return false;
+  if (rule.kind === "everyNDays") return true;
+  if (rule.kind === "everyNMonths") {
+    return rule.intervalMonths !== 1 || rule.dayOfMonth >= 29;
+  }
+  return false;
+}
 
 type Props = {
   seedDate: string;
@@ -176,6 +190,7 @@ export function BudgetRecurrenceForm({
 
   useEffect(() => {
     onChange(rule, dates);
+    if (isCalendarBendingRule(rule)) unlock("calendarBender");
   }, [rule, dates, onChange]);
 
   const modeOptions = [

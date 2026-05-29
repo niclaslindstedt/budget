@@ -557,9 +557,17 @@ export function useStorageBackend({
     if (auth.kind !== "signed-in") return;
     if (backend === "gdrive") {
       await reauthorizeGdrive(auth.user.id);
+      // Re-issued the token without going through Settings — the
+      // `rekindled` gesture. Fired after the popup resolves so a
+      // cancelled re-auth doesn't unlock it.
+      unlock("rekindled");
       return;
     }
     if (backend === "dropbox") {
+      // Dropbox re-auth navigates away immediately, so fire before the
+      // redirect; the watcher dispatches synchronously into state. The
+      // gdrive popup path above is the reliable one.
+      unlock("rekindled");
       // Dropbox uses URL-redirect OAuth; the existing flow handles
       // the return trip. The auto-refresh in `authedFetch` covers the
       // common case, so a Dropbox auth-error means the refresh token

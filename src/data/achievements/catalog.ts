@@ -4,7 +4,6 @@ import {
   ArrowLeftRight,
   ArrowRightLeft,
   ArrowUpDown,
-  BarChart3,
   Bookmark,
   BookOpen,
   Brain,
@@ -57,7 +56,6 @@ import {
   Smartphone,
   Split,
   Tag,
-  Trash2,
   Type as TypeIcon,
   Undo2,
   UserPlus,
@@ -103,6 +101,32 @@ const hasFormulaRow = (s: UserData) =>
   eachRow(
     s,
     (r) => typeof r.amountFormula === "string" && r.amountFormula !== "",
+  );
+// A balance "builds" once a budget carries more than one row — the
+// running total visibly accumulates from one row to the next. The
+// first row alone is `firstSteps`; the second is the one the user
+// watches the balance respond to.
+const hasBalanceRun = (s: UserData) =>
+  eachAccountBudget(s, (i) => i.rows.length >= 2);
+// Stored formulas keep the `sheet("<id>", …)` call form for cross-sheet
+// references (see `formulaToStored`), so a substring check on the
+// persisted formula spots a row that reaches into another sheet.
+const hasCrossSheetFormula = (s: UserData) =>
+  eachRow(
+    s,
+    (r) =>
+      typeof r.amountFormula === "string" && r.amountFormula.includes("sheet("),
+  );
+// A match rule that narrows by amount (sign or bounds) or by transfer
+// membership — distinct from a plain description-only rule, which is
+// what `patternRecognition` fires on.
+const hasFilteredMatchRule = (s: UserData) =>
+  s.matchRules.some(
+    (r) =>
+      (r.amountSign !== undefined && r.amountSign !== "any") ||
+      (r.transferFilter !== undefined && r.transferFilter !== "any") ||
+      r.amountMin !== undefined ||
+      r.amountMax !== undefined,
   );
 const hasCorrection = (s: UserData) =>
   eachRow(s, (r) => r.kind === "correction");
@@ -328,7 +352,11 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     tier: "beginner",
     glyph: Calculator,
     hasLearnMore: true,
-    trigger: { kind: "manual" },
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) => !hasBalanceRun(prev) && hasBalanceRun(next),
+    },
   },
   {
     id: "trustButVerify",
@@ -820,7 +848,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "crossWired",
     tier: "expert",
     glyph: Network,
-    trigger: { kind: "manual" },
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) =>
+        !hasCrossSheetFormula(prev) && hasCrossSheetFormula(next),
+    },
   },
   {
     id: "compoundInterest",
@@ -841,16 +874,15 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
-    id: "auditor",
-    tier: "expert",
-    glyph: BarChart3,
-    trigger: { kind: "manual" },
-  },
-  {
     id: "fineSieve",
     tier: "expert",
     glyph: Filter,
-    trigger: { kind: "manual" },
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.matchRules],
+      predicate: (prev, next) =>
+        !hasFilteredMatchRule(prev) && hasFilteredMatchRule(next),
+    },
   },
   {
     id: "themeWizard",
@@ -902,13 +934,6 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "underTheHood",
     tier: "expert",
     glyph: Code2,
-    trigger: { kind: "manual" },
-  },
-  {
-    id: "cleanSlate",
-    tier: "expert",
-    glyph: Trash2,
-    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {

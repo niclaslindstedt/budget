@@ -175,6 +175,55 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("themeWizard");
   });
 
+  it("fires watchful when a budget gains its second row", () => {
+    const prev = withItem([{ id: "r1", cells: {} }]);
+    const next = withItem([
+      { id: "r1", cells: {} },
+      { id: "r2", cells: {} },
+    ]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("watchful");
+  });
+
+  it("does not fire watchful with a single row", () => {
+    const prev = withItem([]);
+    const next = withItem([{ id: "r1", cells: {} }]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).not.toContain("watchful");
+  });
+
+  it("fires crossWired when a formula references another sheet", () => {
+    const prev = withItem([
+      { id: "r1", cells: {}, amountFormula: "salary * 0.05" },
+    ]);
+    const next = withItem([
+      {
+        id: "r1",
+        cells: {},
+        amountFormula: 'sheet("wife", endOfMonthBalance)',
+      },
+    ]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("crossWired");
+  });
+
+  it("fires fineSieve when a match rule gains an amount or transfer filter", () => {
+    const prev = withItem([]);
+    prev.matchRules = [{ id: "m1", pattern: "*ICA*" }];
+    const next = withItem([]);
+    next.matchRules = [{ id: "m1", pattern: "*ICA*", amountMin: 100 }];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("fineSieve");
+  });
+
+  it("does not fire fineSieve for a plain description-only rule", () => {
+    const prev = withItem([]);
+    const next = withItem([]);
+    next.matchRules = [{ id: "m1", pattern: "*ICA*", typeId: "t1" }];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).not.toContain("fineSieve");
+  });
+
   it("ignores unchanged state", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {} }]);
