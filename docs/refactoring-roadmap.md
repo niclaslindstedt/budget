@@ -72,219 +72,325 @@ to **Pending** with a rating.
 
 ### Severity 9–10 — architectural blockers
 
-_Currently empty._ The persistence engine refactor (`useUserDataStorage.ts`)
-dropped from 9 to 8 once step 1 of its plan landed (history +
-status reducers — see Landed), and now lives in the 7-8 band. No
-remaining candidate gates the feature wave on its own; the
-multipliers below are still worth landing before adding the second
-new sheet type, but feature work can ship through them.
+_Currently empty._ Re-surveyed top-to-bottom 2026-05 (full refresh —
+see Sources). No single candidate gates the feature wave on its own.
+The persistence-engine and per-backend splits all landed; the
+type-safety, import-direction, and native-`<select>` sweeps came back
+clean (zero hits). The closest thing to a blocker is the
+**sheet-type-registry coverage** cluster in the 7–8 band, but it is
+deliberately deferred to land _with_ the first new sheet type rather
+than speculatively now. The multipliers below are worth landing
+before adding the second new sheet type; feature work can ship
+through them.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **`AppShell.tsx` modal-mount registry** — the JSX-relocation half
-  of the original severity-8 modal-host item landed 2026-05 (see
-  Landed: three modal hosts). AppShell dropped from 1849 to ~930
-  lines and adding a new sheet type now lands a new
-  `<SomethingModalHost>` file instead of another 200 lines of JSX
-  in the AppShell tail. What remains of the original plan is the
-  **state-ownership shift**: each host still receives prompt /
-  modal-open state via props (the sub-hooks in
-  `src/components/AppShell/hooks/` still own those `useState`s).
-  The real "registered modals from a registry" plan would move
-  that state into the host itself and expose a typed
-  `dispatchModal({ kind: "open-edit-row", row })` shape so AppShell
-  no longer threads 25+ setters down through the hosts.
-  **Severity: 5** (was 8 — JSX relocation done; what's left is a
-  smaller, more architectural change).
+- **Sheet-type registry doesn't cover validation, item-action
+  discrimination, or cross-sheet traversal** — the
+  `SHEET_TYPE_REGISTRY` (`src/data/sheet-types/`) landed for
+  `reduceItem` dispatch (see Landed), but three other places still
+  hard-code the sheet-item type literal and would each grow a new
+  arm per sheet type. Re-surveyed 2026-05; current evidence (grep
+  `"accountBudget"` across `src/data` + `src/storage` → 40 hits,
+  of which most are legitimately budget-scoped and stay put):
+  - **Validator dispatch** — `validateSheetItem()` in
+    `src/data/validate/sheet.ts:256-280` is a literal if-chain on
+    `type === "accountBudget"` / `"accountsView"`, threading four
+    `known*Ids` sets that `accountsView` ignores. Every new sheet
+    type adds an arm + its own context shape. (The `sheet-types/`
+    Landed note **deliberately deferred** folding validators into
+    the registry "until multiplied across 6+ flavours" — the
+    feature wave is that trigger.)
+  - **Item-action discrimination** — the budget descriptor's
+    `isBudgetItemAction()` predicate (`src/data/sheet-types/budget.ts`)
+    is a hand-maintained switch over budget action types; each new
+    sheet type writes its own discriminator and widens the central
+    `Action` union in `src/data/reducer.ts`.
+  - **Budget-only traversals masquerading as universal** — modules
+    at `src/data/` root that read `item.type === "accountBudget"`
+    despite not living under `budget/`: `payday.ts:66`,
+    `company-type-suggestions.ts:36`, `search.ts:369`,
+    `achievements/catalog.ts:84`, `storage/backup-metadata.ts:17`.
+    `payday` and `company-type-suggestions` are genuinely budget-only
+    (salary detection / type-company hints over budget rows) and
+    should simply **move into `src/data/budget/`** (mechanical, an
+    easy win — see Easy wins). `search`, `achievements`, and
+    `backup-metadata` are conceptually cross-page (you'll want to
+    search / count / back up rows from every sheet type) and want a
+    registry callback (`rowsForBackup?` / `searchableRows?` /
+    `countableRows?` on the descriptor) so they don't silently
+    undercount once a second row-bearing sheet type exists.
+  - **Plan**: add optional descriptor fields to `SheetTypeDescriptor`
+    — `validate?(raw, path, ctx)`, `itemActionTypes?: readonly string[]`
+    (or `ownsAction?(action)`), and the row-accessor callbacks above.
+    `validateSheetItem` / the reducer walker / the cross-page
+    traversals walk the registry instead of branching on the literal.
+    The two existing types (budget + accounts) are the proof the seam
+    works; **land the validator + discriminator seam together with the
+    first new flavour**, using that flavour as the real second
+    consumer rather than building it speculatively against one type.
+  - **Risk**: medium. The validator is the single gate on load /
+    import — a wrong arm breaks file import, so the migration path
+    and round-trip need testing. Pure refactor only: no persisted-
+    shape change (the descriptor fields are code, the on-disk shape
+    is untouched).
+  - **Severity: 7.** The data-layer audit rated parts of this 9; that's
+    inflated — the app runs fine on two types today and the registry
+    already dispatches `reduceItem`, so nothing is _blocked_. But it
+    is the textbook multiplier: every one of the six new sheet types
+    threads through all three sub-points, so the recurring cost is
+    real and it's the highest-leverage thing to settle as the wave
+    starts.
+
+### Severity 5–6 — friction
+
+- **`AppShell.tsx` modal-mount state-ownership shift** — the
+  JSX-relocation half of the original severity-8 modal-host item
+  landed 2026-05 (see Landed: three modal hosts). Re-verified
+  2026-05: `AppShell.tsx` is now **878 lines** (the roadmap's old
+  "~930" decayed further), and the three hosts still receive
+  prompt / modal-open setters as props — `AccountsModalHost.tsx`
+  takes **10** setters, `BudgetModalHost.tsx` takes **14**,
+  `UniversalModalHost.tsx` the rest. The sub-hooks in
+  `src/components/AppShell/hooks/` still own those `useState`s.
+  The remaining "registered modals from a registry" plan moves
+  that state into each host and exposes a typed
+  `dispatchModal({ kind: "open-edit-row", row })` so AppShell stops
+  threading 24+ setters down. **Severity: 5.**
   - Plan: hoist the `useEditPrompts` / `useDeletePrompts` /
     `useBulkSelection` / etc. state into the matching host (or a
     pair of `useReducer`-style contexts colocated with each host).
     AppShell becomes a routing switch + three host mounts with no
-    prompt-setter props at all. The hosts then become the dispatch
+    prompt-setter props at all. The hosts become the dispatch
     target every modal-opening flow routes through.
-  - Risk: low-medium. The state-ownership shift is mechanical but
-    touches `BudgetPage` / `AccountsPage` prop wiring because some
-    of those prompts are also set from page-level callbacks
-    (`onDeleteRequest`, `onEditRequest`, etc.). Either keep the
-    callbacks in AppShell and have them call into a host-exposed
-    dispatch, or move the callbacks into the hosts too.
+  - Risk: low-medium. Mechanical but touches `BudgetPage` /
+    `AccountsPage` prop wiring because some prompts are set from
+    page-level callbacks (`onDeleteRequest`, `onEditRequest`).
+    Either keep the callbacks in AppShell calling into a
+    host-exposed dispatch, or move the callbacks into the hosts.
 
-- **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
-  half of the previous duplicated-editor item; the `<EntityForm>`
-  half landed in 2026-05 (see Landed). What's left: the
-  `creating` / `editingId` / `pendingDeleteId` triple-`useState`
-  pattern appears verbatim in both `CategoriesAndTypesAdmin` (with
-  a `Category` suffix) and `TypesSection` (without). Adding a new
-  preset admin (loan types, savings goals) would re-derive it.
-  **Severity: 4.** Easy win when a third call site materialises;
-  premature at two — the pattern is three `useState` lines, not a
-  whole sub-machine, so a hook today would obscure more than it
-  consolidates. Re-rate up if a `<LoanTypeAdmin>` lands and the
-  pattern shows up a third time.
-
-- **Hardcoded user-facing strings in chrome** — investigated 2026-05
-  and decayed to **severity 3**: the systematic audit landed (see
-  Landed) and consumed the visible hits in `SheetModal.tsx`,
-  `AppLoading.tsx`, `AmountCellDisplay.tsx`, and
-  `accounts/AccountTransferModal.tsx`. The remaining drift surface is
-  small — a handful of literals could still slip in via new
-  components without a lint rule to catch them. Promoting the
-  one-off audit script to an ESLint rule would be the next step,
-  but it's a tooling change rather than a refactor and stays low
-  priority until a missed string is found in production. Re-rate
-  up if a second batch of hardcoded strings surfaces.
-
-### Severity 5–6 — friction
-
-- **`budget/formula.ts` function registry** — the tokenizer / parser
-  / evaluator file split landed 2026-05 (see Landed); what remains
-  of the original severity-6 candidate is the function-registry idea
-  so new sheet types can register their own functions
-  (`loanPayment(rate, years, principal)`). Deferred until a concrete
-  non-budget sheet type with custom-formula needs lands — premature
-  today because every existing function (`min`, `max`, `clamp`,
-  `abs`, `round`, `categoryTotal`, `typeTotal`, `sheet`) is budget-
-  scoped and the registry would have nothing to register against.
-  **Severity: 3** — re-rate when the first loan/savings flavour
-  needs a domain-specific function.
-
-- **No `useReducer` in most modal state machines** — `useReducer`
-  now has **seven** real hits (`AccountReconciliationModal`,
-  `BudgetRecurrenceForm`, `BudgetEditEntryFullModal`,
-  `AccountTransferModal`, `BudgetBulkEditModal`, `BudgetMetadataModal`,
-  and `BudgetMatchRuleModal`, see Landed). The textbook reset-on-open
-  pyramids are now exhausted — the remaining named sites have decayed:
-  - `ImportHistoryModal` — re-verified 2026-05 at 3 `useState` calls
-    (314 lines), one of which is already a discriminated `PreviewState`
-    union (`{ kind: "idle" | … }`) plus a `dragOver` toggle. Not a
-    reset-together form pyramid.
-  - `SettingsModal` — re-verified 2026-05 at 5 `useState` calls (775
-    lines): `draft`, `currencyPresetId`, `backupsOpen`, `activeTab`,
-    `menuOpen`. These are independent UI toggles that reset on
-    different triggers, not one form pyramid that resets together — a
-    reducer would obscure more than it consolidates.
-  - `BudgetSplitEntryModal` dropped off earlier — re-verified at 2
-    `useState` calls (459 lines), no longer a pyramid.
-
-  **Severity: 3** (was 5 — the high-value reset-on-open candidates have
-  all landed; what's left is opportunistic). Apply `useReducer` to a
-  new modal only when it grows a 5+-field reset-together pyramid, or
-  when a modal already being touched grows a mode discriminator that
-  the current setters silently allow drift through.
+- **`useImportFlow.ts` monolithic import-flow state machine** —
+  discovered 2026-05. `src/components/AppShell/hooks/useImportFlow.ts`
+  (597 lines) coordinates six orthogonal modal flows (importHistory,
+  viewHistory, cutHistory, reconciliation, manualTriage,
+  renamePredictor) through six parallel `useState` calls plus a
+  ~155-line `onConfirmImportHistory` (lines ~175-330) that runs the
+  pre-import snapshot → history merge → candidate-finding →
+  orphan-detection → coverage-delta → rename-prediction pipeline
+  inline. Every new bank parser or reconciliation-like flow threads
+  more state + callbacks through the same dense closure.
+  **Severity: 5.**
+  - Plan: collapse the six modal-open/pending-data `useState`s onto a
+    `useReducer` with a `kind`-discriminated action union (the same
+    precedent as the landed modal reducers), and extract the
+    `onConfirmImportHistory` pipeline into a pure orchestration
+    helper in `src/data/` that returns the staged result for the hook
+    to dispatch. Mirrors the reconciliation reducer split.
+  - Risk: medium. Deep integration point on the deferred-import
+    path; the Cancel / success / Escape transitions on every modal
+    switch need testing. Not on a cloud-OAuth hot path, so no
+    backend smoke-test required.
 
 - **`useUserDataStorage.ts` save chain has no retry strategy** —
-  network failures are caught into `RateLimitError` and pause
-  autosave but there's no exponential backoff or budget. React
-  Native / mobile networks will need it. **Severity: 5.**
+  re-verified 2026-05: `src/storage/useSaveStateMachine.ts` (559
+  lines) catches `RateLimitError` (line ~293), computes
+  `until = Date.now() + err.retryAfterMs` and reschedules with that
+  delay — but there is still **no exponential backoff and no retry
+  budget / max-attempt counter** (it relies entirely on the server's
+  `retryAfterMs`). React Native / mobile networks will need it.
+  **Severity: 5.**
 
 - **Optional fields on persisted types — `undefined` vs `null`
-  drift** — `src/data/types/accounts.ts` has ~15 optional fields
-  (`description?`, `glyph?`, `color?`, `currency?`, `clearing?`,
-  `accountNumber?`, `openingBalance?`, …). Convention isn't
-  documented: some readers check `!= null`, others check `!==
-undefined`, and the validator doesn't enforce. Adding a new
-  per-account flag risks introducing a third convention.
-  **Severity: 5.**
+  drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
+  **26 optional fields** across `Account` (10), `HistoryEntry` (12),
+  `HistoryEntrySplit` (2), `Transfer` (2). The de-facto convention is
+  `!== undefined` (a codebase grep found 241 `!== undefined` /
+  `=== undefined` checks against a single `!= null` site), **but**
+  `HistoryEntrySplit.typeId?` / `companyId?` and `Transfer.typeId?`
+  are explicitly `T | null`, sending a mixed message, and nothing
+  documents or enforces the rule. Adding a new per-account flag risks
+  a third convention. **Severity: 5.**
   - Plan: document the convention in `AGENTS.md` (default to
-    `field?: T` for "absent / use global default"; reserve `field:
-T | null` for "explicitly cleared by the user, distinct from
-    never set"). Sweep `accounts.ts`, `settings.ts`, `rules.ts`
+    `field?: T` for "absent / use global default"; reserve
+    `field: T | null` for "explicitly cleared by the user, distinct
+    from never set"). Sweep `accounts.ts`, `settings.ts`, `rules.ts`
     once and stamp the validator to enforce.
 
 ### Severity 3–4 — nits with leverage
+
+- **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
+  half of the previous duplicated-editor item; the `<EntityForm>`
+  half landed 2026-05 (see Landed). Re-verified 2026-05: the
+  `creating` / `editingId` / `pendingDeleteId` triple-`useState` is
+  now confirmed at only **one** clean site (`TypesSection`,
+  `admin.tsx:366-368`); `CategoriesAndTypesAdmin` carries a
+  differently-named single `creatingCategory` toggle and the
+  `CategoryPicker` nested component a separate `creating`. Adding a
+  third preset admin (loan types, savings goals) would re-derive it.
+  **Severity: 4** — premature at one-to-two sites (it's three
+  `useState` lines, not a sub-machine); re-rate up when a
+  `<LoanTypeAdmin>` lands and the pattern shows up a third time.
+
+- **`BudgetComplexEntryModal.tsx` 14-field reset-on-open pyramid →
+  `useReducer`** — discovered 2026-05. `BudgetComplexEntryModal.tsx`
+  (464 lines) declares **15 `useState` calls** with a 14-field
+  reset-together pyramid in its reset-on-open effect (lines ~147-176:
+  `description`, `amountText`, `negative`, `amountMode`,
+  `amountMinText`, `amountMaxText`, `typeId`, `companyId`, `tagIds`,
+  `isTransfer`, `dates`, `formulaMode`, `formulaText`, `resetKey`).
+  This is the first new reset-together pyramid since the last sweep
+  exhausted the textbook candidates. **Severity: 4.** Same fix shape
+  as the seven landed modal-reducer extractions: a
+  `complex-entry-modal-reducer.ts` with a `kind`-discriminated action
+  union, a colocated `initialComplexEntryState` factory, and unit
+  tests; the modal keeps the formula/amount derivations and the
+  submit glue. Pure refactor, low-medium risk.
+
+- **`BudgetTransferSearchModal` + `BudgetTransferSearchFilterMenu`
+  filter-state extraction** — discovered 2026-05.
+  `BudgetTransferSearchModal.tsx` (687 lines) +
+  `BudgetTransferSearchFilterMenu.tsx` (604 lines) fuse the filter
+  state machine (bounds memoization, category/type/company/tag
+  deduplication loops, the `toggleAll*` helpers) into the modal +
+  menu. A future per-sheet-type search would re-derive the
+  dedup/bounds plumbing. **Severity: 4.**
+  - Plan: extract a `useTransferSearchFilter` hook owning the bounds
+    memo, the dedup maps, and the toggle/commit functions; leave the
+    menu as pure rendering. Revisit a fully generic shape only when a
+    second sheet type actually ships an inline search.
+  - Risk: low — the per-field memos already exist, this consolidates
+    them.
+
+- **`useReducer` in remaining modal state machines (opportunistic)** —
+  `useReducer` now has **seven** landed hits
+  (`AccountReconciliationModal`, `BudgetRecurrenceForm`,
+  `BudgetEditEntryFullModal`, `AccountTransferModal`,
+  `BudgetBulkEditModal`, `BudgetMetadataModal`, `BudgetMatchRuleModal`).
+  Re-verified 2026-05: the other named sites have decayed and are
+  **not** pyramids — `ImportHistoryModal` (3 `useState`, already a
+  discriminated `PreviewState` union), `SettingsModal` (independent
+  UI toggles that reset on different triggers),
+  `BudgetSplitEntryModal` (2 `useState`). **Severity: 3.** Apply
+  `useReducer` to a modal only when it grows a 5+-field
+  reset-together pyramid (see `BudgetComplexEntryModal` above, now
+  tracked separately) or a mode discriminator the current setters let
+  drift through.
+
+- **`budget/formula.ts` function registry** — the tokenizer / parser
+  / evaluator file split landed 2026-05 (see Landed); what remains of
+  the original severity-6 candidate is the function-registry idea so
+  new sheet types can register their own functions
+  (`loanPayment(rate, years, principal)`). Re-verified 2026-05: every
+  existing function (`min`, `max`, `clamp`, `abs`, `round`,
+  `categoryTotal`, `typeTotal`, `sheet`) is still budget-scoped, so a
+  registry would have nothing to register against. **Severity: 3** —
+  re-rate when the first loan/savings flavour needs a domain-specific
+  function (it pairs naturally with the sheet-type-registry cluster
+  above).
 
 - **OAuth refresh logic duplicated across dropbox/gdrive
   adapters** — Dropbox refreshes via `refreshDropboxAccessToken`
   (dropbox-adapter.ts:169); GDrive uses short-lived GIS tokens with
   no refresh path. Each adapter re-implements 401-handling.
   **Severity: 4.** Skipped previously (see Investigated below)
-  because the 4xx semantics legitimately differ; revisit only if a
-  third OAuth backend (e.g. iCloud Drive) lands.
-
-- **`BudgetMonthTable.tsx` orphan-count + transfer-visibility logic
-  scattered** — both halves now landed (see Landed:
-  `collectHiddenTransfersByAnchor` extraction 2026-05 and
-  `<OrphanIndicator>` sibling 2026-05). The remaining footer
-  composition in `BudgetMonthTable` is a two-arm ternary (covered →
-  `<OrphanIndicator>` | else → `<BudgetAddEntryButton>`) and reads
-  cleanly.
-
-- **`TypePicker.tsx` (716 lines) hardcoded `amountSign` filter** —
-  branches on income-only / expense-only types inline. **Severity: 3**
-  (was 5; the `filterFn?: (type: EntryType) => boolean` escape hatch
-  landed 2026-05 — see Landed). The remaining `amountSign` branching
-  is now opt-in default behaviour and stays put until a non-budget
-  sheet type ships and demands a richer registry.
-
-- **JSON parse before validate** — investigated 2026-05 and decayed
-  to **severity 2**: the original "~9 sites" claim collapsed once
-  `safeJsonParse` adoption landed (see Landed). Only three raw
-  `JSON.parse` calls remain (`file.ts:38`, `idb-adapter.ts:232`,
-  `dropbox-adapter.ts:259`), each intentionally kept inline so the
-  caller retains an error-detail message or diagnostic warning. The
-  parse-then-validate combo at the existing `safeJsonParse` sites is
-  shaped differently per call (each one runs a bespoke
-  `typeof parsed.x === "..."` validator) — no shared helper would
-  consolidate them without obscuring the validation. Left alone.
+  because the 4xx semantics legitimately differ; re-verified 2026-05
+  (Dropbox 409 path-not-found vs GDrive 404 file-deleted still
+  diverge). Revisit only if a third OAuth backend (e.g. iCloud
+  Drive) lands.
 
 - **Backup logic per-adapter (Dropbox, GDrive, Folder)** — each
-  hand-rolls the backup-index lifecycle (`backup-index.ts`,
-  `backup-metadata.ts` per call). IDB has no backups. **Severity: 4.**
+  hand-rolls the backup-index lifecycle via `backup-index.ts` +
+  `backup-metadata.ts`. Re-verified 2026-05: all three implement
+  `BackupOps` (dropbox ~329-375, gdrive ~400+, folder ~141-175) with
+  the same shape; IDB has no backups. (Note: `parseBackupIndex` /
+  `serializeBackupIndex` are already shared — only the
+  list/create/read/delete lifecycle is duplicated.) **Severity: 4.**
   - Plan: extract a `BackupManager` that accepts an adapter and
     drives the lifecycle. IDB skips backup operations cleanly.
 
-- **Bank parser registry is global, no capability flags** — a
+- **Bank parser registry is global, no capability flags** — the
+  module-level `registry: BankParser[]` in `src/storage/banks/core.ts`
+  (~line 101) registers via a bare `push`, no capability gating. A
   React Native target can't unbundle parsers that depend on
   binary-decompression libs. **Severity: 4.** Defer until a target
   actually needs to drop a parser.
 
-- **Per-route `<noscript>` fallback drift** — investigated and
-  partially landed 2026-05 (see Landed: `resolveNoscriptBody`).
-  Routes that don't supply an explicit `noscriptBody` now get a
-  body derived from `title` + `description` so new routes (and the
-  build's inline 404 route) can't quietly inherit the home-page
-  noscript. The PRIVACY route's richer override still risks drift
-  against its own description; **severity 2** at this point, not
-  worth chasing until a second route grows a custom override.
+- **`TypePicker.tsx` hardcoded `amountSign` filter** — re-verified
+  2026-05 at **747 lines** (the `filterFn?: (type: EntryType) =>
+boolean` escape hatch landed and is checked first, `amountSign` is
+  the opt-in default at lines ~121-136). **Severity: 3.** Stays put
+  until a non-budget sheet type ships and demands a richer registry.
+
+- **Hardcoded user-facing strings drift** — the systematic audit
+  landed 2026-05 (see Landed) and consumed the visible chrome hits.
+  Re-verified 2026-05: no new native `<select>` (count: 0) and no
+  obvious new hardcoded literals surfaced. The remaining drift
+  surface is small; promoting the one-off audit script to an ESLint
+  rule is the next step but is a tooling change, not a refactor.
+  **Severity: 3** — re-rate up if a second batch of hardcoded strings
+  surfaces in production.
 
 - **Inline `parseFloat` / `new Date(…)` at remaining sites** —
-  `parseInt32` landed 2026-05 (see Landed) and was adopted at the
-  shift-day / anchor-day parsers; the remaining `parseFloat` and
-  `new Date(...)` sites are CSS-value parsing and date construction
-  that don't share the user-input parsing shape `parseDecimal` would
-  cover. Re-rate if thousands-separator support lands and an actual
-  `parseDecimal(text, lang)` use case appears. **Severity: 3.**
+  `parseInt32` landed 2026-05 and was adopted at the shift-day /
+  anchor-day parsers. Re-verified 2026-05: the lone `parseFloat`
+  (`useScrollToToday.ts:93`, parsing a CSS computed value) and the
+  ~36 `new Date(...)` sites are CSS-value parsing and date
+  construction — none share the user-input parsing shape
+  `parseDecimal(text, lang)` would cover. Re-rate if
+  thousands-separator support lands. **Severity: 3.**
+
+- **Cross-sheet row counters undercount once a second row-bearing
+  type exists** — folds into the sheet-type-registry cluster (7–8
+  band) but flagged separately because the fix is a one-field
+  descriptor callback, not the whole registry pass.
+  `achievements/catalog.ts:84` (`eachAccountBudget` traversal) and
+  `storage/backup-metadata.ts:17` (`entryCount` over accountBudget
+  rows only) silently ignore rows on any future sheet type, so a
+  savings / loans workspace would report incomplete achievement
+  progress and backup entry counts. **Severity: 3** — harmless today
+  (only budget has rows); land with the first new row-bearing flavour.
 
 ### Easy wins (mechanical, land regardless of rating)
 
-- The `indexById<T>(items)` helper landed 2026-05 — see Landed.
-  Future `Map<string, T>` indexers keyed by `item.id` should reach
-  for it from day one.
+- **`indexById<T>(items)` adoption at new inline sites** — the helper
+  landed 2026-05 (see Landed) but new inline `new Map<string, T>()` +
+  `for … .set(x.id, x)` indexers have accreted since. Re-surveyed
+  2026-05: `src/data/search.ts:356-365` has **four** (typesById,
+  categoriesById, companiesById, tagsById — `accountsById` maps
+  id→name and stays inline), plus single sites in
+  `src/data/budget/export.ts`, `formula-resolve.ts`, `formula.ts`,
+  `accounts/AccountTransferCollapseModal.tsx`, and
+  `AppShell/hooks/useDownloadFlow.ts`. Adopt opportunistically when
+  touching each file; the `search.ts` cluster is the only one worth a
+  standalone drive-by. Future `Map<string, T>` indexers keyed by
+  `item.id` should reach for it from day one.
 
 - The inline `todayIso` / `addMonthsIso` duplication (7 + 2 sites)
   was consumed 2026-05 — see Landed. New ISO date helpers should
   live in `src/utils/date.ts` and import from there.
 
-- Move the remaining unprefixed budget-only modules under
-  `src/data/budget/` (folds into the severity-9 item above; the
-  directory move itself is the easy part). The prefix-rename pass
-  already landed; what's left is the naming-judgment pass.
-  Audited 2026-05: `conflicts.ts` moved (see Landed); the remaining
-  root-level data modules (`coverage.ts`, `match-rules.ts`,
-  `merchant-hints.ts`, `reconciliation.ts`, `recurrence.ts`,
-  `row-candidate.ts`, `search.ts`, plus the obvious universals
-  `sheet.ts` / `fiscal-month.ts` / `normalize.ts` / `settings.ts` /
-  `themes.ts` / `action-payloads.ts` / `reducer.ts` /
-  `migrations.ts` / `validate.ts` / `description-normaliser.ts` /
-  `hit-count.ts` / `payday.ts`) are genuinely cross-page or
-  universal. `rename-patterns.ts` is the only ambiguous remaining
-  candidate (called from both the accounts rename predictor and
-  the budget-view quick-rename on synthesized history rows); left
-  at root for now.
+- **Relocate two genuinely-budget-only modules under
+  `src/data/budget/`** — folds into the sheet-type-registry cluster
+  (7–8 band) but the move itself is mechanical. Re-audited 2026-05
+  and **corrected**: `payday.ts` and `company-type-suggestions.ts`
+  both walk sheets only to filter to `item.type === "accountBudget"`
+  and read budget rows (salary detection / company→type hints) —
+  they are budget-only despite sitting at `src/data/` root (an
+  earlier audit mislabelled `payday.ts` as universal). Move both into
+  `src/data/budget/`, rewire imports, update the `docs/architecture.md`
+  inventory. `search.ts`, `achievements/`, and `backup-metadata.ts`
+  stay at root / in storage — they're conceptually cross-page and
+  want a registry callback instead (see the cluster). The remaining
+  root modules (`coverage.ts`, `match-rules.ts`, `merchant-hints.ts`,
+  `reconciliation.ts`, `recurrence.ts`, `row-candidate.ts`,
+  `rename-patterns.ts`, plus `sheet.ts` / `fiscal-month.ts` /
+  `normalize.ts` / `settings.ts` / `themes.ts` /
+  `action-payloads.ts` / `reducer.ts` / `migrations/` / `validate/` /
+  `hit-count.ts`) are genuinely cross-page or universal.
 
 - Replace remaining native-looking patterns: scan for any new
   `<select>` / `<option>` introduced since the last sweep (AGENTS
-  rule forbids them; current count: 0).
+  rule forbids them; re-verified 2026-05 — current count: 0).
 
 - Replace `useState`-pyramid modals with `useReducer` as their
   surrounding file is otherwise touched. No batch PR — opportunistic
@@ -1521,6 +1627,66 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   the same shape as the viewer's (single-sheet, includes-based,
   results interleaved into the page's own table).
 
+- **Mass migration of reset-on-open `useEffect`s to `useResetOnOpen`**
+  (2026-05): an Explore sweep flagged "18 sites, severity 7". On
+  verification the list was mostly false positives and intentional
+  non-migrations, so there is no batch worth doing. `Modal.tsx:135`
+  / `:157` are the body-class and focus-management effects (not form
+  reset-on-open); `SettingsModal.tsx:321` is the tab/changelog
+  effect; several budget modals (`BudgetBulkEditModal`,
+  `BudgetMatchRuleModal`, `BudgetComplexEntryModal`) already moved to
+  `useReducer` or carry a `settings` dep that the hook can't model
+  cleanly (documented in the `useResetOnOpen` Landed entry). The
+  genuinely-convertible leftovers are a handful and stay an
+  opportunistic drive-by (already in Easy wins), not a roadmap item.
+
+- **Mass adoption of `normalizeName` / `normalizeOptional`** (2026-05,
+  Explore sweep claimed "21 component files, severity 6"): the
+  helpers landed and were adopted where the shape fits (see Landed).
+  Most of the remaining `.trim()` sites are a _different_ concern —
+  duplicate-detection `name.trim().toLowerCase()` (`CompaniesAdmin`,
+  `TagsAdmin`, `CompanyPicker`) or per-field inline validation that
+  doesn't return the helper's `string | null` / `string | undefined`
+  shape. Forcing the helper onto them would obscure the duplicate
+  check or change semantics. Adopt opportunistically when a real
+  matching site is touched; not a batch.
+
+- **Grouping the reducer `Action` union into nested discriminated
+  unions** (2026-05, Explore sweep claimed severity 6): proposed
+  wrapping budget actions as `{ type: "budgetAction"; payload: … }`
+  so the central `Action` union in `src/data/reducer.ts` stops
+  growing per sheet type. Rejected: the per-sheet-type `reduceItem`
+  dispatcher already walks `SHEET_TYPE_REGISTRY` (see Landed), so
+  dispatch is not the friction; the union being long is not itself a
+  blocker, and a nesting layer would churn every existing call site
+  and obscure the flat action shape the codebase reads cleanly today.
+  Revisit only if exhaustiveness checking across 6+ flavours becomes
+  genuinely unmanageable.
+
+- **Per-sheet-type migration branching** (2026-05, Explore sweep
+  claimed severity 6): proposed a `migrate?(raw, version)` descriptor
+  field so future sheet types with divergent column/row schemas get
+  their own version branches. Speculative — same reasoning as the
+  `forecasting/` skip below. Migrations are forward-only and no
+  sheet type with a divergent schema exists yet; building the seam
+  now has nothing to migrate. Re-create when the first new
+  row-bearing sheet type lands and actually needs a schema bump.
+
+- **`JSON.parse` → `safeJsonParse` at the three remaining raw sites**
+  (2026-05, re-confirmed): `file.ts:38`, `idb-adapter.ts:236`, and
+  `dropbox-adapter.ts:259` are kept inline on purpose — each retains
+  an error-detail message (`(err as Error).message`) or a diagnostic
+  warning that `safeJsonParse`'s silent `null` would discard. The
+  earlier "~9 sites" claim collapsed once the unconditional-catch
+  sites were consumed (see Landed). Left alone.
+
+- **Per-route `<noscript>` fallback drift** (2026-05, decayed to
+  severity 2): the `resolveNoscriptBody` default-derivation landed
+  (see Landed), so new routes can't inherit the home-page noscript.
+  The PRIVACY route's richer override still risks drift against its
+  own description, but at one custom override it isn't worth chasing
+  until a second route grows one.
+
 ---
 
 ## Sources
@@ -1534,3 +1700,20 @@ parse-error | shrink-warning | error`; the `Date.now()` timestamps
   `src/storage/` layers, and cross-cutting patterns. The notes from
   those audits seeded the severity-9 / severity-8 / severity-7 bands
   and the new severity-3–4 easy-win list.
+- 2026-05-29 full refresh ("start over"): re-verified every Pending
+  item against the current tree (line counts and smell shapes drift)
+  and re-surveyed across five angles — largest files, the `src/data/`
+  - `src/storage/` layers, cross-cutting patterns, type-safety holes,
+    and direction-of-dependency. The type-safety (`as any` / `@ts-*`),
+    import-direction (`components` → `data`/`storage`), and native
+    `<select>` sweeps came back clean (zero real hits). New candidates:
+    the sheet-type-registry coverage cluster (7), `useImportFlow`
+    monolith (5), `BudgetComplexEntryModal` reset pyramid (4), the
+    transfer-search filter extraction (4), and the cross-sheet row
+    counters (3); the `indexById` adoption easy-win and the
+    budget-only-module relocation were refreshed with new sites. Five
+    Explore-agent over-ratings were filtered down and recorded in
+    Investigated and skipped rather than inflating Pending. Decayed
+    items were re-banded (the AppShell modal-host residual, the
+    admin-state extraction, the modal-`useReducer` and hardcoded-string
+    items all sit at their re-rated severities now).
