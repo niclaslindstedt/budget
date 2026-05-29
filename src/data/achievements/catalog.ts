@@ -8,6 +8,7 @@ import {
   Bookmark,
   BookOpen,
   Brain,
+  Building2,
   Calculator,
   Calendar,
   CalendarArrowUp,
@@ -46,6 +47,7 @@ import {
   Plus,
   RefreshCw,
   Repeat,
+  Ruler,
   Save,
   Scale,
   Search,
@@ -109,6 +111,12 @@ const hasTypedRow = (s: UserData) =>
   eachRow(s, (r) => typeof r.typeId === "string" && r.typeId !== "");
 const hasTaggedRow = (s: UserData) =>
   eachRow(s, (r) => Array.isArray(r.tagIds) && r.tagIds.length > 0);
+const hasCompany = (s: UserData) => s.companies.length > 0;
+const hasEstimateRow = (s: UserData) =>
+  eachRow(
+    s,
+    (r) => typeof r.amountMin === "number" && typeof r.amountMax === "number",
+  );
 const hasMultipleSheetTabs = (s: UserData) => s.sheets.length > 1;
 const hasAccount = (s: UserData) => s.accounts.length > 0;
 const hasLinkedSheet = (s: UserData) =>
@@ -467,6 +475,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "companies",
+    tier: "intermediate",
+    glyph: Building2,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.companies],
+      predicate: (prev, next) => !hasCompany(prev) && hasCompany(next),
+    },
+  },
+  {
     id: "moverShaker",
     tier: "intermediate",
     glyph: Move,
@@ -478,6 +497,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Split,
     hasLearnMore: true,
     trigger: { kind: "manual" },
+  },
+  {
+    id: "estimateRange",
+    tier: "intermediate",
+    glyph: Ruler,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) => !hasEstimateRow(prev) && hasEstimateRow(next),
+    },
   },
   {
     id: "bulkOps",

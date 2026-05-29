@@ -102,6 +102,30 @@ describe("deriveUnlocks", () => {
     expect(fresh).not.toContain("tagger");
   });
 
+  it("fires companies when the first company is created", () => {
+    const prev = withItem([]);
+    const next = withItem([]);
+    next.companies = [{ id: "c1", name: "H&M" }];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("companies");
+  });
+
+  it("fires estimateRange when a row gains an estimate range", () => {
+    const prev = withItem([{ id: "r1", cells: {}, amountMin: 100 }]);
+    const next = withItem([
+      { id: "r1", cells: {}, amountMin: 100, amountMax: 500 },
+    ]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("estimateRange");
+  });
+
+  it("does not fire estimateRange when only one bound is present", () => {
+    const prev = withItem([{ id: "r1", cells: {} }]);
+    const next = withItem([{ id: "r1", cells: {}, amountMin: 100 }]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).not.toContain("estimateRange");
+  });
+
   it("fires checkPlease when a row's completed cell flips to true", () => {
     const prev = withItem([{ id: "r1", cells: { d: "2026-05-22" } }]);
     const next = withItem([{ id: "r1", cells: { d: "2026-05-22", c: true } }]);

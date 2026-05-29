@@ -154,6 +154,12 @@ const catalog = {
     learnMore:
       "Tags are your own colour-coded labels that cut across categories — a row can carry several. They never clutter the table; they only show while editing, and let you pull up everything tagged the same way from search. Manage them under Settings → Tags.",
   },
+  companies: {
+    name: "Storefront",
+    condition: "Tag an entry with a company.",
+    learnMore:
+      "Companies are the merchants your money flows to — Fortum, H&M, the corner café. Pick one from the description popover or any edit modal and the row shows who it paid even when it carries no description of its own. Manage them under Settings → Companies.",
+  },
   moverShaker: {
     name: "Mover & Shaker",
     condition: "Move or copy rows across months.",
@@ -167,6 +173,13 @@ const catalog = {
   bulkOps: {
     name: "Bulk Ops",
     condition: "Bulk-edit two or more rows in one action.",
+  },
+  estimateRange: {
+    name: "Give or Take",
+    condition:
+      "Add an entry with an estimate range instead of an exact amount.",
+    learnMore:
+      "Switch the amount from Exact to Estimate and set a low, a likely, and a high figure — handy for bills that wander month to month, like electricity. The estimate is what shows in the table and counts toward your balance, and any imported amount inside the range still matches the entry.",
   },
   reckoner: {
     name: "Reckoner",
