@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
+  ArrowLeftRight,
   BanknoteArrowDown,
   BanknoteArrowUp,
   Building2,
@@ -9,6 +10,8 @@ import {
   Filter,
   Landmark,
   ListChecks,
+  Pencil,
+  Repeat,
   Search,
   Sparkles,
   Tag,
@@ -343,6 +346,45 @@ export function BudgetTransferSearchModal({
   );
 }
 
+// The large glyph on the left of each result tells the user what kind
+// of entry the row is at a glance: a bank-imported historic row, a
+// synthesized inter-account transfer, a recurring (series) row, or a
+// plain row the user added by hand. Recurring borrows the sheet's
+// `text-flag` accent (matching the Repeat glyph the budget table draws
+// on series rows); the rest stay muted so the colour pop is reserved
+// for the recurrence signal.
+function entryKindIcon(
+  entry: SearchEntry,
+  t: TFunction,
+): { node: React.ReactNode; title: string; colorClass: string } {
+  if (entry.kind === "historic") {
+    return {
+      node: <Landmark size={18} aria-hidden focusable={false} />,
+      title: t("searchTransaction.kindHistoric"),
+      colorClass: "text-muted",
+    };
+  }
+  if (entry.kind === "transfer") {
+    return {
+      node: <ArrowLeftRight size={18} aria-hidden focusable={false} />,
+      title: t("searchTransaction.kindTransfer"),
+      colorClass: "text-meta",
+    };
+  }
+  if (entry.isRecurring) {
+    return {
+      node: <Repeat size={18} aria-hidden focusable={false} />,
+      title: t("searchTransaction.kindRecurring"),
+      colorClass: "text-flag",
+    };
+  }
+  return {
+    node: <Pencil size={18} aria-hidden focusable={false} />,
+    title: t("searchTransaction.kindUser"),
+    colorClass: "text-muted",
+  };
+}
+
 function ResultRow({
   result,
   settings,
@@ -363,6 +405,7 @@ function ResultRow({
   const t = useT();
   const lang = useLang();
   const { entry, match } = result;
+  const kindIcon = entryKindIcon(entry, t);
   const dateLabel = entry.iso
     ? formatDate(entry.iso, settings.dateFormat, lang)
     : t("common.notSet");
@@ -415,10 +458,10 @@ function ResultRow({
       )}
       <span
         aria-hidden
-        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center"
-        style={{ color: entry.sheetColor }}
+        title={kindIcon.title}
+        className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center ${kindIcon.colorClass}`}
       >
-        <CategoryIconGlyph name={entry.sheetGlyph as CategoryIcon} size={16} />
+        {kindIcon.node}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-baseline gap-2">
@@ -434,31 +477,45 @@ function ResultRow({
           </span>
         </span>
         <span className="flex items-baseline gap-2 text-xs text-muted">
-          <span className="truncate">
-            {entry.sheetName}
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex shrink-0 items-center gap-1">
+              <span
+                aria-hidden
+                className="inline-flex shrink-0 items-center justify-center"
+                style={{ color: entry.sheetColor }}
+              >
+                <CategoryIconGlyph
+                  name={entry.sheetGlyph as CategoryIcon}
+                  size={12}
+                />
+              </span>
+              {entry.sheetName}
+            </span>
             {entry.companyName ? (
-              <>
-                {" · "}
+              <span className="inline-flex min-w-0 items-center gap-1">
                 <Building2
                   size={12}
                   aria-hidden
                   focusable={false}
-                  className="mb-0.5 mr-0.5 inline align-middle"
+                  className="shrink-0"
                 />
-                {renderHighlighted(entry.companyName, match, "companyName")}
-              </>
+                <span className="truncate">
+                  {renderHighlighted(entry.companyName, match, "companyName")}
+                </span>
+              </span>
             ) : null}
             {entry.typeName ? (
-              <>
-                {" · "}
-                {renderHighlighted(entry.typeName, match, "typeName")}
-              </>
-            ) : null}
-            {entry.categoryName ? (
-              <>
-                {" · "}
-                {renderHighlighted(entry.categoryName, match, "categoryName")}
-              </>
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <CategoryIconGlyph
+                  name={entry.typeGlyph as CategoryIcon}
+                  size={12}
+                  className="shrink-0"
+                  style={{ color: entry.typeColor || undefined }}
+                />
+                <span className="truncate">
+                  {renderHighlighted(entry.typeName, match, "typeName")}
+                </span>
+              </span>
             ) : null}
           </span>
           {amountLabel !== "" && (

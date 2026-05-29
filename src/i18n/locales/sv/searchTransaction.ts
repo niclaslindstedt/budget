@@ -37,6 +37,10 @@ const searchTransaction: SearchTransactionCatalog = {
   hitsShowing: "{total} träffar, visar {shown}",
   selectAll: "Markera alla",
   selectResult: "Markera {description}",
+  kindHistoric: "Importerad från banken",
+  kindRecurring: "Återkommande post",
+  kindTransfer: "Överföring",
+  kindUser: "Tillagd av dig",
 };
 
 export default searchTransaction;

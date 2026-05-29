@@ -35,6 +35,11 @@ export type SearchEntry = {
   iso: string;
   description: string;
   typeName: string;
+  // Glyph + colour of the row's `EntryType`, mirrored so the result row
+  // can render the type's pictogram before its name without re-resolving
+  // the type at render time. Empty string / "" when the row has no type.
+  typeGlyph: string;
+  typeColor: string;
   categoryName: string;
   companyName: string;
   // Space-joined names of the row's tags. Tags never render on the
@@ -58,6 +63,10 @@ export type SearchEntry = {
   // the predicate stays a single boolean check.
   kind: RowKind;
   isTransfer: boolean;
+  // True when the row belongs to a recurrence series (`row.seriesId` is
+  // set). Mirrored here so the result row can show a "recurring" glyph
+  // for the entry without reaching back into the source row.
+  isRecurring: boolean;
   // Pre-lowercased mirrors of the searchable string fields, built once
   // in `buildSearchIndex` so `runSearch` does a plain `indexOf` on the
   // cached form per keystroke.
@@ -310,6 +319,8 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
             ? companiesById.get(row.companyId)
             : undefined;
         const typeName = type ? displayTypeName(type, t) : "";
+        const typeGlyph = type ? type.glyph : "";
+        const typeColor = type ? type.color : "";
         const categoryName = category ? displayCategoryName(category, t) : "";
         const companyName = company?.name ?? "";
         const tagNames =
@@ -333,6 +344,8 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           iso,
           description,
           typeName,
+          typeGlyph,
+          typeColor,
           categoryName,
           companyName,
           tagNames,
@@ -340,6 +353,7 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
           amount,
           kind: row.kind,
           isTransfer: row.kind === "transfer" || row.isTransfer === true,
+          isRecurring: !!row.seriesId,
           descriptionLc: description.toLowerCase(),
           typeNameLc: typeName.toLowerCase(),
           categoryNameLc: categoryName.toLowerCase(),
