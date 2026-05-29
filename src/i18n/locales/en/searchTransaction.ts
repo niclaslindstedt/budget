@@ -37,6 +37,10 @@ const searchTransaction = {
   hitsShowing: "{total} hits, showing {shown}",
   selectAll: "Select all",
   selectResult: "Select {description}",
+  kindHistoric: "Imported from bank",
+  kindRecurring: "Recurring entry",
+  kindTransfer: "Transfer",
+  kindUser: "Added by you",
 } as const;
 
 export type SearchTransactionCatalog = Widen<typeof searchTransaction>;
