@@ -131,7 +131,7 @@ function MaxAgeDropdown({
   );
 }
 
-// One sheet option in the sheet multi-select.
+// One sheet option in the sheet dropdown.
 type Option = {
   id: string;
   name: string;
@@ -139,53 +139,117 @@ type Option = {
   color: string;
 };
 
-// A bordered, scrollable checkbox list backing the sheet multi-select.
-// Sheets are a small, fixed set per workspace, so a checkbox list still
-// fits; the company / type / category / tag filters use the type-to-
-// filter token control instead because those grow unbounded.
-function OptionList({
-  title,
+// The sheet's pictogram, tinted with its colour — shown in both the
+// trigger and the option rows.
+function sheetGlyph(option: Option): React.ReactNode {
+  return (
+    <span
+      aria-hidden
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
+      style={{ color: option.color }}
+    >
+      <CategoryIconGlyph name={option.glyph as CategoryIcon} size={14} />
+    </span>
+  );
+}
+
+// Custom button + listbox (never a native <select>, per the project's
+// dropdown rule) for scoping the search to a single sheet. `null`
+// selects every sheet. Single-select rather than a checkbox list: the
+// menu only needs to point the search at one ledger at a time, and the
+// list renders inline so the popover's own `overflow-y-auto` scrolls it
+// into view instead of clipping it — the same trick `MaxAgeDropdown`
+// and the token filter use.
+function SheetDropdown({
   options,
-  selectedIds,
-  onToggle,
-  allHint,
+  selectedId,
+  onChange,
 }: {
-  title: string;
   options: readonly Option[];
-  selectedIds: readonly string[];
-  onToggle: (id: string, checked: boolean) => void;
-  allHint: string;
+  selectedId: string | null;
+  onChange: (next: string | null) => void;
 }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  usePointerOutside(open, [ref], () => setOpen(false));
+  const selected = options.find((o) => o.id === selectedId) ?? null;
+  const optionClass = (active: boolean) =>
+    `flex w-full cursor-pointer items-center gap-1.5 px-2 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+      active ? "bg-accent/10 text-accent" : "text-fg hover:bg-surface"
+    }`;
   return (
     <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-      <p className="text-xs font-medium text-fg-bright">{title}</p>
-      <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
-        {options.map((option) => (
-          <Checkbox
-            key={option.id}
-            checked={selectedIds.includes(option.id)}
-            onChange={(v) => onToggle(option.id, v)}
-            label={
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <span
-                  aria-hidden
-                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
-                  style={{ color: option.color }}
-                >
-                  <CategoryIconGlyph
-                    name={option.glyph as CategoryIcon}
-                    size={14}
-                  />
-                </span>
-                <span className="truncate">{option.name}</span>
-              </span>
-            }
+      <p className="text-xs font-medium text-fg-bright">
+        {t("searchTransaction.filterSheets")}
+      </p>
+      <div ref={ref}>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={t("searchTransaction.filterSheetsAria")}
+          className="field-input flex w-full cursor-pointer items-center justify-between gap-2 border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+        >
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            {selected && sheetGlyph(selected)}
+            <span className="truncate">
+              {selected
+                ? selected.name
+                : t("searchTransaction.filterSheetsAllOption")}
+            </span>
+          </span>
+          <ChevronDown
+            size={14}
+            aria-hidden
+            focusable={false}
+            className="shrink-0 text-muted"
           />
-        ))}
+        </button>
+        {open && (
+          <ul
+            role="listbox"
+            aria-label={t("searchTransaction.filterSheets")}
+            className="mt-1 max-h-56 overflow-y-auto rounded border border-line bg-surface-2 py-1"
+          >
+            <li role="none">
+              <button
+                type="button"
+                role="option"
+                aria-selected={selectedId === null}
+                onClick={() => {
+                  onChange(null);
+                  setOpen(false);
+                }}
+                className={optionClass(selectedId === null)}
+              >
+                {t("searchTransaction.filterSheetsAllOption")}
+              </button>
+            </li>
+            {options.map((option) => {
+              const active = option.id === selectedId;
+              return (
+                <li key={option.id} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => {
+                      onChange(option.id);
+                      setOpen(false);
+                    }}
+                    className={optionClass(active)}
+                  >
+                    {sheetGlyph(option)}
+                    <span className="truncate">{option.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
-      {selectedIds.length === 0 && (
-        <p className="text-xs text-muted">{allHint}</p>
-      )}
     </div>
   );
 }
@@ -226,7 +290,6 @@ export function BudgetTransferSearchFilterMenu({
     dateValue,
     commitAmount,
     commitDate,
-    toggleId,
   } = useTransferSearchFilter({
     filter,
     onFilterChange,
@@ -357,12 +420,15 @@ export function BudgetTransferSearchFilterMenu({
             />
 
             {sheets.length > 1 && (
-              <OptionList
-                title={t("searchTransaction.filterSheets")}
+              <SheetDropdown
                 options={sheets}
-                selectedIds={filter.sheetIds}
-                onToggle={(id, v) => toggleId("sheetIds", id, v)}
-                allHint={t("searchTransaction.filterSheetsAll")}
+                selectedId={filter.sheetIds[0] ?? null}
+                onChange={(id) =>
+                  onFilterChange({
+                    ...filter,
+                    sheetIds: id === null ? [] : [id],
+                  })
+                }
               />
             )}
 
@@ -461,15 +527,17 @@ export function BudgetTransferSearchFilterMenu({
                     {amountLabel(amountValue[1])}
                   </span>
                 </div>
-                <RangeSlider
-                  min={amountSliderMin}
-                  max={amountSliderMax}
-                  value={amountValue}
-                  onChange={commitAmount}
-                  ariaLabelMin={t("searchTransaction.filterAmountMin")}
-                  ariaLabelMax={t("searchTransaction.filterAmountMax")}
-                  formatValueText={amountLabel}
-                />
+                <div className="px-2">
+                  <RangeSlider
+                    min={amountSliderMin}
+                    max={amountSliderMax}
+                    value={amountValue}
+                    onChange={commitAmount}
+                    ariaLabelMin={t("searchTransaction.filterAmountMin")}
+                    ariaLabelMax={t("searchTransaction.filterAmountMax")}
+                    formatValueText={amountLabel}
+                  />
+                </div>
               </div>
             )}
 
@@ -483,15 +551,17 @@ export function BudgetTransferSearchFilterMenu({
                     {dateLabel(dateValue[0])} – {dateLabel(dateValue[1])}
                   </span>
                 </div>
-                <RangeSlider
-                  min={dateSliderMin}
-                  max={dateSliderMax}
-                  value={dateValue}
-                  onChange={commitDate}
-                  ariaLabelMin={t("searchTransaction.filterDateMin")}
-                  ariaLabelMax={t("searchTransaction.filterDateMax")}
-                  formatValueText={dateLabel}
-                />
+                <div className="px-2">
+                  <RangeSlider
+                    min={dateSliderMin}
+                    max={dateSliderMax}
+                    value={dateValue}
+                    onChange={commitDate}
+                    ariaLabelMin={t("searchTransaction.filterDateMin")}
+                    ariaLabelMax={t("searchTransaction.filterDateMax")}
+                    formatValueText={dateLabel}
+                  />
+                </div>
               </div>
             )}
 
