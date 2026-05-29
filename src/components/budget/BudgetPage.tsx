@@ -42,6 +42,7 @@ import type {
 import { todayIso } from "../../utils/date";
 import { indexById } from "../../utils/indexById";
 import { ActiveRowProvider } from "../ActiveRowProvider";
+import { useModalDispatch } from "../modal-dispatch";
 import { type BudgetContextValue } from "./BudgetContext";
 import { BudgetContextProvider } from "./BudgetContextProvider";
 import { useBudgetLayoutState } from "./hooks/useBudgetLayoutState";
@@ -200,8 +201,6 @@ type Props = {
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
-  onEditSheet: (sheetId: string) => void;
-  onDownloadSheet: (sheetId: string) => void;
   // Find-conflicts modal callbacks. The history-winner path stamps
   // metadata onto a `HistoryEntry` and deletes the loser rows via
   // `applyReconciliation`; the user-winner path patches the winner's
@@ -285,8 +284,6 @@ export function BudgetPage({
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
-  onEditSheet,
-  onDownloadSheet,
   onMergeConflictIntoHistory,
   onMergeConflictUserRows,
   onTriageMonth,
@@ -295,6 +292,7 @@ export function BudgetPage({
   data,
 }: Props) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const sectionRef = useRef<HTMLElement | null>(null);
   // Id-indexed types / companies / accounts maps. Kept as their own
   // memos (instead of folded into the consolidated row pipeline below)
@@ -634,7 +632,8 @@ export function BudgetPage({
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
       label: t("sheet.editSheet"),
-      onClick: () => onEditSheet(sheet.id),
+      onClick: () =>
+        dispatchModal({ kind: "open-edit-sheet", sheetId: sheet.id }),
     },
     {
       key: "view",
@@ -658,7 +657,8 @@ export function BudgetPage({
       key: "download",
       icon: <Download size={16} aria-hidden focusable={false} />,
       label: t("download.downloadBudget"),
-      onClick: () => onDownloadSheet(sheet.id),
+      onClick: () =>
+        dispatchModal({ kind: "open-download-sheet", sheetId: sheet.id }),
     },
   ];
 

@@ -26,6 +26,7 @@ import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AccountRow } from "./AccountRow";
 import { AccountTransferRow } from "./AccountTransferRow";
 import { ActiveRowProvider } from "../ActiveRowProvider";
+import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 
 type Props = {
@@ -53,8 +54,6 @@ type Props = {
   // user-picked cutoff — useful when an account's purpose has changed
   // and the old history is no longer relevant.
   onCutHistory: (accountId: string) => void;
-  onEditSheet: (sheetId: string) => void;
-  onDownloadSheet: (sheetId: string) => void;
 };
 
 export function AccountsPage({
@@ -70,11 +69,10 @@ export function AccountsPage({
   onImportHistory,
   onViewHistory,
   onCutHistory,
-  onEditSheet,
-  onDownloadSheet,
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const dispatchModal = useModalDispatch();
   // Pre-compute every account's balance once per render. The batched
   // helper walks the sheet tree / transfer log / history once and
   // distributes amounts to each account's running total, replacing the
@@ -163,13 +161,15 @@ export function AccountsPage({
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
       label: t("sheet.editSheet"),
-      onClick: () => onEditSheet(sheet.id),
+      onClick: () =>
+        dispatchModal({ kind: "open-edit-sheet", sheetId: sheet.id }),
     },
     {
       key: "download",
       icon: <Download size={16} aria-hidden focusable={false} />,
       label: t("download.downloadAccountData"),
-      onClick: () => onDownloadSheet(sheet.id),
+      onClick: () =>
+        dispatchModal({ kind: "open-download-sheet", sheetId: sheet.id }),
     },
   ];
 
