@@ -192,30 +192,6 @@ through them.
 
 ### Severity 3–4 — nits with leverage
 
-- **`useImportFlow.ts` six-modal `useState` collapse** — the
-  pipeline-extraction half of the original severity-5 item landed
-  2026-05 (see Landed: `stageHistoryImport`), dropping the hook from
-  597 → 473 lines and moving the ~155-line `onConfirmImportHistory`
-  matcher closure into a pure, unit-tested `src/data/import-staging.ts`.
-  What remains is the six parallel `useState` calls (importHistory,
-  viewHistory, cutHistory, reconciliation, manualTriage,
-  renamePredictor) coordinating six orthogonal modal flows.
-  **Severity: 4** (dropped from 5 — the dense business-logic closure
-  was the bulk of the weight; the remaining `useState`s are orthogonal
-  modal flags, not a reset-together pyramid).
-  - Plan: collapse the six modal-open/pending-data `useState`s onto a
-    `useReducer` with a `kind`-discriminated action union (the same
-    precedent as the landed modal reducers). The win is modest — the
-    states are independent — but the reconciliation→renamePredictor
-    handoff (`setReconciliation(null); setRenamePredictor({…})`) and the
-    import→reconciliation handoff become atomic transitions instead of
-    setter pairs, and a discriminated union documents "one import modal
-    open at a time".
-  - Risk: low-medium. Deep integration point on the deferred-import
-    path; the Cancel / success / Escape transitions on every modal
-    switch need testing. Not on a cloud-OAuth hot path, so no backend
-    smoke-test required.
-
 - **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
   half of the previous duplicated-editor item; the `<EntityForm>`
   half landed 2026-05 (see Landed). Re-verified 2026-05: the
@@ -357,6 +333,39 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`useImportFlow.ts` six-modal `useState` → `useReducer` collapse**
+  (2026-05): the six parallel `useState` calls coordinating the
+  bank-history import / triage modal surface (`importHistoryForId`,
+  `viewHistoryForId`, `cutHistoryForId`, `reconciliation`,
+  `manualTriage`, `renamePredictor`) collapsed onto a single
+  `useReducer` driven by an `ImportFlowState` shape and a
+  `kind`-discriminated action union in
+  `src/components/AppShell/hooks/import-flow-reducer.ts`. The win is the
+  two pipeline handoffs, now atomic single dispatches instead of
+  close-this-then-open-that setter pairs: `onConfirmImportHistory`'s
+  import-modal → commit / reconciliation / rename branch became one
+  `stageImport` action (closes the import modal and opens the staged
+  next stage, or neither for the commit path), and
+  `onApplyReconciliation`'s reconciliation → rename handoff
+  (`setReconciliation(null); setRenamePredictor({…})`) became one
+  `reconciliationToRename` action. The four setters the modal hosts
+  consume (`setImportHistoryForId` / `setViewHistoryForId` /
+  `setCutHistoryForId` / `setManualTriage`, all called with `null` to
+  close) stay in the public `Result` as stable `useCallback`s wrapping
+  the reducer, so `AccountsModalHost` / `BudgetModalHost` consume the
+  hook unchanged. 11 unit tests landed in
+  `tests/import_flow_reducer_test.ts` covering the initial all-closed
+  state, that each setter only touches its own field, the three
+  `stageImport` branches (commit / reconciliation / rename), and the
+  `reconciliationToRename` atomic handoff (including leaving unrelated
+  modal flags untouched). `useImportFlow.ts` grows 473 → 520 lines (the
+  dispatch-wrapping setters are more verbose than the bare `useState`
+  setters); the new reducer file is 88 lines. Pure refactor — same
+  behaviour, same
+  dispatch order, same modal-open transitions. Closes the severity-4
+  `useImportFlow.ts` six-modal candidate. fmt-check + lint + typecheck +
+  1066 tests + build + icons-check pass.
 
 - **`useTransferSearchFilter` hook extraction from
   `BudgetTransferSearchFilterMenu`** (2026-05): the filter-state

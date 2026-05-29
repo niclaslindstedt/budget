@@ -1,5 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useReducer } from "react";
 
+import {
+  importFlowReducer,
+  initialImportFlowState,
+} from "./import-flow-reducer";
 import type { ReconciliationApply } from "../../accounts/AccountReconciliationModal";
 import type { RenameDecision } from "../../accounts/AccountRenamePredictorModal";
 import type {
@@ -104,27 +108,51 @@ export function useImportFlow({
   itemId,
   dispatch,
 }: Params): Result {
-  const [importHistoryForId, setImportHistoryForId] = useState<string | null>(
-    null,
+  const [state, dispatchFlow] = useReducer(
+    importFlowReducer,
+    initialImportFlowState,
   );
-  const [viewHistoryForId, setViewHistoryForId] = useState<string | null>(null);
-  const [cutHistoryForId, setCutHistoryForId] = useState<string | null>(null);
-  const [reconciliation, setReconciliation] =
-    useState<ReconciliationState | null>(null);
-  const [manualTriage, setManualTriage] = useState<ManualTriageState | null>(
-    null,
+  const {
+    importHistoryForId,
+    viewHistoryForId,
+    cutHistoryForId,
+    reconciliation,
+    manualTriage,
+    renamePredictor,
+  } = state;
+
+  // Setters exposed in the public Result. The modal hosts call these
+  // with `null` to close a dialog; they wrap the reducer so the API the
+  // hosts consume stays setter-shaped.
+  const setImportHistoryForId = useCallback(
+    (next: string | null) =>
+      dispatchFlow({ kind: "setImportHistoryForId", id: next }),
+    [],
   );
-  const [renamePredictor, setRenamePredictor] =
-    useState<RenamePredictorState | null>(null);
+  const setViewHistoryForId = useCallback(
+    (next: string | null) =>
+      dispatchFlow({ kind: "setViewHistoryForId", id: next }),
+    [],
+  );
+  const setCutHistoryForId = useCallback(
+    (next: string | null) =>
+      dispatchFlow({ kind: "setCutHistoryForId", id: next }),
+    [],
+  );
+  const setManualTriage = useCallback(
+    (next: ManualTriageState | null) =>
+      dispatchFlow({ kind: "setManualTriage", value: next }),
+    [],
+  );
 
   const onOpenImportHistory = useCallback((accountId: string) => {
-    setImportHistoryForId(accountId);
+    dispatchFlow({ kind: "setImportHistoryForId", id: accountId });
   }, []);
   const onOpenViewHistory = useCallback((accountId: string) => {
-    setViewHistoryForId(accountId);
+    dispatchFlow({ kind: "setViewHistoryForId", id: accountId });
   }, []);
   const onOpenCutHistory = useCallback((accountId: string) => {
-    setCutHistoryForId(accountId);
+    dispatchFlow({ kind: "setCutHistoryForId", id: accountId });
   }, []);
   const cutHistoryAccount = useMemo(
     () =>
@@ -141,7 +169,7 @@ export function useImportFlow({
         accountId: cutHistoryAccount.id,
         cutoffDate,
       });
-      setCutHistoryForId(null);
+      dispatchFlow({ kind: "setCutHistoryForId", id: null });
     },
     [cutHistoryAccount, dispatch],
   );
@@ -177,29 +205,43 @@ export function useImportFlow({
       // The bus dedupes the unlock itself, so re-imports fire it at
       // most once.
       if (staged.dedupeOccurred) unlockAchievement("dedupe");
-      setImportHistoryForId(null);
 
       const { newEntries, pendingImport, outcome } = staged;
+      // Each branch closes the import modal and opens the next stage (or
+      // none, for the commit path) in one transition.
       if (outcome.kind === "commit") {
         dispatch({ type: "importBankHistory", accountId, ...pendingImport });
-        return;
-      }
-      if (outcome.kind === "renamePredictor") {
-        setRenamePredictor({
-          accountId,
-          suggestions: outcome.suggestions,
-          pendingImport,
-          pendingReconciliation: null,
+        dispatchFlow({
+          kind: "stageImport",
+          reconciliation: null,
+          renamePredictor: null,
         });
         return;
       }
-      setReconciliation({
-        accountId,
-        preImportData: data,
-        newEntries,
-        candidates: outcome.candidates,
-        orphans: outcome.orphans,
-        pendingImport,
+      if (outcome.kind === "renamePredictor") {
+        dispatchFlow({
+          kind: "stageImport",
+          reconciliation: null,
+          renamePredictor: {
+            accountId,
+            suggestions: outcome.suggestions,
+            pendingImport,
+            pendingReconciliation: null,
+          },
+        });
+        return;
+      }
+      dispatchFlow({
+        kind: "stageImport",
+        reconciliation: {
+          accountId,
+          preImportData: data,
+          newEntries,
+          candidates: outcome.candidates,
+          orphans: outcome.orphans,
+          pendingImport,
+        },
+        renamePredictor: null,
       });
     },
     [data, dispatch, importHistoryAccount],
@@ -283,15 +325,17 @@ export function useImportFlow({
       );
       if (filteredSuggestions.length === 0) {
         commitStagedImport(accountId, pendingImport, decisions, []);
-        setReconciliation(null);
+        dispatchFlow({ kind: "setReconciliation", value: null });
         return;
       }
-      setReconciliation(null);
-      setRenamePredictor({
-        accountId,
-        suggestions: filteredSuggestions,
-        pendingImport,
-        pendingReconciliation: { decisions },
+      dispatchFlow({
+        kind: "reconciliationToRename",
+        renamePredictor: {
+          accountId,
+          suggestions: filteredSuggestions,
+          pendingImport,
+          pendingReconciliation: { decisions },
+        },
       });
     },
     [reconciliation, commitStagedImport],
@@ -309,7 +353,7 @@ export function useImportFlow({
         renamePredictor.pendingReconciliation?.decisions ?? null,
         decisions,
       );
-      setRenamePredictor(null);
+      dispatchFlow({ kind: "setRenamePredictor", value: null });
     },
     [renamePredictor, commitStagedImport],
   );
@@ -317,7 +361,7 @@ export function useImportFlow({
   // Discard the staged import without dispatching. Wired to the
   // modal's Cancel button, X, Escape, and click-outside.
   const onCancelRenamePredictor = useCallback(() => {
-    setRenamePredictor(null);
+    dispatchFlow({ kind: "setRenamePredictor", value: null });
   }, []);
 
   // Discard the pending import unread. Wired to the modal's X /
@@ -325,7 +369,7 @@ export function useImportFlow({
   // pre-pick state — the parsed file is dropped, nothing lands in
   // `state.history`, no `HistoryImport` log entry is written.
   const onCancelReconciliation = useCallback(() => {
-    setReconciliation(null);
+    dispatchFlow({ kind: "setReconciliation", value: null });
   }, []);
 
   // BudgetFindConflictsModal — merge a duplicate group whose winner is a
@@ -376,10 +420,13 @@ export function useImportFlow({
       // Snapshot the workspace at trigger time so the modal's row
       // lookups stay stable even if the user keeps editing other
       // sheets in the background while the modal is open.
-      setManualTriage({
-        accountId,
-        preImportData: data,
-        orphans,
+      dispatchFlow({
+        kind: "setManualTriage",
+        value: {
+          accountId,
+          preImportData: data,
+          orphans,
+        },
       });
     },
     [activeItem, data],
@@ -399,7 +446,7 @@ export function useImportFlow({
           orphans: decisions.orphans,
         });
       }
-      setManualTriage(null);
+      dispatchFlow({ kind: "setManualTriage", value: null });
     },
     [dispatch, manualTriage],
   );
