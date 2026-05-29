@@ -32,6 +32,10 @@ const searchTransaction: SearchTransactionCatalog = {
   filterDateMin: "Tidigaste datum",
   filterDateMax: "Senaste datum",
   filterReset: "Återställ filter",
+  hitsOne: "{n} träff",
+  hitsOther: "{n} träffar",
+  hitsShowing: "{total} träffar, visar {shown}",
+  selectAll: "Markera alla",
   selectResult: "Markera {description}",
 };
 

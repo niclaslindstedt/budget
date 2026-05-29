@@ -814,6 +814,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           activeSheetId: activeSheet.id,
           onToggleSelectMode,
           onToggleSelect,
+          onSelectMany: (rowIds) => onToggleSelectMonth(rowIds, true),
           onSelectSheet,
           onBulkEdit,
           onBulkMove,

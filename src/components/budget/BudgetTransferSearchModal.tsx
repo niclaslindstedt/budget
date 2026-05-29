@@ -24,6 +24,7 @@ import type {
 import {
   EMPTY_FILTER,
   isFilterActive,
+  matchingEntries,
   runSearch,
   searchBounds,
 } from "../../data/search";
@@ -70,6 +71,10 @@ type Props = {
   activeSheetId: string;
   onToggleSelectMode: () => void;
   onToggleSelect: (rowId: string) => void;
+  // Batch-select a set of row ids on the active sheet. Backs "Select
+  // all", which reaches every match on the active sheet — including the
+  // ones past the MAX_RESULTS display cap, not just the rows on screen.
+  onSelectMany: (rowIds: string[]) => void;
   onSelectSheet: (sheetId: string) => void;
   onBulkEdit: () => void;
   onBulkMove: () => void;
@@ -151,6 +156,7 @@ export function BudgetTransferSearchModal({
   activeSheetId,
   onToggleSelectMode,
   onToggleSelect,
+  onSelectMany,
   onSelectSheet,
   onBulkEdit,
   onBulkMove,
@@ -160,7 +166,7 @@ export function BudgetTransferSearchModal({
 }: Props) {
   const t = useT();
 
-  const results = useMemo(
+  const { results, total } = useMemo(
     () => runSearch(index, query, sort, filter),
     [index, query, sort, filter],
   );
@@ -168,6 +174,18 @@ export function BudgetTransferSearchModal({
   const selectLabel = selectMode
     ? t("app.exitSelectMode")
     : t("app.selectRows");
+
+  // "Select all" reaches the full match set — not just the rendered top
+  // 50 — but bulk ops are single-sheet, so it selects only the active
+  // sheet's selectable (user-kind) matches. The first manual pick on a
+  // result switches the active sheet, so the flow is: tap one row on the
+  // sheet you want, then Select all to grab the rest.
+  const selectAll = useCallback(() => {
+    const ids = matchingEntries(index, query, filter)
+      .filter((e) => e.kind === "user" && e.sheetId === activeSheetId)
+      .map((e) => e.rowId);
+    onSelectMany(ids);
+  }, [index, query, filter, activeSheetId, onSelectMany]);
 
   // Toggle a result's selection, first switching the active sheet to its
   // sheet when starting a fresh selection — bulk ops dispatch against the
@@ -253,27 +271,50 @@ export function BudgetTransferSearchModal({
             {t("searchTransaction.noResults")}
           </p>
         ) : (
-          <ol className="flex flex-col">
-            {results.map((result) => {
-              const { entry } = result;
-              const selectable =
-                entry.kind === "user" &&
-                (selectedIds.size === 0 || entry.sheetId === activeSheetId);
-              return (
-                <li key={`${entry.sheetId}:${entry.rowId}`}>
-                  <ResultRow
-                    result={result}
-                    settings={settings}
-                    onPick={onPick}
-                    selectMode={selectMode}
-                    selected={selectedIds.has(entry.rowId)}
-                    selectable={selectable}
-                    onToggle={() => toggleEntry(entry)}
-                  />
-                </li>
-              );
-            })}
-          </ol>
+          <>
+            <div className="flex items-center justify-between gap-2 border-b border-line bg-surface-2 px-3 py-1.5 text-xs text-muted sm:px-4">
+              <span>
+                {total > results.length
+                  ? t("searchTransaction.hitsShowing", {
+                      total,
+                      shown: results.length,
+                    })
+                  : total === 1
+                    ? t("searchTransaction.hitsOne", { n: total })
+                    : t("searchTransaction.hitsOther", { n: total })}
+              </span>
+              {selectMode && (
+                <button
+                  type="button"
+                  onClick={selectAll}
+                  className="shrink-0 cursor-pointer text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
+                >
+                  {t("searchTransaction.selectAll")}
+                </button>
+              )}
+            </div>
+            <ol className="flex flex-col">
+              {results.map((result) => {
+                const { entry } = result;
+                const selectable =
+                  entry.kind === "user" &&
+                  (selectedIds.size === 0 || entry.sheetId === activeSheetId);
+                return (
+                  <li key={`${entry.sheetId}:${entry.rowId}`}>
+                    <ResultRow
+                      result={result}
+                      settings={settings}
+                      onPick={onPick}
+                      selectMode={selectMode}
+                      selected={selectedIds.has(entry.rowId)}
+                      selectable={selectable}
+                      onToggle={() => toggleEntry(entry)}
+                    />
+                  </li>
+                );
+              })}
+            </ol>
+          </>
         )}
       </Modal.Body>
       <Modal.Footer>

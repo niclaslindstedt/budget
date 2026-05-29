@@ -81,6 +81,7 @@ type Props = {
     activeSheetId: string;
     onToggleSelectMode: () => void;
     onToggleSelect: (rowId: string) => void;
+    onSelectMany: (rowIds: string[]) => void;
     onSelectSheet: (sheetId: string) => void;
     onBulkEdit: () => void;
     onBulkMove: () => void;
@@ -441,6 +442,7 @@ export function UniversalModalHost(props: Props) {
         activeSheetId={searchBulk.activeSheetId}
         onToggleSelectMode={searchBulk.onToggleSelectMode}
         onToggleSelect={searchBulk.onToggleSelect}
+        onSelectMany={searchBulk.onSelectMany}
         onSelectSheet={searchBulk.onSelectSheet}
         onBulkEdit={searchBulk.onBulkEdit}
         onBulkMove={searchBulk.onBulkMove}

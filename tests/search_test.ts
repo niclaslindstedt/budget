@@ -6,9 +6,12 @@ import {
   EMPTY_FILTER,
   indexBounds,
   isFilterActive,
-  runSearch,
+  matchingEntries,
+  runSearch as runSearchOutcome,
   searchBounds,
+  type SearchEntry,
   type SearchFilter,
+  type SearchSort,
 } from "../src/data/search";
 import type {
   Account,
@@ -31,6 +34,19 @@ import { tFor, type TFunction } from "../src/i18n";
 // happens to use a preset id.
 const t = ((key, params) =>
   tFor("en", key, params as Record<string, string | number>)) as TFunction;
+
+// Most tests assert on the ranked list, so unwrap the
+// `{ results, total }` outcome to the array here and keep the call
+// sites terse. The hit-count + select-all tests call
+// `runSearchOutcome` / `matchingEntries` directly.
+function runSearch(
+  index: readonly SearchEntry[],
+  query: string,
+  sort?: SearchSort,
+  filt?: SearchFilter,
+) {
+  return runSearchOutcome(index, query, sort, filt).results;
+}
 
 const cols: Column[] = [
   { id: "d", type: "date", label: "Date" },
@@ -596,6 +612,81 @@ describe("filter helpers", () => {
     const bounds = searchBounds(idx, "", EMPTY_FILTER);
     expect(bounds.amountMin).toBe(100);
     expect(bounds.amountMax).toBe(750);
+  });
+});
+
+describe("runSearch — hit count", () => {
+  // 60 rows all matching "Spotify" exercises the MAX_RESULTS (50) cap:
+  // the rendered list is capped, but `total` reports every match so the
+  // modal can show "60 hits, showing 50".
+  function manyMatches(): UserData {
+    const rows: Row[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      rows.push({
+        id: `r${i}`,
+        cells: { d: "2026-05-01", x: `Spotify ${i}`, a: -100 },
+      });
+    }
+    return withItem(rows);
+  }
+
+  it("reports the full match count alongside the capped list", () => {
+    const idx = buildSearchIndex(manyMatches(), t);
+    const out = runSearchOutcome(idx, "spotify");
+    expect(out.results).toHaveLength(50);
+    expect(out.total).toBe(60);
+  });
+
+  it("counts filter-only browsing matches", () => {
+    const idx = buildSearchIndex(manyMatches(), t);
+    const out = runSearchOutcome(
+      idx,
+      "",
+      "date-desc",
+      filter({ excludeHistory: true }),
+    );
+    expect(out.total).toBe(60);
+  });
+
+  it("reports zero when there is no query and no active filter", () => {
+    const idx = buildSearchIndex(manyMatches(), t);
+    expect(runSearchOutcome(idx, "").total).toBe(0);
+  });
+});
+
+describe("matchingEntries — uncapped match set for select-all", () => {
+  function manyMatches(): UserData {
+    const rows: Row[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      rows.push({
+        id: `r${i}`,
+        cells: { d: "2026-05-01", x: `Spotify ${i}`, a: -100 },
+      });
+    }
+    return withItem(rows);
+  }
+
+  it("returns every match, not just the rendered top N", () => {
+    const idx = buildSearchIndex(manyMatches(), t);
+    expect(matchingEntries(idx, "spotify")).toHaveLength(60);
+  });
+
+  it("returns nothing for an empty query with no active filter", () => {
+    const idx = buildSearchIndex(manyMatches(), t);
+    expect(matchingEntries(idx, "")).toEqual([]);
+    expect(matchingEntries(idx, "   ")).toEqual([]);
+  });
+
+  it("honours the active filter", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
+      { id: "r2", cells: { d: "2026-05-02", x: "Spotify", a: -800 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const ids = matchingEntries(idx, "spotify", filter({ amountMax: 200 })).map(
+      (e) => e.rowId,
+    );
+    expect(ids).toEqual(["r1"]);
   });
 });
 
