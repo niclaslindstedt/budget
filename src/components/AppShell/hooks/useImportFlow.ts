@@ -7,25 +7,13 @@ import type {
   ConflictUserRowPatch,
 } from "../../budget/BudgetFindConflictsModal";
 import { unlock as unlockAchievement } from "../../../data/achievements";
-import { coverageDelta, coveredMonths } from "../../../data/coverage";
-import {
-  findCandidates,
-  findOrphans,
-  findRuleDrivenCandidates,
-  type MatchCandidate,
-  type OrphanRow,
-} from "../../../data/reconciliation";
+import { stageHistoryImport } from "../../../data/import-staging";
+import { findOrphans } from "../../../data/reconciliation";
 import type { Action } from "../../../data/reducer";
 import { predictRenames } from "../../../data/rename-patterns";
 import { findColumnByType } from "../../../data/sheet";
-import type {
-  Account,
-  AccountBudget,
-  Column,
-  Row,
-  UserData,
-} from "../../../data/types";
-import { mergeHistory, type ParsedBankFile } from "../../../storage/banks";
+import type { Account, AccountBudget, UserData } from "../../../data/types";
+import type { ParsedBankFile } from "../../../storage/banks";
 import type {
   ManualTriageState,
   ReconciliationState,
@@ -176,153 +164,41 @@ export function useImportFlow({
     (parsed: ParsedBankFile, filename: string) => {
       if (!importHistoryAccount) return;
       const accountId = importHistoryAccount.id;
-      const now = Date.now();
-      // Snapshot pre-import state so we can compute the matcher view
-      // against the same world the user just confirmed against.
-      const preImportData = data;
-      const existingHistory = preImportData.history[accountId] ?? [];
-      const { merged, addedIds } = mergeHistory(
-        existingHistory,
-        parsed.entries,
-        now,
+      // Snapshot pre-import state (`data`) so the staged matcher view
+      // is computed against the same world the user just confirmed
+      // against, then dispatch / open the modal the outcome calls for.
+      const staged = stageHistoryImport(
+        data,
+        accountId,
+        parsed,
+        filename,
+        Date.now(),
       );
-      const newEntries = merged.filter((e) => addedIds.has(e.id));
-      // Any parsed row that didn't make it into `addedIds` was a
-      // duplicate the merge skipped — the `dedupe` gesture. The bus
-      // dedupes the unlock itself, so re-imports fire it at most once.
-      if (addedIds.size < parsed.entries.length) {
-        unlockAchievement("dedupe");
-      }
-
-      // Walk every account-budget that tracks this account; the
-      // matcher works per (rows, columns) tuple so each item runs
-      // independently but contributes to the same candidate pool.
-      const rowsForAccount: Array<{
-        sheetId: string;
-        itemId: string;
-        rows: Row[];
-        columns: Column[];
-      }> = [];
-      for (const sheet of preImportData.sheets) {
-        for (const item of sheet.items) {
-          if (item.type !== "accountBudget") continue;
-          if (item.accountId !== accountId) continue;
-          rowsForAccount.push({
-            sheetId: sheet.id,
-            itemId: item.id,
-            rows: item.rows,
-            columns: item.columns,
-          });
-        }
-      }
-
-      // Auto-rule-driven matches (mirrors the reducer's silent pass)
-      // so we exclude those rows from the user-facing candidate set.
-      const autoMatchedRowIds = new Set<string>();
-      for (const { rows, columns } of rowsForAccount) {
-        const auto = findRuleDrivenCandidates(
-          preImportData.seriesMatchRules,
-          newEntries,
-          rows,
-          columns,
-        );
-        for (const m of auto) autoMatchedRowIds.add(m.rowId);
-      }
-
-      // Coverage snapshot: months covered by history before vs.
-      // after this import. Orphan detection scopes to the diff.
-      const beforeCovered =
-        rowsForAccount.length > 0
-          ? coveredMonths(
-              existingHistory,
-              rowsForAccount.flatMap((r) => r.rows),
-              rowsForAccount[0].columns,
-              preImportData.settings.startOfMonth,
-            )
-          : new Set<string>();
-      // Apply silent auto-deletions before computing post-coverage
-      // so the rule's actions don't accidentally suppress coverage.
-      const afterRowsForAccount = rowsForAccount.map((r) => ({
-        ...r,
-        rows: r.rows.filter((row) => !autoMatchedRowIds.has(row.id)),
-      }));
-      const afterCovered =
-        afterRowsForAccount.length > 0
-          ? coveredMonths(
-              merged,
-              afterRowsForAccount.flatMap((r) => r.rows),
-              afterRowsForAccount[0].columns,
-              preImportData.settings.startOfMonth,
-            )
-          : new Set<string>();
-      const newlyCovered = coverageDelta(beforeCovered, afterCovered);
-
-      const allCandidates: MatchCandidate[] = [];
-      const allOrphans: OrphanRow[] = [];
-      for (const { rows, columns } of afterRowsForAccount) {
-        const candidates = findCandidates(newEntries, rows, columns).filter(
-          (c) => !autoMatchedRowIds.has(c.rowId),
-        );
-        for (const c of candidates) allCandidates.push(c);
-        const claimedIds = new Set(candidates.map((c) => c.rowId));
-        const orphans = findOrphans(
-          rows,
-          columns,
-          newlyCovered,
-          claimedIds,
-          preImportData.settings.startOfMonth,
-        );
-        for (const o of orphans) allOrphans.push(o);
-      }
-
+      // The bus dedupes the unlock itself, so re-imports fire it at
+      // most once.
+      if (staged.dedupeOccurred) unlockAchievement("dedupe");
       setImportHistoryForId(null);
 
-      const pendingImport = {
-        bankParserId: parsed.bankParserId,
-        bankClearing: parsed.bankClearing,
-        bankAccountNumber: parsed.bankAccountNumber,
-        filename,
-        entries: parsed.entries,
-        now,
-      };
-
-      // Compute rename predictions against the same pre-import
-      // snapshot the rest of the matcher saw. Surfaced as the last
-      // step of the import pipeline by the `AccountRenamePredictorModal`.
-      const renameSuggestions = predictRenames(
-        preImportData.renamePatterns,
-        accountId,
-        newEntries,
-      );
-
-      // Quiet path — nothing to triage on the reconciliation side.
-      // Commit the import immediately unless we have rename
-      // predictions; if we do, defer through the rename modal so the
-      // user can review them.
-      if (allCandidates.length === 0 && allOrphans.length === 0) {
-        if (renameSuggestions.length === 0) {
-          dispatch({
-            type: "importBankHistory",
-            accountId,
-            ...pendingImport,
-          });
-          return;
-        }
+      const { newEntries, pendingImport, outcome } = staged;
+      if (outcome.kind === "commit") {
+        dispatch({ type: "importBankHistory", accountId, ...pendingImport });
+        return;
+      }
+      if (outcome.kind === "renamePredictor") {
         setRenamePredictor({
           accountId,
-          suggestions: renameSuggestions,
+          suggestions: outcome.suggestions,
           pendingImport,
           pendingReconciliation: null,
         });
         return;
       }
-
       setReconciliation({
         accountId,
-        preImportData,
+        preImportData: data,
         newEntries,
-        candidates: allCandidates,
-        orphans: allOrphans,
+        candidates: outcome.candidates,
+        orphans: outcome.orphans,
         pendingImport,
       });
     },

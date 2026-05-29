@@ -198,6 +198,7 @@ src/
 │   │   ├── modern.ts           # v31 → v47 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
+│   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
 │   ├── recurrence.ts      # RecurrenceRule + expandRecurrence + isIsoDate
 │   ├── description-normaliser.ts  # lossy merchant-key normaliser (shared)
 │   ├── merchant-hints.ts  # per-merchant type memory recorder + suggester
