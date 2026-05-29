@@ -53,6 +53,33 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
     expect(m1?.userTypeId).toBe("t");
   });
 
+  it("matches lookalikes whose raw text carries the same punctuation", () => {
+    // Regression: a comma between merchant words used to be stripped from
+    // the derived pattern but left in the raw bank text, so the pattern
+    // matched neither the source nor its lookalikes and the bulk offer
+    // never surfaced.
+    const entries = [
+      entry({
+        id: "src",
+        description: "2026-04-01 HEMKOP VANERSBORG SU, VANERSBORG",
+      }),
+      entry({
+        id: "m1",
+        date: "2026-04-02",
+        description: "2026-04-02 HEMKOP VANERSBORG SU, VANERSBORG",
+      }),
+    ];
+    const pattern = derivePatternFromDescription(entries[0].description);
+    expect(countMatchingBankDescription(entries, pattern, "src")).toBe(1);
+    const next = applyMetadataToMatchingEntries(
+      entries,
+      pattern,
+      { userTypeId: "type-groceries" },
+      "src",
+    );
+    expect(next.find((e) => e.id === "m1")?.userTypeId).toBe("type-groceries");
+  });
+
   it("fills blank fields on matches and excludes the source entry", () => {
     const entries = [
       entry({ id: "src" }),
