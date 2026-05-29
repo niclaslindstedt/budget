@@ -23,6 +23,7 @@ const metadata: MetadataCatalog = {
     "Matchar banktexten i äldre poster och fyller bara i de fält som fortfarande saknas.",
   skip: "Hoppa över",
   back: "Tillbaka",
+  forward: "Framåt",
   needsTypePrompt: "Välj en typ för att spara.",
   needsCompanyPrompt:
     'Välj ett företag — eller "Utelämna företag" — för att spara.',

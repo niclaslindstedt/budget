@@ -19,9 +19,10 @@ where tagging a merchant doesn't apply (salary, internal transfers,
 …) so they stop surfacing here over a missing company. A "Mark as
 transfer" checkbox lets you flag an entry as money moving between
 accounts and continue to the next item without picking a type or a
-company. A "Back" button steps back through the entries you've
-already skipped or saved so you can revisit and fix a mistake without
-restarting the walk. As soon as you set any field, if the entry has lookalikes —
+company. "Back" and "Forward" buttons step through the entries
+you've already skipped or saved so you can revisit and fix a mistake,
+then return to where you left off — even if you didn't change
+anything — without restarting the walk. As soon as you set any field, if the entry has lookalikes —
 older imports whose bank text matches once dates and reference numbers
 are stripped — an "Also apply to N similar entries" checkbox appears
 and lets you fan that entry's type, company (or its "omit company"
