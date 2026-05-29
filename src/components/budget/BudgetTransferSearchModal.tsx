@@ -81,9 +81,9 @@ const SORT_MENU_PLACEMENT: FloatingPlacement = {
   coordinateSpace: "viewport",
 };
 
-// The hook seeds the sort at "date-desc"; the glyph only highlights when
+// The hook seeds the sort at "relevance"; the glyph only highlights when
 // the user has moved away from that default.
-const DEFAULT_SORT: SearchSort = "date-desc";
+const DEFAULT_SORT: SearchSort = "relevance";
 
 // Cap a long string with an ellipsis so the result row stays in a
 // single line on narrow viewports. Used as a fallback when a match
