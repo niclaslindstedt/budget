@@ -127,16 +127,18 @@ test.describe("Pattern rules — exact mode and reorder", () => {
 
     // Append order = array order. The APPLE rule was added first so it
     // shows first in the list; SPOTIFY second. Budget-row seeds go
-    // through derivePatternFromDescription which normalizes
-    // punctuation (`.` and `/` become spaces) so the persisted
-    // pattern reads `*APPLE COM BILL*`.
+    // through derivePatternFromDescription which turns each punctuation
+    // break (`.` and `/`) into a wildcard, so the persisted pattern
+    // reads `*APPLE*COM*BILL*`.
     const cards = page.getByRole("listitem");
     await expect(cards.first()).toContainText("APPLE");
     await expect(cards.nth(1)).toContainText("SPOTIFY");
 
     // Demote APPLE — the SPOTIFY card should rise to first.
     await page
-      .getByRole("button", { name: /Decrease priority of \*APPLE COM BILL\*/ })
+      .getByRole("button", {
+        name: /Decrease priority of \*APPLE\*COM\*BILL\*/,
+      })
       .click();
 
     await expect(cards.first()).toContainText("SPOTIFY");

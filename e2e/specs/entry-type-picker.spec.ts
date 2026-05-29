@@ -58,13 +58,16 @@ test.describe("Entry-type picker", () => {
     await expect(
       page.getByRole("option", { name: /^Rent \/ Fee$/ }),
     ).toHaveCount(0);
-    // The chip is rendered inside the trigger button — Playwright's
-    // accessible-name match picks up its visible label.
-    await expect(newRow.getByRole("button", { name: /Rent/ })).toBeVisible();
+    // The chip is rendered inside the type cell's trigger button. Scope
+    // to the type picker (its trigger is the row's only listbox button)
+    // because an empty description cell mirrors the type name as its
+    // fallback label, so a bare /Rent/ match is ambiguous across cells.
+    const typeTrigger = newRow.locator('button[aria-haspopup="listbox"]');
+    await expect(typeTrigger).toContainText("Rent");
 
     // Re-opening the picker on a labelled row jumps straight into
     // that type's category with the existing selection checkmarked.
-    await newRow.getByRole("button", { name: /Rent/ }).click();
+    await typeTrigger.click();
     const rentOption = page.getByRole("option", { name: /^Rent \/ Fee$/ });
     await expect(rentOption).toBeVisible();
     await expect(rentOption).toHaveAttribute("aria-selected", "true");
