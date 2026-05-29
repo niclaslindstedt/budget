@@ -9,6 +9,7 @@ import {
   countRowsAffectedByReapply,
   reapplyPatternsToAllSheets,
 } from "../../../data/budget/pattern-apply";
+import { resolveEntryLabels } from "../../../data/budget/synthesis";
 import type { Action } from "../../../data/reducer";
 import { findColumnByType, newId } from "../../../data/sheet";
 import type {
@@ -94,10 +95,25 @@ export function useMatchRuleUi({
       const entries = data.history[accountId] ?? [];
       const entry = entries.find((e) => e.id === matchRulePrompt.entryId);
       if (!entry) return null;
+      // Resolve the entry's effective labels through the same
+      // rule / hint / per-entry-override chain the budget table renders,
+      // so the modal prefills the type / company / tags / custom
+      // description the user already sees on the row.
+      const labels = resolveEntryLabels(
+        entry,
+        data.merchantHints,
+        data.matchRules,
+        data.companies,
+        data.types,
+      );
       return {
         id: entry.id,
         description: entry.description,
         amount: entry.amount,
+        typeId: labels.typeId,
+        companyId: labels.companyId,
+        tagIds: labels.tagIds,
+        userDescription: labels.userDescription,
       };
     }
     const row = matchRulePrompt.row;
@@ -111,8 +127,28 @@ export function useMatchRuleUi({
       amountCol && typeof row.cells[amountCol.id] === "number"
         ? (row.cells[amountCol.id] as number)
         : 0;
-    return { id: row.id, description, amount };
-  }, [matchRulePrompt, activeItem, data.history]);
+    // A user-authored budget row carries its labels directly. Its
+    // description cell is the genuine user text (no bank-text fallback
+    // — that only applies to synthesized history rows, which route
+    // through the branch above), so it doubles as the relabel seed.
+    return {
+      id: row.id,
+      description,
+      amount,
+      typeId: row.typeId ?? null,
+      companyId: row.companyId ?? null,
+      tagIds: row.tagIds ?? [],
+      userDescription: description,
+    };
+  }, [
+    matchRulePrompt,
+    activeItem,
+    data.history,
+    data.merchantHints,
+    data.matchRules,
+    data.companies,
+    data.types,
+  ]);
 
   // The rule the modal is editing, when the prompt came from Settings.
   // Looked up by id so a concurrent rule delete drops the prompt.
