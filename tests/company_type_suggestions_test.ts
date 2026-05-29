@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   autoTypeForCompany,
   computeCompanyTypeSuggestions,
-} from "../src/data/company-type-suggestions";
+} from "../src/data/budget/company-type-suggestions";
 import { freshUserData } from "../src/storage/local";
 import type {
   AccountBudget,

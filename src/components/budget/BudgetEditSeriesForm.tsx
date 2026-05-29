@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { unlock } from "../../data/achievements";
 import type { EditPatch, EditScope } from "../../data/action-payloads";
-import { autoTypeForCompany } from "../../data/company-type-suggestions";
+import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import { findColumnByType } from "../../data/sheet";
 import type {
   Category,

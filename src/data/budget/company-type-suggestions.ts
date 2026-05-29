@@ -8,7 +8,7 @@
 // Tied or mixed companies don't surface here — auto-fill must be
 // confident.
 
-import type { UserData } from "./types";
+import type { UserData } from "../types";
 
 // Walk every place the user explicitly pairs `(companyId, typeId)` —
 // budget rows, history-entry overrides, and history-entry splits — and

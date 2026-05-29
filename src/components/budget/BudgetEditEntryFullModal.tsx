@@ -2,7 +2,7 @@ import { useCallback, useMemo, useReducer, useRef } from "react";
 import { Pencil } from "lucide-react";
 
 import { sortRowsByDate } from "../../data/budget/rows";
-import { autoTypeForCompany } from "../../data/company-type-suggestions";
+import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
@@ -50,7 +50,7 @@ type Props = {
   companies: readonly Company[];
   tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill. See
-  // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
+  // `computeCompanyTypeSuggestions` in `src/data/budget/company-type-suggestions.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   settings: Settings;
   // Last ISO date in the same series — defaults the "until" picker

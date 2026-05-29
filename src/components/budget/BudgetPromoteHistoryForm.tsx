@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { autoTypeForCompany } from "../../data/company-type-suggestions";
+import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import { nextOccurrenceWithSameDom } from "../../data/recurrence";
 import type { RecurrenceRule } from "../../data/recurrence";
 import { findColumnByType } from "../../data/sheet";

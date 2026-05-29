@@ -43,7 +43,7 @@ import { SaveStateButton } from "../SaveStateButton";
 import { SyncStatus } from "../SyncStatus";
 import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
-import { computeCompanyTypeSuggestions } from "../../data/company-type-suggestions";
+import { computeCompanyTypeSuggestions } from "../../data/budget/company-type-suggestions";
 import {
   isRowSavable,
   userDataHasUnsavableRows,

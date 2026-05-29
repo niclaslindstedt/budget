@@ -8,7 +8,7 @@ import {
 
 import { CURRENCY_PRESETS } from "../../data/constants/currency";
 import { DEFAULT_SETTINGS } from "../../data/constants/defaults";
-import { detectPaydayDayOfMonth } from "../../data/payday";
+import { detectPaydayDayOfMonth } from "../../data/budget/payday";
 import type {
   Category,
   Company,
