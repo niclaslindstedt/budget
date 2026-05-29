@@ -329,17 +329,14 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ### Easy wins (mechanical, land regardless of rating)
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
-  landed 2026-05 (see Landed) but new inline `new Map<string, T>()` +
-  `for … .set(x.id, x)` indexers have accreted since. Re-surveyed
-  2026-05: `src/data/search.ts:356-365` has **four** (typesById,
-  categoriesById, companiesById, tagsById — `accountsById` maps
-  id→name and stays inline), plus single sites in
-  `src/data/budget/export.ts`, `formula-resolve.ts`, `formula.ts`,
+  landed 2026-05 (see Landed) and the `search.ts` four-indexer cluster
+  was consumed 2026-05 (see Landed). What remains is single
+  opportunistic sites in `src/data/budget/export.ts`,
+  `formula-resolve.ts`, `formula.ts`,
   `accounts/AccountTransferCollapseModal.tsx`, and
-  `AppShell/hooks/useDownloadFlow.ts`. Adopt opportunistically when
-  touching each file; the `search.ts` cluster is the only one worth a
-  standalone drive-by. Future `Map<string, T>` indexers keyed by
-  `item.id` should reach for it from day one.
+  `AppShell/hooks/useDownloadFlow.ts` — adopt when touching each file,
+  none worth a standalone drive-by. Future `Map<string, T>` indexers
+  keyed by `item.id` should reach for it from day one.
 
 - The inline `todayIso` / `addMonthsIso` duplication (7 + 2 sites)
   was consumed 2026-05 — see Landed. New ISO date helpers should
@@ -368,6 +365,19 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`indexById` adoption in `buildSearchIndex` (`src/data/search.ts`)**
+  (2026-05): the four inline `new Map<string, T>()` + `for … .set(x.id,
+x)` indexers at the top of `buildSearchIndex` (`typesById`,
+  `categoriesById`, `companiesById`, `tagsById`) replaced with
+  `indexById(...)` calls from `src/utils/indexById.ts`. `accountsById`
+  stays inline — it maps id→name (a `Map<string, string>`), not
+  id→item, so the `{ id: string }` helper doesn't fit. Removed the now
+  unused `Category` / `Company` / `EntryType` type imports (`Tag` stays,
+  used by a later `filter` guard). Mechanical easy win, zero behaviour
+  change. Consumes the `search.ts` cluster from the `indexById`
+  easy-wins entry, which now lists only single opportunistic sites.
+  fmt-check + lint + typecheck + 1043 tests + build + icons-check pass.
 
 - **Save-path retry strategy (`save-retry.ts` + `useSaveStateMachine.ts`)**
   (2026-05): the save chain had no retry at all on transient failure —

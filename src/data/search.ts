@@ -7,9 +7,6 @@ import { buildVisibleRows } from "./budget/rows";
 import { findColumnByType } from "./sheet";
 import type {
   AccountBudget,
-  Category,
-  Company,
-  EntryType,
   HistoryEntry,
   Row,
   RowKind,
@@ -22,6 +19,7 @@ import type { TFunction } from "../i18n";
 import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
 import { todayIso } from "../utils/date";
 import { parseAmount } from "../utils/format";
+import { indexById } from "../utils/indexById";
 
 // Flattened, search-friendly projection of one row that the user sees
 // inside a sheet. The index keys by `(sheetId, itemId, rowId)` because
@@ -353,14 +351,10 @@ export function buildSearchIndex(data: UserData, t: TFunction): SearchEntry[] {
   const entries: SearchEntry[] = [];
   const types = allTypes(data);
   const categories = allCategories(data);
-  const typesById = new Map<string, EntryType>();
-  for (const t of types) typesById.set(t.id, t);
-  const categoriesById = new Map<string, Category>();
-  for (const c of categories) categoriesById.set(c.id, c);
-  const companiesById = new Map<string, Company>();
-  for (const c of data.companies) companiesById.set(c.id, c);
-  const tagsById = new Map<string, Tag>();
-  for (const tag of data.tags) tagsById.set(tag.id, tag);
+  const typesById = indexById(types);
+  const categoriesById = indexById(categories);
+  const companiesById = indexById(data.companies);
+  const tagsById = indexById(data.tags);
   const accountsById = new Map<string, string>();
   for (const a of data.accounts) accountsById.set(a.id, a.name);
 
