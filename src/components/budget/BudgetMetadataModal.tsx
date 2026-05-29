@@ -12,7 +12,7 @@ import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { resolveEntryLabels } from "../../data/budget/synthesis";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import {
-  countMatchingMetadataTargets,
+  countMatchingBankDescription,
   type HistoryMetadataPatch,
 } from "../../data/budget/pattern-apply";
 import {
@@ -435,9 +435,9 @@ export function BudgetMetadataModal({
   // Bulk apply: a glob pattern derived from the current entry's raw
   // bank description (dates / ref numbers stripped, the same derivation
   // the "Label similar" modal seeds from) plus the labels the form
-  // currently shows. `matchCount` is how many OTHER entries on this
-  // account the pattern matches AND that still lack at least one of the
-  // fields being applied — the number rendered on the opt-in checkbox.
+  // currently shows. The opt-in offer surfaces as soon as any field is
+  // set and at least one lookalike matches the bank text; applying then
+  // fills only the fields each match is still missing.
   const bulkPattern = useMemo(
     () => (current ? derivePatternFromDescription(current.description) : ""),
     [current],
@@ -455,27 +455,30 @@ export function BudgetMetadataModal({
     if (tagIds.length > 0) patch.userTagIds = tagIds;
     return patch;
   }, [typeId, companyId, noCompany, description, tagIds]);
-  const matchCount = useMemo(() => {
+  // True once the user has entered at least one field worth fanning out.
+  // The bulk offer only makes sense when there's something to apply.
+  const hasBulkFields = Object.keys(bulkPatch).length > 0;
+  // How many lookalikes the bank-description pattern matches. The offer
+  // surfaces whenever similar entries exist (not only when they're
+  // missing a field you set) — applying still fills blanks only, so an
+  // already-labelled match just keeps what it has.
+  const lookalikeCount = useMemo(() => {
     if (!current) return 0;
-    return countMatchingMetadataTargets(
-      entries,
-      bulkPattern,
-      bulkPatch,
-      current.id,
-    );
-  }, [entries, bulkPattern, bulkPatch, current]);
+    return countMatchingBankDescription(entries, bulkPattern, current.id);
+  }, [entries, bulkPattern, current]);
+  const canBulkApply = hasBulkFields && lookalikeCount > 0;
   // Uncheck the bulk option the moment it would no longer do anything
-  // (the user cleared the last field, or no lookalikes remain) so a
-  // stale checkmark can't fire an empty sweep on save.
+  // (the user cleared every field, or no lookalikes remain) so a stale
+  // checkmark can't fire an empty sweep on save.
   useEffect(() => {
-    if (matchCount === 0 && bulkApply) setBulkApply(false);
-  }, [matchCount, bulkApply]);
+    if (!canBulkApply && bulkApply) setBulkApply(false);
+  }, [canBulkApply, bulkApply]);
 
   // Save is reachable when the form changed (stamp the current entry)
   // OR the user opted into a bulk sweep that has targets (even on an
   // already-resolved entry the user is reviewing).
   const canSave =
-    !!accountId && !!current && (dirty || (bulkApply && matchCount > 0));
+    !!accountId && !!current && (dirty || (bulkApply && canBulkApply));
 
   // The field that's still blocking this entry from leaving the queue,
   // computed from the current form state. Drives both the hint shown
@@ -508,7 +511,7 @@ export function BudgetMetadataModal({
       // in. The sweep excludes the current entry, so the two writes
       // never collide.
       handleSave();
-      if (bulkApply && matchCount > 0 && accountId && current) {
+      if (bulkApply && canBulkApply && accountId && current) {
         onApplyMetadataToMatchingHistory(
           accountId,
           bulkPattern,
@@ -536,7 +539,7 @@ export function BudgetMetadataModal({
     handleSave,
     stillMissingField,
     bulkApply,
-    matchCount,
+    canBulkApply,
     accountId,
     current,
     bulkPattern,
@@ -671,15 +674,15 @@ export function BudgetMetadataModal({
                 description={t("metadata.markAsTransferHint")}
               />
             </div>
-            {matchCount > 0 && (
+            {canBulkApply && (
               <div className="mt-4 rounded border border-line bg-surface-3 p-3">
                 <Checkbox
                   checked={bulkApply}
                   onChange={setBulkApply}
                   label={
-                    matchCount === 1
-                      ? t("metadata.bulkApplyOne", { n: matchCount })
-                      : t("metadata.bulkApplyOther", { n: matchCount })
+                    lookalikeCount === 1
+                      ? t("metadata.bulkApplyOne", { n: lookalikeCount })
+                      : t("metadata.bulkApplyOther", { n: lookalikeCount })
                   }
                   description={t("metadata.bulkApplyHint")}
                 />

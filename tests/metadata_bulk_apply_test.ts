@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyMetadataToMatchingEntries,
-  countMatchingMetadataTargets,
+  countMatchingBankDescription,
   type HistoryMetadataPatch,
 } from "../src/data/budget/pattern-apply";
 import { derivePatternFromDescription } from "../src/data/budget/pattern-derive";
@@ -166,22 +166,6 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
     expect(next.find((e) => e.id === "alreadyOmit")).toBe(entries[3]);
   });
 
-  it("counts an omit-company-only patch", () => {
-    const entries = [
-      entry({ id: "src" }),
-      entry({ id: "m1", date: "2026-03-20" }),
-      entry({ id: "decided", date: "2026-02-20", userCompanyId: "c1" }),
-    ];
-    expect(
-      countMatchingMetadataTargets(
-        entries,
-        PATTERN,
-        { noCompany: true },
-        "src",
-      ),
-    ).toBe(1);
-  });
-
   it("prefers a real company over omit when a patch carries both", () => {
     const entries = [
       entry({ id: "src" }),
@@ -197,12 +181,15 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
     expect(m1?.userCompanyId).toBe("company-fk");
     expect(m1?.noCompany).toBeUndefined();
   });
+});
 
-  it("counts only entries the patch would actually change", () => {
+describe("metadata bulk apply — lookalike count", () => {
+  it("counts every eligible lookalike, even ones already labelled", () => {
     const entries = [
       entry({ id: "src" }),
       entry({ id: "m1", date: "2026-03-20" }),
-      // Already fully labelled — nothing to fill.
+      // Already fully labelled — still a lookalike, so it counts; the
+      // apply step is what skips it (nothing left to fill).
       entry({
         id: "m2",
         date: "2026-02-20",
@@ -213,15 +200,22 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       // Different merchant — pattern doesn't match.
       entry({ id: "other", date: "2026-01-20", description: "ICA Maxi 12/1" }),
     ];
-    expect(countMatchingMetadataTargets(entries, PATTERN, PATCH, "src")).toBe(
-      1,
-    );
+    expect(countMatchingBankDescription(entries, PATTERN, "src")).toBe(2);
   });
 
-  it("counts nothing for an empty patch or empty pattern", () => {
+  it("excludes the source entry and structurally-skipped entries", () => {
+    const entries = [
+      entry({ id: "src" }),
+      entry({ id: "m1", date: "2026-03-20" }),
+      entry({ id: "hidden", date: "2026-03-19", hidden: true }),
+      entry({ id: "transfer", date: "2026-03-18", isTransfer: true }),
+    ];
+    expect(countMatchingBankDescription(entries, PATTERN, "src")).toBe(1);
+  });
+
+  it("counts nothing for an empty pattern", () => {
     const entries = [entry({ id: "src" }), entry({ id: "m1" })];
-    expect(countMatchingMetadataTargets(entries, PATTERN, {}, "src")).toBe(0);
-    expect(countMatchingMetadataTargets(entries, "", PATCH, "src")).toBe(0);
+    expect(countMatchingBankDescription(entries, "", "src")).toBe(0);
   });
 });
 
