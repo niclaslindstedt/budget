@@ -1,24 +1,23 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 
 import type { Row } from "../data/types";
 
 // Modal-open commands the page chrome (header menu, bottom bar, header
 // star, sync status), the pages (budget / accounts title menus), and the
 // budget table's per-row affordances dispatch instead of each receiving a
-// per-modal opener callback as a prop. AppShell owns the modal state and
-// supplies the dispatch through context; the caller just names the modal
-// it wants opened. Adding such a modal becomes a new command kind plus a
-// handler in AppShell, rather than a new prop threaded down the page /
-// chrome / row trees.
+// per-modal opener callback as a prop. The caller just names the modal it
+// wants opened; whoever owns that modal's state supplies the handler.
+// Adding such a modal becomes a new command kind plus a handler, rather
+// than a new prop threaded down the page / chrome / row trees.
 //
 // Scope: the chrome-only modals (settings, changelog, search, …), the
 // sheet-meta / download triggers that live on both the bottom bar and the
 // page title menus (carrying the `sheetId` they act on), and the
 // budget-row triggers fired from `BudgetRow` / `BudgetEntryActionsMenu` /
-// the correction-line divider (carrying the `Row` they act on). The
-// AppShell handlers keep their own guards — e.g. `open-delete-row`
-// discards an unsaved placeholder row instead of prompting — so a command
-// only names the user's intent; the handler decides what actually opens.
+// the correction-line divider (carrying the `Row` they act on). Handlers
+// keep their own guards — e.g. `open-delete-row` discards an unsaved
+// placeholder row instead of prompting — so a command only names the
+// user's intent; the handler decides what actually opens.
 export type ModalCommand =
   | { kind: "open-settings" }
   | { kind: "open-changelog" }
@@ -42,10 +41,10 @@ export type ModalCommand =
 
 export type ModalDispatch = (command: ModalCommand) => void;
 
-// Imperative handlers AppShell wires to each command. Kept separate
-// from the dispatch so `applyModalCommand` stays a pure function that
-// unit tests can drive with spies — the chrome → command → handler
-// mapping is verified without rendering AppShell.
+// Imperative handlers wired to each command. Kept separate from the
+// dispatch so `applyModalCommand` stays a pure function that unit tests
+// can drive with spies — the chrome → command → handler mapping is
+// verified without rendering AppShell.
 export type ModalCommandHandlers = {
   openSettings: () => void;
   openChangelog: () => void;
@@ -70,6 +69,13 @@ export type ModalCommandHandlers = {
   copyRow: (row: Row) => void;
   correctionDelete: (row: Row) => void;
 };
+
+// A subset of the handler table. AppShell supplies a base slice (the
+// handlers whose state it still owns); each modal host that owns a hook's
+// state registers the slice it can open via `useRegisterModalHandlers`.
+// The provider merges them at dispatch time, so a handler travels with
+// the state it opens rather than being forced to live on AppShell.
+export type PartialModalCommandHandlers = Partial<ModalCommandHandlers>;
 
 export function applyModalCommand(
   command: ModalCommand,
@@ -136,19 +142,64 @@ export function applyModalCommand(
   }
 }
 
-const ModalDispatchContext = createContext<ModalDispatch | null>(null);
+// Fold the base slice and every registered slice into one handler table.
+// Later slices win on key collision, so a host that takes over a handler
+// AppShell still lists in its base slice would override it — but the
+// migration drops the key from the base slice in the same change, so in
+// practice the slices are disjoint and the order only matters as a
+// tie-break. Kept pure (and exported) so the merge is unit-testable
+// without rendering the provider.
+export function mergeHandlerSlices(
+  base: PartialModalCommandHandlers,
+  slices: Iterable<PartialModalCommandHandlers>,
+): PartialModalCommandHandlers {
+  const merged: PartialModalCommandHandlers = { ...base };
+  for (const slice of slices) Object.assign(merged, slice);
+  return merged;
+}
 
-export const ModalDispatchProvider = ModalDispatchContext.Provider;
+// A getter for one contributor's current slice. The provider reads it on
+// every dispatch so a host can register once and still expose fresh
+// closures.
+export type SliceGetter = () => PartialModalCommandHandlers;
 
-// Chrome components call this to open a universal modal. Throws when
-// used outside the provider so a missing wrap surfaces immediately
-// instead of a button silently no-opping.
-export function useModalDispatch(): ModalDispatch {
-  const dispatch = useContext(ModalDispatchContext);
-  if (!dispatch) {
+// Shared context value. The provider (`ModalDispatchProvider`, in its own
+// file so the module stays component-free) supplies both halves: the
+// `dispatch` consumers call and the `registerHandlers` hosts call.
+export type ModalDispatchContextValue = {
+  dispatch: ModalDispatch;
+  registerHandlers: (getter: SliceGetter) => () => void;
+};
+
+export const ModalDispatchContext =
+  createContext<ModalDispatchContextValue | null>(null);
+
+function useModalDispatchContext(): ModalDispatchContextValue {
+  const ctx = useContext(ModalDispatchContext);
+  if (!ctx) {
     throw new Error(
       "useModalDispatch must be used within a ModalDispatchProvider",
     );
   }
-  return dispatch;
+  return ctx;
+}
+
+// Chrome / page / row components call this to open a modal. Throws when
+// used outside the provider so a missing wrap surfaces immediately
+// instead of a button silently no-opping.
+export function useModalDispatch(): ModalDispatch {
+  return useModalDispatchContext().dispatch;
+}
+
+// A modal host that owns a hook's state calls this to register the slice
+// of handlers it can open. The slice is read fresh on every dispatch (via
+// a ref) so the host can pass inline closures without re-registering; the
+// registration itself runs once per mount and tears down on unmount.
+export function useRegisterModalHandlers(
+  slice: PartialModalCommandHandlers,
+): void {
+  const { registerHandlers } = useModalDispatchContext();
+  const sliceRef = useRef(slice);
+  sliceRef.current = slice;
+  useEffect(() => registerHandlers(() => sliceRef.current), [registerHandlers]);
 }

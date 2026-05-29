@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { AchievementUnlockModal } from "../AchievementUnlockModal";
 import { AchievementsModal } from "../AchievementsModal";
 import { ActionHistoryModal } from "../ActionHistoryModal";
@@ -10,6 +12,7 @@ import { ReconnectCloudModal } from "../ReconnectCloudModal";
 import { SettingsModal } from "../SettingsModal";
 import { SheetModal } from "../SheetModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
+import { useRegisterModalHandlers } from "../modal-dispatch";
 import { unlock as unlockAchievement } from "../../data/achievements";
 import type { Action } from "../../data/reducer";
 import type {
@@ -94,8 +97,6 @@ type Props = {
     ReturnType<typeof useMatchRuleUi>,
     "onEditMatchRule" | "onMoveMatchRule" | "onReapplyMatchRules"
   >;
-  actionHistoryOpen: boolean;
-  setActionHistoryOpen: (open: boolean) => void;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
@@ -125,8 +126,6 @@ export function UniversalModalHost(props: Props) {
     searchBulk,
     taxonomyCrud,
     matchRuleUi,
-    actionHistoryOpen,
-    setActionHistoryOpen,
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
@@ -134,6 +133,14 @@ export function UniversalModalHost(props: Props) {
     onImport,
   } = props;
   const t = useT();
+  // The action-history modal is opened only from chrome (via the
+  // dispatch context) and rendered only here, so the host owns its open
+  // state outright and registers the open handler rather than threading a
+  // boolean + setter down from AppShell.
+  const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
+  useRegisterModalHandlers({
+    openActionHistory: () => setActionHistoryOpen(true),
+  });
   const {
     status,
     dirty,

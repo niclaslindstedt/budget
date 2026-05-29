@@ -147,8 +147,11 @@ through them.
   landed 2026-05 (see Landed: three modal hosts), and the
   host-only-hook relocation slice landed 2026-05 (see Landed:
   `usePromptDerivations` + `useHistoryEntryActions` into
-  `BudgetModalHost`), dropping `AppShell.tsx` to **852 lines**.
-  Re-verified 2026-05: the "10/14 setters as props" framing was
+  `BudgetModalHost`), dropping `AppShell.tsx` to 852 lines — though
+  the three modal-dispatch slices (1–3, see Landed) then wired the
+  `modalHandlers` `useMemo` + `dispatchModal` back into `AppShell`,
+  so it now sits at **898 lines**. Re-verified 2026-05: the "10/14
+  setters as props" framing was
   **stale** — the hosts already receive _grouped hook-result
   objects_ (`editPrompts`, `deletePrompts`, `complexEntry`,
   `matchRuleUi`, `bulkSelection`, the account / import / transfer
@@ -191,30 +194,50 @@ through them.
     reused the tested `applyModalCommand` dispatcher — splitting the
     union per-page is non-speculative only once a **second** row-bearing
     sheet type exists.
-  - Plan (remaining): now that no page forwards opener props, fold each
-    modal hook's state ownership into the colocated host
-    (`useReducer`-style) so AppShell stops calling the hook purely to
-    forward its result. The blocker is that most hooks' state is consumed
-    by **both** a host (render) and the dispatch handler (open) — e.g.
-    `useEditPrompts` feeds `BudgetModalHost` _and_ the `editEntry` /
-    `editRow` command handlers — so the state can't move into the host
-    without the host also exposing the open path back to AppShell's
-    `modalHandlers`. The clean next step is per-host: move a hook whose
-    open path is now _only_ the dispatch (no chrome / page caller left)
-    down into its host and have the host build that slice of
-    `ModalCommandHandlers`. AppShell collapses toward a routing switch +
-    host mounts. Slice per host so each PR leaves the app working.
-  - Risk: low. Slice 3 touched the deep `BudgetRow` chain but the move is
-    prop → stable-context-dispatch (the memoized `BudgetRow` /
-    `BudgetMonthTable` shed nine props, shrinking their compare surface;
-    `dispatchModal` is a stable `useCallback`). Not on a cloud-OAuth hot
-    path; modal opens have no persisted-shape impact. The open-side
-    achievement unlocks (the search "detective", undo "secondThoughts")
-    stay on the AppShell handler side — no row trigger carried one, and
-    the bulk-toolbar `moverShaker` / `bulkOps` unlocks were untouched
-    (they're not row triggers). One negligible cost: `dispatchModal`'s
-    identity now changes on a column reorder (the `deleteRow` guard reads
-    `activeItem.columns`), so the chrome re-renders on that rare action.
+  - **Slice 4 — the handler-registration seam — landed 2026-05** (see
+    Landed: handler-registration seam). This removed the blocker the
+    earlier "Plan (remaining)" called out: a host couldn't own a hook's
+    state because the dispatch handler had to live on AppShell (the
+    `ModalDispatchProvider` wraps the shell _above_ the hosts, so the
+    provider value was fixed at AppShell render time). The provider now
+    merges a **base slice** (AppShell's remaining handlers) with **slices
+    hosts register** via the new `useRegisterModalHandlers(slice)` hook,
+    looked up at dispatch time against refs — so a handler can travel with
+    the state it opens. `modal-dispatch.ts` stays component-free (pure
+    types + `applyModalCommand` + `mergeHandlerSlices` + context + hooks);
+    the provider component moved to `src/components/ModalDispatchProvider.tsx`
+    (matches the `ActiveRowProvider.tsx` / `useClaimActiveRow.ts` split).
+    The first host-owned move rode along as the proof: `actionHistoryOpen`
+    (a plain `useState` opened only via the dispatch, rendered only in
+    `UniversalModalHost`) moved into the host, which registers
+    `{ openActionHistory }` — dropping the AppShell `useState`, the
+    `openActionHistory` base-slice entry, and the two
+    `actionHistoryOpen` / `setActionHistoryOpen` props on the host.
+  - Plan (remaining): repeat the slice-4 pattern per host for each modal
+    hook whose open path is now _only_ the dispatch (no chrome / page
+    caller left): move the hook call (and its `useState` / `useReducer`)
+    into the colocated host and have the host register its open slice via
+    `useRegisterModalHandlers`. AppShell drops the hook call, the base-slice
+    handler entry, and the forwarded prop in the same move. Candidates that
+    look clean (open only via dispatch, render only in one host):
+    `useChangelogState` / `useSettingsModal` (UniversalModalHost — but
+    `previewSettings` is read by AppShell's `useAppearanceProjection`, so
+    settings can't move without also relocating that projection),
+    `useAchievementsModal`, `useSyncAutoOpens` (sync-details half). Hooks
+    whose state AppShell or a page still _reads_ (not just opens) stay put
+    until that read is untangled. AppShell collapses toward a routing
+    switch + host mounts. Slice per host so each PR leaves the app working.
+  - Risk: low. The seam is a pure refactor — AppShell registers the same
+    complete handler set as a base slice, so the merged table dispatched is
+    identical. Not on a cloud-OAuth hot path; modal opens have no
+    persisted-shape impact. The open-side achievement unlocks (search
+    "detective", undo "secondThoughts") stay on the AppShell handler side.
+    One incidental win: the dispatch is now fully stable (it reads refs, no
+    `[modalHandlers]` dep), so the earlier "`dispatchModal` identity changes
+    on a column reorder" re-render cost is gone — the memoized chrome / rows
+    no longer re-render on reorder. Each future host move must confirm the
+    hook it relocates has no remaining AppShell / page _reader_ (only the
+    dispatch opener) before moving it.
 
 - **Optional fields on persisted types — `undefined` vs `null`
   drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
@@ -375,6 +398,45 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Handler-registration seam for the modal-dispatch context** (2026-05):
+  slice 4 of the `AppShell.tsx` modal-mount state-ownership shift (the
+  candidate stays in Pending with only the per-host hook relocations
+  remaining — see the narrowed entry). Removes the blocker that kept every
+  modal handler on AppShell: `ModalDispatchProvider` wraps the shell
+  _above_ the modal hosts, so the provider value was fixed at AppShell
+  render time and a host couldn't contribute the handler for a modal it
+  rendered. The provider now owns a registry — a `baseRef` mirroring
+  AppShell's base handler slice plus a `Set<SliceGetter>` of slices
+  registered by descendants — and the consumer-facing `dispatch` merges
+  them (`mergeHandlerSlices`) at dispatch time, so a handler can travel
+  with the state it opens. New `useRegisterModalHandlers(slice)` hook lets
+  a host register its open slice once per mount (the slice is read fresh
+  from a ref on every dispatch, so inline closures don't churn the
+  registration). `useModalDispatch()` is unchanged for the nine existing
+  callers (still returns the `dispatch` function). `modal-dispatch.ts`
+  stays component-free (types + `applyModalCommand` + the new pure
+  `mergeHandlerSlices` + context + the two hooks); the provider component
+  moved to its own `src/components/ModalDispatchProvider.tsx` so the module
+  exports no component (mirrors the `ActiveRowProvider.tsx` /
+  `useClaimActiveRow.ts` split and silences `react-refresh`). AppShell now
+  passes `handlers={modalHandlers}` (a `Partial<ModalCommandHandlers>`)
+  instead of computing `dispatchModal` itself. The first host-owned move
+  proves the seam end-to-end: `actionHistoryOpen` — a plain `useState`
+  opened only via the dispatch and rendered only in `UniversalModalHost`
+  — moved into the host, which registers `{ openActionHistory }`; AppShell
+  shed the `useState`, the `openActionHistory` base-slice entry + its dep,
+  and the two `actionHistoryOpen` / `setActionHistoryOpen` props on the
+  host. 4 unit tests added to `tests/modal_dispatch_test.ts` covering
+  `mergeHandlerSlices` (empty-slices copy, slice fills a missing base key,
+  later slice wins a collision, several disjoint slices merge). Pure
+  refactor — AppShell registers the same complete handler set as a base
+  slice, so the merged table dispatched is identical; incidental win is the
+  now-fully-stable `dispatch` (reads refs, no `[modalHandlers]` dep) no
+  longer re-rendering the memoized chrome / rows on a column reorder.
+  fmt-check + lint + typecheck + 1093 tests + build + icons-check pass; the
+  Playwright chrome flows (action-history open) were not run in this
+  environment and stay a reviewer-side check.
 
 - **Budget-row triggers through the modal-dispatch context** (2026-05):
   slice 3 of the `AppShell.tsx` modal-mount state-ownership shift (the

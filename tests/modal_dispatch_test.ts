@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   applyModalCommand,
+  mergeHandlerSlices,
   type ModalCommand,
   type ModalCommandHandlers,
+  type PartialModalCommandHandlers,
 } from "../src/components/modal-dispatch";
 import type { Row } from "../src/data/types";
 
@@ -104,5 +106,52 @@ describe("applyModalCommand", () => {
     const handlers = makeHandlers();
     applyModalCommand({ kind: "open-correction-delete", row: ROW }, handlers);
     expect(handlers.correctionDelete).toHaveBeenCalledWith(ROW);
+  });
+});
+
+// The provider merges AppShell's base slice with the slices modal hosts
+// register, so a handler can travel with the state it opens. The merge
+// itself is pure and unit-tested here without rendering the provider.
+describe("mergeHandlerSlices", () => {
+  it("returns a copy of the base when no slices are registered", () => {
+    const openSettings = vi.fn();
+    const base: PartialModalCommandHandlers = { openSettings };
+    const merged = mergeHandlerSlices(base, []);
+    expect(merged).toEqual({ openSettings });
+    expect(merged).not.toBe(base);
+  });
+
+  it("fills a handler the base slice omits from a registered slice", () => {
+    const openSettings = vi.fn();
+    const openActionHistory = vi.fn();
+    const merged = mergeHandlerSlices({ openSettings }, [
+      { openActionHistory },
+    ]);
+    expect(merged.openSettings).toBe(openSettings);
+    expect(merged.openActionHistory).toBe(openActionHistory);
+  });
+
+  it("lets a later slice win on a key collision", () => {
+    const fromBase = vi.fn();
+    const fromSlice = vi.fn();
+    const merged = mergeHandlerSlices({ openActionHistory: fromBase }, [
+      { openActionHistory: fromSlice },
+    ]);
+    expect(merged.openActionHistory).toBe(fromSlice);
+  });
+
+  it("merges several disjoint slices into one table", () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    const c = vi.fn();
+    const merged = mergeHandlerSlices({ openSettings: a }, [
+      { openActionHistory: b },
+      { openSearch: c },
+    ]);
+    expect(merged).toEqual({
+      openSettings: a,
+      openActionHistory: b,
+      openSearch: c,
+    });
   });
 });

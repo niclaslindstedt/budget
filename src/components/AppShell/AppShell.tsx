@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import {
   type AppShellAuth,
@@ -36,12 +36,8 @@ import { BudgetPage } from "../budget/BudgetPage";
 import { BudgetRecurringCandidatesPanel } from "../budget/BudgetRecurringCandidatesPanel";
 import { HeaderMenu } from "../HeaderMenu";
 import { HeaderStar } from "../HeaderStar";
-import {
-  ModalDispatchProvider,
-  applyModalCommand,
-  type ModalCommand,
-  type ModalCommandHandlers,
-} from "../modal-dispatch";
+import { ModalDispatchProvider } from "../ModalDispatchProvider";
+import { type ModalCommandHandlers } from "../modal-dispatch";
 import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
 import { SyncStatus } from "../SyncStatus";
@@ -156,7 +152,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   }, [currentDataRef, data]);
   const settingsModal = useSettingsModal();
   const { setSettingsOpen, previewSettings } = settingsModal;
-  const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   const searchModal = useSearchModal({ data });
   const { setSearchOpen, scrollToRowRequest } = searchModal;
   const syncAutoOpens = useSyncAutoOpens({
@@ -518,17 +513,19 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const matchRuleUi = useMatchRuleUi({ data, activeItem, dispatch, toast });
   const { onMatchRuleRequest } = matchRuleUi;
 
-  // Modal opens dispatched through ModalDispatchProvider — the page
-  // chrome (header menu, bottom bar, header star, sync status), the page
-  // title menus (budget / accounts), and the budget table's per-row
-  // affordances name the modal they want instead of each carrying an
-  // opener callback prop. The state still lives in the hooks above; this
-  // just routes the open-trigger. Defined below the transfer / bulk /
-  // match-rule hooks so their `on*Request` openers are in scope. Open-side
-  // achievement unlocks (the search "detective") ride along here so the
-  // chrome stays unaware of them; the budget-row handlers keep their own
-  // guards (e.g. `deleteRow` discards an unsaved placeholder row).
-  const modalHandlers = useMemo<ModalCommandHandlers>(
+  // Base modal-handler slice for ModalDispatchProvider — the page chrome
+  // (header menu, bottom bar, header star, sync status), the page title
+  // menus (budget / accounts), and the budget table's per-row affordances
+  // name the modal they want instead of each carrying an opener callback
+  // prop. These are the handlers whose state AppShell still owns; modal
+  // hosts that own a hook's state register their own slice (see
+  // `useRegisterModalHandlers`), and the provider merges them at dispatch
+  // time. Defined below the transfer / bulk / match-rule hooks so their
+  // `on*Request` openers are in scope. Open-side achievement unlocks (the
+  // search "detective") ride along here so the chrome stays unaware of
+  // them; the budget-row handlers keep their own guards (e.g. `deleteRow`
+  // discards an unsaved placeholder row).
+  const modalHandlers = useMemo<Partial<ModalCommandHandlers>>(
     () => ({
       openSettings: () => setSettingsOpen(true),
       openChangelog: () => setChangelogManualOpen(true),
@@ -536,7 +533,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         unlockAchievement("detective");
         setSearchOpen(true);
       },
-      openActionHistory: () => setActionHistoryOpen(true),
       openAchievementsList: () => setAchievementsListOpen(true),
       openAchievementsUnlock: () => setAchievementsModalOpen(true),
       openSyncDetails: () => setSyncDetailsOpen(true),
@@ -557,7 +553,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       setSettingsOpen,
       setChangelogManualOpen,
       setSearchOpen,
-      setActionHistoryOpen,
       setAchievementsListOpen,
       setAchievementsModalOpen,
       setSyncDetailsOpen,
@@ -575,13 +570,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       onCorrectionDeleteRequest,
     ],
   );
-  const dispatchModal = useCallback(
-    (command: ModalCommand) => applyModalCommand(command, modalHandlers),
-    [modalHandlers],
-  );
 
   return (
-    <ModalDispatchProvider value={dispatchModal}>
+    <ModalDispatchProvider handlers={modalHandlers}>
       {/* The BottomBar is `position: sticky; bottom: 0` in browser
           mode (so the AddRow at the foot of the last month ends its
           scroll just above the bar) and `position: fixed; inset: auto
@@ -851,8 +842,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           }}
           taxonomyCrud={taxonomyCrud}
           matchRuleUi={matchRuleUi}
-          actionHistoryOpen={actionHistoryOpen}
-          setActionHistoryOpen={setActionHistoryOpen}
           onClearMerchantHints={onClearMerchantHints}
           onClearRecurringDismissals={onClearRecurringDismissals}
           onClearTransferDismissals={onClearTransferDismissals}
