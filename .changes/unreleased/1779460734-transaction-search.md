@@ -20,3 +20,8 @@ A sort menu to the right of the search bar overrides the default
 ordering: pick "Relevance" for the score-ranked list, "Date · Oldest
 first", or "Amount · Highest first / Lowest first" to flip the result
 list. The choice sticks while the tab stays open.
+A select button turns the results into a multi-pick list: tick several
+entries and edit, move, copy, or delete them all at once with the same
+toolbar the sheet uses. Selection stays within a single sheet at a time
+and covers only entries you added (imported bank lines and transfers
+aren't selectable).
