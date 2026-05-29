@@ -14,6 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import { computeAccountBalances } from "../../data/accounts/balance";
 import { compareDateStrings } from "../../data/fiscal-month";
@@ -123,6 +124,8 @@ export function AccountsPage({
   // never on a row edit that re-renders the component.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
+    // Landing on the accounts overview is the `birdsEye` gesture.
+    unlock("birdsEye");
   }, [sheet.id]);
 
   // Transfer log direction follows the user's `transactionSortOrder`

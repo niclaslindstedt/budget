@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import {
   FORMULA_FUNCTIONS,
   FORMULA_VARIABLES,
@@ -90,6 +91,7 @@ export function BudgetFormulaVariableHelper({
   );
 
   const handlePick = (text: string) => {
+    unlock("variablesUnleashed");
     onInsert(text);
     setOpen(false);
   };

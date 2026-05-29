@@ -187,6 +187,12 @@ export function useImportFlow({
         now,
       );
       const newEntries = merged.filter((e) => addedIds.has(e.id));
+      // Any parsed row that didn't make it into `addedIds` was a
+      // duplicate the merge skipped — the `dedupe` gesture. The bus
+      // dedupes the unlock itself, so re-imports fire it at most once.
+      if (addedIds.size < parsed.entries.length) {
+        unlockAchievement("dedupe");
+      }
 
       // Walk every account-budget that tracks this account; the
       // matcher works per (rows, columns) tuple so each item runs

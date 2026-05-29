@@ -331,10 +331,6 @@ const catalog = {
     name: "Date Shifter",
     condition: "Nudge a recurring series with the Shift days by input.",
   },
-  auditor: {
-    name: "Auditor",
-    condition: "Read the coverage report.",
-  },
   fineSieve: {
     name: "Fine Sieve",
     condition: "Write a match rule with amount or transfer filters.",
@@ -362,12 +358,6 @@ const catalog = {
   underTheHood: {
     name: "Under the Hood",
     condition: "Turn on Developer mode.",
-  },
-  cleanSlate: {
-    name: "Clean Slate",
-    condition: "Reset your achievements.",
-    learnMore:
-      "An Easter egg: clear your unlocks from the achievements modal to start the journey again. The data stays, only the trophies reset.",
   },
   completionist: {
     name: "Completionist",

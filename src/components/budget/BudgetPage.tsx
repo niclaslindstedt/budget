@@ -10,6 +10,7 @@ import {
   Tags,
 } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { computeBudgetState } from "../../data/budget/computed-state";
 import { buildSynthesizedRows } from "../../data/budget/rows";
 import {
@@ -828,7 +829,10 @@ export function BudgetPage({
             >
               <button
                 type="button"
-                onClick={() => scrollToToday("smooth")}
+                onClick={() => {
+                  unlock("timeTraveller");
+                  scrollToToday("smooth");
+                }}
                 aria-label={t("app.scrollToToday")}
                 title={t("app.scrollToToday")}
                 className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold tracking-wider text-fg-bright uppercase shadow-md hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"

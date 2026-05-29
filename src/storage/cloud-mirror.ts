@@ -1,3 +1,4 @@
+import { unlock } from "../data/achievements";
 import { createLogger } from "../utils/logger";
 import {
   AuthError,
@@ -171,6 +172,11 @@ export function withCloudMirror(
       log.info(
         `load: flush ok newRev=${pushed.revision ?? "<none>"} bytes=${pushed.text.length}`,
       );
+      // The mirror only accumulates pending edits when a prior save
+      // couldn't reach the cloud (offline). Flushing them on the next
+      // load is the app reconnecting gracefully — the `airplaneMode`
+      // gesture. The bus dedupes, so the first reconnect wins.
+      unlock("airplaneMode");
       return pushed;
     } catch (err) {
       if (err instanceof ConflictError) {

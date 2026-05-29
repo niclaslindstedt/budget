@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import { unlock } from "../data/achievements";
 import type { MigrationContext } from "../data/migrations";
 import type { UserData } from "../data/types";
 import { createLogger } from "../utils/logger";
@@ -254,6 +255,10 @@ export function useSaveStateMachine(params: Params): SaveStateMachine {
             );
           } else {
             dispatchStatus({ kind: "save-success" });
+            // The save-state indicator just flipped to "saved" — the
+            // gesture behind the `trustButVerify` achievement. The bus
+            // dedupes, so firing on every successful save is harmless.
+            unlock("trustButVerify");
             log.info(
               `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
             );

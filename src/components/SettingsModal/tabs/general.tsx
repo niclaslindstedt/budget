@@ -1,3 +1,4 @@
+import { unlock } from "../../../data/achievements";
 import type { HeaderAction, Settings, Sheet } from "../../../data/types";
 import { useDevMode } from "../../../hooks";
 import { type Lang, useT } from "../../../i18n";
@@ -187,7 +188,10 @@ export function GeneralTab({
             label={t("settings.developer.mode")}
             hint={t("settings.developer.modeHint")}
             checked={devMode}
-            onChange={setDevMode}
+            onChange={(v) => {
+              setDevMode(v);
+              if (v) unlock("underTheHood");
+            }}
           />
         </Section>
       )}
