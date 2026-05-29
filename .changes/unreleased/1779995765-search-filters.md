@@ -7,7 +7,9 @@ the search bar. Exclude transfers, bank history, or unconfirmed entries
 (leaving only imported history), restrict to specific budget sheets,
 companies, types, categories, or tags (match any tag or require all of
 them), and narrow results to an amount or date range with dual-thumb
-sliders. The
+sliders, or pick a time range to exclude data older than a chosen number
+of calendar years (this year, last 2 years, and so on) when older
+entries aren't interesting. The
 sliders span only what your current search actually contains — a search
 that turns up four 100–500 kr rows gives you a 100–500 amount slider, not
 the whole workspace's range — and the date slider steps by month.

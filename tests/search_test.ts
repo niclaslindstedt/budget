@@ -613,6 +613,45 @@ describe("runSearch — filters", () => {
     expect(out.map((r) => r.entry.rowId)).toEqual(["r2"]);
   });
 
+  it("maxAgeYears keeps rows within the calendar window, dropping older + undated", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2024-12-31", x: "older", a: -1 } },
+      { id: "r2", cells: { d: "2025-01-01", x: "last year", a: -1 } },
+      { id: "r3", cells: { d: "2026-05-15", x: "this year", a: -1 } },
+      { id: "r4", cells: { d: "", x: "undated", a: -1 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    // maxAgeYears: 2 keeps this year + last (floor Jan 1 2025); 2024 and
+    // the undated row drop. Reference date pinned so the window is
+    // deterministic regardless of when the suite runs.
+    const out = runSearch(
+      idx,
+      "",
+      "date-asc",
+      filter({ maxAgeYears: 2 }),
+      undefined,
+      "2026-06-15",
+    );
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r2", "r3"]);
+  });
+
+  it("maxAgeYears of 1 keeps only the current calendar year", () => {
+    const data = withItem([
+      { id: "r1", cells: { d: "2025-12-31", x: "last year", a: -1 } },
+      { id: "r2", cells: { d: "2026-01-01", x: "this year", a: -1 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(
+      idx,
+      "",
+      "date-asc",
+      filter({ maxAgeYears: 1 }),
+      undefined,
+      "2026-06-15",
+    );
+    expect(out.map((r) => r.entry.rowId)).toEqual(["r2"]);
+  });
+
   it("sheetIds restricts to the chosen sheets; empty means all", () => {
     const data = withItem([
       { id: "r1", cells: { d: "2026-05-01", x: "Spotify", a: -119 } },
@@ -656,6 +695,7 @@ describe("filter helpers", () => {
     expect(isFilterActive(filter({ excludeTransfers: true }))).toBe(true);
     expect(isFilterActive(filter({ amountMin: 5 }))).toBe(true);
     expect(isFilterActive(filter({ dateMax: "2026-01-01" }))).toBe(true);
+    expect(isFilterActive(filter({ maxAgeYears: 1 }))).toBe(true);
     expect(isFilterActive(filter({ sheetIds: ["s"] }))).toBe(true);
   });
 

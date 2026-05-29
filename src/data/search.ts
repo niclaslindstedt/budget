@@ -173,6 +173,15 @@ export type SearchFilter = {
   // compare lexically, which matches chronological order.
   dateMin: string | null;
   dateMax: string | null;
+  // "Exclude data older than N calendar years" — a coarser, quick-pick
+  // companion to the `dateMin` slider. Counts calendar years to keep,
+  // current year inclusive: 1 = this year only, 2 = this year + last,
+  // and so on. Resolved against today into an inclusive Jan-1 ISO floor
+  // (see `ageFloorIso`); rows dated before it — and undated rows — drop
+  // out. null = no age limit (default). Unlike the date slider, this
+  // survives as a stable intent ("the last two years") rather than a
+  // fixed date, so it stays correct as the calendar rolls over.
+  maxAgeYears: number | null;
   // Restrict to these sheet ids. Empty = every budget sheet (default).
   sheetIds: readonly string[];
   // Restrict to rows carrying one of these company / type / category
@@ -197,6 +206,7 @@ export const EMPTY_FILTER: SearchFilter = {
   amountMax: null,
   dateMin: null,
   dateMax: null,
+  maxAgeYears: null,
   sheetIds: [],
   companyIds: [],
   typeIds: [],
@@ -214,12 +224,29 @@ export function isFilterActive(filter: SearchFilter): boolean {
     filter.amountMax !== null ||
     filter.dateMin !== null ||
     filter.dateMax !== null ||
+    filter.maxAgeYears !== null ||
     filter.sheetIds.length > 0 ||
     filter.companyIds.length > 0 ||
     filter.typeIds.length > 0 ||
     filter.categoryIds.length > 0 ||
     filter.tagIds.length > 0
   );
+}
+
+// Inclusive ISO floor for the `maxAgeYears` filter, or null when no age
+// limit is set. `maxAgeYears` counts calendar years to keep with the
+// current year inclusive (1 = this year only, 2 = this year + last, …),
+// so the floor is Jan 1 of `currentYear - (maxAgeYears - 1)`. Resolved
+// against `referenceIso` (today) so the window tracks the calendar
+// rather than freezing to the date the user picked it.
+export function ageFloorIso(
+  maxAgeYears: number | null,
+  referenceIso: string,
+): string | null {
+  if (maxAgeYears === null) return null;
+  const year = Number(referenceIso.slice(0, 4));
+  const floorYear = year - (maxAgeYears - 1);
+  return `${String(floorYear).padStart(4, "0")}-01-01`;
 }
 
 // Natural min/max of the absolute amounts and ISO dates present in the
@@ -270,8 +297,13 @@ export function searchBounds(
   query: string,
   filter: SearchFilter,
   ranking: SearchRankingSettings = DEFAULT_SEARCH_RANKING,
+  referenceIso: string = todayIso(),
 ): IndexBounds {
-  // Strip the range constraints; keep the categorical ones.
+  // Strip the slider range constraints; keep the categorical ones. The
+  // `maxAgeYears` quick-pick is kept too — it's a coarse calendar window,
+  // not a draggable slider, so honouring it narrows the date slider's
+  // domain to the visible window without the self-collapse the slider's
+  // own bounds would cause.
   const categorical: SearchFilter = {
     ...filter,
     amountMin: null,
@@ -279,19 +311,22 @@ export function searchBounds(
     dateMin: null,
     dateMax: null,
   };
+  const ageFloor = ageFloorIso(categorical.maxAgeYears, referenceIso);
   const trimmed = query.trim();
   // No query → bounds over every categorically-matching row (matches
   // the old whole-index seeding for empty-query filter browsing, but
   // narrowed by any active exclude / sheet filter).
   if (trimmed === "") {
-    const matched = index.filter((e) => matchesFilter(e, categorical));
+    const matched = index.filter((e) =>
+      matchesFilter(e, categorical, ageFloor),
+    );
     return indexBounds(matched);
   }
   const needle = trimmed.toLowerCase();
   const parsedAmount = parseAmount(trimmed);
   const matched: SearchEntry[] = [];
   for (const entry of index) {
-    if (!matchesFilter(entry, categorical)) continue;
+    if (!matchesFilter(entry, categorical, ageFloor)) continue;
     if (scoreEntry(entry, needle, parsedAmount, ranking) !== null)
       matched.push(entry);
   }
@@ -714,7 +749,14 @@ const NEUTRAL_MATCH: SearchMatch = { field: "description", start: 0, end: 0 };
 
 // Filter predicate applied before scoring so the result cap counts only
 // rows the user wants to see. See `SearchFilter` for per-field meaning.
-function matchesFilter(entry: SearchEntry, filter: SearchFilter): boolean {
+// `ageFloor` is the pre-resolved inclusive ISO floor for `maxAgeYears`
+// (null when no age limit) — computed once per query by the caller
+// rather than per entry.
+function matchesFilter(
+  entry: SearchEntry,
+  filter: SearchFilter,
+  ageFloor: string | null,
+): boolean {
   if (filter.excludeUnconfirmed && entry.kind !== "historic") return false;
   if (filter.excludeHistory && entry.kind === "historic") return false;
   if (filter.excludeTransfers && entry.isTransfer) return false;
@@ -754,6 +796,11 @@ function matchesFilter(entry: SearchEntry, filter: SearchFilter): boolean {
     if (entry.iso === "") return false;
     if (filter.dateMin !== null && entry.iso < filter.dateMin) return false;
     if (filter.dateMax !== null && entry.iso > filter.dateMax) return false;
+  }
+  if (ageFloor !== null) {
+    // An undated row can't be shown to be recent, so a max-age limit
+    // drops it just like the date band does.
+    if (entry.iso === "" || entry.iso < ageFloor) return false;
   }
   return true;
 }
@@ -798,6 +845,7 @@ export function runSearch(
   referenceIso: string = todayIso(),
 ): SearchOutcome {
   const cap = ranking.maxResults;
+  const ageFloor = ageFloorIso(filter.maxAgeYears, referenceIso);
   const trimmed = query.trim();
   if (trimmed === "") {
     // Filter-only browsing: with no query there's nothing to score, so
@@ -808,7 +856,7 @@ export function runSearch(
     if (!isFilterActive(filter)) return { results: [], total: 0 };
     const browsed: SearchResult[] = [];
     for (const entry of index) {
-      if (!matchesFilter(entry, filter)) continue;
+      if (!matchesFilter(entry, filter, ageFloor)) continue;
       browsed.push({ entry, match: NEUTRAL_MATCH });
     }
     const ordered =
@@ -823,7 +871,7 @@ export function runSearch(
   const scored: Scored[] = [];
 
   for (const entry of index) {
-    if (!matchesFilter(entry, filter)) continue;
+    if (!matchesFilter(entry, filter, ageFloor)) continue;
     const best = scoreEntry(entry, needle, parsedAmount, ranking);
     if (best !== null) {
       scored.push({
@@ -854,17 +902,19 @@ export function matchingEntries(
   query: string,
   filter: SearchFilter = EMPTY_FILTER,
   ranking: SearchRankingSettings = DEFAULT_SEARCH_RANKING,
+  referenceIso: string = todayIso(),
 ): SearchEntry[] {
+  const ageFloor = ageFloorIso(filter.maxAgeYears, referenceIso);
   const trimmed = query.trim();
   if (trimmed === "") {
     if (!isFilterActive(filter)) return [];
-    return index.filter((entry) => matchesFilter(entry, filter));
+    return index.filter((entry) => matchesFilter(entry, filter, ageFloor));
   }
   const needle = trimmed.toLowerCase();
   const parsedAmount = parseAmount(trimmed);
   const out: SearchEntry[] = [];
   for (const entry of index) {
-    if (!matchesFilter(entry, filter)) continue;
+    if (!matchesFilter(entry, filter, ageFloor)) continue;
     if (scoreEntry(entry, needle, parsedAmount, ranking) !== null)
       out.push(entry);
   }
