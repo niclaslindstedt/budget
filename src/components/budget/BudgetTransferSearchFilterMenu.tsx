@@ -11,9 +11,27 @@ import {
   formatNumber,
   withCurrency,
 } from "../../utils/format";
+import {
+  BudgetTransferSearchTokenFilter,
+  type TokenOption,
+} from "./BudgetTransferSearchTokenFilter";
 import { FloatingPanel } from "../FloatingPanel";
 import { Checkbox, RangeSlider } from "../form";
 import { CategoryIconGlyph } from "../icons";
+
+// Leading glyph for a type / category option — the same pictogram the
+// row shows on the sheet, tinted with the entry's colour.
+function glyphLeading(glyph: string, color: string): React.ReactNode {
+  return (
+    <span
+      aria-hidden
+      className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center"
+      style={color ? { color } : undefined}
+    >
+      <CategoryIconGlyph name={glyph as CategoryIcon} size={14} />
+    </span>
+  );
+}
 
 const FILTER_MENU_PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 288 },
@@ -55,34 +73,30 @@ function monthNumToIsoEnd(month: number): string {
   return `${monthNumToKey(month)}-${String(lastDay).padStart(2, "0")}`;
 }
 
-// One categorical option in a multi-select section, with the glyph /
-// colour needed to render it the same way it shows on the sheet.
+// One sheet option in the sheet multi-select.
 type Option = {
   id: string;
   name: string;
-  glyph?: string;
-  color?: string;
+  glyph: string;
+  color: string;
 };
 
-// A bordered, scrollable checkbox list backing the company / type /
-// category / tag multi-selects. Mirrors the sheet list's look so the
-// whole popover reads as one surface. `glyphFallback` lets the company
-// list reuse a single shared pictogram (companies carry no per-row
-// glyph); type / category / tag pass their own per-option glyph.
+// A bordered, scrollable checkbox list backing the sheet multi-select.
+// Sheets are a small, fixed set per workspace, so a checkbox list still
+// fits; the company / type / category / tag filters use the type-to-
+// filter token control instead because those grow unbounded.
 function OptionList({
   title,
   options,
   selectedIds,
   onToggle,
   allHint,
-  glyphFallback,
 }: {
   title: string;
   options: readonly Option[];
   selectedIds: readonly string[];
   onToggle: (id: string, checked: boolean) => void;
   allHint: string;
-  glyphFallback?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5 border-t border-line pt-3">
@@ -98,16 +112,12 @@ function OptionList({
                 <span
                   aria-hidden
                   className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
-                  style={option.color ? { color: option.color } : undefined}
+                  style={{ color: option.color }}
                 >
-                  {option.glyph ? (
-                    <CategoryIconGlyph
-                      name={option.glyph as CategoryIcon}
-                      size={14}
-                    />
-                  ) : (
-                    glyphFallback
-                  )}
+                  <CategoryIconGlyph
+                    name={option.glyph as CategoryIcon}
+                    size={14}
+                  />
                 </span>
                 <span className="truncate">{option.name}</span>
               </span>
@@ -161,34 +171,54 @@ export function BudgetTransferSearchFilterMenu({
   }, [index]);
 
   // Distinct companies / types / categories / tags present in the
-  // index, in first-seen order. The filter only offers values that
-  // actually appear in the current result universe — picking one that
-  // matches nothing would be pointless — mirroring the sheet list.
+  // index, in first-seen order, projected to `TokenOption`s (each with
+  // the leading glyph / colour swatch it shows on the sheet). The filter
+  // only offers values that actually appear in the current result
+  // universe — picking one that matches nothing would be pointless.
   const { companies, types, categories, tags } = useMemo(() => {
-    const companies = new Map<string, Option>();
-    const types = new Map<string, Option>();
-    const categories = new Map<string, Option>();
-    const tags = new Map<string, Option>();
+    const companies = new Map<string, TokenOption>();
+    const types = new Map<string, TokenOption>();
+    const categories = new Map<string, TokenOption>();
+    const tags = new Map<string, TokenOption>();
     for (const e of index) {
       if (e.companyId !== "" && !companies.has(e.companyId))
-        companies.set(e.companyId, { id: e.companyId, name: e.companyName });
+        companies.set(e.companyId, {
+          id: e.companyId,
+          name: e.companyName,
+          leading: (
+            <Building2
+              size={14}
+              aria-hidden
+              focusable={false}
+              className="shrink-0 text-muted"
+            />
+          ),
+        });
       if (e.typeId !== "" && !types.has(e.typeId))
         types.set(e.typeId, {
           id: e.typeId,
           name: e.typeName,
-          glyph: e.typeGlyph,
-          color: e.typeColor,
+          leading: glyphLeading(e.typeGlyph, e.typeColor),
         });
       if (e.categoryId !== "" && !categories.has(e.categoryId))
         categories.set(e.categoryId, {
           id: e.categoryId,
           name: e.categoryName,
-          glyph: e.categoryGlyph,
-          color: e.categoryColor,
+          leading: glyphLeading(e.categoryGlyph, e.categoryColor),
         });
       for (const tag of e.tags) {
         if (!tags.has(tag.id))
-          tags.set(tag.id, { id: tag.id, name: tag.name, color: tag.color });
+          tags.set(tag.id, {
+            id: tag.id,
+            name: tag.name,
+            leading: (
+              <span
+                aria-hidden
+                className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: tag.color }}
+              />
+            ),
+          });
       }
     }
     return {
@@ -336,44 +366,47 @@ export function BudgetTransferSearchFilterMenu({
             )}
 
             {companies.length > 0 && (
-              <OptionList
-                title={t("searchTransaction.filterCompanies")}
+              <BudgetTransferSearchTokenFilter
+                label={t("searchTransaction.filterCompanies")}
+                placeholder={t("searchTransaction.filterCompaniesPlaceholder")}
                 options={companies}
                 selectedIds={filter.companyIds}
-                onToggle={(id, v) => toggleId("companyIds", id, v)}
-                allHint={t("searchTransaction.filterCompaniesAll")}
-                glyphFallback={
-                  <Building2 size={14} aria-hidden focusable={false} />
+                onChange={(ids) =>
+                  onFilterChange({ ...filter, companyIds: ids })
                 }
               />
             )}
 
             {types.length > 0 && (
-              <OptionList
-                title={t("searchTransaction.filterTypes")}
+              <BudgetTransferSearchTokenFilter
+                label={t("searchTransaction.filterTypes")}
+                placeholder={t("searchTransaction.filterTypesPlaceholder")}
                 options={types}
                 selectedIds={filter.typeIds}
-                onToggle={(id, v) => toggleId("typeIds", id, v)}
-                allHint={t("searchTransaction.filterTypesAll")}
+                onChange={(ids) => onFilterChange({ ...filter, typeIds: ids })}
               />
             )}
 
             {categories.length > 0 && (
-              <OptionList
-                title={t("searchTransaction.filterCategories")}
+              <BudgetTransferSearchTokenFilter
+                label={t("searchTransaction.filterCategories")}
+                placeholder={t("searchTransaction.filterCategoriesPlaceholder")}
                 options={categories}
                 selectedIds={filter.categoryIds}
-                onToggle={(id, v) => toggleId("categoryIds", id, v)}
-                allHint={t("searchTransaction.filterCategoriesAll")}
+                onChange={(ids) =>
+                  onFilterChange({ ...filter, categoryIds: ids })
+                }
               />
             )}
 
             {tags.length > 0 && (
-              <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-fg-bright">
-                    {t("searchTransaction.filterTags")}
-                  </p>
+              <BudgetTransferSearchTokenFilter
+                label={t("searchTransaction.filterTags")}
+                placeholder={t("searchTransaction.filterTagsPlaceholder")}
+                options={tags}
+                selectedIds={filter.tagIds}
+                onChange={(ids) => onFilterChange({ ...filter, tagIds: ids })}
+                headerExtra={
                   <div
                     role="radiogroup"
                     aria-label={t("searchTransaction.filterTagMode")}
@@ -412,32 +445,8 @@ export function BudgetTransferSearchFilterMenu({
                       );
                     })}
                   </div>
-                </div>
-                <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
-                  {tags.map((tag) => (
-                    <Checkbox
-                      key={tag.id}
-                      checked={filter.tagIds.includes(tag.id)}
-                      onChange={(v) => toggleId("tagIds", tag.id, v)}
-                      label={
-                        <span className="inline-flex min-w-0 items-center gap-1.5">
-                          <span
-                            aria-hidden
-                            className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: tag.color }}
-                          />
-                          <span className="truncate">{tag.name}</span>
-                        </span>
-                      }
-                    />
-                  ))}
-                </div>
-                {filter.tagIds.length === 0 && (
-                  <p className="text-xs text-muted">
-                    {t("searchTransaction.filterTagsAll")}
-                  </p>
-                )}
-              </div>
+                }
+              />
             )}
 
             {hasAmount && (
