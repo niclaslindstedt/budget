@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Building2, ChevronDown, Filter } from "lucide-react";
 
 import type { SearchEntry, SearchFilter } from "../../data/search";
-import { EMPTY_FILTER, isFilterActive, searchBounds } from "../../data/search";
+import { EMPTY_FILTER, isFilterActive } from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
 import { usePointerOutside } from "../../hooks";
@@ -16,6 +16,10 @@ import {
   BudgetTransferSearchTokenFilter,
   type TokenOption,
 } from "./BudgetTransferSearchTokenFilter";
+import {
+  monthNumToKey,
+  useTransferSearchFilter,
+} from "./useTransferSearchFilter";
 import { FloatingPanel } from "../FloatingPanel";
 import { Checkbox, RangeSlider } from "../form";
 import { CategoryIconGlyph } from "../icons";
@@ -39,40 +43,6 @@ const FILTER_MENU_PLACEMENT: FloatingPlacement = {
   anchor: "right",
   coordinateSpace: "viewport",
 };
-
-// The date range slider works in whole months, not days — day-level
-// resolution is more granularity than a transaction-browsing filter
-// needs, and a month-stepped thumb is far easier to land on. A "month
-// number" is `year * 12 + (month - 1)` so the slider gets a dense
-// integer domain; the FilterMenu maps ISO dates to/from it.
-function isoToMonthNum(iso: string): number {
-  const y = Number(iso.slice(0, 4));
-  const m = Number(iso.slice(5, 7));
-  return y * 12 + (m - 1);
-}
-
-function monthNumToKey(month: number): string {
-  const y = Math.floor(month / 12);
-  const m = (month % 12) + 1;
-  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
-}
-
-// First day of the month — the inclusive lower ISO bound a min thumb
-// commits to.
-function monthNumToIsoStart(month: number): string {
-  return `${monthNumToKey(month)}-01`;
-}
-
-// Last day of the month — the inclusive upper ISO bound a max thumb
-// commits to, so the band covers the whole selected month. Day 0 of
-// the following month resolves to the last day of this one, handling
-// February and 30-day months without a lookup table.
-function monthNumToIsoEnd(month: number): string {
-  const y = Math.floor(month / 12);
-  const m = month % 12;
-  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  return `${monthNumToKey(month)}-${String(lastDay).padStart(2, "0")}`;
-}
 
 // Quick-pick calendar windows for the "exclude old data" dropdown. Each
 // value is a count of calendar years to keep, current year inclusive (1
@@ -240,151 +210,89 @@ export function BudgetTransferSearchFilterMenu({
   const close = useCallback(() => setOpen(false), []);
   const active = isFilterActive(filter) || open;
 
-  // Unique budget sheets present in the index, in first-seen order.
-  const sheets = useMemo(() => {
-    const seen = new Map<
-      string,
-      { id: string; name: string; glyph: string; color: string }
-    >();
-    for (const e of index) {
-      if (!seen.has(e.sheetId))
-        seen.set(e.sheetId, {
-          id: e.sheetId,
-          name: e.sheetName,
-          glyph: e.sheetGlyph,
-          color: e.sheetColor,
-        });
-    }
-    return [...seen.values()];
-  }, [index]);
+  const {
+    sheets,
+    companies,
+    types,
+    categories,
+    tags,
+    hasAmount,
+    amountSliderMin,
+    amountSliderMax,
+    amountValue,
+    hasDate,
+    dateSliderMin,
+    dateSliderMax,
+    dateValue,
+    commitAmount,
+    commitDate,
+    toggleId,
+  } = useTransferSearchFilter({
+    filter,
+    onFilterChange,
+    index,
+    query,
+    settings,
+  });
 
-  // Distinct companies / types / categories / tags present in the
-  // index, in first-seen order, projected to `TokenOption`s (each with
-  // the leading glyph / colour swatch it shows on the sheet). The filter
-  // only offers values that actually appear in the current result
-  // universe — picking one that matches nothing would be pointless.
-  const { companies, types, categories, tags } = useMemo(() => {
-    const companies = new Map<string, TokenOption>();
-    const types = new Map<string, TokenOption>();
-    const categories = new Map<string, TokenOption>();
-    const tags = new Map<string, TokenOption>();
-    for (const e of index) {
-      if (e.companyId !== "" && !companies.has(e.companyId))
-        companies.set(e.companyId, {
-          id: e.companyId,
-          name: e.companyName,
-          leading: (
-            <Building2
-              size={14}
-              aria-hidden
-              focusable={false}
-              className="shrink-0 text-muted"
-            />
-          ),
-        });
-      if (e.typeId !== "" && !types.has(e.typeId))
-        types.set(e.typeId, {
-          id: e.typeId,
-          name: e.typeName,
-          leading: glyphLeading(e.typeGlyph, e.typeColor),
-        });
-      if (e.categoryId !== "" && !categories.has(e.categoryId))
-        categories.set(e.categoryId, {
-          id: e.categoryId,
-          name: e.categoryName,
-          leading: glyphLeading(e.categoryGlyph, e.categoryColor),
-        });
-      for (const tag of e.tags) {
-        if (!tags.has(tag.id))
-          tags.set(tag.id, {
-            id: tag.id,
-            name: tag.name,
-            leading: (
-              <span
-                aria-hidden
-                className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: tag.color }}
-              />
-            ),
-          });
-      }
-    }
-    return {
-      companies: [...companies.values()],
-      types: [...types.values()],
-      categories: [...categories.values()],
-      tags: [...tags.values()],
-    };
-  }, [index]);
-
-  // Seed the range sliders from the rows the current query + categorical
-  // filters surface, not the whole workspace — so a four-row "Meds"
-  // search shows a 100–500 amount slider instead of 0–981K.
-  const bounds = useMemo(
-    () => searchBounds(index, query, filter, settings.searchRanking),
-    [index, query, filter, settings.searchRanking],
+  // Project the index-derived tokens to `TokenOption`s with the leading
+  // glyph / colour swatch each shows on the sheet. Kept in the menu (not
+  // the hook) so the hook stays JSX-free; memoized on the raw token
+  // lists, which only change when the index does.
+  const companyOptions = useMemo<TokenOption[]>(
+    () =>
+      companies.map((c) => ({
+        id: c.id,
+        name: c.name,
+        leading: (
+          <Building2
+            size={14}
+            aria-hidden
+            focusable={false}
+            className="shrink-0 text-muted"
+          />
+        ),
+      })),
+    [companies],
   );
-
-  const hasAmount =
-    bounds.amountMin !== null &&
-    bounds.amountMax !== null &&
-    bounds.amountMax > bounds.amountMin;
-  const amountValue: [number, number] = [
-    filter.amountMin ?? bounds.amountMin ?? 0,
-    filter.amountMax ?? bounds.amountMax ?? 0,
-  ];
-  const dateMinNum =
-    bounds.dateMin !== null ? isoToMonthNum(bounds.dateMin) : 0;
-  const dateMaxNum =
-    bounds.dateMax !== null ? isoToMonthNum(bounds.dateMax) : 0;
-  // Drive the slider only when the matched rows span more than one
-  // month — a single-month domain has no range to drag.
-  const hasDate =
-    bounds.dateMin !== null &&
-    bounds.dateMax !== null &&
-    dateMaxNum > dateMinNum;
-  const dateValue: [number, number] = [
-    filter.dateMin !== null ? isoToMonthNum(filter.dateMin) : dateMinNum,
-    filter.dateMax !== null ? isoToMonthNum(filter.dateMax) : dateMaxNum,
-  ];
+  const typeOptions = useMemo<TokenOption[]>(
+    () =>
+      types.map((ty) => ({
+        id: ty.id,
+        name: ty.name,
+        leading: glyphLeading(ty.glyph, ty.color),
+      })),
+    [types],
+  );
+  const categoryOptions = useMemo<TokenOption[]>(
+    () =>
+      categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        leading: glyphLeading(c.glyph, c.color),
+      })),
+    [categories],
+  );
+  const tagOptions = useMemo<TokenOption[]>(
+    () =>
+      tags.map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        leading: (
+          <span
+            aria-hidden
+            className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: tag.color }}
+          />
+        ),
+      })),
+    [tags],
+  );
 
   const amountLabel = (v: number) =>
     withCurrency(formatNumber(v, settings), settings);
   const dateLabel = (month: number) =>
     formatMonthLabel(monthNumToKey(month), lang);
-
-  // Store a bound as null when its thumb sits at the natural edge so the
-  // filter stays "default" on that side and the Filter glyph dims back.
-  function commitAmount(next: [number, number]) {
-    onFilterChange({
-      ...filter,
-      amountMin:
-        bounds.amountMin !== null && next[0] <= bounds.amountMin
-          ? null
-          : next[0],
-      amountMax:
-        bounds.amountMax !== null && next[1] >= bounds.amountMax
-          ? null
-          : next[1],
-    });
-  }
-  function commitDate(next: [number, number]) {
-    onFilterChange({
-      ...filter,
-      dateMin: next[0] <= dateMinNum ? null : monthNumToIsoStart(next[0]),
-      dateMax: next[1] >= dateMaxNum ? null : monthNumToIsoEnd(next[1]),
-    });
-  }
-  function toggleId(
-    key: "sheetIds" | "companyIds" | "typeIds" | "categoryIds" | "tagIds",
-    id: string,
-    checked: boolean,
-  ) {
-    const set = new Set(filter[key]);
-    if (checked) set.add(id);
-    else set.delete(id);
-    onFilterChange({ ...filter, [key]: [...set] });
-  }
 
   return (
     <div ref={triggerRef} className="relative shrink-0">
@@ -458,11 +366,11 @@ export function BudgetTransferSearchFilterMenu({
               />
             )}
 
-            {companies.length > 0 && (
+            {companyOptions.length > 0 && (
               <BudgetTransferSearchTokenFilter
                 label={t("searchTransaction.filterCompanies")}
                 placeholder={t("searchTransaction.filterCompaniesPlaceholder")}
-                options={companies}
+                options={companyOptions}
                 selectedIds={filter.companyIds}
                 onChange={(ids) =>
                   onFilterChange({ ...filter, companyIds: ids })
@@ -470,21 +378,21 @@ export function BudgetTransferSearchFilterMenu({
               />
             )}
 
-            {types.length > 0 && (
+            {typeOptions.length > 0 && (
               <BudgetTransferSearchTokenFilter
                 label={t("searchTransaction.filterTypes")}
                 placeholder={t("searchTransaction.filterTypesPlaceholder")}
-                options={types}
+                options={typeOptions}
                 selectedIds={filter.typeIds}
                 onChange={(ids) => onFilterChange({ ...filter, typeIds: ids })}
               />
             )}
 
-            {categories.length > 0 && (
+            {categoryOptions.length > 0 && (
               <BudgetTransferSearchTokenFilter
                 label={t("searchTransaction.filterCategories")}
                 placeholder={t("searchTransaction.filterCategoriesPlaceholder")}
-                options={categories}
+                options={categoryOptions}
                 selectedIds={filter.categoryIds}
                 onChange={(ids) =>
                   onFilterChange({ ...filter, categoryIds: ids })
@@ -492,11 +400,11 @@ export function BudgetTransferSearchFilterMenu({
               />
             )}
 
-            {tags.length > 0 && (
+            {tagOptions.length > 0 && (
               <BudgetTransferSearchTokenFilter
                 label={t("searchTransaction.filterTags")}
                 placeholder={t("searchTransaction.filterTagsPlaceholder")}
-                options={tags}
+                options={tagOptions}
                 selectedIds={filter.tagIds}
                 onChange={(ids) => onFilterChange({ ...filter, tagIds: ids })}
                 headerExtra={
@@ -554,8 +462,8 @@ export function BudgetTransferSearchFilterMenu({
                   </span>
                 </div>
                 <RangeSlider
-                  min={bounds.amountMin ?? 0}
-                  max={bounds.amountMax ?? 0}
+                  min={amountSliderMin}
+                  max={amountSliderMax}
                   value={amountValue}
                   onChange={commitAmount}
                   ariaLabelMin={t("searchTransaction.filterAmountMin")}
@@ -576,8 +484,8 @@ export function BudgetTransferSearchFilterMenu({
                   </span>
                 </div>
                 <RangeSlider
-                  min={dateMinNum}
-                  max={dateMaxNum}
+                  min={dateSliderMin}
+                  max={dateSliderMax}
                   value={dateValue}
                   onChange={commitDate}
                   ariaLabelMin={t("searchTransaction.filterDateMin")}

@@ -229,21 +229,6 @@ through them.
   `useState` lines, not a sub-machine); re-rate up when a
   `<LoanTypeAdmin>` lands and the pattern shows up a third time.
 
-- **`BudgetTransferSearchModal` + `BudgetTransferSearchFilterMenu`
-  filter-state extraction** — discovered 2026-05.
-  `BudgetTransferSearchModal.tsx` (687 lines) +
-  `BudgetTransferSearchFilterMenu.tsx` (604 lines) fuse the filter
-  state machine (bounds memoization, category/type/company/tag
-  deduplication loops, the `toggleAll*` helpers) into the modal +
-  menu. A future per-sheet-type search would re-derive the
-  dedup/bounds plumbing. **Severity: 4.**
-  - Plan: extract a `useTransferSearchFilter` hook owning the bounds
-    memo, the dedup maps, and the toggle/commit functions; leave the
-    menu as pure rendering. Revisit a fully generic shape only when a
-    second sheet type actually ships an inline search.
-  - Risk: low — the per-field memos already exist, this consolidates
-    them.
-
 - **`useReducer` in remaining modal state machines (opportunistic)** —
   `useReducer` now has **seven** landed hits
   (`AccountReconciliationModal`, `BudgetRecurrenceForm`,
@@ -373,6 +358,36 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 
 ## Landed
 
+- **`useTransferSearchFilter` hook extraction from
+  `BudgetTransferSearchFilterMenu`** (2026-05): the filter-state
+  machinery fused into the 604-line filter menu — the sheet /
+  company / type / category / tag deduplication loops, the
+  `searchBounds` memo, the amount/date slider domain + value
+  derivation, the month-number date math (`isoToMonthNum`,
+  `monthNumToKey`, `monthNumToIso{Start,End}`), and the immutable
+  filter-update functions (`commitAmount`, `commitDate`, `toggleId`)
+  — lifted into `src/components/budget/useTransferSearchFilter.ts`.
+  The hook returns **raw** token data (`{id, name, glyph?, color?}`),
+  not `TokenOption`s, so it stays JSX-free; the menu keeps ownership
+  of the leading-glyph projection (four `useMemo`s keyed on the raw
+  token lists, which only change when the index does) and all
+  rendering. The dedup, slider-derivation, and filter-update logic is
+  exported as pure functions (`collectFilterTokens`,
+  `deriveAmountSlider`, `deriveDateSlider`, `nextAmountFilter`,
+  `nextDateFilter`, `toggleFilterId`) that the hook wraps in memos /
+  callbacks — 13 unit tests landed in
+  `tests/transfer_search_filter_test.ts` covering the month-number
+  round-trip + leap-year end-of-month, first-seen dedup with
+  empty-id skipping, slider fallback-to-bounds vs filter override,
+  the edge-collapses-to-null commit logic, and the immutable
+  add/remove toggle. `BudgetTransferSearchFilterMenu.tsx` drops from
+  604 → 512 lines; the new hook is 273 lines. Pure refactor — same
+  behaviour, same i18n keys, same `SearchFilter` payload shape; the
+  modal (`BudgetTransferSearchModal`) consumes the menu unchanged.
+  Closes the severity-4 filter-state-extraction candidate; the
+  fully-generic cross-sheet-type shape stays deferred until a second
+  sheet type ships an inline search. fmt-check + lint + typecheck +
+  1058 tests + build + icons-check pass.
 - **`usePromptDerivations` + `useHistoryEntryActions` relocated into
   `BudgetModalHost`** (2026-05): the first slice of the severity-5
   `AppShell.tsx` modal-mount state-ownership shift. Both hooks are
