@@ -6,7 +6,6 @@ import {
   headerActionDescription,
 } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
-import { useAchievementsModal } from "./hooks/useAchievementsModal";
 import { useAppearanceProjection } from "./hooks/useAppearanceProjection";
 import { useBulkSelection } from "./hooks/useBulkSelection";
 import { useChangelogState } from "./hooks/useChangelogState";
@@ -140,9 +139,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // off again the moment the adapter replaces state with the
   // persisted bucket.
   useAchievementWatcher(data, dispatch, status.kind !== "loading");
-  const achievementsModal = useAchievementsModal();
-  const { setAchievementsModalOpen, setAchievementsListOpen } =
-    achievementsModal;
   // Mirror in-memory data into the App-owned ref so the cloud-link
   // conflict path can upload the latest budget. Updated on every render
   // because both data changes and ref-identity changes (after a sign-
@@ -533,8 +529,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         unlockAchievement("detective");
         setSearchOpen(true);
       },
-      openAchievementsList: () => setAchievementsListOpen(true),
-      openAchievementsUnlock: () => setAchievementsModalOpen(true),
       openSyncDetails: () => setSyncDetailsOpen(true),
       openNewSheet: onOpenNewSheet,
       openEditSheet: onOpenEditSheet,
@@ -553,8 +547,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       setSettingsOpen,
       setChangelogManualOpen,
       setSearchOpen,
-      setAchievementsListOpen,
-      setAchievementsModalOpen,
       setSyncDetailsOpen,
       onOpenNewSheet,
       onOpenEditSheet,
@@ -824,7 +816,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           settingsModal={settingsModal}
           changelog={changelog}
           syncAutoOpens={syncAutoOpens}
-          achievementsModal={achievementsModal}
           searchModal={searchModal}
           searchBulk={{
             selectMode,

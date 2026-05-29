@@ -13,6 +13,7 @@ import { SettingsModal } from "../SettingsModal";
 import { SheetModal } from "../SheetModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
 import { useRegisterModalHandlers } from "../modal-dispatch";
+import { useAchievementsModal } from "./hooks/useAchievementsModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
 import type { Action } from "../../data/reducer";
 import type {
@@ -27,7 +28,6 @@ import type {
 } from "../../storage/useUserDataStorage";
 import { useT } from "../../i18n";
 import type { AppShellAuth, AppShellStorage } from "./types";
-import type { useAchievementsModal } from "./hooks/useAchievementsModal";
 import type { useChangelogState } from "./hooks/useChangelogState";
 import type { useDownloadFlow } from "./hooks/useDownloadFlow";
 import type { useMatchRuleUi } from "./hooks/useMatchRuleUi";
@@ -73,7 +73,6 @@ type Props = {
   settingsModal: ReturnType<typeof useSettingsModal>;
   changelog: ReturnType<typeof useChangelogState>;
   syncAutoOpens: ReturnType<typeof useSyncAutoOpens>;
-  achievementsModal: ReturnType<typeof useAchievementsModal>;
   searchModal: ReturnType<typeof useSearchModal>;
   // Select-many wiring for the search modal — the same bulk-selection
   // handlers the BottomBar uses, plus the active sheet id + a sheet
@@ -121,7 +120,6 @@ export function UniversalModalHost(props: Props) {
     settingsModal,
     changelog,
     syncAutoOpens,
-    achievementsModal,
     searchModal,
     searchBulk,
     taxonomyCrud,
@@ -133,13 +131,21 @@ export function UniversalModalHost(props: Props) {
     onImport,
   } = props;
   const t = useT();
-  // The action-history modal is opened only from chrome (via the
-  // dispatch context) and rendered only here, so the host owns its open
-  // state outright and registers the open handler rather than threading a
-  // boolean + setter down from AppShell.
+  // The action-history and achievements modals open only from chrome (via
+  // the dispatch context) and render only here, so the host owns their
+  // open state outright and registers the open handlers rather than
+  // threading a boolean + setter down from AppShell.
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
+  const {
+    achievementsModalOpen,
+    setAchievementsModalOpen,
+    achievementsListOpen,
+    setAchievementsListOpen,
+  } = useAchievementsModal();
   useRegisterModalHandlers({
     openActionHistory: () => setActionHistoryOpen(true),
+    openAchievementsList: () => setAchievementsListOpen(true),
+    openAchievementsUnlock: () => setAchievementsModalOpen(true),
   });
   const {
     status,
@@ -200,12 +206,6 @@ export function UniversalModalHost(props: Props) {
     reconnectCloudOpen,
     setReconnectCloudOpen,
   } = syncAutoOpens;
-  const {
-    achievementsModalOpen,
-    setAchievementsModalOpen,
-    achievementsListOpen,
-    setAchievementsListOpen,
-  } = achievementsModal;
   const {
     searchOpen,
     setSearchOpen,
