@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { derivePatternFromDescription } from "../src/data/budget/pattern-derive";
+import { compilePattern } from "../src/data/match-rules";
 
 describe("derivePatternFromDescription", () => {
   it("returns an empty pattern for an empty description", () => {
@@ -17,10 +18,27 @@ describe("derivePatternFromDescription", () => {
   it("strips a leading ISO date (bank-export shape)", () => {
     // Skandia and similar banks ship `<date> <merchant>` history lines.
     // The Label-similar modal must strip the date so the seed pattern
-    // matches future imports rather than only this one transaction.
+    // matches future imports rather than only this one transaction. The
+    // comma between merchant words becomes a wildcard, not a literal
+    // space — the pattern is matched against the raw bank text, which
+    // still carries the comma.
     expect(
       derivePatternFromDescription("2026-05-11 Apoteket Tranan, Vänersborg"),
-    ).toBe("*Apoteket Tranan Vänersborg*");
+    ).toBe("*Apoteket Tranan*Vänersborg*");
+  });
+
+  it("produces a pattern that matches its own source despite punctuation", () => {
+    // Regression: the deriver stripped the comma from the pattern but
+    // matching runs against the raw bank text that still has it, so a
+    // literal "SU VANERSBORG" never matched "SU, VANERSBORG" and the
+    // "label N similar" offer silently stayed at zero. The comma's slot
+    // is now a wildcard.
+    const source = "2026-04-01 HEMKOP VANERSBORG SU, VANERSBORG";
+    const lookalike = "2026-04-02 HEMKOP VANERSBORG SU, VANERSBORG";
+    const pattern = derivePatternFromDescription(source);
+    expect(pattern).toBe("*HEMKOP VANERSBORG SU*VANERSBORG*");
+    expect(compilePattern(pattern).test(source)).toBe(true);
+    expect(compilePattern(pattern).test(lookalike)).toBe(true);
   });
 
   it("strips slash and dot dates", () => {
