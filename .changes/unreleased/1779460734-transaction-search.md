@@ -22,8 +22,8 @@ when its visible description is a user override or a company tag.
 Number queries also match rows whose amount lands within ±20% of the
 value, so "100" finds a 95 rent payment alongside the exact-100 ones.
 Clicking a result switches to that row's sheet, scrolls it into view
-(expanding older months if needed), and pulses the row briefly so you
-can see where you landed. The last query is remembered while the tab
+(revealing hidden past or future months as needed), and pulses the row
+briefly so you can see where you landed. The last query is remembered while the tab
 stays open. A count above the list shows how many entries matched and,
 when more match than fit on screen, how many are shown ("267 hits,
 showing 50").
