@@ -101,8 +101,28 @@ export function BudgetAmountSpanFields({
           disabled={disabled}
         />
       ) : (
-        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5">
-          <span className="text-xs text-muted">{t("editEntry.amountMin")}</span>
+        // The estimate drives the running balance, so it gets the full
+        // top row; [min, max] only widen reconciliation and share the
+        // row below. Placeholders carry the labelling so the band fits
+        // two rows even in a half-width modal column. One grid with
+        // `minmax(0,1fr)` tracks keeps the inputs from reporting their
+        // intrinsic width to an `auto`-sized parent track (the modal's
+        // single-column mobile grid), which would otherwise stretch the
+        // whole modal wider than the viewport.
+        <div className="grid min-w-0 grid-cols-2 gap-1.5">
+          <div className="col-span-2 flex min-w-0">
+            <SignedAmountInput
+              value={amount}
+              negative={negative}
+              onValueChange={onAmountChange}
+              onToggleSign={onToggleSign}
+              settings={settings}
+              ariaLabel={t("editEntry.amountEstimate")}
+              placeholder={t("editEntry.amountEstimatePlaceholder")}
+              surface={surface}
+              disabled={disabled}
+            />
+          </div>
           <SignedAmountInput
             value={min}
             negative={negative}
@@ -110,23 +130,10 @@ export function BudgetAmountSpanFields({
             onToggleSign={onToggleSign}
             settings={settings}
             ariaLabel={t("editEntry.amountMin")}
+            placeholder={t("editEntry.amountMinPlaceholder")}
             surface={surface}
             disabled={disabled}
           />
-          <span className="text-xs text-muted">
-            {t("editEntry.amountEstimate")}
-          </span>
-          <SignedAmountInput
-            value={amount}
-            negative={negative}
-            onValueChange={onAmountChange}
-            onToggleSign={onToggleSign}
-            settings={settings}
-            ariaLabel={t("editEntry.amountEstimate")}
-            surface={surface}
-            disabled={disabled}
-          />
-          <span className="text-xs text-muted">{t("editEntry.amountMax")}</span>
           <SignedAmountInput
             value={max}
             negative={negative}
@@ -134,6 +141,7 @@ export function BudgetAmountSpanFields({
             onToggleSign={onToggleSign}
             settings={settings}
             ariaLabel={t("editEntry.amountMax")}
+            placeholder={t("editEntry.amountMaxPlaceholder")}
             surface={surface}
             disabled={disabled}
           />

@@ -360,7 +360,7 @@ export function BudgetEditEntryFullModal({
             />
           </label>
           {dateCol && (
-            <label className="flex min-w-0 flex-col gap-1">
+            <label className="col-span-2 flex min-w-0 flex-col gap-1">
               <span className="text-xs text-muted">{t("budget.date")}</span>
               <input
                 type="date"
@@ -373,7 +373,7 @@ export function BudgetEditEntryFullModal({
             </label>
           )}
           {amountCol && (
-            <div className="flex min-w-0 flex-col gap-1">
+            <div className="col-span-2 flex min-w-0 flex-col gap-1">
               <BudgetAmountSpanFields
                 mode={amountMode}
                 onModeChange={(v) =>

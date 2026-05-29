@@ -26,6 +26,13 @@ export type FloatingRect = {
   top: number;
   left: number;
   width: number;
+  // The widest the panel may render before it would cross the viewport
+  // edge, measured from the (clamped) `left` to the far margin. `width`
+  // is only a *minimum* for `kind: "min"` panels, so intrinsic content
+  // (long option hints) can otherwise balloon the panel off-screen in a
+  // narrow column. Consumers apply this as `max-width` so the content
+  // truncates instead of overflowing.
+  maxWidth: number;
   maxHeight: number;
   arrowLeft: number;
   placement: "below" | "above";
@@ -131,6 +138,12 @@ function compute(
   if (left > maxLeft) left = maxLeft;
   if (left < minLeft) left = minLeft;
 
+  // Room from the panel's left edge to the far viewport margin. Caps
+  // the rendered width so a `kind: "min"` panel whose intrinsic content
+  // is wider than both its trigger and the remaining space truncates
+  // rather than spilling past the screen edge.
+  const maxWidth = scrollX + win.innerWidth - margin - left;
+
   // Visible viewport bounds. With `coordinateSpace: "viewport"` and
   // `position: fixed` the panel is positioned relative to the layout
   // viewport; iOS shifts the visual viewport up by `offsetTop` to fit
@@ -210,6 +223,7 @@ function compute(
     top,
     left,
     width,
+    maxWidth,
     maxHeight,
     arrowLeft,
     placement: verticalPlacement,
