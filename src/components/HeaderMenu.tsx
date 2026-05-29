@@ -16,12 +16,11 @@ import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { BUILD_LABEL } from "../utils/build-env";
 import { FloatingPanel } from "./FloatingPanel";
+import { useModalDispatch } from "./modal-dispatch";
 
 type Props = {
   user: StoredUser;
   hasOtherUsers: boolean;
-  onOpenSettings: () => void;
-  onOpenChangelog: () => void;
   onSignOut: () => void;
   onSwitchUser: () => void;
   onCreateAccount: () => void;
@@ -44,13 +43,12 @@ const PLACEMENT: FloatingPlacement = {
 export function HeaderMenu({
   user,
   hasOtherUsers,
-  onOpenSettings,
-  onOpenChangelog,
   onSignOut,
   onSwitchUser,
   onCreateAccount,
 }: Props) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -92,8 +90,12 @@ export function HeaderMenu({
             isGuest={isGuest}
             hasOtherUsers={hasOtherUsers}
             donateUrl={donateUrl}
-            onOpenSettings={() => pick(onOpenSettings)}
-            onOpenChangelog={() => pick(onOpenChangelog)}
+            onOpenSettings={() =>
+              pick(() => dispatchModal({ kind: "open-settings" }))
+            }
+            onOpenChangelog={() =>
+              pick(() => dispatchModal({ kind: "open-changelog" }))
+            }
             onSignOut={() => pick(onSignOut)}
             onSwitchUser={() => pick(onSwitchUser)}
             onCreateAccount={() => pick(onCreateAccount)}

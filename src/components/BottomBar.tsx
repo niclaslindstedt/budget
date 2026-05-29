@@ -6,6 +6,7 @@ import { useIsStandalone, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
 import { BulkActionBar } from "./BulkActionBar";
 import { CategoryIconGlyph } from "./icons";
+import { useModalDispatch } from "./modal-dispatch";
 
 type Props = {
   sheets: Sheet[];
@@ -19,8 +20,6 @@ type Props = {
   selectMode: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  onOpenHistory: () => void;
-  onOpenSearch: () => void;
   onToggleSelectMode: () => void;
 
   bulkSelectedCount: number;
@@ -53,8 +52,6 @@ export function BottomBar({
   selectMode,
   onUndo,
   onRedo,
-  onOpenHistory,
-  onOpenSearch,
   onToggleSelectMode,
   bulkSelectedCount,
   onBulkEdit,
@@ -64,6 +61,7 @@ export function BottomBar({
   onBulkCancel,
 }: Props) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const selectLabel = selectMode
     ? t("app.exitSelectMode")
     : t("app.selectRows");
@@ -201,7 +199,7 @@ export function BottomBar({
         <div className="flex shrink-0 items-center gap-0.5 border-l border-line pl-1.5 sm:pl-2">
           <button
             type="button"
-            onClick={onOpenSearch}
+            onClick={() => dispatchModal({ kind: "open-search" })}
             aria-label={t("searchTransaction.open")}
             title={t("searchTransaction.open")}
             className={actionButton}
@@ -230,7 +228,7 @@ export function BottomBar({
           </button>
           <button
             type="button"
-            onClick={onOpenHistory}
+            onClick={() => dispatchModal({ kind: "open-action-history" })}
             aria-label={t("app.actionHistory")}
             title={t("app.actionHistory")}
             className={actionButton}

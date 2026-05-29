@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { type TFunction, useT } from "../i18n";
+import { useModalDispatch } from "./modal-dispatch";
 import type { SaveStatus } from "../storage/useUserDataStorage";
 
 // Single header affordance for cloud-backed sessions: collapses the
@@ -30,7 +31,6 @@ type Props = {
   status: SaveStatus;
   dirty: boolean;
   onSave: () => void;
-  onOpenDetails: () => void;
 };
 
 type View = {
@@ -140,17 +140,15 @@ const TONE_CLASS: Record<View["tone"], string> = {
   flag: "border-flag/50 text-flag hover:bg-flag/10",
 };
 
-export function SyncStatus({
-  providerName,
-  status,
-  dirty,
-  onSave,
-  onOpenDetails,
-}: Props) {
+export function SyncStatus({ providerName, status, dirty, onSave }: Props) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const view = viewFor(status, dirty, providerName, t);
   const busy = status.kind === "saving" || status.kind === "loading";
-  const onClick = view.action === "save" ? onSave : onOpenDetails;
+  const onClick =
+    view.action === "save"
+      ? onSave
+      : () => dispatchModal({ kind: "open-sync-details" });
   return (
     <button
       type="button"
