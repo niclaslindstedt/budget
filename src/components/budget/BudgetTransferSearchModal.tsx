@@ -184,6 +184,14 @@ export function BudgetTransferSearchModal({
       open={open}
       onClose={onClose}
       labelledBy="transaction-search-modal-title"
+      // Match the Settings modal's desktop footprint: wider than the
+      // default `max-w-lg` and pinned to a stable `95svh` so the result
+      // list gets a generous, non-jumping area instead of a cramped card
+      // that resizes as hits come and go. Mobile keeps the `100svh`
+      // fullscreen shell so the soft-keyboard math (`focusOnOpen` →
+      // type-ready input) still keeps the footer above the keyboard.
+      size="max-w-3xl"
+      fixedHeight
       focusOnOpen
     >
       <Modal.Header
