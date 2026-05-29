@@ -367,6 +367,25 @@ export type Action =
       };
     }
   | {
+      // Metadata-mode bulk apply. Stamps the labels the user gave one
+      // history entry onto its lookalikes — every other entry on the
+      // same account whose raw bank description matches `pattern` (a
+      // glob derived from the source entry, dates / ref numbers
+      // stripped). Fills BLANK fields only (a per-entry override on a
+      // match is never overwritten); tags union. The source entry is
+      // excluded — it's saved through `updateHistoryEntry` separately.
+      type: "applyMetadataToMatchingHistory";
+      accountId: string;
+      pattern: string;
+      excludeEntryId: string;
+      patch: {
+        userDescription?: string;
+        userTypeId?: string;
+        userCompanyId?: string;
+        userTagIds?: readonly string[];
+      };
+    }
+  | {
       // Split a bank-statement entry into multiple categorised parts.
       // `splits` is the full decomposition — the validator (and the
       // modal) ensure the signed amounts sum to the entry's bank

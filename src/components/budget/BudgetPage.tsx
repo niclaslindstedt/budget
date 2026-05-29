@@ -34,6 +34,7 @@ import type {
   Row,
   Settings,
   Sheet,
+  Tag,
   Transfer,
   UserData,
 } from "../../data/types";
@@ -163,10 +164,29 @@ type Props = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      userTagIds?: string[];
       isTransfer?: boolean;
       noCompany?: boolean;
     },
   ) => void;
+  // Metadata-mode bulk apply — stamp the labels the user gave one
+  // history entry onto its lookalikes (same account, raw description
+  // matches the derived pattern). Fills blank fields only; tags union.
+  onApplyMetadataToMatchingHistory: (
+    accountId: string,
+    pattern: string,
+    excludeEntryId: string,
+    patch: {
+      userDescription?: string;
+      userTypeId?: string;
+      userCompanyId?: string;
+      userTagIds?: readonly string[];
+    },
+  ) => void;
+  // Tag catalog + creator, threaded to the metadata modal so the user
+  // can tag entries during the metadata walk.
+  tags: readonly Tag[];
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
   // Row-level company writer surfaced by the description popover's
   // inline `CompanyPicker`. Defined at AppShell level so it can route
   // budget rows through `bulkUpdate` and history rows through
@@ -257,6 +277,9 @@ export function BudgetPage({
   onSetFiscalMonthShift,
   onCorrectionDeleteRequest,
   onUpdateHistoryEntry,
+  onApplyMetadataToMatchingHistory,
+  tags,
+  onCreateTag,
   onReorderColumns,
   onToggleSelect,
   onToggleSelectMonth,
@@ -787,12 +810,15 @@ export function BudgetPage({
             types={types}
             categories={categories}
             companies={companies}
+            tags={tags}
             companyTypeSuggestions={companyTypeSuggestions}
             settings={settings}
             onCreateType={onCreateType}
             onCreateCategory={onCreateCategory}
             onCreateCompany={onCreateCompany}
+            onCreateTag={onCreateTag}
             onUpdateHistoryEntry={onUpdateHistoryEntry}
+            onApplyMetadataToMatchingHistory={onApplyMetadataToMatchingHistory}
           />
         </section>
         {showTodayButton &&

@@ -10,6 +10,11 @@ import { Tags } from "lucide-react";
 
 import { autoTypeForCompany } from "../../data/company-type-suggestions";
 import { resolveEntryLabels } from "../../data/budget/synthesis";
+import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
+import {
+  countMatchingMetadataTargets,
+  type HistoryMetadataPatch,
+} from "../../data/budget/pattern-apply";
 import {
   budgetMetadataFormReducer,
   EMPTY_METADATA_FORM_FIELDS,
@@ -25,6 +30,7 @@ import type {
   MatchRule,
   MerchantHint,
   Settings,
+  Tag,
 } from "../../data/types";
 import {
   formatBalance,
@@ -35,6 +41,7 @@ import { indexById } from "../../utils/indexById";
 import { CompanyPicker } from "../CompanyPicker";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
+import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 
 // "Metadata mode" — a focused walk through the history entries that
@@ -66,6 +73,7 @@ type Props = {
   types: readonly EntryType[];
   categories: readonly Category[];
   companies: readonly Company[];
+  tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill. See
   // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
@@ -73,6 +81,7 @@ type Props = {
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
   onUpdateHistoryEntry: (
     accountId: string,
     entryId: string,
@@ -80,14 +89,36 @@ type Props = {
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      userTagIds?: string[];
       isTransfer?: boolean;
       noCompany?: boolean;
     },
+  ) => void;
+  // Stamp the labels the user gave the current entry onto its
+  // lookalikes (same account, raw bank description matches the derived
+  // pattern). Fills blank fields only; tags union. The source entry is
+  // excluded — it's saved through `onUpdateHistoryEntry` separately.
+  onApplyMetadataToMatchingHistory: (
+    accountId: string,
+    pattern: string,
+    excludeEntryId: string,
+    patch: HistoryMetadataPatch,
   ) => void;
 };
 
 function monthKeyOf(iso: string): string {
   return iso.slice(0, 7);
+}
+
+// Order-insensitive equality for two tag-id selections — the picker
+// hands back a fresh array on every toggle, so reference equality can't
+// tell a real change from a re-render. Used by the `dirty` check.
+function sameTagSet(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  if (a.length === 0) return true;
+  const set = new Set(a);
+  for (const id of b) if (!set.has(id)) return false;
+  return true;
 }
 
 function entryNeedsMetadata(
@@ -125,12 +156,15 @@ export function BudgetMetadataModal({
   types,
   categories,
   companies,
+  tags,
   companyTypeSuggestions,
   settings,
   onCreateType,
   onCreateCategory,
   onCreateCompany,
+  onCreateTag,
   onUpdateHistoryEntry,
+  onApplyMetadataToMatchingHistory,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -148,10 +182,15 @@ export function BudgetMetadataModal({
   const [completed, setCompleted] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  // "Also apply to N similar entries" — opt-in per entry, defaults off
+  // so a bulk sweep is never a surprise. Reset when the entry changes
+  // (the save / skip handler advances to a new entry) and on close.
+  const [bulkApply, setBulkApply] = useState(false);
   useEffect(() => {
     if (!open) {
       setSkipped(new Set());
       setCompleted(new Set());
+      setBulkApply(false);
     }
   }, [open]);
 
@@ -236,13 +275,18 @@ export function BudgetMetadataModal({
     EMPTY_METADATA_FORM_FIELDS,
     initialMetadataFormState,
   );
-  const { description, typeId, companyId, noCompany, isTransfer } = form;
+  const { description, typeId, companyId, tagIds, noCompany, isTransfer } =
+    form;
   const setDescription = useCallback(
     (value: string) => dispatchForm({ kind: "setDescription", value }),
     [],
   );
   const setTypeId = useCallback(
     (value: string | null) => dispatchForm({ kind: "setTypeId", value }),
+    [],
+  );
+  const setTagIds = useCallback(
+    (value: string[]) => dispatchForm({ kind: "setTagIds", value }),
     [],
   );
   const setNoCompany = useCallback(
@@ -294,10 +338,16 @@ export function BudgetMetadataModal({
       description: resolved.userDescription ?? "",
       typeId: resolved.typeId,
       companyId: resolved.companyId,
+      // Seed only the entry's own tags (not the rule-contributed union)
+      // — saving replaces the per-entry override, and folding in a
+      // rule's tags would freeze them onto the entry as an override.
+      tagIds: current.userTagIds ?? [],
       noCompany: current.noCompany ?? false,
       isTransfer: current.isTransfer ?? false,
     };
     dispatchForm({ kind: "reset", fields });
+    // Each entry decides afresh whether to fan out to its lookalikes.
+    setBulkApply(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
@@ -318,6 +368,7 @@ export function BudgetMetadataModal({
       userDescription?: string;
       userTypeId?: string | null;
       userCompanyId?: string | null;
+      userTagIds?: string[];
       isTransfer?: boolean;
       noCompany?: boolean;
     } = {};
@@ -329,6 +380,9 @@ export function BudgetMetadataModal({
     }
     if (companyId !== initial.companyId) {
       patch.userCompanyId = companyId;
+    }
+    if (!sameTagSet(tagIds, initial.tagIds)) {
+      patch.userTagIds = tagIds;
     }
     if (isTransfer !== initial.isTransfer) {
       patch.isTransfer = isTransfer;
@@ -344,6 +398,7 @@ export function BudgetMetadataModal({
       patch.userDescription === undefined &&
       patch.userTypeId === undefined &&
       patch.userCompanyId === undefined &&
+      patch.userTagIds === undefined &&
       patch.isTransfer === undefined &&
       patch.noCompany === undefined
     ) {
@@ -361,6 +416,7 @@ export function BudgetMetadataModal({
     description,
     typeId,
     companyId,
+    tagIds,
     noCompany,
     isTransfer,
     form.initial,
@@ -372,9 +428,50 @@ export function BudgetMetadataModal({
     (description.trim() !== form.initial.description.trim() ||
       typeId !== form.initial.typeId ||
       companyId !== form.initial.companyId ||
+      !sameTagSet(tagIds, form.initial.tagIds) ||
       noCompany !== form.initial.noCompany ||
       isTransfer !== form.initial.isTransfer);
-  const canSave = !!accountId && !!current && dirty;
+
+  // Bulk apply: a glob pattern derived from the current entry's raw
+  // bank description (dates / ref numbers stripped, the same derivation
+  // the "Label similar" modal seeds from) plus the labels the form
+  // currently shows. `matchCount` is how many OTHER entries on this
+  // account the pattern matches AND that still lack at least one of the
+  // fields being applied — the number rendered on the opt-in checkbox.
+  const bulkPattern = useMemo(
+    () => (current ? derivePatternFromDescription(current.description) : ""),
+    [current],
+  );
+  const bulkPatch = useMemo<HistoryMetadataPatch>(() => {
+    const patch: HistoryMetadataPatch = {};
+    if (typeId) patch.userTypeId = typeId;
+    if (companyId) patch.userCompanyId = companyId;
+    const trimmed = description.trim();
+    if (trimmed !== "") patch.userDescription = trimmed;
+    if (tagIds.length > 0) patch.userTagIds = tagIds;
+    return patch;
+  }, [typeId, companyId, description, tagIds]);
+  const matchCount = useMemo(() => {
+    if (!current) return 0;
+    return countMatchingMetadataTargets(
+      entries,
+      bulkPattern,
+      bulkPatch,
+      current.id,
+    );
+  }, [entries, bulkPattern, bulkPatch, current]);
+  // Uncheck the bulk option the moment it would no longer do anything
+  // (the user cleared the last field, or no lookalikes remain) so a
+  // stale checkmark can't fire an empty sweep on save.
+  useEffect(() => {
+    if (matchCount === 0 && bulkApply) setBulkApply(false);
+  }, [matchCount, bulkApply]);
+
+  // Save is reachable when the form changed (stamp the current entry)
+  // OR the user opted into a bulk sweep that has targets (even on an
+  // already-resolved entry the user is reviewing).
+  const canSave =
+    !!accountId && !!current && (dirty || (bulkApply && matchCount > 0));
 
   // The field that's still blocking this entry from leaving the queue,
   // computed from the current form state. Drives both the hint shown
@@ -402,7 +499,19 @@ export function BudgetMetadataModal({
 
   const handleSaveClick = useCallback(() => {
     if (canSave) {
+      // Stamp the current entry first (no-op when nothing changed), then
+      // fan the same labels out to its lookalikes when the user opted
+      // in. The sweep excludes the current entry, so the two writes
+      // never collide.
       handleSave();
+      if (bulkApply && matchCount > 0 && accountId && current) {
+        onApplyMetadataToMatchingHistory(
+          accountId,
+          bulkPattern,
+          current.id,
+          bulkPatch,
+        );
+      }
       return;
     }
     // Save is gated. Pulse a ring around the next blocker so the user
@@ -418,7 +527,18 @@ export function BudgetMetadataModal({
     el.removeAttribute("data-field-attention");
     void el.offsetWidth;
     el.setAttribute("data-field-attention", "");
-  }, [canSave, handleSave, stillMissingField]);
+  }, [
+    canSave,
+    handleSave,
+    stillMissingField,
+    bulkApply,
+    matchCount,
+    accountId,
+    current,
+    bulkPattern,
+    bulkPatch,
+    onApplyMetadataToMatchingHistory,
+  ]);
 
   if (!open) return null;
 
@@ -526,6 +646,20 @@ export function BudgetMetadataModal({
                   {t("metadata.descriptionHint")}
                 </span>
               </label>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("metadata.tagsLabel")}
+                </span>
+                <TagsPicker
+                  tags={tags}
+                  selectedIds={tagIds}
+                  onChange={setTagIds}
+                  onCreate={onCreateTag}
+                />
+                <span className="text-xs text-muted">
+                  {t("metadata.tagsHint")}
+                </span>
+              </div>
               <Checkbox
                 checked={isTransfer}
                 onChange={setIsTransfer}
@@ -533,6 +667,20 @@ export function BudgetMetadataModal({
                 description={t("metadata.markAsTransferHint")}
               />
             </div>
+            {matchCount > 0 && (
+              <div className="mt-4 rounded border border-line bg-surface-3 p-3">
+                <Checkbox
+                  checked={bulkApply}
+                  onChange={setBulkApply}
+                  label={
+                    matchCount === 1
+                      ? t("metadata.bulkApplyOne", { n: matchCount })
+                      : t("metadata.bulkApplyOther", { n: matchCount })
+                  }
+                  description={t("metadata.bulkApplyHint")}
+                />
+              </div>
+            )}
           </>
         )}
       </Modal.Body>

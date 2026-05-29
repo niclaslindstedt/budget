@@ -336,6 +336,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onToggleRowTransfer,
     onEditHistoryRequest,
     onUpdateHistoryEntry,
+    onApplyMetadataToMatchingHistory,
     onSetRowCompany,
     onSetRowNoCompany,
     onCorrectionDeleteRequest,
@@ -733,6 +734,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onCopyRequest={onCopyRequest}
                   onSetFiscalMonthShift={onSetFiscalMonthShift}
                   onUpdateHistoryEntry={onUpdateHistoryEntry}
+                  onApplyMetadataToMatchingHistory={
+                    onApplyMetadataToMatchingHistory
+                  }
+                  tags={data.tags}
+                  onCreateTag={onCreateTag}
                   onCorrectionDeleteRequest={onCorrectionDeleteRequest}
                   onReorderColumns={onReorderColumns}
                   onToggleSelect={onToggleSelect}
