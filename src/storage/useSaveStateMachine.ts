@@ -19,6 +19,11 @@ import {
 } from "./adapter";
 import { serializeUserData } from "./file";
 import { readUserDataFromText, tryReadUserDataFromText } from "./local";
+import {
+  backoffDelayMs,
+  isRetryableSaveError,
+  MAX_TRANSIENT_SAVE_RETRIES,
+} from "./save-retry";
 import { createSaveChain } from "./save-chain";
 import {
   isBailStatus,
@@ -38,6 +43,15 @@ const SHRINK_WARN_THRESHOLD = 0.05;
 // going from 0 → small budget should never be challenged, and edits
 // on small files never need a guardrail.
 const SHRINK_WARN_MIN_PREV_BYTES = 4096;
+
+// Sleep for the transient-retry backoff. Lives inside the save chain's
+// in-flight body (not a tracked timer) so the chain stays "busy"
+// during the wait and a queued save coalesces behind it; the loop's
+// post-sleep `isStale()` check bails cleanly if the adapter swapped or
+// a newer save superseded this one while we waited.
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 // Inputs the save path shares with the rest of the storage hook. The
 // hook owns the save chain (serialises overlapping save attempts), the
@@ -159,6 +173,13 @@ export function useSaveStateMachine(params: Params): SaveStateMachine {
   const throttleResumeRef = useRef<number | null>(null);
   const [resumeNonce, setResumeNonce] = useState(0);
 
+  // Count of back-to-back rate limits (HTTP 429) with no successful
+  // save in between. Drives the backoff floor on the throttle path so
+  // a server that keeps returning a tiny `retryAfterMs` escalates the
+  // cooldown instead of letting us resend on a tight loop. Reset to 0
+  // the moment a save lands (success or offline-mirror).
+  const consecutiveThrottlesRef = useRef(0);
+
   const performSave = useCallback(
     (
       text: string,
@@ -222,120 +243,180 @@ export function useSaveStateMachine(params: Params): SaveStateMachine {
             lastSnapshotRef.current?.revision ?? "<none>"
           }`,
         );
-        const start = performance.now();
-        try {
-          const next = await adapter.save(
-            text,
-            lastSnapshotRef.current?.revision,
-          );
-          const ms = (performance.now() - start).toFixed(0);
-          // Record the new revision before the stale check: the cloud
-          // accepted these bytes at this rev, regardless of whether
-          // the in-memory data has moved on while the request was in
-          // flight. Without this, a stale completion leaves
-          // `lastSnapshot.revision` pinned to the OLD rev, the next
-          // save sends that stale rev as `baseRev`, and the cloud
-          // 409s as soon as the content actually changes — surfacing
-          // as a phantom "Sync conflict" popup on a single-device
-          // account. Mirrors the same "bookkeeping outlives the
-          // effect" rule the ConflictError branch below already
-          // follows.
-          lastSnapshotRef.current = next;
-          setLastSavedData(savedData);
-          if (isStale()) {
-            log.info(
-              `save ok but stale (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+        // Retry loop. Status stays `saving` across attempts — a
+        // transient failure (a reachable backend returning 5xx, or a
+        // bare adapter throwing a raw network error the cloud-mirror
+        // didn't already fold into `offline`) reschedules an in-chain
+        // retry with exponential backoff rather than immediately
+        // surfacing a red error. The save chain stays in-flight during
+        // each backoff sleep, so a queued newer save coalesces behind
+        // this one and a fresh edit's effect run supersedes the loop
+        // (its `cancelled` flag flips `isStale()` after the sleep).
+        // Conflict / auth / rate-limit signals each break out to their
+        // dedicated handling and never retry here.
+        let attempt = 0;
+        for (;;) {
+          const start = performance.now();
+          try {
+            const next = await adapter.save(
+              text,
+              lastSnapshotRef.current?.revision,
             );
-            return;
-          }
-          if (next.offline) {
-            dispatchStatus({ kind: "save-offline" });
-            log.info(
-              `save offline (${ms}ms) [${adapter.id}] mirroredRev=${next.revision ?? "<none>"}`,
-            );
-          } else {
-            dispatchStatus({ kind: "save-success" });
-            // The save-state indicator just flipped to "saved" — the
-            // gesture behind the `trustButVerify` achievement. The bus
-            // dedupes, so firing on every successful save is harmless.
-            unlock("trustButVerify");
-            log.info(
-              `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
-            );
-          }
-        } catch (err) {
-          const ms = (performance.now() - start).toFixed(0);
-          // Conflict bookkeeping must happen even if our caller is
-          // now stale (a re-render between `save-start` and the
-          // adapter resolving cancelled the effect). Without
-          // stashing `err.remote` here, the next save reuses the old
-          // baseRev and we loop on the same 409 forever. Setting the
-          // conflict status surfaces the resolution modal AND lands
-          // us in the save effect's bail list so the autosave loop
-          // stops.
-          if (err instanceof ConflictError) {
-            log.warn(
-              `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
-                err.remote.revision ?? "<none>"
-              } hasLocal=${Boolean(err.local)} stale=${isStale()}`,
-            );
-            const remote = readUserDataFromText(err.remote.text, migrationCtx);
-            // The cloud-mirror wrapper attaches `local`; bare cloud
-            // adapters don't, in which case the in-memory `data` is
-            // the freshest local view we have.
-            const local = err.local
-              ? readUserDataFromText(err.local.text, migrationCtx)
-              : data;
-            lastSnapshotRef.current = err.remote;
-            dispatchStatus({ kind: "conflict", local, remote });
-            return;
-          }
-          if (err instanceof RateLimitError) {
-            // Soft pause: schedule a resume timer for the carried
-            // cooldown, then re-run the save effect via a nonce bump
-            // so whatever the user has been editing during the
-            // cooldown lands in a single full-blob save. Like the
-            // conflict branch, this runs before the stale check — the
-            // throttle applies to the whole adapter, not to a single
-            // in-flight request, so a stale completion still needs to
-            // set up the cooldown bookkeeping.
-            const until = Date.now() + err.retryAfterMs;
-            log.warn(
-              `save throttled (${ms}ms) [${adapter.id}] retryAfter=${err.retryAfterMs}ms until=${until}`,
-            );
-            if (throttleResumeRef.current !== null) {
-              window.clearTimeout(throttleResumeRef.current);
+            const ms = (performance.now() - start).toFixed(0);
+            // Record the new revision before the stale check: the cloud
+            // accepted these bytes at this rev, regardless of whether
+            // the in-memory data has moved on while the request was in
+            // flight. Without this, a stale completion leaves
+            // `lastSnapshot.revision` pinned to the OLD rev, the next
+            // save sends that stale rev as `baseRev`, and the cloud
+            // 409s as soon as the content actually changes — surfacing
+            // as a phantom "Sync conflict" popup on a single-device
+            // account. Mirrors the same "bookkeeping outlives the
+            // effect" rule the ConflictError branch below already
+            // follows.
+            lastSnapshotRef.current = next;
+            setLastSavedData(savedData);
+            // A save landed — clear the consecutive-throttle escalation
+            // so a future 429 starts its backoff curve from scratch.
+            consecutiveThrottlesRef.current = 0;
+            if (isStale()) {
+              log.info(
+                `save ok but stale (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+              );
+              return;
             }
-            throttleResumeRef.current = window.setTimeout(() => {
-              throttleResumeRef.current = null;
-              // Only resume if we're still in the throttled state we
-              // set ourselves — an intervening adapter swap or other
-              // status change shouldn't be clobbered with `idle`.
-              if (statusRef.current.kind === "throttled") {
-                log.info(
-                  `save throttle cleared [${adapter.id}] — resuming autosave`,
-                );
-                dispatchStatus({ kind: "idle" });
-                setResumeNonce((n) => n + 1);
+            if (next.offline) {
+              dispatchStatus({ kind: "save-offline" });
+              log.info(
+                `save offline (${ms}ms) [${adapter.id}] mirroredRev=${next.revision ?? "<none>"}`,
+              );
+            } else {
+              dispatchStatus({ kind: "save-success" });
+              // The save-state indicator just flipped to "saved" — the
+              // gesture behind the `trustButVerify` achievement. The bus
+              // dedupes, so firing on every successful save is harmless.
+              unlock("trustButVerify");
+              log.info(
+                `save ok (${ms}ms) [${adapter.id}] newRev=${next.revision ?? "<none>"}`,
+              );
+            }
+            return;
+          } catch (err) {
+            const ms = (performance.now() - start).toFixed(0);
+            // Conflict bookkeeping must happen even if our caller is
+            // now stale (a re-render between `save-start` and the
+            // adapter resolving cancelled the effect). Without
+            // stashing `err.remote` here, the next save reuses the old
+            // baseRev and we loop on the same 409 forever. Setting the
+            // conflict status surfaces the resolution modal AND lands
+            // us in the save effect's bail list so the autosave loop
+            // stops.
+            if (err instanceof ConflictError) {
+              log.warn(
+                `save conflict (${ms}ms) [${adapter.id}] remoteRev=${
+                  err.remote.revision ?? "<none>"
+                } hasLocal=${Boolean(err.local)} stale=${isStale()}`,
+              );
+              const remote = readUserDataFromText(
+                err.remote.text,
+                migrationCtx,
+              );
+              // The cloud-mirror wrapper attaches `local`; bare cloud
+              // adapters don't, in which case the in-memory `data` is
+              // the freshest local view we have.
+              const local = err.local
+                ? readUserDataFromText(err.local.text, migrationCtx)
+                : data;
+              lastSnapshotRef.current = err.remote;
+              dispatchStatus({ kind: "conflict", local, remote });
+              return;
+            }
+            if (err instanceof RateLimitError) {
+              // Soft pause: schedule a resume timer for the cooldown,
+              // then re-run the save effect via a nonce bump so
+              // whatever the user has been editing during the cooldown
+              // lands in a single full-blob save. Like the conflict
+              // branch, this runs before the stale check — the throttle
+              // applies to the whole adapter, not to a single in-flight
+              // request, so a stale completion still needs to set up the
+              // cooldown bookkeeping. The server's `retryAfterMs` is
+              // floored against the backoff curve and escalated per
+              // consecutive 429, so a server returning a tiny (or zero)
+              // cooldown can't pull us into a tight resend loop. No
+              // budget here on purpose: giving up on a rate limit would
+              // surface a red error and stop autosave, which is worse
+              // than continuing to wait.
+              const floorMs = backoffDelayMs(consecutiveThrottlesRef.current);
+              consecutiveThrottlesRef.current += 1;
+              const waitMs = Math.max(err.retryAfterMs, floorMs);
+              const until = Date.now() + waitMs;
+              log.warn(
+                `save throttled (${ms}ms) [${adapter.id}] retryAfter=${err.retryAfterMs}ms floor=${floorMs}ms wait=${waitMs}ms until=${until}`,
+              );
+              if (throttleResumeRef.current !== null) {
+                window.clearTimeout(throttleResumeRef.current);
               }
-            }, err.retryAfterMs);
-            dispatchStatus({ kind: "throttled", until });
+              throttleResumeRef.current = window.setTimeout(() => {
+                throttleResumeRef.current = null;
+                // Only resume if we're still in the throttled state we
+                // set ourselves — an intervening adapter swap or other
+                // status change shouldn't be clobbered with `idle`.
+                if (statusRef.current.kind === "throttled") {
+                  log.info(
+                    `save throttle cleared [${adapter.id}] — resuming autosave`,
+                  );
+                  dispatchStatus({ kind: "idle" });
+                  setResumeNonce((n) => n + 1);
+                }
+              }, waitMs);
+              dispatchStatus({ kind: "throttled", until });
+              return;
+            }
+            if (isStale()) {
+              log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
+              return;
+            }
+            if (err instanceof AuthError) {
+              log.warn(`save auth failed (${ms}ms) [${adapter.id}]`, err);
+              dispatchStatus({ kind: "auth-error", message: err.message });
+              return;
+            }
+            // Transient backend hiccup: retry in-chain with bounded
+            // exponential backoff before giving up. The sleep keeps the
+            // save chain busy so queued saves coalesce behind it; after
+            // the sleep we re-check `isStale()` so a superseding save or
+            // an adapter swap abandons the loop cleanly.
+            if (
+              isRetryableSaveError(err) &&
+              attempt < MAX_TRANSIENT_SAVE_RETRIES
+            ) {
+              const waitMs = backoffDelayMs(attempt);
+              attempt += 1;
+              log.warn(
+                `save failed (${ms}ms) [${adapter.id}] — retrying in ${waitMs}ms (attempt ${attempt}/${MAX_TRANSIENT_SAVE_RETRIES})`,
+                err,
+              );
+              await delay(waitMs);
+              if (isStale()) {
+                log.info(
+                  `save retry abandoned (stale during backoff) [${adapter.id}]`,
+                );
+                return;
+              }
+              continue;
+            }
+            log.error(
+              `save failed (${ms}ms) [${adapter.id}] — giving up after ${attempt} ${
+                attempt === 1 ? "retry" : "retries"
+              }`,
+              err,
+            );
+            dispatchStatus({
+              kind: "error",
+              message: err instanceof Error ? err.message : String(err),
+            });
             return;
           }
-          if (isStale()) {
-            log.info(`save failed but stale (${ms}ms) [${adapter.id}]`, err);
-            return;
-          }
-          if (err instanceof AuthError) {
-            log.warn(`save auth failed (${ms}ms) [${adapter.id}]`, err);
-            dispatchStatus({ kind: "auth-error", message: err.message });
-            return;
-          }
-          log.error(`save failed (${ms}ms) [${adapter.id}]`, err);
-          dispatchStatus({
-            kind: "error",
-            message: err instanceof Error ? err.message : String(err),
-          });
         }
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
