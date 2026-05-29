@@ -28,6 +28,7 @@ import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
 import { useLang, useT, type TFunction } from "../../i18n";
 import { formatDate, formatNumber, withCurrency } from "../../utils/format";
+import { isIosDevice } from "../../utils/platform";
 import { BudgetTransferSearchFilterMenu } from "./BudgetTransferSearchFilterMenu";
 import { BulkActionBar } from "../BulkActionBar";
 import { FloatingPanel } from "../FloatingPanel";
@@ -160,9 +161,19 @@ export function BudgetTransferSearchModal({
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    // Enter jumps to the top hit — suppressed in select mode, where the
-    // list is a multi-pick surface rather than a navigation shortcut.
-    if (!selectMode && e.key === "Enter" && results.length > 0) {
+    if (selectMode || e.key !== "Enter") return;
+    // On iOS the soft keyboard's "Search" key is the only Enter source,
+    // and the user almost always means "I'm done typing, show me the
+    // results" — not "jump to the top hit and close the modal", which
+    // strands them with no chance to scan the list they just searched.
+    // Dismiss the keyboard (blur) so the results come into view instead.
+    if (isIosDevice()) {
+      e.preventDefault();
+      e.currentTarget.blur();
+      return;
+    }
+    // Elsewhere Enter is a physical Return — jump straight to the top hit.
+    if (results.length > 0) {
       e.preventDefault();
       onPick(results[0].entry);
     }
