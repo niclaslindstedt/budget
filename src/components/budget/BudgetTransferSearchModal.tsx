@@ -8,6 +8,7 @@ import {
   CalendarArrowUp,
   Filter,
   Landmark,
+  ListChecks,
   Search,
   Sparkles,
   Tag,
@@ -35,6 +36,7 @@ import {
   formatNumber,
   withCurrency,
 } from "../../utils/format";
+import { BulkActionBar } from "../BulkActionBar";
 import { FloatingPanel } from "../FloatingPanel";
 import { Checkbox, ClearableInput, RangeSlider } from "../form";
 import { CategoryIconGlyph } from "../icons";
@@ -58,6 +60,22 @@ type Props = {
   index: readonly SearchEntry[];
   settings: Settings;
   onPick: (entry: SearchEntry) => void;
+  // Select-many wiring. Drives the same `useBulkSelection` instance and
+  // the same bulk modals the BottomBar uses, so results can be picked in
+  // bulk and run through Edit / Move / Copy / Delete. Selection is locked
+  // to one sheet at a time (the active sheet); only `kind === "user"`
+  // rows are selectable.
+  selectMode: boolean;
+  selectedIds: ReadonlySet<string>;
+  activeSheetId: string;
+  onToggleSelectMode: () => void;
+  onToggleSelect: (rowId: string) => void;
+  onSelectSheet: (sheetId: string) => void;
+  onBulkEdit: () => void;
+  onBulkMove: () => void;
+  onBulkCopy: () => void;
+  onBulkDelete: () => void;
+  onBulkCancel: () => void;
 };
 
 const SORT_MENU_PLACEMENT: FloatingPlacement = {
@@ -128,6 +146,17 @@ export function BudgetTransferSearchModal({
   index,
   settings,
   onPick,
+  selectMode,
+  selectedIds,
+  activeSheetId,
+  onToggleSelectMode,
+  onToggleSelect,
+  onSelectSheet,
+  onBulkEdit,
+  onBulkMove,
+  onBulkCopy,
+  onBulkDelete,
+  onBulkCancel,
 }: Props) {
   const t = useT();
 
@@ -136,9 +165,27 @@ export function BudgetTransferSearchModal({
     [index, query, sort, filter],
   );
   const filterActive = isFilterActive(filter);
+  const selectLabel = selectMode
+    ? t("app.exitSelectMode")
+    : t("app.selectRows");
+
+  // Toggle a result's selection, first switching the active sheet to its
+  // sheet when starting a fresh selection — bulk ops dispatch against the
+  // active sheet, so the selection has to live there. Once a selection
+  // exists, off-sheet results are non-selectable, so this only ever
+  // switches on the first pick.
+  const toggleEntry = useCallback(
+    (entry: SearchEntry) => {
+      if (entry.sheetId !== activeSheetId) onSelectSheet(entry.sheetId);
+      onToggleSelect(entry.rowId);
+    },
+    [activeSheetId, onSelectSheet, onToggleSelect],
+  );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && results.length > 0) {
+    // Enter jumps to the top hit — suppressed in select mode, where the
+    // list is a multi-pick surface rather than a navigation shortcut.
+    if (!selectMode && e.key === "Enter" && results.length > 0) {
       e.preventDefault();
       onPick(results[0].entry);
     }
@@ -180,6 +227,20 @@ export function BudgetTransferSearchModal({
                 settings={settings}
               />
               <SortMenu sort={sort} onSortChange={onSortChange} />
+              <button
+                type="button"
+                onClick={onToggleSelectMode}
+                aria-pressed={selectMode}
+                aria-label={selectLabel}
+                title={selectLabel}
+                className={`inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+                  selectMode
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted hover:bg-surface-2 hover:text-fg"
+                }`}
+              >
+                <ListChecks size={16} aria-hidden focusable={false} />
+              </button>
             </div>
           </div>
         </div>
@@ -193,26 +254,49 @@ export function BudgetTransferSearchModal({
           </p>
         ) : (
           <ol className="flex flex-col">
-            {results.map((result) => (
-              <li key={`${result.entry.sheetId}:${result.entry.rowId}`}>
-                <ResultRow
-                  result={result}
-                  settings={settings}
-                  onPick={onPick}
-                />
-              </li>
-            ))}
+            {results.map((result) => {
+              const { entry } = result;
+              const selectable =
+                entry.kind === "user" &&
+                (selectedIds.size === 0 || entry.sheetId === activeSheetId);
+              return (
+                <li key={`${entry.sheetId}:${entry.rowId}`}>
+                  <ResultRow
+                    result={result}
+                    settings={settings}
+                    onPick={onPick}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(entry.rowId)}
+                    selectable={selectable}
+                    onToggle={() => toggleEntry(entry)}
+                  />
+                </li>
+              );
+            })}
           </ol>
         )}
       </Modal.Body>
       <Modal.Footer>
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded bg-surface-3 px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface"
-        >
-          {t("common.close")}
-        </button>
+        {selectMode ? (
+          <div className="flex w-full items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <BulkActionBar
+              selectedCount={selectedIds.size}
+              onEdit={onBulkEdit}
+              onMove={onBulkMove}
+              onCopy={onBulkCopy}
+              onDelete={onBulkDelete}
+              onCancel={onBulkCancel}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded bg-surface-3 px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface"
+          >
+            {t("common.close")}
+          </button>
+        )}
       </Modal.Footer>
     </Modal>
   );
@@ -222,10 +306,18 @@ function ResultRow({
   result,
   settings,
   onPick,
+  selectMode,
+  selected,
+  selectable,
+  onToggle,
 }: {
   result: SearchResult;
   settings: Settings;
   onPick: (entry: SearchEntry) => void;
+  selectMode: boolean;
+  selected: boolean;
+  selectable: boolean;
+  onToggle: () => void;
 }) {
   const t = useT();
   const lang = useLang();
@@ -243,16 +335,43 @@ function ResultRow({
       : entry.amount !== null && entry.amount > 0
         ? "text-positive"
         : "text-muted";
+  // In select mode the row toggles selection (only for selectable
+  // user-rows); otherwise it navigates. Non-selectable rows in select
+  // mode are inert and dimmed.
+  const disabled = selectMode && !selectable;
+  const description = entry.description || t("common.untitled");
   return (
     <button
       type="button"
-      onClick={() => onPick(entry)}
-      aria-label={t("searchTransaction.resultAria", {
-        sheet: entry.sheetName,
-        description: entry.description || t("common.untitled"),
-      })}
-      className="flex w-full cursor-pointer items-start gap-3 border-b border-line px-3 py-2.5 text-left text-sm transition-colors hover:bg-surface-2 sm:px-4"
+      onClick={selectMode ? onToggle : () => onPick(entry)}
+      disabled={disabled}
+      aria-pressed={selectMode && selectable ? selected : undefined}
+      aria-label={
+        selectMode
+          ? t("searchTransaction.selectResult", { description })
+          : t("searchTransaction.resultAria", {
+              sheet: entry.sheetName,
+              description,
+            })
+      }
+      className={`flex w-full items-start gap-3 border-b border-line px-3 py-2.5 text-left text-sm transition-colors sm:px-4 ${
+        disabled
+          ? "cursor-default opacity-40"
+          : "cursor-pointer hover:bg-surface-2"
+      }`}
     >
+      {selectMode && selectable && (
+        <span
+          aria-hidden
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+            selected
+              ? "border-accent bg-accent text-page-bg"
+              : "border-muted text-transparent"
+          }`}
+        >
+          ✓
+        </span>
+      )}
       <span
         aria-hidden
         className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center"

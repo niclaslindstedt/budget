@@ -32,6 +32,7 @@ const searchTransaction = {
   filterDateMin: "Earliest date",
   filterDateMax: "Latest date",
   filterReset: "Reset filters",
+  selectResult: "Select {description}",
 } as const;
 
 export type SearchTransactionCatalog = Widen<typeof searchTransaction>;
