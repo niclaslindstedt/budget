@@ -74,6 +74,7 @@ const presetTypes = {
   "sick-pay": "Sick pay",
   dividends: "Dividends",
   "side-income": "Side income",
+  reimbursement: "Reimbursement",
   "gift-received": "Gifts received",
   savings: "Savings",
   "child-savings": "Child savings",
