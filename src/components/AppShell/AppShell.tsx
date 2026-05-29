@@ -13,7 +13,6 @@ import { useChangelogState } from "./hooks/useChangelogState";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
 import { useEditPrompts } from "./hooks/useEditPrompts";
-import { useHistoryEntryActions } from "./hooks/useHistoryEntryActions";
 import { useRowMutations } from "./hooks/useRowMutations";
 import { useSearchModal } from "./hooks/useSearchModal";
 import { useSettingsModal } from "./hooks/useSettingsModal";
@@ -22,7 +21,6 @@ import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
-import { usePromptDerivations } from "./hooks/usePromptDerivations";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
 import { useSheetNav } from "./hooks/useSheetNav";
 import { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
@@ -170,12 +168,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   });
   // Account ids for the import-history and view-history modals.
   const deletePrompts = useDeletePrompts();
-  const {
-    setDeletePrompt,
-    setCorrectionDeletePrompt,
-    historyEditPrompt,
-    setHistoryEditPrompt,
-  } = deletePrompts;
+  const { setDeletePrompt, setCorrectionDeletePrompt, setHistoryEditPrompt } =
+    deletePrompts;
   // null = closed; otherwise the sheet the user is downloading. The
 
   const activeSheet =
@@ -514,26 +508,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onCopyRequest,
   } = bulkSelection;
 
-  const promptDerivations = usePromptDerivations({
-    editPrompt: editPrompts.editPrompt,
-    editRowPrompt: editPrompts.editRowPrompt,
-    splitPrompt: editPrompts.splitPrompt,
-    deletePrompt: deletePrompts.deletePrompt,
-    historyEditPrompt,
-    activeItem,
-    dateCol,
-    data,
-  });
-
   const matchRuleUi = useMatchRuleUi({ data, activeItem, dispatch, toast });
   const { onMatchRuleRequest } = matchRuleUi;
-
-  const historyEntryActions = useHistoryEntryActions({
-    activeAccountId: activeItem.accountId,
-    historyEditPrompt,
-    dispatch,
-    setHistoryEditPrompt,
-  });
 
   return (
     // The BottomBar is `position: sticky; bottom: 0` in browser
@@ -862,11 +838,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         dispatch={dispatch}
         editPrompts={editPrompts}
         deletePrompts={deletePrompts}
-        promptDerivations={promptDerivations}
         complexEntry={complexEntry}
         matchRuleUi={matchRuleUi}
         bulkSelection={bulkSelection}
-        historyEntryActions={historyEntryActions}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
