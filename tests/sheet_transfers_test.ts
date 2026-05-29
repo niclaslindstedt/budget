@@ -26,7 +26,7 @@ import type {
 function workspace(transfers: Transfer[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 46,
+    version: 47,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [

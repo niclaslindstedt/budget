@@ -208,9 +208,53 @@ export type CommonSettings = {
   // auto-fill off so a user who finds it presumptuous can opt out
   // without losing the rest of the picker's behaviour.
   companyTypeAutoFillMinOccurrences: number;
+  // How the transaction search modal ranks hits. Exposed end-to-end in
+  // the Search settings tab so the user can re-weight what "relevant"
+  // means for their own ledger. See `SearchRankingSettings`.
+  searchRanking: SearchRankingSettings;
 };
 
 export type TransactionSortOrder = "newestFirst" | "oldestFirst";
+
+// Per-field importance weights for the search ranker. Higher = ranks
+// earlier. The keys mirror the searchable text fields the index
+// projects (see `src/data/search.ts`); a hit in a higher-weighted
+// field outranks a hit in a lower-weighted one once match quality
+// (whole-word vs mid-word) is equal. Bounded 0..10 by the validator.
+export type SearchFieldWeights = {
+  description: number;
+  tag: number;
+  company: number;
+  type: number;
+  category: number;
+  bankDescription: number;
+};
+
+// User-tunable knobs for the transaction-search ranker, all editable
+// from the Search settings tab. Defaults live in `DEFAULT_SEARCH_RANKING`
+// and encode the out-of-the-box behaviour: match quality dominates,
+// description > tag > company > type > category > bank text, recency
+// breaks ties, amounts match within ±20%.
+export type SearchRankingSettings = {
+  // Which axis dominates the sort. `"quality"` puts a clean whole-word
+  // match ahead of a mid-word substring even when the substring sits in
+  // a higher-weighted field; `"field"` keeps field priority on top and
+  // uses match quality only to break ties within a field.
+  priority: "quality" | "field";
+  // How recency influences the order. `"tiebreak"` only separates rows
+  // that are otherwise equal (newest first); `"boost"` lets a recent
+  // row edge out a slightly stronger older one within the same
+  // field + quality tier; `"off"` ignores dates entirely.
+  recency: "off" | "tiebreak" | "boost";
+  fieldWeights: SearchFieldWeights;
+  // Half-width of the amount-match band as a percentage of the queried
+  // value: a query of 100 at 20% matches rows with |amount| in 80..120.
+  // Bounded 0..100.
+  amountTolerancePct: number;
+  // Cap on rendered results. The hit counter still reports the full
+  // pre-cap total. One of a small set of allowed values.
+  maxResults: number;
+};
 
 // Persisted shape of `UserData.settings`. Common fields stay flat at
 // the top level so the rest of the codebase (which reads

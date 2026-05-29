@@ -39,6 +39,7 @@ import {
   LogsTab,
   MemoryTab,
   PatternsTab,
+  SearchTab,
   TagsTab,
   type SettingsTabId,
   StorageTab,
@@ -435,6 +436,9 @@ export function SettingsModal({
                 detectedPayday={detectedPayday}
                 sheets={data.sheets}
               />
+            )}
+            {activeTab === "search" && (
+              <SearchTab draft={draft} onUpdate={update} />
             )}
             {activeTab === "appearance" && (
               <AppearanceTab draft={draft} onUpdate={update} />

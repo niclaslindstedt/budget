@@ -3,7 +3,11 @@ import {
   DEFAULT_DEVICE_SETTINGS_MOBILE,
   DEFAULT_DOWNLOAD_ACCOUNTS,
   DEFAULT_DOWNLOAD_BUDGET,
+  DEFAULT_SEARCH_RANKING,
   DEFAULT_SETTINGS,
+  SEARCH_FIELD_WEIGHT_MAX,
+  SEARCH_FIELD_WEIGHT_MIN,
+  SEARCH_MAX_RESULTS_OPTIONS,
 } from "../constants/defaults";
 import {
   MAX_FONT_SCALE,
@@ -18,6 +22,8 @@ import type {
   DeviceSettings,
   HeaderAction,
   PersistedSettings,
+  SearchFieldWeights,
+  SearchRankingSettings,
 } from "../types";
 import {
   DATE_FORMAT_SET,
@@ -85,11 +91,16 @@ function clonePersistedDefaults(): PersistedSettings {
     futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
     companyTypeAutoFillMinOccurrences:
       DEFAULT_SETTINGS.companyTypeAutoFillMinOccurrences,
+    searchRanking: cloneSearchRanking(DEFAULT_SEARCH_RANKING),
     device: {
       mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
       desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
     },
   };
+}
+
+function cloneSearchRanking(r: SearchRankingSettings): SearchRankingSettings {
+  return { ...r, fieldWeights: { ...r.fieldWeights } };
 }
 
 function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
@@ -213,6 +224,7 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     raw.companyTypeAutoFillMinOccurrences <= 1000
       ? raw.companyTypeAutoFillMinOccurrences
       : DEFAULT_SETTINGS.companyTypeAutoFillMinOccurrences;
+  const searchRanking = validateSearchRanking(raw.searchRanking);
   return {
     startOfMonth,
     dateFormat,
@@ -236,6 +248,59 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     showFutureEntries,
     futureEntryMonths,
     companyTypeAutoFillMinOccurrences,
+    searchRanking,
+  };
+}
+
+// Each knob falls back to its default independently so a stray
+// hand-edit to one field can't wipe the rest of the ranking config.
+function validateSearchRanking(raw: unknown): SearchRankingSettings {
+  if (!isObject(raw)) return cloneSearchRanking(DEFAULT_SEARCH_RANKING);
+  const priority =
+    raw.priority === "quality" || raw.priority === "field"
+      ? raw.priority
+      : DEFAULT_SEARCH_RANKING.priority;
+  const recency =
+    raw.recency === "off" ||
+    raw.recency === "tiebreak" ||
+    raw.recency === "boost"
+      ? raw.recency
+      : DEFAULT_SEARCH_RANKING.recency;
+  const amountTolerancePct =
+    typeof raw.amountTolerancePct === "number" &&
+    Number.isFinite(raw.amountTolerancePct) &&
+    raw.amountTolerancePct >= 0 &&
+    raw.amountTolerancePct <= 100
+      ? Math.round(raw.amountTolerancePct)
+      : DEFAULT_SEARCH_RANKING.amountTolerancePct;
+  const maxResults = (SEARCH_MAX_RESULTS_OPTIONS as readonly number[]).includes(
+    raw.maxResults as number,
+  )
+    ? (raw.maxResults as number)
+    : DEFAULT_SEARCH_RANKING.maxResults;
+  const rawWeights = isObject(raw.fieldWeights) ? raw.fieldWeights : {};
+  const weight = (key: keyof SearchFieldWeights): number => {
+    const v = rawWeights[key];
+    return typeof v === "number" &&
+      Number.isInteger(v) &&
+      v >= SEARCH_FIELD_WEIGHT_MIN &&
+      v <= SEARCH_FIELD_WEIGHT_MAX
+      ? v
+      : DEFAULT_SEARCH_RANKING.fieldWeights[key];
+  };
+  return {
+    priority,
+    recency,
+    amountTolerancePct,
+    maxResults,
+    fieldWeights: {
+      description: weight("description"),
+      tag: weight("tag"),
+      company: weight("company"),
+      type: weight("type"),
+      category: weight("category"),
+      bankDescription: weight("bankDescription"),
+    },
   };
 }
 

@@ -59,6 +59,8 @@ export type {
   DeviceSettings,
   HeaderAction,
   PersistedSettings,
+  SearchFieldWeights,
+  SearchRankingSettings,
   Settings,
   TransactionSortOrder,
 } from "./settings";

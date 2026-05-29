@@ -6,6 +6,7 @@ import {
   type LucideIcon,
   Palette,
   ScrollText,
+  Search,
   Settings as SettingsIcon,
   Sliders,
   Tag,
@@ -22,6 +23,7 @@ import { GeneralTab } from "./general";
 import { LogsTab } from "./logs";
 import { MemoryTab } from "./memory";
 import { PatternsTab } from "./patterns";
+import { SearchTab } from "./search";
 import { StorageTab } from "./storage";
 import { TagsTab } from "./tags";
 
@@ -35,6 +37,7 @@ export {
   LogsTab,
   MemoryTab,
   PatternsTab,
+  SearchTab,
   StorageTab,
   TagsTab,
 };
@@ -62,6 +65,7 @@ export type TabEntry = {
 
 export const TAB_REGISTRY: readonly TabEntry[] = [
   { id: "general", icon: Sliders },
+  { id: "search", icon: Search },
   { id: "appearance", icon: Palette },
   { id: "format", icon: Hash },
   { id: "storage", icon: HardDrive },
@@ -84,6 +88,7 @@ export const TAB_REGISTRY: readonly TabEntry[] = [
 
 export type SettingsTabId =
   | "general"
+  | "search"
   | "appearance"
   | "format"
   | "storage"

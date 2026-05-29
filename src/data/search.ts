@@ -1,3 +1,7 @@
+import {
+  DEFAULT_SEARCH_RANKING,
+  SEARCH_FIELD_WEIGHT_MAX,
+} from "./constants/defaults";
 import { allCategories, allTypes } from "./presets/merge";
 import { buildVisibleRows } from "./budget/rows";
 import { findColumnByType } from "./sheet";
@@ -9,12 +13,14 @@ import type {
   HistoryEntry,
   Row,
   RowKind,
+  SearchRankingSettings,
   Sheet,
   Tag,
   UserData,
 } from "./types";
 import type { TFunction } from "../i18n";
 import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
+import { todayIso } from "../utils/date";
 import { parseAmount } from "../utils/format";
 
 // Flattened, search-friendly projection of one row that the user sees
@@ -144,7 +150,7 @@ export type SearchSort =
   | "amount-desc";
 
 // Caller-selected refinements applied on top of the query inside
-// `runSearch`, BEFORE the MAX_RESULTS cap so a deliberately narrowed
+// `runSearch`, BEFORE the result cap so a deliberately narrowed
 // range can't be starved by 50 unrelated rows scoring higher. An
 // all-default filter is a no-op; `isFilterActive` detects that to drive
 // the accent highlight on the Filter glyph and to keep the empty-query
@@ -263,6 +269,7 @@ export function searchBounds(
   index: readonly SearchEntry[],
   query: string,
   filter: SearchFilter,
+  ranking: SearchRankingSettings = DEFAULT_SEARCH_RANKING,
 ): IndexBounds {
   // Strip the range constraints; keep the categorical ones.
   const categorical: SearchFilter = {
@@ -285,7 +292,8 @@ export function searchBounds(
   const matched: SearchEntry[] = [];
   for (const entry of index) {
     if (!matchesFilter(entry, categorical)) continue;
-    if (scoreEntry(entry, needle, parsedAmount) !== null) matched.push(entry);
+    if (scoreEntry(entry, needle, parsedAmount, ranking) !== null)
+      matched.push(entry);
   }
   return indexBounds(matched);
 }
@@ -477,48 +485,10 @@ function visibleRowsFor(
   );
 }
 
-// Amount matches accept any row whose amount sits within ±20% of the
-// queried value. Picked over a fixed band ("within 50") because both
-// 5 and 50000 should have a sensible window. Tweak via this constant
-// if it ever feels too loose or too tight.
-const AMOUNT_TOLERANCE = 0.2;
-
-// Score weights for text matches, lower = better. Description hits
-// outrank everything else — it's the most specific identifier on a
-// row — followed by company name, type name, and category name in
-// that order. Company sits above type / category because the
-// merchant the row paid is a more specific signal than the bucket
-// it falls into, but below description because the user's own
-// words on the row beat a tag they share with every other row to
-// the same merchant. Bank description sits at the bottom of the
-// text tier: it's a fallback signal for historic rows whose
-// visible description got replaced by a company / type tag, so a
-// hit there should only surface when none of the visible fields
-// match.
-const FIELD_WEIGHT: Record<
-  | "description"
-  | "companyName"
-  | "tagNames"
-  | "typeName"
-  | "categoryName"
-  | "bankDescription",
-  number
-> = {
-  description: 0,
-  companyName: 1,
-  // Tags sit just below the company: a user-applied label is a strong,
-  // deliberate signal — more specific than the type/category bucket but
-  // less specific than the merchant the row paid.
-  tagNames: 2,
-  typeName: 3,
-  categoryName: 4,
-  bankDescription: 5,
-};
-
-// The searchable text fields paired with their pre-lowercased mirror,
-// in field-priority order. Hoisted to module scope so both `runSearch`
-// and `scoreEntry` share one allocation instead of rebuilding the
-// literal per call.
+// The searchable text fields paired with their pre-lowercased mirror
+// and the `SearchFieldWeights` key the user's importance slider lives
+// under. Hoisted to module scope so the scorer shares one allocation
+// instead of rebuilding the literal per call.
 const TEXT_FIELDS: {
   name:
     | "description"
@@ -534,64 +504,171 @@ const TEXT_FIELDS: {
     | "companyNameLc"
     | "tagNamesLc"
     | "bankDescriptionLc";
+  weightKey: keyof SearchRankingSettings["fieldWeights"];
 }[] = [
-  { name: "description", lcKey: "descriptionLc" },
-  { name: "companyName", lcKey: "companyNameLc" },
-  { name: "tagNames", lcKey: "tagNamesLc" },
-  { name: "typeName", lcKey: "typeNameLc" },
-  { name: "categoryName", lcKey: "categoryNameLc" },
-  { name: "bankDescription", lcKey: "bankDescriptionLc" },
+  { name: "description", lcKey: "descriptionLc", weightKey: "description" },
+  { name: "companyName", lcKey: "companyNameLc", weightKey: "company" },
+  { name: "tagNames", lcKey: "tagNamesLc", weightKey: "tag" },
+  { name: "typeName", lcKey: "typeNameLc", weightKey: "type" },
+  { name: "categoryName", lcKey: "categoryNameLc", weightKey: "category" },
+  {
+    name: "bankDescription",
+    lcKey: "bankDescriptionLc",
+    weightKey: "bankDescription",
+  },
 ];
+
+// Composite-score magnitudes (lower = better). The dominant axis gets
+// PRIMARY, the secondary axis SECONDARY; position-within-field sits
+// below both so it only ever breaks a quality+field tie. The bands are
+// spaced so no lower tier can ever bleed into a higher one: field tiers
+// span 0..10 → max 10 × SECONDARY = 10_000 < PRIMARY, quality spans
+// 0..3 → max 3 × SECONDARY = 3_000 < PRIMARY, and position is capped at
+// 999 < SECONDARY.
+const PRIMARY = 1_000_000;
+const SECONDARY = 1_000;
+const MAX_POSITION = 999;
+
+// Match-quality tiers (lower = cleaner). A whole-word hit reads as more
+// relevant than the same letters buried mid-word, so "car" as its own
+// word beats "car" inside "Carlo".
+const QUALITY_EXACT = 0; // the whole field equals the needle
+const QUALITY_WHOLE_WORD = 1; // needle bounded by word edges on both sides
+const QUALITY_WORD_PREFIX = 2; // needle starts a word but the word continues
+const QUALITY_SUBSTRING = 3; // mid-word / suffix
+
+// Recency decays over five years: a hit that old contributes a full
+// unit of "oldness", anything older clamps to the same. Recent /
+// future-dated rows clamp to 0. Used only to order rows the ranking
+// otherwise ties (or, in "boost" mode, to let a recent row edge out a
+// slightly stronger older one — see `sortByRelevance`).
+const RECENCY_HORIZON_DAYS = 5 * 365;
+const MS_PER_DAY = 86_400_000;
+// How far a maximally-recent row can climb in "boost" mode. Sized below
+// SECONDARY so recency can reorder rows within one field+quality tier
+// (whose only other differentiator is the ≤999 position term) without
+// ever vaulting a row across a field or quality boundary.
+const RECENCY_BOOST = 500;
+
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+function isWordChar(ch: string): boolean {
+  return WORD_CHAR.test(ch);
+}
+
+// Classify a single occurrence of `needle` at `idx` inside `hay` (both
+// already lowercased) into a quality tier. Word boundaries are the
+// string edges or any non-alphanumeric neighbour.
+function matchQualityAt(hay: string, needle: string, idx: number): number {
+  if (idx === 0 && needle.length === hay.length) return QUALITY_EXACT;
+  const startsAtBoundary = idx === 0 || !isWordChar(hay[idx - 1]);
+  const end = idx + needle.length;
+  const endsAtBoundary = end >= hay.length || !isWordChar(hay[end]);
+  if (startsAtBoundary && endsAtBoundary) return QUALITY_WHOLE_WORD;
+  if (startsAtBoundary) return QUALITY_WORD_PREFIX;
+  return QUALITY_SUBSTRING;
+}
+
+// Best (cleanest, then earliest) occurrence of `needle` in `hay`, or
+// null when absent. Scans every occurrence rather than trusting the
+// first `indexOf` so a clean later hit ("carlo" → "car" at a word
+// start) beats a dirty earlier one ("oscar" → mid-word "car").
+function bestMatch(
+  hay: string,
+  needle: string,
+): { quality: number; index: number } | null {
+  if (hay === "") return null;
+  let best: { quality: number; index: number } | null = null;
+  let from = 0;
+  for (;;) {
+    const idx = hay.indexOf(needle, from);
+    if (idx === -1) break;
+    const quality = matchQualityAt(hay, needle, idx);
+    if (
+      best === null ||
+      quality < best.quality ||
+      (quality === best.quality && idx < best.index)
+    ) {
+      best = { quality, index: idx };
+    }
+    if (quality === QUALITY_EXACT) break; // nothing can beat it
+    from = idx + 1;
+  }
+  return best;
+}
+
+// Fold a quality tier, field tier (0..10, lower = more important), and
+// the match's position into one comparable score under the user's
+// chosen priority axis.
+function composeScore(
+  priority: SearchRankingSettings["priority"],
+  quality: number,
+  fieldTier: number,
+  index: number,
+): number {
+  const pos = Math.min(index, MAX_POSITION);
+  return priority === "field"
+    ? fieldTier * PRIMARY + quality * SECONDARY + pos
+    : quality * PRIMARY + fieldTier * SECONDARY + pos;
+}
 
 // Score one entry against a parsed query: the best (lowest-scoring)
 // text or amount hit, or null when nothing matches. `needle` is the
 // already-lowercased trimmed query; `parsedAmount` is `parseAmount` of
-// the same query (null when it doesn't read as a number). Shared by
-// `runSearch` (ranking) and `searchBounds` (which rows feed the slider
-// domains) so the two can't disagree on what "matches the query" means.
+// the same query (null when it doesn't read as a number); `ranking`
+// supplies the field weights, priority axis, and amount tolerance.
+// Shared by `runSearch` (ranking), `matchingEntries`, and
+// `searchBounds` so they can't disagree on what "matches the query"
+// means. The returned score carries no recency component — `runSearch`
+// layers that on at sort time so the date-free callers stay pure.
 function scoreEntry(
   entry: SearchEntry,
   needle: string,
   parsedAmount: number | null,
+  ranking: SearchRankingSettings,
 ): { match: SearchMatch; score: number } | null {
   let best: { match: SearchMatch; score: number } | null = null;
 
-  // Text matches first — find earliest hit across fields, weighted
-  // by field priority.
+  // Text matches: take the cleanest hit per field, scored by quality +
+  // field weight under the chosen priority axis.
   for (const field of TEXT_FIELDS) {
-    const haystackLc = entry[field.lcKey];
-    if (haystackLc === "") continue;
-    const idx = haystackLc.indexOf(needle);
-    if (idx === -1) continue;
-    // Score: field weight (×1000 so it dominates) + position inside
-    // the field. Earlier matches and higher-priority fields rank
-    // first; ties break on insertion order via stable sort.
-    const score = FIELD_WEIGHT[field.name] * 1000 + idx;
+    const match = bestMatch(entry[field.lcKey], needle);
+    if (match === null) continue;
+    const fieldTier =
+      SEARCH_FIELD_WEIGHT_MAX - ranking.fieldWeights[field.weightKey];
+    const score = composeScore(
+      ranking.priority,
+      match.quality,
+      fieldTier,
+      match.index,
+    );
     if (best === null || score < best.score) {
       best = {
-        match: { field: field.name, start: idx, end: idx + needle.length },
+        match: {
+          field: field.name,
+          start: match.index,
+          end: match.index + needle.length,
+        },
         score,
       };
     }
   }
 
-  // Amount match — kicks in when the query parses as a number AND
-  // the row carries an amount within the tolerance band. Distance-
-  // based score; exact match lands at 0 and beats any text hit on
-  // a row that matches both ways. Comparison is on absolute value
-  // so "100" matches both income (+100) and expense (-100) rows —
-  // users typically remember the magnitude, not the sign.
+  // Amount match — kicks in when the query parses as a number AND the
+  // row carries an amount within the tolerance band. Distance-based
+  // score on a 0..999 scale that sits below every text tier, so a
+  // numeric query surfaces matching amounts ahead of incidental text
+  // hits on the same digits; an exact amount lands at 0 and wins
+  // outright. Comparison is on absolute value so "100" matches both
+  // income (+100) and expense (-100) — users remember the magnitude,
+  // not the sign.
   if (parsedAmount !== null && entry.amount !== null) {
     const queryAbs = Math.abs(parsedAmount);
     const rowAbs = Math.abs(entry.amount);
     const distance = Math.abs(rowAbs - queryAbs);
-    const band = Math.max(queryAbs * AMOUNT_TOLERANCE, 0.01);
+    const band = Math.max((queryAbs * ranking.amountTolerancePct) / 100, 0.01);
     if (distance <= band) {
-      // Amount distance is on a different scale than text scores;
-      // map it into the same range so a near-exact amount can
-      // outrank a mid-field text hit. Exact match → 0; full-band
-      // → 999 (just under the next field weight tier).
-      const amountScore = Math.round((distance / band) * 999);
+      const amountScore = Math.round((distance / band) * MAX_POSITION);
       if (best === null || amountScore < best.score) {
         best = {
           match: { field: "amount", distance },
@@ -604,11 +681,29 @@ function scoreEntry(
   return best;
 }
 
-// Cap the result list so a query like "a" doesn't render thousands of
-// rows. The modal shows the top hits ordered by relevance; in
-// practice the user refines the query when they don't see what they
-// want.
-const MAX_RESULTS = 50;
+// A row's date as an epoch-day count, or -Infinity for undated / bad
+// dates so they sort last (oldest) under recency. Kept raw — not
+// horizon-clamped — so two rows decades apart still order correctly
+// when recency breaks a tie.
+function entryDays(iso: string): number {
+  if (iso === "") return -Infinity;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? -Infinity : ms / MS_PER_DAY;
+}
+
+// Normalised "oldness" of a row in [0, 1]: 0 for today / future-dated
+// rows, 1 for anything at or beyond the recency horizon (and for
+// undated rows). Only "boost" mode reads this — it needs a bounded
+// contribution so a recent row can climb at most RECENCY_BOOST. The
+// horizon clamp is fine here precisely because it never decides order
+// on its own; tie-break ordering uses the raw `entryDays` instead.
+function recencyNorm(days: number, refDays: number): number {
+  if (days === -Infinity) return 1;
+  const delta = refDays - days;
+  if (delta <= 0) return 0;
+  if (delta >= RECENCY_HORIZON_DAYS) return 1;
+  return delta / RECENCY_HORIZON_DAYS;
+}
 
 // Placeholder match for filter-only browsing (empty query): there's no
 // matched substring to highlight, and a zero-length range renders no
@@ -663,12 +758,46 @@ function matchesFilter(entry: SearchEntry, filter: SearchFilter): boolean {
   return true;
 }
 
+// Order the scored hits by the relevance composite, applying the
+// recency mode: "tiebreak" only separates rows equal on the composite
+// (newest first, by raw date); "boost" folds a bounded recency term
+// into the score so a recent row can edge out a slightly stronger older
+// one within the same field+quality tier; "off" leaves the stable
+// composite order (which preserves index order — oldest-first — among
+// ties). Mutates `scored`. `refDays` is today as an epoch-day count.
+function sortByRelevance(
+  scored: { result: SearchResult; score: number; days: number }[],
+  recency: SearchRankingSettings["recency"],
+  refDays: number,
+): void {
+  if (recency === "boost") {
+    scored.sort(
+      (a, b) =>
+        a.score +
+        recencyNorm(a.days, refDays) * RECENCY_BOOST -
+        (b.score + recencyNorm(b.days, refDays) * RECENCY_BOOST),
+    );
+    return;
+  }
+  if (recency === "tiebreak") {
+    // Newer first among equal composites: larger day-count ranks first.
+    scored.sort((a, b) =>
+      a.score !== b.score ? a.score - b.score : b.days - a.days,
+    );
+    return;
+  }
+  scored.sort((a, b) => a.score - b.score);
+}
+
 export function runSearch(
   index: readonly SearchEntry[],
   query: string,
   sortBy: SearchSort = "relevance",
   filter: SearchFilter = EMPTY_FILTER,
+  ranking: SearchRankingSettings = DEFAULT_SEARCH_RANKING,
+  referenceIso: string = todayIso(),
 ): SearchOutcome {
+  const cap = ranking.maxResults;
   const trimmed = query.trim();
   if (trimmed === "") {
     // Filter-only browsing: with no query there's nothing to score, so
@@ -684,45 +813,47 @@ export function runSearch(
     }
     const ordered =
       sortBy === "relevance" ? browsed : reorderResults(browsed, sortBy);
-    return { results: ordered.slice(0, MAX_RESULTS), total: browsed.length };
+    return { results: ordered.slice(0, cap), total: browsed.length };
   }
   const needle = trimmed.toLowerCase();
   const parsedAmount = parseAmount(trimmed);
+  const refDays = Date.parse(referenceIso) / MS_PER_DAY;
 
-  type Scored = { result: SearchResult; score: number };
+  type Scored = { result: SearchResult; score: number; days: number };
   const scored: Scored[] = [];
 
   for (const entry of index) {
     if (!matchesFilter(entry, filter)) continue;
-    const best = scoreEntry(entry, needle, parsedAmount);
+    const best = scoreEntry(entry, needle, parsedAmount, ranking);
     if (best !== null) {
       scored.push({
         result: { entry, match: best.match },
         score: best.score,
+        days: entryDays(entry.iso),
       });
     }
   }
 
-  // Stable sort by score (Array.prototype.sort is stable per ES2019),
-  // then take the top N. Equal scores keep their input order, which
-  // happens to be the row order inside each sheet — newest rows last,
-  // which is fine for a transaction ledger.
-  scored.sort((a, b) => a.score - b.score);
-  const top = scored.slice(0, MAX_RESULTS).map((s) => s.result);
+  // Array.prototype.sort is stable per ES2019, so equal composites keep
+  // their input order (row order inside each sheet) when recency is off.
+  sortByRelevance(scored, ranking.recency, refDays);
+  const top = scored.slice(0, cap).map((s) => s.result);
   const results = sortBy === "relevance" ? top : reorderResults(top, sortBy);
   return { results, total: scored.length };
 }
 
 // Every entry matching the query + filter, uncapped and unscored — the
-// raw match set behind the MAX_RESULTS display cap. "Select all" uses
-// this so a bulk operation can reach matches beyond the rendered top N,
-// not just the rows currently on screen. Order is irrelevant to the
-// caller (it maps to a selection set), so this skips the relevance sort
-// `runSearch` does.
+// raw match set behind the result display cap. "Select all" uses this
+// so a bulk operation can reach matches beyond the rendered top N, not
+// just the rows currently on screen. Order is irrelevant to the caller
+// (it maps to a selection set), so this skips the relevance sort
+// `runSearch` does. `ranking` only affects the amount-tolerance band
+// here, but threading it keeps the match set identical to `runSearch`.
 export function matchingEntries(
   index: readonly SearchEntry[],
   query: string,
   filter: SearchFilter = EMPTY_FILTER,
+  ranking: SearchRankingSettings = DEFAULT_SEARCH_RANKING,
 ): SearchEntry[] {
   const trimmed = query.trim();
   if (trimmed === "") {
@@ -734,7 +865,8 @@ export function matchingEntries(
   const out: SearchEntry[] = [];
   for (const entry of index) {
     if (!matchesFilter(entry, filter)) continue;
-    if (scoreEntry(entry, needle, parsedAmount) !== null) out.push(entry);
+    if (scoreEntry(entry, needle, parsedAmount, ranking) !== null)
+      out.push(entry);
   }
   return out;
 }

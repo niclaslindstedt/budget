@@ -54,7 +54,7 @@ function userData(over: Partial<UserData>): UserData {
     ],
   };
   return {
-    version: 46,
+    version: 47,
     sheets: over.sheets ?? [sheet],
     activeSheetId: "s",
     accounts: [{ id: "acc", name: "A" }],

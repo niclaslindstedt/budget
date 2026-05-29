@@ -6,7 +6,7 @@ import type { HistoryEntry, UserData } from "../src/data/types";
 
 function baseState(history: Record<string, HistoryEntry[]> = {}): UserData {
   return {
-    version: 46,
+    version: 47,
     sheets: [
       {
         id: "s",

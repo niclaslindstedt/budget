@@ -5,6 +5,7 @@ const settings = {
   chooseSection: "Choose settings section",
   tabs: {
     general: "General",
+    search: "Search",
     appearance: "Appearance",
     format: "Format",
     storage: "Storage",
@@ -40,6 +41,36 @@ const settings = {
     futureEntryMonths: "Future months to show",
     futureEntryMonthsHint:
       "Number of fiscal months past the current one to render up front. Anything further out still shows up after clicking the “Show 3 future months” toggle inside the sheet — each click reveals three more months.",
+  },
+  search: {
+    rankingSection: "Ranking",
+    priority: "Ranking priority",
+    priorityHint:
+      "What matters most when ordering hits. Match quality puts a clean whole-word match ahead of letters buried mid-word, even in a lower-ranked field. Field order keeps the field priority on top and uses match quality only to break ties within a field.",
+    priorityQuality: "Match quality first",
+    priorityField: "Field order first",
+    recency: "Recency",
+    recencyHint:
+      "How much a transaction’s date counts. Tie-breaker only separates hits that are otherwise equal, newest first. Boost lets a recent hit edge out a slightly stronger older one. Off ignores dates.",
+    recencyOff: "Off",
+    recencyTiebreak: "Tie-breaker",
+    recencyBoost: "Boost",
+    weightsSection: "Field importance",
+    weightsHint:
+      "How strongly a match in each field counts. Higher ranks earlier. Drag a field to 0 to keep matching it but rank it last.",
+    fieldDescription: "Description",
+    fieldTag: "Tag",
+    fieldCompany: "Company",
+    fieldType: "Type",
+    fieldCategory: "Category",
+    fieldBank: "Bank text",
+    matchingSection: "Matching",
+    amountTolerance: "Amount tolerance",
+    amountToleranceHint:
+      "When the query is a number, also match rows whose amount is within this percentage of it. 0% matches the exact amount only.",
+    maxResults: "Results shown",
+    maxResultsHint:
+      "How many hits to render. The counter still reports the full total.",
   },
   companyTypeAutoFill: {
     title: "Auto-fill type from company",

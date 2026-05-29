@@ -206,6 +206,10 @@ const catalog: AchievementsCatalogEntries = {
     name: "Svepare",
     condition: "Svep åt vänster eller höger för att byta blad.",
   },
+  searchSmith: {
+    name: "Söksmed",
+    condition: "Justera inställningarna för sökrangordning.",
+  },
   importExport: {
     name: "Import / Export",
     condition: "Importera ditt första kontoutdrag.",

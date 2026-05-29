@@ -7,3 +7,4 @@ export { Radio, RadioGroup } from "./Radio";
 export { RangeSlider } from "./RangeSlider";
 export { SelectPicker, type SelectOption } from "./SelectPicker";
 export { SignedAmountInput } from "./SignedAmountInput";
+export { Slider } from "./Slider";

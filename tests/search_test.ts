@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
+import {
+  DEFAULT_PERSISTED_SETTINGS,
+  DEFAULT_SEARCH_RANKING,
+} from "../src/data/constants/defaults";
 import {
   buildSearchIndex,
   EMPTY_FILTER,
@@ -13,6 +16,7 @@ import {
   type SearchFilter,
   type SearchSort,
 } from "../src/data/search";
+import type { SearchRankingSettings } from "../src/data/types";
 import type {
   Account,
   AccountBudget,
@@ -44,8 +48,25 @@ function runSearch(
   query: string,
   sort?: SearchSort,
   filt?: SearchFilter,
+  rank?: SearchRankingSettings,
+  ref?: string,
 ) {
-  return runSearchOutcome(index, query, sort, filt).results;
+  return runSearchOutcome(index, query, sort, filt, rank, ref).results;
+}
+
+// Build a ranking config from the defaults with a shallow override,
+// deep-merging `fieldWeights` so a test can nudge one weight.
+function ranking(
+  overrides: Partial<SearchRankingSettings> = {},
+): SearchRankingSettings {
+  return {
+    ...DEFAULT_SEARCH_RANKING,
+    ...overrides,
+    fieldWeights: {
+      ...DEFAULT_SEARCH_RANKING.fieldWeights,
+      ...(overrides.fieldWeights ?? {}),
+    },
+  };
 }
 
 const cols: Column[] = [
@@ -83,7 +104,7 @@ function withItem(
     items: [item],
   };
   return {
-    version: 46,
+    version: 47,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: options.accounts ?? [],
@@ -202,8 +223,8 @@ describe("runSearch — text matches", () => {
     expect(out[0].match.field).toBe("tagNames");
   });
 
-  it("description hits outrank company hits at the same position", () => {
-    const ica: Company = { id: "ica", name: "ICA" };
+  it("description hits outrank company hits at equal quality", () => {
+    const ica: Company = { id: "ica", name: "ICA Bank" };
     const data = withItem(
       [
         {
@@ -217,9 +238,9 @@ describe("runSearch — text matches", () => {
     );
     const idx = buildSearchIndex(data, t);
     const out = runSearch(idx, "ica");
-    // r1 matches via companyName ("ICA") and r2 via description ("ICA
-    // Maxi"); description is the higher-priority field so r2 ranks
-    // ahead of r1 even though both hits land at offset 0.
+    // r1 matches via companyName ("ICA Bank") and r2 via description
+    // ("ICA Maxi"); both are whole-word hits at offset 0 so they tie on
+    // match quality, and the higher-weighted description field wins.
     expect(out[0].entry.rowId).toBe("r2");
     expect(out[0].match.field).toBe("description");
     expect(out[1].entry.rowId).toBe("r1");
@@ -790,5 +811,189 @@ describe("runSearch — performance", () => {
     for (const q of queries) runSearch(idx, q);
     const elapsed = performance.now() - t0;
     expect(elapsed).toBeLessThan(200);
+  });
+});
+
+describe("runSearch — match quality", () => {
+  it("ranks whole-word over word-prefix over mid-word substring", () => {
+    const data = withItem([
+      { id: "sub", cells: { d: "2026-05-01", x: "Oscar Wilde", a: -10 } },
+      { id: "prefix", cells: { d: "2026-05-01", x: "Carlo Sushi", a: -10 } },
+      { id: "whole", cells: { d: "2026-05-01", x: "Car wash", a: -10 } },
+    ]);
+    const out = runSearch(buildSearchIndex(data, t), "car");
+    expect(out.map((r) => r.entry.rowId)).toEqual(["whole", "prefix", "sub"]);
+  });
+
+  it("quality-first lifts a clean tag hit above a description substring", () => {
+    // The reported case: a deliberately-tagged "Car" row must beat the
+    // "CARLO SUSHI" rows whose description only contains "car" mid-word.
+    const carTag: Tag = { id: "tg", name: "Car", color: "#f00" };
+    const data = withItem(
+      [
+        { id: "carlo", cells: { d: "2026-05-01", x: "Carlo Sushi", a: -238 } },
+        {
+          id: "tagged",
+          cells: { d: "2026-05-01", x: "Bensin", a: -700 },
+          tagIds: ["tg"],
+        },
+      ],
+      { tags: [carTag] },
+    );
+    const out = runSearch(buildSearchIndex(data, t), "car");
+    expect(out[0].entry.rowId).toBe("tagged");
+    expect(out[0].match.field).toBe("tagNames");
+    expect(out[1].entry.rowId).toBe("carlo");
+  });
+
+  it("field-first keeps field priority on top; quality only breaks ties", () => {
+    const carTag: Tag = { id: "tg", name: "Car", color: "#f00" };
+    const data = withItem(
+      [
+        { id: "carlo", cells: { d: "2026-05-01", x: "Carlo Sushi", a: -238 } },
+        {
+          id: "tagged",
+          cells: { d: "2026-05-01", x: "Bensin", a: -700 },
+          tagIds: ["tg"],
+        },
+      ],
+      { tags: [carTag] },
+    );
+    // With field-first, description (weight 5) outranks tag (weight 4)
+    // despite the cleaner tag match, so the "Carlo" description leads.
+    const out = runSearch(
+      buildSearchIndex(data, t),
+      "car",
+      "relevance",
+      EMPTY_FILTER,
+      ranking({ priority: "field" }),
+    );
+    expect(out[0].entry.rowId).toBe("carlo");
+    expect(out[0].match.field).toBe("description");
+  });
+
+  it("tags outrank companies under the default weights", () => {
+    const tag: Tag = { id: "tg", name: "Travel", color: "#f00" };
+    const co: Company = { id: "co", name: "Travel" };
+    const data = withItem(
+      [
+        {
+          id: "co-row",
+          cells: { d: "2026-05-01", x: "Trip", a: -10 },
+          companyId: "co",
+        },
+        {
+          id: "tag-row",
+          cells: { d: "2026-05-01", x: "Trip", a: -10 },
+          tagIds: ["tg"],
+        },
+      ],
+      { tags: [tag], companies: [co] },
+    );
+    // Both match "travel" exactly; tag (weight 4) sits above company
+    // (weight 3), so the tagged row leads.
+    const out = runSearch(buildSearchIndex(data, t), "travel");
+    expect(out[0].entry.rowId).toBe("tag-row");
+    expect(out[0].match.field).toBe("tagNames");
+  });
+});
+
+describe("runSearch — recency", () => {
+  const threeIdentical = () =>
+    withItem([
+      { id: "old", cells: { d: "2021-01-16", x: "Carlo Sushi", a: -238 } },
+      { id: "new", cells: { d: "2021-10-07", x: "Carlo Sushi", a: -238 } },
+      { id: "mid", cells: { d: "2021-05-07", x: "Carlo Sushi", a: -238 } },
+    ]);
+
+  it("tie-break orders otherwise-equal hits newest first", () => {
+    const out = runSearch(
+      buildSearchIndex(threeIdentical(), t),
+      "car",
+      "relevance",
+      EMPTY_FILTER,
+      ranking(),
+      "2026-05-29",
+    );
+    expect(out.map((r) => r.entry.rowId)).toEqual(["new", "mid", "old"]);
+  });
+
+  it("off keeps index (oldest-first) order among ties", () => {
+    const out = runSearch(
+      buildSearchIndex(threeIdentical(), t),
+      "car",
+      "relevance",
+      EMPTY_FILTER,
+      ranking({ recency: "off" }),
+      "2026-05-29",
+    );
+    expect(out.map((r) => r.entry.rowId)).toEqual(["old", "new", "mid"]);
+  });
+
+  it("never lifts a weaker match above a stronger one (tie-break)", () => {
+    // A recent mid-word substring must still rank below an old whole-word
+    // hit — recency only separates rows equal on the composite.
+    const data = withItem([
+      { id: "oldWhole", cells: { d: "2020-01-01", x: "Car wash", a: -10 } },
+      { id: "newSub", cells: { d: "2026-05-01", x: "Oscar", a: -10 } },
+    ]);
+    const out = runSearch(
+      buildSearchIndex(data, t),
+      "car",
+      "relevance",
+      EMPTY_FILTER,
+      ranking(),
+      "2026-05-29",
+    );
+    expect(out[0].entry.rowId).toBe("oldWhole");
+  });
+});
+
+describe("runSearch — amount tolerance and result cap", () => {
+  it("amount tolerance widens which rows match a numeric query", () => {
+    const data = withItem([
+      { id: "exact", cells: { d: "2026-05-01", x: "A", a: -100 } },
+      { id: "near", cells: { d: "2026-05-01", x: "B", a: -150 } },
+    ]);
+    const idx = buildSearchIndex(data, t);
+    // 20% band around 100 → 80..120: only the exact row matches.
+    const narrow = runSearch(
+      idx,
+      "100",
+      "relevance",
+      EMPTY_FILTER,
+      ranking({ amountTolerancePct: 20 }),
+    );
+    expect(narrow.map((r) => r.entry.rowId)).toEqual(["exact"]);
+    // 60% band → 40..160: the 150 row joins, but the exact amount leads.
+    const wide = runSearch(
+      idx,
+      "100",
+      "relevance",
+      EMPTY_FILTER,
+      ranking({ amountTolerancePct: 60 }),
+    );
+    expect([...wide.map((r) => r.entry.rowId)].sort()).toEqual([
+      "exact",
+      "near",
+    ]);
+    expect(wide[0].entry.rowId).toBe("exact");
+  });
+
+  it("maxResults caps the rendered list but not the reported total", () => {
+    const rows: Row[] = Array.from({ length: 5 }, (_, i) => ({
+      id: `r${i}`,
+      cells: { d: "2026-05-01", x: `Spotify ${i}`, a: -10 },
+    }));
+    const idx = buildSearchIndex(withItem(rows), t);
+    const out = runSearchOutcome(
+      idx,
+      "spotify",
+      "relevance",
+      EMPTY_FILTER,
+      ranking({ maxResults: 3 }),
+    );
+    expect(out.results).toHaveLength(3);
+    expect(out.total).toBe(5);
   });
 });

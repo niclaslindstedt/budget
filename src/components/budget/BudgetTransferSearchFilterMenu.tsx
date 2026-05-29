@@ -233,8 +233,8 @@ export function BudgetTransferSearchFilterMenu({
   // filters surface, not the whole workspace — so a four-row "Meds"
   // search shows a 100–500 amount slider instead of 0–981K.
   const bounds = useMemo(
-    () => searchBounds(index, query, filter),
-    [index, query, filter],
+    () => searchBounds(index, query, filter, settings.searchRanking),
+    [index, query, filter, settings.searchRanking],
   );
 
   const hasAmount =
