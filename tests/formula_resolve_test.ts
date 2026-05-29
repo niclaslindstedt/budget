@@ -61,11 +61,12 @@ function workspace(
     items: [item],
   };
   return {
-    version: 44,
+    version: 45,
     sheets: [main, ...extra],
     activeSheetId: "sht_main",
     accounts: [],
     companies: [],
+    tags: [],
     categories: [],
     types,
     hiddenPresetTypeIds: [],

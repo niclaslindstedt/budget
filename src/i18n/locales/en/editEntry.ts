@@ -16,6 +16,7 @@ const editEntry = {
   amountMax: "Maximum",
   type: "Type",
   company: "Company",
+  tags: "Tags",
   pickType: "Pick a type",
   scope: "Scope",
   scopeJustThis: "Just this entry",

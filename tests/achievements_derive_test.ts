@@ -34,11 +34,12 @@ function withItem(rows: Row[]): UserData {
     items: [item],
   };
   return {
-    version: 44,
+    version: 45,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: [],
     companies: [],
+    tags: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],
@@ -85,6 +86,20 @@ describe("deriveUnlocks", () => {
     const next = withItem([{ id: "r1", cells: {}, typeId: "t1" }]);
     const fresh = deriveUnlocks(prev, next, {});
     expect(fresh).toContain("label");
+  });
+
+  it("fires tagger when a row gains its first tag", () => {
+    const prev = withItem([{ id: "r1", cells: {} }]);
+    const next = withItem([{ id: "r1", cells: {}, tagIds: ["tag1"] }]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("tagger");
+  });
+
+  it("does not fire tagger when an empty tagIds array is present", () => {
+    const prev = withItem([{ id: "r1", cells: {} }]);
+    const next = withItem([{ id: "r1", cells: {}, tagIds: [] }]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).not.toContain("tagger");
   });
 
   it("fires checkPlease when a row's completed cell flips to true", () => {

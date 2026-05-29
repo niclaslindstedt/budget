@@ -69,6 +69,7 @@ type Props = {
   onCreateType: ReturnType<typeof useTaxonomyCrud>["onCreateType"];
   onCreateCategory: ReturnType<typeof useTaxonomyCrud>["onCreateCategory"];
   onCreateCompany: ReturnType<typeof useTaxonomyCrud>["onCreateCompany"];
+  onCreateTag: ReturnType<typeof useTaxonomyCrud>["onCreateTag"];
   onSetSeriesPrimaryIncome: (
     seriesId: string,
     isPrimaryIncome: boolean,
@@ -98,6 +99,7 @@ export function BudgetModalHost(props: Props) {
     onCreateType,
     onCreateCategory,
     onCreateCompany,
+    onCreateTag,
     onSetSeriesPrimaryIncome,
   } = props;
   const t = useT();
@@ -320,6 +322,7 @@ export function BudgetModalHost(props: Props) {
           amountMax: patch.amountMax,
           typeId: patch.typeId,
           companyId: patch.companyId,
+          tagIds: patch.tagIds,
           isTransfer: patch.isTransfer,
           dateShiftDays:
             patch.dateShiftDays !== 0 ? patch.dateShiftDays : undefined,
@@ -475,6 +478,7 @@ export function BudgetModalHost(props: Props) {
         categories={categories}
         types={types}
         companies={data.companies}
+        tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
         settings={effectiveSettings}
         lastSeriesDate={editRowLastSeriesDate}
@@ -490,6 +494,7 @@ export function BudgetModalHost(props: Props) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
+        onCreateTag={onCreateTag}
       />
       <BudgetSplitEntryModal
         open={splitPrompt !== null}
@@ -560,12 +565,14 @@ export function BudgetModalHost(props: Props) {
         columns={activeItem.columns}
         categories={categories}
         types={types}
+        tags={data.tags}
         settings={effectiveSettings}
         onClose={() => setBulkEditOpen(false)}
         onApplyPatch={onApplyBulkPatch}
         onApplyRecurring={onApplyBulkRecurring}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateTag={onCreateTag}
       />
       <BudgetMoveCopyModal
         open={moveCopyPrompt !== null}

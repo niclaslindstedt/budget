@@ -33,6 +33,9 @@ export type BulkPatch = {
   // `true` flags every row as an inter-account transfer; `false`
   // clears the flag on every row; `undefined` leaves it alone.
   isTransfer?: boolean;
+  // `undefined` = leave each row's tags alone; an array replaces every
+  // selected row's `tagIds` with this set (empty array clears tags).
+  tagIds?: string[];
 };
 
 export type EditPatch = {
@@ -44,6 +47,9 @@ export type EditPatch = {
   typeId?: string | null;
   // Same shape as `typeId`, applied to the row's `companyId`.
   companyId?: string | null;
+  // `undefined` = leave the row's tags alone; an array replaces the
+  // row's `tagIds` with this set (empty array clears tags).
+  tagIds?: string[];
   // `undefined` = don't touch; `true` flags every row in scope as an
   // inter-account transfer (so `hideTransfers` can suppress it);
   // `false` clears the flag.

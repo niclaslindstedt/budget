@@ -396,7 +396,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     [dispatch],
   );
   const taxonomyCrud = useTaxonomyCrud({ dispatch });
-  const { onCreateCategory, onCreateType, onCreateCompany } = taxonomyCrud;
+  const { onCreateCategory, onCreateType, onCreateCompany, onCreateTag } =
+    taxonomyCrud;
   const onSaveSettings = useCallback(
     (draft: Settings) =>
       dispatch({
@@ -849,6 +850,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onCreateCompany={onCreateCompany}
+        onCreateTag={onCreateTag}
         onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
       />
     </div>

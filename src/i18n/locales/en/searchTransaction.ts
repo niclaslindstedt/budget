@@ -10,6 +10,7 @@ const searchTransaction = {
   noResults: "No matching entries",
   resultAria: "Open {description} on {sheet}",
   bankLabel: "Bank",
+  tagsLabel: "Tags",
   sortMenuAria: "Change sort order",
   sortMenuTitle: "Sort by",
   sortRelevance: "Relevance",

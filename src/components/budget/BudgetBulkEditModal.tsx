@@ -9,12 +9,14 @@ import type {
   EntryType,
   Row,
   Settings,
+  Tag,
 } from "../../data/types";
 import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
 import { Modal } from "../Modal";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
+import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 import {
   budgetBulkEditModalReducer,
@@ -30,12 +32,14 @@ type Props = {
   columns: Column[];
   categories: readonly Category[];
   types: readonly EntryType[];
+  tags: readonly Tag[];
   settings: Settings;
   onClose: () => void;
   onApplyPatch: (rowIds: string[], patch: BulkPatch) => void;
   onApplyRecurring: (rowIds: string[], futureDates: string[]) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
 };
 
 export function BudgetBulkEditModal({
@@ -44,12 +48,14 @@ export function BudgetBulkEditModal({
   columns,
   categories,
   types,
+  tags,
   settings,
   onClose,
   onApplyPatch,
   onApplyRecurring,
   onCreateType,
   onCreateCategory,
+  onCreateTag,
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -86,6 +92,8 @@ export function BudgetBulkEditModal({
   const {
     typeEnabled,
     typeId,
+    tagsEnabled,
+    tagIds,
     dateEnabled,
     dateValue,
     amountEnabled,
@@ -116,6 +124,7 @@ export function BudgetBulkEditModal({
 
   const patchHasChanges =
     typeEnabled ||
+    tagsEnabled ||
     dateEnabled ||
     (amountEnabled && sharedAmount !== null && parsedAmount !== null) ||
     transferEnabled;
@@ -125,6 +134,7 @@ export function BudgetBulkEditModal({
   function handleSubmit() {
     const patch: BulkPatch = {};
     if (typeEnabled) patch.typeId = typeId;
+    if (tagsEnabled) patch.tagIds = tagIds;
     if (dateEnabled && dateCol && dateValue) patch.date = dateValue;
     if (
       amountEnabled &&
@@ -172,6 +182,20 @@ export function BudgetBulkEditModal({
             onSelect={(value) => dispatch({ kind: "setTypeId", value })}
             onCreate={onCreateType}
             onCreateCategory={onCreateCategory}
+          />
+        </Toggle>
+
+        <Toggle
+          label={t("bulkEdit.changeTags")}
+          enabled={tagsEnabled}
+          onToggle={(value) => dispatch({ kind: "setTagsEnabled", value })}
+          hint={t("bulkEdit.changeTagsHint")}
+        >
+          <TagsPicker
+            tags={tags}
+            selectedIds={tagIds}
+            onChange={(ids) => dispatch({ kind: "setTagIds", value: ids })}
+            onCreate={onCreateTag}
           />
         </Toggle>
 

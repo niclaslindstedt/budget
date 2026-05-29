@@ -143,6 +143,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Typer är etiketterna du sätter på rader. Var och en har en symbol, färg och riktning (+, −, ◆) så väljaren hålls ren.",
   },
+  tagger: {
+    name: "Taggad",
+    condition: "Tilldela en tagg till en post.",
+    learnMore:
+      "Taggar är dina egna färgkodade etiketter som går tvärs över kategorier — en rad kan bära flera. De skräpar aldrig ner tabellen; de visas bara vid redigering och låter dig plocka fram allt som är taggat på samma sätt via sökningen. Hantera dem under Inställningar → Taggar.",
+  },
   moverShaker: {
     name: "Flyttkarl",
     condition: "Flytta eller kopiera rader mellan månader.",

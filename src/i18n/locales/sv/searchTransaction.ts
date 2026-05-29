@@ -10,6 +10,7 @@ const searchTransaction: SearchTransactionCatalog = {
   noResults: "Inga matchande poster",
   resultAria: "Öppna {description} i {sheet}",
   bankLabel: "Bank",
+  tagsLabel: "Taggar",
   sortMenuAria: "Ändra sorteringsordning",
   sortMenuTitle: "Sortera efter",
   sortRelevance: "Relevans",

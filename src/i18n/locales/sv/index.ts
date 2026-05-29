@@ -54,6 +54,7 @@ import sheetModal from "./sheetModal";
 import category from "./category";
 import type from "./type";
 import company from "./company";
+import tag from "./tag";
 import glyph from "./glyph";
 import color from "./color";
 import datePicker from "./datePicker";
@@ -122,6 +123,7 @@ export const sv: Catalog = {
   category,
   type,
   company,
+  tag,
   glyph,
   color,
   datePicker,

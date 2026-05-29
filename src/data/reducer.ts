@@ -11,6 +11,7 @@ import type {
   SeriesMatchRule,
   Settings,
   Sheet,
+  Tag,
   Transfer,
   UserData,
 } from "./types";
@@ -71,6 +72,24 @@ export type Action =
       // referential-integrity guards never trip on a dangling id.
       type: "deleteCompany";
       companyId: string;
+    }
+  | { type: "addTag"; tag: Tag }
+  | {
+      // Edit a user-defined tag by id. Each field in `patch` is
+      // optional; absent fields stay untouched. Mirrors the Company /
+      // Category patch shape.
+      type: "updateTag";
+      tagId: string;
+      patch: Partial<Omit<Tag, "id">>;
+    }
+  | {
+      // Delete a user-defined tag. Cascades by removing the id from
+      // every `Row.tagIds` array (dropping the field when the array
+      // empties) so the validator's referential-integrity guard never
+      // trips on a dangling id. Tags live only on rows, so the cascade
+      // is narrower than `deleteCompany`.
+      type: "deleteTag";
+      tagId: string;
     }
   | {
       // Save handler from the SettingsModal. `draft` is the flat

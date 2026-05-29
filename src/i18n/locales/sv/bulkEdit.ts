@@ -12,6 +12,9 @@ const bulkEdit: BulkEditCatalog = {
   applyOne: "Använd",
   hint: "Tomma fält lämnas som de är.",
   changeType: "Ändra typ",
+  changeTags: "Ändra taggar",
+  changeTagsHint:
+    "Ersätter taggarna på alla markerade rader med denna uppsättning.",
   changeDate: "Ändra datum",
   changeAmount: "Ändra belopp",
   sharedAmountHint: "Alla {n} rader delar {amount}",

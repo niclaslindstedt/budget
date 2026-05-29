@@ -12,6 +12,7 @@ import type {
   Row,
   SeriesMetadata,
   Settings,
+  Tag,
 } from "../../data/types";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
@@ -20,6 +21,7 @@ import { parseInt32 } from "../../utils/parse";
 import { Checkbox, Button, ClearableInput, Radio, RadioGroup } from "../form";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
+import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
 import { resolveAmountSpan } from "./budget-amount-span";
@@ -46,6 +48,7 @@ type Props = {
   categories: readonly Category[];
   types: readonly EntryType[];
   companies: readonly Company[];
+  tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill. See
   // `computeCompanyTypeSuggestions` in `src/data/company-type-suggestions.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
@@ -79,6 +82,7 @@ type Props = {
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
 };
 
 export type EditRowPatch = {
@@ -91,6 +95,9 @@ export type EditRowPatch = {
   // `undefined` = don't touch the row's company; `null` = clear it;
   // a string sets the companyId.
   companyId: string | null | undefined;
+  // `undefined` = leave the row's tags alone; an array replaces them
+  // (empty array clears tags).
+  tagIds: string[] | undefined;
   // `undefined` = don't touch; `true` flags the row as an inter-
   // account transfer; `false` clears the flag.
   isTransfer: boolean | undefined;
@@ -122,6 +129,7 @@ export function BudgetEditEntryFullModal({
   categories,
   types,
   companies,
+  tags,
   companyTypeSuggestions,
   settings,
   lastSeriesDate,
@@ -133,6 +141,7 @@ export function BudgetEditEntryFullModal({
   onCreateType,
   onCreateCategory,
   onCreateCompany,
+  onCreateTag,
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
@@ -182,6 +191,7 @@ export function BudgetEditEntryFullModal({
     date,
     typeId,
     companyId,
+    tagIds,
     isTransfer,
     completed,
     isPrimaryIncome,
@@ -294,6 +304,11 @@ export function BudgetEditEntryFullModal({
     const patchMax = skipAmount ? undefined : span.amountMax;
     const companyTouched = companyId !== initialState.companyId;
     const transferTouched = isTransfer !== initialState.isTransfer;
+    // Compare tags as sets — the picker appends on toggle, so order is
+    // not meaningful. Only send `tagIds` when the membership changed.
+    const tagsTouched =
+      tagIds.length !== initialState.tagIds.length ||
+      tagIds.some((id) => !initialState.tagIds.includes(id));
     onSave(
       row.id,
       {
@@ -304,6 +319,7 @@ export function BudgetEditEntryFullModal({
         date,
         typeId,
         companyId: companyTouched ? companyId : undefined,
+        tagIds: tagsTouched ? tagIds : undefined,
         isTransfer: transferTouched ? isTransfer : undefined,
         completed,
         dateShiftDays: shiftDays,
@@ -408,6 +424,15 @@ export function BudgetEditEntryFullModal({
               selectedId={companyId}
               onSelect={handlePickCompany}
               onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("editEntry.tags")}</span>
+            <TagsPicker
+              tags={tags}
+              selectedIds={tagIds}
+              onChange={(ids) => dispatch({ kind: "setTagIds", value: ids })}
+              onCreate={onCreateTag}
             />
           </div>
           <div className="col-span-2">

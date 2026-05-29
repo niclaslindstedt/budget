@@ -148,6 +148,12 @@ const catalog = {
     learnMore:
       "Types are the labels you assign to rows. Each has a glyph, color, and direction (+, −, ◆) so the picker stays clean.",
   },
+  tagger: {
+    name: "Tagged",
+    condition: "Assign a tag to an entry.",
+    learnMore:
+      "Tags are your own colour-coded labels that cut across categories — a row can carry several. They never clutter the table; they only show while editing, and let you pull up everything tagged the same way from search. Manage them under Settings → Tags.",
+  },
   moverShaker: {
     name: "Mover & Shaker",
     condition: "Move or copy rows across months.",

@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import type { Action } from "../../../data/reducer";
 import { newId } from "../../../data/sheet";
-import type { Category, Company, EntryType } from "../../../data/types";
+import type { Category, Company, EntryType, Tag } from "../../../data/types";
 
 type Params = {
   dispatch: (action: Action) => void;
@@ -30,9 +30,12 @@ type Result = {
     patch: Partial<Omit<Company, "id">>,
   ) => void;
   onDeleteCompany: (companyId: string) => void;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
+  onUpdateTag: (tagId: string, patch: Partial<Omit<Tag, "id">>) => void;
+  onDeleteTag: (tagId: string) => void;
 };
 
-// Thin dispatch wrappers for category / entry-type / company CRUD.
+// Thin dispatch wrappers for category / entry-type / company / tag CRUD.
 // Every picker, modal, and settings tab that needs to mint a new
 // taxonomy entry calls into these so the id-minting and dispatch
 // shape stay in one place.
@@ -103,6 +106,23 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     (companyId: string) => dispatch({ type: "deleteCompany", companyId }),
     [dispatch],
   );
+  const onCreateTag = useCallback(
+    (draft: Omit<Tag, "id">): Tag => {
+      const tag: Tag = { id: newId(), ...draft };
+      dispatch({ type: "addTag", tag });
+      return tag;
+    },
+    [dispatch],
+  );
+  const onUpdateTag = useCallback(
+    (tagId: string, patch: Partial<Omit<Tag, "id">>) =>
+      dispatch({ type: "updateTag", tagId, patch }),
+    [dispatch],
+  );
+  const onDeleteTag = useCallback(
+    (tagId: string) => dispatch({ type: "deleteTag", tagId }),
+    [dispatch],
+  );
 
   return {
     onCreateCategory,
@@ -117,5 +137,8 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     onCreateCompany,
     onUpdateCompany,
     onDeleteCompany,
+    onCreateTag,
+    onUpdateTag,
+    onDeleteTag,
   };
 }

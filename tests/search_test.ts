@@ -20,6 +20,7 @@ import type {
   HistoryEntry,
   Row,
   Sheet,
+  Tag,
   UserData,
 } from "../src/data/types";
 import { tFor, type TFunction } from "../src/i18n";
@@ -43,6 +44,7 @@ function withItem(
     types?: EntryType[];
     categories?: Category[];
     companies?: Company[];
+    tags?: Tag[];
     accounts?: Account[];
     accountId?: string | null;
     history?: Record<string, HistoryEntry[]>;
@@ -65,11 +67,12 @@ function withItem(
     items: [item],
   };
   return {
-    version: 44,
+    version: 45,
     sheets: [sheet],
     activeSheetId: "s",
     accounts: options.accounts ?? [],
     companies: options.companies ?? [],
+    tags: options.tags ?? [],
     categories: options.categories ?? [],
     types: options.types ?? [],
     hiddenPresetTypeIds: [],
@@ -157,6 +160,30 @@ describe("runSearch — text matches", () => {
     expect(out).toHaveLength(1);
     expect(out[0].entry.rowId).toBe("r1");
     expect(out[0].match.field).toBe("companyName");
+  });
+
+  it("matches against the row's tag names", () => {
+    const vacation: Tag = {
+      id: "vac",
+      name: "Vacation 2026",
+      color: "#fa7c33",
+    };
+    const data = withItem(
+      [
+        {
+          id: "r1",
+          cells: { d: "2026-05-01", x: "Hotel", a: -899 },
+          tagIds: ["vac"],
+        },
+        { id: "r2", cells: { d: "2026-05-02", x: "Lunch", a: -120 } },
+      ],
+      { tags: [vacation] },
+    );
+    const idx = buildSearchIndex(data, t);
+    const out = runSearch(idx, "Vacation");
+    expect(out).toHaveLength(1);
+    expect(out[0].entry.rowId).toBe("r1");
+    expect(out[0].match.field).toBe("tagNames");
   });
 
   it("description hits outrank company hits at the same position", () => {

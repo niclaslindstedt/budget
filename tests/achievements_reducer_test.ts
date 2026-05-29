@@ -9,7 +9,7 @@ import type { UserData } from "../src/data/types";
 
 function baseState(): UserData {
   return {
-    version: 44,
+    version: 45,
     sheets: [
       {
         id: "s",
@@ -32,6 +32,7 @@ function baseState(): UserData {
     activeSheetId: "s",
     accounts: [],
     companies: [],
+    tags: [],
     categories: [],
     types: [],
     hiddenPresetTypeIds: [],

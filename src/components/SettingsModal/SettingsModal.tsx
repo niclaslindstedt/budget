@@ -15,6 +15,7 @@ import type {
   DecimalSeparator,
   EntryType,
   Settings,
+  Tag,
   UserData,
 } from "../../data/types";
 import { useDevMode, type FloatingPlacement } from "../../hooks";
@@ -38,6 +39,7 @@ import {
   LogsTab,
   MemoryTab,
   PatternsTab,
+  TagsTab,
   type SettingsTabId,
   StorageTab,
   TAB_REGISTRY,
@@ -164,6 +166,11 @@ type Props = {
     patch: Partial<Omit<Company, "id">>,
   ) => void;
   onDeleteCompany: (companyId: string) => void;
+  // Tag admin — full edit/delete on user-curated tags; no presets
+  // ship so there's no hide-toggle.
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
+  onUpdateTag: (tagId: string, patch: Partial<Omit<Tag, "id">>) => void;
+  onDeleteTag: (tagId: string) => void;
   // Pattern management for the Patterns tab. Opens the existing
   // BudgetMatchRuleModal in edit mode. The modal's own danger button handles
   // deletion, so no separate delete callback is needed here.
@@ -252,6 +259,9 @@ export function SettingsModal({
   onCreateCompany,
   onUpdateCompany,
   onDeleteCompany,
+  onCreateTag,
+  onUpdateTag,
+  onDeleteTag,
   onEditMatchRule,
   onMoveMatchRule,
   onReapplyMatchRules,
@@ -490,6 +500,14 @@ export function SettingsModal({
                 onCreateCompany={onCreateCompany}
                 onUpdateCompany={onUpdateCompany}
                 onDeleteCompany={onDeleteCompany}
+              />
+            )}
+            {activeTab === "tags" && (
+              <TagsTab
+                data={data}
+                onCreateTag={onCreateTag}
+                onUpdateTag={onUpdateTag}
+                onDeleteTag={onDeleteTag}
               />
             )}
             {activeTab === "patterns" && (

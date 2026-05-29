@@ -12,6 +12,8 @@ const bulkEdit = {
   applyOne: "Apply",
   hint: "Empty fields are left as-is.",
   changeType: "Change type",
+  changeTags: "Change tags",
+  changeTagsHint: "Replaces the tags on every selected row with this set.",
   changeDate: "Change date",
   changeAmount: "Change amount",
   sharedAmountHint: "All {n} rows share {amount}",
