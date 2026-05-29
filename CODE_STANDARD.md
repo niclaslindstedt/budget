@@ -14,33 +14,41 @@ wrong is what later puts the file on the `refactor` skill's backlog.
 
 ---
 
-## 0. The north star: design for the next sheet type
+## 0. The north star: make every extension axis additive
 
 This codebase is local-first (no backend, no account, no third-party
-service — see `AGENTS.md`) and it is mid-preparation for a feature
-wave: new sheet types (**savings, investment, scenario, analysis,
-prognosis, loans**), more bank parsers, and possibly React Native /
-desktop wrappers. `docs/refactoring-roadmap.md` rates every smell by
-one question:
+service — see `AGENTS.md`) and it grows along several axes at once:
 
-> **"What would it cost to add the six new sheet types right now?"**
+- **Sheet types** — savings, investment, scenario, analysis,
+  prognosis, loans (on top of today's budget + accounts).
+- **Storage adapters** — beyond browser / folder / Dropbox / Drive:
+  iCloud Drive, a React Native store, a desktop file store.
+- **Bank-import parsers** — every new bank statement format.
+- **Features generally** — new modals, pickers, settings, planners,
+  formula functions, achievements.
 
-Make that question your design test too. The single most common way
-code ends up needing a refactor here is **branching on a type literal
-in a place that should have asked a registry.** When you find yourself
-writing `if (item.type === "accountBudget")` or
-`switch (sheet.type)` outside the one place that's allowed to, stop —
-you're authoring the next roadmap entry.
+`docs/refactoring-roadmap.md` rates every smell by one question —
+**"what would it cost to add the next one of these right now?"** —
+and that is the design test for new code too. The single most common
+way code ends up needing a refactor here is **branching on an
+identity literal in a place that should have asked a registry or a
+capability set.** When you find yourself writing
+`if (item.type === "accountBudget")`, `switch (adapter.id)`, or
+`if (bank === "…")` outside the one place that's allowed to, stop —
+you're authoring the next roadmap entry. The rule is uniform across
+every axis above: **adding the Nth variant should be one new
+self-describing entry, not an edit to a dozen call sites.**
 
-**The seam to reach for: descriptors in a registry.**
-`src/data/sheet-types/index.ts` holds `SHEET_TYPE_REGISTRY`, a list of
-`SheetTypeDescriptor`s. Adding a sheet type is one new file exporting a
-descriptor plus one entry in the array — `createDefaultItem`,
-`reduceItem`, and any future per-type callback live _on the descriptor_,
-and consumers walk the registry instead of branching:
+**Seam 1 — a registry of descriptors.** `src/data/sheet-types/index.ts`
+holds `SHEET_TYPE_REGISTRY`, a list of `SheetTypeDescriptor`s. Adding a
+sheet type is one new file exporting a descriptor plus one array entry
+— `createDefaultItem`, `reduceItem`, and any future per-type callback
+live _on the descriptor_, and consumers walk the registry instead of
+branching. Anything derived stays derived, so a new entry can't leave a
+consumer behind:
 
 ```ts
-// derived from the registry, so a new type can't leave a consumer behind
+// derived from the registry — a new type can't leave a consumer behind
 export const SHEET_TYPE_IDS: ReadonlySet<SheetType> = new Set(
   SHEET_TYPE_REGISTRY.map((d) => d.id),
 );
@@ -51,13 +59,22 @@ validator (`src/data/validate/sheet.ts`) and the AppShell page-routing
 switch — because their per-type shapes differ enough that folding them
 in would obscure more than it consolidates. Those are documented
 exceptions, tracked in the roadmap to land _with_ the first new sheet
-type. Everywhere else, prefer the registry.
+type. The bank-parser registry (`src/storage/banks/`) is the same shape
+for imports: a parser self-registers; the import flow walks the list.
 
-The same "gate on capability, not on identity" instinct shows up in the
-storage layer: adapters advertise an `AdapterCapability` set and UI
-gates on `capabilities.has("backups")` rather than
-`Boolean(adapter.backups)` (`src/storage/adapter.ts`). A new backend
-fills in the set; no call site changes.
+**Seam 2 — capability sets, not identity probes.** A consumer that
+needs to know whether a variant _can do_ something asks a capability
+flag, never the variant's id. Storage adapters advertise an
+`AdapterCapability` set and UI gates on `capabilities.has("backups")`
+rather than `Boolean(adapter.backups)` or `adapter.id === "dropbox"`
+(`src/storage/adapter.ts`). A new backend fills in the set; no call
+site changes. Reach for this whenever you'd otherwise write "if this is
+the cloud one" / "if this parser supports X".
+
+The payoff is the same in every case: the diff that adds variant N+1 is
+localised to one descriptor / parser / capability declaration, and the
+typechecker (exhaustive unions, derived `ReadonlySet`s) catches the
+consumer you forgot.
 
 ---
 
@@ -340,9 +357,10 @@ custom button+listbox pickers, never native `<select>`/`<option>`.
 
 ## 9. Anti-patterns — the checklist that keeps code off the refactor backlog
 
-- ❌ Branching on `sheet.type` / `item.type` outside the validator and
-  the AppShell routing switch. ✅ Add a descriptor field to
-  `SHEET_TYPE_REGISTRY` and walk the registry.
+- ❌ Branching on an identity literal — `item.type`, `adapter.id`,
+  `bank ===` — outside the one place that's allowed to. ✅ Add a
+  descriptor field (sheet types, parsers) or a capability flag (storage
+  adapters) and walk the registry / read the set.
 - ❌ Side effects (`Date.now()`, `newId()`, dispatch, logging) inside a
   reducer. ✅ Compute at the call site, bake into the action payload;
   let the dispatcher run side-effects outside the reducer.
@@ -364,5 +382,6 @@ custom button+listbox pickers, never native `<select>`/`<option>`.
 - ❌ A backend, remote API, or analytics call. ✅ It stays local-first —
   that needs an explicit spec change, full stop.
 
-When in doubt, ask the §0 question: _would this survive six new sheet
-types without an edit here?_ If not, find the seam first.
+When in doubt, ask the §0 question: _would this survive the next new
+sheet type, storage adapter, or bank parser without an edit here?_ If
+not, find the seam first.
