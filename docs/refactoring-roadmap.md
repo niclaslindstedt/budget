@@ -167,15 +167,6 @@ through them.
     Either keep the callbacks in AppShell calling into a
     host-exposed dispatch, or move the callbacks into the hosts.
 
-- **`useUserDataStorage.ts` save chain has no retry strategy** —
-  re-verified 2026-05: `src/storage/useSaveStateMachine.ts` (559
-  lines) catches `RateLimitError` (line ~293), computes
-  `until = Date.now() + err.retryAfterMs` and reschedules with that
-  delay — but there is still **no exponential backoff and no retry
-  budget / max-attempt counter** (it relies entirely on the server's
-  `retryAfterMs`). React Native / mobile networks will need it.
-  **Severity: 5.**
-
 - **Optional fields on persisted types — `undefined` vs `null`
   drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
   **26 optional fields** across `Account` (10), `HistoryEntry` (12),
@@ -377,6 +368,37 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Save-path retry strategy (`save-retry.ts` + `useSaveStateMachine.ts`)**
+  (2026-05): the save chain had no retry at all on transient failure —
+  the generic `catch` branch surfaced a red `error` on the first hiccup,
+  and the `RateLimitError` branch rescheduled using only the server's
+  `retryAfterMs` with no backoff floor or escalation. Added a pure,
+  unit-tested policy module `src/storage/save-retry.ts`
+  (`MAX_TRANSIENT_SAVE_RETRIES = 4`, an equal-jitter exponential
+  `backoffDelayMs(attempt, opts, rand)` capped at 30 s, and
+  `isRetryableSaveError(err)` which excludes the three typed adapter
+  signals `ConflictError` / `AuthError` / `RateLimitError`). Wired into
+  `performSave`'s catch by wrapping the `adapter.save` call in a
+  `for (;;)` loop: a transient backend error now sleeps an in-chain
+  backoff (the save chain stays in-flight so a queued newer save
+  coalesces behind it, and the loop re-checks `isStale()` after each
+  sleep so a superseding save / adapter swap abandons it cleanly) and
+  retries up to the budget before falling through to the existing
+  `error` status. The throttle path gained a backoff floor +
+  per-consecutive-429 escalation via a `consecutiveThrottlesRef`
+  (`waitMs = max(retryAfterMs, backoffDelayMs(consecutiveThrottles))`,
+  reset to 0 on any landed save) so a server returning a tiny/zero
+  cooldown can't pull us into a tight resend loop — deliberately no
+  budget there, since giving up on a rate limit would stop autosave.
+  Not a pure refactor (it adds retry behaviour), but no persisted-shape
+  change, no new `SaveStatus` kind, and no UI/i18n surface: status stays
+  `saving` across retries. 8 unit tests landed in
+  `tests/save_retry_test.ts` (geometric growth, the `[cap/2, cap)`
+  jitter window, the `maxMs` clamp, custom options, negative/fractional
+  attempt clamping, and the retryable-error classifier). Closes the
+  severity-5 "save chain has no retry strategy" item. fmt-check + lint +
+  typecheck + 1043 tests + build + icons-check pass.
 
 - **`stageHistoryImport` pure pipeline extraction from
   `useImportFlow.ts`** (2026-05): the ~155-line `onConfirmImportHistory`
