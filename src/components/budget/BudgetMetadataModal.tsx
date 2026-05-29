@@ -630,6 +630,20 @@ export function BudgetMetadataModal({
                     : t("metadata.companyHint")}
                 </span>
               </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("metadata.tagsLabel")}
+                </span>
+                <TagsPicker
+                  tags={tags}
+                  selectedIds={tagIds}
+                  onChange={setTagIds}
+                  onCreate={onCreateTag}
+                />
+                <span className="text-xs text-muted">
+                  {t("metadata.tagsHint")}
+                </span>
+              </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-muted">
                   {t("metadata.descriptionLabel")}
@@ -646,20 +660,6 @@ export function BudgetMetadataModal({
                   {t("metadata.descriptionHint")}
                 </span>
               </label>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("metadata.tagsLabel")}
-                </span>
-                <TagsPicker
-                  tags={tags}
-                  selectedIds={tagIds}
-                  onChange={setTagIds}
-                  onCreate={onCreateTag}
-                />
-                <span className="text-xs text-muted">
-                  {t("metadata.tagsHint")}
-                </span>
-              </div>
               <Checkbox
                 checked={isTransfer}
                 onChange={setIsTransfer}
