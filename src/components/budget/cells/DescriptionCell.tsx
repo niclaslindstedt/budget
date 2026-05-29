@@ -190,7 +190,7 @@ export function DescriptionCell({
               aria-label={ariaLabel}
               title={title}
             >
-              {isRecurring && (
+              {isRecurring && !showCompanyPill && (
                 <Repeat
                   size={16}
                   aria-hidden
@@ -199,7 +199,7 @@ export function DescriptionCell({
                 />
               )}
               {showCompanyPill ? (
-                <CompanyPill name={company!.name} />
+                <CompanyPill name={company!.name} recurring={isRecurring} />
               ) : showTypeName ? (
                 <span className="inline-flex min-w-0 items-center gap-1">
                   {showOmittedGlyph && <OmittedGlyph />}
@@ -452,8 +452,18 @@ function OmittedGlyph() {
 // Outlined pill with the company glyph + name, shown inside the
 // description cell when the row has a `companyId` but no user-authored
 // description. Uses theme tokens so the pill stays high-contrast in
-// both dark (white-on-dark) and light (dark-on-light) themes.
-function CompanyPill({ name }: { name: string }) {
+// both dark (white-on-dark) and light (dark-on-light) themes. When the
+// row is recurring the leading glyph becomes the orange recurring
+// symbol instead of the company glyph — it stands in for the external
+// Repeat icon (suppressed at the call site) so the pill saves the
+// horizontal space the separate icon would have cost.
+function CompanyPill({
+  name,
+  recurring,
+}: {
+  name: string;
+  recurring: boolean;
+}) {
   return (
     <span
       className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
@@ -462,7 +472,21 @@ function CompanyPill({ name }: { name: string }) {
         color: "var(--fg-bright)",
       }}
     >
-      <Building2 size={12} aria-hidden focusable={false} className="shrink-0" />
+      {recurring ? (
+        <Repeat
+          size={12}
+          aria-hidden
+          focusable={false}
+          className="shrink-0 text-flag"
+        />
+      ) : (
+        <Building2
+          size={12}
+          aria-hidden
+          focusable={false}
+          className="shrink-0"
+        />
+      )}
       <span className="truncate">{name}</span>
     </span>
   );
