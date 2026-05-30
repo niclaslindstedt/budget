@@ -29,6 +29,7 @@ import type {
   Row,
   Settings,
   Sheet,
+  TransactionSortOrder,
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { type Lang } from "../../i18n/locale";
@@ -45,6 +46,7 @@ import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
+import { BudgetViewerSearchControls } from "./BudgetViewerSearchControls";
 
 type Props = {
   open: boolean;
@@ -128,6 +130,14 @@ export function BudgetViewerModal({
 
   const companiesById = useMemo(() => indexById(companies), [companies]);
 
+  // The "hide transfers" filter only earns its place when the ledger
+  // actually carries synthesized transfer rows; "hide uncompleted"
+  // only when a completed column exists to read.
+  const hasTransferRows = useMemo(
+    () => item.rows.some(isTransferRow),
+    [item.rows],
+  );
+
   // Mirror the sort context BudgetPage builds so multi-entry days agree
   // between the editable and viewer surfaces.
   const sortContext = useMemo<RowSortContext | undefined>(() => {
@@ -144,9 +154,26 @@ export function BudgetViewerModal({
   // re-opening starts unfiltered. Applied on top of the hide-
   // transfers filter below.
   const [query, setQuery] = useState("");
+
+  // Viewer-local sort + filter state, seeded from the persisted
+  // preferences and reset whenever the modal closes — viewing is
+  // ephemeral, so steering the order or hiding rows here never mutates
+  // the user's global settings. The reset effect re-seeds from settings
+  // on close so the next open reflects any preference change made in
+  // between.
+  const [sortOrder, setSortOrder] = useState<TransactionSortOrder>(
+    settings.transactionSortOrder,
+  );
+  const [hideTransfers, setHideTransfers] = useState(settings.hideTransfers);
+  const [hideUncompleted, setHideUncompleted] = useState(false);
   useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
+    if (!open) {
+      setQuery("");
+      setSortOrder(settings.transactionSortOrder);
+      setHideTransfers(settings.hideTransfers);
+      setHideUncompleted(false);
+    }
+  }, [open, settings.transactionSortOrder, settings.hideTransfers]);
 
   // Pre-lowercased + pre-formatted search haystacks for every row that
   // could ever show up in the filtered output. Built once per change to
@@ -159,9 +186,20 @@ export function BudgetViewerModal({
   // optimisation `buildSearchIndex` in `src/data/search.ts` already
   // applies for the global transfer-search modal.
   const searchIndex = useMemo(() => {
-    const candidates = settings.hideTransfers
+    let candidates = hideTransfers
       ? item.rows.filter((r) => !isTransferRow(r))
       : item.rows;
+    if (hideUncompleted && completedCol) {
+      const completedId = completedCol.id;
+      // Only rows that carry an explicit completed boolean (the user's
+      // own entries) are subject to the filter; synthesized transfer /
+      // history rows and corrections leave the cell unset and stay
+      // visible regardless.
+      candidates = candidates.filter((r) => {
+        const v = r.cells[completedId];
+        return typeof v !== "boolean" || v === true;
+      });
+    }
     return candidates.map((row) => {
       let descLc = "";
       let typeNameLc = "";
@@ -200,6 +238,9 @@ export function BudgetViewerModal({
   }, [
     item.rows,
     settings,
+    hideTransfers,
+    hideUncompleted,
+    completedCol,
     descCol,
     amountCol,
     dateCol,
@@ -306,7 +347,13 @@ export function BudgetViewerModal({
       tracks.push(`minmax(56px, calc(${colWidths.amountChars} * 1ch + 1rem))`);
     }
     if (balanceCol) {
-      tracks.push(`minmax(56px, calc(${colWidths.balanceChars} * 1ch + 1rem))`);
+      // The running balance is the rightmost track, jammed against the
+      // modal edge, so it needs a touch more breathing room than the
+      // amount column — a wider floor and buffer keep abbreviated totals
+      // ("38K") off the edge instead of clipped by `overflow-x-hidden`.
+      tracks.push(
+        `minmax(68px, calc(${colWidths.balanceChars} * 1ch + 1.5rem))`,
+      );
     }
     return tracks.join(" ");
   }, [typeCol, amountCol, balanceCol, colWidths]);
@@ -314,13 +361,13 @@ export function BudgetViewerModal({
   const sortedMonthGroups = useMemo(() => {
     if (!dateCol) return monthGroups;
     const out = new Map<string, Row[]>();
-    const reverse = settings.transactionSortOrder === "newestFirst";
+    const reverse = sortOrder === "newestFirst";
     for (const [key, rows] of monthGroups) {
       const sorted = sortRowsByDate(rows, dateCol.id, sortContext);
       out.set(key, reverse ? reverseRowsByDay(sorted, dateCol.id) : sorted);
     }
     return out;
-  }, [monthGroups, dateCol, sortContext, settings.transactionSortOrder]);
+  }, [monthGroups, dateCol, sortContext, sortOrder]);
 
   const currentMonth = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -335,10 +382,8 @@ export function BudgetViewerModal({
     const keys = new Set<string>(monthGroups.keys());
     keys.add(currentMonth);
     const sorted = sortMonthKeys(keys);
-    return settings.transactionSortOrder === "newestFirst"
-      ? sorted.reverse()
-      : sorted;
-  }, [monthGroups, currentMonth, settings.transactionSortOrder]);
+    return sortOrder === "newestFirst" ? sorted.reverse() : sorted;
+  }, [monthGroups, currentMonth, sortOrder]);
 
   // Future months sit above today in the descending list. Hide them
   // behind a clickable "Show N future months" line so the modal opens
@@ -457,6 +502,23 @@ export function BudgetViewerModal({
             value={query}
             onChange={setQuery}
             placeholder={t("budget.viewerSearchPlaceholder")}
+            actions={
+              <BudgetViewerSearchControls
+                sortOrder={sortOrder}
+                defaultSortOrder={settings.transactionSortOrder}
+                onToggleSort={() =>
+                  setSortOrder((o) =>
+                    o === "newestFirst" ? "oldestFirst" : "newestFirst",
+                  )
+                }
+                hideTransfers={hideTransfers}
+                onHideTransfersChange={setHideTransfers}
+                hideUncompleted={hideUncompleted}
+                onHideUncompletedChange={setHideUncompleted}
+                canHideTransfers={hasTransferRows}
+                canHideUncompleted={Boolean(completedCol)}
+              />
+            }
           />
         )}
         {hasNoRows ? (
@@ -525,7 +587,7 @@ export function BudgetViewerModal({
                   </th>
                 )}
                 {balanceCol && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:pr-2 md:pl-4">
+                  <th className="pr-2 pl-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:pl-4">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
                         type="balance"
@@ -539,23 +601,22 @@ export function BudgetViewerModal({
                 )}
               </tr>
             </thead>
-            {hasHiddenFuture &&
-              settings.transactionSortOrder === "newestFirst" && (
-                <tbody>
-                  <ShowFutureEntriesRow
-                    label={t("budget.showFutureMonths", {
-                      n: FUTURE_PAGE_SIZE,
-                    })}
-                    onClick={onShowMoreFutureClick}
-                    colSpan={
-                      2 +
-                      (typeCol ? 1 : 0) +
-                      (amountCol ? 1 : 0) +
-                      (balanceCol ? 1 : 0)
-                    }
-                  />
-                </tbody>
-              )}
+            {hasHiddenFuture && sortOrder === "newestFirst" && (
+              <tbody>
+                <ShowFutureEntriesRow
+                  label={t("budget.showFutureMonths", {
+                    n: FUTURE_PAGE_SIZE,
+                  })}
+                  onClick={onShowMoreFutureClick}
+                  colSpan={
+                    2 +
+                    (typeCol ? 1 : 0) +
+                    (amountCol ? 1 : 0) +
+                    (balanceCol ? 1 : 0)
+                  }
+                />
+              </tbody>
+            )}
             {/* One <tbody> per month so each month-header tr's sticky
                 containing block ends at the next month — that's what
                 makes the previous label slide off as the next month's
@@ -643,23 +704,22 @@ export function BudgetViewerModal({
                 </tbody>
               );
             })}
-            {hasHiddenFuture &&
-              settings.transactionSortOrder === "oldestFirst" && (
-                <tbody>
-                  <ShowFutureEntriesRow
-                    label={t("budget.showFutureMonths", {
-                      n: FUTURE_PAGE_SIZE,
-                    })}
-                    onClick={onShowMoreFutureClick}
-                    colSpan={
-                      2 +
-                      (typeCol ? 1 : 0) +
-                      (amountCol ? 1 : 0) +
-                      (balanceCol ? 1 : 0)
-                    }
-                  />
-                </tbody>
-              )}
+            {hasHiddenFuture && sortOrder === "oldestFirst" && (
+              <tbody>
+                <ShowFutureEntriesRow
+                  label={t("budget.showFutureMonths", {
+                    n: FUTURE_PAGE_SIZE,
+                  })}
+                  onClick={onShowMoreFutureClick}
+                  colSpan={
+                    2 +
+                    (typeCol ? 1 : 0) +
+                    (amountCol ? 1 : 0) +
+                    (balanceCol ? 1 : 0)
+                  }
+                />
+              </tbody>
+            )}
           </table>
         )}
       </Modal.Body>
@@ -813,7 +873,7 @@ function ViewerRow({
         </td>
       )}
       {balanceColId && (
-        <td className="px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pr-2 md:pl-4">
+        <td className="pr-2 pl-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap text-muted md:pl-4">
           {balanceValue !== undefined
             ? formatRunningBalance(balanceValue, settings)
             : ""}
