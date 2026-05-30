@@ -52,6 +52,26 @@ export function hintRecordingsFromBudget(
   return out;
 }
 
+// Stamp a row's type as an explicit user pick: set `typeId` and lock
+// the row out of pattern-driven re-labelling, so a later description
+// edit can't silently overwrite a label the user chose by hand. Always
+// moves the id and the lock together — clearing goes through
+// `clearRowType`. Mutates and returns the (already-fresh) draft.
+export function setRowType<R extends Row>(row: R, typeId: string): R {
+  row.typeId = typeId;
+  row.typeIdLocked = true;
+  return row;
+}
+
+// Clear a row's type and re-open it to pattern matching so the next
+// description commit can pick one up. Drops the lock in lockstep with
+// the id — the inverse of `setRowType`.
+export function clearRowType<R extends Row>(row: R): R {
+  delete row.typeId;
+  delete row.typeIdLocked;
+  return row;
+}
+
 export function applyPatch<R extends Row>(
   row: R,
   patch: EditPatch,
@@ -89,15 +109,8 @@ export function applyPatch<R extends Row>(
   // `undefined` means "don't touch"; explicit `null` clears the type
   // and the row falls back to its description as the primary label.
   if (patch.typeId !== undefined) {
-    if (patch.typeId === null) {
-      delete next.typeId;
-      delete next.typeIdLocked;
-    } else {
-      next.typeId = patch.typeId;
-      // The edit modal is an explicit user choice — lock the row out
-      // of pattern-driven re-labelling, same as the inline type cell.
-      next.typeIdLocked = true;
-    }
+    if (patch.typeId === null) clearRowType(next);
+    else setRowType(next, patch.typeId);
   }
   // Same tri-state contract as typeId: undefined = don't touch,
   // null = clear, string = set.

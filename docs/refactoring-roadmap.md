@@ -327,21 +327,6 @@ colSpan` the two `ShowFutureEntriesRow` sites can't reach).
     not a six-site cross-file extraction. Land opportunistically when
     touching either table.
 
-- **Paired `typeId` / `typeIdLocked` set-and-clear in the item reducer**
-  (`src/data/reducers/item/index.ts`, 474 lines) — picking a type stamps
-  both `typeId` and `typeIdLocked: true`; clearing deletes both. The
-  move-both pattern recurs across the type-pick, `convertToRecurring`, and
-  `bulkUpdate` arms (re-verify with `grep -n typeIdLocked
-src/data/reducers/item/index.ts`). Forgetting one half is a silent
-  locked-vs-unlocked inconsistency.
-  - **Plan**: extract pure `setRowType(row, typeId)` / `clearRowType(row)`
-    helpers that always move the pair together; adopt at the three arms.
-  - **Risk**: low — pure functions; the existing reducer tests cover the
-    lock semantics. No persisted-shape change.
-  - **Severity: 4.** Leverage: a third paired field (`typeIdSource` or a
-    future per-sheet-type lock flag) would otherwise add a fourth lockstep
-    site.
-
 - **`migrateV24ToV25` 284-line monolith** (`src/data/migrations/legacy.ts`,
   774 lines; the function spans lines 490–774) — a single forward-only
   migration that walks the sheet tree three times (count type usage →
@@ -516,6 +501,27 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Paired `typeId` / `typeIdLocked` set/clear → `setRowType` /
+  `clearRowType` helpers** (2026-05): the "set `typeId` +
+  `typeIdLocked: true`, clear by deleting both" lockstep was inlined at
+  five sites — `applyPatch` (`src/data/reducers/item/hints.ts`) plus four
+  arms in `src/data/reducers/item/index.ts` (`updateCell` type-column
+  set/clear, `addRowsFromComplex` set, `convertToRecurring` new-rows set,
+  `convertToRecurring` anchor set/clear). Extracted two mutate-and-return
+  helpers into `hints.ts` (already imported one-directionally by
+  `index.ts`, and home of `applyPatch`, the canonical set/clear site, so
+  no new file / no circular import / no `docs/architecture.md` inventory
+  churn): `setRowType(row, typeId)` stamps the id + lock together,
+  `clearRowType(row)` drops both. Re-verify caught the prior framing as
+  **stale**: the `bulkUpdate` arm (`index.ts` ~344) writes `typeId`
+  **without** touching `typeIdLocked`, so it is _not_ part of the
+  lock-paired set and was left inline — folding it in would have been a
+  behaviour change (a bulk type write would start locking the row).
+  Pure refactor — identical output at every adopted site; fast loop +
+  build + icons-check green, all 1101 tests pass (incl.
+  `match_rule_tags_test` / `tags_reducer_test` covering the lock
+  semantics). **Was severity 4.**
 
 - **Duplicated local `formatMonth` helper → `formatMonthKey` in
   `src/utils/format.ts`** (2026-05): the

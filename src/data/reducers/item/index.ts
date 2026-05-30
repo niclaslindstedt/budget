@@ -14,7 +14,7 @@ import {
 } from "../../sheet";
 import type { AccountBudget, Row, UserRow } from "../../types";
 import type { ItemAction } from "./actions";
-import { applyPatch } from "./hints";
+import { applyPatch, clearRowType, setRowType } from "./hints";
 
 export type { ItemAction } from "./actions";
 export { applyPatternsAfterCellEdit, hintRecordingsFromBudget } from "./hints";
@@ -38,16 +38,9 @@ export function reduceAccountBudget(
             if (r.id !== action.rowId) return r;
             const next: Row = { ...r };
             if (typeof action.value === "string" && action.value !== "") {
-              next.typeId = action.value;
-              // Manual type assignment locks the row out of pattern-
-              // driven re-labelling: a later description edit shouldn't
-              // silently overwrite a label the user chose by hand.
-              next.typeIdLocked = true;
+              setRowType(next, action.value);
             } else {
-              delete next.typeId;
-              // Clearing the type re-opens the row to pattern matching
-              // so the next description commit can pick one up.
-              delete next.typeIdLocked;
+              clearRowType(next);
             }
             return next;
           }),
@@ -101,13 +94,9 @@ export function reduceAccountBudget(
           completed: defaultCompletedForDate(date),
         });
         if (seriesId) row.seriesId = seriesId;
-        if (draft.typeId) {
-          row.typeId = draft.typeId;
-          // The modal asked the user for a type — treat the choice as
-          // an explicit pick so future description edits don't reroute
-          // it through pattern matching.
-          row.typeIdLocked = true;
-        }
+        // The modal asked the user for a type — treat the choice as an
+        // explicit pick so future description edits don't reroute it.
+        if (draft.typeId) setRowType(row, draft.typeId);
         if (draft.companyId) row.companyId = draft.companyId;
         if (draft.tagIds && draft.tagIds.length > 0) {
           row.tagIds = [...draft.tagIds];
@@ -153,10 +142,7 @@ export function reduceAccountBudget(
           completed: false,
         });
         row.seriesId = seriesId;
-        if (action.typeId) {
-          row.typeId = action.typeId;
-          row.typeIdLocked = true;
-        }
+        if (action.typeId) setRowType(row, action.typeId);
         if (action.companyId) row.companyId = action.companyId;
         // Carry the anchor's estimate range onto every generated
         // occurrence so the whole series stays matchable against the
@@ -173,13 +159,8 @@ export function reduceAccountBudget(
           ...item.rows.map((r) => {
             if (r.id !== anchor.id) return r;
             const next: Row = { ...r, seriesId };
-            if (action.typeId) {
-              next.typeId = action.typeId;
-              next.typeIdLocked = true;
-            } else if (action.typeId === null) {
-              delete next.typeId;
-              delete next.typeIdLocked;
-            }
+            if (action.typeId) setRowType(next, action.typeId);
+            else if (action.typeId === null) clearRowType(next);
             if (action.companyId) {
               next.companyId = action.companyId;
             } else if (action.companyId === null) {
