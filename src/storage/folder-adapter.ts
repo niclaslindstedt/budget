@@ -1,15 +1,7 @@
 import { createLogger } from "../utils/logger";
-import {
-  type BackupOps,
-  ConflictError,
-  type Snapshot,
-  type StorageAdapter,
-} from "./adapter";
-import {
-  BACKUP_INDEX_FILENAME,
-  parseBackupIndex,
-  serializeBackupIndex,
-} from "./backup-index";
+import { ConflictError, type Snapshot, type StorageAdapter } from "./adapter";
+import { BACKUP_INDEX_FILENAME } from "./backup-index";
+import { createBackupOps } from "./backup-ops";
 
 const log = createLogger("folder");
 
@@ -138,42 +130,14 @@ export function createFolderAdapter(
     }
   }
 
-  const backups: BackupOps = {
-    async list() {
-      log.info("backups: list");
-      const raw = await readBackupFile(BACKUP_INDEX_FILENAME);
-      return parseBackupIndex(raw);
-    },
-    async create(text, metadata) {
-      log.info(`backups: create ${metadata.filename} bytes=${text.length}`);
-      await writeBackupFile(metadata.filename, text);
-      const existing = parseBackupIndex(
-        await readBackupFile(BACKUP_INDEX_FILENAME),
-      );
-      const next = [
-        metadata,
-        ...existing.filter((m) => m.filename !== metadata.filename),
-      ];
-      await writeBackupFile(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
-    },
-    async read(filename) {
-      log.info(`backups: read ${filename}`);
-      const text = await readBackupFile(filename);
-      if (text === null) {
-        throw new Error(`Backup not found: ${filename}`);
-      }
-      return text;
-    },
-    async remove(filename) {
-      log.info(`backups: remove ${filename}`);
-      await removeBackupFile(filename);
-      const existing = parseBackupIndex(
-        await readBackupFile(BACKUP_INDEX_FILENAME),
-      );
-      const next = existing.filter((m) => m.filename !== filename);
-      await writeBackupFile(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
-    },
-  };
+  const backups = createBackupOps({
+    readFile: readBackupFile,
+    writeFile: writeBackupFile,
+    deleteFile: removeBackupFile,
+    backupKey: (filename) => filename,
+    indexKey: BACKUP_INDEX_FILENAME,
+    log,
+  });
 
   return {
     id: "folder",

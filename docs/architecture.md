@@ -231,6 +231,7 @@ src/
 │   ├── backend-preference.ts  # per-user backend choice + cloud tokens
 │   ├── backup-index.ts        # backup manifest serializer + tolerant parser
 │   ├── backup-metadata.ts     # derive BackupMetadata from UserData + filename
+│   ├── backup-ops.ts          # shared BackupOps lifecycle factory over a backend's file primitives
 │   ├── boot-auth.ts           # AuthState resolved from session + users registry
 │   ├── session.ts             # sessionStorage cache for the active password
 │   ├── users.ts               # device-wide user registry + PBKDF2 hashing

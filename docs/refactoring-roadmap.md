@@ -369,16 +369,6 @@ through them.
   diverge). Revisit only if a third OAuth backend (e.g. iCloud
   Drive) lands.
 
-- **Backup logic per-adapter (Dropbox, GDrive, Folder)** — each
-  hand-rolls the backup-index lifecycle via `backup-index.ts` +
-  `backup-metadata.ts`. Re-verified 2026-05: all three implement
-  `BackupOps` (dropbox ~329-375, gdrive ~400+, folder ~141-175) with
-  the same shape; IDB has no backups. (Note: `parseBackupIndex` /
-  `serializeBackupIndex` are already shared — only the
-  list/create/read/delete lifecycle is duplicated.) **Severity: 4.**
-  - Plan: extract a `BackupManager` that accepts an adapter and
-    drives the lifecycle. IDB skips backup operations cleanly.
-
 - **Bank parser registry is global, no capability flags** — the
   module-level `registry: BankParser[]` in `src/storage/banks/core.ts`
   (~line 101) registers via a bare `push`, no capability gating. A
@@ -460,6 +450,39 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`createBackupOps` factory — shared backup-lifecycle across the
+  Dropbox / GDrive / Folder adapters** (2026-05): the three adapters each
+  hand-rolled an identical `BackupOps` lifecycle (list / create / read /
+  remove) around `parseBackupIndex` / `serializeBackupIndex` — same
+  prepend-and-dedupe-on-create, same filter-on-remove, same throw-on-missing
+  read, same `backups: …` log breadcrumbs — differing only in three
+  primitive file operations (read / write / delete the bytes at a key) and
+  how a backup filename maps to a storage key (Dropbox prefixes its
+  `nsCloudPath("/backups")` folder; GDrive and Folder address files by bare
+  name). New `src/storage/backup-ops.ts` exports `createBackupOps(store)`
+  taking a `BackupStore` (`readFile` / `writeFile` / `deleteFile` /
+  `backupKey(filename)` / `indexKey` / `log`) and implements the lifecycle
+  once; each adapter replaced its ~25-line `const backups: BackupOps = {…}`
+  block with a ~7-line `createBackupOps({…})` call wiring its existing
+  `readBackupFile` / `uploadBackupFile` / `deleteBackupFile` (Dropbox),
+  `downloadBackup` / `uploadBackup` / `deleteBackup` (GDrive), and
+  `readBackupFile` / `writeBackupFile` / `removeBackupFile` (Folder)
+  primitives. Pure refactor — behaviour identical by construction (the
+  shared flow is the same code that lived in three places); the only
+  per-adapter knowledge is the `BackupStore`. `idb` / `local` are untouched
+  (no `backups` capability). 8 unit tests landed in
+  `tests/backup_ops_test.ts` driving an in-memory fake store: empty-manifest
+  list, write-body-then-record-on-create, prepend + filename dedupe,
+  read-back, throw-on-missing, remove-body-and-prune, prune-even-when-body-
+  already-gone, and a key-routing assertion that every op flows through
+  `backupKey` / `indexKey` (using a `backups/` prefix to mirror the Dropbox
+  full-path convention). Closes the severity-4 "Backup logic per-adapter"
+  candidate. fmt-check + lint + typecheck + 1101 tests + build + icons-check
+  pass; the manual cloud smoke-test (take / list / restore / delete a backup
+  on a live Dropbox + Google Drive + local folder) is a reviewer-side check
+  — the OAuth + FSA transports aren't reachable in this environment, same
+  caveat the prior storage-adapter landings carry.
 
 - **`useSettingsModal` + `useAppearanceProjection` relocated into
   `UniversalModalHost`** (2026-05): slice 8 of the `AppShell.tsx` modal-mount
