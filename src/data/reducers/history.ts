@@ -221,6 +221,28 @@ export function reduceHistory(
     if (history === state.history) return state;
     return { ...state, history };
   }
+  if (action.type === "linkLineItemsToHistoryEntry") {
+    const history = updateHistoryEntry(
+      state.history,
+      action.accountId,
+      action.entryId,
+      (prev) => {
+        const next: HistoryEntry = { ...prev };
+        // An empty array means "clear the line items" — drop the field
+        // so the entry persists no empty `lineItems: []`.
+        if (action.lineItems.length === 0) {
+          delete next.lineItems;
+        } else {
+          // Defensive copy so the reducer never holds a reference to the
+          // dispatcher's payload.
+          next.lineItems = action.lineItems.map((l) => ({ ...l }));
+        }
+        return next;
+      },
+    );
+    if (history === state.history) return state;
+    return { ...state, history };
+  }
   if (action.type === "applyReconciliation") {
     const mergedSet = new Set(action.mergedRowIds);
     const orphanByRow = new Map(action.orphans.map((o) => [o.rowId, o]));

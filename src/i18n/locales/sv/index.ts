@@ -56,6 +56,7 @@ import category from "./category";
 import type from "./type";
 import company from "./company";
 import tag from "./tag";
+import items from "./items";
 import glyph from "./glyph";
 import color from "./color";
 import datePicker from "./datePicker";
@@ -126,6 +127,7 @@ export const sv: Catalog = {
   type,
   company,
   tag,
+  items,
   glyph,
   color,
   datePicker,

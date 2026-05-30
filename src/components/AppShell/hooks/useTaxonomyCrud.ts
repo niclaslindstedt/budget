@@ -2,7 +2,14 @@ import { useCallback } from "react";
 
 import type { Action } from "../../../data/reducer";
 import { newId } from "../../../data/sheet";
-import type { Category, Company, EntryType, Tag } from "../../../data/types";
+import type {
+  Category,
+  Company,
+  EntryType,
+  Item,
+  Subtype,
+  Tag,
+} from "../../../data/types";
 
 type Params = {
   dispatch: (action: Action) => void;
@@ -33,6 +40,8 @@ type Result = {
   onCreateTag: (draft: Omit<Tag, "id">) => Tag;
   onUpdateTag: (tagId: string, patch: Partial<Omit<Tag, "id">>) => void;
   onDeleteTag: (tagId: string) => void;
+  onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
+  onCreateItem: (draft: Omit<Item, "id">) => Item;
 };
 
 // Thin dispatch wrappers for category / entry-type / company / tag CRUD.
@@ -123,6 +132,22 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     (tagId: string) => dispatch({ type: "deleteTag", tagId }),
     [dispatch],
   );
+  const onCreateSubtype = useCallback(
+    (draft: Omit<Subtype, "id">): Subtype => {
+      const subtype: Subtype = { id: newId(), ...draft };
+      dispatch({ type: "addSubtype", subtype });
+      return subtype;
+    },
+    [dispatch],
+  );
+  const onCreateItem = useCallback(
+    (draft: Omit<Item, "id">): Item => {
+      const item: Item = { id: newId(), ...draft };
+      dispatch({ type: "addItem", item });
+      return item;
+    },
+    [dispatch],
+  );
 
   return {
     onCreateCategory,
@@ -140,5 +165,7 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     onCreateTag,
     onUpdateTag,
     onDeleteTag,
+    onCreateSubtype,
+    onCreateItem,
   };
 }

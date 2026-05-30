@@ -70,6 +70,7 @@ export type DeletePrompt = { kind: "delete"; row: Row };
 export type EditPrompt = { kind: "edit"; row: Row };
 export type EditRowPrompt = { kind: "edit-row"; row: Row };
 export type SplitPrompt = { kind: "split"; row: Row };
+export type LineItemsPrompt = { kind: "line-items"; row: Row };
 export type BulkDeletePrompt = { kind: "bulk-delete"; rowIds: string[] };
 export type MoveCopyPrompt = { kind: "move" | "copy"; rows: Row[] };
 

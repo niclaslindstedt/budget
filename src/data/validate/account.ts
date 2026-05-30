@@ -5,6 +5,9 @@ import type {
   CategoryIcon,
   Company,
   EntryType,
+  Item,
+  LineItemLink,
+  Subtype,
   Tag,
 } from "../types";
 import {
@@ -134,4 +137,82 @@ export function validateEntryType(
   };
   if (kind === "income" || kind === "expense") cleaned.kind = kind;
   return { ok: true, value: cleaned };
+}
+
+// The third taxonomy tier. Mirrors `validateEntryType`'s `categoryId`
+// check: a subtype with a dangling `typeId` is meaningless (it can't be
+// shown under any type in the item creator), so a missing parent hard-fails
+// rather than silently dropping the reference.
+export function validateSubtype(
+  raw: unknown,
+  path: string,
+  knownTypeIds: ReadonlySet<string>,
+): Result<Subtype> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, typeId } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  if (typeof typeId !== "string" || typeId === "")
+    return fail(`${path}.typeId`, "expected a non-empty string");
+  if (!knownTypeIds.has(typeId))
+    return fail(`${path}.typeId`, `references unknown type "${typeId}"`);
+  return { ok: true, value: { id, name, typeId } };
+}
+
+// An owned item. `subtypeId` is advisory — a deleted subtype shouldn't trap
+// the item, so a dangling reference is dropped silently (mirroring
+// `Row.companyId`). `acquiredAt` / `note` are free-form strings accepted
+// straight through; unknown fields are ignored so future per-item metadata
+// lands without a migration.
+export function validateItem(
+  raw: unknown,
+  path: string,
+  knownSubtypeIds: ReadonlySet<string>,
+): Result<Item> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  const item: Item = { id, name };
+  if (
+    typeof raw.subtypeId === "string" &&
+    raw.subtypeId !== "" &&
+    knownSubtypeIds.has(raw.subtypeId)
+  )
+    item.subtypeId = raw.subtypeId;
+  if (typeof raw.acquiredAt === "string" && raw.acquiredAt !== "")
+    item.acquiredAt = raw.acquiredAt;
+  if (typeof raw.note === "string") item.note = raw.note;
+  return { ok: true, value: item };
+}
+
+// Inline line-item links on a row / history entry. Each link is independent
+// and advisory: a link whose `itemId` no longer resolves (the item was
+// deleted) is dropped rather than failing the load, and a malformed link is
+// skipped. No sum check — line items are a partial allocation. Returns the
+// cleaned array (possibly empty); callers persist it only when non-empty.
+export function validateLineItemLinks(
+  raw: unknown,
+  knownItemIds: ReadonlySet<string>,
+): LineItemLink[] {
+  if (!Array.isArray(raw)) return [];
+  const links: LineItemLink[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    if (!isObject(entry)) continue;
+    const { id, itemId, amount, note } = entry;
+    if (typeof id !== "string" || id === "") continue;
+    if (seen.has(id)) continue;
+    if (typeof itemId !== "string" || !knownItemIds.has(itemId)) continue;
+    if (typeof amount !== "number" || !Number.isFinite(amount)) continue;
+    const link: LineItemLink = { id, itemId, amount };
+    if (typeof note === "string") link.note = note;
+    seen.add(id);
+    links.push(link);
+  }
+  return links;
 }

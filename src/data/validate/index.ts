@@ -8,6 +8,7 @@ import type {
   EntryType,
   HistoryEntry,
   HistoryImport,
+  Item,
   MatchRule,
   MerchantHint,
   PrimaryIncomeMerchant,
@@ -15,6 +16,7 @@ import type {
   SeriesMatchRule,
   SeriesMetadata,
   Sheet,
+  Subtype,
   Tag,
   Transfer,
   UserData,
@@ -24,6 +26,8 @@ import {
   validateCategory,
   validateCompany,
   validateEntryType,
+  validateItem,
+  validateSubtype,
   validateTag,
 } from "./account";
 import { fail, isObject, sanitizeStringArray, type Result } from "./helpers";
@@ -146,6 +150,39 @@ export function validateUserData(raw: unknown): Result<UserData> {
     ...seenTypeIds,
   ]);
 
+  // Subtypes (third taxonomy tier). No presets, so the known-id set is
+  // just the user's array. Each references a type via `typeId`, checked
+  // against `knownTypeIds` above — validated before items so an item's
+  // `subtypeId` can be resolved.
+  const rawSubtypes = Array.isArray(raw.subtypes) ? raw.subtypes : [];
+  const subtypes: Subtype[] = [];
+  const seenSubtypeIds = new Set<string>();
+  for (let i = 0; i < rawSubtypes.length; i++) {
+    const r = validateSubtype(rawSubtypes[i], `subtypes[${i}]`, knownTypeIds);
+    if (!r.ok) return r;
+    if (seenSubtypeIds.has(r.value.id))
+      return fail(`subtypes[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenSubtypeIds.add(r.value.id);
+    subtypes.push(r.value);
+  }
+  const knownSubtypeIds: ReadonlySet<string> = seenSubtypeIds;
+
+  // Owned items. Validated after subtypes (an item's optional `subtypeId`
+  // resolves against `knownSubtypeIds`) and before sheets / history (whose
+  // inline `lineItems` resolve their `itemId` against `knownItemIds`).
+  const rawItems = Array.isArray(raw.items) ? raw.items : [];
+  const items: Item[] = [];
+  const seenItemIds = new Set<string>();
+  for (let i = 0; i < rawItems.length; i++) {
+    const r = validateItem(rawItems[i], `items[${i}]`, knownSubtypeIds);
+    if (!r.ok) return r;
+    if (seenItemIds.has(r.value.id))
+      return fail(`items[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenItemIds.add(r.value.id);
+    items.push(r.value);
+  }
+  const knownItemIds: ReadonlySet<string> = seenItemIds;
+
   const rawTransfers = Array.isArray(raw.transfers) ? raw.transfers : [];
   const transfers: Transfer[] = [];
   const seenTransferIds = new Set<string>();
@@ -173,6 +210,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       knownTypeIds,
       knownCompanyIds,
       knownTagIds,
+      knownItemIds,
     );
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
@@ -205,6 +243,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
         knownTypeIds,
         knownCompanyIds,
         knownTagIds,
+        knownItemIds,
       );
       if (!r.ok) return r;
       if (seenIds.has(r.value.id)) continue;
@@ -372,6 +411,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       tags,
       categories,
       types,
+      subtypes,
+      items,
       hiddenPresetTypeIds,
       presetTypeKindOverrides,
       hiddenPresetCategoryIds,

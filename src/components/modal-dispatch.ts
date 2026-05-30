@@ -33,6 +33,7 @@ export type ModalCommand =
   | { kind: "open-edit-row"; row: Row }
   | { kind: "open-delete-row"; row: Row }
   | { kind: "open-split-row"; row: Row }
+  | { kind: "open-line-items"; row: Row }
   | { kind: "open-transfer-row"; row: Row }
   | { kind: "open-match-rule"; row: Row }
   | { kind: "open-edit-history"; row: Row }
@@ -63,6 +64,7 @@ export type ModalCommandHandlers = {
   editRow: (row: Row) => void;
   deleteRow: (row: Row) => void;
   splitRow: (row: Row) => void;
+  lineItems: (row: Row) => void;
   transferRow: (row: Row) => void;
   matchRule: (row: Row) => void;
   editHistory: (row: Row) => void;
@@ -123,6 +125,9 @@ export function applyModalCommand(
       return;
     case "open-split-row":
       handlers.splitRow(command.row);
+      return;
+    case "open-line-items":
+      handlers.lineItems(command.row);
       return;
     case "open-transfer-row":
       handlers.transferRow(command.row);

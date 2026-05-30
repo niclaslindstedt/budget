@@ -111,15 +111,17 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 48), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 49), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
-│   │   │                       #   HistoricRow / TransferRow), ColumnType
-│   │   ├── categories.ts       # Category, EntryType, EntryTypeKind, Company,
-│   │   │                       #   Tag, CategoryIcon allowlist
-│   │   ├── accounts.ts         # Account, HistoryEntry, HistoryEntrySplit,
-│   │   │                       #   HistoryImport, Transfer
+│   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
+│   │   │                       #   ColumnType
+│   │   ├── categories.ts       # Category, EntryType, EntryTypeKind, Subtype,
+│   │   │                       #   Company, Tag, CategoryIcon allowlist
+│   │   ├── items.ts            # Item (owned things), LineItemLink (entry↔item)
+│   │   ├── accounts.ts         # Account, HistoryEntry (+ lineItems),
+│   │   │                       #   HistoryEntrySplit, HistoryImport, Transfer
 │   │   ├── rules.ts            # MatchRule, MerchantHint, RenamePattern,
 │   │   │                       #   SeriesMatchRule, SeriesMetadata,
 │   │   │                       #   PrimaryIncomeMerchant
@@ -186,8 +188,9 @@ src/
 │   │   │                       #   patch, split, paste, drag-drop, hints,
 │   │   │                       #   primary-income shifts)
 │   │   ├── accounts.ts, sheets.ts, transfers.ts, history.ts,
-│   │   │   history-primary-income.ts, categories-and-types.ts, match-rules.ts,
-│   │   │   recurring.ts, series-metadata.ts, settings.ts, achievements.ts
+│   │   │   history-primary-income.ts, categories-and-types.ts, items.ts,
+│   │   │   match-rules.ts, recurring.ts, series-metadata.ts, settings.ts,
+│   │   │   achievements.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
 │   │   ├── sheet.ts, account.ts, history.ts, rules.ts, settings.ts, theme.ts,
@@ -195,7 +198,7 @@ src/
 │   ├── migrations/        # forward-only schema migration runner
 │   │   ├── index.ts            # LATEST_VERSION (48) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v48 steps
+│   │   ├── modern.ts           # v31 → v49 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -618,6 +621,10 @@ Current `LATEST_VERSION` is `47`. The chain has forty-six steps:
   `MatchRule.tagIds`.
 - **v46 → v47** — adds `Settings.searchRanking` (transaction-search
   ranker knobs).
+- **v47 → v48** — flags optional `HistoryEntrySplit.tagIds`.
+- **v48 → v49** — adds user-curated `subtypes: []` (third taxonomy tier)
+  and `items: []` (owned things), plus optional `Row.lineItems` /
+  `HistoryEntry.lineItems` (links tying part of an entry to an item).
 
 ## State management
 

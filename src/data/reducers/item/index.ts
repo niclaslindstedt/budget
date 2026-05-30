@@ -451,5 +451,26 @@ export function reduceAccountBudget(
       if (!changed) return item;
       return { ...item, rows };
     }
+
+    case "setRowLineItems": {
+      let changed = false;
+      const rows = item.rows.map((r) => {
+        if (r.id !== action.rowId) return r;
+        // An empty set means "clear the line items" — drop the field so a
+        // row never persists an empty `lineItems: []` (mirrors `tagIds`).
+        if (action.lineItems.length === 0) {
+          if (r.lineItems === undefined) return r;
+          const next = { ...r };
+          delete next.lineItems;
+          changed = true;
+          return next;
+        }
+        changed = true;
+        // Defensive copy so the reducer never holds the dispatcher's array.
+        return { ...r, lineItems: action.lineItems.map((l) => ({ ...l })) };
+      });
+      if (!changed) return item;
+      return { ...item, rows };
+    }
   }
 }

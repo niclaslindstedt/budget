@@ -1,4 +1,5 @@
 import type { CategoryIcon } from "./categories";
+import type { LineItemLink } from "./items";
 
 // A real-world account (a bank account, credit card, cash envelope, …)
 // that a budget tracks. Accounts live at the UserData level so the same
@@ -177,6 +178,16 @@ export type HistoryEntry = {
   // — those overrides target the single-row presentation and are
   // ignored when `splits` is active.
   splits?: HistoryEntrySplit[];
+  // User-defined links tying part of this transaction's amount to owned
+  // `Item`s — see `LineItemLink`. The per-entry overlay the synthesizer
+  // projects onto the historic row (mirroring `userTypeId → typeId`),
+  // edited via the `linkLineItemsToHistoryEntry` action. Unlike `splits`,
+  // line items are a PARTIAL allocation: they need not sum to `amount` and
+  // do not change how the entry renders or contributes to the balance — the
+  // single row still shows, with the line items attached as metadata. Absent
+  // / empty means no line items. Independent of `splits`: a split entry can
+  // still carry line items on the unsplit total.
+  lineItems?: LineItemLink[];
 };
 
 // Per-account metadata recorded each time the user imports a file.

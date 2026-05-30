@@ -53,6 +53,7 @@ function isBudgetItemAction(action: Action): action is ItemAction {
     case "bulkMakeRecurring":
     case "reorderColumns":
     case "splitRow":
+    case "setRowLineItems":
     case "setRowFiscalMonthShift":
       return true;
     default:

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Boxes,
   Copy,
   Eye,
   EyeOff,
@@ -121,6 +122,21 @@ export function BudgetEntryActionsMenu({
     label: t("cell.split"),
     onClick: () => pick(() => dispatchModal({ kind: "open-split-row", row })),
   });
+
+  // Tie part of this entry's amount to owned items (see `LineItemLink`).
+  // Distinct from Split: a split re-slices the entry into separate rows,
+  // while line items annotate the existing row with what it bought. Off
+  // for synthesized transfer rows and balance corrections, which aren't
+  // purchases.
+  if (row.kind !== "transfer" && row.kind !== "correction") {
+    items.push({
+      key: "lineItems",
+      icon: <Boxes size={16} aria-hidden focusable={false} />,
+      label: t("cell.lineItems"),
+      onClick: () =>
+        pick(() => dispatchModal({ kind: "open-line-items", row })),
+    });
+  }
 
   // Copy stamps fresh manual rows into other months. Available on
   // every row — for synthesized history / transfer rows the new rows

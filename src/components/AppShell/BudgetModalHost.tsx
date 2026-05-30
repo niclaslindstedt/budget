@@ -20,6 +20,7 @@ import {
   BudgetSplitEntryModal,
   type SplitSubmission,
 } from "../budget/BudgetSplitEntryModal";
+import { BudgetLineItemsModal } from "../budget/BudgetLineItemsModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
@@ -31,6 +32,7 @@ import type {
   Column,
   EntryType,
   HistoryEntrySplit,
+  LineItemLink,
   Settings,
   UserData,
 } from "../../data/types";
@@ -68,6 +70,8 @@ type Props = {
   onCreateCategory: ReturnType<typeof useTaxonomyCrud>["onCreateCategory"];
   onCreateCompany: ReturnType<typeof useTaxonomyCrud>["onCreateCompany"];
   onCreateTag: ReturnType<typeof useTaxonomyCrud>["onCreateTag"];
+  onCreateSubtype: ReturnType<typeof useTaxonomyCrud>["onCreateSubtype"];
+  onCreateItem: ReturnType<typeof useTaxonomyCrud>["onCreateItem"];
   onSetSeriesPrimaryIncome: (
     seriesId: string,
     isPrimaryIncome: boolean,
@@ -96,6 +100,8 @@ export function BudgetModalHost(props: Props) {
     onCreateCategory,
     onCreateCompany,
     onCreateTag,
+    onCreateSubtype,
+    onCreateItem,
     onSetSeriesPrimaryIncome,
   } = props;
   const t = useT();
@@ -106,6 +112,8 @@ export function BudgetModalHost(props: Props) {
     setEditRowPrompt,
     splitPrompt,
     setSplitPrompt,
+    lineItemsPrompt,
+    setLineItemsPrompt,
     pendingSeriesEdit,
     setPendingSeriesEdit,
   } = editPrompts;
@@ -317,6 +325,46 @@ export function BudgetModalHost(props: Props) {
     });
     setSplitPrompt(null);
   }, [dispatch, splitPrompt, activeItem.accountId, setSplitPrompt]);
+
+  // Attach / replace the owned-item links on the prompted row. Historic
+  // rows route to `linkLineItemsToHistoryEntry` (their links live on the
+  // backing `HistoryEntry`); user / correction rows route to
+  // `setRowLineItems`. Mirrors `onSplitSubmit`'s kind branch.
+  const onLineItemsSubmit = useCallback(
+    (rowId: string, lineItems: LineItemLink[]) => {
+      const row = lineItemsPrompt?.row;
+      if (!row) {
+        setLineItemsPrompt(null);
+        return;
+      }
+      if (row.kind === "historic" && activeItem.accountId) {
+        dispatch({
+          type: "linkLineItemsToHistoryEntry",
+          accountId: activeItem.accountId,
+          entryId: row.historyEntryId,
+          lineItems,
+        });
+        setLineItemsPrompt(null);
+        return;
+      }
+      dispatch({
+        type: "setRowLineItems",
+        sheetId,
+        itemId,
+        rowId,
+        lineItems,
+      });
+      setLineItemsPrompt(null);
+    },
+    [
+      dispatch,
+      sheetId,
+      itemId,
+      lineItemsPrompt,
+      activeItem.accountId,
+      setLineItemsPrompt,
+    ],
+  );
   const onSaveEditRow = useCallback(
     (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
       // Description / amount / category / type are series-wide fields —
@@ -527,6 +575,22 @@ export function BudgetModalHost(props: Props) {
         onClose={() => setSplitPrompt(null)}
         onSplit={onSplitSubmit}
         onRevert={onSplitRevert}
+        onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
+      />
+      <BudgetLineItemsModal
+        open={lineItemsPrompt !== null}
+        row={lineItemsPrompt?.row ?? null}
+        columns={activeItem.columns}
+        settings={effectiveSettings}
+        items={data.items}
+        subtypes={data.subtypes}
+        types={types}
+        categories={categories}
+        onClose={() => setLineItemsPrompt(null)}
+        onSubmit={onLineItemsSubmit}
+        onCreateItem={onCreateItem}
+        onCreateSubtype={onCreateSubtype}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
       />
