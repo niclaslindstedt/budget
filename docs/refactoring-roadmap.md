@@ -537,22 +537,22 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 
 ## Landed
 
-- **`pattern-apply.ts` rule→row label-patch boilerplate → `patchBudgetRowLabels`
-  + `resolveRuleCompanyId` helpers** (2026-05): the `rule.companyId !==
-  undefined && !== null ? : undefined` null-collapse ternary (3 identical
-  sites: the two budget appliers + the history applier) became
-  `resolveRuleCompanyId(rule)`. The type/company/tags "set-if-changed"
-  block shared by the two budget appliers (`reapplyPatternsToBudget`,
-  `applyMatchRuleOnceToBudget`) became `patchBudgetRowLabels(row, rule,
-  lockType)` — the `lockType` flag is the only divergence (reapply stamps
-  the type unlocked; the deliberate one-shot stamps `typeIdLocked: true`),
-  so both appliers now reduce to "match guard → call helper → detect change
-  via `!== row`". The history applier stayed separate (it overwrites
-  `user*`-prefixed fields and carries a description, a genuinely different
-  shape) but adopted `resolveRuleCompanyId`. Pure refactor — verified the
-  helper reproduces both appliers' per-field predicates exactly (including
-  the locked-type satisfied check); `make lint && typecheck && build` green,
-  all 1101 tests pass incl. `match_rule_tags_test`. Net −22 lines.
+- \*\*`pattern-apply.ts` rule→row label-patch boilerplate → `patchBudgetRowLabels`
+  - `resolveRuleCompanyId` helpers\*_ (2026-05): the `rule.companyId !==
+undefined && !== null ? : undefined` null-collapse ternary (3 identical
+    sites: the two budget appliers + the history applier) became
+    `resolveRuleCompanyId(rule)`. The type/company/tags "set-if-changed"
+    block shared by the two budget appliers (`reapplyPatternsToBudget`,
+    `applyMatchRuleOnceToBudget`) became `patchBudgetRowLabels(row, rule,
+lockType)` — the `lockType` flag is the only divergence (reapply stamps
+    the type unlocked; the deliberate one-shot stamps `typeIdLocked: true`),
+    so both appliers now reduce to "match guard → call helper → detect change
+    via `!== row`". The history applier stayed separate (it overwrites
+    `user_`-prefixed fields and carries a description, a genuinely different
+shape) but adopted `resolveRuleCompanyId`. Pure refactor — verified the
+helper reproduces both appliers' per-field predicates exactly (including
+the locked-type satisfied check); `make lint && typecheck && build`green,
+all 1101 tests pass incl.`match_rule_tags_test`. Net −22 lines.
 
 - **`findColumnByType` standard-column cluster → `useStandardColumns`
   hook / extended `getStandardColumns`** (2026-05): the per-file
