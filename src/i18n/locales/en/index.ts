@@ -36,6 +36,7 @@ import splitRow from "./splitRow";
 import editHistory from "./editHistory";
 import metadata from "./metadata";
 import history from "./history";
+import search from "./search";
 import searchTransaction from "./searchTransaction";
 import actionHistory from "./actionHistory";
 import toast from "./toast";
@@ -105,6 +106,7 @@ export const en = {
   editHistory,
   metadata,
   history,
+  search,
   searchTransaction,
   actionHistory,
   toast,
