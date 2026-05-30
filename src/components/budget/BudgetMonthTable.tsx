@@ -8,13 +8,8 @@ import {
 import { findColumnByType } from "../../data/sheet";
 import type { CellValue, Column, Row, Settings } from "../../data/types";
 import { useNearViewport } from "../../hooks";
-import { type TFunction, useLang, useT } from "../../i18n";
-import { type Lang } from "../../i18n/locale";
-import {
-  formatNumber,
-  formatYearMonth,
-  withCurrency,
-} from "../../utils/format";
+import { useLang, useT } from "../../i18n";
+import { formatMonthKey, formatNumber, withCurrency } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { useModalDispatch } from "../modal-dispatch";
 import { BudgetAddEntryButton } from "./BudgetAddEntryButton";
@@ -90,11 +85,6 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
 };
-
-function formatMonth(key: string, lang: Lang, t: TFunction): string {
-  if (key === "undated") return t("budget.undated");
-  return formatYearMonth(key, lang);
-}
 
 // Cold-start fallback for the placeholder height when a month has
 // never been mounted (so we have no measured value yet). Roughly the
@@ -218,7 +208,7 @@ function MonthTableImpl({
   const headerColor =
     headerMonthNum !== null ? monthColorVar(headerMonthNum) : undefined;
 
-  const monthLabel = formatMonth(monthKey, lang, t);
+  const monthLabel = formatMonthKey(monthKey, lang, t("budget.undated"));
   // `renderedRowCount` (number of rows that would actually render after
   // the hide-transfers filter) is computed in the single-pass useMemo
   // above so the placeholder math doesn't take another walk over `rows`.

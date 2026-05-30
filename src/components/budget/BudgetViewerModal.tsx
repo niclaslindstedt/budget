@@ -35,10 +35,10 @@ import { useLang, useT } from "../../i18n";
 import { type Lang } from "../../i18n/locale";
 import { displayTypeName } from "../../i18n/preset-names";
 import {
+  formatMonthKey,
   formatNumber,
   formatRunningBalance,
   formatShortDate,
-  formatYearMonth,
   withCurrency,
 } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
@@ -65,11 +65,6 @@ type Props = {
   companies: readonly Company[];
   settings: Settings;
 };
-
-function formatMonth(key: string, lang: Lang, undatedLabel: string): string {
-  if (key === "undated") return undatedLabel;
-  return formatYearMonth(key, lang);
-}
 
 const EMPTY_ROWS: Row[] = [];
 
@@ -648,7 +643,7 @@ export function BudgetViewerModal({
                       style={colorStyle}
                     >
                       <span className="flex h-7 items-center">
-                        {formatMonth(monthKey, lang, t("budget.undated"))}
+                        {formatMonthKey(monthKey, lang, t("budget.undated"))}
                       </span>
                     </td>
                   </tr>
@@ -659,7 +654,7 @@ export function BudgetViewerModal({
                         className="px-2 py-1.5 text-center text-xs italic text-muted"
                       >
                         {t("budget.monthEmpty", {
-                          month: formatMonth(
+                          month: formatMonthKey(
                             monthKey,
                             lang,
                             t("budget.undated"),
