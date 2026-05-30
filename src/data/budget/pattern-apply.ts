@@ -47,6 +47,55 @@ import type {
   Sheet,
 } from "../types";
 
+// Collapse a rule's nullable `companyId` to its apply-time value. The
+// `null`-means-cleared / `undefined`-means-untouched distinction (see
+// the `MatchRule` contract in AGENTS.md) doesn't survive into a stamp:
+// both mean "no company to apply here", so they fold to `undefined`.
+// Callers stamp the result only when it's defined.
+function resolveRuleCompanyId(rule: MatchRule): string | undefined {
+  return rule.companyId !== undefined && rule.companyId !== null
+    ? rule.companyId
+    : undefined;
+}
+
+// Apply a matched rule's additive labels (type, company, tags) to a
+// budget row, returning the input row reference unchanged when nothing
+// moves so callers can short-circuit. Additive only: a label the rule
+// doesn't carry is left untouched (see the file header). `lockType`
+// distinguishes the two budget appliers — an automatic reapply stamps
+// the type without locking it, while the deliberate "label similar"
+// one-shot stamps `typeIdLocked: true` so the manual pick is honoured on
+// later automatic sweeps. The caller owns its own match guard
+// (skip-locked vs. relabel-locked); this helper only computes the
+// per-field patch from an already-matched rule.
+function patchBudgetRowLabels(
+  row: Row,
+  rule: MatchRule,
+  lockType: boolean,
+): Row {
+  const ruleTypeId = rule.typeId ? rule.typeId : undefined;
+  const ruleCompanyId = resolveRuleCompanyId(rule);
+  const nextTagIds = mergeTagIds(row.tagIds, rule.tagIds);
+  const typeSatisfied =
+    ruleTypeId === undefined
+      ? true
+      : lockType
+        ? row.typeId === ruleTypeId && row.typeIdLocked === true
+        : row.typeId === ruleTypeId;
+  const companySatisfied =
+    ruleCompanyId === undefined || row.companyId === ruleCompanyId;
+  const tagsSatisfied = nextTagIds === row.tagIds;
+  if (typeSatisfied && companySatisfied && tagsSatisfied) return row;
+  const next: Row = { ...row };
+  if (!typeSatisfied && ruleTypeId !== undefined) {
+    next.typeId = ruleTypeId;
+    if (lockType) next.typeIdLocked = true;
+  }
+  if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
+  if (!tagsSatisfied && nextTagIds) next.tagIds = [...nextTagIds];
+  return next;
+}
+
 export function reapplyPatternsToBudget(
   item: AccountBudget,
   rules: readonly MatchRule[],
@@ -65,24 +114,8 @@ export function reapplyPatternsToBudget(
     // or tags) leaves the row untouched too. See the header note —
     // rules add labels, they never strip them.
     if (!rule) return row;
-    const ruleCompanyId =
-      rule.companyId !== undefined && rule.companyId !== null
-        ? rule.companyId
-        : undefined;
-    const nextTagIds = mergeTagIds(row.tagIds, rule.tagIds);
-    const typeNeedsUpdate =
-      rule.typeId !== undefined &&
-      rule.typeId !== null &&
-      rule.typeId !== row.typeId;
-    const companyNeedsUpdate =
-      ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
-    const tagsNeedUpdate = nextTagIds !== row.tagIds;
-    if (!typeNeedsUpdate && !companyNeedsUpdate && !tagsNeedUpdate) return row;
-    changed = true;
-    const next: Row = { ...row };
-    if (typeNeedsUpdate && rule.typeId) next.typeId = rule.typeId;
-    if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
-    if (tagsNeedUpdate && nextTagIds) next.tagIds = [...nextTagIds];
+    const next = patchBudgetRowLabels(row, rule, false);
+    if (next !== row) changed = true;
     return next;
   });
   if (!changed) return item;
@@ -223,15 +256,13 @@ export function applyMatchRuleOnceToBudget(
   item: AccountBudget,
   rule: MatchRule,
 ): AccountBudget {
-  const ruleTypeId = rule.typeId;
-  const ruleCompanyId =
-    rule.companyId !== undefined && rule.companyId !== null
-      ? rule.companyId
-      : undefined;
+  const ruleTypeId = rule.typeId ? rule.typeId : undefined;
+  const ruleCompanyId = resolveRuleCompanyId(rule);
   const hasRuleTags = rule.tagIds !== undefined && rule.tagIds.length > 0;
   // Bail when the rule has no labels to stamp — type, company, and
   // tags are all missing.
-  if (!ruleTypeId && ruleCompanyId === undefined && !hasRuleTags) return item;
+  if (ruleTypeId === undefined && ruleCompanyId === undefined && !hasRuleTags)
+    return item;
   const cols = resolveCandidateColumns(item.columns);
   if (cols.descId === undefined) return item;
   let changed = false;
@@ -244,22 +275,8 @@ export function applyMatchRuleOnceToBudget(
     const candidate = candidateFromRow(row, cols);
     if (!candidate) return row;
     if (!findMatchingRuleForCandidate([rule], candidate)) return row;
-    const typeMatches = ruleTypeId
-      ? row.typeId === ruleTypeId && row.typeIdLocked === true
-      : true;
-    const companyMatches =
-      ruleCompanyId === undefined || row.companyId === ruleCompanyId;
-    const nextTagIds = mergeTagIds(row.tagIds, rule.tagIds);
-    const tagsMatch = nextTagIds === row.tagIds;
-    if (typeMatches && companyMatches && tagsMatch) return row;
-    changed = true;
-    const next: Row = { ...row };
-    if (ruleTypeId) {
-      next.typeId = ruleTypeId;
-      next.typeIdLocked = true;
-    }
-    if (ruleCompanyId !== undefined) next.companyId = ruleCompanyId;
-    if (!tagsMatch && nextTagIds) next.tagIds = [...nextTagIds];
+    const next = patchBudgetRowLabels(row, rule, true);
+    if (next !== row) changed = true;
     return next;
   });
   if (!changed) return item;
@@ -426,10 +443,7 @@ export function applyMatchRuleOnceToHistory(
   rule: MatchRule,
 ): Record<string, HistoryEntry[]> {
   const ruleTypeId = rule.typeId ?? undefined;
-  const ruleCompanyId =
-    rule.companyId !== undefined && rule.companyId !== null
-      ? rule.companyId
-      : undefined;
+  const ruleCompanyId = resolveRuleCompanyId(rule);
   const ruleDescription =
     typeof rule.description === "string" && rule.description !== ""
       ? rule.description
