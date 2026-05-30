@@ -494,16 +494,21 @@
     }
     .transfers-table > thead > tr,
     .transfers-table > tbody > tr {
-      /* 56 px date · flex description · transfer chips sized to
-         content · amount sized to content with a comfortable floor.
-         The action cell sits outside the grid as an absolute overlay
-         so the wrench column doesn't reserve a track on mobile,
-         mirroring the accounts table. */
+      /* 56 px date · flex description · fixed transfer track (two
+         account glyphs + arrow are a constant width) · amount sized to
+         the widest formatted value. The shared template comes from
+         React via `--transfers-row-template` so the header and data
+         rows resolve identical columns — a per-row `max-content` track
+         sizes the header's lone glyph differently from the body's chips
+         and knocks the transfer column out of line. The action cell
+         sits outside the grid as an absolute overlay so the wrench
+         column doesn't reserve a track on mobile, mirroring the
+         accounts table. */
       display: grid;
-      grid-template-columns: 56px minmax(0, 1fr) minmax(0, max-content) minmax(
-          60px,
-          max-content
-        );
+      grid-template-columns: var(
+        --transfers-row-template,
+        56px minmax(0, 1fr) 66px minmax(60px, max-content)
+      );
       position: relative;
       overflow: hidden;
     }

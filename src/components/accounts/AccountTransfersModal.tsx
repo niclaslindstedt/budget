@@ -11,7 +11,7 @@ import { allCategories, allTypes } from "../../data/presets/merge";
 import { compareDateStrings } from "../../data/fiscal-month";
 import type { Settings, UserData } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import { formatYearMonth } from "../../utils/format";
+import { formatBalance, formatYearMonth } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AccountTransferRow } from "./AccountTransferRow";
@@ -80,6 +80,25 @@ export function AccountTransfersModal({
     return result;
   }, [sortedTransfers]);
 
+  // Mobile renders each row as its own CSS grid (the table goes
+  // display:block), so a `max-content` amount track resolves to a
+  // different width on the header row (just the "$" glyph) than on the
+  // data rows (a formatted amount) — which knocks the transfer column,
+  // and with it the header's transfer glyph, out of line with the
+  // body's account chips. Pin a single shared template instead: a
+  // fixed transfer track (the two account glyphs + arrow are a constant
+  // width) and an amount track sized to the widest formatted amount, so
+  // header and body grids agree column-for-column. Mirrors the
+  // `--viewer-row-template` trick in `BudgetViewerModal`.
+  const mobileRowTemplate = useMemo(() => {
+    let amountChars = 4;
+    for (const tx of data.transfers) {
+      const text = formatBalance(tx.amount, settings);
+      if (text.length > amountChars) amountChars = text.length;
+    }
+    return `56px minmax(0, 1fr) 66px minmax(60px, calc(${amountChars} * 1ch + 1.25rem))`;
+  }, [data.transfers, settings]);
+
   return (
     <Modal
       open={open}
@@ -95,15 +114,29 @@ export function AccountTransfersModal({
       />
       <Modal.Body noPadding className="overflow-x-hidden">
         <ActiveRowProvider>
-          <table className="transfers-table transfers-table-modal w-full border-collapse text-sm md:text-[13px]">
+          <table
+            className="transfers-table transfers-table-modal w-full border-collapse text-sm md:text-[13px]"
+            style={
+              {
+                "--transfers-row-template": mobileRowTemplate,
+              } as CSSProperties
+            }
+          >
             <thead
               className="sticky z-[15] bg-surface-3"
               style={{ top: "-1px" }}
             >
-              <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
+              {/* `text-xs` lives on each <th>, not here on the grid-
+                  container <tr>: the mobile `--transfers-row-template`
+                  sizes its amount track in `ch`, which resolves against
+                  this row's font-size. Keeping the row at the body's
+                  size (instead of the smaller header label size) makes
+                  the header and data grids agree, so the transfer glyph
+                  lines up with the account chips below. */}
+              <tr className="border-b border-line bg-surface-3 font-bold tracking-wider uppercase text-muted">
                 <th
                   scope="col"
-                  className="w-14 pr-1 pl-2 py-2 text-left md:w-20 md:px-2.5"
+                  className="w-14 pr-1 pl-2 py-2 text-xs text-left md:w-20 md:px-2.5"
                   aria-label={t("accountsSheet.date")}
                 >
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -120,7 +153,7 @@ export function AccountTransfersModal({
                 </th>
                 <th
                   scope="col"
-                  className="pr-2 pl-1 py-2 text-left md:px-2.5"
+                  className="pr-2 pl-1 py-2 text-xs text-left md:px-2.5"
                   aria-label={t("accountsSheet.description")}
                 >
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -137,7 +170,7 @@ export function AccountTransfersModal({
                 </th>
                 <th
                   scope="col"
-                  className="px-1 py-2 text-left md:px-2.5"
+                  className="px-1 py-2 text-xs text-left md:px-2.5"
                   aria-label={t("accountsSheet.transfer")}
                 >
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -154,7 +187,7 @@ export function AccountTransfersModal({
                 </th>
                 <th
                   scope="col"
-                  className="px-2.5 py-2 text-right"
+                  className="px-2.5 py-2 text-xs text-right"
                   aria-label={t("accountsSheet.amount")}
                 >
                   <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -171,7 +204,7 @@ export function AccountTransfersModal({
                 </th>
                 <th
                   scope="col"
-                  className="transfer-action-cell w-16 px-2.5 py-2"
+                  className="transfer-action-cell w-16 px-2.5 py-2 text-xs"
                   aria-label={t("budget.rowActions")}
                 >
                   <span className="flex items-center justify-center gap-1.5 md:gap-2">
