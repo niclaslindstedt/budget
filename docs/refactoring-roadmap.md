@@ -587,7 +587,7 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 
 - **`color-mix` entity-tint percentages → `tintFill` / `tintBorder`
   helpers** (2026-05): the `color-mix(in srgb, ${color} 18%/55%,
-  transparent)` literal was inlined at 28 sites across 12 components
+transparent)` literal was inlined at 28 sites across 12 components
   (the prior sweep's "~14 files / 30+ sites" estimate). Extracted
   `tintFill(color)` / `tintBorder(color)` into `src/utils/tint.ts`,
   each reading its strength from a new CSS var
