@@ -11,6 +11,7 @@ const complex = {
   company: "Company",
   tags: "Tags",
   isTransfer: "Mark as transfer",
+  completed: "Completed",
   pickType: "Pick a type",
   schedule: "Schedule",
   once: "Once",

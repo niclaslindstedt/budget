@@ -16,8 +16,9 @@ const SETTINGS = {
 
 function seedInput(
   seed: ComplexEntrySeed | null = null,
+  initialDate = "2999-01-01",
 ): ComplexEntrySeedInput {
-  return { seed, settings: SETTINGS };
+  return { seed, settings: SETTINGS, initialDate };
 }
 
 function makeSeed(overrides: Partial<ComplexEntrySeed> = {}): ComplexEntrySeed {
@@ -47,6 +48,7 @@ describe("initialComplexEntryState", () => {
     expect(state.companyId).toBeNull();
     expect(state.tagIds).toEqual([]);
     expect(state.isTransfer).toBe(false);
+    expect(state.completed).toBe(false);
     expect(state.dates).toEqual([]);
     expect(state.amountMode).toBe("exact");
     expect(state.amountMinText).toBe("");
@@ -82,6 +84,15 @@ describe("initialComplexEntryState", () => {
 
   it("defaults tagIds to an empty array when the seed omits them", () => {
     expect(makeInitial(makeSeed({ tagIds: undefined })).tagIds).toEqual([]);
+  });
+
+  it("seeds completed from the add-context date", () => {
+    expect(
+      initialComplexEntryState(seedInput(null, "2000-01-01")).completed,
+    ).toBe(true);
+    expect(
+      initialComplexEntryState(seedInput(null, "2999-01-01")).completed,
+    ).toBe(false);
   });
 });
 
@@ -185,6 +196,12 @@ describe("budgetComplexEntryModalReducer", () => {
         value: true,
       }),
     ).toMatchObject({ ...base, isTransfer: true });
+    expect(
+      budgetComplexEntryModalReducer(base, {
+        kind: "setCompleted",
+        value: true,
+      }),
+    ).toMatchObject({ ...base, completed: true });
     expect(
       budgetComplexEntryModalReducer(base, {
         kind: "setDates",

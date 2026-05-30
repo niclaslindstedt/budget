@@ -109,7 +109,7 @@ export function BudgetComplexEntryModal({
   const t = useT();
   const [state, dispatch] = useReducer(
     budgetComplexEntryModalReducer,
-    { seed: seed ?? null, settings },
+    { seed: seed ?? null, settings, initialDate },
     initialComplexEntryState,
   );
   const {
@@ -125,6 +125,7 @@ export function BudgetComplexEntryModal({
     companyId,
     tagIds,
     isTransfer,
+    completed,
     dates,
     // fx mode swaps the numeric amount input for a formula textarea
     // (`endOfMonthBalance - 5000`, `sheet("Wife", endOfMonthBalance)`, …).
@@ -179,6 +180,10 @@ export function BudgetComplexEntryModal({
     (value: boolean) => dispatch({ kind: "setIsTransfer", value }),
     [],
   );
+  const setCompleted = useCallback(
+    (value: boolean) => dispatch({ kind: "setCompleted", value }),
+    [],
+  );
   const setFormulaText = useCallback(
     (value: string) => dispatch({ kind: "setFormulaText", value }),
     [],
@@ -191,8 +196,11 @@ export function BudgetComplexEntryModal({
 
   useEffect(() => {
     if (!open) return;
-    dispatch({ kind: "reset", seed: { seed: seed ?? null, settings } });
-  }, [open, seed, settings]);
+    dispatch({
+      kind: "reset",
+      seed: { seed: seed ?? null, settings, initialDate },
+    });
+  }, [open, seed, settings, initialDate]);
 
   const handleRuleChange = useCallback(
     (_rule: RecurrenceRule | null, nextDates: string[]) => {
@@ -265,6 +273,7 @@ export function BudgetComplexEntryModal({
         companyId,
         ...(tagIds.length > 0 ? { tagIds } : {}),
         isTransfer,
+        completed,
         dates,
         amountFormula: stored.formula,
       });
@@ -286,6 +295,7 @@ export function BudgetComplexEntryModal({
       companyId,
       ...(tagIds.length > 0 ? { tagIds } : {}),
       isTransfer,
+      completed,
       dates,
       // Only attach a band when both bounds parsed (estimate mode).
       ...(span.amountMin !== null && span.amountMax !== null
@@ -455,6 +465,14 @@ export function BudgetComplexEntryModal({
               checked={isTransfer}
               onChange={setIsTransfer}
               label={t("complex.isTransfer")}
+              className="items-center"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Checkbox
+              checked={completed}
+              onChange={setCompleted}
+              label={t("complex.completed")}
               className="items-center"
             />
           </div>
