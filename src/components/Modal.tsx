@@ -183,7 +183,14 @@ export function Modal({
     const body = shell.querySelector<HTMLElement>("[data-modal-body]");
     const bodyFocusables = body ? getFocusables(body) : [];
     const target = bodyFocusables[0] ?? focusables[0] ?? shell;
-    target.focus();
+    // `preventScroll: true` so moving focus into the modal never drags
+    // the body to reveal the target. Matters when the first focusable
+    // sits off-screen — e.g. a row's swipe-revealed action button,
+    // parked off the right edge of an `overflow: hidden` row: a plain
+    // `focus()` scrolls that row sideways to surface the button, which
+    // reads as a phantom half-swipe on the first row. Mirrors the same
+    // guard on `restoreOpener` below.
+    target.focus({ preventScroll: true });
   }, []);
 
   const restoreOpener = useCallback(() => {
