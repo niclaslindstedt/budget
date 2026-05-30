@@ -142,27 +142,6 @@ through them.
 
 ### Severity 5–6 — friction
 
-- **`pattern-apply.ts` rule→row label-patch boilerplate duplicated across
-  three appliers** (`src/data/budget/pattern-apply.ts`, 492 lines) — the
-  same "resolve `ruleCompanyId` via the `!== undefined && !== null ? :
-undefined` ternary, `mergeTagIds(row.tagIds, rule.tagIds)`, then
-  set-the-field-if-it-changed" block is hand-rolled in
-  `reapplyPatternsToBudget` (lines ~66–86), `applyMatchRuleOnceToBudget`
-  (~226–262), and the history applier (~454–492), each with subtly
-  different null-check flavours for `typeId` / `companyId` / `tagIds`.
-  - **Plan**: extract a `patchRowLabels(row, rule)` (and a history-entry
-    sibling, or one generic over the label-bearing shape) that owns the
-    set/delete-per-field decision once; the three appliers call it after
-    their own guard (`typeIdLocked`, match-test).
-  - **Risk**: medium. Each applier honours a different guard
-    (`typeIdLocked` skip vs. locked-row stamp) and `null`-vs-absent
-    semantics — the helper must take the resolved values and not bake in
-    the guard. The `MatchRule.typeId`/`companyId` `null`-means-cleared
-    contract (see AGENTS.md) must round-trip unchanged. Validate against
-    the reapply/match-rule unit coverage.
-  - **Severity: 5.** Multiplier: a new rule-applied label field (beyond
-    type/company/tags) is a fourth copy of the block at three sites today.
-
 - **`AppShell.tsx` modal-mount state-ownership shift** — the
   JSX-relocation half of the original severity-8 modal-host item
   landed 2026-05 (see Landed: three modal hosts), and the
@@ -557,6 +536,23 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- \*\*`pattern-apply.ts` rule→row label-patch boilerplate → `patchBudgetRowLabels`
+  - `resolveRuleCompanyId` helpers\*_ (2026-05): the `rule.companyId !==
+undefined && !== null ? : undefined` null-collapse ternary (3 identical
+    sites: the two budget appliers + the history applier) became
+    `resolveRuleCompanyId(rule)`. The type/company/tags "set-if-changed"
+    block shared by the two budget appliers (`reapplyPatternsToBudget`,
+    `applyMatchRuleOnceToBudget`) became `patchBudgetRowLabels(row, rule,
+lockType)` — the `lockType` flag is the only divergence (reapply stamps
+    the type unlocked; the deliberate one-shot stamps `typeIdLocked: true`),
+    so both appliers now reduce to "match guard → call helper → detect change
+    via `!== row`". The history applier stayed separate (it overwrites
+    `user_`-prefixed fields and carries a description, a genuinely different
+shape) but adopted `resolveRuleCompanyId`. Pure refactor — verified the
+helper reproduces both appliers' per-field predicates exactly (including
+the locked-type satisfied check); `make lint && typecheck && build`green,
+all 1101 tests pass incl.`match_rule_tags_test`. Net −22 lines.
 
 - **`findColumnByType` standard-column cluster → `useStandardColumns`
   hook / extended `getStandardColumns`** (2026-05): the per-file
