@@ -27,4 +27,7 @@ export { useSelectAllOnFocus } from "./useSelectAllOnFocus";
 export { useSheetSwipe } from "./useSheetSwipe";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";
-export { useVirtualKeyboardInset } from "./useVirtualKeyboardInset";
+export {
+  useVirtualKeyboardInset,
+  useVisualViewportHeight,
+} from "./useVirtualKeyboardInset";

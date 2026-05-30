@@ -9,7 +9,12 @@ import {
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-import { useEscapeKey, useIsMobile, useVirtualKeyboardInset } from "../hooks";
+import {
+  useEscapeKey,
+  useIsMobile,
+  useVirtualKeyboardInset,
+  useVisualViewportHeight,
+} from "../hooks";
 import { useT } from "../i18n";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
@@ -140,6 +145,7 @@ export function Modal({
 
   const isMobile = useIsMobile();
   const keyboardInset = useVirtualKeyboardInset();
+  const visualViewportHeight = useVisualViewportHeight();
 
   const shellRef = useRef<HTMLDivElement | null>(null);
   // The element that owned focus before the modal opened — restored
@@ -292,14 +298,24 @@ export function Modal({
   // modals must not contain keyboard-opening inputs (see prop docs),
   // so the inset stays at 0 and the math is skipped.
   //
-  // `100vh` is the one viewport unit iOS 26 standalone PWAs report
-  // correctly (every other `svh` / `dvh` / `lvh` is clipped by the
-  // visualViewport regression, WebKit #297779). The standalone-mode
-  // CSS for `[data-modal-shell="fullscreen"]` uses the same value;
-  // this keeps the keyboard-open branch on the same baseline.
+  // When the soft keyboard is open the shell pins to the live
+  // `visualViewport.height` — the real visible band above the keyboard.
+  // The earlier `calc(100vh - keyboardInset)` form is correct in a
+  // standalone PWA (where `100vh === innerHeight`) but too tall in iOS
+  // Safari: there `100vh` is the *large* viewport (browser toolbar
+  // hidden), so subtracting only the keyboard inset still leaves the
+  // shell taller than the visible area by the toolbar's height, sliding
+  // the footer (and its submit button) off the bottom edge. Reading the
+  // visible height directly removes that overshoot in both modes.
+  // `min(100vh, …)` caps the shell at the full screen so a transiently
+  // clipped `visualViewport` reading can never grow it past `100vh`.
+  // Capped at the resting state (`keyboardInset === 0`) the inline style
+  // is dropped so the `[data-modal-shell="fullscreen"]` CSS keeps owning
+  // the full-screen `100vh` baseline iOS 26 standalone needs at cold
+  // start (WebKit #297779).
   const shellStyle: React.CSSProperties | undefined =
-    !centered && isMobile && keyboardInset > 0
-      ? { height: `calc(100vh - ${keyboardInset}px)` }
+    !centered && isMobile && keyboardInset > 0 && visualViewportHeight > 0
+      ? { height: `min(100vh, ${visualViewportHeight}px)` }
       : undefined;
 
   // Portal to document.body so the modal escapes any `inert` ancestor —
