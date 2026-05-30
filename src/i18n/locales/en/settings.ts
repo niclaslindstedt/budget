@@ -72,12 +72,6 @@ const settings = {
     maxResultsHint:
       "How many hits to render. The counter still reports the full total.",
   },
-  companyTypeAutoFill: {
-    title: "Auto-fill type from company",
-    threshold: "Required occurrences",
-    thresholdHint:
-      "When a company has been used together with the same type more than this many times, picking that company on an entry whose type isn’t set auto-fills the type. Set to 0 to turn auto-fill off.",
-  },
   headerAction: {
     title: "Title click",
     label: "When I click the title",
@@ -326,6 +320,11 @@ const settings = {
     deleteCompanyTitle: "Delete company",
     deleteCompanyHint:
       'Remove "{name}"? Entries tagged with it lose the tag; their description and type are kept intact.',
+    typesLabel: "Associated types",
+    typesHint:
+      "Pin the types this company is usually paired with. One type fills in automatically when you pick the company; several show up as suggestions at the top of the type picker. Drag to set their priority.",
+    addType: "Add a type…",
+    removeType: "Remove type",
   },
   tagsTab: {
     title: "Tags",

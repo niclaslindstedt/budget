@@ -105,7 +105,6 @@ export const DEFAULT_SETTINGS: Settings = {
   transactionSortOrder: "newestFirst",
   showFutureEntries: false,
   futureEntryMonths: 1,
-  companyTypeAutoFillMinOccurrences: 11,
   searchRanking: DEFAULT_SEARCH_RANKING,
 };
 
@@ -162,8 +161,6 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   transactionSortOrder: DEFAULT_SETTINGS.transactionSortOrder,
   showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
   futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
-  companyTypeAutoFillMinOccurrences:
-    DEFAULT_SETTINGS.companyTypeAutoFillMinOccurrences,
   searchRanking: DEFAULT_SETTINGS.searchRanking,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,

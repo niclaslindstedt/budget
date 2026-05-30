@@ -27,8 +27,11 @@ type Props = {
   // companyId → suggested typeId for the auto-fill. When the user
   // picks a company on a row whose type isn't set and the company has
   // a confident suggestion, the type picker auto-fills behind the
-  // CompanyPicker.
+  // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
+  // typeIds map for the picker's "Suggested" band. See
+  // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   // Past bank-history rows that share this row's merchant key. Shown
   // greyed-out alongside the future preview so the user can see what
   // settled entries will adopt the typed label (those rows aren't
@@ -53,6 +56,7 @@ export function BudgetPromoteToSeriesForm({
   types,
   companies,
   companyTypeSuggestions,
+  companyTypeHints,
   matches,
   onClose,
   onSubmit,
@@ -120,6 +124,9 @@ export function BudgetPromoteToSeriesForm({
             onSelect={setTypeId}
             onCreate={onCreateType}
             onCreateCategory={onCreateCategory}
+            hintTypeIds={
+              companyId ? (companyTypeHints.get(companyId) ?? []) : []
+            }
           />
         </div>
         <div className="mb-4 flex flex-col gap-1">

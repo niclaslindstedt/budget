@@ -35,7 +35,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 49,
+    version: 50,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],

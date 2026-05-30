@@ -94,11 +94,18 @@ function BudgetRowImpl({
   const tr = useT();
   const lang = useLang();
   const dispatchModal = useModalDispatch();
-  const { typesById, companiesById, settings } = useBudgetContext();
+  const { typesById, companiesById, companyTypeHints, settings } =
+    useBudgetContext();
   const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
   const company = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
     : null;
+  // The row's company → type hint ids, surfaced as the "Suggested" band
+  // in the inline type picker. Empty when the row has no company.
+  const typeHintIds = useMemo(
+    () => (row.companyId ? (companyTypeHints.get(row.companyId) ?? []) : []),
+    [companyTypeHints, row.companyId],
+  );
   const handleSetCompany = useCallback(
     (companyId: string | null) => onSetRowCompany(row, companyId),
     [onSetRowCompany, row],
@@ -369,6 +376,7 @@ function BudgetRowImpl({
             col.type === "balance" ? onToggleTransferAnchor : undefined
           }
           amountSign={col.type === "type" ? amountSign : undefined}
+          typeHintIds={col.type === "type" ? typeHintIds : undefined}
           rowDate={col.type === "type" ? rowDateFormatted : undefined}
           rowDateColor={col.type === "type" ? rowDateColor : undefined}
           rowDescription={col.type === "type" ? rowDescription : undefined}

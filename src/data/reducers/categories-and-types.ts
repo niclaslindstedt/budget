@@ -66,8 +66,9 @@ export function reduceCategoriesAndTypes(
   }
   if (action.type === "deleteType") {
     // Deleting a type cascades: every row's `typeId`, every merchant
-    // hint's `typeId`, and every match rule's `typeId` that referenced
-    // it gets the reference dropped. Presets are hide-only.
+    // hint's `typeId`, every match rule's `typeId`, and every company's
+    // manual `typeIds` entry that referenced it gets the reference
+    // dropped. Presets are hide-only.
     if (PRESET_ENTRY_TYPE_IDS.has(action.typeId)) return state;
     const id = action.typeId;
     // Subtypes live under exactly one type; a subtype whose parent type
@@ -97,6 +98,16 @@ export function reduceCategoriesAndTypes(
                 : it,
             )
           : state.items,
+      // Companies that pinned the deleted type drop it from their
+      // priority list; an emptied list collapses back to absent.
+      companies: state.companies.map((c) => {
+        if (!c.typeIds || !c.typeIds.includes(id)) return c;
+        const kept = c.typeIds.filter((t) => t !== id);
+        if (kept.length > 0) return { ...c, typeIds: kept };
+        const { typeIds: _drop, ...rest } = c;
+        void _drop;
+        return rest;
+      }),
       sheets: state.sheets.map((sheet) => ({
         ...sheet,
         items: sheet.items.map((item) => {

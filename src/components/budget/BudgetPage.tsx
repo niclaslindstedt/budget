@@ -87,6 +87,10 @@ type Props = {
   // inline picker routes through `onSetRowCompany` (defined in
   // AppShell) which applies the same rule directly.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  // companyId → ranked hint typeIds (see `computeCompanyTypeHints`).
+  // Surfaced into BudgetContext so the row's inline type picker can
+  // render its "Suggested" band, and forwarded to the metadata modal.
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -249,6 +253,7 @@ export function BudgetPage({
   categories,
   companies,
   companyTypeSuggestions,
+  companyTypeHints,
   onCreateType,
   onCreateCategory,
   onCreateCompany,
@@ -312,6 +317,7 @@ export function BudgetPage({
       categories,
       companies,
       companiesById,
+      companyTypeHints,
       onCreateType,
       onCreateCategory,
       onCreateCompany,
@@ -323,6 +329,7 @@ export function BudgetPage({
       categories,
       companies,
       companiesById,
+      companyTypeHints,
       onCreateType,
       onCreateCategory,
       onCreateCompany,
@@ -798,6 +805,7 @@ export function BudgetPage({
             companies={companies}
             tags={tags}
             companyTypeSuggestions={companyTypeSuggestions}
+            companyTypeHints={companyTypeHints}
             settings={settings}
             onCreateType={onCreateType}
             onCreateCategory={onCreateCategory}

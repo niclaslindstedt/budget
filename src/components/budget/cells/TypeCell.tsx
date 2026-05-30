@@ -59,6 +59,7 @@ export function TypePickerCell({
   categories,
   entryType,
   amountSign,
+  hintTypeIds,
   rowDate,
   rowDateColor,
   rowDescription,
@@ -72,6 +73,7 @@ export function TypePickerCell({
   categories: readonly Category[];
   entryType: EntryType | null;
   amountSign?: "positive" | "negative" | "any";
+  hintTypeIds?: readonly string[];
   rowDate?: string;
   rowDateColor?: string;
   rowDescription?: string;
@@ -88,6 +90,7 @@ export function TypePickerCell({
         categories={categories}
         selectedId={entryType?.id ?? null}
         amountSign={amountSign}
+        hintTypeIds={hintTypeIds}
         rowDate={rowDate}
         rowDateColor={rowDateColor}
         rowDescription={rowDescription}

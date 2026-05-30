@@ -34,8 +34,11 @@ type Props = {
   // companyId → suggested typeId for the auto-fill. When the user
   // picks a company on a row whose type isn't set and the company has
   // a confident suggestion, the type picker auto-fills behind the
-  // CompanyPicker.
+  // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
+  // typeIds map for the picker's "Suggested" band. See
+  // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row.
@@ -54,6 +57,7 @@ export function BudgetEditSeriesForm({
   types,
   companies,
   companyTypeSuggestions,
+  companyTypeHints,
   settings,
   lastSeriesDate,
   onClose,
@@ -195,6 +199,9 @@ export function BudgetEditSeriesForm({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
+              hintTypeIds={
+                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+              }
             />
           </div>
           <div className="flex flex-col gap-1 sm:col-span-2">

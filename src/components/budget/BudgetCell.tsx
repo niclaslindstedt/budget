@@ -106,6 +106,11 @@ type Props = {
   // amount cell. Only consulted by the `type` column's TypePicker
   // to filter income-only / expense-only types out of the list.
   amountSign?: "positive" | "negative" | "any";
+  // The row's company → type hint ids (see `computeCompanyTypeHints`),
+  // rendered as the "Suggested" band atop the `type` column's
+  // TypePicker. Only the `type` column receives them; other columns get
+  // undefined and pass shallow-compare cleanly.
+  typeHintIds?: readonly string[];
   // Row context surfaced inside the `type` column's TypePicker
   // dropdown header — the dropdown physically overlaps the date and
   // description columns on mobile, so the picker re-displays them at
@@ -149,6 +154,7 @@ function CellImpl({
   transferExpanded = false,
   onToggleTransferAnchor,
   amountSign,
+  typeHintIds,
   rowDate,
   rowDateColor,
   rowDescription,
@@ -246,6 +252,7 @@ function CellImpl({
               types={types}
               categories={categories}
               entryType={entryType ?? null}
+              hintTypeIds={typeHintIds}
               rowDate={rowDate}
               rowDateColor={rowDateColor}
               rowDescription={rowDescription}
@@ -358,6 +365,7 @@ function CellImpl({
           categories={categories ?? []}
           entryType={entryType ?? null}
           amountSign={amountSign}
+          hintTypeIds={typeHintIds}
           rowDate={rowDate}
           rowDateColor={rowDateColor}
           rowDescription={rowDescription}

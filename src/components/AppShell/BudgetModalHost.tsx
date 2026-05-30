@@ -54,8 +54,11 @@ type Props = {
   // Memoized companyId → typeId map from the AppShell — the modal host
   // forwards it to every modal that has a CompanyPicker so they can
   // auto-fill the row's type when the user picks a company on a row
-  // whose type isn't set yet.
+  // whose type isn't set yet. `companyTypeHints` is the companyId →
+  // ranked hint typeIds map, forwarded the same way so each modal's
+  // TypePicker can render its "Suggested" band.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   sheetId: string;
   itemId: string;
   activeItem: AccountBudget;
@@ -86,6 +89,7 @@ export function BudgetModalHost(props: Props) {
     categories,
     types,
     companyTypeSuggestions,
+    companyTypeHints,
     sheetId,
     itemId,
     activeItem,
@@ -496,6 +500,7 @@ export function BudgetModalHost(props: Props) {
         companies={data.companies}
         tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
+        companyTypeHints={companyTypeHints}
         settings={effectiveSettings}
         sheets={data.sheets}
         currentSheetId={sheetId}
@@ -525,6 +530,7 @@ export function BudgetModalHost(props: Props) {
         types={types}
         companies={data.companies}
         companyTypeSuggestions={companyTypeSuggestions}
+        companyTypeHints={companyTypeHints}
         settings={effectiveSettings}
         lastSeriesDate={editLastSeriesDate}
         historyHintPrefill={editHistoryHintPrefill}
@@ -546,6 +552,7 @@ export function BudgetModalHost(props: Props) {
         companies={data.companies}
         tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
+        companyTypeHints={companyTypeHints}
         settings={effectiveSettings}
         lastSeriesDate={editRowLastSeriesDate}
         seriesRows={editRowSeriesRows}
@@ -627,6 +634,7 @@ export function BudgetModalHost(props: Props) {
         companies={data.companies}
         tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
+        companyTypeHints={companyTypeHints}
         settings={effectiveSettings}
         primaryIncomeMerchants={data.primaryIncomeMerchants}
         onClose={() => setHistoryEditPrompt(null)}

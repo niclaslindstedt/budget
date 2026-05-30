@@ -33,8 +33,11 @@ type Props = {
   // companyId → suggested typeId for the auto-fill. When the user
   // picks a company on a row whose type isn't set and the company has
   // a confident suggestion, the type picker auto-fills behind the
-  // CompanyPicker.
+  // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
+  // typeIds map forwarded to each sub-form's TypePicker for its
+  // "Suggested" band. See `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.
@@ -92,6 +95,7 @@ export function BudgetEditEntryModal({
   types,
   companies,
   companyTypeSuggestions,
+  companyTypeHints,
   settings,
   lastSeriesDate,
   historyHintPrefill,
@@ -137,6 +141,7 @@ export function BudgetEditEntryModal({
           types={types}
           companies={companies}
           companyTypeSuggestions={companyTypeSuggestions}
+          companyTypeHints={companyTypeHints}
           settings={settings}
           lastSeriesDate={lastSeriesDate}
           onClose={onClose}
@@ -155,6 +160,7 @@ export function BudgetEditEntryModal({
           types={types}
           companies={companies}
           companyTypeSuggestions={companyTypeSuggestions}
+          companyTypeHints={companyTypeHints}
           settings={settings}
           hintPrefill={historyHintPrefill}
           matches={historyMatches}
@@ -173,6 +179,7 @@ export function BudgetEditEntryModal({
           types={types}
           companies={companies}
           companyTypeSuggestions={companyTypeSuggestions}
+          companyTypeHints={companyTypeHints}
           matches={historyMatches}
           onClose={onClose}
           onSubmit={onConvertToRecurring}

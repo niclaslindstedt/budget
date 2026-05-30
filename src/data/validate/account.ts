@@ -57,12 +57,26 @@ export function validateAccount(raw: unknown, path: string): Result<Account> {
 
 export function validateCompany(raw: unknown, path: string): Result<Company> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, name } = raw;
+  const { id, name, typeIds } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (typeof name !== "string")
     return fail(`${path}.name`, "expected a string");
-  return { ok: true, value: { id, name } };
+  // Manual type associations. Keep only well-formed, de-duplicated ids
+  // here; dangling ones (referencing a type that no longer exists) are
+  // swept in `validate/index.ts` once the known-type set is built,
+  // mirroring how merchant hints are cleaned. Order is preserved — it
+  // is the user's drag-controlled priority.
+  const cleanTypeIds = Array.isArray(typeIds)
+    ? [
+        ...new Set(
+          typeIds.filter((t): t is string => typeof t === "string" && t !== ""),
+        ),
+      ]
+    : undefined;
+  const value: Company = { id, name };
+  if (cleanTypeIds && cleanTypeIds.length > 0) value.typeIds = cleanTypeIds;
+  return { ok: true, value };
 }
 
 export function validateTag(raw: unknown, path: string): Result<Tag> {

@@ -55,6 +55,14 @@ type Props = {
   // an already-labelled row keeps its chip visible while the user
   // reconsiders.
   filterFn?: (type: EntryType) => boolean;
+  // Company → type hint ids for the row/entry's currently-picked
+  // company, in priority order (see `computeCompanyTypeHints`). When
+  // non-empty, the resolved types render as a one-tap "Suggested"
+  // section atop the category tier so the user skips the
+  // category → type drill-down for the company's usual types. Ids that
+  // don't resolve to a currently-available type (wrong sign, filtered
+  // out, deleted) are silently dropped. Empty / absent ⇒ no section.
+  hintTypeIds?: readonly string[];
   // When rendered inside a sheet row, the row's date + description
   // are surfaced in a small header above the listbox so the user
   // keeps that context visible while picking — the dropdown
@@ -87,6 +95,7 @@ export function TypePicker({
   onCreateCategory,
   amountSign,
   filterFn,
+  hintTypeIds,
   rowDate,
   rowDateColor,
   rowDescription,
@@ -134,6 +143,20 @@ export function TypePicker({
     }
     return types;
   }, [types, amountSign, filterFn, selectedId]);
+
+  // Resolve the company's hint ids to currently-available types,
+  // preserving priority order and dropping ids that filtered out (wrong
+  // sign), were deleted, or are otherwise absent.
+  const hintTypes = useMemo(() => {
+    if (!hintTypeIds || hintTypeIds.length === 0) return [];
+    const byId = new Map(availableTypes.map((ty) => [ty.id, ty]));
+    const out: EntryType[] = [];
+    for (const id of hintTypeIds) {
+      const ty = byId.get(id);
+      if (ty) out.push(ty);
+    }
+    return out;
+  }, [hintTypeIds, availableTypes]);
 
   // Categories that have at least one available type. The selected
   // type's category is always kept so the back-tap target never
@@ -318,6 +341,14 @@ export function TypePicker({
               }
               aria-hidden={tier !== "category"}
             >
+              {hintTypes.length > 0 && (
+                <SuggestedTypes
+                  types={hintTypes}
+                  selectedId={selectedId}
+                  onPick={handlePickType}
+                  label={t("type.suggested")}
+                />
+              )}
               <CategoryPane
                 categories={visibleCategories}
                 selectedCategoryId={selected?.categoryId ?? null}
@@ -365,6 +396,54 @@ export function TypePicker({
           }}
         />
       )}
+    </div>
+  );
+}
+
+// One-tap "Suggested" band shown atop the category tier when the
+// row/entry's company has associated types (see `computeCompanyTypeHints`).
+// A flat row of TypeChips — picking one short-circuits the
+// category → type drill-down. The full category list stays below for
+// anything the company hasn't been paired with.
+function SuggestedTypes({
+  types,
+  selectedId,
+  onPick,
+  label,
+}: {
+  types: readonly EntryType[];
+  selectedId: string | null;
+  onPick: (id: string) => void;
+  label: string;
+}) {
+  return (
+    <div className="border-b border-line bg-surface-3 px-2 py-2">
+      <div className="px-1 pb-1.5 text-xs font-bold tracking-wider text-muted uppercase">
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {types.map((ty) => (
+          <button
+            key={ty.id}
+            type="button"
+            aria-pressed={ty.id === selectedId}
+            onClick={() => onPick(ty.id)}
+            className={`inline-flex cursor-pointer items-center gap-1 rounded-full border bg-surface px-1.5 py-0.5 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
+              ty.id === selectedId ? "border-accent" : "border-line"
+            }`}
+          >
+            <TypeChip type={ty} compact />
+            {ty.id === selectedId && (
+              <Check
+                size={12}
+                className="text-accent"
+                aria-hidden
+                focusable={false}
+              />
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

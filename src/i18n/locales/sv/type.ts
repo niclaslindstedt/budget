@@ -17,6 +17,7 @@ const type: TypeCatalog = {
   noTypesInCategory: "Inga typer i den här kategorin än.",
   create: "Skapa",
   backToCategories: "Alla kategorier",
+  suggested: "Föreslagna",
 };
 
 export default type;

@@ -212,6 +212,15 @@ export type Subtype = {
 export type Company = {
   id: string;
   name: string;
+  // Manually-curated type associations, in user-controlled priority
+  // order (the Companies settings tab lets the user drag to reorder).
+  // These seed the company → type hints: a company resolving to exactly
+  // one type instant-fills it on pick, and a company with several
+  // surfaces them as a "Suggested" section atop the type picker. Manual
+  // ids rank ahead of types merely learned from past usage. Absent ⇒
+  // none pinned; dangling ids (type later deleted) are swept on the
+  // `deleteType` cascade and on load.
+  typeIds?: readonly string[];
 };
 
 // A user-defined label assigned to budget rows to group entries that

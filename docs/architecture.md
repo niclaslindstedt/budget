@@ -170,7 +170,7 @@ src/
 │   │   ├── pattern-derive.ts   # glob-pattern seed from a row description
 │   │   ├── recurring-detection.ts  # "looks recurring" candidate detector
 │   │   ├── payday.ts           # salary detection over budget rows
-│   │   ├── company-type-suggestions.ts  # company→type hints from rows
+│   │   ├── company-type-hints.ts  # company→type hints (manual + learned)
 │   │   └── formula*.ts         # tokenizer / parser / ast / evaluator / resolve
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/
@@ -196,9 +196,9 @@ src/
 │   │   ├── sheet.ts, account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (48) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (50) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v49 steps
+│   │   ├── modern.ts           # v31 → v50 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -323,7 +323,7 @@ Each document carries its own `version` field. Top-level shape:
 
 ```ts
 type UserData = {
-  version: 47;
+  version: 50;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -333,7 +333,8 @@ type UserData = {
   tags: Tag[];
   // User-curated merchants / organisations (no presets). Referenced
   // from `Row.companyId`, `HistoryEntry.userCompanyId`,
-  // `MatchRule.companyId`, `MerchantHint.companyId`.
+  // `MatchRule.companyId`, `MerchantHint.companyId`. Each may carry
+  // optional drag-ordered `typeIds` seeding the company → type hints.
   companies: Company[];
   // Analysis buckets; each EntryType belongs to exactly one of these.
   // The runtime also shows built-in `PRESET_CATEGORIES` (in code, not
@@ -535,7 +536,7 @@ an imported file — runs through `parseUserData()` in
    (unknown column type, duplicate ids, wrong field types) are surfaced
    as an error string.
 
-Current `LATEST_VERSION` is `47`. The chain has forty-six steps:
+Current `LATEST_VERSION` is `50`. The chain has forty-nine steps:
 
 - **v1 → v2** — adds top-level `categories: []` and inserts a
   `category` column into every sheet (removed again in v25).
@@ -625,6 +626,10 @@ Current `LATEST_VERSION` is `47`. The chain has forty-six steps:
 - **v48 → v49** — adds user-curated `subtypes: []` (third taxonomy tier)
   and `items: []` (owned things), plus optional `Row.lineItems` /
   `HistoryEntry.lineItems` (links tying part of an entry to an item).
+- **v49 → v50** — adds optional `Company.typeIds` (drag-ordered manual
+  type associations seeding the company → type hints) and retires
+  `Settings.companyTypeAutoFillMinOccurrences`. A bare version bump —
+  both shape changes are absence-tolerant.
 
 ## State management
 

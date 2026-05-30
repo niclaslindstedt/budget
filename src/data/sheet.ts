@@ -1,3 +1,4 @@
+import { reorderById } from "../utils/reorder";
 import { DEFAULT_SHEET_COLOR, DEFAULT_SHEET_GLYPH } from "./constants/taxonomy";
 import { getSheetTypeDescriptor } from "./sheet-types";
 import type {
@@ -86,14 +87,7 @@ export function moveColumn(
   fromId: string,
   toId: string,
 ): Column[] {
-  if (fromId === toId) return columns;
-  const fromIdx = columns.findIndex((c) => c.id === fromId);
-  const toIdx = columns.findIndex((c) => c.id === toId);
-  if (fromIdx < 0 || toIdx < 0) return columns;
-  const next = [...columns];
-  const [moved] = next.splice(fromIdx, 1);
-  next.splice(toIdx, 0, moved);
-  return next;
+  return reorderById(columns, fromId, toId) as Column[];
 }
 
 export function createEmptyRow(
