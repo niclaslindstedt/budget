@@ -303,26 +303,6 @@ through them.
 
 ### Severity 3–4 — nits with leverage
 
-- **`migrateV24ToV25` 284-line monolith** (`src/data/migrations/legacy.ts`,
-  774 lines; the function spans lines 490–774) — a single forward-only
-  migration that walks the sheet tree three times (count type usage →
-  extract orphans → rewrite) with a closure-captured `ensureGenericTypeFor`
-  helper. Far larger than every other step in the ladder (next biggest is
-  ~45 lines).
-  - **Plan**: decompose into named phases (`computeTypeUsage`,
-    `findOrphanRows`, `ensureGenericTypes`, `rewriteSheets`) returning
-    intermediate maps so the flow is traceable. **Pure restructure only —
-    the migration is frozen historical code; the output for any pre-v25
-    input must be byte-identical.**
-  - **Risk**: medium-HIGH despite the low severity: this is the one place
-    a refactor can silently corrupt an old user's import on load, and it
-    has no automated round-trip fixture. Reward is low (read only when
-    debugging a legacy import). Land only with a recorded before/after
-    snapshot test over a real pre-v25 export.
-  - **Severity: 3.** Readability nit, not a multiplier — new sheet types
-    add _new_ migration steps, they don't touch v24→v25. Land
-    opportunistically, or skip if the round-trip fixture isn't worth it.
-
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
   `src/storage/gdrive-adapter.ts` 765 lines) — each `create*Adapter()`
@@ -477,6 +457,28 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`migrateV24ToV25` 284-line monolith → named phases + characterization
+  test** (2026-05): decomposed the single forward-only v24 → v25 migration
+  (`src/data/migrations/legacy.ts`) into module-level named phases —
+  `computeV24TypeUsage` (usage counts + orphan-row collection),
+  `pickV24CategoryForType`, a `createV24GenericTypeMinter` factory that
+  replaces the closure-captured `ensureGenericTypeFor`, `rewriteV24Sheets`,
+  and `rewriteV24Transactions` / `rewriteV24MerchantHints` /
+  `rewriteV24MatchRules` — so the main function reads as a traceable
+  sequence (compute usage → stamp categoryIds → mint orphan generics →
+  rewrite each surface). `PRESET_CAT_NAMES` lifted to module scope. The
+  minter's invocation order (orphan rows → transactions → hints → rules)
+  is preserved so the appended-type / `newId()` sequence stays
+  deterministic. The roadmap demanded a before/after fixture; landed a new
+  `tests/migration_v25_test.ts` that pins every observable branch
+  (most-popular-category pick, preset-name + default fallbacks, orphan
+  generic minting, per-category dedup, category-column/cell removal,
+  transaction / hint / rule rewrites) through the public `migrate()` chain
+  — green before and after the refactor. Pure restructure, no behaviour
+  change; fast loop + build + icons-check green, all 1113 tests pass. **Was
+  severity 3.** (Note the v39 → v40 rename of top-level `transactions` →
+  `transfers` is asserted under the final name.)
 
 - **Full-width table `colSpan` arithmetic → one hoisted `const` per
   file** (2026-05): within-file dedup only — the two tables use genuinely
