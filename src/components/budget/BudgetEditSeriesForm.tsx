@@ -64,15 +64,7 @@ export function BudgetEditSeriesForm({
   onCreateCompany,
 }: Props) {
   const t = useT();
-  const descCol = useMemo(
-    () => findColumnByType(columns, "description"),
-    [columns],
-  );
-  const amountCol = useMemo(
-    () => findColumnByType(columns, "amount"),
-    [columns],
-  );
-  const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
+  const { descCol, amountCol, dateCol } = useStandardColumns(columns);
 
   const initialDescription =
     descCol && typeof row.cells[descCol.id] === "string"

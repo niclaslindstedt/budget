@@ -25,6 +25,7 @@ export { type RowSwipe, useRowSwipe } from "./useRowSwipe";
 export { suppressScrollHide, useScrollHide } from "./useScrollHide";
 export { useSelectAllOnFocus } from "./useSelectAllOnFocus";
 export { useSheetSwipe } from "./useSheetSwipe";
+export { useStandardColumns } from "./useStandardColumns";
 export { useTheme } from "./useTheme";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";
 export {

@@ -1,4 +1,4 @@
-import { findColumnByType } from "../../data/sheet";
+import { getStandardColumns } from "../../data/sheet";
 import type { Column, Row, SeriesMetadata, Settings } from "../../data/types";
 import { formatAmountForInput } from "../../utils/format";
 import {
@@ -85,10 +85,8 @@ export function initialEditFullState(
   seriesMetadata: SeriesMetadata | undefined,
   lastSeriesDate: string | null,
 ): EditFullState {
-  const descCol = findColumnByType(columns, "description");
-  const amountCol = findColumnByType(columns, "amount");
-  const dateCol = findColumnByType(columns, "date");
-  const completedCol = findColumnByType(columns, "completed");
+  const { descCol, amountCol, dateCol, completedCol } =
+    getStandardColumns(columns);
 
   const description =
     descCol && row && typeof row.cells[descCol.id] === "string"

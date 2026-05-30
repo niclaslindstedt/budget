@@ -8,7 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { findColumnByType } from "../../data/sheet";
+import { findColumnByType, getStandardColumns } from "../../data/sheet";
 import {
   expandToSeries,
   inferSeriesRule,
@@ -326,9 +326,11 @@ export function AccountReconciliationModal({
     const lookup = rowsById.get(c.rowId);
     const entry = entriesById.get(c.historyEntryId);
     if (!lookup || !entry) return null;
-    const dateCol = findColumnByType(lookup.columns, "date");
-    const descCol = findColumnByType(lookup.columns, "description");
-    const amtCol = findColumnByType(lookup.columns, "amount");
+    const {
+      dateCol,
+      descCol,
+      amountCol: amtCol,
+    } = getStandardColumns(lookup.columns);
     if (!dateCol || !amtCol) return null;
     const rowDate = String(lookup.row.cells[dateCol.id] ?? "");
     const rowDesc = descCol ? String(lookup.row.cells[descCol.id] ?? "") : "";

@@ -21,7 +21,6 @@ import {
   nextMonthKey,
   sortMonthKeys,
 } from "../../data/fiscal-month";
-import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
   Company,
@@ -31,6 +30,7 @@ import type {
   Sheet,
   TransactionSortOrder,
 } from "../../data/types";
+import { useStandardColumns } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { type Lang } from "../../i18n/locale";
 import { displayTypeName } from "../../i18n/preset-names";
@@ -102,30 +102,8 @@ export function BudgetViewerModal({
   const t = useT();
   const lang = useLang();
 
-  const dateCol = useMemo(
-    () => findColumnByType(item.columns, "date"),
-    [item.columns],
-  );
-  const descCol = useMemo(
-    () => findColumnByType(item.columns, "description"),
-    [item.columns],
-  );
-  const amountCol = useMemo(
-    () => findColumnByType(item.columns, "amount"),
-    [item.columns],
-  );
-  const balanceCol = useMemo(
-    () => findColumnByType(item.columns, "balance"),
-    [item.columns],
-  );
-  const typeCol = useMemo(
-    () => findColumnByType(item.columns, "type"),
-    [item.columns],
-  );
-  const completedCol = useMemo(
-    () => findColumnByType(item.columns, "completed"),
-    [item.columns],
-  );
+  const { dateCol, descCol, amountCol, balanceCol, typeCol, completedCol } =
+    useStandardColumns(item.columns);
 
   const typesById = useMemo(() => indexById(types), [types]);
 
