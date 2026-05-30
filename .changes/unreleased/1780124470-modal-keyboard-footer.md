@@ -2,6 +2,6 @@
 type: Fixed
 ---
 
-On mobile, opening a modal with text fields (like Edit account) and
-tapping a field no longer pushes the Save / Cancel buttons off the
-bottom of the screen — the footer now stays just above the keyboard.
+On mobile, modals like Edit account no longer push their action buttons
+(Delete / Cancel / Save) off the bottom of the screen — the footer now
+stays fully visible above the home indicator and above the keyboard.

@@ -59,16 +59,15 @@ export function useVirtualKeyboardInset(): number {
 }
 
 // The currently-visible viewport height in CSS pixels — `0` when
-// `visualViewport` is unavailable. Unlike `100vh`, which on iOS Safari
-// resolves to the *large* viewport (toolbars hidden) regardless of
-// whether the browser chrome is currently on screen, `visualViewport`
-// reports the real visible band. A fullscreen modal whose footer must
-// stay above the soft keyboard pins to this so it never overshoots by
-// the browser-toolbar height. The keyboard-open height math derived
-// from `100vh - keyboardInset` is correct in a standalone PWA (where
-// `100vh === innerHeight`) but too tall in Safari, where the toolbar
-// makes `100vh` exceed the visible area and the footer slides off the
-// bottom edge. Reading the height directly removes that overshoot.
+// `visualViewport` is unavailable. This is the real visible band, never
+// taller than what's on screen: the soft keyboard, browser toolbars, and
+// the iOS PWA viewport quirks all shrink it. The fullscreen `Modal`
+// shell pins to this so its footer can't slide off the bottom edge,
+// which the static CSS height could not guarantee on two fronts — `100vh`
+// overshoots the visible screen on iOS 26 standalone PWAs (iPhone 15/16
+// Pro), and `100vh - keyboardInset` overshoots in iOS Safari, where
+// `100vh` is the toolbar-hidden large viewport. Reading the height
+// directly sidesteps both.
 export function useVisualViewportHeight(): number {
   const [height, setHeight] = useState(0);
 
