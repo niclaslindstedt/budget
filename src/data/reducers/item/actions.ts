@@ -1,4 +1,4 @@
-import type { CellValue, Row } from "../../types";
+import type { CellValue, LineItemLink, Row } from "../../types";
 import type {
   BulkPatch,
   ComplexEntryDraft,
@@ -126,6 +126,20 @@ export type ItemAction =
       rowId: string;
       splits: SplitSubmission[];
       remainderAmount: number;
+    }
+  | {
+      // Replace the inline line-item links on a single user-authored row.
+      // `lineItems` is the full desired set (the modal submits a
+      // replacement, not a delta); an empty array clears the field. Unlike
+      // `splitRow`, this never mints / removes rows — line items are
+      // metadata attached to the existing row. Historic rows route through
+      // `linkLineItemsToHistoryEntry` (their links live on the backing
+      // `HistoryEntry`) instead.
+      type: "setRowLineItems";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+      lineItems: LineItemLink[];
     }
   | {
       // Set / clear the manual fiscal-month override on a single row.

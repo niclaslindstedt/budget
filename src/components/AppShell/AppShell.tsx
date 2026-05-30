@@ -196,6 +196,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     setEditPrompt,
     setEditRowPrompt,
     setSplitPrompt,
+    setLineItemsPrompt,
     setPendingSeriesEdit,
   } = editPrompts;
 
@@ -366,6 +367,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     },
     [setSplitPrompt],
   );
+
+  const onLineItemsRequest = useCallback(
+    (row: Row) => {
+      // Same guards as splitting: transfers and balance corrections aren't
+      // purchases. History rows are allowed — their links live on the
+      // underlying `HistoryEntry` and route through the dedicated action.
+      if (row.kind === "transfer" || row.kind === "correction") return;
+      setLineItemsPrompt({ kind: "line-items", row });
+    },
+    [setLineItemsPrompt],
+  );
   const onReorderColumns = useCallback(
     (fromId: string, toId: string) =>
       dispatch({ type: "reorderColumns", sheetId, itemId, fromId, toId }),
@@ -376,8 +388,14 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     [dispatch],
   );
   const taxonomyCrud = useTaxonomyCrud({ dispatch });
-  const { onCreateCategory, onCreateType, onCreateCompany, onCreateTag } =
-    taxonomyCrud;
+  const {
+    onCreateCategory,
+    onCreateType,
+    onCreateCompany,
+    onCreateTag,
+    onCreateSubtype,
+    onCreateItem,
+  } = taxonomyCrud;
   const onSaveSettings = useCallback(
     (draft: Settings) =>
       dispatch({
@@ -516,6 +534,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       editRow: onEditRowRequest,
       deleteRow: onDeleteRequest,
       splitRow: onSplitRequest,
+      lineItems: onLineItemsRequest,
       transferRow: onTransferRequest,
       matchRule: onMatchRuleRequest,
       editHistory: onEditHistoryRequest,
@@ -531,6 +550,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       onEditRowRequest,
       onDeleteRequest,
       onSplitRequest,
+      onLineItemsRequest,
       onTransferRequest,
       onMatchRuleRequest,
       onEditHistoryRequest,
@@ -844,6 +864,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           onCreateCategory={onCreateCategory}
           onCreateCompany={onCreateCompany}
           onCreateTag={onCreateTag}
+          onCreateSubtype={onCreateSubtype}
+          onCreateItem={onCreateItem}
           onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
         />
       </div>

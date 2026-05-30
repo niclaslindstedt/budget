@@ -1,3 +1,5 @@
+import type { LineItemLink } from "./items";
+
 export type ColumnType =
   | "date"
   | "description"
@@ -99,6 +101,18 @@ type RowBase = {
   // bulk-edit modals and surface as a searchable field in the search
   // modal.
   tagIds?: string[];
+  // Optional links tying part of this row's amount to owned `Item`s in
+  // `UserData.items` — see `LineItemLink`. A 20 000 purchase might carry a
+  // single 15 000 line item for an iPhone, leaving an implicit 5 000
+  // "remainder" that is computed at render time and never stored. Unlike
+  // `HistoryEntry.splits`, line items are a PARTIAL allocation: they do not
+  // have to sum to the row amount and they do not affect the running balance.
+  // Persisted only when non-empty (mirroring `tagIds`). Set on persisted
+  // `user` / `correction` rows directly; on synthesized `historic` rows the
+  // array is propagated from the backing `HistoryEntry.lineItems` by
+  // `synthesizeHistoryRow` and edited through the
+  // `linkLineItemsToHistoryEntry` action. Not meaningful for `transfer` rows.
+  lineItems?: LineItemLink[];
 };
 
 // Vanilla user-authored row. The default kind for anything in

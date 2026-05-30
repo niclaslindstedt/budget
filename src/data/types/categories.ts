@@ -179,6 +179,24 @@ export type EntryType = {
   kind?: EntryTypeKind;
 };
 
+// The third tier of the taxonomy, one level below `EntryType`:
+// category → type → subtype. "Consumption" → "Electronics" → "Laptop".
+// Every subtype belongs to exactly one `EntryType` via `typeId`, the way
+// every type belongs to exactly one `Category` via `categoryId`; the type
+// and category derive through that chain rather than being stored on the
+// subtype.
+//
+// Subtypes are entirely user-curated — no presets ship — and are never
+// rendered on the sheet. The only place they surface is the item creator,
+// where an `Item` is tagged with a `subtypeId`. The model is name-only
+// (mirroring `Company`) because there is no cell that needs a colour or
+// glyph for it yet.
+export type Subtype = {
+  id: string;
+  name: string;
+  typeId: string;
+};
+
 // A merchant / organisation a row's money flows to (or from). Sits in
 // `UserData.companies`; rows reference it through `Row.companyId`. The
 // model is intentionally minimal — name only — so the Companies tab in

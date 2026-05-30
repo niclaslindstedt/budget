@@ -4,6 +4,7 @@ import type { HistoryEntry, Row } from "../../../data/types";
 import type {
   EditPrompt,
   EditRowPrompt,
+  LineItemsPrompt,
   PendingSeriesEdit,
   SplitPrompt,
 } from "../types";
@@ -32,6 +33,10 @@ type Result = {
   // clicked.
   splitPrompt: SplitPrompt | null;
   setSplitPrompt: (next: SplitPrompt | null) => void;
+  // Line-items modal — opens from the entry "…" menu to tie part of the
+  // entry's amount to owned items.
+  lineItemsPrompt: LineItemsPrompt | null;
+  setLineItemsPrompt: (next: LineItemsPrompt | null) => void;
   // Captures the most recent inline edit on a recurring row so the
   // user can fan the change out to every following entry in the
   // series.
@@ -49,6 +54,8 @@ export function useEditPrompts({
     null,
   );
   const [splitPrompt, setSplitPrompt] = useState<SplitPrompt | null>(null);
+  const [lineItemsPrompt, setLineItemsPrompt] =
+    useState<LineItemsPrompt | null>(null);
   const [pendingSeriesEdit, setPendingSeriesEdit] =
     useState<PendingSeriesEdit | null>(null);
 
@@ -83,6 +90,20 @@ export function useEditPrompts({
     const exists = activeRows.some((r) => r.id === promptRow.id);
     if (!exists) setSplitPrompt(null);
   }, [splitPrompt, activeRows, activeAccountId, history]);
+  // Same guard for the line-items modal — identical history-vs-user-row
+  // existence check as the split modal.
+  useEffect(() => {
+    if (!lineItemsPrompt) return;
+    const promptRow = lineItemsPrompt.row;
+    if (promptRow.kind === "historic") {
+      const entries = (activeAccountId && history[activeAccountId]) || [];
+      const exists = entries.some((e) => e.id === promptRow.historyEntryId);
+      if (!exists) setLineItemsPrompt(null);
+      return;
+    }
+    const exists = activeRows.some((r) => r.id === promptRow.id);
+    if (!exists) setLineItemsPrompt(null);
+  }, [lineItemsPrompt, activeRows, activeAccountId, history]);
 
   return {
     editPrompt,
@@ -91,6 +112,8 @@ export function useEditPrompts({
     setEditRowPrompt,
     splitPrompt,
     setSplitPrompt,
+    lineItemsPrompt,
+    setLineItemsPrompt,
     pendingSeriesEdit,
     setPendingSeriesEdit,
   };

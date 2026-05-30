@@ -7,10 +7,13 @@ import type {
   EntryType,
   EntryTypeKind,
   HistoryEntrySplit,
+  Item,
+  LineItemLink,
   MatchRule,
   SeriesMatchRule,
   Settings,
   Sheet,
+  Subtype,
   Tag,
   Transfer,
   UserData,
@@ -23,6 +26,7 @@ import { reduceAchievements } from "./reducers/achievements";
 import { reduceSheets } from "./reducers/sheets";
 import { reduceSettings } from "./reducers/settings";
 import { reduceCategoriesAndTypes } from "./reducers/categories-and-types";
+import { reduceItems } from "./reducers/items";
 import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
@@ -90,6 +94,51 @@ export type Action =
       // is narrower than `deleteCompany`.
       type: "deleteTag";
       tagId: string;
+    }
+  | { type: "addSubtype"; subtype: Subtype }
+  | {
+      // Edit a user-defined subtype by id. Patch shape mirrors the
+      // Company / Tag actions; `name` and the parent `typeId` are the
+      // editable fields.
+      type: "updateSubtype";
+      subtypeId: string;
+      patch: Partial<Omit<Subtype, "id">>;
+    }
+  | {
+      // Delete a user-defined subtype. Clears `subtypeId` on every item
+      // that referenced it (the item falls back to "unclassified"); no
+      // item is deleted.
+      type: "deleteSubtype";
+      subtypeId: string;
+    }
+  | { type: "addItem"; item: Item }
+  | {
+      // Edit an owned item by id. Patch shape mirrors the Company / Tag
+      // actions; `name`, `subtypeId`, `acquiredAt`, and `note` are the
+      // editable fields.
+      type: "updateItem";
+      itemId: string;
+      patch: Partial<Omit<Item, "id">>;
+    }
+  | {
+      // Delete an owned item. Cascades by dropping every inline
+      // `LineItemLink` that referenced it from every `Row.lineItems` and
+      // `HistoryEntry.lineItems` (dropping the field when the array
+      // empties) so the validator's referential-integrity guard never
+      // trips on a dangling id.
+      type: "deleteItem";
+      itemId: string;
+    }
+  | {
+      // Replace the inline line-item links on a single bank-imported
+      // history entry — the historic-row counterpart of the item
+      // reducer's `setRowLineItems`. `lineItems` is the full desired set
+      // (the modal submits a replacement, not a delta); an empty array
+      // clears the field. Mirrors `splitHistoryEntry`.
+      type: "linkLineItemsToHistoryEntry";
+      accountId: string;
+      entryId: string;
+      lineItems: LineItemLink[];
     }
   | {
       // Save handler from the SettingsModal. `draft` is the flat
@@ -524,6 +573,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceSheets(state, action) ??
     reduceSettings(state, action) ??
     reduceCategoriesAndTypes(state, action) ??
+    reduceItems(state, action) ??
     reduceMatchRules(state, action) ??
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??

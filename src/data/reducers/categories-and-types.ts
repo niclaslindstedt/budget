@@ -70,9 +70,33 @@ export function reduceCategoriesAndTypes(
     // it gets the reference dropped. Presets are hide-only.
     if (PRESET_ENTRY_TYPE_IDS.has(action.typeId)) return state;
     const id = action.typeId;
+    // Subtypes live under exactly one type; a subtype whose parent type
+    // is gone is meaningless (and would hard-fail `validateSubtype`), so
+    // delete them outright. Items tagged with a deleted subtype have
+    // their `subtypeId` cleared so they fall back to "unclassified"
+    // rather than dangling.
+    const orphanedSubtypeIds = new Set(
+      state.subtypes.filter((s) => s.typeId === id).map((s) => s.id),
+    );
     return {
       ...state,
       types: state.types.filter((t) => t.id !== id),
+      subtypes:
+        orphanedSubtypeIds.size > 0
+          ? state.subtypes.filter((s) => !orphanedSubtypeIds.has(s.id))
+          : state.subtypes,
+      items:
+        orphanedSubtypeIds.size > 0
+          ? state.items.map((it) =>
+              it.subtypeId !== undefined && orphanedSubtypeIds.has(it.subtypeId)
+                ? (() => {
+                    const { subtypeId: _drop, ...rest } = it;
+                    void _drop;
+                    return rest;
+                  })()
+                : it,
+            )
+          : state.items,
       sheets: state.sheets.map((sheet) => ({
         ...sheet,
         items: sheet.items.map((item) => {

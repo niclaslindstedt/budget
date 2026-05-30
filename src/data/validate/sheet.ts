@@ -15,6 +15,7 @@ import type {
   SheetItem,
   UserRow,
 } from "../types";
+import { validateLineItemLinks } from "./account";
 import {
   CATEGORY_ICONS,
   fail,
@@ -52,6 +53,7 @@ export function validateRow(
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
   knownTagIds: ReadonlySet<string>,
+  knownItemIds: ReadonlySet<string>,
 ): Result<Row> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const {
@@ -67,6 +69,7 @@ export function validateRow(
     typeIdLocked,
     companyId,
     tagIds,
+    lineItems,
     fiscalMonthShift,
   } = raw;
   if (typeof id !== "string" || id === "")
@@ -161,6 +164,13 @@ export function validateRow(
     }
     if (kept.length > 0) row.tagIds = kept;
   }
+  if (lineItems !== undefined) {
+    // Drop dangling line-item links silently — a deleted Item shouldn't
+    // trap the row. Only persist a non-empty result so an all-dangling
+    // array collapses back to "no line items" (mirrors `tagIds`).
+    const kept = validateLineItemLinks(lineItems, knownItemIds);
+    if (kept.length > 0) row.lineItems = kept;
+  }
   if (fiscalMonthShift !== undefined) {
     if (fiscalMonthShift !== 1 && fiscalMonthShift !== -1)
       return fail(`${path}.fiscalMonthShift`, "expected -1 or 1");
@@ -176,6 +186,7 @@ export function validateAccountBudget(
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
   knownTagIds: ReadonlySet<string>,
+  knownItemIds: ReadonlySet<string>,
 ): Result<AccountBudget> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, type, accountId, columns, rows } = raw;
@@ -220,6 +231,7 @@ export function validateAccountBudget(
       knownTypeIds,
       knownCompanyIds,
       knownTagIds,
+      knownItemIds,
     );
     if (!r.ok) return r;
     if (seenRowIds.has(r.value.id))
@@ -260,6 +272,7 @@ export function validateSheetItem(
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
   knownTagIds: ReadonlySet<string>,
+  knownItemIds: ReadonlySet<string>,
 ): Result<SheetItem> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const type = (raw as { type?: unknown }).type;
@@ -271,6 +284,7 @@ export function validateSheetItem(
       knownTypeIds,
       knownCompanyIds,
       knownTagIds,
+      knownItemIds,
     );
   }
   if (type === "accountsView") {
@@ -286,6 +300,7 @@ export function validateSheet(
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
   knownTagIds: ReadonlySet<string>,
+  knownItemIds: ReadonlySet<string>,
 ): Result<Sheet> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, name, items } = raw;
@@ -305,6 +320,7 @@ export function validateSheet(
       knownTypeIds,
       knownCompanyIds,
       knownTagIds,
+      knownItemIds,
     );
     if (!r.ok) return r;
     if (seenItemIds.has(r.value.id))

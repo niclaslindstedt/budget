@@ -1,4 +1,4 @@
-// Modern migrations (v31 → v44). Anything from v34 → v35 onward is
+// Modern migrations (v31 → v49). Anything from v34 → v35 onward is
 // the first migration ordinary readers need to understand today, so
 // keeping the modern half scannable matters more than its predecessors.
 // Earlier steps (v1 → v30) live in `./legacy.ts`.
@@ -352,6 +352,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // exports simply lack the field; the synthesizer renders no tags for
   // splits that don't carry it. Bare version bump.
   47: (v47) => ({ ...v47, version: 48 }),
+
+  // v48 → v49: introduces user-curated `subtypes` (the third taxonomy
+  // tier below category → type) and `items` (owned physical things the
+  // user tracks), plus optional `Row.lineItems` / `HistoryEntry.lineItems`
+  // links tying part of an entry's amount to an item. Both collections
+  // seed empty; line items are optional per entry, so a v48 record simply
+  // lacks them and passes the v49 validator unchanged. Bare additive bump.
+  48: (v48) => ({ ...v48, version: 49, subtypes: [], items: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

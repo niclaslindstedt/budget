@@ -4,6 +4,7 @@ import type {
   HistoryImport,
   Transfer,
 } from "../types";
+import { validateLineItemLinks } from "./account";
 import { fail, isObject, type Result } from "./helpers";
 
 export function validateHistoryEntry(
@@ -12,6 +13,7 @@ export function validateHistoryEntry(
   knownTypeIds: ReadonlySet<string>,
   knownCompanyIds: ReadonlySet<string>,
   knownTagIds: ReadonlySet<string>,
+  knownItemIds: ReadonlySet<string>,
 ): Result<HistoryEntry> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, description, amount, balance, importedAt } = raw;
@@ -182,6 +184,13 @@ export function validateHistoryEntry(
     ) {
       entry.splits = splits;
     }
+  }
+  if (raw.lineItems !== undefined) {
+    // Drop dangling line-item links (deleted item) and malformed entries;
+    // only persist a non-empty result. No sum check — line items are a
+    // partial allocation, unlike `splits`. Independent of `splits`.
+    const kept = validateLineItemLinks(raw.lineItems, knownItemIds);
+    if (kept.length > 0) entry.lineItems = kept;
   }
   return { ok: true, value: entry };
 }

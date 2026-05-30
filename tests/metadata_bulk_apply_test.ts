@@ -251,7 +251,7 @@ function workspaceWith(entries: HistoryEntry[]): UserData {
   const item = sheet.items[0] as AccountBudget;
   item.rows = [];
   return {
-    version: 48,
+    version: 49,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [{ id: "acct1", name: "Checking" }],

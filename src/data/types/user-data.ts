@@ -9,8 +9,10 @@ import type {
   Company,
   EntryType,
   EntryTypeKind,
+  Subtype,
   Tag,
 } from "./categories";
+import type { Item } from "./items";
 import type {
   MatchRule,
   MerchantHint,
@@ -29,7 +31,7 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 48;
+  version: 49;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -60,6 +62,16 @@ export type UserData = {
   // types live in code, not in this array. The user can hide
   // individual presets via `hiddenPresetTypeIds`.
   types: EntryType[];
+  // User-defined subtypes — the third taxonomy tier below category → type
+  // (see `Subtype`). Each references an `EntryType` via `typeId`. No presets
+  // ship; subtypes are entirely user-curated and surface only in the item
+  // creator, where an `Item` is tagged with one. Empty on a fresh budget.
+  subtypes: Subtype[];
+  // Owned physical items the user tracks (see `Item`). A top-level catalog
+  // referenced from `LineItemLink.itemId` on `Row.lineItems` /
+  // `HistoryEntry.lineItems`. No presets ship — items are created manually
+  // from the line-item modal on the entry "…" menu. Empty on a fresh budget.
+  items: Item[];
   // Preset type ids the user has hidden from pickers and the Types
   // admin list. Pure allowlist — entries that no longer match a known
   // preset (e.g. a preset removed in a later app version) are dropped

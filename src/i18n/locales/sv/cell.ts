@@ -17,6 +17,7 @@ const cell: CellCatalog = {
   makeRecurring: "Gör återkommande",
   editRecurring: "Redigera återkommande post",
   split: "Dela rad",
+  lineItems: "Prylar",
   copy: "Kopiera till andra månader",
   labelByPattern: "Etikett via mönster",
   labelByPatternTitle:

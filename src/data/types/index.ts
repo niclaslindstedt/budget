@@ -16,8 +16,11 @@ export type {
   Company,
   EntryType,
   EntryTypeKind,
+  Subtype,
   Tag,
 } from "./categories";
+
+export type { Item, LineItemLink } from "./items";
 
 export type {
   Account,

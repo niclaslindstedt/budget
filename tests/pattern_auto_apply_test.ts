@@ -16,7 +16,7 @@ function workspace(rows: Row[] = [], matchRules: MatchRule[] = []): UserData {
   const item = sheet.items[0] as AccountBudget;
   item.rows = rows;
   return {
-    version: 48,
+    version: 49,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [{ id: "checking-id", name: "Checking" }],
