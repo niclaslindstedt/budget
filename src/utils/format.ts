@@ -348,6 +348,19 @@ export function formatYearMonth(monthKey: string, lang: Lang): string {
   return fmt.format(new Date(y, m - 1, 1));
 }
 
+// Month-group key as a header label: the synthetic `"undated"` bucket
+// renders the caller-supplied label (already resolved through `t()`),
+// every real `YYYY-MM` key falls through to `formatYearMonth`. Shared
+// by the live budget table and the read-only viewer.
+export function formatMonthKey(
+  key: string,
+  lang: Lang,
+  undatedLabel: string,
+): string {
+  if (key === "undated") return undatedLabel;
+  return formatYearMonth(key, lang);
+}
+
 // Month-key (`YYYY-MM`) rendered as "MMM YYYY" in the active language
 // — used as the header for orphan groups in the reconciliation modal.
 export function formatMonthLabel(monthKey: string, lang?: Lang): string {

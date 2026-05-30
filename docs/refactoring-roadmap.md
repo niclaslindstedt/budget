@@ -303,18 +303,29 @@ through them.
 
 ### Severity 3–4 — nits with leverage
 
-- **Full-width table `colSpan` arithmetic duplicated across the budget
-  tables** — the "sum the visible optional columns + a fixed offset"
-  expression that sizes a full-width footer / divider row is recomputed
-  inline ~6 times across `BudgetMonthTable.tsx` (573 lines, ~214–241) and
-  `BudgetViewerModal.tsx` (918 lines, ~611–638, 714–720). Each copy reads
-  the same `2 + (typeCol?1:0) + (amountCol?1:0) + (balanceCol?1:0)` shape.
-  - **Plan**: extract `tableColSpan(columns, { selectMode, hasActions })`
-    next to the other budget-table helpers and call it at all six sites.
+- **Full-width table `colSpan` arithmetic duplicated within each budget
+  table** — re-verified 2026-05: the prior "same shape across both files"
+  framing was **stale**. The two tables use genuinely different formulas,
+  so a single cross-file `tableColSpan` helper does **not** fit:
+  - `BudgetMonthTable.tsx` (560 lines) sizes its full-width rows as
+    `columns.length + 1 + (selectMode ? 1 : 0)` (all columns + action cell
+    - optional select cell) — held in two identical consts
+      (`correctionColSpan`, `placeholderColSpan`) plus one inline recompute
+      written `columns.length + (selectMode ? 2 : 1)` at the tfoot.
+  - `BudgetViewerModal.tsx` (907 lines) sizes its rows as
+    `2 + (typeCol?1:0) + (amountCol?1:0) + (balanceCol?1:0)` (a fixed
+    date+description base + the specific optional columns the viewer
+    renders — no action/select cell, no `completed` column). Written out
+    three times (the middle copy is captured in a `.map`-scoped `const
+colSpan` the two `ShowFutureEntriesRow` sites can't reach).
+  - **Plan**: within-file dedup only — collapse each file's copies to one
+    hoisted `const` (the viewer's must move above the `.map` so all three
+    sites share it). No shared helper.
   - **Risk**: low — pure arithmetic; verify no layout shift on the
     optional-column toggles in both the live table and the viewer.
-  - **Severity: 4.** Cheap, and any future column toggle (select-all,
-    a new optional column) otherwise edits six call sites in lockstep.
+  - **Severity: 3.** Narrower than first rated — two within-file dedups,
+    not a six-site cross-file extraction. Land opportunistically when
+    touching either table.
 
 - **Paired `typeId` / `typeIdLocked` set-and-clear in the item reducer**
   (`src/data/reducers/item/index.ts`, 474 lines) — picking a type stamps
@@ -350,15 +361,6 @@ src/data/reducers/item/index.ts`). Forgetting one half is a silent
   - **Severity: 3.** Readability nit, not a multiplier — new sheet types
     add _new_ migration steps, they don't touch v24→v25. Land
     opportunistically, or skip if the round-trip fixture isn't worth it.
-
-- **Local `formatMonth(key, lang, undatedLabel)` helper duplicated** —
-  the "`if (key === "undated") return label; return formatYearMonth(key,
-lang)`" shape is defined as a private function in both
-  `BudgetMonthTable.tsx:95` and `BudgetViewerModal.tsx:69`. (Also flagged
-  as an easy win below.) Lift to `src/utils/format.ts` as
-  `formatMonthKey(key, lang, undatedLabel)`. **Severity: 3** — pure
-  easy-win extraction; two call sites today, a third lands with any new
-  month-grouped view.
 
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
@@ -511,15 +513,23 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   surrounding file is otherwise touched. No batch PR — opportunistic
   drive-by.
 
-- **Lift the duplicated `formatMonth(key, lang, undatedLabel)` helper**
-  to `src/utils/format.ts` — defined privately in both
-  `BudgetMonthTable.tsx:95` and `BudgetViewerModal.tsx:69` with the same
-  `"undated"`-label-else-`formatYearMonth` body (also tracked in the 3–4
-  band). Mechanical two-site extraction.
-
 ---
 
 ## Landed
+
+- **Duplicated local `formatMonth` helper → `formatMonthKey` in
+  `src/utils/format.ts`** (2026-05): the
+  `key === "undated" ? label : formatYearMonth(key, lang)` body was a
+  private function in both `BudgetMonthTable.tsx` (which took `t` and
+  resolved the label internally) and `BudgetViewerModal.tsx` (which took
+  a pre-resolved `undatedLabel` string). Lifted to a shared
+  `formatMonthKey(key, lang, undatedLabel)` exported next to
+  `formatYearMonth`; both call sites now pass `t("budget.undated")`. The
+  string-label signature (over passing `t`) keeps `src/utils/` free of an
+  i18n dependency. Dropped the now-unused `formatYearMonth` import from
+  both components and the `TFunction` / `Lang` imports from
+  `BudgetMonthTable`. Pure refactor — identical output; fast loop + build
+  - icons-check green, all 1101 tests pass. **Was severity 3 (easy win).**
 
 - **`autoTypeForCompany` pick-company callback wrapper → `useAutoTypeForCompany`
   hook** (2026-05): the "on company pick, compute
