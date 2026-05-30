@@ -198,10 +198,10 @@ function MonthTableImpl({
       };
     }, [rows, hideTransfers, selectedIds]);
   const amountCol = findColumnByType(columns, "amount");
-  // Columns + action cell + (optional) select cell = total td count we
-  // need to colSpan when rendering a correction row as a full-width
-  // divider line.
-  const correctionColSpan = columns.length + 1 + (selectMode ? 1 : 0);
+  // Columns + action cell + (optional) select cell = total td count any
+  // full-width row spans: the correction divider line, the lazy placeholder
+  // stand-in, and the tfoot orphan indicator.
+  const fullWidthColSpan = columns.length + 1 + (selectMode ? 1 : 0);
   // Tint the sticky header with the month's pastel — `undated` has no
   // calendar month so it stays on the neutral `fg-bright` colour.
   const headerMonthNum = monthNumberFromKey(monthKey);
@@ -224,11 +224,6 @@ function MonthTableImpl({
   // and no force-mount override is in play. `forceMount` wins so a
   // scroll-to-row request always materializes its target.
   const renderRows = !collapsed && (forceMount || nearViewport);
-  // Total cell count across the data row plus the action cell, plus
-  // the optional select cell. Used as the placeholder <tr>'s colSpan
-  // so the lazy stand-in spans the full table width like the rows it
-  // replaces.
-  const placeholderColSpan = columns.length + 1 + (selectMode ? 1 : 0);
   // Observe the tbody only while real rows are mounted, and stamp its
   // latest height into `measuredHeightRef`. The observer fires once
   // on attach (initial size) and again whenever a content edit, a
@@ -394,7 +389,7 @@ function MonthTableImpl({
             {!renderRows && !collapsed && (
               <tr aria-hidden="true">
                 <td
-                  colSpan={placeholderColSpan}
+                  colSpan={fullWidthColSpan}
                   style={{ height: placeholderHeight }}
                   className="border-b border-line p-0"
                 />
@@ -419,7 +414,7 @@ function MonthTableImpl({
                   return (
                     <CorrectionLine
                       key={row.id}
-                      colSpan={correctionColSpan}
+                      colSpan={fullWidthColSpan}
                       amount={amount}
                       settings={settings}
                       onClick={() =>
@@ -482,7 +477,7 @@ function MonthTableImpl({
           <tfoot>
             <tr>
               <td
-                colSpan={columns.length + (selectMode ? 2 : 1)}
+                colSpan={fullWidthColSpan}
                 className="border-r-0 bg-surface-3 p-0"
               >
                 {covered ? (
