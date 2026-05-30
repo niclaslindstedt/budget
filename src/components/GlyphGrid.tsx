@@ -1,5 +1,6 @@
 import type { CategoryIcon } from "../data/types";
 import { useGridRovingTabindex } from "../hooks";
+import { tintFill } from "../utils/tint";
 import { CategoryIconGlyph } from "./icons";
 
 type DefaultSlot = {
@@ -89,10 +90,10 @@ export function GlyphGrid({
                 : "border-line text-muted hover:border-fg"
           }`}
           style={
-            defaultTinted
+            defaultTinted && tintColor
               ? {
                   color: tintColor,
-                  backgroundColor: `color-mix(in srgb, ${tintColor} 18%, transparent)`,
+                  backgroundColor: tintFill(tintColor),
                 }
               : undefined
           }
@@ -123,10 +124,10 @@ export function GlyphGrid({
                   : "border-line text-muted hover:border-fg"
             }`}
             style={
-              tinted
+              tinted && tintColor
                 ? {
                     color: tintColor,
-                    backgroundColor: `color-mix(in srgb, ${tintColor} 18%, transparent)`,
+                    backgroundColor: tintFill(tintColor),
                   }
                 : undefined
             }

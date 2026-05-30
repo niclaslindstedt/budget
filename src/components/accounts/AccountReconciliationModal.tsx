@@ -34,6 +34,7 @@ import {
   formatShortDate,
 } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
+import { tintFill } from "../../utils/tint";
 import { Checkbox } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
@@ -440,7 +441,7 @@ export function AccountReconciliationModal({
               <span
                 className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded"
                 style={{
-                  backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
+                  backgroundColor: tintFill(entryType.color),
                   color: entryType.color,
                 }}
                 aria-hidden

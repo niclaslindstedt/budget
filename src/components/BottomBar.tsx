@@ -4,6 +4,7 @@ import { History, ListChecks, Plus, Redo2, Search, Undo2 } from "lucide-react";
 import type { Sheet } from "../data/types";
 import { useIsStandalone, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
+import { tintFill } from "../utils/tint";
 import { BulkActionBar } from "./BulkActionBar";
 import { CategoryIconGlyph } from "./icons";
 import { useModalDispatch } from "./modal-dispatch";
@@ -390,9 +391,7 @@ function SheetTab({
       }`}
       style={{
         color: sheet.color,
-        backgroundColor: active
-          ? `color-mix(in srgb, ${sheet.color} 18%, transparent)`
-          : undefined,
+        backgroundColor: active ? tintFill(sheet.color) : undefined,
       }}
     >
       <CategoryIconGlyph name={sheet.glyph} size={16} />

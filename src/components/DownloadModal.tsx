@@ -11,6 +11,7 @@ import {
 import { unlock } from "../data/achievements";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { tintBorder, tintFill } from "../utils/tint";
 import { FloatingPanel } from "./FloatingPanel";
 import type {
   Account,
@@ -356,10 +357,10 @@ function AccountsDownloadModal({
                                 style={{
                                   color: account.color,
                                   backgroundColor: account.color
-                                    ? `color-mix(in srgb, ${account.color} 18%, transparent)`
+                                    ? tintFill(account.color)
                                     : undefined,
                                   borderColor: account.color
-                                    ? `color-mix(in srgb, ${account.color} 55%, transparent)`
+                                    ? tintBorder(account.color)
                                     : undefined,
                                 }}
                               >

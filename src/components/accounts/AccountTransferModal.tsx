@@ -20,6 +20,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../../utils/format";
+import { tintBorder, tintFill } from "../../utils/tint";
 import { FloatingPanel } from "../FloatingPanel";
 import { Modal } from "../Modal";
 import { DatePickerModal } from "../DatePickerModal";
@@ -467,12 +468,8 @@ function LockedAccountChip({
         className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
         style={{
           color: account?.color,
-          backgroundColor: account?.color
-            ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-            : undefined,
-          borderColor: account?.color
-            ? `color-mix(in srgb, ${account.color} 55%, transparent)`
-            : undefined,
+          backgroundColor: account?.color ? tintFill(account.color) : undefined,
+          borderColor: account?.color ? tintBorder(account.color) : undefined,
         }}
       >
         {account?.glyph ? (
@@ -550,10 +547,10 @@ function AccountPicker({
           style={{
             color: selected?.color,
             backgroundColor: selected?.color
-              ? `color-mix(in srgb, ${selected.color} 18%, transparent)`
+              ? tintFill(selected.color)
               : undefined,
             borderColor: selected?.color
-              ? `color-mix(in srgb, ${selected.color} 55%, transparent)`
+              ? tintBorder(selected.color)
               : undefined,
           }}
         >
@@ -602,12 +599,8 @@ function AccountPicker({
                     className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
                     style={{
                       color: a.color,
-                      backgroundColor: a.color
-                        ? `color-mix(in srgb, ${a.color} 18%, transparent)`
-                        : undefined,
-                      borderColor: a.color
-                        ? `color-mix(in srgb, ${a.color} 55%, transparent)`
-                        : undefined,
+                      backgroundColor: a.color ? tintFill(a.color) : undefined,
+                      borderColor: a.color ? tintBorder(a.color) : undefined,
                     }}
                   >
                     {a.glyph ? (

@@ -43,6 +43,7 @@ import {
 } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { tintFill } from "../../utils/tint";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
@@ -838,7 +839,7 @@ function ViewerRow({
             <span
               className="inline-flex max-w-full items-center gap-1.5 rounded-full px-1.5 py-0.5 text-xs"
               style={{
-                backgroundColor: `color-mix(in srgb, ${type.color} 18%, transparent)`,
+                backgroundColor: tintFill(type.color),
                 color: type.color,
               }}
               title={type.name}
