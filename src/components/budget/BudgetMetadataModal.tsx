@@ -8,7 +8,6 @@ import {
 } from "react";
 import { Tags } from "lucide-react";
 
-import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import { resolveEntryLabels } from "../../data/budget/synthesis";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import {
@@ -21,6 +20,7 @@ import {
   initialMetadataFormState,
   type MetadataFormFields,
 } from "./budget-metadata-form-reducer";
+import { useAutoTypeForCompany } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
@@ -326,12 +326,19 @@ export function BudgetMetadataModal({
     (value: boolean) => dispatchForm({ kind: "setIsTransfer", value }),
     [],
   );
+  const autoTypeForPickedCompany = useAutoTypeForCompany(
+    typeId,
+    companyTypeSuggestions,
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
-      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
-      dispatchForm({ kind: "pickCompany", companyId: next, autoTypeId: auto });
+      dispatchForm({
+        kind: "pickCompany",
+        companyId: next,
+        autoTypeId: autoTypeForPickedCompany(next),
+      });
     },
-    [typeId, companyTypeSuggestions],
+    [autoTypeForPickedCompany],
   );
 
   // Pre-populate the form with whatever is already resolved for the

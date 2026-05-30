@@ -1,9 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import { normaliseDescription } from "../../data/description-normaliser";
-import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
+import {
+  useAutoTypeForCompany,
+  useDesktopAutoFocus,
+  useResetOnOpen,
+} from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import type {
   Category,
@@ -110,13 +113,17 @@ export function EditHistoryEntryModal({
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  const autoTypeForPickedCompany = useAutoTypeForCompany(
+    typeId,
+    companyTypeSuggestions,
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
       setCompanyId(next);
-      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      const auto = autoTypeForPickedCompany(next);
       if (auto !== undefined) setTypeId(auto);
     },
-    [typeId, companyTypeSuggestions],
+    [autoTypeForPickedCompany],
   );
   const [noCompany, setNoCompany] = useState(initialNoCompany);
   const [tagIds, setTagIds] = useState<string[]>(initialTagIds);

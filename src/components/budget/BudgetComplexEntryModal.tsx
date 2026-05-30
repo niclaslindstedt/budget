@@ -3,7 +3,6 @@ import { Sigma } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
 import { formulaToStored, parseFormula } from "../../data/budget/formula";
-import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import type { RecurrenceRule } from "../../data/recurrence";
 import type {
   Category,
@@ -13,6 +12,7 @@ import type {
   Sheet,
   Tag,
 } from "../../data/types";
+import { useAutoTypeForCompany } from "../../hooks";
 import { useT } from "../../i18n";
 import { parseAmount } from "../../utils/format";
 import { Button, Checkbox, ClearableInput } from "../form";
@@ -154,19 +154,19 @@ export function BudgetComplexEntryModal({
     (value: string | null) => dispatch({ kind: "setTypeId", value }),
     [],
   );
+  const autoTypeForPickedCompany = useAutoTypeForCompany(
+    typeId,
+    companyTypeSuggestions,
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
-      // The auto-type lookup needs `companyTypeSuggestions` (a prop the
-      // reducer doesn't see), so compute it here and fold the company +
-      // type write into one atomic dispatch.
-      const autoTypeId = autoTypeForCompany(
-        typeId,
-        next,
-        companyTypeSuggestions,
-      );
-      dispatch({ kind: "pickCompany", companyId: next, autoTypeId });
+      dispatch({
+        kind: "pickCompany",
+        companyId: next,
+        autoTypeId: autoTypeForPickedCompany(next),
+      });
     },
-    [typeId, companyTypeSuggestions],
+    [autoTypeForPickedCompany],
   );
   const setTagIds = useCallback(
     (value: string[]) => dispatch({ kind: "setTagIds", value }),

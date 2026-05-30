@@ -316,22 +316,6 @@ through them.
   - **Severity: 4.** Cheap, and any future column toggle (select-all,
     a new optional column) otherwise edits six call sites in lockstep.
 
-- **`autoTypeForCompany` pick-company callback wrapper duplicated across
-  the entry-edit modals** — the "on company pick, compute
-  `autoTypeForCompany(typeId, next, companyTypeSuggestions)` then dispatch"
-  wrapper is hand-rolled in `BudgetEditEntryFullModal.tsx`,
-  `BudgetMetadataModal.tsx`, and `BudgetComplexEntryModal.tsx` with the
-  same `[typeId, companyTypeSuggestions]` dependency. (Re-verify the exact
-  call sites with `grep -rn autoTypeForCompany src/components` at pickup —
-  flagged from an Explore survey, line numbers not re-checked.)
-  - **Plan**: a `useAutoTypeForCompany(typeId, companyTypeSuggestions)`
-    hook returning the `(companyId) => autoTypeId` mapper, or fold the
-    derivation into each modal reducer's `pickCompany` action.
-  - **Risk**: low — pure computation. Confirm each modal keys on the same
-    `typeId` snapshot (a stale-closure mismatch would mis-suggest a type).
-  - **Severity: 4.** Leverage: a change to the company→type suggestion
-    rule ripples through three identical wrappers today.
-
 - **Paired `typeId` / `typeIdLocked` set-and-clear in the item reducer**
   (`src/data/reducers/item/index.ts`, 474 lines) — picking a type stamps
   both `typeId` and `typeIdLocked: true`; clearing deletes both. The
@@ -536,6 +520,27 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`autoTypeForCompany` pick-company callback wrapper → `useAutoTypeForCompany`
+  hook** (2026-05): the "on company pick, compute
+  `autoTypeForCompany(typeId, next, companyTypeSuggestions)` then dispatch /
+  set state" wrapper — flagged at 3 sites, **re-verified at 7** entry-edit
+  modal `handlePickCompany` callbacks (`BudgetMetadataModal`,
+  `BudgetEditEntryFullModal`, `BudgetComplexEntryModal` dispatch a reducer
+  action; `BudgetPromoteHistoryForm`, `BudgetEditSeriesForm`,
+  `BudgetPromoteToSeriesForm`, `accounts/EditHistoryEntryModal` set local
+  state) — now routes through a `useAutoTypeForCompany(typeId,
+companyTypeSuggestions)` hook (`src/hooks/`) returning a memoised
+  `(companyId) => autoTypeId` mapper. Each callback drops its
+  `company-type-suggestions` import and keys its `useCallback` on the stable
+  mapper instead of `[typeId, companyTypeSuggestions]` (identical
+  re-creation timing). The "fold into each reducer's `pickCompany`" plan
+  alternative was rejected: the reducers are pure and don't hold
+  `companyTypeSuggestions`, which is exactly why the type is computed
+  outside. `useRowMutations.ts`'s `setTypeForRowsWithCompany` was left out —
+  it calls `autoTypeForCompany` with a **per-row** `current` typeId inside a
+  loop, not a single modal-level `typeId`, so the hook doesn't fit. Pure
+  refactor; fast loop + build + icons-check green. **Was severity 4.**
 
 - \*\*`pattern-apply.ts` rule→row label-patch boilerplate → `patchBudgetRowLabels`
   - `resolveRuleCompanyId` helpers\*_ (2026-05): the `rule.companyId !==
