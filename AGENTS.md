@@ -737,6 +737,44 @@ runtime by `src/data/validate.ts`. When you change it:
 2. Add a forward-only migration in `src/data/migrations.ts` and bump
    `LATEST_VERSION` + the `UserData.version` literal together.
 
+### Optional fields: `undefined` vs `null`
+
+Persisted types carry a lot of optional metadata (26 optional fields
+across `Account` / `HistoryEntry` / `HistoryEntrySplit` / `Transfer`
+in `src/data/types/accounts.ts` alone). Pick the encoding by what the
+absence _means_, and stay consistent:
+
+- **`field?: T` (absent ⇒ undefined)** is the default for "not set —
+  fall through to a global default or to the rule / hint chain".
+  Almost every optional field is this shape (the codebase has ~240
+  `=== undefined` / `!== undefined` checks against a single `!= null`
+  site). New per-account / per-entry flags should default to this.
+- **`field?: T | null`** is reserved for the narrow case where the
+  reference distinguishes **"explicitly cleared by the user"**
+  (`null`) from **"never set / don't touch"** (`undefined`). Only the
+  type-/company-reference fields use it — `MatchRule.typeId` /
+  `companyId`, `Transfer.typeId`, `HistoryEntrySplit.typeId` /
+  `companyId` — because the edit flows need a way to _clear_ a prior
+  pick distinctly from leaving it alone. Each such field's comment in
+  `accounts.ts` / `rules.ts` already spells out the `null`-vs-absent
+  contract; mirror that wording when adding one.
+- A **required** field that can be a sentinel (e.g.
+  `Settings.lastSeenChangelogVersion: string | null`, `null` on a
+  fresh install) is `T | null` _without_ the `?` — it is always
+  present, the `null` is the value, not absence. Don't conflate this
+  with the optional cases above.
+
+Do **not** introduce a third convention (e.g. an optional field that
+sometimes stores `""` to mean "cleared"). Reach for `?: T` unless you
+genuinely need the cleared-vs-untouched distinction, in which case use
+`?: T | null` and document the contract on the field. Note the
+validators for the three `T | null` reference fields are deliberately
+_not_ uniform — `MatchRule` preserves `null` and drops a dangling id
+to `undefined`, `Transfer` preserves `null` and coerces a dangling id
+to `null`, and `HistoryEntrySplit` treats `null` as absent — so each
+is hand-written against its field's semantics rather than sharing a
+helper.
+
 ## Cross-cutting rules
 
 - **No backend.** This is a local-first app. Never reach for a remote
