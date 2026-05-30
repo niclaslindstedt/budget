@@ -19,7 +19,13 @@ where tagging a merchant doesn't apply (salary, internal transfers,
 …) so they stop surfacing here over a missing company. A "Mark as
 transfer" checkbox lets you flag an entry as money moving between
 accounts and continue to the next item without picking a type or a
-company. "Back" and "Forward" buttons step through the entries
+company. A "Split into parts…" button carves the entry into several
+rows without leaving the walk — give each part its own amount, type,
+company, tags, and description; press "Split again" to commit a part
+and start the next on whatever's left, or "Next" to let the final
+part absorb the remainder. The running balance stays anchored to the
+bank's total. Handy for a Klarna autogiro that covers several
+unrelated purchases at once. "Back" and "Forward" buttons step through the entries
 you've already skipped or saved so you can revisit and fix a mistake,
 then return to where you left off — even if you didn't change
 anything — without restarting the walk. As soon as you set any field, if the entry has lookalikes —

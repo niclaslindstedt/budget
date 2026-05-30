@@ -29,7 +29,7 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 47;
+  version: 48;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

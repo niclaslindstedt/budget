@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Tags } from "lucide-react";
+import { Split, Tags } from "lucide-react";
 
 import { resolveEntryLabels } from "../../data/budget/synthesis";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
@@ -14,12 +14,21 @@ import {
   countMatchingBankDescription,
   type HistoryMetadataPatch,
 } from "../../data/budget/pattern-apply";
+import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import {
   budgetMetadataFormReducer,
   EMPTY_METADATA_FORM_FIELDS,
   initialMetadataFormState,
   type MetadataFormFields,
 } from "./budget-metadata-form-reducer";
+import {
+  budgetMetadataSplitReducer,
+  buildFinalSplits,
+  canCommitContinue,
+  canFinish,
+  makeInitialSplitState,
+  splitRemaining,
+} from "./budget-metadata-split-reducer";
 import { useAutoTypeForCompany } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import type {
@@ -27,6 +36,7 @@ import type {
   Company,
   EntryType,
   HistoryEntry,
+  HistoryEntrySplit,
   MatchRule,
   MerchantHint,
   Settings,
@@ -39,7 +49,7 @@ import {
 } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, Checkbox, ClearableInput } from "../form";
+import { Button, Checkbox, ClearableInput, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
@@ -104,6 +114,17 @@ type Props = {
     excludeEntryId: string,
     patch: HistoryMetadataPatch,
   ) => void;
+  // Persist a split decomposition for the current entry without leaving
+  // the walk. `splits` is the full, already-balanced set of parts (the
+  // last one absorbs the remainder), so the running balance stays
+  // anchored to the bank's total. Mirrors the scissors-button split flow
+  // but built inline so a Klarna-style entry can be carved as it's
+  // reviewed instead of hunting for the row afterwards.
+  onSplitHistoryEntry: (
+    accountId: string,
+    entryId: string,
+    splits: HistoryEntrySplit[],
+  ) => void;
 };
 
 function monthKeyOf(iso: string): string {
@@ -165,6 +186,7 @@ export function BudgetMetadataModal({
   onCreateTag,
   onUpdateHistoryEntry,
   onApplyMetadataToMatchingHistory,
+  onSplitHistoryEntry,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -197,6 +219,17 @@ export function BudgetMetadataModal({
   // so a bulk sweep is never a surprise. Reset when the entry changes
   // (the save / skip handler advances to a new entry) and on close.
   const [bulkApply, setBulkApply] = useState(false);
+  // Split mode — `splitting` swaps the per-entry form for the inline
+  // split builder; `splitState` holds the parts built so far plus the
+  // in-progress draft (see `budget-metadata-split-reducer`). Both reset
+  // when the entry changes or the modal closes so a half-built split
+  // never leaks onto the next entry.
+  const [splitting, setSplitting] = useState(false);
+  const [splitState, dispatchSplit] = useReducer(
+    budgetMetadataSplitReducer,
+    undefined,
+    makeInitialSplitState,
+  );
   useEffect(() => {
     if (!open) {
       setSkipped(new Set());
@@ -204,6 +237,7 @@ export function BudgetMetadataModal({
       setTrail([]);
       setReviewIndex(null);
       setBulkApply(false);
+      setSplitting(false);
     }
   }, [open]);
 
@@ -384,6 +418,10 @@ export function BudgetMetadataModal({
     dispatchForm({ kind: "reset", fields });
     // Each entry decides afresh whether to fan out to its lookalikes.
     setBulkApply(false);
+    // A split-in-progress belongs to the entry it was started on — drop
+    // it when the walk moves on so the builder doesn't reopen pre-filled
+    // against an unrelated entry.
+    setSplitting(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
@@ -624,6 +662,49 @@ export function BudgetMetadataModal({
     onApplyMetadataToMatchingHistory,
   ]);
 
+  // --- Split mode ---------------------------------------------------
+  const beginSplit = useCallback(() => {
+    if (!current) return;
+    dispatchSplit({
+      kind: "begin",
+      total: current.amount,
+      fallbackDescription: current.description,
+      settings,
+    });
+    setSplitting(true);
+  }, [current, settings]);
+
+  const handleSplitPickCompany = useCallback(
+    (next: string | null) => {
+      dispatchSplit({
+        kind: "pickCompany",
+        companyId: next,
+        autoTypeId: autoTypeForCompany(
+          splitState.draft.typeId,
+          next,
+          companyTypeSuggestions,
+        ),
+      });
+    },
+    [splitState.draft.typeId, companyTypeSuggestions],
+  );
+
+  const splitRemainingAmount = splitRemaining(splitState);
+  const canSplitAgain = canCommitContinue(splitState);
+  const canFinishSplit = canFinish(splitState);
+
+  const handleFinishSplit = useCallback(() => {
+    if (!current || !accountId || !canFinish(splitState)) return;
+    onSplitHistoryEntry(accountId, current.id, buildFinalSplits(splitState));
+    setCompleted((prev) => {
+      const next = new Set(prev);
+      next.add(current.id);
+      return next;
+    });
+    setSplitting(false);
+    advance();
+  }, [current, accountId, splitState, onSplitHistoryEntry, advance]);
+
   if (!open) return null;
 
   return (
@@ -679,104 +760,259 @@ export function BudgetMetadataModal({
                 {current.description || "—"}
               </p>
             </fieldset>
-            <div className="grid gap-3">
-              <div ref={typeFieldRef} className="flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("metadata.typeLabel")}
-                </span>
-                <TypePicker
-                  variant="field"
-                  types={types}
-                  categories={categories}
-                  selectedId={typeId}
-                  onSelect={setTypeId}
-                  onCreate={onCreateType}
-                  onCreateCategory={onCreateCategory}
-                  amountSign={current.amount < 0 ? "negative" : "positive"}
-                />
+            {splitting ? (
+              <div className="grid gap-3">
+                <p className="text-xs text-muted">{t("metadata.splitIntro")}</p>
+                {splitState.committed.length > 0 && (
+                  <div className="flex flex-col gap-1.5 rounded border border-line bg-surface-2 p-3">
+                    {splitState.committed.map((s, i) => (
+                      <div
+                        key={i}
+                        className="flex items-baseline justify-between gap-2 text-sm"
+                      >
+                        <span className="min-w-0 truncate text-fg">
+                          <span className="mr-2 text-xs text-muted">
+                            {t("metadata.splitPart", { n: i + 1 })}
+                          </span>
+                          {s.description}
+                        </span>
+                        <span
+                          className={`shrink-0 font-mono tabular-nums ${
+                            s.amount < 0 ? "text-negative" : "text-positive"
+                          }`}
+                        >
+                          {formatBalance(s.amount, settings)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-2 rounded border border-accent/40 bg-accent/5 px-3 py-2">
+                  <span className="text-xs text-muted">
+                    {t("metadata.splitRemainingLabel")}
+                  </span>
+                  <span
+                    className={`font-mono text-sm tabular-nums ${
+                      splitRemainingAmount < 0
+                        ? "text-negative"
+                        : "text-positive"
+                    }`}
+                  >
+                    {formatBalance(splitRemainingAmount, settings)}
+                  </span>
+                </div>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("metadata.amountLabel")}
+                  </span>
+                  <SignedAmountInput
+                    value={splitState.draft.amount}
+                    negative={splitState.draft.negative}
+                    onValueChange={(v) =>
+                      dispatchSplit({ kind: "setAmount", value: v })
+                    }
+                    onToggleSign={() => dispatchSplit({ kind: "toggleSign" })}
+                    settings={settings}
+                    ariaLabel={t("metadata.amountLabel")}
+                  />
+                </label>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("metadata.typeLabel")}
+                  </span>
+                  <TypePicker
+                    variant="field"
+                    types={types}
+                    categories={categories}
+                    selectedId={splitState.draft.typeId}
+                    onSelect={(v) =>
+                      dispatchSplit({ kind: "setType", value: v })
+                    }
+                    onCreate={onCreateType}
+                    onCreateCategory={onCreateCategory}
+                    amountSign={
+                      splitState.draft.negative ? "negative" : "positive"
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("metadata.companyLabel")}
+                  </span>
+                  <CompanyPicker
+                    variant="field"
+                    companies={companies}
+                    selectedId={splitState.draft.companyId}
+                    onSelect={handleSplitPickCompany}
+                    onCreate={onCreateCompany}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("metadata.tagsLabel")}
+                  </span>
+                  <TagsPicker
+                    tags={tags}
+                    selectedIds={splitState.draft.tagIds}
+                    onChange={(v) =>
+                      dispatchSplit({ kind: "setTags", value: v })
+                    }
+                    onCreate={onCreateTag}
+                  />
+                </div>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("metadata.descriptionLabel")}
+                  </span>
+                  <ClearableInput
+                    value={splitState.draft.description}
+                    onValueChange={(v) =>
+                      dispatchSplit({ kind: "setDescription", value: v })
+                    }
+                    placeholder={
+                      current.description ||
+                      t("metadata.descriptionPlaceholder")
+                    }
+                    className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                  />
+                </label>
+                <p className="text-xs text-muted">
+                  {t("metadata.splitFinishHint")}
+                </p>
               </div>
-              <div ref={companyFieldRef} className="flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("metadata.companyLabel")}
-                </span>
-                <CompanyPicker
-                  variant="field"
-                  companies={companies}
-                  selectedId={companyId}
-                  noCompany={noCompany}
-                  onSelect={handlePickCompany}
-                  onOmitChange={setNoCompany}
-                  onCreate={onCreateCompany}
-                />
-                <span className="text-xs text-muted">
-                  {noCompany
-                    ? t("metadata.noCompanyHint")
-                    : t("metadata.companyHint")}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("metadata.tagsLabel")}
-                </span>
-                <TagsPicker
-                  tags={tags}
-                  selectedIds={tagIds}
-                  onChange={setTagIds}
-                  onCreate={onCreateTag}
-                />
-                <span className="text-xs text-muted">
-                  {t("metadata.tagsHint")}
-                </span>
-              </div>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("metadata.descriptionLabel")}
-                </span>
-                <ClearableInput
-                  value={description}
-                  onValueChange={setDescription}
-                  placeholder={
-                    current.description || t("metadata.descriptionPlaceholder")
-                  }
-                  className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-                />
-                <span className="text-xs text-muted">
-                  {t("metadata.descriptionHint")}
-                </span>
-              </label>
-              <Checkbox
-                checked={isTransfer}
-                onChange={setIsTransfer}
-                label={t("metadata.markAsTransfer")}
-                description={t("metadata.markAsTransferHint")}
-              />
-            </div>
-            {canBulkApply && (
-              <div className="mt-4 rounded border border-line bg-surface-3 p-3">
-                <Checkbox
-                  checked={bulkApply}
-                  onChange={setBulkApply}
-                  label={
-                    lookalikeCount === 1
-                      ? t("metadata.bulkApplyOne", { n: lookalikeCount })
-                      : t("metadata.bulkApplyOther", { n: lookalikeCount })
-                  }
-                  description={t("metadata.bulkApplyHint")}
-                />
-              </div>
+            ) : (
+              <>
+                <div className="grid gap-3">
+                  <div ref={typeFieldRef} className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">
+                      {t("metadata.typeLabel")}
+                    </span>
+                    <TypePicker
+                      variant="field"
+                      types={types}
+                      categories={categories}
+                      selectedId={typeId}
+                      onSelect={setTypeId}
+                      onCreate={onCreateType}
+                      onCreateCategory={onCreateCategory}
+                      amountSign={current.amount < 0 ? "negative" : "positive"}
+                    />
+                  </div>
+                  <div ref={companyFieldRef} className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">
+                      {t("metadata.companyLabel")}
+                    </span>
+                    <CompanyPicker
+                      variant="field"
+                      companies={companies}
+                      selectedId={companyId}
+                      noCompany={noCompany}
+                      onSelect={handlePickCompany}
+                      onOmitChange={setNoCompany}
+                      onCreate={onCreateCompany}
+                    />
+                    <span className="text-xs text-muted">
+                      {noCompany
+                        ? t("metadata.noCompanyHint")
+                        : t("metadata.companyHint")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">
+                      {t("metadata.tagsLabel")}
+                    </span>
+                    <TagsPicker
+                      tags={tags}
+                      selectedIds={tagIds}
+                      onChange={setTagIds}
+                      onCreate={onCreateTag}
+                    />
+                    <span className="text-xs text-muted">
+                      {t("metadata.tagsHint")}
+                    </span>
+                  </div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">
+                      {t("metadata.descriptionLabel")}
+                    </span>
+                    <ClearableInput
+                      value={description}
+                      onValueChange={setDescription}
+                      placeholder={
+                        current.description ||
+                        t("metadata.descriptionPlaceholder")
+                      }
+                      className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+                    />
+                    <span className="text-xs text-muted">
+                      {t("metadata.descriptionHint")}
+                    </span>
+                  </label>
+                  <Checkbox
+                    checked={isTransfer}
+                    onChange={setIsTransfer}
+                    label={t("metadata.markAsTransfer")}
+                    description={t("metadata.markAsTransferHint")}
+                  />
+                </div>
+                {canBulkApply && (
+                  <div className="mt-4 rounded border border-line bg-surface-3 p-3">
+                    <Checkbox
+                      checked={bulkApply}
+                      onChange={setBulkApply}
+                      label={
+                        lookalikeCount === 1
+                          ? t("metadata.bulkApplyOne", { n: lookalikeCount })
+                          : t("metadata.bulkApplyOther", { n: lookalikeCount })
+                      }
+                      description={t("metadata.bulkApplyHint")}
+                    />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={beginSplit}
+                  className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-dashed border-line bg-transparent px-3 py-2 text-sm text-muted hover:border-accent hover:text-accent"
+                >
+                  <Split size={14} aria-hidden focusable={false} />
+                  {t("metadata.splitCta")}
+                </button>
+              </>
             )}
           </>
         )}
       </Modal.Body>
       <Modal.Footer
         className={
-          current === null ? "" : "flex-wrap justify-between gap-x-2 gap-y-1"
+          current === null || splitting
+            ? ""
+            : "flex-wrap justify-between gap-x-2 gap-y-1"
         }
       >
         {current === null ? (
           <Button variant="primary" onClick={onClose}>
             {t("common.close")}
           </Button>
+        ) : splitting ? (
+          <>
+            <Button variant="secondary" onClick={() => setSplitting(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => dispatchSplit({ kind: "commit", settings })}
+              disabled={!canSplitAgain}
+            >
+              {t("metadata.splitAgain")}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleFinishSplit}
+              disabled={!canFinishSplit}
+            >
+              {t("metadata.splitFinish")}
+            </Button>
+          </>
         ) : (
           <>
             <p

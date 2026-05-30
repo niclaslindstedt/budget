@@ -345,6 +345,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       },
     };
   },
+
+  // v47 → v48: introduces optional `tagIds` on `HistoryEntrySplit` so a
+  // single bank entry split into parts (a Klarna autogiro covering
+  // several unrelated purchases) can tag each part independently. Old
+  // exports simply lack the field; the synthesizer renders no tags for
+  // splits that don't carry it. Bare version bump.
+  47: (v47) => ({ ...v47, version: 48 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

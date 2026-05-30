@@ -84,6 +84,15 @@ export type HistoryEntrySplit = {
   // distinct companies). `null` is reserved for explicit "no company"
   // when a future patch path needs to clear it.
   companyId?: string | null;
+  // Optional per-split tags — references to `Tag`s in `UserData.tags`.
+  // Each split carries its own set because one bank transaction can pay
+  // for differently-tagged things (a Klarna autogiro covering several
+  // unrelated purchases). The synthesizer copies these straight onto the
+  // split's `HistoricRow.tagIds` — unlike the single-row path there's no
+  // rule / hint union to fold in, the split's tags are authoritative.
+  // Dangling ids (deleted tags) are dropped by the validator. Absent or
+  // empty means the split carries no tags.
+  tagIds?: string[];
 };
 
 export type HistoryEntry = {

@@ -24,6 +24,16 @@ const metadata: MetadataCatalog = {
   skip: "Hoppa över",
   back: "Tillbaka",
   forward: "Framåt",
+  amountLabel: "Belopp",
+  splitCta: "Dela upp i delar…",
+  splitIntro:
+    "En banktransaktion, flera kategorier — ge varje del eget belopp, typ, " +
+    "företag och taggar.",
+  splitPart: "Del {n}",
+  splitRemainingLabel: "Kvar att dela",
+  splitFinishHint: '"Nästa" ger den sista delen det som blir kvar.',
+  splitAgain: "Dela igen",
+  splitFinish: "Nästa",
   needsTypePrompt: "Välj en typ för att spara.",
   needsCompanyPrompt:
     'Välj ett företag — eller "Utelämna företag" — för att spara.',
