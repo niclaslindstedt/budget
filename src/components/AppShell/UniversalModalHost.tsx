@@ -14,7 +14,9 @@ import { SheetModal } from "../SheetModal";
 import { SyncDetailsModal } from "../SyncDetailsModal";
 import { useRegisterModalHandlers } from "../modal-dispatch";
 import { useAchievementsModal } from "./hooks/useAchievementsModal";
+import { useAppearanceProjection } from "./hooks/useAppearanceProjection";
 import { useChangelogState } from "./hooks/useChangelogState";
+import { useSettingsModal } from "./hooks/useSettingsModal";
 import { useSyncAutoOpens } from "./hooks/useSyncAutoOpens";
 import { unlock as unlockAchievement } from "../../data/achievements";
 import type { Action } from "../../data/reducer";
@@ -33,7 +35,6 @@ import type { AppShellAuth, AppShellStorage } from "./types";
 import type { useDownloadFlow } from "./hooks/useDownloadFlow";
 import type { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import type { useSearchModal } from "./hooks/useSearchModal";
-import type { useSettingsModal } from "./hooks/useSettingsModal";
 import type { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
 import type { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
 
@@ -70,7 +71,6 @@ type Props = {
   // Sub-hook returns.
   sheetMetaDialog: ReturnType<typeof useSheetMetaDialog>;
   downloadFlow: ReturnType<typeof useDownloadFlow>;
-  settingsModal: ReturnType<typeof useSettingsModal>;
   searchModal: ReturnType<typeof useSearchModal>;
   // Select-many wiring for the search modal — the same bulk-selection
   // handlers the BottomBar uses, plus the active sheet id + a sheet
@@ -115,7 +115,6 @@ export function UniversalModalHost(props: Props) {
     onStaySignedIn,
     sheetMetaDialog,
     downloadFlow,
-    settingsModal,
     searchModal,
     searchBulk,
     taxonomyCrud,
@@ -127,10 +126,10 @@ export function UniversalModalHost(props: Props) {
     onImport,
   } = props;
   const t = useT();
-  // The action-history, achievements, changelog, and sync-details modals
-  // render only here and open only from chrome (via the dispatch context),
-  // so the host owns their open state outright and registers the open
-  // handlers rather than threading a boolean + setter down from AppShell.
+  // The action-history, achievements, changelog, sync-details, and settings
+  // modals render only here and open only from chrome (via the dispatch
+  // context), so the host owns their open state outright and registers the
+  // open handlers rather than threading a boolean + setter down from AppShell.
   // The changelog hook also drives the per-version auto-open on upgrade, and
   // `useSyncAutoOpens` auto-surfaces sync-details on a paused / parse-error
   // status and the reconnect modal on a cloud auth-error — their inputs
@@ -161,12 +160,33 @@ export function UniversalModalHost(props: Props) {
     status: storageState.status,
     cloudReauthAutoOpen: data.settings.cloudReauthAutoOpen,
   });
+  // SettingsModal lives here, so its live Appearance preview draft does too:
+  // the modal pushes its edits up via `onPreviewAppearance={setPreviewSettings}`
+  // and `useAppearanceProjection` projects `previewSettings ?? effectiveSettings`
+  // onto the document root, letting the user see a theme / font / shape pick
+  // before committing. The projection is always-on (it also projects the
+  // persisted settings while the modal is closed); it lives with the preview
+  // state rather than on AppShell. Its inputs (`effectiveSettings`, the
+  // bucket-canonical `data.settings.language`) are already host props.
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    settingsInitialTab,
+    setSettingsInitialTab,
+    previewSettings,
+    setPreviewSettings,
+  } = useSettingsModal();
+  useAppearanceProjection({
+    appearanceSettings: previewSettings ?? effectiveSettings,
+    language: data.settings.language,
+  });
   useRegisterModalHandlers({
     openActionHistory: () => setActionHistoryOpen(true),
     openAchievementsList: () => setAchievementsListOpen(true),
     openAchievementsUnlock: () => setAchievementsModalOpen(true),
     openChangelog: () => setChangelogManualOpen(true),
     openSyncDetails: () => setSyncDetailsOpen(true),
+    openSettings: () => setSettingsOpen(true),
   });
   const {
     status,
@@ -213,13 +233,6 @@ export function UniversalModalHost(props: Props) {
     onDeleteSheet,
   } = sheetMetaDialog;
   const { downloadPrompt, onCloseDownload, onConfirmDownload } = downloadFlow;
-  const {
-    settingsOpen,
-    setSettingsOpen,
-    settingsInitialTab,
-    setSettingsInitialTab,
-    setPreviewSettings,
-  } = settingsModal;
   const {
     searchOpen,
     setSearchOpen,

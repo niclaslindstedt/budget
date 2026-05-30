@@ -6,14 +6,12 @@ import {
   headerActionDescription,
 } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
-import { useAppearanceProjection } from "./hooks/useAppearanceProjection";
 import { useBulkSelection } from "./hooks/useBulkSelection";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
 import { useEditPrompts } from "./hooks/useEditPrompts";
 import { useRowMutations } from "./hooks/useRowMutations";
 import { useSearchModal } from "./hooks/useSearchModal";
-import { useSettingsModal } from "./hooks/useSettingsModal";
 import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
@@ -144,8 +142,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   useEffect(() => {
     currentDataRef.current = data;
   }, [currentDataRef, data]);
-  const settingsModal = useSettingsModal();
-  const { setSettingsOpen, previewSettings } = settingsModal;
   const searchModal = useSearchModal({ data });
   const { setSearchOpen, scrollToRowRequest } = searchModal;
 
@@ -279,13 +275,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // mobile bucket's values immediately.
   const isMobile = useIsMobile();
   const effectiveSettings = useEffectiveSettings(data.settings);
-  // The SettingsModal's draft, when it's open, overrides the effective
-  // settings for any Appearance projection so the user can see their
-  // pick applied before saving. `null` whenever the modal is closed.
-  const appearanceSettings = previewSettings ?? effectiveSettings;
-
+  // Bucket-canonical language preference, consumed by the download flow
+  // (filename / number formatting). The Appearance projection that also
+  // reads it now lives in `UniversalModalHost` alongside the SettingsModal
+  // preview draft it overlays — see `useAppearanceProjection` there.
   const language = data.settings.language;
-  useAppearanceProjection({ appearanceSettings, language });
 
   const isGuest = user.isDefault === true;
   const { warningSecondsLeft, onStaySignedIn } = useIdleSignOut({
@@ -510,7 +504,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // discards an unsaved placeholder row).
   const modalHandlers = useMemo<Partial<ModalCommandHandlers>>(
     () => ({
-      openSettings: () => setSettingsOpen(true),
       openSearch: () => {
         unlockAchievement("detective");
         setSearchOpen(true);
@@ -529,7 +522,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       correctionDelete: onCorrectionDeleteRequest,
     }),
     [
-      setSettingsOpen,
       setSearchOpen,
       onOpenNewSheet,
       onOpenEditSheet,
@@ -796,7 +788,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           onStaySignedIn={onStaySignedIn}
           sheetMetaDialog={sheetMetaDialog}
           downloadFlow={downloadFlow}
-          settingsModal={settingsModal}
           searchModal={searchModal}
           searchBulk={{
             selectMode,
