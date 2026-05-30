@@ -3,7 +3,6 @@ import { Pencil } from "lucide-react";
 
 import { sortRowsByDate } from "../../data/budget/rows";
 import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
-import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
   Column,
@@ -14,7 +13,11 @@ import type {
   Settings,
   Tag,
 } from "../../data/types";
-import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
+import {
+  useDesktopAutoFocus,
+  useResetOnOpen,
+  useStandardColumns,
+} from "../../hooks";
 import { useT } from "../../i18n";
 import { formatAmount, formatShortDate, parseAmount } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
@@ -144,19 +147,8 @@ export function BudgetEditEntryFullModal({
   onCreateTag,
 }: Props) {
   const t = useT();
-  const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
-  const amountCol = useMemo(
-    () => findColumnByType(columns, "amount"),
-    [columns],
-  );
-  const descCol = useMemo(
-    () => findColumnByType(columns, "description"),
-    [columns],
-  );
-  const completedCol = useMemo(
-    () => findColumnByType(columns, "completed"),
-    [columns],
-  );
+  const { dateCol, amountCol, descCol, completedCol } =
+    useStandardColumns(columns);
 
   // Snapshot the props into a single initial state. The `useReducer`
   // initialiser captures the first snapshot at mount; `useResetOnOpen`

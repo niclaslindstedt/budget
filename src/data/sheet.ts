@@ -107,18 +107,20 @@ export function createEmptyRow(
   return { kind: "user", id: newId(), cells };
 }
 
-// Standard column trio every AccountBudget surface relies on:
-// date / description / amount, plus the optional completed column.
-// Returning the columns instead of just their ids lets callers decide
-// what to do when one is missing — a row-minting handler bails, a
-// formatter that only needs `dateCol.id` can use optional chaining.
-// Centralised here so a future migration that renames or splits one
-// of these column types only touches this helper.
+// The standard columns every AccountBudget surface relies on:
+// date / description / amount, plus the optional balance / completed /
+// type columns. Returning the columns instead of just their ids lets
+// callers decide what to do when one is missing — a row-minting handler
+// bails, a formatter that only needs `dateCol.id` can use optional
+// chaining. Centralised here so a future migration that renames or
+// splits one of these column types only touches this helper.
 export type StandardColumns = {
   dateCol: Column | undefined;
   descCol: Column | undefined;
   amountCol: Column | undefined;
+  balanceCol: Column | undefined;
   completedCol: Column | undefined;
+  typeCol: Column | undefined;
 };
 export function getStandardColumns(
   columns: readonly Column[],
@@ -128,7 +130,9 @@ export function getStandardColumns(
     dateCol: m.get("date"),
     descCol: m.get("description"),
     amountCol: m.get("amount"),
+    balanceCol: m.get("balance"),
     completedCol: m.get("completed"),
+    typeCol: m.get("type"),
   };
 }
 

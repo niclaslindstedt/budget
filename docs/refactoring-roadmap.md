@@ -142,33 +142,6 @@ through them.
 
 ### Severity 5–6 — friction
 
-- **`findColumnByType` standard-column lookup cluster → `useStandardColumns`
-  hook** — `findColumnByType(columns, "date" | "description" | "amount" |
-"balance" | "completed" | "type")` is called at **~18 files / 60+ sites**
-  (grep `findColumnByType src/components` 2026-05). Most are the same
-  cluster of 2–7 `useMemo(() => findColumnByType(columns, "…"), [columns])`
-  lookups re-derived per file: `BudgetViewerModal.tsx` (7),
-  `BudgetEditEntryFullModal.tsx` (5) + its reducer (5),
-  `BudgetPromoteHistoryForm.tsx` (4), `BudgetEditSeriesForm.tsx` (4),
-  `BudgetBulkEditModal.tsx` (3), `BudgetSplitEntryModal.tsx` (3),
-  `AccountReconciliationModal.tsx` (8), plus the AppShell hooks
-  (`useRowMutations`, `useMatchRuleUi`, `useImportFlow`,
-  `usePromptDerivations`). Every site that wants the date/amount column
-  re-derives it, and every **new column type** (tags, attachments) or
-  **new modal** re-pastes the cluster.
-  - **Plan**: add a `useStandardColumns(columns)` hook (or a plain
-    `standardColumns(columns)` selector for the non-React call sites in
-    `src/data`/reducers) returning a single memoized
-    `{ dateCol, descCol, amountCol, balanceCol, completedCol, typeCol }`.
-    Adopt at the N≥3-lookup sites first; leave single-lookup sites inline.
-    Pure refactor — same `findColumnByType` results, just hoisted.
-  - **Risk**: low. Watch the `useMemo` dep arrays (all key on `[columns]`)
-    so the consolidated memo doesn't widen a dependency and re-run more
-    often. No persisted-shape impact.
-  - **Severity: 5.** Multiplier: a column-type addition or a new
-    row-bearing sheet type threads a new lookup through every one of the
-    ~18 files; consolidating now caps that at one hook.
-
 - **`pattern-apply.ts` rule→row label-patch boilerplate duplicated across
   three appliers** (`src/data/budget/pattern-apply.ts`, 492 lines) — the
   same "resolve `ruleCompanyId` via the `!== undefined && !== null ? :
@@ -584,6 +557,26 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`findColumnByType` standard-column cluster → `useStandardColumns`
+  hook / extended `getStandardColumns`** (2026-05): the per-file
+  `useMemo(() => findColumnByType(columns, "…"), [columns])` clusters were
+  hoisted. Extended the existing `getStandardColumns` selector (and its
+  `StandardColumns` type) in `src/data/sheet.ts` to return all six
+  standard columns (`dateCol` / `descCol` / `amountCol` / `balanceCol` /
+  `completedCol` / `typeCol`) — it previously returned only four — and
+  added a memoized `useStandardColumns(columns)` React wrapper in
+  `src/hooks/` (re-exported from `src/hooks/index.ts`). Adopted at the
+  N≥3-lookup sites: `BudgetViewerModal` (6 lookups),
+  `BudgetEditEntryFullModal` + its reducer (4 each),
+  `BudgetPromoteHistoryForm` / `BudgetEditSeriesForm` (3 each), and the
+  two identical 3-lookup blocks in `AccountReconciliationModal`. Non-React
+  reducer sites call `getStandardColumns` directly; React components use
+  the hook. Single- and double-lookup sites (`BudgetMonthTable`,
+  `BudgetPage`, `BudgetSplitEntryModal`, `BudgetBulkEditModal`, the
+  `AppShell` hooks, and the one standalone lookup left in
+  `AccountReconciliationModal`) stay on inline `findColumnByType` per the
+  plan. Pure refactor — identical lookup results; fast loop + build green.
 
 - **`color-mix` entity-tint percentages → `tintFill` / `tintBorder`
   helpers** (2026-05): the `color-mix(in srgb, ${color} 18%/55%,

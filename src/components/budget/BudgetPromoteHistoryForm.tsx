@@ -3,7 +3,6 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import { nextOccurrenceWithSameDom } from "../../data/recurrence";
 import type { RecurrenceRule } from "../../data/recurrence";
-import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
   Column,
@@ -12,7 +11,7 @@ import type {
   Row,
   Settings,
 } from "../../data/types";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useDesktopAutoFocus, useStandardColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import {
@@ -118,15 +117,7 @@ export function BudgetPromoteHistoryForm({
   onCreateCompany,
 }: Props) {
   const t = useT();
-  const descCol = useMemo(
-    () => findColumnByType(columns, "description"),
-    [columns],
-  );
-  const amountCol = useMemo(
-    () => findColumnByType(columns, "amount"),
-    [columns],
-  );
-  const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
+  const { descCol, amountCol, dateCol } = useStandardColumns(columns);
 
   const rawCellDescription =
     descCol && typeof row.cells[descCol.id] === "string"
