@@ -11,6 +11,7 @@ const complex: ComplexCatalog = {
   company: "Företag",
   tags: "Taggar",
   isTransfer: "Markera som överföring",
+  completed: "Klar",
   pickType: "Välj en typ",
   schedule: "Schema",
   once: "Engångs",

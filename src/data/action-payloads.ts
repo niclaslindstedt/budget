@@ -93,6 +93,10 @@ export type ComplexEntryDraft = {
   // When true, every generated row is flagged as an inter-account
   // transfer so the `hideTransfers` setting can suppress it.
   isTransfer?: boolean;
+  // When set, every generated row lands with this completed state.
+  // Absent falls back to the per-date default (`defaultCompletedForDate`)
+  // so callers that don't carry the flag keep the old behaviour.
+  completed?: boolean;
   dates: string[];
   // Optional formula string in the canonical stored form (any
   // `sheet("…")` reference holds the target's stable id, not its

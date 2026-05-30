@@ -1,3 +1,4 @@
+import { defaultCompletedForDate } from "../../data/budget/rows";
 import type { RecurrenceRule } from "../../data/recurrence";
 import type { Settings } from "../../data/types";
 import { normalizeAmountInput } from "../../utils/format";
@@ -39,6 +40,11 @@ export type ComplexEntryState = {
   companyId: string | null;
   tagIds: string[];
   isTransfer: boolean;
+  // Whether every generated row lands marked completed. Seeded from the
+  // add-context date (past dates default completed, today / future stay
+  // open — see `defaultCompletedForDate`) and applied uniformly to all
+  // generated rows once the user has the checkbox in view.
+  completed: boolean;
   dates: string[];
   // fx mode swaps the numeric amount input for a formula textarea.
   formulaMode: boolean;
@@ -52,6 +58,10 @@ export type ComplexEntryState = {
 export type ComplexEntrySeedInput = {
   seed: ComplexEntrySeed | null;
   settings: Settings;
+  // The add-context date (the row the user clicked "add" on, or the
+  // promote-flow anchor). Seeds the initial `completed` value via
+  // `defaultCompletedForDate`.
+  initialDate: string;
 };
 
 export type ComplexEntryAction =
@@ -75,6 +85,7 @@ export type ComplexEntryAction =
     }
   | { kind: "setTagIds"; value: string[] }
   | { kind: "setIsTransfer"; value: boolean }
+  | { kind: "setCompleted"; value: boolean }
   | { kind: "setDates"; value: string[] }
   | { kind: "toggleFormulaMode" }
   | { kind: "setFormulaText"; value: string };
@@ -82,7 +93,7 @@ export type ComplexEntryAction =
 export function initialComplexEntryState(
   input: ComplexEntrySeedInput,
 ): ComplexEntryState {
-  const { seed, settings } = input;
+  const { seed, settings, initialDate } = input;
   const seeded = seed
     ? {
         description: seed.description,
@@ -107,6 +118,7 @@ export function initialComplexEntryState(
       };
   return {
     ...seeded,
+    completed: defaultCompletedForDate(initialDate),
     dates: [],
     amountMode: "exact",
     amountMinText: "",
@@ -152,6 +164,8 @@ export function budgetComplexEntryModalReducer(
       return { ...state, tagIds: action.value };
     case "setIsTransfer":
       return { ...state, isTransfer: action.value };
+    case "setCompleted":
+      return { ...state, completed: action.value };
     case "setDates":
       return { ...state, dates: action.value };
     case "toggleFormulaMode":

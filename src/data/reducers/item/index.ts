@@ -91,7 +91,7 @@ export function reduceAccountBudget(
           date,
           description: draft.description,
           amount: draft.amount,
-          completed: defaultCompletedForDate(date),
+          completed: draft.completed ?? defaultCompletedForDate(date),
         });
         if (seriesId) row.seriesId = seriesId;
         // The modal asked the user for a type — treat the choice as an
