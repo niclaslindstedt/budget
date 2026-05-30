@@ -52,9 +52,11 @@ type Props = {
   types: readonly EntryType[];
   companies: readonly Company[];
   tags: readonly Tag[];
-  // companyId → suggested typeId for the auto-fill. See
-  // `computeCompanyTypeSuggestions` in `src/data/budget/company-type-suggestions.ts`.
+  // companyId → suggested typeId for the auto-fill, and companyId →
+  // ranked hint typeIds for the picker's "Suggested" band. See
+  // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   // Last ISO date in the same series — defaults the "until" picker
   // when the user picks the future scope. `null` for one-off rows.
@@ -134,6 +136,7 @@ export function BudgetEditEntryFullModal({
   companies,
   tags,
   companyTypeSuggestions,
+  companyTypeHints,
   settings,
   lastSeriesDate,
   seriesRows,
@@ -413,6 +416,9 @@ export function BudgetEditEntryFullModal({
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               amountSign={pickerSign}
+              hintTypeIds={
+                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+              }
             />
           </div>
           <div className="col-span-2 flex flex-col gap-1">

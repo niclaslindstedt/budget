@@ -72,12 +72,6 @@ const settings: SettingsCatalog = {
     maxResultsHint:
       "Hur många träffar som visas. Räknaren visar fortfarande totalen.",
   },
-  companyTypeAutoFill: {
-    title: "Fyll i typ automatiskt från företag",
-    threshold: "Antal träffar som krävs",
-    thresholdHint:
-      "När ett företag har använts tillsammans med samma typ fler gånger än så här, fyller valet av företaget i typen automatiskt på en post där typen saknas. Sätt till 0 för att stänga av automatiken.",
-  },
   headerAction: {
     title: "Klick på rubriken",
     label: "När jag klickar på rubriken",
@@ -326,6 +320,11 @@ const settings: SettingsCatalog = {
     deleteCompanyTitle: "Ta bort företag",
     deleteCompanyHint:
       "Ta bort ”{name}”? Poster taggade med det tappar taggen; deras beskrivning och typ behålls.",
+    typesLabel: "Kopplade typer",
+    typesHint:
+      "Fäst de typer det här företaget oftast hör ihop med. En typ fylls i automatiskt när du väljer företaget; flera visas som förslag högst upp i typväljaren. Dra för att ändra prioritet.",
+    addType: "Lägg till en typ…",
+    removeType: "Ta bort typ",
   },
   tagsTab: {
     title: "Taggar",

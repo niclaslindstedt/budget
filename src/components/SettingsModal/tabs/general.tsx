@@ -142,32 +142,6 @@ export function GeneralTab({
         )}
       </Section>
 
-      <Section title={t("settings.companyTypeAutoFill.title")}>
-        <Field label={t("settings.companyTypeAutoFill.threshold")}>
-          <div className="w-24">
-            <SelectPicker
-              value={draft.companyTypeAutoFillMinOccurrences}
-              options={[
-                { value: 0, label: t("common.off") },
-                ...Array.from({ length: 50 }, (_, i) => ({
-                  value: i + 1,
-                  label: i + 1,
-                })),
-              ]}
-              onChange={(v) =>
-                onUpdate("companyTypeAutoFillMinOccurrences", v as number)
-              }
-              ariaLabel={t("settings.companyTypeAutoFill.threshold")}
-              triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left font-mono text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
-              panelClassName="font-mono tabular-nums"
-            />
-          </div>
-          <p className="text-xs text-muted">
-            {t("settings.companyTypeAutoFill.thresholdHint")}
-          </p>
-        </Field>
-      </Section>
-
       <Section title={t("settings.headerAction.title")}>
         <DeviceScopeHint />
         <Field label={t("settings.headerAction.label")}>

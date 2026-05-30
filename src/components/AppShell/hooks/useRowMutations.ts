@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { autoTypeForCompany } from "../../../data/budget/company-type-suggestions";
+import { autoTypeForCompany } from "../../../data/budget/company-type-hints";
 import { findColumnByType } from "../../../data/sheet";
 import type { Action } from "../../../data/reducer";
 import type {

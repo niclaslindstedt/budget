@@ -42,9 +42,11 @@ type Props = {
   types: readonly EntryType[];
   companies: readonly Company[];
   tags: readonly Tag[];
-  // companyId → suggested typeId for the auto-fill. See
-  // `computeCompanyTypeSuggestions` in `src/data/budget/company-type-suggestions.ts`.
+  // companyId → suggested typeId for the auto-fill, and companyId →
+  // ranked hint typeIds for the picker's "Suggested" band. See
+  // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   primaryIncomeMerchants: readonly PrimaryIncomeMerchant[];
   onClose: () => void;
@@ -79,6 +81,7 @@ export function EditHistoryEntryModal({
   companies,
   tags,
   companyTypeSuggestions,
+  companyTypeHints,
   settings,
   primaryIncomeMerchants,
   onClose,
@@ -204,6 +207,9 @@ export function EditHistoryEntryModal({
               onSelect={setTypeId}
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
+              hintTypeIds={
+                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+              }
             />
           </div>
           <div className="flex flex-col gap-1">

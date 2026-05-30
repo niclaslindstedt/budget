@@ -23,6 +23,10 @@ export type BudgetContextValue = {
   categories: readonly Category[];
   companies: readonly Company[];
   companiesById: ReadonlyMap<string, Company>;
+  // companyId → ranked hint typeIds (see `computeCompanyTypeHints`).
+  // Consumed by the row's inline type cell to render its "Suggested"
+  // band for the row's company.
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;

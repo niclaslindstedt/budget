@@ -38,7 +38,10 @@ import { SaveStateButton } from "../SaveStateButton";
 import { SyncStatus } from "../SyncStatus";
 import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
-import { computeCompanyTypeSuggestions } from "../../data/budget/company-type-suggestions";
+import {
+  companyTypeSuggestionsFromHints,
+  computeCompanyTypeHints,
+} from "../../data/budget/company-type-hints";
 import {
   isRowSavable,
   userDataHasUnsavableRows,
@@ -236,13 +239,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // threshold, we auto-fill the type. Walks every budget row and
   // history-entry override on every relevant data change — small
   // surface, cheap enough not to bother caching across renders.
+  const companyTypeHints = useMemo(() => computeCompanyTypeHints(data), [data]);
   const companyTypeSuggestions = useMemo(
-    () =>
-      computeCompanyTypeSuggestions(
-        data,
-        data.settings.companyTypeAutoFillMinOccurrences,
-      ),
-    [data],
+    () => companyTypeSuggestionsFromHints(companyTypeHints),
+    [companyTypeHints],
   );
 
   // Warn before unload when the in-memory state has changes the
@@ -714,6 +714,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     categories={allCategoriesMerged}
                     companies={data.companies}
                     companyTypeSuggestions={companyTypeSuggestions}
+                    companyTypeHints={companyTypeHints}
                     onCreateType={onCreateType}
                     onCreateCategory={onCreateCategory}
                     onCreateCompany={onCreateCompany}
@@ -850,6 +851,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           categories={allCategoriesMerged}
           types={allTypesMerged}
           companyTypeSuggestions={companyTypeSuggestions}
+          companyTypeHints={companyTypeHints}
           sheetId={sheetId}
           itemId={itemId}
           activeItem={activeItem}

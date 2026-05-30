@@ -3,6 +3,11 @@ export { useChangelogAutoOpen } from "./useChangelogAutoOpen";
 export { useDesktopAutoFocus } from "./useDesktopAutoFocus";
 export { useDevMode } from "./useDevMode";
 export {
+  type DragItemProps,
+  type UseDragReorder,
+  useDragReorder,
+} from "./useDragReorder";
+export {
   resolveEffectiveSettings,
   useEffectiveSettings,
 } from "./useEffectiveSettings";

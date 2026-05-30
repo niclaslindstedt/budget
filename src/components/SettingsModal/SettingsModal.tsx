@@ -504,6 +504,8 @@ export function SettingsModal({
                 onCreateCompany={onCreateCompany}
                 onUpdateCompany={onUpdateCompany}
                 onDeleteCompany={onDeleteCompany}
+                onCreateType={onCreateType}
+                onCreateCategory={onCreateCategory}
               />
             )}
             {activeTab === "tags" && (

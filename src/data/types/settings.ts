@@ -201,13 +201,6 @@ export type CommonSettings = {
   // force the sheet to render decades of empty placeholders. Anything
   // beyond this cutoff remains hidden behind the in-sheet toggle.
   futureEntryMonths: number;
-  // Threshold for the company → type auto-fill. When a company has
-  // been paired with one (and only one) typeId on this many rows /
-  // history entries, picking that company on a row whose type isn't
-  // set auto-fills the type. Bounded 0..1000; setting it to 0 turns
-  // auto-fill off so a user who finds it presumptuous can opt out
-  // without losing the rest of the picker's behaviour.
-  companyTypeAutoFillMinOccurrences: number;
   // How the transaction search modal ranks hits. Exposed end-to-end in
   // the Search settings tab so the user can re-weight what "relevant"
   // means for their own ledger. See `SearchRankingSettings`.

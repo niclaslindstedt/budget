@@ -14,7 +14,7 @@ import {
   countMatchingBankDescription,
   type HistoryMetadataPatch,
 } from "../../data/budget/pattern-apply";
-import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
+import { autoTypeForCompany } from "../../data/budget/company-type-hints";
 import {
   budgetMetadataFormReducer,
   EMPTY_METADATA_FORM_FIELDS,
@@ -84,9 +84,11 @@ type Props = {
   categories: readonly Category[];
   companies: readonly Company[];
   tags: readonly Tag[];
-  // companyId → suggested typeId for the auto-fill. See
-  // `computeCompanyTypeSuggestions` in `src/data/budget/company-type-suggestions.ts`.
+  // companyId → suggested typeId for the auto-fill, and companyId →
+  // ranked hint typeIds for the picker's "Suggested" band. See
+  // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -179,6 +181,7 @@ export function BudgetMetadataModal({
   companies,
   tags,
   companyTypeSuggestions,
+  companyTypeHints,
   settings,
   onCreateType,
   onCreateCategory,
@@ -833,6 +836,12 @@ export function BudgetMetadataModal({
                     amountSign={
                       splitState.draft.negative ? "negative" : "positive"
                     }
+                    hintTypeIds={
+                      splitState.draft.companyId
+                        ? (companyTypeHints.get(splitState.draft.companyId) ??
+                          [])
+                        : []
+                    }
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -896,6 +905,9 @@ export function BudgetMetadataModal({
                       onCreate={onCreateType}
                       onCreateCategory={onCreateCategory}
                       amountSign={current.amount < 0 ? "negative" : "positive"}
+                      hintTypeIds={
+                        companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                      }
                     />
                   </div>
                   <div ref={companyFieldRef} className="flex flex-col gap-1">

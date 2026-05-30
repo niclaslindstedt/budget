@@ -183,6 +183,19 @@ export function validateUserData(raw: unknown): Result<UserData> {
   }
   const knownItemIds: ReadonlySet<string> = seenItemIds;
 
+  // Sweep dangling manual type associations now that the known-type set
+  // exists (companies are validated before types). A company whose
+  // pinned type was later deleted simply drops that id; an empty list
+  // collapses back to absent.
+  for (let i = 0; i < companies.length; i++) {
+    const c = companies[i];
+    if (!c.typeIds) continue;
+    const kept = c.typeIds.filter((id) => knownTypeIds.has(id));
+    if (kept.length === c.typeIds.length) continue;
+    companies[i] =
+      kept.length > 0 ? { ...c, typeIds: kept } : { id: c.id, name: c.name };
+  }
+
   const rawTransfers = Array.isArray(raw.transfers) ? raw.transfers : [];
   const transfers: Transfer[] = [];
   const seenTransferIds = new Set<string>();

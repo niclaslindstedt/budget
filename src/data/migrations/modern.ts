@@ -360,6 +360,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // seed empty; line items are optional per entry, so a v48 record simply
   // lacks them and passes the v49 validator unchanged. Bare additive bump.
   48: (v48) => ({ ...v48, version: 49, subtypes: [], items: [] }),
+
+  // v49 → v50 adds the optional `Company.typeIds` (manual type
+  // associations) and retires `Settings.companyTypeAutoFillMinOccurrences`.
+  // Both are additive/absence-tolerant — companies without the field
+  // validate fine and `validateSettings` rebuilds settings ignoring the
+  // dropped knob — so the step is a plain version bump.
+  49: (v49) => ({ ...v49, version: 50 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

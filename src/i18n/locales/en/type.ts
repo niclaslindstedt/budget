@@ -17,6 +17,7 @@ const type = {
   noTypesInCategory: "No types in this category yet.",
   create: "Create",
   backToCategories: "All categories",
+  suggested: "Suggested",
 } as const;
 
 export type TypeCatalog = Widen<typeof type>;
