@@ -41,6 +41,9 @@ const accountsSheet: AccountsSheetCatalog = {
     "Lägg till minst två konton för att registrera en överföring",
   editTransferAria: "Redigera överföring: {description}",
   unknown: "Okänd",
+  transfersSearchPlaceholder: "Sök överföringar",
+  transfersSearchNoResults: "Inga överföringar matchar sökningen.",
+  transfersFilterHideUncompleted: "Dölj ej slutförda",
 };
 
 export default accountsSheet;

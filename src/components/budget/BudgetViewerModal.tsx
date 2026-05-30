@@ -47,7 +47,7 @@ import { tintFill } from "../../utils/tint";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
-import { BudgetViewerSearchControls } from "./BudgetViewerSearchControls";
+import { ModalSearchControls } from "../ModalSearchControls";
 
 type Props = {
   open: boolean;
@@ -504,20 +504,37 @@ export function BudgetViewerModal({
             onChange={setQuery}
             placeholder={t("budget.viewerSearchPlaceholder")}
             actions={
-              <BudgetViewerSearchControls
-                sortOrder={sortOrder}
-                defaultSortOrder={settings.transactionSortOrder}
-                onToggleSort={() =>
-                  setSortOrder((o) =>
-                    o === "newestFirst" ? "oldestFirst" : "newestFirst",
-                  )
-                }
-                hideTransfers={hideTransfers}
-                onHideTransfersChange={setHideTransfers}
-                hideUncompleted={hideUncompleted}
-                onHideUncompletedChange={setHideUncompleted}
-                canHideTransfers={hasTransferRows}
-                canHideUncompleted={Boolean(completedCol)}
+              <ModalSearchControls
+                sort={{
+                  order: sortOrder,
+                  defaultOrder: settings.transactionSortOrder,
+                  onToggle: () =>
+                    setSortOrder((o) =>
+                      o === "newestFirst" ? "oldestFirst" : "newestFirst",
+                    ),
+                }}
+                filters={[
+                  ...(hasTransferRows
+                    ? [
+                        {
+                          key: "hideTransfers",
+                          label: t("budget.viewerFilterHideTransfers"),
+                          checked: hideTransfers,
+                          onChange: setHideTransfers,
+                        },
+                      ]
+                    : []),
+                  ...(completedCol
+                    ? [
+                        {
+                          key: "hideUncompleted",
+                          label: t("budget.viewerFilterHideUncompleted"),
+                          checked: hideUncompleted,
+                          onChange: setHideUncompleted,
+                        },
+                      ]
+                    : []),
+                ]}
               />
             }
           />

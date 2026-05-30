@@ -40,6 +40,9 @@ const accountsSheet = {
   needTwoAccounts: "Add at least two accounts to record a transfer",
   editTransferAria: "Edit transfer: {description}",
   unknown: "Unknown",
+  transfersSearchPlaceholder: "Search transfers",
+  transfersSearchNoResults: "No transfers match the search.",
+  transfersFilterHideUncompleted: "Hide uncompleted",
 } as const;
 
 export type AccountsSheetCatalog = Widen<typeof accountsSheet>;

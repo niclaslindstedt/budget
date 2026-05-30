@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   AlignLeft,
   ArrowLeftRight,
@@ -9,14 +9,21 @@ import {
 
 import { allCategories, allTypes } from "../../data/presets/merge";
 import { compareDateStrings } from "../../data/fiscal-month";
-import type { Settings, UserData } from "../../data/types";
+import type {
+  Settings,
+  TransactionSortOrder,
+  UserData,
+} from "../../data/types";
 import { useLang, useT } from "../../i18n";
+import { displayCategoryName, displayTypeName } from "../../i18n/preset-names";
 import { formatBalance, formatYearMonth } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { AccountTransferRow } from "./AccountTransferRow";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { Modal } from "../Modal";
+import { ModalSearchBar } from "../ModalSearchBar";
+import { ModalSearchControls } from "../ModalSearchControls";
 
 type Props = {
   open: boolean;
@@ -54,31 +61,89 @@ export function AccountTransfersModal({
   // user-added types via `allTypes`.
   const typesById = useMemo(() => indexById(allTypes(data)), [data]);
 
-  // Transfer log direction follows the user's `transactionSortOrder`
-  // preference so it agrees with every other transaction list in the
-  // app. The historical default was newest-first.
-  const sortedTransfers = useMemo(() => {
-    const order = settings.transactionSortOrder;
-    return [...data.transfers].sort((a, b) =>
-      compareDateStrings(a.date, b.date, order),
-    );
-  }, [data.transfers, settings.transactionSortOrder]);
+  // Search + sort + filter state, mirroring `BudgetViewerModal`'s
+  // viewer-local controls: seeded from the persisted preference and
+  // reset on every modal close so steering the order or filtering here
+  // never mutates the user's global settings. Re-seeds from settings on
+  // close so the next open reflects any preference change made between.
+  const [query, setQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<TransactionSortOrder>(
+    settings.transactionSortOrder,
+  );
+  const [hideUncompleted, setHideUncompleted] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setSortOrder(settings.transactionSortOrder);
+      setHideUncompleted(false);
+    }
+  }, [open, settings.transactionSortOrder]);
 
-  // Walk the sorted transfers and emit one group per `YYYY-MM` so the
+  // Only transfers carrying an explicit `completed` boolean can be
+  // hidden — that's the one filter that makes sense here (every row is
+  // already a transfer, so a "hide transfers" toggle would empty the
+  // list). The toggle drops out entirely when no transfer tracks
+  // completion.
+  const hasCompletable = useMemo(
+    () => data.transfers.some((tx) => typeof tx.completed === "boolean"),
+    [data.transfers],
+  );
+
+  // Pre-lowercased + pre-formatted search haystacks, built once per
+  // change to the source data so the per-keystroke filter below
+  // collapses to cheap `indexOf` calls — mirrors the same optimisation
+  // `BudgetViewerModal` and `buildSearchIndex` apply.
+  const searchIndex = useMemo(() => {
+    return data.transfers.map((tx) => {
+      const from = accountsById.get(tx.fromAccountId) ?? null;
+      const to = accountsById.get(tx.toAccountId) ?? null;
+      const type = tx.typeId ? (typesById.get(tx.typeId) ?? null) : null;
+      const category = type
+        ? (categoriesById.get(type.categoryId) ?? null)
+        : null;
+      const parts = [
+        tx.description,
+        from?.name ?? "",
+        to?.name ?? "",
+        type ? displayTypeName(type, t) : "",
+        category ? displayCategoryName(category, t) : "",
+        formatBalance(tx.amount, settings),
+        tx.date,
+      ];
+      return { tx, haystack: parts.join(" ").toLowerCase() };
+    });
+  }, [data.transfers, accountsById, typesById, categoriesById, settings, t]);
+
+  // Apply the completed filter and free-text query, then sort by the
+  // viewer-local order. Running on the raw `Transfer` list (not the
+  // month groups) keeps the predicate flat.
+  const visibleTransfers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = searchIndex.filter((e) => {
+      if (hideUncompleted && e.tx.completed === false) return false;
+      if (q !== "" && !e.haystack.includes(q)) return false;
+      return true;
+    });
+    return filtered
+      .map((e) => e.tx)
+      .sort((a, b) => compareDateStrings(a.date, b.date, sortOrder));
+  }, [searchIndex, query, hideUncompleted, sortOrder]);
+
+  // Walk the visible transfers and emit one group per `YYYY-MM` so the
   // table can drop a colored month-marker row between groups.
   const transferGroups = useMemo(() => {
     const result: {
       monthKey: string;
-      transfers: typeof sortedTransfers;
+      transfers: typeof visibleTransfers;
     }[] = [];
-    for (const tx of sortedTransfers) {
+    for (const tx of visibleTransfers) {
       const key = tx.date.slice(0, 7);
       const last = result[result.length - 1];
       if (last && last.monthKey === key) last.transfers.push(tx);
       else result.push({ monthKey: key, transfers: [tx] });
     }
     return result;
-  }, [sortedTransfers]);
+  }, [visibleTransfers]);
 
   // Mobile renders each row as its own CSS grid (the table goes
   // display:block), so a `max-content` amount track resolves to a
@@ -113,6 +178,39 @@ export function AccountTransfersModal({
         onClose={onClose}
       />
       <Modal.Body noPadding className="overflow-x-hidden">
+        {data.transfers.length > 0 && (
+          <ModalSearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder={t("accountsSheet.transfersSearchPlaceholder")}
+            actions={
+              <ModalSearchControls
+                sort={{
+                  order: sortOrder,
+                  defaultOrder: settings.transactionSortOrder,
+                  onToggle: () =>
+                    setSortOrder((o) =>
+                      o === "newestFirst" ? "oldestFirst" : "newestFirst",
+                    ),
+                }}
+                filters={
+                  hasCompletable
+                    ? [
+                        {
+                          key: "hideUncompleted",
+                          label: t(
+                            "accountsSheet.transfersFilterHideUncompleted",
+                          ),
+                          checked: hideUncompleted,
+                          onChange: setHideUncompleted,
+                        },
+                      ]
+                    : []
+                }
+              />
+            }
+          />
+        )}
         <ActiveRowProvider>
           <table
             className="transfers-table transfers-table-modal w-full border-collapse text-sm md:text-[13px]"
@@ -221,14 +319,16 @@ export function AccountTransfersModal({
                 </th>
               </tr>
             </thead>
-            {sortedTransfers.length === 0 && (
+            {visibleTransfers.length === 0 && (
               <tbody>
                 <tr className="transfers-fullspan">
                   <td
                     colSpan={5}
                     className="px-3 py-6 text-center text-xs text-muted"
                   >
-                    {t("accountsSheet.noTransfers")}
+                    {data.transfers.length === 0
+                      ? t("accountsSheet.noTransfers")
+                      : t("accountsSheet.transfersSearchNoResults")}
                   </td>
                 </tr>
               </tbody>
