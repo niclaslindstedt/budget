@@ -111,7 +111,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 47), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 48), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
@@ -193,9 +193,9 @@ src/
 │   │   ├── sheet.ts, account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (47) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (48) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v47 steps
+│   │   ├── modern.ts           # v31 → v48 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -438,7 +438,8 @@ type HistoryEntry = {
   hintIgnored?: boolean; // opt this entry out of the merchant-hint step
   noCompany?: boolean; // declared "no company needed" (metadata mode)
   // User split of one bank entry into categorised parts; the splits'
-  // signed amounts must sum to `amount`.
+  // signed amounts must sum to `amount`. Each `HistoryEntrySplit`
+  // carries its own description / amount / typeId / companyId / tagIds.
   splits?: HistoryEntrySplit[];
 };
 ```

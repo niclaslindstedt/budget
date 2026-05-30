@@ -315,6 +315,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onEditHistoryRequest,
     onUpdateHistoryEntry,
     onApplyMetadataToMatchingHistory,
+    onSplitHistoryEntry,
     onSetRowCompany,
     onSetRowNoCompany,
     onCorrectionDeleteRequest,
@@ -726,6 +727,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onApplyMetadataToMatchingHistory={
                       onApplyMetadataToMatchingHistory
                     }
+                    onSplitHistoryEntry={onSplitHistoryEntry}
                     tags={data.tags}
                     onCreateTag={onCreateTag}
                     onReorderColumns={onReorderColumns}

@@ -26,7 +26,7 @@ import type {
 function workspace(transfers: Transfer[] = []): UserData {
   const sheet = createDefaultSheet("Checking budget", "checking-id");
   return {
-    version: 47,
+    version: 48,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -268,6 +268,28 @@ describe("synthesizeHistoryRow", () => {
     const rows = synthesizeHistoryRow({ ...entry, splits: [] }, cols, {});
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe("hist:h1");
+  });
+
+  it("carries per-split company and tags onto the synthesized rows", () => {
+    const cols = budgetColumns();
+    const splitEntry: HistoryEntry = {
+      ...entry,
+      amount: -5000,
+      splits: [
+        {
+          description: "Groceries",
+          amount: -2000,
+          companyId: "co-ica",
+          tagIds: ["tag-a", "tag-b"],
+        },
+        { description: "Rest", amount: -3000 },
+      ],
+    };
+    const rows = synthesizeHistoryRow(splitEntry, cols, {});
+    expect(rows[0].companyId).toBe("co-ica");
+    expect(rows[0].tagIds).toEqual(["tag-a", "tag-b"]);
+    // A split without tags leaves the row's tagIds unset.
+    expect(rows[1].tagIds).toBeUndefined();
   });
 });
 

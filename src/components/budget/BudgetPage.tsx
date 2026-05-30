@@ -30,6 +30,7 @@ import type {
   Company,
   EntryType,
   HistoryEntry,
+  HistoryEntrySplit,
   MatchRule,
   MerchantHint,
   Row,
@@ -177,6 +178,14 @@ type Props = {
       noCompany?: boolean;
     },
   ) => void;
+  // Persist a split decomposition for a history entry — fired by the
+  // inline split builder in metadata mode. The parts sum to the entry's
+  // bank amount so the running balance stays anchored.
+  onSplitHistoryEntry: (
+    accountId: string,
+    entryId: string,
+    splits: HistoryEntrySplit[],
+  ) => void;
   // Tag catalog + creator, threaded to the metadata modal so the user
   // can tag entries during the metadata walk.
   tags: readonly Tag[];
@@ -261,6 +270,7 @@ export function BudgetPage({
   onSetFiscalMonthShift,
   onUpdateHistoryEntry,
   onApplyMetadataToMatchingHistory,
+  onSplitHistoryEntry,
   tags,
   onCreateTag,
   onReorderColumns,
@@ -795,6 +805,7 @@ export function BudgetPage({
             onCreateTag={onCreateTag}
             onUpdateHistoryEntry={onUpdateHistoryEntry}
             onApplyMetadataToMatchingHistory={onApplyMetadataToMatchingHistory}
+            onSplitHistoryEntry={onSplitHistoryEntry}
           />
         </section>
         {showTodayButton &&

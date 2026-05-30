@@ -151,6 +151,21 @@ export function validateHistoryEntry(
           );
         if (knownCompanyIds.has(s.companyId)) split.companyId = s.companyId;
       }
+      if (s.tagIds !== undefined && s.tagIds !== null) {
+        if (!Array.isArray(s.tagIds))
+          return fail(`${path}.splits[${i}].tagIds`, "expected an array");
+        // Drop dangling references to deleted tags and dedup, keeping a
+        // non-empty result only — same contract as `userTagIds`.
+        const seen = new Set<string>();
+        const kept: string[] = [];
+        for (const tagId of s.tagIds) {
+          if (typeof tagId !== "string" || tagId === "") continue;
+          if (!knownTagIds.has(tagId) || seen.has(tagId)) continue;
+          seen.add(tagId);
+          kept.push(tagId);
+        }
+        if (kept.length > 0) split.tagIds = kept;
+      }
       splits.push(split);
       sum += s.amount;
     }

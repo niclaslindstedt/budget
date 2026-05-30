@@ -7,6 +7,7 @@ import type {
   CellValue,
   Column,
   HistoryEntry,
+  HistoryEntrySplit,
   Row,
   Settings,
 } from "../../../data/types";
@@ -104,6 +105,16 @@ type Result = {
       userTagIds?: readonly string[];
       noCompany?: boolean;
     },
+  ) => void;
+  // Persist a split decomposition for a history entry — fired by the
+  // inline split builder in metadata mode. `splits` is the full,
+  // already-balanced set of parts (the parts sum to the entry's bank
+  // amount), so the running balance stays anchored. An empty array
+  // clears any existing split.
+  onSplitHistoryEntry: (
+    accountId: string,
+    entryId: string,
+    splits: HistoryEntrySplit[],
   ) => void;
   // Row-level company writer fired by the description popover's inline
   // CompanyPicker. Routes synthesized history rows through
@@ -296,6 +307,17 @@ export function useRowMutations({
     [dispatch],
   );
 
+  const onSplitHistoryEntry = useCallback(
+    (accountId: string, entryId: string, splits: HistoryEntrySplit[]) =>
+      dispatch({
+        type: "splitHistoryEntry",
+        accountId,
+        entryId,
+        splits,
+      }),
+    [dispatch],
+  );
+
   // Row-level company writer fired by the description popover's inline
   // CompanyPicker. Routes synthesized history rows through
   // `updateHistoryEntry` (clearing `noCompany` on assignment so the
@@ -428,6 +450,7 @@ export function useRowMutations({
     onEditHistoryRequest,
     onUpdateHistoryEntry,
     onApplyMetadataToMatchingHistory,
+    onSplitHistoryEntry,
     onSetRowCompany,
     onSetRowNoCompany,
     onCorrectionDeleteRequest,

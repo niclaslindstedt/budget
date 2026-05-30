@@ -23,6 +23,16 @@ const metadata = {
   skip: "Skip",
   back: "Back",
   forward: "Forward",
+  amountLabel: "Amount",
+  splitCta: "Split into parts…",
+  splitIntro:
+    "One bank transaction, several categories — give each part its own " +
+    "amount, type, company and tags.",
+  splitPart: "Part {n}",
+  splitRemainingLabel: "Left to split",
+  splitFinishHint: '"Next" gives the last part whatever is left.',
+  splitAgain: "Split again",
+  splitFinish: "Next",
   needsTypePrompt: "Pick a type to save.",
   needsCompanyPrompt: 'Pick a company — or "Omit company" — to save.',
   allCaught: "All caught up.",
