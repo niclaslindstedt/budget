@@ -398,14 +398,17 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ### Easy wins (mechanical, land regardless of rating)
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
-  landed 2026-05 (see Landed) and the `search.ts` four-indexer cluster
-  was consumed 2026-05 (see Landed). What remains is single
-  opportunistic sites in `src/data/budget/export.ts`,
-  `formula-resolve.ts`, `formula.ts`,
-  `accounts/AccountTransferCollapseModal.tsx`, and
-  `AppShell/hooks/useDownloadFlow.ts` — adopt when touching each file,
-  none worth a standalone drive-by. Future `Map<string, T>` indexers
-  keyed by `item.id` should reach for it from day one.
+  landed 2026-05 (see Landed), the `search.ts` four-indexer cluster
+  was consumed 2026-05 (see Landed), and the genuine `id → item`
+  sites in `src/data/budget/export.ts` (`typesById` / `categoriesById`)
+  and `formula-resolve.ts` (`typesById` / `sheetsById`) were consumed
+  2026-05 (see Landed). The remaining sites the prior sweep named —
+  `formula.ts`, `accounts/AccountTransferCollapseModal.tsx`,
+  `AppShell/hooks/useDownloadFlow.ts` — are **not** adoptable: they
+  build `Map<id, name>` / `Map<id, number>` projections, not the
+  `Map<id, fullItem>` shape `indexById` returns, so they stay inline.
+  Future `Map<string, T>` indexers keyed by `item.id` (storing the
+  whole item) should reach for it from day one.
 
 - The inline `todayIso` / `addMonthsIso` duplication (7 + 2 sites)
   was consumed 2026-05 — see Landed. New ISO date helpers should
@@ -434,6 +437,24 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`indexById` adoption at the genuine `id → item` budget sites**
+  (2026-05): the easy-win drive-by. Two `src/data/budget/` modules each
+  hand-rolled the exact `new Map<string, T>()` + `for (… ) m.set(x.id, x)`
+  loop the shared `indexById` helper exists to replace —
+  `export.ts` (`typesById` over `EntryType[]`, `categoriesById` over
+  `Category[]`) and `formula-resolve.ts` (`typesById` over
+  `allTypes(data)`, `sheetsById` over `data.sheets`). All four were
+  replaced with `indexById(…)` calls, dropping the four two-line loops to
+  one-liners and removing the now-redundant explicit `Map<string, …>`
+  type annotations (the helper's return type carries them). The prior
+  sweep's note named three further sites (`formula.ts`,
+  `AccountTransferCollapseModal.tsx`, `useDownloadFlow.ts`); on
+  inspection those build `Map<id, name>` / `Map<id, number>` projections,
+  **not** the `Map<id, fullItem>` shape `indexById` returns, so they were
+  left inline and the easy-win row was corrected to say so. Pure refactor
+  — identical `Map<string, T>` contents and downstream `.get()` results.
+  fmt-check + lint + typecheck + 1101 tests + build + icons-check pass.
 
 - **Optional-field `undefined` vs `null` convention documented in
   `AGENTS.md`** (2026-05): the multiplier half of the severity-5

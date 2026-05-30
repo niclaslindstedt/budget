@@ -17,6 +17,7 @@ import { sortRowsByDate, type RowSortContext } from "./rows";
 import { getMonthKey, previousMonthKey } from "../fiscal-month";
 import { findColumnByType } from "../sheet";
 import { allTypes } from "../presets/merge";
+import { indexById } from "../../utils/indexById";
 import type { AccountBudget, EntryType, Row, Sheet, UserData } from "../types";
 
 // Mutable view of `MonthAggregates` we own internally. The exported
@@ -52,8 +53,7 @@ export function resolveEffectiveAmounts(
   data: UserData,
   startOfMonth: number = 1,
 ): ResolveResult {
-  const typesById = new Map<string, EntryType>();
-  for (const t of allTypes(data)) typesById.set(t.id, t);
+  const typesById = indexById(allTypes(data));
   const result: ResolveResult = {
     amounts: new Map(),
     errors: new Map(),
@@ -158,8 +158,7 @@ export function resolveEffectiveAmounts(
   // each time. Caching at this scope drops F × O(N) re-walks to a
   // single O(N) per (sheetId, monthKey) the resolver actually
   // needs, and routes the id lookups through O(1) Maps.
-  const sheetsById = new Map<string, Sheet>();
-  for (const s of data.sheets) sheetsById.set(s.id, s);
+  const sheetsById = indexById(data.sheets);
   const accountsById = new Map<string, number>();
   for (const a of data.accounts) {
     accountsById.set(a.id, a.openingBalance ?? 0);
