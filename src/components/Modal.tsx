@@ -9,12 +9,7 @@ import {
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-import {
-  useEscapeKey,
-  useIsMobile,
-  useVirtualKeyboardInset,
-  useVisualViewportHeight,
-} from "../hooks";
+import { useEscapeKey, useIsMobile, useVisualViewportHeight } from "../hooks";
 import { useT } from "../i18n";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
@@ -52,16 +47,14 @@ function getFocusables(root: HTMLElement | null): HTMLElement[] {
 //
 // * Keyboard dismissal (Escape) and body scroll lock.
 //
-// * iOS soft-keyboard handling — on iOS the layout viewport stays the
-//   full device height while the visual viewport shifts up to fit the
-//   keyboard, so a `100svh` shell would have its footer hidden under
-//   the keyboard. The shell shrinks by `useVirtualKeyboardInset()` on
-//   mobile so the footer stays visible. Android Chrome with
-//   `interactive-widget=resizes-content` (set in `index.html`) resizes
-//   the layout viewport itself so the math collapses to ~0 there.
-//   This handling is only wired when the default (fullscreen-on-mobile)
-//   layout is used — `centered` modals must not contain inputs that
-//   open the soft keyboard, so the math is irrelevant for them.
+// * Visible-height handling — the fullscreen-on-mobile shell pins to the
+//   live `useVisualViewportHeight()` rather than a CSS viewport unit, so
+//   its footer can't slide off the bottom edge. This covers both the soft
+//   keyboard (iOS shifts the visual viewport up to fit it, so a `100svh`
+//   shell would hide its footer under the keyboard) and the iOS 26
+//   standalone PWA case where `100vh` overshoots the visible screen. The
+//   handling is only wired for the default fullscreen layout — `centered`
+//   modals float in the middle and keep their own CSS height cap.
 //
 // Usage:
 //
@@ -101,8 +94,8 @@ type RootProps = {
   // thumb is: if the modal contains no text inputs (`<input type="text"`,
   // `inputMode="decimal"`, `<textarea>`, `contentEditable`, etc.) it
   // can be `centered`. Modals with such inputs must stay default so the
-  // iOS visual-viewport math (`useVirtualKeyboardInset`) keeps the
-  // footer above the keyboard.
+  // visible-height pin (`useVisualViewportHeight`) keeps the footer above
+  // the keyboard.
   centered?: boolean;
   // When true, the desktop card pins itself to a stable `95svh`
   // (matching the cap used by the default branch) instead of letting
@@ -144,7 +137,6 @@ export function Modal({
   useEscapeKey(open, onClose);
 
   const isMobile = useIsMobile();
-  const keyboardInset = useVirtualKeyboardInset();
   const visualViewportHeight = useVisualViewportHeight();
 
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -296,32 +288,32 @@ export function Modal({
     ? `flex w-full ${size} flex-col overflow-hidden ${centeredHeightClass}`
     : `flex w-full ${size} flex-col overflow-hidden ${mobileToDesktopHeight}`;
 
-  // On iOS the visual viewport shifts up to fit the keyboard but the
-  // layout viewport (and therefore `100svh`) stays the same — the
-  // shell's bottom ends up under the keyboard. Shrink the shell so
-  // the footer rides above the keyboard. Desktop never needs this;
-  // Android with `interactive-widget=resizes-content` reports an
-  // inset of 0 (the layout viewport already shrunk for us). `centered`
-  // modals must not contain keyboard-opening inputs (see prop docs),
-  // so the inset stays at 0 and the math is skipped.
+  // Pin the mobile fullscreen shell to the live `visualViewport.height`
+  // — the real visible band — instead of letting CSS height it. This
+  // covers two failure modes the static `100vh` shell (the
+  // `[data-modal-shell="fullscreen"]` rule, used in the iOS 26
+  // standalone PWA) could not:
   //
-  // When the soft keyboard is open the shell pins to the live
-  // `visualViewport.height` — the real visible band above the keyboard.
-  // The earlier `calc(100vh - keyboardInset)` form is correct in a
-  // standalone PWA (where `100vh === innerHeight`) but too tall in iOS
-  // Safari: there `100vh` is the *large* viewport (browser toolbar
-  // hidden), so subtracting only the keyboard inset still leaves the
-  // shell taller than the visible area by the toolbar's height, sliding
-  // the footer (and its submit button) off the bottom edge. Reading the
-  // visible height directly removes that overshoot in both modes.
-  // `min(100vh, …)` caps the shell at the full screen so a transiently
-  // clipped `visualViewport` reading can never grow it past `100vh`.
-  // Capped at the resting state (`keyboardInset === 0`) the inline style
-  // is dropped so the `[data-modal-shell="fullscreen"]` CSS keeps owning
-  // the full-screen `100vh` baseline iOS 26 standalone needs at cold
-  // start (WebKit #297779).
+  //  * Resting overshoot — on iPhone 15/16 Pro PWAs `100vh` resolves
+  //    TALLER than the visible screen, so the pinned footer (Delete /
+  //    Cancel / Save) slid past the bottom edge into the home-indicator
+  //    strip, leaving the buttons cut off below a dead black band. Plain
+  //    `100vh` was chosen (#378) because `svh` / `dvh` were clipped too
+  //    SHORT at cold launch, but it overshoots on current hardware.
+  //  * Keyboard open — the visual viewport shrinks to the band above the
+  //    soft keyboard, and `visualViewport.height` already reflects that,
+  //    so the footer rides above the keyboard with no separate inset
+  //    math (the earlier `calc(100vh - keyboardInset)` overshot in iOS
+  //    Safari, where `100vh` is the toolbar-hidden large viewport).
+  //
+  // `visualViewport.height` is by definition never taller than what's on
+  // screen, so the footer can't overshoot; `min(100vh, …)` is a belt-and
+  // -suspenders cap against a transient reading larger than the screen.
+  // Desktop / SSR report `0` (guarded below) and keep the CSS height.
+  // `centered` modals float in the middle and are unaffected by the
+  // bottom edge, so they opt out and keep their own height cap.
   const shellStyle: React.CSSProperties | undefined =
-    !centered && isMobile && keyboardInset > 0 && visualViewportHeight > 0
+    !centered && isMobile && visualViewportHeight > 0
       ? { height: `min(100vh, ${visualViewportHeight}px)` }
       : undefined;
 
