@@ -100,6 +100,13 @@ export function BudgetViewerModal({
   const { dateCol, descCol, amountCol, balanceCol, typeCol, completedCol } =
     useStandardColumns(item.columns);
 
+  // Width of a full-span row (month header, empty-month, correction,
+  // show-more): the fixed date + description base plus whichever optional
+  // columns the viewer actually renders. No action/select cell here, unlike
+  // the live table.
+  const fullSpanColSpan =
+    2 + (typeCol ? 1 : 0) + (amountCol ? 1 : 0) + (balanceCol ? 1 : 0);
+
   const typesById = useMemo(() => indexById(types), [types]);
 
   const companiesById = useMemo(() => indexById(companies), [companies]);
@@ -599,12 +606,7 @@ export function BudgetViewerModal({
                     n: FUTURE_PAGE_SIZE,
                   })}
                   onClick={onShowMoreFutureClick}
-                  colSpan={
-                    2 +
-                    (typeCol ? 1 : 0) +
-                    (amountCol ? 1 : 0) +
-                    (balanceCol ? 1 : 0)
-                  }
+                  colSpan={fullSpanColSpan}
                 />
               </tbody>
             )}
@@ -622,11 +624,6 @@ export function BudgetViewerModal({
                 ? { color: monthColor }
                 : undefined;
               const rows = sortedMonthGroups.get(monthKey) ?? EMPTY_ROWS;
-              const colSpan =
-                2 +
-                (typeCol ? 1 : 0) +
-                (amountCol ? 1 : 0) +
-                (balanceCol ? 1 : 0);
               return (
                 <tbody key={monthKey}>
                   <tr
@@ -638,7 +635,7 @@ export function BudgetViewerModal({
                     }
                   >
                     <td
-                      colSpan={colSpan}
+                      colSpan={fullSpanColSpan}
                       className="border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase"
                       style={colorStyle}
                     >
@@ -650,7 +647,7 @@ export function BudgetViewerModal({
                   {rows.length === 0 ? (
                     <tr className="budget-viewer-fullspan border-b border-line">
                       <td
-                        colSpan={colSpan}
+                        colSpan={fullSpanColSpan}
                         className="px-2 py-1.5 text-center text-xs italic text-muted"
                       >
                         {t("budget.monthEmpty", {
@@ -669,7 +666,7 @@ export function BudgetViewerModal({
                           key={row.id}
                           row={row}
                           amountCol={amountCol?.id}
-                          colSpan={colSpan}
+                          colSpan={fullSpanColSpan}
                           settings={settings}
                           correctionLabel={t("budget.correctionLine")}
                         />
@@ -702,12 +699,7 @@ export function BudgetViewerModal({
                     n: FUTURE_PAGE_SIZE,
                   })}
                   onClick={onShowMoreFutureClick}
-                  colSpan={
-                    2 +
-                    (typeCol ? 1 : 0) +
-                    (amountCol ? 1 : 0) +
-                    (balanceCol ? 1 : 0)
-                  }
+                  colSpan={fullSpanColSpan}
                 />
               </tbody>
             )}

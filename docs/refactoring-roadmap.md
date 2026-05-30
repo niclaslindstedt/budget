@@ -303,30 +303,6 @@ through them.
 
 ### Severity 3–4 — nits with leverage
 
-- **Full-width table `colSpan` arithmetic duplicated within each budget
-  table** — re-verified 2026-05: the prior "same shape across both files"
-  framing was **stale**. The two tables use genuinely different formulas,
-  so a single cross-file `tableColSpan` helper does **not** fit:
-  - `BudgetMonthTable.tsx` (560 lines) sizes its full-width rows as
-    `columns.length + 1 + (selectMode ? 1 : 0)` (all columns + action cell
-    - optional select cell) — held in two identical consts
-      (`correctionColSpan`, `placeholderColSpan`) plus one inline recompute
-      written `columns.length + (selectMode ? 2 : 1)` at the tfoot.
-  - `BudgetViewerModal.tsx` (907 lines) sizes its rows as
-    `2 + (typeCol?1:0) + (amountCol?1:0) + (balanceCol?1:0)` (a fixed
-    date+description base + the specific optional columns the viewer
-    renders — no action/select cell, no `completed` column). Written out
-    three times (the middle copy is captured in a `.map`-scoped `const
-colSpan` the two `ShowFutureEntriesRow` sites can't reach).
-  - **Plan**: within-file dedup only — collapse each file's copies to one
-    hoisted `const` (the viewer's must move above the `.map` so all three
-    sites share it). No shared helper.
-  - **Risk**: low — pure arithmetic; verify no layout shift on the
-    optional-column toggles in both the live table and the viewer.
-  - **Severity: 3.** Narrower than first rated — two within-file dedups,
-    not a six-site cross-file extraction. Land opportunistically when
-    touching either table.
-
 - **`migrateV24ToV25` 284-line monolith** (`src/data/migrations/legacy.ts`,
   774 lines; the function spans lines 490–774) — a single forward-only
   migration that walks the sheet tree three times (count type usage →
@@ -501,6 +477,22 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Full-width table `colSpan` arithmetic → one hoisted `const` per
+  file** (2026-05): within-file dedup only — the two tables use genuinely
+  different formulas (no shared helper). `BudgetMonthTable.tsx` had two
+  identical consts (`correctionColSpan`, `placeholderColSpan` =
+  `columns.length + 1 + (selectMode ? 1 : 0)`) plus a third inline tfoot
+  recompute written `columns.length + (selectMode ? 2 : 1)` (arithmetically
+  the same value) — collapsed to one `fullWidthColSpan` const used at all
+  three sites (correction divider, lazy placeholder, tfoot orphan
+  indicator). `BudgetViewerModal.tsx` wrote
+  `2 + (typeCol?1:0) + (amountCol?1:0) + (balanceCol?1:0)` three times (two
+  `ShowFutureEntriesRow` sites + a `.map`-scoped local the future sites
+  couldn't reach) — hoisted to one `fullSpanColSpan` const above the column
+  destructure so all five JSX sites (month header, empty-month, correction,
+  both show-more rows) share it. Pure arithmetic, no layout change; fast
+  loop + build green, all 1101 tests pass. **Was severity 3.**
 
 - **Paired `typeId` / `typeIdLocked` set/clear → `setRowType` /
   `clearRowType` helpers** (2026-05): the "set `typeId` +
