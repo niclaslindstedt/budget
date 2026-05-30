@@ -1,4 +1,5 @@
 import type { CategoryIcon } from "../data/types";
+import { tintBorder, tintFill } from "../utils/tint";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -20,8 +21,8 @@ export function EntityChip({ name, color, icon, compact = false }: Props) {
           : "inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium"
       }
       style={{
-        backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`,
-        borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+        backgroundColor: tintFill(color),
+        borderColor: tintBorder(color),
         color,
       }}
     >

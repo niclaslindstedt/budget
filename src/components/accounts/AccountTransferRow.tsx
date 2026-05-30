@@ -6,6 +6,7 @@ import { useLang, useT } from "../../i18n";
 import { displayCategoryName } from "../../i18n/preset-names";
 import type { Account, Category, Settings, Transfer } from "../../data/types";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { tintBorder, tintFill } from "../../utils/tint";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { CategoryIconGlyph } from "../icons";
 
@@ -71,8 +72,8 @@ function TransferRowImpl({
           <span
             className="mt-0.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium"
             style={{
-              backgroundColor: `color-mix(in srgb, ${category.color} 18%, transparent)`,
-              borderColor: `color-mix(in srgb, ${category.color} 55%, transparent)`,
+              backgroundColor: tintFill(category.color),
+              borderColor: tintBorder(category.color),
               color: category.color,
             }}
           >
@@ -154,9 +155,7 @@ function AccountGlyph({
         width: circleSize,
         height: circleSize,
         color: account?.color,
-        backgroundColor: account?.color
-          ? `color-mix(in srgb, ${account.color} 18%, transparent)`
-          : undefined,
+        backgroundColor: account?.color ? tintFill(account.color) : undefined,
       }}
     >
       {account?.glyph ? (
@@ -179,12 +178,8 @@ function AccountChip({ account }: { account: Account | null }) {
     <span
       className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium"
       style={{
-        backgroundColor: color
-          ? `color-mix(in srgb, ${color} 18%, transparent)`
-          : undefined,
-        borderColor: color
-          ? `color-mix(in srgb, ${color} 55%, transparent)`
-          : "var(--line)",
+        backgroundColor: color ? tintFill(color) : undefined,
+        borderColor: color ? tintBorder(color) : "var(--line)",
         color: color ?? "var(--fg-bright)",
       }}
     >

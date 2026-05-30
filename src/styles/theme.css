@@ -106,6 +106,16 @@
      accent or no-border choices, not theme-driven. */
   --border-width: 1px;
 
+  /* Entity-colour tint strengths. A coloured entity (sheet, account,
+     type, category) renders as a translucent wash of its colour: a
+     soft fill behind the content and a stronger border around it. The
+     colour is dynamic user data, but these strengths read through vars
+     (consumed by `tintFill` / `tintBorder` in `src/utils/tint.ts`) so a
+     design tweak — or a future Custom-theme control — lands in one
+     place instead of every coloured chip / row / cell. */
+  --tint-fill-strength: 18%;
+  --tint-border-strength: 55%;
+
   /* Active webfont stack. Inline-set by React when
      `settings.fontFamily` changes; the body's `font-family` reads
      through this variable so the whole UI swaps in one place. The

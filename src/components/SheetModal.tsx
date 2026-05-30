@@ -15,6 +15,7 @@ import {
 import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
 import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
+import { tintBorder, tintFill } from "../utils/tint";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableInput, ClearableTextarea, FormSection } from "./form";
@@ -151,8 +152,8 @@ export function SheetModal({
               className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border"
               style={{
                 color,
-                backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`,
-                borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+                backgroundColor: tintFill(color),
+                borderColor: tintBorder(color),
               }}
             >
               <CategoryIconGlyph name={glyph} size={22} />

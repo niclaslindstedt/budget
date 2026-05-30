@@ -169,30 +169,6 @@ through them.
     row-bearing sheet type threads a new lookup through every one of the
     ~18 files; consolidating now caps that at one hook.
 
-- **`color-mix(in srgb, ${color} 18%/55%, transparent)` tint percentages
-  duplicated across ~14 components** — the entity-colour tint (background
-  at `18%`, border at `55%`) is baked as a magic-number template literal
-  in inline `style` props at **~14 files / 30+ sites** (grep `color-mix
-src/components` 2026-05): `SheetModal`, `EntityChip`, `GlyphGrid`,
-  `DownloadModal`, `BottomBar`, `AccountModal`, `AccountRow`,
-  `AccountTransferRow`, `AccountTransferModal`, `cells/TypeCell`,
-  `BudgetViewerModal`, `AccountReconciliationModal`, … The colour itself
-  is dynamic user data (can't be a static CSS class), but the `18%` /
-  `55%` strengths are hardcoded everywhere, partially bypassing the
-  "every colour/strength reads through a token" convention — a design
-  tweak to the tint means editing 30 call sites.
-  - **Plan**: extract `tintFill(color)` / `tintBorder(color)` helpers in
-    `src/utils/` (or a single `entityTint(color)` returning both), each
-    reading the strength from a CSS var (`--tint-fill-strength: 18%`,
-    `--tint-border-strength: 55%`) so the Custom-theme surface can reach
-    it later. Replace the inline literals with the helper.
-  - **Risk**: low — cosmetic, no storage/sync path. Smoke-test a few
-    coloured chips (sheet tab, account row, type cell) render identically
-    after the swap. Mechanical; could ship in 2–3 file-batched PRs.
-  - **Severity: 5.** Multiplier: every new coloured entity (the feature
-    wave adds sheet types with their own coloured rows/chips) re-pastes
-    the same two literals; one helper makes the tint themeable in one move.
-
 - **`pattern-apply.ts` rule→row label-patch boilerplate duplicated across
   three appliers** (`src/data/budget/pattern-apply.ts`, 492 lines) — the
   same "resolve `ruleCompanyId` via the `!== undefined && !== null ? :
@@ -608,6 +584,19 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`color-mix` entity-tint percentages → `tintFill` / `tintBorder`
+  helpers** (2026-05): the `color-mix(in srgb, ${color} 18%/55%,
+  transparent)` literal was inlined at 28 sites across 12 components
+  (the prior sweep's "~14 files / 30+ sites" estimate). Extracted
+  `tintFill(color)` / `tintBorder(color)` into `src/utils/tint.ts`,
+  each reading its strength from a new CSS var
+  (`--tint-fill-strength: 18%`, `--tint-border-strength: 55%`) added to
+  `:root` in `src/styles/theme.css` so the tint is now themeable in one
+  place. Pure refactor — the resolved `color-mix()` output is
+  byte-identical (CSS resolves the var to the same percentage). Shipped
+  as one PR (well under 500 lines); the "2–3 batched PRs" caveat was
+  unnecessary once the call sites turned out uniform.
 
 _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
 

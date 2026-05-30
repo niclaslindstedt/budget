@@ -1,6 +1,7 @@
 import type { Category, CellValue, EntryType } from "../../../data/types";
 import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
+import { tintBorder, tintFill } from "../../../utils/tint";
 import { CategoryIconGlyph } from "../../icons";
 import { TypePicker } from "../../TypePicker";
 import { CELL_BASE } from "./constants";
@@ -29,8 +30,8 @@ export function ReadonlyTypeCell({
             <span
               className="hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex"
               style={{
-                backgroundColor: `color-mix(in srgb, ${entryType.color} 18%, transparent)`,
-                borderColor: `color-mix(in srgb, ${entryType.color} 55%, transparent)`,
+                backgroundColor: tintFill(entryType.color),
+                borderColor: tintBorder(entryType.color),
                 color: entryType.color,
               }}
             >

@@ -9,6 +9,7 @@ import { normalizeName } from "../../data/normalize";
 import type { Account, CategoryIcon } from "../../data/types";
 import { useDesktopAutoFocus, useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
+import { tintBorder, tintFill } from "../../utils/tint";
 import { ColorPalette } from "../ColorPalette";
 import {
   Button,
@@ -129,8 +130,8 @@ export function AccountModal({
               className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border"
               style={{
                 color,
-                backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`,
-                borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+                backgroundColor: tintFill(color),
+                borderColor: tintBorder(color),
               }}
             >
               {glyph !== null ? (

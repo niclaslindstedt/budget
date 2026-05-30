@@ -5,6 +5,7 @@ import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useT } from "../../i18n";
 import type { Account, Settings } from "../../data/types";
 import { formatBalance, formatCount } from "../../utils/format";
+import { tintBorder, tintFill } from "../../utils/tint";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { CategoryIconGlyph } from "../icons";
 import { AccountActionsMenu } from "./AccountActionsMenu";
@@ -89,11 +90,9 @@ function AccountRowImpl({
           style={{
             color: account.color,
             backgroundColor: account.color
-              ? `color-mix(in srgb, ${account.color} 18%, transparent)`
+              ? tintFill(account.color)
               : undefined,
-            borderColor: account.color
-              ? `color-mix(in srgb, ${account.color} 55%, transparent)`
-              : undefined,
+            borderColor: account.color ? tintBorder(account.color) : undefined,
           }}
         >
           {account.glyph ? (
