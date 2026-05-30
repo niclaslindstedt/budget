@@ -586,6 +586,15 @@
     z-index: 14;
   }
 
+  /* Inside `AccountTransfersModal` the transfer log lives in a
+     `Modal.Body` scrollport with no app / column header above it — the
+     thead sticks at `top: -1px` and is ~32 px tall, so the month
+     header pins flush below it, mirroring `.budget-viewer-month-header`
+     rather than the page-header offset above. */
+  .transfers-table.transfers-table-modal > tbody > tr.transfers-month-header {
+    top: 31px;
+  }
+
   /* Same pattern for `BudgetViewerModal` and `HistoryModal` — the
      month-stacked tables that share the `.budget-viewer-table` class.
      These live inside a `Modal.Body` (`overflow-y-auto`), so the

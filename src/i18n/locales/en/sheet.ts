@@ -13,6 +13,7 @@ const sheet = {
   rename: "Rename sheet",
   editSheet: "Edit sheet",
   viewBudget: "Viewing mode",
+  viewTransfers: "Transfers",
   metadataMode: "Metadata mode",
   findConflicts: "Find conflicts",
   moreActions: "Sheet actions",

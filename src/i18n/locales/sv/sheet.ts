@@ -7,6 +7,7 @@ const sheet: SheetCatalog = {
   rename: "Byt namn på blad",
   editSheet: "Redigera blad",
   viewBudget: "Visningsläge",
+  viewTransfers: "Överföringar",
   metadataMode: "Metadataläge",
   findConflicts: "Hitta dubbletter",
   moreActions: "Bladåtgärder",

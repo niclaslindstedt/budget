@@ -1,9 +1,6 @@
-import { useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  AlignLeft,
   ArrowLeftRight,
-  Calendar,
-  DollarSign,
   Download,
   Landmark,
   Pencil,
@@ -15,16 +12,11 @@ import {
 } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
-import { allCategories, allTypes } from "../../data/presets/merge";
 import { computeAccountBalances } from "../../data/accounts/balance";
-import { compareDateStrings } from "../../data/fiscal-month";
 import type { Settings, Sheet, UserData } from "../../data/types";
-import { useLang, useT } from "../../i18n";
-import { formatYearMonth } from "../../utils/format";
-import { indexById } from "../../utils/indexById";
-import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { useT } from "../../i18n";
 import { AccountRow } from "./AccountRow";
-import { AccountTransferRow } from "./AccountTransferRow";
+import { AccountTransfersModal } from "./AccountTransfersModal";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
@@ -71,8 +63,11 @@ export function AccountsPage({
   onCutHistory,
 }: Props) {
   const t = useT();
-  const lang = useLang();
   const dispatchModal = useModalDispatch();
+  // Transfer log lives behind a modal opened from the title menu —
+  // mirrors the budget page's "Viewing mode" modal so the accounts
+  // table stays the headline content of the page.
+  const [transfersOpen, setTransfersOpen] = useState(false);
   // Pre-compute every account's balance once per render. The batched
   // helper walks the sheet tree / transfer log / history once and
   // distributes amounts to each account's running total, replacing the
@@ -104,57 +99,15 @@ export function AccountsPage({
     }
     return m;
   }, [data.transfers]);
-  const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
-  // Resolve both user-added and built-in preset categories so the
-  // transfer log renders a chip even when its typeId resolves
-  // to a preset category.
-  const categoriesById = useMemo(() => indexById(allCategories(data)), [data]);
-  // Types indexed by id so the transfer log can resolve a
-  // `tx.typeId` to its parent category for the chip rendering. The
-  // map covers presets + user-added types via `allTypes`.
-  const typesById = useMemo(() => indexById(allTypes(data)), [data]);
   // Switching to the accounts overview from another sheet should land
   // the user at the top of the page — the accounts table is the
-  // headline content here, not the transfer log that scrolls in below.
-  // Without this, the document keeps the previous sheet's scrollY and
-  // the user lands mid-transfers when arriving from a long budget
-  // sheet. Keyed on `sheet.id` so it only fires on the actual switch,
-  // never on a row edit that re-renders the component.
+  // headline content here. Keyed on `sheet.id` so it only fires on the
+  // actual switch, never on a row edit that re-renders the component.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
     // Landing on the accounts overview is the `birdsEye` gesture.
     unlock("birdsEye");
   }, [sheet.id]);
-
-  // Transfer log direction follows the user's `transactionSortOrder`
-  // preference so it agrees with every other transaction list in the
-  // app. The historical default was newest-first ("the dinner cover
-  // was last week") — that's still the default, but the user can flip
-  // it from Settings → General → Display.
-  const sortedTransfers = useMemo(() => {
-    const order = settings.transactionSortOrder;
-    return [...data.transfers].sort((a, b) =>
-      compareDateStrings(a.date, b.date, order),
-    );
-  }, [data.transfers, settings.transactionSortOrder]);
-
-  // Walk the sorted (newest-first) transfers and emit one group per
-  // `YYYY-MM` so the table can drop a colored month-marker row between
-  // groups — mirrors the HistoryModal chrome so short dates (18/5) stay
-  // readable when the year or month rolls over.
-  const transferGroups = useMemo(() => {
-    const result: {
-      monthKey: string;
-      transfers: typeof sortedTransfers;
-    }[] = [];
-    for (const tx of sortedTransfers) {
-      const key = tx.date.slice(0, 7);
-      const last = result[result.length - 1];
-      if (last && last.monthKey === key) last.transfers.push(tx);
-      else result.push({ monthKey: key, transfers: [tx] });
-    }
-    return result;
-  }, [sortedTransfers]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     {
@@ -163,6 +116,12 @@ export function AccountsPage({
       label: t("sheet.editSheet"),
       onClick: () =>
         dispatchModal({ kind: "open-edit-sheet", sheetId: sheet.id }),
+    },
+    {
+      key: "transfers",
+      icon: <ArrowLeftRight size={16} aria-hidden focusable={false} />,
+      label: t("sheet.viewTransfers"),
+      onClick: () => setTransfersOpen(true),
     },
     {
       key: "download",
@@ -338,189 +297,16 @@ export function AccountsPage({
             </table>
           </div>
         </section>
-
-        <section>
-          <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
-            {t("accountsSheet.transfers")}
-          </h3>
-          <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="transfers-table w-full border-collapse text-sm md:text-[13px]">
-              <thead className="sticky top-[var(--app-header-h)] z-[15] bg-surface-3">
-                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
-                  <th
-                    scope="col"
-                    className="w-14 pr-1 pl-2 py-2 text-left md:w-20 md:px-2.5"
-                    aria-label={t("accountsSheet.date")}
-                  >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <Calendar
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.date")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="pr-2 pl-1 py-2 text-left md:px-2.5"
-                    aria-label={t("accountsSheet.description")}
-                  >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <AlignLeft
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.description")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-1 py-2 text-left md:px-2.5"
-                    aria-label={t("accountsSheet.transfer")}
-                  >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <ArrowLeftRight
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.transfer")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2.5 py-2 text-right"
-                    aria-label={t("accountsSheet.amount")}
-                  >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <DollarSign
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.amount")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="transfer-action-cell w-16 px-2.5 py-2"
-                    aria-label={t("budget.rowActions")}
-                  >
-                    <span className="flex items-center justify-center gap-1.5 md:gap-2">
-                      <Wrench
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("budget.actions")}
-                      </span>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              {sortedTransfers.length === 0 && (
-                <tbody>
-                  <tr className="transfers-fullspan">
-                    <td
-                      colSpan={5}
-                      className="px-3 py-6 text-center text-xs text-muted"
-                    >
-                      {t("accountsSheet.noTransfers")}
-                    </td>
-                  </tr>
-                </tbody>
-              )}
-              {/* One <tbody> per month so each month-header row's
-                  sticky containing block ends at the next month — gives
-                  the natural "push the previous label off" behaviour
-                  without manually managing z-index. A single shared
-                  tbody would keep all month headers stuck at the same
-                  offset, overlapping each other instead of pushing. */}
-              {transferGroups.map((group) => {
-                const monthNum = monthNumberFromKey(group.monthKey);
-                const monthColor =
-                  monthNum !== null ? monthColorVar(monthNum) : undefined;
-                const headerColorStyle: CSSProperties | undefined = monthColor
-                  ? { color: monthColor }
-                  : undefined;
-                return (
-                  <tbody key={group.monthKey}>
-                    <tr className="transfers-fullspan transfers-month-header">
-                      <td
-                        colSpan={5}
-                        className="border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase"
-                        style={headerColorStyle}
-                      >
-                        <span className="flex h-7 items-center">
-                          {formatYearMonth(group.monthKey, lang)}
-                        </span>
-                      </td>
-                    </tr>
-                    {group.transfers.map((tx) => {
-                      const from = accountsById.get(tx.fromAccountId) ?? null;
-                      const to = accountsById.get(tx.toAccountId) ?? null;
-                      const type = tx.typeId
-                        ? (typesById.get(tx.typeId) ?? null)
-                        : null;
-                      const category = type
-                        ? (categoriesById.get(type.categoryId) ?? null)
-                        : null;
-                      return (
-                        <AccountTransferRow
-                          key={tx.id}
-                          transfer={tx}
-                          from={from}
-                          to={to}
-                          category={category}
-                          settings={settings}
-                          monthColor={monthColor}
-                          onEditTransfer={onEditTransfer}
-                        />
-                      );
-                    })}
-                  </tbody>
-                );
-              })}
-              <tfoot>
-                <tr>
-                  <td colSpan={5} className="bg-surface-3 p-0">
-                    <button
-                      type="button"
-                      onClick={onCreateTransfer}
-                      disabled={data.accounts.length < 2}
-                      title={
-                        data.accounts.length < 2
-                          ? t("accountsSheet.needTwoAccounts")
-                          : undefined
-                      }
-                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <ArrowLeftRight size={16} aria-hidden focusable={false} />
-                      {t("accountsSheet.newTransfer")}
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </section>
       </section>
+
+      <AccountTransfersModal
+        open={transfersOpen}
+        onClose={() => setTransfersOpen(false)}
+        data={data}
+        settings={settings}
+        onCreateTransfer={onCreateTransfer}
+        onEditTransfer={onEditTransfer}
+      />
     </ActiveRowProvider>
   );
 }
