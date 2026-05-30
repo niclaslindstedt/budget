@@ -153,9 +153,11 @@ through them.
   so it sat at 898 lines; the first per-host hook relocation (slice 5,
   `useAchievementsModal` → `UniversalModalHost`, see Landed) then dropped
   it to 878 lines, slice 6 (`useChangelogState` →
-  `UniversalModalHost`, see Landed) dropped it to 868 lines, and slice 7
+  `UniversalModalHost`, see Landed) dropped it to 868 lines, slice 7
   (`useSyncAutoOpens` → `UniversalModalHost`, see Landed) dropped it to
-  **859 lines**. Re-verified 2026-05: the "10/14
+  859 lines, and slice 8 (`useSettingsModal` +
+  `useAppearanceProjection` → `UniversalModalHost`, see Landed) dropped it
+  to **850 lines**. Re-verified 2026-05: the "10/14
   setters as props" framing was
   **stale** — the hosts already receive _grouped hook-result
   objects_ (`editPrompts`, `deletePrompts`, `complexEntry`,
@@ -256,19 +258,37 @@ through them.
     call with `openSyncDetails`. AppShell dropped the hook call + destructure,
     the `openSyncDetails` base-slice entry + its dep, the import, and the
     `syncAutoOpens` prop on the host (859 lines).
+  - **Slice 8 — `useSettingsModal` + `useAppearanceProjection` into
+    `UniversalModalHost` — landed 2026-05** (see Landed: `useSettingsModal`
+    relocation). The slice-7 note called this candidate "blocked" because
+    `previewSettings` (from `useSettingsModal`) was read by AppShell's
+    `useAppearanceProjection`. The unblock was to relocate **both** hooks
+    together: the projection's only other inputs (`effectiveSettings`,
+    `data.settings.language`) are already host props, so it moved into the
+    host alongside the settings-preview state it overlays. `setSettingsInitialTab`
+    was confirmed to have no external launcher (only the host's own close
+    handler sets it), so the whole `useSettingsModal` state is host-internal.
+    The host extends its `useRegisterModalHandlers` call with `openSettings`;
+    AppShell dropped both hook calls + the `appearanceSettings` line, the
+    `settingsModal` / `previewSettings` / `setSettingsOpen` destructure, the
+    `openSettings` base-slice entry + its dep, the two imports, and the
+    `settingsModal` prop on the host (850 lines).
   - Plan (remaining): repeat the slice-4/5 pattern per host for each modal
     hook whose open path is now _only_ the dispatch (no chrome / page
     caller left): move the hook call (and its `useState` / `useReducer`)
     into the colocated host and have the host register its open slice via
     `useRegisterModalHandlers`. AppShell drops the hook call, the base-slice
-    handler entry, and the forwarded prop in the same move. The remaining
-    candidate that looked clean is now blocked: `useSettingsModal`
-    (UniversalModalHost — but `previewSettings` is read by AppShell's
-    `useAppearanceProjection`, so settings can't move without also relocating
-    that projection). Hooks whose state AppShell or a page still _reads_ (not
-    just opens) stay put until that read is untangled. AppShell collapses
-    toward a routing switch + host mounts. Slice per host so each PR leaves
-    the app working.
+    handler entry, and the forwarded prop in the same move. With slice 8 the
+    last clean universal-chrome candidate landed; the remaining AppShell hooks
+    are genuinely cross-cutting — `useSearchModal` is blocked because AppShell
+    reads `scrollToRowRequest` and feeds it to `BudgetPage` (a sibling the host
+    can't reach), and the rest (`useEditPrompts`, `useRowMutations`,
+    `useTransferFlow`, `useBulkSelection`, …) produce page-facing callbacks, so
+    their state is read by a page, not just opened by chrome. Hooks whose state
+    AppShell or a page still _reads_ (not just opens) stay put until that read
+    is untangled (the search→scroll bridge would need a different mechanism
+    than a host move). AppShell collapses toward a routing switch + host
+    mounts. Slice per host so each PR leaves the app working.
   - Risk: low. The seam is a pure refactor — AppShell registers the same
     complete handler set as a base slice, so the merged table dispatched is
     identical. Not on a cloud-OAuth hot path; modal opens have no
@@ -440,6 +460,51 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **`useSettingsModal` + `useAppearanceProjection` relocated into
+  `UniversalModalHost`** (2026-05): slice 8 of the `AppShell.tsx` modal-mount
+  state-ownership shift — the fourth full per-host hook relocation following
+  the slice-4/5/6/7 seam, and the one that landed the candidate the prior
+  slices flagged as "blocked". `useSettingsModal` owns three `useState`s
+  (the modal open flag, the pre-selected initial tab, and the live Appearance
+  preview draft); its `settingsOpen` / `settingsInitialTab` / `previewSettings`
+  outputs are consumed only by `UniversalModalHost` (it renders `<SettingsModal>`
+  and pushes the preview draft up via `onPreviewAppearance={setPreviewSettings}`),
+  and the only chrome opener is the dispatch context's `open-settings` command.
+  AppShell read `previewSettings` for exactly one reason: to feed
+  `useAppearanceProjection({ appearanceSettings: previewSettings ?? effectiveSettings,
+language })`, which projects the user's theme / font / shape pick onto the
+  document root so an in-flight Settings edit previews live. That single read
+  is what kept settings on AppShell. The unblock was to relocate **both** hooks
+  together — the projection's only other inputs (`effectiveSettings`, the
+  bucket-canonical `data.settings.language`) are already `UniversalModalHost`
+  props, so it moved into the host alongside the preview state it overlays,
+  co-locating the always-on appearance projection with the SettingsModal that
+  drives its preview. `setSettingsInitialTab` was confirmed to have no external
+  launcher (only the host's own `onClose` resets it), so the whole
+  `useSettingsModal` state is host-internal. The host extends its
+  `useRegisterModalHandlers` call (action-history + achievements + changelog +
+  sync-details) with `openSettings: () => setSettingsOpen(true)`. AppShell shed
+  the `useSettingsModal` + `useAppearanceProjection` imports + calls, the
+  `appearanceSettings` line, the `settingsModal` / `previewSettings` /
+  `setSettingsOpen` destructure, the `openSettings` base-slice entry + its
+  `useMemo` dep, and the `settingsModal` prop on the host; `UniversalModalHost`
+  dropped the `settingsModal` prop from its `Props` type and the destructure,
+  switching both hooks from type-only to value imports. `AppShell.tsx` drops
+  859 → 850 lines. Pure refactor — same behaviour, same modal opens, same live
+  appearance preview, same dispatch routing (the `mergeHandlerSlices` table is
+  identical, just with `openSettings` now contributed by the host's slice
+  instead of AppShell's base slice). The appearance projection is a
+  document-root side effect (idempotent per render); moving it one level down
+  the same commit's subtree changes only effect order among AppShell's
+  descendants, none of which write the same `documentElement` vars, so the
+  projection is unchanged. The existing `mergeHandlerSlices` unit tests in
+  `tests/modal_dispatch_test.ts` already cover a slice filling base keys and
+  later slices winning collisions, so the routing is locked in; no new test
+  needed for a pure relocation. fmt-check + lint + typecheck + 1093 tests +
+  build + icons-check pass; the Playwright settings-open + live-appearance-
+  preview flows (burger → settings, change theme → live root vars update) were
+  not run in this environment and stay a reviewer-side check.
 
 - **`useSyncAutoOpens` relocated into `UniversalModalHost`** (2026-05):
   slice 7 of the `AppShell.tsx` modal-mount state-ownership shift — the
