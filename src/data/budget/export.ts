@@ -11,6 +11,7 @@ import {
   transfersForAccount,
 } from "./synthesis";
 import { findColumnByType } from "../sheet";
+import { indexById } from "../../utils/indexById";
 import type {
   AccountBudget,
   Category,
@@ -79,10 +80,8 @@ export function buildBudgetExportRows(
   } = args;
   const today = args.today ?? todayIso();
 
-  const typesById = new Map<string, EntryType>();
-  for (const t of types) typesById.set(t.id, t);
-  const categoriesById = new Map<string, Category>();
-  for (const c of categories) categoriesById.set(c.id, c);
+  const typesById = indexById(types);
+  const categoriesById = indexById(categories);
 
   const dateCol = findColumnByType(item.columns, "date");
   const descCol = findColumnByType(item.columns, "description");
