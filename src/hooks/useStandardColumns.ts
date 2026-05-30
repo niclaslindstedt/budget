@@ -14,6 +14,8 @@ import type { Column } from "../data/types";
 // `useMemo` here only stabilises the returned object's identity across
 // renders while `columns` is unchanged. Adopt at sites that read three
 // or more of these; single-lookup sites can stay on `findColumnByType`.
-export function useStandardColumns(columns: readonly Column[]): StandardColumns {
+export function useStandardColumns(
+  columns: readonly Column[],
+): StandardColumns {
   return useMemo(() => getStandardColumns(columns), [columns]);
 }

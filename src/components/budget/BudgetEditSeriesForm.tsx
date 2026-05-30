@@ -1,9 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { unlock } from "../../data/achievements";
 import type { EditPatch, EditScope } from "../../data/action-payloads";
 import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
-import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
   Column,
@@ -12,6 +11,7 @@ import type {
   Row,
   Settings,
 } from "../../data/types";
+import { useStandardColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { formatAmountForInput } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
