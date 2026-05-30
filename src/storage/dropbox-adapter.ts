@@ -2,13 +2,12 @@ import { nsCloudPath, nsKey } from "../data/constants/storage";
 import { createLogger } from "../utils/logger";
 import {
   AuthError,
-  type BackupOps,
   ConflictError,
   RateLimitError,
   type Snapshot,
   type StorageAdapter,
 } from "./adapter";
-import { parseBackupIndex, serializeBackupIndex } from "./backup-index";
+import { createBackupOps } from "./backup-ops";
 import {
   type OAuthConfig,
   type TokenResult,
@@ -326,53 +325,14 @@ export function createDropboxAdapter(
     }
   }
 
-  const backups: BackupOps = {
-    async list() {
-      log.info("backups: list");
-      const raw = await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH);
-      return parseBackupIndex(raw);
-    },
-    async create(text, metadata) {
-      log.info(`backups: create ${metadata.filename} bytes=${text.length}`);
-      await uploadBackupFile(
-        `${DROPBOX_BACKUPS_FOLDER}/${metadata.filename}`,
-        text,
-      );
-      const existing = parseBackupIndex(
-        await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH),
-      );
-      const next = [
-        metadata,
-        ...existing.filter((m) => m.filename !== metadata.filename),
-      ];
-      await uploadBackupFile(
-        DROPBOX_BACKUPS_INDEX_PATH,
-        serializeBackupIndex(next),
-      );
-    },
-    async read(filename) {
-      log.info(`backups: read ${filename}`);
-      const text = await readBackupFile(
-        `${DROPBOX_BACKUPS_FOLDER}/${filename}`,
-      );
-      if (text === null) {
-        throw new Error(`Backup not found: ${filename}`);
-      }
-      return text;
-    },
-    async remove(filename) {
-      log.info(`backups: remove ${filename}`);
-      await deleteBackupFile(`${DROPBOX_BACKUPS_FOLDER}/${filename}`);
-      const existing = parseBackupIndex(
-        await readBackupFile(DROPBOX_BACKUPS_INDEX_PATH),
-      );
-      const next = existing.filter((m) => m.filename !== filename);
-      await uploadBackupFile(
-        DROPBOX_BACKUPS_INDEX_PATH,
-        serializeBackupIndex(next),
-      );
-    },
-  };
+  const backups = createBackupOps({
+    readFile: readBackupFile,
+    writeFile: uploadBackupFile,
+    deleteFile: deleteBackupFile,
+    backupKey: (filename) => `${DROPBOX_BACKUPS_FOLDER}/${filename}`,
+    indexKey: DROPBOX_BACKUPS_INDEX_PATH,
+    log,
+  });
 
   return {
     id: "dropbox",

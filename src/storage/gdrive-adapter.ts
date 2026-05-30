@@ -2,16 +2,12 @@ import { nsCloudPath } from "../data/constants/storage";
 import { createLogger } from "../utils/logger";
 import {
   AuthError,
-  type BackupOps,
   ConflictError,
   type Snapshot,
   type StorageAdapter,
 } from "./adapter";
-import {
-  BACKUP_INDEX_FILENAME,
-  parseBackupIndex,
-  serializeBackupIndex,
-} from "./backup-index";
+import { BACKUP_INDEX_FILENAME } from "./backup-index";
+import { createBackupOps } from "./backup-ops";
 
 const log = createLogger("gdrive");
 
@@ -556,42 +552,14 @@ export function createGdriveAdapter(
     }
   }
 
-  const backups: BackupOps = {
-    async list() {
-      log.info("backups: list");
-      const raw = await downloadBackup(BACKUP_INDEX_FILENAME);
-      return parseBackupIndex(raw);
-    },
-    async create(text, metadata) {
-      log.info(`backups: create ${metadata.filename} bytes=${text.length}`);
-      await uploadBackup(metadata.filename, text);
-      const existing = parseBackupIndex(
-        await downloadBackup(BACKUP_INDEX_FILENAME),
-      );
-      const next = [
-        metadata,
-        ...existing.filter((m) => m.filename !== metadata.filename),
-      ];
-      await uploadBackup(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
-    },
-    async read(filename) {
-      log.info(`backups: read ${filename}`);
-      const text = await downloadBackup(filename);
-      if (text === null) {
-        throw new Error(`Backup not found: ${filename}`);
-      }
-      return text;
-    },
-    async remove(filename) {
-      log.info(`backups: remove ${filename}`);
-      await deleteBackup(filename);
-      const existing = parseBackupIndex(
-        await downloadBackup(BACKUP_INDEX_FILENAME),
-      );
-      const next = existing.filter((m) => m.filename !== filename);
-      await uploadBackup(BACKUP_INDEX_FILENAME, serializeBackupIndex(next));
-    },
-  };
+  const backups = createBackupOps({
+    readFile: downloadBackup,
+    writeFile: uploadBackup,
+    deleteFile: deleteBackup,
+    backupKey: (filename) => filename,
+    indexKey: BACKUP_INDEX_FILENAME,
+    log,
+  });
 
   return {
     id: "gdrive",
