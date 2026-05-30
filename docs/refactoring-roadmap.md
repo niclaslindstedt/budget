@@ -301,22 +301,6 @@ through them.
     hook it relocates has no remaining AppShell / page _reader_ (only the
     dispatch opener) before moving it.
 
-- **Optional fields on persisted types — `undefined` vs `null`
-  drift** — re-verified 2026-05: `src/data/types/accounts.ts` carries
-  **26 optional fields** across `Account` (10), `HistoryEntry` (12),
-  `HistoryEntrySplit` (2), `Transfer` (2). The de-facto convention is
-  `!== undefined` (a codebase grep found 241 `!== undefined` /
-  `=== undefined` checks against a single `!= null` site), **but**
-  `HistoryEntrySplit.typeId?` / `companyId?` and `Transfer.typeId?`
-  are explicitly `T | null`, sending a mixed message, and nothing
-  documents or enforces the rule. Adding a new per-account flag risks
-  a third convention. **Severity: 5.**
-  - Plan: document the convention in `AGENTS.md` (default to
-    `field?: T` for "absent / use global default"; reserve
-    `field: T | null` for "explicitly cleared by the user, distinct
-    from never set"). Sweep `accounts.ts`, `settings.ts`, `rules.ts`
-    once and stamp the validator to enforce.
-
 ### Severity 3–4 — nits with leverage
 
 - **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
@@ -450,6 +434,35 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Optional-field `undefined` vs `null` convention documented in
+  `AGENTS.md`** (2026-05): the multiplier half of the severity-5
+  "Optional fields — `undefined` vs `null` drift" candidate. Added an
+  "Optional fields: `undefined` vs `null`" subsection under "Changing
+  the persisted shape" stating the rule the codebase already follows
+  de-facto — default to `field?: T` for "absent / use a global default
+  / fall through the rule chain" (the ~240 `=== undefined` sites);
+  reserve `field?: T | null` for the narrow case where the field must
+  distinguish "explicitly cleared by the user" (`null`) from "never
+  set" (`undefined`), which only the type-/company-reference fields
+  (`MatchRule.typeId` / `companyId`, `Transfer.typeId`,
+  `HistoryEntrySplit.typeId` / `companyId`) need; and call out that a
+  required nullable sentinel like `Settings.lastSeenChangelogVersion:
+string | null` is a third, unrelated shape. This closes the
+  candidate's stated concern — "nothing documents the rule; adding a
+  new per-account flag risks a third convention." The candidate's
+  other half — "stamp the validator to enforce" — was **dropped on
+  re-verification as not a pure refactor**: the three `T | null`
+  reference validators are deliberately non-uniform (`MatchRule`
+  preserves `null` and drops a dangling id to `undefined`; `Transfer`
+  preserves `null` and coerces a dangling id to `null`;
+  `HistoryEntrySplit` treats `null` as absent), so they can't share a
+  helper without changing behaviour, and the genuine
+  writer-persists-`null` (`BudgetModalHost.tsx`) /
+  validator-strips-`null` (`validate/history.ts`) divergence on split
+  `typeId` is a semantics decision (preserve vs normalise — a
+  migration), not a mechanical sweep. Documentation-only change; no
+  `src/` touched, no behaviour change.
 
 - **`createBackupOps` factory — shared backup-lifecycle across the
   Dropbox / GDrive / Folder adapters** (2026-05): the three adapters each
