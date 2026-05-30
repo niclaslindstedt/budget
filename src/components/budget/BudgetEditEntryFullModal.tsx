@@ -2,7 +2,6 @@ import { useCallback, useMemo, useReducer, useRef } from "react";
 import { Pencil } from "lucide-react";
 
 import { sortRowsByDate } from "../../data/budget/rows";
-import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import type {
   Category,
   Column,
@@ -14,6 +13,7 @@ import type {
   Tag,
 } from "../../data/types";
 import {
+  useAutoTypeForCompany,
   useDesktopAutoFocus,
   useResetOnOpen,
   useStandardColumns,
@@ -194,12 +194,19 @@ export function BudgetEditEntryFullModal({
     shiftDaysText,
   } = state;
 
+  const autoTypeForPickedCompany = useAutoTypeForCompany(
+    typeId,
+    companyTypeSuggestions,
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
-      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
-      dispatch({ kind: "pickCompany", companyId: next, autoTypeId: auto });
+      dispatch({
+        kind: "pickCompany",
+        companyId: next,
+        autoTypeId: autoTypeForPickedCompany(next),
+      });
     },
-    [typeId, companyTypeSuggestions],
+    [autoTypeForPickedCompany],
   );
 
   const descriptionRef = useRef<HTMLInputElement>(null);

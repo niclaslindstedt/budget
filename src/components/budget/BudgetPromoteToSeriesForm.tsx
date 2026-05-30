@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { autoTypeForCompany } from "../../data/budget/company-type-suggestions";
 import type { RecurrenceRule } from "../../data/recurrence";
 import { findColumnByType } from "../../data/sheet";
 import type {
@@ -10,6 +9,7 @@ import type {
   EntryType,
   Row,
 } from "../../data/types";
+import { useAutoTypeForCompany } from "../../hooks";
 import { useT } from "../../i18n";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
@@ -75,13 +75,17 @@ export function BudgetPromoteToSeriesForm({
   // Wrap the company picker's onSelect so a confident company → type
   // pairing auto-fills the empty type. The user can still override
   // either field afterwards.
+  const autoTypeForPickedCompany = useAutoTypeForCompany(
+    typeId,
+    companyTypeSuggestions,
+  );
   const handlePickCompany = useCallback(
     (next: string | null) => {
       setCompanyId(next);
-      const auto = autoTypeForCompany(typeId, next, companyTypeSuggestions);
+      const auto = autoTypeForPickedCompany(next);
       if (auto !== undefined) setTypeId(auto);
     },
-    [typeId, companyTypeSuggestions],
+    [autoTypeForPickedCompany],
   );
   const [recurringDates, setRecurringDates] = useState<string[]>([]);
 

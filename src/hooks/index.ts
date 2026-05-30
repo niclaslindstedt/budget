@@ -1,3 +1,4 @@
+export { useAutoTypeForCompany } from "./useAutoTypeForCompany";
 export { useChangelogAutoOpen } from "./useChangelogAutoOpen";
 export { useDesktopAutoFocus } from "./useDesktopAutoFocus";
 export { useDevMode } from "./useDevMode";
