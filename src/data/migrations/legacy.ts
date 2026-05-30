@@ -487,28 +487,48 @@ const PRESET_NAME_TO_CATEGORY_ID: ReadonlyMap<string, string> = (() => {
   return m;
 })();
 
-function migrateV24ToV25(v24: Versioned): Versioned {
-  const sheets = Array.isArray(v24.sheets) ? v24.sheets : [];
-  const existingTypes = Array.isArray(v24.types)
-    ? (v24.types as Array<Record<string, unknown>>)
-    : [];
-  const existingCategories = Array.isArray(v24.categories)
-    ? (v24.categories as Array<Record<string, unknown>>)
-    : [];
+// Preset categories aren't in a v24 export's `categories` array — they
+// live in code. The v24 → v25 migration only needs their display names
+// to label the synthesized generic types; importing them from constants
+// would be ideal, but to keep this migration self-contained it names the
+// generic type after the slug ("preset-cat-food" → "Food (generic)") via
+// this small lookup.
+const PRESET_CAT_NAMES: ReadonlyMap<string, string> = new Map([
+  ["preset-cat-housing", "Housing"],
+  ["preset-cat-food", "Food"],
+  ["preset-cat-transport", "Transport"],
+  ["preset-cat-health", "Health"],
+  ["preset-cat-bills", "Bills"],
+  ["preset-cat-entertainment", "Entertainment"],
+  ["preset-cat-savings", "Savings"],
+  ["preset-cat-income", "Income"],
+  ["preset-cat-family", "Family"],
+  ["preset-cat-personal", "Personal"],
+  ["preset-cat-travel", "Travel"],
+  ["preset-cat-other", "Other"],
+]);
 
-  // Walk every row that has both a typeId and a category cell, and
-  // count how often each (typeId, categoryId) pair appears. The most
-  // popular categoryId per type is what the migration assigns it to.
-  const typeUsage = new Map<string, Map<string, number>>();
-  // Track the category cell values of rows that have NO typeId — we
-  // mint a per-(item, category) "generic" type for each one so the
-  // meaning is preserved when the cell is dropped.
-  const rowCategoryWithoutType: Array<{
+type V24TypeUsage = {
+  // For each typeId, how often each categoryId co-occurred on its rows.
+  // The most-popular categoryId per type is what the migration assigns
+  // it to.
+  typeUsage: Map<string, Map<string, number>>;
+  // Rows that carry a category cell but NO typeId — each needs a
+  // synthesized "generic" type so its meaning survives the cell removal.
+  rowCategoryWithoutType: Array<{
     sheetIdx: number;
     itemIdx: number;
     rowIdx: number;
     categoryId: string;
-  }> = [];
+  }>;
+};
+
+// Phase 1 of v24 → v25: walk every accountBudget row, counting how often
+// each (typeId, categoryId) pair appears and collecting the rows that
+// have a category cell but no typeId of their own.
+function computeV24TypeUsage(sheets: unknown[]): V24TypeUsage {
+  const typeUsage = new Map<string, Map<string, number>>();
+  const rowCategoryWithoutType: V24TypeUsage["rowCategoryWithoutType"] = [];
 
   sheets.forEach((rawSheet, sheetIdx) => {
     if (!isObj(rawSheet)) return;
@@ -558,76 +578,52 @@ function migrateV24ToV25(v24: Versioned): Versioned {
     });
   });
 
-  // Pick the most-used categoryId for each typeId; fall back to the
-  // preset-name lookup, then to the catch-all category.
-  function pickCategoryForType(rawType: Record<string, unknown>): string {
-    const id = typeof rawType.id === "string" ? rawType.id : "";
-    const usage = typeUsage.get(id);
-    if (usage && usage.size > 0) {
-      let bestId = "";
-      let bestCount = -1;
-      for (const [catId, count] of usage) {
-        if (count > bestCount) {
-          bestId = catId;
-          bestCount = count;
-        }
+  return { typeUsage, rowCategoryWithoutType };
+}
+
+// Pick the most-used categoryId for a type; fall back to the preset-name
+// lookup, then to the catch-all category.
+function pickV24CategoryForType(
+  rawType: Record<string, unknown>,
+  typeUsage: Map<string, Map<string, number>>,
+): string {
+  const id = typeof rawType.id === "string" ? rawType.id : "";
+  const usage = typeUsage.get(id);
+  if (usage && usage.size > 0) {
+    let bestId = "";
+    let bestCount = -1;
+    for (const [catId, count] of usage) {
+      if (count > bestCount) {
+        bestId = catId;
+        bestCount = count;
       }
-      if (bestId) return bestId;
     }
-    if (typeof rawType.name === "string") {
-      const fromPreset = PRESET_NAME_TO_CATEGORY_ID.get(
-        rawType.name.toLowerCase(),
-      );
-      if (fromPreset) return fromPreset;
-    }
-    return DEFAULT_CATEGORY_ID;
+    if (bestId) return bestId;
   }
-
-  // Build the migrated user-types list. Drop any non-object entries
-  // (the v25 validator would reject them anyway) and stamp each with
-  // its computed categoryId. Names + colors + glyphs come through
-  // unchanged.
-  const types: Array<Record<string, unknown>> = existingTypes
-    .filter(isObj)
-    .map((t) => ({
-      ...t,
-      categoryId: pickCategoryForType(t),
-    }));
-
-  // Synthesize a "generic" type per category that orphan rows need.
-  // Keyed by categoryId so the same category only mints one helper
-  // type even if dozens of rows reference it. The name reads like
-  // "{Category name} (generic)" so the picker surfaces it as an
-  // obvious holdover.
-  const knownCategoryNames = new Map<string, string>();
-  for (const c of existingCategories) {
-    if (isObj(c) && typeof c.id === "string" && typeof c.name === "string") {
-      knownCategoryNames.set(c.id, c.name);
-    }
+  if (typeof rawType.name === "string") {
+    const fromPreset = PRESET_NAME_TO_CATEGORY_ID.get(
+      rawType.name.toLowerCase(),
+    );
+    if (fromPreset) return fromPreset;
   }
-  // Preset categories aren't in `existingCategories` — they live in
-  // code. The migration only needs their display names for the
-  // generic-type labels; importing them from constants would be
-  // ideal, but to keep this migration self-contained we name the
-  // generic type after the slug ("preset-cat-food (generic)" → "Food
-  // (generic)") via a small lookup.
-  const PRESET_CAT_NAMES: ReadonlyMap<string, string> = new Map([
-    ["preset-cat-housing", "Housing"],
-    ["preset-cat-food", "Food"],
-    ["preset-cat-transport", "Transport"],
-    ["preset-cat-health", "Health"],
-    ["preset-cat-bills", "Bills"],
-    ["preset-cat-entertainment", "Entertainment"],
-    ["preset-cat-savings", "Savings"],
-    ["preset-cat-income", "Income"],
-    ["preset-cat-family", "Family"],
-    ["preset-cat-personal", "Personal"],
-    ["preset-cat-travel", "Travel"],
-    ["preset-cat-other", "Other"],
-  ]);
-  const genericTypeByCategoryId = new Map<string, string>();
-  function ensureGenericTypeFor(categoryId: string): string {
-    const existing = genericTypeByCategoryId.get(categoryId);
+  return DEFAULT_CATEGORY_ID;
+}
+
+// Synthesize (and memoize) a "generic" type per category for the orphan
+// rows / transactions / hints / rules that carried a category but no
+// type. Keyed by categoryId so the same category only mints one helper
+// type even if dozens of references point at it; the name reads like
+// "{Category name} (generic)" so the picker surfaces it as an obvious
+// holdover. The returned function mutates `types` in place — callers
+// must invoke it in a stable order so the appended types (and their
+// `newId()`s) stay deterministic.
+function createV24GenericTypeMinter(
+  types: Array<Record<string, unknown>>,
+  knownCategoryNames: Map<string, string>,
+): (categoryId: string) => string {
+  const byCategoryId = new Map<string, string>();
+  return function ensureGenericTypeFor(categoryId: string): string {
+    const existing = byCategoryId.get(categoryId);
     if (existing) return existing;
     const baseName =
       knownCategoryNames.get(categoryId) ??
@@ -641,20 +637,19 @@ function migrateV24ToV25(v24: Versioned): Versioned {
       glyph: "tag",
       categoryId,
     });
-    genericTypeByCategoryId.set(categoryId, id);
+    byCategoryId.set(categoryId, id);
     return id;
-  }
+  };
+}
 
-  // Rewrite sheets: drop "category" columns, drop the matching cells,
-  // and attach a generic typeId to rows that lost a category cell but
-  // had no typeId of their own.
-  const orphanLookup = new Map<string, string>();
-  for (const orphan of rowCategoryWithoutType) {
-    const key = `${orphan.sheetIdx}:${orphan.itemIdx}:${orphan.rowIdx}`;
-    orphanLookup.set(key, ensureGenericTypeFor(orphan.categoryId));
-  }
-
-  const migratedSheets = sheets.map((rawSheet, sheetIdx) => {
+// Rewrite sheets: drop "category" columns, drop the matching cells, and
+// attach a generic typeId to rows that lost a category cell but had no
+// typeId of their own (looked up by `sheetIdx:itemIdx:rowIdx`).
+function rewriteV24Sheets(
+  sheets: unknown[],
+  orphanLookup: Map<string, string>,
+): unknown[] {
+  return sheets.map((rawSheet, sheetIdx) => {
     if (!isObj(rawSheet)) return rawSheet;
     const items = Array.isArray(rawSheet.items) ? rawSheet.items : [];
     return {
@@ -702,12 +697,17 @@ function migrateV24ToV25(v24: Versioned): Versioned {
       }),
     };
   });
+}
 
-  // Strip `categoryId` from transactions; if a transaction had only a
-  // categoryId (no other type info), synthesize a generic type under
-  // that category and attach it.
+// Strip `categoryId` from transactions; if a transaction had only a
+// categoryId (no other type info), synthesize a generic type under that
+// category and attach it.
+function rewriteV24Transactions(
+  v24: Versioned,
+  ensureGenericTypeFor: (categoryId: string) => string,
+): unknown[] {
   const transactions = Array.isArray(v24.transactions) ? v24.transactions : [];
-  const migratedTransactions = transactions.map((rawTx) => {
+  return transactions.map((rawTx) => {
     if (!isObj(rawTx)) return rawTx;
     const { categoryId, ...rest } = rawTx;
     if (typeof categoryId === "string" && categoryId !== "") {
@@ -719,9 +719,16 @@ function migrateV24ToV25(v24: Versioned): Versioned {
     }
     return rest;
   });
+}
 
-  // Merchant hints: drop categoryId; if the hint had no typeId, mint
-  // one under the categoryId so the hint stays useful.
+// Merchant hints: drop categoryId; if the hint had no typeId, mint one
+// under the categoryId so the hint stays useful. A hint with neither
+// carries nothing actionable anymore, so it is dropped (the validator
+// would drop it on load anyway).
+function rewriteV24MerchantHints(
+  v24: Versioned,
+  ensureGenericTypeFor: (categoryId: string) => string,
+): Record<string, unknown> {
   const merchantHints = isObj(v24.merchantHints) ? v24.merchantHints : {};
   const migratedHints: Record<string, unknown> = {};
   for (const [key, rawHint] of Object.entries(merchantHints)) {
@@ -738,14 +745,18 @@ function migrateV24ToV25(v24: Versioned): Versioned {
       };
       continue;
     }
-    // No category and no type — the hint carries nothing actionable
-    // anymore, so drop it. The validator would drop it on load anyway.
   }
+  return migratedHints;
+}
 
-  // Match rules: drop categoryId; if the rule had no typeId, mint one
-  // under the categoryId so the rule still labels.
+// Match rules: drop categoryId; if the rule had no typeId, mint one
+// under the categoryId so the rule still labels.
+function rewriteV24MatchRules(
+  v24: Versioned,
+  ensureGenericTypeFor: (categoryId: string) => string,
+): unknown[] {
   const matchRules = Array.isArray(v24.matchRules) ? v24.matchRules : [];
-  const migratedRules = matchRules.map((rawRule) => {
+  return matchRules.map((rawRule) => {
     if (!isObj(rawRule)) return rawRule;
     const { categoryId, ...rest } = rawRule;
     if (typeof rawRule.typeId === "string" && rawRule.typeId !== "") {
@@ -761,6 +772,56 @@ function migrateV24ToV25(v24: Versioned): Versioned {
     }
     return rest;
   });
+}
+
+function migrateV24ToV25(v24: Versioned): Versioned {
+  const sheets = Array.isArray(v24.sheets) ? v24.sheets : [];
+  const existingTypes = Array.isArray(v24.types)
+    ? (v24.types as Array<Record<string, unknown>>)
+    : [];
+  const existingCategories = Array.isArray(v24.categories)
+    ? (v24.categories as Array<Record<string, unknown>>)
+    : [];
+
+  const { typeUsage, rowCategoryWithoutType } = computeV24TypeUsage(sheets);
+
+  // Build the migrated user-types list. Drop any non-object entries (the
+  // v25 validator would reject them anyway) and stamp each with its
+  // computed categoryId. Names + colors + glyphs come through unchanged.
+  const types: Array<Record<string, unknown>> = existingTypes
+    .filter(isObj)
+    .map((t) => ({
+      ...t,
+      categoryId: pickV24CategoryForType(t, typeUsage),
+    }));
+
+  const knownCategoryNames = new Map<string, string>();
+  for (const c of existingCategories) {
+    if (isObj(c) && typeof c.id === "string" && typeof c.name === "string") {
+      knownCategoryNames.set(c.id, c.name);
+    }
+  }
+  const ensureGenericTypeFor = createV24GenericTypeMinter(
+    types,
+    knownCategoryNames,
+  );
+
+  // Mint orphan-row generics first so the appended-type order (and the
+  // `newId()` sequence) stays deterministic across the four reference
+  // surfaces: orphan rows, then transactions, hints, and match rules.
+  const orphanLookup = new Map<string, string>();
+  for (const orphan of rowCategoryWithoutType) {
+    const key = `${orphan.sheetIdx}:${orphan.itemIdx}:${orphan.rowIdx}`;
+    orphanLookup.set(key, ensureGenericTypeFor(orphan.categoryId));
+  }
+
+  const migratedSheets = rewriteV24Sheets(sheets, orphanLookup);
+  const migratedTransactions = rewriteV24Transactions(
+    v24,
+    ensureGenericTypeFor,
+  );
+  const migratedHints = rewriteV24MerchantHints(v24, ensureGenericTypeFor);
+  const migratedRules = rewriteV24MatchRules(v24, ensureGenericTypeFor);
 
   return {
     ...v24,
