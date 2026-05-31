@@ -1,6 +1,10 @@
 import { useState } from "react";
 
-import { allCompanyCategories } from "../../data/presets/merge";
+import {
+  allCategories,
+  allCompanyCategories,
+  allTypes,
+} from "../../data/presets/merge";
 import { AchievementUnlockModal } from "../AchievementUnlockModal";
 import { AchievementsModal } from "../AchievementsModal";
 import { ActionHistoryModal } from "../ActionHistoryModal";
@@ -468,8 +472,8 @@ export function UniversalModalHost(props: Props) {
             : null
         }
         companies={data.companies}
-        types={data.types}
-        categories={data.categories}
+        types={allTypes(data)}
+        categories={allCategories(data)}
         companyCategories={allCompanyCategories(data)}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
