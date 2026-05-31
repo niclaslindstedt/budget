@@ -8,6 +8,7 @@ const company: CompanyCatalog = {
   omitCompany: "Utelämna företag",
   omittedLabel: "Företag utelämnat",
   newCompany: "Nytt företag",
+  editCompany: "Redigera företag",
   noCompaniesYet: "Inga företag än.",
   name: "Namn",
   namePlaceholder: "H&M",

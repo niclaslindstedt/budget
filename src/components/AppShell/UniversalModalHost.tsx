@@ -5,6 +5,7 @@ import { AchievementsModal } from "../AchievementsModal";
 import { ActionHistoryModal } from "../ActionHistoryModal";
 import { BudgetTransferSearchModal } from "../budget/BudgetTransferSearchModal";
 import { ChangelogModal } from "../ChangelogModal";
+import { CompanyEditorModal } from "../CompanyEditorModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ConflictResolutionModal } from "../ConflictResolutionModal";
 import { DownloadModal } from "../DownloadModal";
@@ -136,6 +137,11 @@ export function UniversalModalHost(props: Props) {
   // (`data`, `dispatch`, `storageState.status`) are already host props, so
   // they live here cleanly.
   const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
+  // Company editor opened from a budget row's company pill (long-press /
+  // right-click). Holds the id of the company under edit; the modal
+  // resolves it against the live `data.companies` so a concurrent rename
+  // never edits a stale snapshot.
+  const [editCompanyId, setEditCompanyId] = useState<string | null>(null);
   const {
     achievementsModalOpen,
     setAchievementsModalOpen,
@@ -187,6 +193,7 @@ export function UniversalModalHost(props: Props) {
     openChangelog: () => setChangelogManualOpen(true),
     openSyncDetails: () => setSyncDetailsOpen(true),
     openSettings: () => setSettingsOpen(true),
+    editCompany: (companyId: string) => setEditCompanyId(companyId),
   });
   const {
     status,
@@ -443,6 +450,21 @@ export function UniversalModalHost(props: Props) {
         onMoveMatchRule={onMoveMatchRule}
         onReapplyMatchRules={onReapplyMatchRules}
         onDeleteAccount={onDeleteAccount}
+      />
+      <CompanyEditorModal
+        open={editCompanyId !== null}
+        company={
+          editCompanyId !== null
+            ? (data.companies.find((c) => c.id === editCompanyId) ?? null)
+            : null
+        }
+        companies={data.companies}
+        types={data.types}
+        categories={data.categories}
+        onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
+        onSubmit={onUpdateCompany}
+        onClose={() => setEditCompanyId(null)}
       />
       <ChangelogModal
         open={changelogOpen}
