@@ -98,6 +98,16 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .accounts-table .hidden.md\:inline {
     display: none;
   }
+  /* Items table: drop the purchased-date column on landscape phones for
+     the same reason as the accounts bank cell — Tailwind's `md:table-cell`
+     re-shows it at width ≥ 768px and it would auto-place into a second
+     grid row. The header labels lean on the same hidden / md:inline pair. */
+  .items-table .items-purchased-cell {
+    display: none;
+  }
+  .items-table .hidden.md\:inline {
+    display: none;
+  }
 }
 
 /* Centered modals float in the middle of the viewport, so their

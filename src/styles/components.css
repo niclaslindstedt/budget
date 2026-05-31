@@ -480,6 +480,94 @@
       color: var(--fg-bright);
     }
 
+    /* Items table — mirrors the accounts sheet's swipe affordance with a
+       two-button action strip (edit / delete). Desktop keeps the inline
+       icons; mobile converts the table to a block / per-row grid so
+       `position: relative` on `<tr>` establishes a containing block the
+       absolutely-positioned action cell anchors to. Without the grid
+       conversion the action cell auto-places into a non-existent column
+       track and wraps to a second row — the bug this block fixes. */
+    .items-table,
+    .items-table > thead,
+    .items-table > tbody,
+    .items-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .items-table > thead > tr,
+    .items-table > tbody > tr:not(.items-fullspan) {
+      /* 40px icon · flex name · purchase value · current value, each
+         money column sized to its content with a 60px floor. The
+         purchased-date column drops on mobile (Tailwind `hidden`); its
+         landscape `md:table-cell` is overridden unlayered in chrome.css,
+         mirroring the accounts bank cell. The action cell sits outside
+         the grid as an absolute overlay so the wrench column reserves no
+         track on mobile. */
+      display: grid;
+      grid-template-columns:
+        40px minmax(0, 1fr) minmax(60px, max-content)
+        minmax(60px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    .items-table > tbody > tr.items-fullspan {
+      display: block;
+      width: 100%;
+    }
+    .items-table > tbody > tr.items-fullspan > td {
+      display: block;
+      width: 100%;
+    }
+    .items-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .items-table th,
+    .items-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .items-table th > *,
+    .items-table td > * {
+      width: 100%;
+    }
+    .items-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .items-table > tbody > tr.is-swiped > td:not(.items-action-cell) {
+      transform: translateX(-96px);
+    }
+    .items-table > thead > tr > .items-action-cell,
+    .items-table > tbody > tr > .items-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* 96px — two buttons (edit / delete) at a ~48px tap target each;
+         matches the cell's desktop `w-24` so the strip lines up. */
+      width: 96px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .items-table > tbody > tr.is-swiped > .items-action-cell {
+      transform: translateX(0);
+    }
+    .items-table > tbody > tr > .items-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .items-table > tbody > tr > .items-action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
+
     /* Transfers table — single-button swipe strip (edit only) using the
        same overlay pattern as the accounts and budget tables, but at
        half the width since there's only one action. The desktop
