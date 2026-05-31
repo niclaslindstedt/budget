@@ -88,6 +88,32 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("label");
   });
 
+  it("fires itemized when a row gains a line-item link", () => {
+    const prev = withItem([{ id: "r1", cells: { a: -20000 } }]);
+    const next = withItem([
+      {
+        id: "r1",
+        cells: { a: -20000 },
+        lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      },
+    ]);
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("itemized");
+  });
+
+  it("does not refire itemized if already unlocked", () => {
+    const prev = withItem([{ id: "r1", cells: {} }]);
+    const next = withItem([
+      {
+        id: "r1",
+        cells: {},
+        lineItems: [{ id: "l1", itemId: "i1", amount: -1 }],
+      },
+    ]);
+    const fresh = deriveUnlocks(prev, next, { itemized: 1 });
+    expect(fresh).not.toContain("itemized");
+  });
+
   it("fires tagger when a row gains its first tag", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {}, tagIds: ["tag1"] }]);

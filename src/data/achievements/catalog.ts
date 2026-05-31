@@ -6,6 +6,7 @@ import {
   ArrowUpDown,
   Bookmark,
   BookOpen,
+  Boxes,
   Brain,
   Building2,
   Calculator,
@@ -198,6 +199,14 @@ const hasReorderedColumns = (s: UserData) =>
   });
 const hasPrimaryIncomeSeries = (s: UserData) =>
   Object.values(s.seriesMetadata).some((m) => m.isPrimaryIncome === true);
+// A line item ties part of an entry's amount to an owned `Item`. Links
+// live inline on user rows (`Row.lineItems`) and on bank-imported
+// transactions (`HistoryEntry.lineItems`), so both surfaces are scanned.
+const hasLineItem = (s: UserData) =>
+  eachRow(s, (r) => Array.isArray(r.lineItems) && r.lineItems.length > 0) ||
+  Object.values(s.history).some((arr) =>
+    arr.some((e) => Array.isArray(e.lineItems) && e.lineItems.length > 0),
+  );
 const hasMultipartItem = (s: UserData) =>
   eachAccountBudget(s, (i) => {
     const corrections = i.rows.filter((r) => r.kind === "correction").length;
@@ -935,6 +944,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     tier: "expert",
     glyph: Code2,
     trigger: { kind: "manual" },
+  },
+  {
+    id: "itemized",
+    tier: "expert",
+    glyph: Boxes,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets, s.history],
+      predicate: (prev, next) => !hasLineItem(prev) && hasLineItem(next),
+    },
   },
   {
     id: "completionist",
