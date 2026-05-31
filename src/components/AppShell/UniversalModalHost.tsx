@@ -26,6 +26,7 @@ import { useChangelogState } from "./hooks/useChangelogState";
 import { useSettingsModal } from "./hooks/useSettingsModal";
 import { useSyncAutoOpens } from "./hooks/useSyncAutoOpens";
 import { unlock as unlockAchievement } from "../../data/achievements";
+import { newId } from "../../data/sheet";
 import type { Action } from "../../data/reducer";
 import type {
   AccountBudget,
@@ -154,6 +155,10 @@ export function UniversalModalHost(props: Props) {
   // the live `data.items` so a concurrent change never edits a stale
   // snapshot.
   const [editItemId, setEditItemId] = useState<string | null>(null);
+  // Item editor opened in create mode from the Items sheet's "+ add
+  // item" button. Distinct from `editItemId` so the two flows don't
+  // alias each other — create has no id to resolve.
+  const [creatingItem, setCreatingItem] = useState(false);
   const {
     achievementsModalOpen,
     setAchievementsModalOpen,
@@ -207,6 +212,7 @@ export function UniversalModalHost(props: Props) {
     openSettings: () => setSettingsOpen(true),
     editCompany: (companyId: string) => setEditCompanyId(companyId),
     editItem: (itemId: string) => setEditItemId(itemId),
+    createItem: () => setCreatingItem(true),
   });
   const {
     status,
@@ -522,8 +528,9 @@ export function UniversalModalHost(props: Props) {
         onClose={() => setEditCompanyId(null)}
       />
       <ItemEditorModal
-        open={editItemId !== null}
+        open={editItemId !== null || creatingItem}
         item={editItem}
+        creating={creatingItem}
         subtypes={data.subtypes}
         types={allTypes(data)}
         categories={allCategories(data)}
@@ -536,11 +543,18 @@ export function UniversalModalHost(props: Props) {
           dispatch({ type: "updateItem", itemId, patch });
           setEditItemId(null);
         }}
+        onCreate={(draft) => {
+          dispatch({ type: "addItem", item: { id: newId(), ...draft } });
+          setCreatingItem(false);
+        }}
         onDelete={(itemId) => {
           dispatch({ type: "deleteItem", itemId });
           setEditItemId(null);
         }}
-        onClose={() => setEditItemId(null)}
+        onClose={() => {
+          setEditItemId(null);
+          setCreatingItem(false);
+        }}
       />
       <ChangelogModal
         open={changelogOpen}

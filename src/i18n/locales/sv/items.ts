@@ -43,6 +43,7 @@ const items: ItemsCatalog = {
   buttonDisabled: "Slutför eller rensa den halvfyllda prylen först.",
   // Edit-item modal
   editItemTitle: "Redigera sak",
+  newItemTitle: "Ny sak",
   purchasePrice: "Inköpspris",
   purchasePricePlaceholder: "t.ex. 12 000",
   linkedTotal: "Kopplade rader: {amount}",

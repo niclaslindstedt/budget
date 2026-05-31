@@ -1,24 +1,20 @@
+import { countSheetItemRows } from "../data/sheet-types";
 import type { UserData } from "../data/types";
 import type { BackupMetadata } from "./adapter";
 
 // Builds the `BackupMetadata` that gets recorded in the index when a
 // backup is taken. `accountCount` is the user's known accounts;
-// `entryCount` is the sum of every `AccountBudget`'s row count
-// across every sheet — auxiliary bank-history entries are excluded
-// because long imported statements would dominate the figure and
-// make distinct snapshots indistinguishable.
+// `entryCount` is the sum of every row-bearing sheet item's row count
+// across every sheet (today only budgets, but routed through the
+// sheet-type registry so a future row-bearing flavour is counted too)
+// — auxiliary bank-history entries are excluded because long imported
+// statements would dominate the figure and make distinct snapshots
+// indistinguishable.
 export function describeBackup(
   data: UserData,
   options: { filename: string; createdAt?: number; autoCreated?: boolean },
 ): BackupMetadata {
-  let entryCount = 0;
-  for (const sheet of data.sheets) {
-    for (const item of sheet.items) {
-      if (item.type === "accountBudget") {
-        entryCount += item.rows.length;
-      }
-    }
-  }
+  const entryCount = countSheetItemRows(data);
   return {
     filename: options.filename,
     createdAt: options.createdAt ?? Date.now(),

@@ -34,6 +34,7 @@ export type {
 export type {
   AccountBudget,
   AccountsView,
+  ItemsView,
   Sheet,
   SheetGlyph,
   SheetItem,

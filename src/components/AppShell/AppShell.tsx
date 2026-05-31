@@ -24,6 +24,7 @@ import { useUndoRedo } from "./hooks/useUndoRedo";
 
 import { AccountsModalHost } from "./AccountsModalHost";
 import { AccountsPage } from "../accounts/AccountsPage";
+import { ItemsPage } from "../items/ItemsPage";
 import { AppLoading } from "../AppLoading";
 import { BottomBar } from "../BottomBar";
 import { BudgetModalHost } from "./BudgetModalHost";
@@ -689,6 +690,15 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onImportHistory={onOpenImportHistory}
                   onViewHistory={onOpenViewHistory}
                   onCutHistory={onOpenCutHistory}
+                />
+              ) : activeSheet.type === "items" ? (
+                <ItemsPage
+                  sheet={activeSheet}
+                  data={data}
+                  settings={effectiveSettings}
+                  onDeleteItem={(itemId) =>
+                    dispatch({ type: "deleteItem", itemId })
+                  }
                 />
               ) : (
                 <>

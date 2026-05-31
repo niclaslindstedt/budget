@@ -10,6 +10,8 @@ const sheetModal: SheetModalCatalog = {
   typeAccountsOverview: "Kontoöversikt",
   accountsHint:
     "Kontobladet är en arbetsytesövergripande översikt. Hantera konton och överföringar därifrån — ingen koppling per blad behövs.",
+  itemsHint:
+    "Prylbladet listar allt du äger, med vad varje sak kostade och vad den är värd nu. Lägg till prylar därifrån — ingen koppling per blad behövs.",
   color: "Färg",
   glyph: "Ikon",
   account: "Konto",

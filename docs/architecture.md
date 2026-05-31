@@ -108,12 +108,15 @@ src/
 │       ├── AccountRenamePredictorModal.tsx  # learned-rename suggestions
 │       ├── AccountTransferCollapseModal.tsx # cross-account pair collapse
 │       └── account-*-reducer.ts
+│   └── items/                # items page — owned-items catalog
+│       ├── ItemsPage.tsx         # page root — items table + totals + add button
+│       └── ItemRow.tsx           # one item row (swipe edit/delete, note popover)
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
 │   │   ├── user-data.ts        # UserData (version 53), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
-│   │   │                       #   SheetType, SheetGlyph
+│   │   │                       #   ItemsView, SheetType, SheetGlyph
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
@@ -147,7 +150,9 @@ src/
 │   │   │                   #   new file here plus a registry entry
 │   │   ├── budget.ts           # BUDGET_SHEET_DESCRIPTOR + createDefaultAccountBudget
 │   │   ├── accounts.ts         # ACCOUNTS_SHEET_DESCRIPTOR + createDefaultAccountsView
-│   │   └── index.ts            # SHEET_TYPE_REGISTRY + lookup helpers
+│   │   ├── items.ts            # ITEMS_SHEET_DESCRIPTOR + createDefaultItemsView
+│   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
+│   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
 │   │   │                   #   validators, and admin UIs read through
 │   │   ├── types.ts            # PRESET_ENTRY_TYPES + entry-type helpers
@@ -181,6 +186,9 @@ src/
 │   │   ├── balance.ts          # account-level aggregation (accountBalance)
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
+│   ├── items/
+│   │   └── value.ts            # computeItemCurrentValue / isItemOwned for the
+│   │                           #   Items page (resale value + depreciation)
 │   ├── achievements/      # the gamified "guided tour" system
 │   │   ├── catalog.ts          # achievement definitions + unlock predicates
 │   │   ├── derive.ts           # diff (prev, next) state → newly-unlocked ids
@@ -197,7 +205,11 @@ src/
 │   │   │   achievements.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
-│   │   ├── sheet.ts, account.ts, history.ts, rules.ts, settings.ts, theme.ts,
+│   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
+│   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
+│   │   │                       #   accountsView/itemsView) — cycle-free so the
+│   │   │                       #   sheet-type descriptors can import them
+│   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
 │   │   ├── index.ts            # LATEST_VERSION (52) + migrate() driver
@@ -477,16 +489,16 @@ outgoing on the `fromAccountId` side.
 type Sheet = {
   id: string;
   name: string;
-  type: SheetType; // today: "budget" | "accounts"; planners join later
+  type: SheetType; // today: "budget" | "accounts" | "items"; planners join later
   glyph: SheetGlyph; // displayed in the bottom tab bar
   color: string; // hex; tints the tab and the editor preview
   description: string; // free-form note shown in the modal
   items: SheetItem[]; // typed blocks rendered inside the sheet
 };
 
-type SheetType = "budget" | "accounts";
+type SheetType = "budget" | "accounts" | "items";
 type SheetGlyph = CategoryIcon; // reuses the glyph allowlist
-type SheetItem = AccountBudget | AccountsView;
+type SheetItem = AccountBudget | AccountsView | ItemsView;
 
 type AccountBudget = {
   id: string;
@@ -497,6 +509,7 @@ type AccountBudget = {
 };
 
 type AccountsView = { id: string; type: "accountsView" }; // singleton dashboard
+type ItemsView = { id: string; type: "itemsView" }; // singleton owned-items catalog
 
 type ColumnType =
   | "date"
