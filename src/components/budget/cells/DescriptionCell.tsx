@@ -254,7 +254,10 @@ export function DescriptionCell({
           // description text with a low-key Building2 glyph so the
           // tagged-merchant state is visible at a glance even when the
           // company name is hidden behind the description override.
-          const showCompanyGlyph = !fallback && hasValue && !!company;
+          // Suppressed when the row also has line items — the item glyph
+          // below stands in, and one leading glyph is enough.
+          const showCompanyGlyph =
+            !fallback && hasValue && !!company && !hasLineItems;
           // Same idea for line items: when the row has a user-authored
           // description AND line items, prefix it with the item glyph
           // (Package / Boxes) so the line-item state stays visible.
@@ -598,14 +601,6 @@ function DescriptionPopover({
         )}
         {lineItems && lineItems.length > 0 && (
           <div className="border-t border-line bg-surface-3 px-2 py-1.5">
-            <div className="mb-1 flex items-center gap-1.5 text-xs text-muted">
-              {lineItems.length > 1 ? (
-                <Boxes size={12} aria-hidden focusable={false} />
-              ) : (
-                <Package size={12} aria-hidden focusable={false} />
-              )}
-              <span>{t("cell.lineItems")}</span>
-            </div>
             <ul className="flex flex-col gap-0.5">
               {lineItems.map((li) => (
                 <li
