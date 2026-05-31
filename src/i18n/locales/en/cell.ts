@@ -18,6 +18,7 @@ const cell = {
   editRecurring: "Edit recurring entry",
   split: "Split row",
   lineItems: "Line items",
+  unknownItem: "Unknown item",
   copy: "Copy to other months",
   labelByPattern: "Label by pattern",
   labelByPatternTitle: "Label every history entry matching a wildcard pattern",

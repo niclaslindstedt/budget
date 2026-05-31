@@ -16,6 +16,7 @@ import { ReadonlyCompletedCell } from "./cells/CompletedCell";
 import { CELL_BASE } from "./cells/constants";
 import { DateCell, ReadonlyDateCell } from "./cells/DateCell";
 import {
+  type CellLineItem,
   DescriptionCell,
   TransferDescriptionCell,
 } from "./cells/DescriptionCell";
@@ -83,6 +84,12 @@ type Props = {
   // when no override is in play (the placeholder already shows the
   // bank text) and on every non-history row.
   bankDescription?: string;
+  // The row's resolved line items (item name + formatted amount),
+  // passed only to the `description` column. Drives the line-item pill /
+  // glyph on the trigger and the read-only list at the bottom of the
+  // description popover. Undefined on every non-description column and
+  // on rows with no line items.
+  lineItems?: readonly CellLineItem[];
   // True when the row carries an `amountFormula`. The amount cell
   // becomes read-only (the value comes from the formula resolver) and
   // surfaces a small `fx` glyph so the user can tell at a glance that
@@ -161,6 +168,7 @@ function CellImpl({
   fiscalMonthShift,
   descriptionPlaceholder,
   bankDescription,
+  lineItems,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -237,6 +245,7 @@ function CellImpl({
               companies={companies}
               placeholder={descriptionPlaceholder}
               bankDescription={bankDescription}
+              lineItems={lineItems}
               onChange={onChange}
               onCommit={onCommit}
               onSetCompany={onSetCompany}
@@ -287,6 +296,7 @@ function CellImpl({
           entryType={entryType ?? null}
           company={company ?? null}
           companies={companies}
+          lineItems={lineItems}
           onChange={onChange}
           onCommit={onCommit}
           onSetCompany={onSetCompany}
