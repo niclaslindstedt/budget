@@ -41,6 +41,27 @@ const items: ItemsCatalog = {
   needItemAndAmount: "Varje pryl behöver både en pryl och ett belopp.",
   button: "Spara",
   buttonDisabled: "Slutför eller rensa den halvfyllda prylen först.",
+  // Edit-item modal
+  editItemTitle: "Redigera sak",
+  purchasePrice: "Inköpspris",
+  purchasePricePlaceholder: "t.ex. 12 000",
+  linkedTotal: "Kopplade rader: {amount}",
+  acquiredAt: "Inköpt",
+  depreciates: "Skrivs av över tid",
+  ratePerYear: "Takt per år (%)",
+  ratePerYearPlaceholder: "t.ex. 20",
+  depreciationFloor: "Lägsta värde (valfritt)",
+  resaleValue: "Andrahandsvärde",
+  disposed: "Såld eller avyttrad",
+  disposedAt: "Datum",
+  soldFor: "Såld för",
+  itemNote: "Notering",
+  itemNotePlaceholder: "t.ex. serienummer, skick",
+  deleteItem: "Ta bort sak",
+  deleteItemConfirm:
+    "Ta bort den här saken? Dess radkopplingar tas bort från alla poster.",
+  editItemAria: "Redigera {name}",
+  save: "Spara",
 };
 
 export default items;

@@ -21,7 +21,7 @@ export type {
   Tag,
 } from "./categories";
 
-export type { Item, LineItemLink } from "./items";
+export type { Item, ItemDepreciation, LineItemLink } from "./items";
 
 export type {
   Account,

@@ -39,7 +39,8 @@ export type ModalCommand =
   | { kind: "open-edit-history"; row: Row }
   | { kind: "open-copy-row"; row: Row }
   | { kind: "open-correction-delete"; row: Row }
-  | { kind: "open-edit-company"; companyId: string };
+  | { kind: "open-edit-company"; companyId: string }
+  | { kind: "open-edit-item"; itemId: string };
 
 export type ModalDispatch = (command: ModalCommand) => void;
 
@@ -76,6 +77,12 @@ export type ModalCommandHandlers = {
   // pill, so the user can rename a merchant (or re-pin its associated
   // types) without detouring through Settings → Companies.
   editCompany: (companyId: string) => void;
+  // Open the edit-item modal for an owned item. Fired by the long-press /
+  // right-click on a single-item row's line-item pill and by clicking a
+  // line item in the description popover, so the user can set an item's
+  // purchase price, depreciation, resale value, and disposal without
+  // going through the per-entry line-items links modal.
+  editItem: (itemId: string) => void;
 };
 
 // A subset of the handler table. AppShell supplies a base slice (the
@@ -152,6 +159,9 @@ export function applyModalCommand(
       return;
     case "open-edit-company":
       handlers.editCompany(command.companyId);
+      return;
+    case "open-edit-item":
+      handlers.editItem(command.itemId);
       return;
   }
 }

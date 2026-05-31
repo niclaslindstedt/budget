@@ -111,7 +111,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 51), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 52), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
@@ -200,7 +200,7 @@ src/
 │   │   ├── sheet.ts, account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (50) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (52) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
 │   │   ├── modern.ts           # v31 → v50 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
@@ -327,7 +327,7 @@ Each document carries its own `version` field. Top-level shape:
 
 ```ts
 type UserData = {
-  version: 50;
+  version: 52;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -547,7 +547,7 @@ an imported file — runs through `parseUserData()` in
    (unknown column type, duplicate ids, wrong field types) are surfaced
    as an error string.
 
-Current `LATEST_VERSION` is `50`. The chain has forty-nine steps:
+Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
 
 - **v1 → v2** — adds top-level `categories: []` and inserts a
   `category` column into every sheet (removed again in v25).
@@ -646,6 +646,10 @@ Current `LATEST_VERSION` is `50`. The chain has forty-nine steps:
 []`, plus optional `Company.companyCategoryId`. The runtime layers
   built-in `PRESET_COMPANY_CATEGORIES` on top, so both arrays seed
   empty; all three shape changes are absence-tolerant.
+- **v51 → v52** — grows `Item` with `purchasePrice`, a `depreciation`
+  rule (`ItemDepreciation`, percent-per-year), a `resaleValue` override,
+  and disposal (`disposedAt` / `soldFor`). A bare version bump — every
+  new field is optional per item, so a v51 record is absence-tolerant.
 
 ## State management
 
