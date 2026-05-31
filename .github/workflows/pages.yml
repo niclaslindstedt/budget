@@ -11,10 +11,10 @@ on:
         type: string
         default: ""
   # Allow release.yml to chain into us after a tag is pushed. The tag
-  # passes in via `release_ref`; otherwise we resolve the latest `v*`
-  # tag with `git describe`. Before the first release ever exists,
-  # both lookups come up empty and we fall back to serving `main` at
-  # `/` — same as the pre-release-pipeline behaviour.
+  # passes in via `release_ref`; otherwise we resolve the highest `v*`
+  # semver tag in the repo. Before the first release ever exists, both
+  # lookups come up empty and we fall back to serving `main` at `/` —
+  # same as the pre-release-pipeline behaviour.
   workflow_call:
     inputs:
       release_ref:
@@ -59,7 +59,15 @@ jobs:
           if [ -n "${{ inputs.release_ref }}" ]; then
             REF="${{ inputs.release_ref }}"
           else
-            REF=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+            # Highest semver tag, not the nearest reachable one: a
+            # release cut from an earlier commit (release.yml's `commit`
+            # input) tags a commit that is NOT an ancestor of main, so
+            # `git describe` would miss it and silently re-serve main at
+            # `/`. Sorting all `v*` tags by version keeps the released
+            # tag served regardless of ancestry. Only release.yml ever
+            # creates tags here, so the highest one is always the
+            # intended production release.
+            REF=$(git tag --list 'v*' --sort=-v:refname | head -n1)
           fi
           if [ -n "$REF" ]; then
             echo "ref=$REF" >> "$GITHUB_OUTPUT"

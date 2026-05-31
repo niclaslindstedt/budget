@@ -6,6 +6,16 @@ name: Release
 # a GitHub Release, then chains into pages.yml so the new tag is
 # served at `/` (and the same code at `/preview/` because main now
 # matches the tag) without waiting for the next push.
+#
+# `commit` is normally empty — the release is cut from main HEAD and
+# the release commit is fast-forwarded onto main. Set it to a sha or
+# ref to cut a release from an earlier commit when main has since
+# advanced with changes not meant for this release: the workflow then
+# builds the version-bump + changelog commit on top of that commit,
+# tags it, and pushes ONLY the tag (main is left untouched, because
+# the release commit is not a fast-forward of HEAD). Reconciling main
+# afterwards — bumping its version and consuming the same fragments —
+# is the maintainer's job.
 
 on:
   workflow_dispatch:
@@ -19,6 +29,11 @@ on:
           - patch
           - minor
           - major
+      commit:
+        description: "Optional commit sha or ref to release from. Defaults to main HEAD. Use to cut a release from an earlier commit when main has advanced past it."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -62,6 +77,20 @@ jobs:
             exit 1
           fi
 
+      # When `commit` is set, detach onto that commit so the bump,
+      # changelog collation, and build below all run against its tree
+      # rather than main HEAD. Reinstall deps so the build matches the
+      # commit's lockfile.
+      - name: Check out target commit
+        if: inputs.commit != ''
+        run: |
+          git checkout --detach "${{ inputs.commit }}"
+          git --no-pager log -1 --oneline
+
+      - name: Reinstall deps for target commit
+        if: inputs.commit != ''
+        run: npm ci
+
       - name: Bump version
         id: bump
         run: |
@@ -87,13 +116,18 @@ jobs:
         env:
           TAG: ${{ steps.bump.outputs.tag }}
           VERSION: ${{ steps.bump.outputs.version }}
+          FROM_COMMIT: ${{ inputs.commit }}
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add package.json package-lock.json CHANGELOG.md .changes/unreleased
           git commit -m "chore(release): v${VERSION}"
           git tag -a "$TAG" -m "Release ${TAG}"
-          git push origin HEAD:main
+          if [ -z "$FROM_COMMIT" ]; then
+            git push origin HEAD:main
+          else
+            echo "Releasing from ${FROM_COMMIT} — pushing the tag only, leaving main untouched."
+          fi
           git push origin "$TAG"
 
       - name: Create GitHub Release

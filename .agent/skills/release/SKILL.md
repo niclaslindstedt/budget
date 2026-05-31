@@ -96,6 +96,35 @@ Don't switch terminals while it runs — the workflow pushes a commit
 and a tag back to `main`, and any local work on `main` after that
 needs to be rebased.
 
+### Releasing from an earlier commit
+
+If `main` has advanced past the point you want to ship — e.g. a
+feature landed that isn't meant for this release — pass the sha or
+ref to cut the release from:
+
+```sh
+gh workflow run release.yml -f bump=major -f commit=<sha>
+```
+
+With `commit` set the workflow detaches onto that commit, builds the
+bump + changelog commit on top of it, tags it, and pushes **only the
+tag** — `main` is left untouched, since the release commit is not a
+fast-forward of HEAD. Two consequences to plan for:
+
+- **The changelog is collated from the fragments present at that
+  commit**, not from current `main`. Fragments added after the
+  commit won't appear in this release.
+- **`main` keeps its old `package.json` version and its fragments.**
+  Nothing reconciles it automatically. Before the next ordinary
+  release from `main`, bump `main`'s version past the tag you just
+  cut and prune the fragments this release already consumed, or the
+  next release will compute a lower version and re-ship the same
+  notes.
+
+`pages.yml` resolves the production slot from the highest `v*` semver
+tag (not the nearest ancestor), so the tag is served at `/` even
+though it sits off to the side of `main`.
+
 ## Post-flight verification
 
 After the workflow finishes successfully:
