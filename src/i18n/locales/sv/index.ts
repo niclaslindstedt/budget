@@ -55,6 +55,7 @@ import sheetModal from "./sheetModal";
 import category from "./category";
 import type from "./type";
 import company from "./company";
+import companyCategory from "./companyCategory";
 import tag from "./tag";
 import items from "./items";
 import glyph from "./glyph";
@@ -71,6 +72,7 @@ import changelog from "./changelog";
 import privacy from "./privacy";
 import applySeries from "./applySeries";
 import presetCategories from "./presetCategories";
+import presetCompanyCategories from "./presetCompanyCategories";
 import presetTypes from "./presetTypes";
 import download from "./download";
 
@@ -126,6 +128,7 @@ export const sv: Catalog = {
   category,
   type,
   company,
+  companyCategory,
   tag,
   items,
   glyph,
@@ -142,6 +145,7 @@ export const sv: Catalog = {
   privacy,
   applySeries,
   presetCategories,
+  presetCompanyCategories,
   presetTypes,
   download,
 };

@@ -221,6 +221,33 @@ export type Company = {
   // none pinned; dangling ids (type later deleted) are swept on the
   // `deleteType` cascade and on load.
   typeIds?: readonly string[];
+  // The merchant's category — "Grocery stores", "Pharmacies", "Fuel" —
+  // used to analyse where the household shops. Optional; absent ⇒
+  // unclassified. A dangling id (the company category was deleted, or a
+  // preset removed in a newer build) is swept on load and on the
+  // `deleteCompanyCategory` cascade, mirroring how `Row.companyId`
+  // resolves. Single per company.
+  companyCategoryId?: string;
+};
+
+// A classification for companies / merchants — "Grocery stores",
+// "Pharmacies", "Fuel & charging". Sits one axis away from the budget
+// `Category` (which groups *rows* through their type): a company
+// category groups *merchants*, so the user can ask "how much do I spend
+// at grocery stores across every type?". Mirrors `Category` shape
+// (colour + glyph) so the picker and chips render identically.
+//
+// Like budget categories, a built-in list of Swedish-perspective
+// presets (`PRESET_COMPANY_CATEGORIES` in
+// `data/presets/company-categories.ts`) is layered on top of the
+// user's own at runtime; preset ids use the `preset-company-cat-<slug>`
+// prefix and the user can hide individual presets via
+// `UserData.hiddenPresetCompanyCategoryIds`.
+export type CompanyCategory = {
+  id: string;
+  name: string;
+  color: string;
+  icon: CategoryIcon;
 };
 
 // A user-defined label assigned to budget rows to group entries that

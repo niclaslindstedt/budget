@@ -5,6 +5,7 @@ import { newId } from "../../../data/sheet";
 import type {
   Category,
   Company,
+  CompanyCategory,
   EntryType,
   Item,
   Subtype,
@@ -37,6 +38,15 @@ type Result = {
     patch: Partial<Omit<Company, "id">>,
   ) => void;
   onDeleteCompany: (companyId: string) => void;
+  onCreateCompanyCategory: (
+    draft: Omit<CompanyCategory, "id">,
+  ) => CompanyCategory;
+  onUpdateCompanyCategory: (
+    companyCategoryId: string,
+    patch: Partial<Omit<CompanyCategory, "id">>,
+  ) => void;
+  onDeleteCompanyCategory: (companyCategoryId: string) => void;
+  onSetPresetCompanyCategoryHidden: (presetId: string, hidden: boolean) => void;
   onCreateTag: (draft: Omit<Tag, "id">) => Tag;
   onUpdateTag: (tagId: string, patch: Partial<Omit<Tag, "id">>) => void;
   onDeleteTag: (tagId: string) => void;
@@ -115,6 +125,29 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     (companyId: string) => dispatch({ type: "deleteCompany", companyId }),
     [dispatch],
   );
+  const onCreateCompanyCategory = useCallback(
+    (draft: Omit<CompanyCategory, "id">): CompanyCategory => {
+      const companyCategory: CompanyCategory = { id: newId(), ...draft };
+      dispatch({ type: "addCompanyCategory", companyCategory });
+      return companyCategory;
+    },
+    [dispatch],
+  );
+  const onUpdateCompanyCategory = useCallback(
+    (companyCategoryId: string, patch: Partial<Omit<CompanyCategory, "id">>) =>
+      dispatch({ type: "updateCompanyCategory", companyCategoryId, patch }),
+    [dispatch],
+  );
+  const onDeleteCompanyCategory = useCallback(
+    (companyCategoryId: string) =>
+      dispatch({ type: "deleteCompanyCategory", companyCategoryId }),
+    [dispatch],
+  );
+  const onSetPresetCompanyCategoryHidden = useCallback(
+    (presetId: string, hidden: boolean) =>
+      dispatch({ type: "setPresetCompanyCategoryHidden", presetId, hidden }),
+    [dispatch],
+  );
   const onCreateTag = useCallback(
     (draft: Omit<Tag, "id">): Tag => {
       const tag: Tag = { id: newId(), ...draft };
@@ -162,6 +195,10 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     onCreateCompany,
     onUpdateCompany,
     onDeleteCompany,
+    onCreateCompanyCategory,
+    onUpdateCompanyCategory,
+    onDeleteCompanyCategory,
+    onSetPresetCompanyCategoryHidden,
     onCreateTag,
     onUpdateTag,
     onDeleteTag,

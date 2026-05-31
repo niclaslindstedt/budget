@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { allCompanyCategories } from "../../data/presets/merge";
 import { AchievementUnlockModal } from "../AchievementUnlockModal";
 import { AchievementsModal } from "../AchievementsModal";
 import { ActionHistoryModal } from "../ActionHistoryModal";
@@ -265,6 +266,10 @@ export function UniversalModalHost(props: Props) {
     onCreateCompany,
     onUpdateCompany,
     onDeleteCompany,
+    onCreateCompanyCategory,
+    onUpdateCompanyCategory,
+    onDeleteCompanyCategory,
+    onSetPresetCompanyCategoryHidden,
     onCreateTag,
     onUpdateTag,
     onDeleteTag,
@@ -443,6 +448,10 @@ export function UniversalModalHost(props: Props) {
         onCreateCompany={onCreateCompany}
         onUpdateCompany={onUpdateCompany}
         onDeleteCompany={onDeleteCompany}
+        onCreateCompanyCategory={onCreateCompanyCategory}
+        onUpdateCompanyCategory={onUpdateCompanyCategory}
+        onDeleteCompanyCategory={onDeleteCompanyCategory}
+        onSetPresetCompanyCategoryHidden={onSetPresetCompanyCategoryHidden}
         onCreateTag={onCreateTag}
         onUpdateTag={onUpdateTag}
         onDeleteTag={onDeleteTag}
@@ -461,8 +470,10 @@ export function UniversalModalHost(props: Props) {
         companies={data.companies}
         types={data.types}
         categories={data.categories}
+        companyCategories={allCompanyCategories(data)}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompanyCategory={onCreateCompanyCategory}
         onSubmit={onUpdateCompany}
         onClose={() => setEditCompanyId(null)}
       />

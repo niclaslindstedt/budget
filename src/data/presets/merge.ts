@@ -3,8 +3,9 @@
 // full effective lists (presets the user hasn't hidden, then their own
 // entries) go through these so the merge rule lives in one place.
 
-import type { Category, EntryType, UserData } from "../types";
+import type { Category, CompanyCategory, EntryType, UserData } from "../types";
 import { visiblePresetCategories } from "./categories";
+import { visiblePresetCompanyCategories } from "./company-categories";
 import { visiblePresetTypes } from "./types";
 
 // Effective type list shown to pickers and renderers: visible presets
@@ -28,5 +29,12 @@ export function allCategories(data: UserData): Category[] {
   return [
     ...visiblePresetCategories(data.hiddenPresetCategoryIds),
     ...data.categories,
+  ];
+}
+
+export function allCompanyCategories(data: UserData): CompanyCategory[] {
+  return [
+    ...visiblePresetCompanyCategories(data.hiddenPresetCompanyCategoryIds),
+    ...data.companyCategories,
   ];
 }

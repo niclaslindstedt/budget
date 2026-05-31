@@ -12,6 +12,7 @@ import { detectPaydayDayOfMonth } from "../../data/budget/payday";
 import type {
   Category,
   Company,
+  CompanyCategory,
   DecimalSeparator,
   EntryType,
   Settings,
@@ -167,6 +168,17 @@ type Props = {
     patch: Partial<Omit<Company, "id">>,
   ) => void;
   onDeleteCompany: (companyId: string) => void;
+  // Company-category admin — preset + user-curated; presets are
+  // hide-only, user entries get full edit/delete.
+  onCreateCompanyCategory: (
+    draft: Omit<CompanyCategory, "id">,
+  ) => CompanyCategory;
+  onUpdateCompanyCategory: (
+    id: string,
+    patch: Partial<Omit<CompanyCategory, "id">>,
+  ) => void;
+  onDeleteCompanyCategory: (id: string) => void;
+  onSetPresetCompanyCategoryHidden: (presetId: string, hidden: boolean) => void;
   // Tag admin — full edit/delete on user-curated tags; no presets
   // ship so there's no hide-toggle.
   onCreateTag: (draft: Omit<Tag, "id">) => Tag;
@@ -260,6 +272,10 @@ export function SettingsModal({
   onCreateCompany,
   onUpdateCompany,
   onDeleteCompany,
+  onCreateCompanyCategory,
+  onUpdateCompanyCategory,
+  onDeleteCompanyCategory,
+  onSetPresetCompanyCategoryHidden,
   onCreateTag,
   onUpdateTag,
   onDeleteTag,
@@ -506,6 +522,12 @@ export function SettingsModal({
                 onDeleteCompany={onDeleteCompany}
                 onCreateType={onCreateType}
                 onCreateCategory={onCreateCategory}
+                onCreateCompanyCategory={onCreateCompanyCategory}
+                onUpdateCompanyCategory={onUpdateCompanyCategory}
+                onDeleteCompanyCategory={onDeleteCompanyCategory}
+                onSetPresetCompanyCategoryHidden={
+                  onSetPresetCompanyCategoryHidden
+                }
               />
             )}
             {activeTab === "tags" && (

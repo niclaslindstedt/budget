@@ -1,10 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { Building2, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 
-import type { Category, Company, EntryType } from "../../data/types";
+import type {
+  Category,
+  Company,
+  CompanyCategory,
+  EntryType,
+} from "../../data/types";
 import { useDesktopAutoFocus, useDragReorder } from "../../hooks";
 import { useT } from "../../i18n";
 import { arrayMove } from "../../utils/reorder";
+import { CompanyCategoryPicker } from "../CompanyCategoryPicker";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button, ClearableInput } from "../form";
 import { TypeChip, TypePicker } from "../TypePicker";
@@ -18,6 +24,7 @@ type Props = {
   companies: readonly Company[];
   types: readonly EntryType[];
   categories: readonly Category[];
+  companyCategories: readonly CompanyCategory[];
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
   onUpdateCompany: (
     companyId: string,
@@ -26,17 +33,22 @@ type Props = {
   onDeleteCompany: (companyId: string) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompanyCategory: (
+    draft: Omit<CompanyCategory, "id">,
+  ) => CompanyCategory;
 };
 
 export function CompaniesAdmin({
   companies,
   types,
   categories,
+  companyCategories,
   onCreateCompany,
   onUpdateCompany,
   onDeleteCompany,
   onCreateType,
   onCreateCategory,
+  onCreateCompanyCategory,
 }: Props) {
   const t = useT();
   const sorted = useMemo(
@@ -73,8 +85,10 @@ export function CompaniesAdmin({
                   existing={companies}
                   types={types}
                   categories={categories}
+                  companyCategories={companyCategories}
                   onCreateType={onCreateType}
                   onCreateCategory={onCreateCategory}
+                  onCreateCompanyCategory={onCreateCompanyCategory}
                   submitLabel={t("common.save")}
                   onCancel={() => setEditingId(null)}
                   onSubmit={(draft) => {
@@ -125,8 +139,10 @@ export function CompaniesAdmin({
               existing={companies}
               types={types}
               categories={categories}
+              companyCategories={companyCategories}
               onCreateType={onCreateType}
               onCreateCategory={onCreateCategory}
+              onCreateCompanyCategory={onCreateCompanyCategory}
               submitLabel={t("common.add")}
               onCancel={() => setCreating(false)}
               onSubmit={(draft) => {
@@ -175,8 +191,10 @@ export function CompanyEditor({
   existing,
   types,
   categories,
+  companyCategories,
   onCreateType,
   onCreateCategory,
+  onCreateCompanyCategory,
   submitLabel,
   onCancel,
   onSubmit,
@@ -185,14 +203,21 @@ export function CompanyEditor({
   existing: readonly Company[];
   types: readonly EntryType[];
   categories: readonly Category[];
+  companyCategories: readonly CompanyCategory[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompanyCategory: (
+    draft: Omit<CompanyCategory, "id">,
+  ) => CompanyCategory;
   submitLabel: string;
   onCancel: () => void;
   onSubmit: (draft: Omit<Company, "id">) => void;
 }) {
   const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
+  const [companyCategoryId, setCompanyCategoryId] = useState<string | null>(
+    initial?.companyCategoryId ?? null,
+  );
   const [typeIds, setTypeIds] = useState<string[]>(() =>
     initial?.typeIds ? [...initial.typeIds] : [],
   );
@@ -237,6 +262,7 @@ export function CompanyEditor({
         onSubmit({
           name: trimmed,
           ...(typeIds.length > 0 ? { typeIds } : {}),
+          ...(companyCategoryId ? { companyCategoryId } : {}),
         });
       }}
       className="flex flex-col gap-2"
@@ -257,6 +283,18 @@ export function CompanyEditor({
             {t("settings.companiesTab.duplicateName")}
           </span>
         )}
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-muted">
+          {t("settings.companiesTab.companyCategoryLabel")}
+        </span>
+        <CompanyCategoryPicker
+          variant="field"
+          companyCategories={companyCategories}
+          selectedId={companyCategoryId}
+          onSelect={setCompanyCategoryId}
+          onCreate={onCreateCompanyCategory}
+        />
       </label>
       <div className="flex flex-col gap-1">
         <span className="text-xs text-muted">

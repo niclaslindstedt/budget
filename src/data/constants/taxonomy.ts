@@ -267,6 +267,68 @@ export const CATEGORY_GLYPH_NAMES: readonly CategoryIcon[] = [
   "cloud",
 ] as const;
 
+// Company categories classify merchants — Grocery stores, Pharmacies,
+// Fuel, Electronics. The palette leans toward shop / storefront glyphs
+// so the user picking a category for a new company finds a relevant
+// icon. Seeds in `PRESET_COMPANY_CATEGORIES` may reach outside this
+// list (the persisted model accepts any `CategoryIcon`); this subset
+// only governs what the in-app creator offers.
+export const COMPANY_CATEGORY_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "shopping-cart",
+  "shopping-bag",
+  "utensils",
+  "coffee",
+  "pizza",
+  "beer",
+  "wine",
+  "milk",
+  "shirt",
+  "scissors",
+  "smartphone",
+  "laptop",
+  "tv",
+  "headphones",
+  "camera",
+  "gamepad-2",
+  "sofa",
+  "home",
+  "lightbulb",
+  "wrench",
+  "hammer",
+  "fuel",
+  "car",
+  "car-front",
+  "bus",
+  "train",
+  "bike",
+  "plane",
+  "hotel",
+  "pill",
+  "stethoscope",
+  "heart-pulse",
+  "dumbbell",
+  "ticket",
+  "film",
+  "clapperboard",
+  "music",
+  "book-open",
+  "newspaper",
+  "paw-print",
+  "dog",
+  "briefcase",
+  "landmark",
+  "building-2",
+  "credit-card",
+  "banknote",
+  "gift",
+  "palette",
+  "package",
+  "key",
+  "receipt",
+  "tag",
+  "circle-help",
+] as const;
+
 // EntryTypes are concrete, frequently-repeating entries: Rent,
 // Gasoline, Restaurant visit, Coffee, Streaming, Salary. The palette
 // is the widest of the four so users have a glyph for almost any

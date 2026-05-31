@@ -111,14 +111,15 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 49), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 51), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
 │   │   ├── categories.ts       # Category, EntryType, EntryTypeKind, Subtype,
-│   │   │                       #   Company, Tag, CategoryIcon allowlist
+│   │   │                       #   Company, CompanyCategory, Tag, CategoryIcon
+│   │   │                       #   allowlist
 │   │   ├── items.ts            # Item (owned things), LineItemLink (entry↔item)
 │   │   ├── accounts.ts         # Account, HistoryEntry (+ lineItems),
 │   │   │                       #   HistoryEntrySplit, HistoryImport, Transfer
@@ -151,7 +152,10 @@ src/
 │   │   │                   #   validators, and admin UIs read through
 │   │   ├── types.ts            # PRESET_ENTRY_TYPES + entry-type helpers
 │   │   ├── categories.ts       # PRESET_CATEGORIES + DEFAULT_CATEGORY_ID
-│   │   └── merge.ts            # allTypes / allCategories (visible presets + user)
+│   │   ├── company-categories.ts # PRESET_COMPANY_CATEGORIES +
+│   │   │                       #   DEFAULT_COMPANY_CATEGORY_ID
+│   │   └── merge.ts            # allTypes / allCategories /
+│   │                           #   allCompanyCategories (visible presets + user)
 │   ├── fiscal-month.ts    # fiscal-month + ISO date math (getMonthKey,
 │   │                       #   groupRowsByMonth, previous/nextMonthKey, …)
 │   ├── budget/
@@ -334,8 +338,15 @@ type UserData = {
   // User-curated merchants / organisations (no presets). Referenced
   // from `Row.companyId`, `HistoryEntry.userCompanyId`,
   // `MatchRule.companyId`, `MerchantHint.companyId`. Each may carry
-  // optional drag-ordered `typeIds` seeding the company → type hints.
+  // optional drag-ordered `typeIds` seeding the company → type hints,
+  // and an optional `companyCategoryId` classifying the merchant.
   companies: Company[];
+  // Merchant kinds (Grocery stores, Pharmacies, Fuel …) for "where do
+  // I shop" analysis; referenced by `Company.companyCategoryId`. The
+  // runtime also shows built-in `PRESET_COMPANY_CATEGORIES` (in code,
+  // not here); hide individual presets via hiddenPresetCompanyCategoryIds.
+  companyCategories: CompanyCategory[];
+  hiddenPresetCompanyCategoryIds: string[];
   // Analysis buckets; each EntryType belongs to exactly one of these.
   // The runtime also shows built-in `PRESET_CATEGORIES` (in code, not
   // here); the user hides individual presets via hiddenPresetCategoryIds.
@@ -630,6 +641,11 @@ Current `LATEST_VERSION` is `50`. The chain has forty-nine steps:
   type associations seeding the company → type hints) and retires
   `Settings.companyTypeAutoFillMinOccurrences`. A bare version bump —
   both shape changes are absence-tolerant.
+- **v50 → v51** — adds user-curated `companyCategories: []` (merchant
+  kinds for "where do I shop" analysis) + `hiddenPresetCompanyCategoryIds:
+[]`, plus optional `Company.companyCategoryId`. The runtime layers
+  built-in `PRESET_COMPANY_CATEGORIES` on top, so both arrays seed
+  empty; all three shape changes are absence-tolerant.
 
 ## State management
 

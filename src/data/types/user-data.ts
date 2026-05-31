@@ -7,6 +7,7 @@ import type {
 import type {
   Category,
   Company,
+  CompanyCategory,
   EntryType,
   EntryTypeKind,
   Subtype,
@@ -31,7 +32,7 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 50;
+  version: 51;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -87,6 +88,17 @@ export type UserData = {
   presetTypeKindOverrides: Record<string, EntryTypeKind>;
   // Same shape as `hiddenPresetTypeIds`, scoped to preset categories.
   hiddenPresetCategoryIds: string[];
+  // User-added company categories (merchant kinds). On top of these the
+  // runtime layers a built-in list of Swedish-perspective presets
+  // (`PRESET_COMPANY_CATEGORIES` in `data/presets/company-categories.ts`);
+  // preset company categories live in code, not in this array.
+  // Referenced from `Company.companyCategoryId`. The user can hide
+  // individual presets via `hiddenPresetCompanyCategoryIds`. Empty on a
+  // fresh budget.
+  companyCategories: CompanyCategory[];
+  // Same shape as `hiddenPresetCategoryIds`, scoped to preset company
+  // categories.
+  hiddenPresetCompanyCategoryIds: string[];
   // Transfers between accounts. Each transfer renders as a read-only
   // synthesized row on every budget that tracks one of its endpoints,
   // and as a top-level row on the Accounts sheet's transfer log.
