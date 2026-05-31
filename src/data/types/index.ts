@@ -35,11 +35,14 @@ export type {
   AccountBudget,
   AccountsView,
   ItemsView,
+  SalaryView,
   Sheet,
   SheetGlyph,
   SheetItem,
   SheetType,
 } from "./sheets";
+
+export type { Employer, Role, Salary } from "./salary";
 
 export type {
   BorderWidthPreset,

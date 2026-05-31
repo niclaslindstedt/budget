@@ -5,12 +5,14 @@ import type {
   Company,
   CompanyCategory,
   DeviceSettings,
+  Employer,
   EntryType,
   EntryTypeKind,
   HistoryEntrySplit,
   Item,
   LineItemLink,
   MatchRule,
+  Salary,
   SeriesMatchRule,
   Settings,
   Sheet,
@@ -32,6 +34,7 @@ import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
 import { reduceAccounts } from "./reducers/accounts";
+import { reduceSalary } from "./reducers/salary";
 import { reduceHistory } from "./reducers/history";
 import { reduceSeriesMetadata } from "./reducers/series-metadata";
 import { reduceHistoryPrimaryIncome } from "./reducers/history-primary-income";
@@ -220,6 +223,52 @@ export type Action =
       accountId: string;
       date: string;
       amount: number;
+    }
+  | { type: "createSalary"; salary: Salary }
+  | {
+      // Bulk-add salaries accepted from the "Find salaries" detector in
+      // one pass so the page doesn't re-render between each insert.
+      type: "addSalaries";
+      salaries: Salary[];
+    }
+  | {
+      // Edit one salary by id. Each field in `patch` is optional; an
+      // explicit `undefined` deletes the key (clears an optional field)
+      // rather than storing `undefined`. Mirrors `updateItem`.
+      type: "updateSalary";
+      salaryId: string;
+      patch: Partial<Omit<Salary, "id">>;
+    }
+  | { type: "deleteSalary"; salaryId: string }
+  | {
+      // Apply the same patch to many salaries — the select-many
+      // mass-edit (e.g. set the employer on a whole stretch).
+      type: "bulkUpdateSalaries";
+      ids: string[];
+      patch: Partial<Omit<Salary, "id">>;
+    }
+  | {
+      // Set the gross on many salaries from a tax rate (a fraction of
+      // gross, e.g. 0.3). Each salary's gross is derived from its own
+      // net deposit: gross = net / (1 − rate). Used for Swedish
+      // "skattejämkning" where the user knows the rate, not the kronor.
+      type: "bulkSetSalaryTaxRate";
+      ids: string[];
+      rate: number;
+    }
+  | { type: "createEmployer"; employer: Employer }
+  | {
+      // Edit an employer by id (name, color, glyph, and the full
+      // `roles` array — role edits submit a replacement set).
+      type: "updateEmployer";
+      employerId: string;
+      patch: Partial<Omit<Employer, "id">>;
+    }
+  | {
+      // Delete an employer. Cascades by clearing `employerId` on every
+      // salary that referenced it (the salary becomes unassigned).
+      type: "deleteEmployer";
+      employerId: string;
     }
   | { type: "createTransfer"; transfer: Transfer }
   | {
@@ -603,6 +652,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??
     reduceAccounts(state, action) ??
+    reduceSalary(state, action) ??
     reduceHistory(state, action) ??
     reduceSeriesMetadata(state, action) ??
     reduceHistoryPrimaryIncome(state, action);

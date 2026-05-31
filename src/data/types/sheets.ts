@@ -44,6 +44,19 @@ export type ItemsView = {
   type: "itemsView";
 };
 
+// Workspace-wide salary-history sheet item. The Salary sheet is a
+// singleton flavour that renders the global `UserData.salaries` /
+// `UserData.employers` collections (the user's salary over time)
+// rather than tracking a single account. Like `AccountsView` /
+// `ItemsView` it carries no data of its own — it reads the shared
+// collections — so the shape exists only so future per-sheet config
+// (default employer filter, gross/net toggle, …) lands here without
+// another migration.
+export type SalaryView = {
+  id: string;
+  type: "salaryView";
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
 // dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
@@ -51,7 +64,7 @@ export type ItemsView = {
 // variants (Graph, Note, …) slot in as additional cases without a
 // migration of the existing data because old blocks still match their
 // own variant.
-export type SheetItem = AccountBudget | AccountsView | ItemsView;
+export type SheetItem = AccountBudget | AccountsView | ItemsView | SalaryView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
@@ -59,7 +72,7 @@ export type SheetItem = AccountBudget | AccountsView | ItemsView;
 // catalog ("items") are implemented. Future planners (loan tracking,
 // savings forecast, parental-leave planner, …) slot in as additional
 // literals without needing another migration.
-export type SheetType = "budget" | "accounts" | "items";
+export type SheetType = "budget" | "accounts" | "items" | "salary";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

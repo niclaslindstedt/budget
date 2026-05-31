@@ -7,6 +7,7 @@ import type {
   Category,
   Company,
   CompanyCategory,
+  Employer,
   EntryType,
   HistoryEntry,
   HistoryImport,
@@ -15,6 +16,7 @@ import type {
   MerchantHint,
   PrimaryIncomeMerchant,
   RenamePattern,
+  Salary,
   SeriesMatchRule,
   SeriesMetadata,
   Sheet,
@@ -39,6 +41,7 @@ import {
   validateHistoryImport,
   validateTransfer,
 } from "./history";
+import { validateEmployer, validateSalary } from "./salary";
 import {
   validateMatchRule,
   validateMerchantHint,
@@ -75,6 +78,38 @@ export function validateUserData(raw: unknown): Result<UserData> {
       return fail(`accounts[${i}].id`, `duplicate id "${r.value.id}"`);
     seenAccountIds.add(r.value.id);
     accounts.push(r.value);
+  }
+
+  // Employers are validated before salaries so a salary's `employerId`
+  // can be checked against the resolvable set (a dangling reference is
+  // dropped rather than rejecting the file).
+  const rawEmployers = Array.isArray(raw.employers) ? raw.employers : [];
+  const employers: Employer[] = [];
+  const seenEmployerIds = new Set<string>();
+  for (let i = 0; i < rawEmployers.length; i++) {
+    const r = validateEmployer(rawEmployers[i], `employers[${i}]`);
+    if (!r.ok) return r;
+    if (seenEmployerIds.has(r.value.id))
+      return fail(`employers[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenEmployerIds.add(r.value.id);
+    employers.push(r.value);
+  }
+  const knownEmployerIds: ReadonlySet<string> = seenEmployerIds;
+
+  const rawSalaries = Array.isArray(raw.salaries) ? raw.salaries : [];
+  const salaries: Salary[] = [];
+  const seenSalaryIds = new Set<string>();
+  for (let i = 0; i < rawSalaries.length; i++) {
+    const r = validateSalary(
+      rawSalaries[i],
+      `salaries[${i}]`,
+      knownEmployerIds,
+    );
+    if (!r.ok) return r;
+    if (seenSalaryIds.has(r.value.id))
+      return fail(`salaries[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenSalaryIds.add(r.value.id);
+    salaries.push(r.value);
   }
 
   const rawCompanies = Array.isArray(raw.companies) ? raw.companies : [];
@@ -465,6 +500,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       sheets,
       activeSheetId,
       accounts,
+      salaries,
+      employers,
       companies,
       tags,
       categories,

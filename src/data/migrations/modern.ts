@@ -397,6 +397,12 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // and synthesizes a row with no series link, exactly as before. Bare
   // additive bump.
   52: (v52) => ({ ...v52, version: 53 }),
+
+  // v53 → v54: introduces the Salary sheet's two top-level collections —
+  // `salaries` (one entry per paycheck) and `employers` (workplaces with
+  // their roles). Both seed empty; old exports simply lack them and a
+  // fresh-empty default passes the v54 validator unchanged.
+  53: (v53) => ({ ...v53, version: 54, salaries: [], employers: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

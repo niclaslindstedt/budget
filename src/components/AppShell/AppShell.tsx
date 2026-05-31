@@ -25,6 +25,7 @@ import { useUndoRedo } from "./hooks/useUndoRedo";
 import { AccountsModalHost } from "./AccountsModalHost";
 import { AccountsPage } from "../accounts/AccountsPage";
 import { ItemsPage } from "../items/ItemsPage";
+import { SalaryPage } from "../salary/SalaryPage";
 import { AppLoading } from "../AppLoading";
 import { BottomBar } from "../BottomBar";
 import { BudgetModalHost } from "./BudgetModalHost";
@@ -699,6 +700,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onDeleteItem={(itemId) =>
                     dispatch({ type: "deleteItem", itemId })
                   }
+                />
+              ) : activeSheet.type === "salary" ? (
+                <SalaryPage
+                  sheet={activeSheet}
+                  data={data}
+                  settings={effectiveSettings}
+                  dispatch={dispatch}
                 />
               ) : (
                 <>

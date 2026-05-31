@@ -7,6 +7,7 @@ import type {
   CorrectionRow,
   ItemsView,
   Row,
+  SalaryView,
   UserRow,
 } from "../types";
 import { validateLineItemLinks } from "./account";
@@ -280,4 +281,17 @@ export function validateItemsView(
     return fail(`${path}.id`, "expected a non-empty string");
   if (type !== "itemsView") return fail(`${path}.type`, `expected "itemsView"`);
   return { ok: true, value: { id, type: "itemsView" } };
+}
+
+export function validateSalaryView(
+  raw: unknown,
+  path: string,
+): Result<SalaryView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "salaryView")
+    return fail(`${path}.type`, `expected "salaryView"`);
+  return { ok: true, value: { id, type: "salaryView" } };
 }
