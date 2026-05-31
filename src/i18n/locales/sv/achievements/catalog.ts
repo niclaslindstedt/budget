@@ -356,6 +356,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Under huven",
     condition: "Slå på Utvecklarläget.",
   },
+  itemized: {
+    name: "Specificerat",
+    condition: "Koppla en del av ett köp till en pryl du äger.",
+    learnMore:
+      "Öppna radens ”…”-meny och välj Prylar för att koppla en del av beloppet till något du äger — 15 000 av ett köp på 20 000 var telefonen, resten är bara rest. Bygg upp en katalog över prylar (och klassificera dem gärna med en underkategori), grunden för att hålla koll på vad du äger och vad det är värt över tid.",
+  },
   completionist: {
     name: "Komplettist",
     condition: "Lås upp alla andra bedrifter.",
