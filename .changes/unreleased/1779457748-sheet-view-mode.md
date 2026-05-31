@@ -19,7 +19,10 @@ paginated reveal the editable sheet already uses, and the line stays
 out of the way while a search is active so a query reveals every
 match. Days inside each
 month run newest-first to match the descending month order, so the
-most recent activity sits at the top of every section. The done column is
+most recent activity sits at the top of every section. Rows you never
+gave a description fall back to their linked item or tagged company in
+the description column, so the viewer reads meaningfully instead of
+leaving a blank cell. The done column is
 shown inline as a small check next to the date and uncompleted rows
 fade slightly, so the table reads as one tight stack instead of
 spending a whole column on a checkmark.

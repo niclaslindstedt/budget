@@ -25,6 +25,7 @@ import type {
   AccountBudget,
   Company,
   EntryType,
+  Item,
   Row,
   Settings,
   Sheet,
@@ -45,6 +46,7 @@ import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { tintFill } from "../../utils/tint";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
+import { CompanyPill, LineItemPill } from "./cells/DescriptionCell";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
 import { ModalSearchControls } from "../ModalSearchControls";
@@ -63,6 +65,10 @@ type Props = {
   balances: Map<string, number>;
   types: readonly EntryType[];
   companies: readonly Company[];
+  // Owned-item catalog, used to resolve a row's line-item names when the
+  // description cell falls back to a line-item pill (no user-authored
+  // description). Mirrors the editable table's `itemsById` lookup.
+  items: readonly Item[];
   settings: Settings;
 };
 
@@ -92,6 +98,7 @@ export function BudgetViewerModal({
   balances,
   types,
   companies,
+  items,
   settings,
 }: Props) {
   const t = useT();
@@ -110,6 +117,8 @@ export function BudgetViewerModal({
   const typesById = useMemo(() => indexById(types), [types]);
 
   const companiesById = useMemo(() => indexById(companies), [companies]);
+
+  const itemsById = useMemo(() => indexById(items), [items]);
 
   // The "hide transfers" filter only earns its place when the ledger
   // actually carries synthesized transfer rows; "hide uncompleted"
@@ -681,6 +690,8 @@ export function BudgetViewerModal({
                           typeColId={typeCol?.id}
                           completedColId={completedCol?.id}
                           typesById={typesById}
+                          companiesById={companiesById}
+                          itemsById={itemsById}
                           balances={balances}
                           settings={settings}
                           lang={lang}
@@ -745,6 +756,8 @@ type ViewerRowProps = {
   typeColId: string | undefined;
   completedColId: string | undefined;
   typesById: ReadonlyMap<string, EntryType>;
+  companiesById: ReadonlyMap<string, Company>;
+  itemsById: ReadonlyMap<string, Item>;
   balances: Map<string, number>;
   settings: Settings;
   lang: Lang;
@@ -760,6 +773,8 @@ function ViewerRow({
   typeColId,
   completedColId,
   typesById,
+  companiesById,
+  itemsById,
   balances,
   settings,
   lang,
@@ -782,6 +797,22 @@ function ViewerRow({
     completedColId && row.cells[completedColId] === true ? true : false;
   const typeId = row.typeId ?? null;
   const type = typeId ? (typesById.get(typeId) ?? null) : null;
+
+  // Description fallback — mirrors the editable table's DescriptionCell
+  // resolve order so a row with no user-authored description still reads
+  // something meaningful: a line-item pill wins (showing the first
+  // linked item's name), otherwise the tagged company's pill. Synthesized
+  // history rows already carry a resolved label in their description cell
+  // (via `resolveEntryLabels`), so this only fills the gap for regular
+  // budget rows whose cell is genuinely empty.
+  const company = row.companyId
+    ? (companiesById.get(row.companyId) ?? null)
+    : null;
+  const lineItems = row.lineItems ?? [];
+  const firstLineItemName =
+    lineItems.length > 0
+      ? (itemsById.get(lineItems[0].itemId)?.name ?? null)
+      : null;
 
   const colorStyle: CSSProperties | undefined = monthColor
     ? { color: monthColor }
@@ -837,7 +868,15 @@ function ViewerRow({
         </td>
       )}
       <td className="px-2 py-1.5 align-top text-fg break-words md:pl-4">
-        {descValue}
+        {descValue ? (
+          descValue
+        ) : firstLineItemName ? (
+          <LineItemPill name={firstLineItemName} many={lineItems.length > 1} />
+        ) : company ? (
+          <CompanyPill name={company.name} recurring={false} />
+        ) : (
+          ""
+        )}
       </td>
       {amountColId && (
         <td
