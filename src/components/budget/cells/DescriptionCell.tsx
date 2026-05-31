@@ -3,8 +3,10 @@ import {
   ArrowLeftRight,
   ArrowRight,
   Ban,
+  Boxes,
   Building2,
   Landmark,
+  Package,
   Repeat,
 } from "lucide-react";
 
@@ -16,6 +18,18 @@ import { displayTypeName } from "../../../i18n/preset-names";
 import { CompanyPicker } from "../../CompanyPicker";
 import { FloatingPanel } from "../../FloatingPanel";
 import { CELL_BASE } from "./constants";
+
+// One owned-item line on a row, resolved + pre-formatted by `BudgetRow`
+// (item name looked up against the catalog, amount run through the
+// user's currency / number format). The description cell renders the
+// first one as a pill (single → Package glyph, many → Boxes glyph) and
+// lists the full set at the bottom of the description popover.
+export type CellLineItem = {
+  id: string;
+  name: string;
+  // Pre-formatted signed amount (e.g. "−1 200 kr"), ready to render.
+  amount: string;
+};
 
 // Both mobile and desktop drive the description cell through the same
 // `DescriptionPopover` trigger: it owns the type-name / company-pill /
@@ -37,6 +51,7 @@ export function DescriptionCell({
   companies,
   placeholder,
   bankDescription,
+  lineItems,
   onChange,
   onCommit,
   onSetCompany,
@@ -75,6 +90,11 @@ export function DescriptionCell({
   // via `Row.bankDescription`; absent when the bank text is already
   // serving as the cell's display value or on every non-history row.
   bankDescription?: string;
+  // The row's resolved line items (`Row.lineItems` → item names +
+  // formatted amounts). When non-empty the trigger renders a pill /
+  // glyph keyed by the count and the popover lists every line at the
+  // bottom. Undefined / empty on rows with no line items.
+  lineItems?: readonly CellLineItem[];
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   // Pre-bound (no rowId) writer for the row's company. Wired by the
@@ -94,6 +114,9 @@ export function DescriptionCell({
   const typeLabel = entryType ? displayTypeName(entryType, t) : "";
   const isFallback = placeholder !== undefined;
   const pickerEnabled = !!companies && !!onSetCompany && !!onCreateCompany;
+  const hasLineItems = !!lineItems && lineItems.length > 0;
+  const manyLineItems = hasLineItems && lineItems!.length > 1;
+  const firstLineItemName = hasLineItems ? lineItems![0].name : "";
   return (
     <td
       className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
@@ -106,6 +129,7 @@ export function DescriptionCell({
         editValue={isFallback ? "" : value}
         placeholder={placeholder}
         bankDescription={bankDescription}
+        lineItems={lineItems}
         company={company}
         companies={pickerEnabled ? companies : undefined}
         onChange={onChange}
@@ -123,13 +147,24 @@ export function DescriptionCell({
           // popover closes — which is misleading because the row still
           // has no user-authored description.
           const fallback = isFallback || !hasValue;
-          const showCompanyPill = fallback && !!company;
-          const showTypeName = fallback && !company && !!entryType;
+          // Line items are the most specific annotation, so they win the
+          // fallback slot: a row with line items but no user-authored
+          // description renders an item pill (the first line's item name,
+          // Package glyph for one, Boxes for many) ahead of the company
+          // pill / type-name fallback.
+          const showLineItemPill = fallback && hasLineItems;
+          const showCompanyPill = fallback && !showLineItemPill && !!company;
+          const showTypeName =
+            fallback && !showLineItemPill && !company && !!entryType;
           // When BOTH a description and a company are set, prefix the
           // description text with a low-key Building2 glyph so the
           // tagged-merchant state is visible at a glance even when the
           // company name is hidden behind the description override.
           const showCompanyGlyph = !fallback && hasValue && !!company;
+          // Same idea for line items: when the row has a user-authored
+          // description AND line items, prefix it with the item glyph
+          // (Package / Boxes) so the line-item state stays visible.
+          const showLineItemGlyph = !fallback && hasValue && hasLineItems;
           // Mirror the Building2 prefix with a Ban glyph when the row's
           // company is explicitly omitted, so the skipped state is
           // visible without having to tap the row open. `noCompany` and
@@ -138,43 +173,55 @@ export function DescriptionCell({
           // prefix.
           const showOmittedGlyph = !!noCompany && !company;
           const omittedLabel = t("company.omittedLabel");
-          const hasContent = showCompanyPill || showTypeName || hasValue;
-          const ariaLabel = showCompanyPill
-            ? company!.name
-            : showTypeName
-              ? showOmittedGlyph
-                ? `${typeLabel} (${omittedLabel})`
-                : typeLabel
-              : hasValue
+          // The pill always shows the first line's item name; the "Line
+          // items" prefix only earns its place when there is more than
+          // one (so the pill reads as a summary rather than a single
+          // mislabelled item).
+          const lineItemLabel = manyLineItems
+            ? `${t("cell.lineItems")}: ${firstLineItemName}`
+            : firstLineItemName;
+          const hasContent =
+            showLineItemPill || showCompanyPill || showTypeName || hasValue;
+          const ariaLabel = showLineItemPill
+            ? lineItemLabel
+            : showCompanyPill
+              ? company!.name
+              : showTypeName
                 ? showOmittedGlyph
-                  ? entryType
-                    ? `${typeLabel}: ${displayValue} (${omittedLabel})`
-                    : `${t("cell.descriptionWith", { value: displayValue })} (${omittedLabel})`
-                  : entryType
-                    ? `${typeLabel}: ${displayValue}`
-                    : t("cell.descriptionWith", { value: displayValue })
-                : entryType
+                  ? `${typeLabel} (${omittedLabel})`
+                  : typeLabel
+                : hasValue
                   ? showOmittedGlyph
-                    ? `${typeLabel} (${omittedLabel})`
-                    : typeLabel
+                    ? entryType
+                      ? `${typeLabel}: ${displayValue} (${omittedLabel})`
+                      : `${t("cell.descriptionWith", { value: displayValue })} (${omittedLabel})`
+                    : entryType
+                      ? `${typeLabel}: ${displayValue}`
+                      : t("cell.descriptionWith", { value: displayValue })
+                  : entryType
+                    ? showOmittedGlyph
+                      ? `${typeLabel} (${omittedLabel})`
+                      : typeLabel
+                    : showOmittedGlyph
+                      ? omittedLabel
+                      : t("cell.addDescription");
+          const title = showLineItemPill
+            ? lineItemLabel
+            : showCompanyPill
+              ? company!.name
+              : showTypeName
+                ? showOmittedGlyph
+                  ? `${typeLabel} — ${omittedLabel}`
+                  : typeLabel
+                : hasValue
+                  ? company
+                    ? `${company.name}: ${displayValue}`
+                    : showOmittedGlyph
+                      ? `${omittedLabel}: ${displayValue}`
+                      : displayValue
                   : showOmittedGlyph
                     ? omittedLabel
-                    : t("cell.addDescription");
-          const title = showCompanyPill
-            ? company!.name
-            : showTypeName
-              ? showOmittedGlyph
-                ? `${typeLabel} — ${omittedLabel}`
-                : typeLabel
-              : hasValue
-                ? company
-                  ? `${company.name}: ${displayValue}`
-                  : showOmittedGlyph
-                    ? `${omittedLabel}: ${displayValue}`
-                    : displayValue
-                : showOmittedGlyph
-                  ? omittedLabel
-                  : undefined;
+                    : undefined;
           return (
             <button
               ref={ref}
@@ -198,7 +245,9 @@ export function DescriptionCell({
                   className="shrink-0 text-flag"
                 />
               )}
-              {showCompanyPill ? (
+              {showLineItemPill ? (
+                <LineItemPill name={firstLineItemName} many={manyLineItems} />
+              ) : showCompanyPill ? (
                 <CompanyPill name={company!.name} recurring={isRecurring} />
               ) : showTypeName ? (
                 <span className="inline-flex min-w-0 items-center gap-1">
@@ -220,6 +269,22 @@ export function DescriptionCell({
                       className="shrink-0"
                     />
                   )}
+                  {showLineItemGlyph &&
+                    (manyLineItems ? (
+                      <Boxes
+                        size={12}
+                        aria-hidden
+                        focusable={false}
+                        className="shrink-0"
+                      />
+                    ) : (
+                      <Package
+                        size={12}
+                        aria-hidden
+                        focusable={false}
+                        className="shrink-0"
+                      />
+                    ))}
                   {showOmittedGlyph && <OmittedGlyph />}
                   <span className="min-w-0 truncate">{displayValue}</span>
                 </span>
@@ -259,6 +324,7 @@ function DescriptionPopover({
   editValue,
   placeholder,
   bankDescription,
+  lineItems,
   company,
   companies,
   onChange,
@@ -288,6 +354,11 @@ function DescriptionPopover({
   // reported. Absent when the bank text is already the placeholder
   // (no override) or on non-history rows.
   bankDescription?: string;
+  // The row's resolved line items, listed read-only at the bottom of
+  // the popover so the user can see what an entry's amount was spent on
+  // without opening the line-items modal. Undefined / empty on rows
+  // with no line items.
+  lineItems?: readonly CellLineItem[];
   // Resolved Company for `row.companyId` plus the full list and
   // create/select handlers needed to render the inline CompanyPicker
   // above the textarea. All four are gated together: when any is
@@ -416,6 +487,39 @@ function DescriptionPopover({
             </span>
           </div>
         )}
+        {lineItems && lineItems.length > 0 && (
+          <div className="border-t border-line bg-surface-3 px-2 py-1.5">
+            <div className="mb-1 flex items-center gap-1.5 text-xs text-muted">
+              {lineItems.length > 1 ? (
+                <Boxes size={12} aria-hidden focusable={false} />
+              ) : (
+                <Package size={12} aria-hidden focusable={false} />
+              )}
+              <span>{t("cell.lineItems")}</span>
+            </div>
+            <ul className="flex flex-col gap-0.5">
+              {lineItems.map((li) => (
+                <li
+                  key={li.id}
+                  className="flex items-center justify-between gap-2 text-xs"
+                >
+                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                    <Package
+                      size={12}
+                      aria-hidden
+                      focusable={false}
+                      className="shrink-0 text-muted"
+                    />
+                    <span className="min-w-0 truncate text-fg">{li.name}</span>
+                  </span>
+                  <span className="shrink-0 font-mono tabular-nums text-muted">
+                    {li.amount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </FloatingPanel>
     </>
   );
@@ -486,6 +590,32 @@ function CompanyPill({
           focusable={false}
           className="shrink-0"
         />
+      )}
+      <span className="truncate">{name}</span>
+    </span>
+  );
+}
+
+// Outlined pill with the item glyph + the first line's item name,
+// shown inside the description cell when the row has line items but no
+// user-authored description. Mirrors `CompanyPill` — same outlined
+// theme-token styling — but the leading glyph encodes the count: a
+// `Package` for a single line item, `Boxes` for many (where the name
+// shown is the first added line item). Uses `--fg-bright` so the pill
+// stays high-contrast in both themes.
+function LineItemPill({ name, many }: { name: string; many: boolean }) {
+  return (
+    <span
+      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
+      style={{
+        borderColor: "var(--fg-bright)",
+        color: "var(--fg-bright)",
+      }}
+    >
+      {many ? (
+        <Boxes size={12} aria-hidden focusable={false} className="shrink-0" />
+      ) : (
+        <Package size={12} aria-hidden focusable={false} className="shrink-0" />
       )}
       <span className="truncate">{name}</span>
     </span>

@@ -31,6 +31,7 @@ import type {
   EntryType,
   HistoryEntry,
   HistoryEntrySplit,
+  Item,
   MatchRule,
   MerchantHint,
   Row,
@@ -299,6 +300,10 @@ export function BudgetPage({
   // memoised descendant.
   const typesById = useMemo(() => indexById(types), [types]);
   const companiesById = useMemo(() => indexById(companies), [companies]);
+  const itemsById = useMemo<ReadonlyMap<string, Item>>(
+    () => indexById(data.items),
+    [data.items],
+  );
   const accountsById = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of accounts) m.set(a.id, a.name);
@@ -317,6 +322,7 @@ export function BudgetPage({
       categories,
       companies,
       companiesById,
+      itemsById,
       companyTypeHints,
       onCreateType,
       onCreateCategory,
@@ -329,6 +335,7 @@ export function BudgetPage({
       categories,
       companies,
       companiesById,
+      itemsById,
       companyTypeHints,
       onCreateType,
       onCreateCategory,

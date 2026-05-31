@@ -6,12 +6,13 @@ import { getStandardColumns } from "../../data/sheet";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import type { CellValue, Column, Row } from "../../data/types";
-import { formatShortDate } from "../../utils/format";
+import { formatAmount, formatShortDate } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { useModalDispatch } from "../modal-dispatch";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { BudgetCell } from "./BudgetCell";
 import { useBudgetContext } from "./BudgetContext";
+import type { CellLineItem } from "./cells/DescriptionCell";
 import { BudgetEntryActionsMenu } from "./BudgetEntryActionsMenu";
 
 type Props = {
@@ -94,12 +95,28 @@ function BudgetRowImpl({
   const tr = useT();
   const lang = useLang();
   const dispatchModal = useModalDispatch();
-  const { typesById, companiesById, companyTypeHints, settings } =
+  const { typesById, companiesById, itemsById, companyTypeHints, settings } =
     useBudgetContext();
   const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
   const company = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
     : null;
+  // Resolve the row's line items to display-ready rows (item name +
+  // signed, currency-formatted amount) for the description cell's pill /
+  // glyph and popover list. Order follows `row.lineItems` so index 0 is
+  // the first added line — the name the "many" pill surfaces. Undefined
+  // when the row has none so the cell prop stays shallow-compare stable.
+  const lineItems = useMemo<readonly CellLineItem[] | undefined>(() => {
+    if (!row.lineItems || row.lineItems.length === 0) return undefined;
+    return row.lineItems.map((li) => {
+      const sign = li.amount > 0 ? "+" : li.amount < 0 ? "−" : "";
+      return {
+        id: li.id,
+        name: itemsById.get(li.itemId)?.name ?? tr("cell.unknownItem"),
+        amount: `${sign}${formatAmount(Math.abs(li.amount), settings)}`,
+      };
+    });
+  }, [row.lineItems, itemsById, settings, tr]);
   // The row's company → type hint ids, surfaced as the "Suggested" band
   // in the inline type picker. Empty when the row has no company.
   const typeHintIds = useMemo(
@@ -393,6 +410,7 @@ function BudgetRowImpl({
               ? row.bankDescription
               : undefined
           }
+          lineItems={col.type === "description" ? lineItems : undefined}
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />
