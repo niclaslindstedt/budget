@@ -52,6 +52,7 @@ export type CategoryIcon =
   | "bike"
   | "fuel"
   | "car-front"
+  | "ship"
   // Home & utilities
   | "bed"
   | "sofa"
@@ -74,6 +75,7 @@ export type CategoryIcon =
   | "headphones"
   | "camera"
   | "tv"
+  | "watch"
   // Lifestyle
   | "shirt"
   | "scissors"
@@ -119,6 +121,7 @@ export type CategoryIcon =
   | "newspaper"
   | "book-marked"
   | "clapperboard"
+  | "guitar"
   | "palette"
   | "lamp"
   | "bath"
