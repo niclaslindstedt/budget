@@ -658,7 +658,7 @@ function OmittedGlyph() {
 // symbol instead of the company glyph — it stands in for the external
 // Repeat icon (suppressed at the call site) so the pill saves the
 // horizontal space the separate icon would have cost.
-function CompanyPill({
+export function CompanyPill({
   name,
   recurring,
 }: {
@@ -701,7 +701,7 @@ function CompanyPill({
 // pill at a glance. The leading glyph encodes the count: a `Package`
 // for a single line item, `Boxes` for many (the name shown is the
 // first added line item).
-function LineItemPill({ name, many }: { name: string; many: boolean }) {
+export function LineItemPill({ name, many }: { name: string; many: boolean }) {
   return (
     <span
       className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
