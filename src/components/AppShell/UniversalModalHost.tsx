@@ -13,6 +13,7 @@ import { ChangelogModal } from "../ChangelogModal";
 import { CompanyEditorModal } from "../CompanyEditorModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ItemEditorModal } from "../ItemEditorModal";
+import { ItemFinderModal } from "../items/ItemFinderModal";
 import { ConflictResolutionModal } from "../ConflictResolutionModal";
 import { DownloadModal } from "../DownloadModal";
 import { ReconnectCloudModal } from "../ReconnectCloudModal";
@@ -105,6 +106,7 @@ type Props = {
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
+  onClearIgnoredItemEntries: () => void;
   onSaveSettings: (draft: Settings) => void;
   onImport: (next: UserData) => void;
 };
@@ -130,6 +132,7 @@ export function UniversalModalHost(props: Props) {
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
+    onClearIgnoredItemEntries,
     onSaveSettings,
     onImport,
   } = props;
@@ -159,6 +162,10 @@ export function UniversalModalHost(props: Props) {
   // item" button. Distinct from `editItemId` so the two flows don't
   // alias each other — create has no id to resolve.
   const [creatingItem, setCreatingItem] = useState(false);
+  // "Find items" modal opened from the Items sheet title "…" menu. Scans
+  // bank history for likely item purchases and walks the user through
+  // cataloguing them.
+  const [findItemsOpen, setFindItemsOpen] = useState(false);
   const {
     achievementsModalOpen,
     setAchievementsModalOpen,
@@ -213,6 +220,7 @@ export function UniversalModalHost(props: Props) {
     editCompany: (companyId: string) => setEditCompanyId(companyId),
     editItem: (itemId: string) => setEditItemId(itemId),
     createItem: () => setCreatingItem(true),
+    findItems: () => setFindItemsOpen(true),
   });
   const {
     status,
@@ -292,6 +300,7 @@ export function UniversalModalHost(props: Props) {
     onUpdateTag,
     onDeleteTag,
     onCreateSubtype,
+    onCreateItem,
   } = taxonomyCrud;
   const { onEditMatchRule, onMoveMatchRule, onReapplyMatchRules } = matchRuleUi;
 
@@ -463,6 +472,7 @@ export function UniversalModalHost(props: Props) {
         merchantHintCount={Object.keys(data.merchantHints).length}
         recurringDismissalCount={data.recurringDismissals.length}
         transferDismissalCount={data.transferCollapseDismissals.length}
+        ignoredItemEntryCount={data.ignoredItemEntryIds.length}
         data={data}
         onImport={onImport}
         adapter={adapter}
@@ -486,6 +496,7 @@ export function UniversalModalHost(props: Props) {
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
+        onClearIgnoredItemEntries={onClearIgnoredItemEntries}
         onCreateCategory={onCreateCategory}
         onUpdateCategory={onUpdateCategory}
         onDeleteCategory={onDeleteCategory}
@@ -555,6 +566,25 @@ export function UniversalModalHost(props: Props) {
           setEditItemId(null);
           setCreatingItem(false);
         }}
+      />
+      <ItemFinderModal
+        open={findItemsOpen}
+        data={data}
+        settings={effectiveSettings}
+        onClose={() => setFindItemsOpen(false)}
+        onIgnore={(entryId) => dispatch({ type: "ignoreItemEntry", entryId })}
+        onLinkLineItems={(accountId, entryId, lineItems) =>
+          dispatch({
+            type: "linkLineItemsToHistoryEntry",
+            accountId,
+            entryId,
+            lineItems,
+          })
+        }
+        onCreateItem={onCreateItem}
+        onCreateSubtype={onCreateSubtype}
+        onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
       />
       <ChangelogModal
         open={changelogOpen}

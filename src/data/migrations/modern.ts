@@ -403,6 +403,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // their roles). Both seed empty; old exports simply lack them and a
   // fresh-empty default passes the v54 validator unchanged.
   53: (v53) => ({ ...v53, version: 54, salaries: [], employers: [] }),
+
+  // v54 → v55: introduces `UserData.ignoredItemEntryIds`, the history-
+  // entry ids the user ignored from the Items sheet's "Find items" scan
+  // (same shape and contract as `recurringDismissals`). Seeds empty; old
+  // exports simply lack it and a fresh-empty default passes the v55
+  // validator unchanged. Bare additive bump.
+  54: (v54) => ({ ...v54, version: 55, ignoredItemEntryIds: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Coins, Pencil, Plus, Tag, Wrench } from "lucide-react";
+import {
+  Calendar,
+  Coins,
+  Pencil,
+  Plus,
+  Sparkles,
+  Tag,
+  Wrench,
+} from "lucide-react";
 
 import { computeItemCurrentValue, isItemOwned } from "../../data/items/value";
 import type { Settings, Sheet, UserData } from "../../data/types";
@@ -64,6 +72,12 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
   }, [sheet.id]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    {
+      key: "find-items",
+      icon: <Sparkles size={16} aria-hidden focusable={false} />,
+      label: t("items.find.menu"),
+      onClick: () => dispatchModal({ kind: "open-find-items" }),
+    },
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

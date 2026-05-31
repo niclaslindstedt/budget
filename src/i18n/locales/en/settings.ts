@@ -13,6 +13,7 @@ const settings = {
     companies: "Companies",
     tags: "Tags",
     patterns: "Patterns",
+    items: "Items",
     memory: "Memory",
     developer: "Developer",
     logs: "Logs",
@@ -407,6 +408,22 @@ const settings = {
     seriesRulesHint:
       "Learned when you say 'Apply to whole series' in reconciliation. Cleared rules go back to asking each time.",
     clearSeriesRules: "Clear auto-reconciliation",
+  },
+  items: {
+    scanTitle: "Find items",
+    threshold: "Minimum amount",
+    thresholdHint:
+      "Transactions at or above this amount are offered as likely item purchases when you run Find items.",
+    resetThreshold: "Reset to default",
+    typeFilterTitle: "Limit to types",
+    typeFilterHint:
+      "Optional. When you pick one or more types, only transactions with those types are scanned. Leave all unselected to scan every type.",
+    noTypes: "No types yet.",
+    ignoredTitle: "Ignored purchases",
+    ignoredLabel: "Transactions you marked as not an item",
+    ignoredNone: "None ignored yet.",
+    ignoredHint: "{n} ignored. Clear the list to see them again.",
+    clearIgnored: "Clear list",
   },
   developer: {
     section: "Developer",

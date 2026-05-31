@@ -168,6 +168,17 @@ export type Action =
       lineItems: LineItemLink[];
     }
   | {
+      // Persist an "ignore" decision from the Items sheet's "Find items"
+      // scan so the scanner skips this history entry on every subsequent
+      // run. `entryId` is the `HistoryEntry.id`. The Items settings tab
+      // clears the whole list via `clearIgnoredItemEntries` so a misclick
+      // is recoverable. Same shape and contract as
+      // `dismissRecurringCandidate`.
+      type: "ignoreItemEntry";
+      entryId: string;
+    }
+  | { type: "clearIgnoredItemEntries" }
+  | {
       // Save handler from the SettingsModal. `draft` is the flat
       // effective view the user edited; `scope` is which device
       // bucket they edited from (mobile when their viewport is below

@@ -106,6 +106,10 @@ export const DEFAULT_SETTINGS: Settings = {
   showFutureEntries: false,
   futureEntryMonths: 1,
   searchRanking: DEFAULT_SEARCH_RANKING,
+  // kr default; `freshUserData` overrides this from the detected
+  // currency on a brand-new install.
+  itemFindThreshold: 2000,
+  itemFindTypeIds: [],
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -162,6 +166,8 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
   futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
   searchRanking: DEFAULT_SETTINGS.searchRanking,
+  itemFindThreshold: DEFAULT_SETTINGS.itemFindThreshold,
+  itemFindTypeIds: DEFAULT_SETTINGS.itemFindTypeIds,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,

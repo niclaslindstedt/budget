@@ -35,7 +35,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 54,
+    version: 55,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -58,6 +58,7 @@ function sampleData(): UserData {
     merchantHints: {},
     recurringDismissals: [],
     transferCollapseDismissals: [],
+    ignoredItemEntryIds: [],
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
@@ -141,6 +142,7 @@ describe("serializeUserData", () => {
       merchantHints: b.merchantHints,
       recurringDismissals: b.recurringDismissals,
       transferCollapseDismissals: b.transferCollapseDismissals,
+      ignoredItemEntryIds: b.ignoredItemEntryIds,
       matchRules: b.matchRules,
       seriesMatchRules: b.seriesMatchRules,
       renamePatterns: b.renamePatterns,
@@ -159,7 +161,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 29)).toEqual([
+    expect(topKeys.slice(0, 30)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -171,6 +173,7 @@ describe("serializeUserData", () => {
       "hiddenPresetTypeIds",
       "history",
       "historyImports",
+      "ignoredItemEntryIds",
       "items",
       "matchRules",
       "merchantHints",

@@ -63,6 +63,19 @@ const items = {
     "Delete this item? Its line-item links will be removed from every entry.",
   editItemAria: "Edit {name}",
   save: "Save",
+  // Find items modal (scan bank history for likely purchases)
+  find: {
+    menu: "Find items",
+    title: "Find items",
+    intro:
+      "These transactions look like item purchases. Add line items to catalogue what you bought, skip for now, or ignore an entry to stop suggesting it.",
+    empty:
+      "No likely item purchases found. Adjust the amount or type filter in Settings → Items, or import more history.",
+    addLineItems: "Add line items",
+    skip: "Skip for now",
+    ignore: "Ignore this transaction",
+    linkedCount: "{n} linked",
+  },
 } as const;
 
 export type ItemsCatalog = Widen<typeof items>;

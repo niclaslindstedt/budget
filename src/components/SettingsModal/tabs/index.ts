@@ -4,6 +4,7 @@ import {
   Hash,
   HardDrive,
   type LucideIcon,
+  Package,
   Palette,
   ScrollText,
   Search,
@@ -20,6 +21,7 @@ import { CompaniesTab } from "./companies";
 import { DeveloperTab } from "./developer";
 import { FormatTab } from "./format";
 import { GeneralTab } from "./general";
+import { ItemsTab } from "./items";
 import { LogsTab } from "./logs";
 import { MemoryTab } from "./memory";
 import { PatternsTab } from "./patterns";
@@ -34,6 +36,7 @@ export {
   DeveloperTab,
   FormatTab,
   GeneralTab,
+  ItemsTab,
   LogsTab,
   MemoryTab,
   PatternsTab,
@@ -73,6 +76,7 @@ export const TAB_REGISTRY: readonly TabEntry[] = [
   { id: "companies", icon: Building2 },
   { id: "tags", icon: Bookmark },
   { id: "patterns", icon: Tags },
+  { id: "items", icon: Package },
   { id: "memory", icon: SettingsIcon },
   {
     id: "developer",
@@ -96,6 +100,7 @@ export type SettingsTabId =
   | "companies"
   | "tags"
   | "patterns"
+  | "items"
   | "memory"
   | "developer"
   | "logs";

@@ -19,7 +19,7 @@ import { validateUserData } from "../src/data/validate";
 function workspace(patch: Partial<UserData> = {}): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 54,
+    version: 55,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -34,6 +34,7 @@ function workspace(patch: Partial<UserData> = {}): UserData {
     merchantHints: {},
     recurringDismissals: [],
     transferCollapseDismissals: [],
+    ignoredItemEntryIds: [],
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},

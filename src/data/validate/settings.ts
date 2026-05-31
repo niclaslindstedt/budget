@@ -90,6 +90,8 @@ function clonePersistedDefaults(): PersistedSettings {
     showFutureEntries: DEFAULT_SETTINGS.showFutureEntries,
     futureEntryMonths: DEFAULT_SETTINGS.futureEntryMonths,
     searchRanking: cloneSearchRanking(DEFAULT_SEARCH_RANKING),
+    itemFindThreshold: DEFAULT_SETTINGS.itemFindThreshold,
+    itemFindTypeIds: [...DEFAULT_SETTINGS.itemFindTypeIds],
     device: {
       mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
       desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
@@ -216,6 +218,15 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
       ? raw.futureEntryMonths
       : DEFAULT_SETTINGS.futureEntryMonths;
   const searchRanking = validateSearchRanking(raw.searchRanking);
+  const itemFindThreshold =
+    typeof raw.itemFindThreshold === "number" &&
+    Number.isFinite(raw.itemFindThreshold) &&
+    raw.itemFindThreshold >= 0
+      ? raw.itemFindThreshold
+      : DEFAULT_SETTINGS.itemFindThreshold;
+  const itemFindTypeIds = Array.isArray(raw.itemFindTypeIds)
+    ? raw.itemFindTypeIds.filter((id): id is string => typeof id === "string")
+    : DEFAULT_SETTINGS.itemFindTypeIds;
   return {
     startOfMonth,
     dateFormat,
@@ -239,6 +250,8 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     showFutureEntries,
     futureEntryMonths,
     searchRanking,
+    itemFindThreshold,
+    itemFindTypeIds,
   };
 }
 

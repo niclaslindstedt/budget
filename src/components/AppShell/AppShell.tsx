@@ -314,6 +314,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
+    onClearIgnoredItemEntries,
     onToggleRowTransfer,
     onEditHistoryRequest,
     onUpdateHistoryEntry,
@@ -849,6 +850,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           onClearMerchantHints={onClearMerchantHints}
           onClearRecurringDismissals={onClearRecurringDismissals}
           onClearTransferDismissals={onClearTransferDismissals}
+          onClearIgnoredItemEntries={onClearIgnoredItemEntries}
           onSaveSettings={onSaveSettings}
           onImport={onImport}
         />

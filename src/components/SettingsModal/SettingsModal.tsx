@@ -37,6 +37,7 @@ import {
   DeveloperTab,
   FormatTab,
   GeneralTab,
+  ItemsTab,
   LogsTab,
   MemoryTab,
   PatternsTab,
@@ -108,6 +109,9 @@ type Props = {
   merchantHintCount: number;
   recurringDismissalCount: number;
   transferDismissalCount: number;
+  // Count of history entries the user ignored from the Items sheet's
+  // "Find items" scan, surfaced (with a clear-all) in the Items tab.
+  ignoredItemEntryCount: number;
   // Pass-through for the embedded Import / Export controls — they
   // used to live next to the Save button in the header, now they sit
   // inside Storage so the connection and the data-movement actions
@@ -140,6 +144,7 @@ type Props = {
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
+  onClearIgnoredItemEntries: () => void;
   // Category / type admin. The list of presets lives in code
   // (`PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES`); the per-user
   // hide-toggles travel through `data.hiddenPresetCategoryIds` and
@@ -240,6 +245,7 @@ export function SettingsModal({
   merchantHintCount,
   recurringDismissalCount,
   transferDismissalCount,
+  ignoredItemEntryCount,
   data,
   onImport,
   adapter,
@@ -260,6 +266,7 @@ export function SettingsModal({
   onClearMerchantHints,
   onClearRecurringDismissals,
   onClearTransferDismissals,
+  onClearIgnoredItemEntries,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
@@ -545,6 +552,15 @@ export function SettingsModal({
                 onEditRule={onEditMatchRule}
                 onMoveRule={onMoveMatchRule}
                 onReapplyAll={onReapplyMatchRules}
+              />
+            )}
+            {activeTab === "items" && (
+              <ItemsTab
+                draft={draft}
+                data={data}
+                ignoredItemEntryCount={ignoredItemEntryCount}
+                onUpdate={update}
+                onClearIgnoredItemEntries={onClearIgnoredItemEntries}
               />
             )}
             {activeTab === "memory" && (
