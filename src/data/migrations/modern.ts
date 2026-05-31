@@ -389,6 +389,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // item, so a v51 record simply lacks them and passes the v52 validator
   // unchanged. Bare additive bump.
   51: (v51) => ({ ...v51, version: 52 }),
+
+  // v52 → v53: introduces optional `HistoryEntry.userSeriesId`, the
+  // per-entry link tying an imported bank transaction to a recurring
+  // series when reconciliation matches it to a series budget row. Old
+  // exports simply lack the field — an entry without it validates fine
+  // and synthesizes a row with no series link, exactly as before. Bare
+  // additive bump.
+  52: (v52) => ({ ...v52, version: 53 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

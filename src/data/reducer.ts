@@ -491,6 +491,7 @@ export type Action =
         historyEntryId: string;
         userDescription?: string;
         userTypeId?: string;
+        userSeriesId?: string;
       }>;
       seriesRules: SeriesMatchRule[];
       orphans: Array<

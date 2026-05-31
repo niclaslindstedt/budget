@@ -55,6 +55,10 @@ export type ReconciliationApply = {
     historyEntryId: string;
     userDescription?: string;
     userTypeId?: string;
+    // The matched row's `seriesId`, carried onto the bank entry so the
+    // recurring-series connection survives the matched row's deletion.
+    // Only set when the row belonged to a series.
+    userSeriesId?: string;
   }>;
   seriesRules: SeriesMatchRule[];
   orphans: Array<
@@ -290,7 +294,14 @@ export function AccountReconciliationModal({
       };
       if (rowDesc) override.userDescription = rowDesc;
       if (lookup.row.typeId) override.userTypeId = lookup.row.typeId;
-      if (override.userDescription || override.userTypeId) {
+      // Preserve the series link when the matched row was recurring, so
+      // the bank entry that replaces it stays part of the series.
+      if (c.seriesId) override.userSeriesId = c.seriesId;
+      if (
+        override.userDescription ||
+        override.userTypeId ||
+        override.userSeriesId
+      ) {
         entryOverrides.push(override);
       }
     }

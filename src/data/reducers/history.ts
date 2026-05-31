@@ -271,6 +271,13 @@ export function reduceHistory(
         next.userTypeId = o.userTypeId;
         changed = true;
       }
+      // Preserve the recurring-series link from the matched row. Same
+      // fill-blank policy as the labels above — a series link already on
+      // the entry (from a prior import / manual edit) wins.
+      if (o.userSeriesId && entry.userSeriesId === undefined) {
+        next.userSeriesId = o.userSeriesId;
+        changed = true;
+      }
       if (changed) {
         historyTouched = true;
         return next;
