@@ -1,3 +1,4 @@
+import { ITEMS_GLYPH_NAMES } from "../constants/taxonomy";
 import { newId } from "../sheet";
 import type { ItemsView } from "../types";
 import { validateItemsView } from "../validate/sheet-items";
@@ -18,6 +19,7 @@ export const ITEMS_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
   label: "Items",
   description: "Track the things you own and what they're worth.",
   glyph: "package",
+  glyphNames: ITEMS_GLYPH_NAMES,
   createDefaultItem: () => createDefaultItemsView(),
   itemTypes: ["itemsView"],
   validate: (raw, path) => validateItemsView(raw, path),

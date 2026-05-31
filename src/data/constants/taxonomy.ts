@@ -95,6 +95,7 @@ export const CATEGORY_ICON_NAMES = [
   "bike",
   "fuel",
   "car-front",
+  "ship",
   "bed",
   "sofa",
   "lightbulb",
@@ -115,6 +116,7 @@ export const CATEGORY_ICON_NAMES = [
   "headphones",
   "camera",
   "tv",
+  "watch",
   "shirt",
   "scissors",
   "ticket",
@@ -156,6 +158,7 @@ export const CATEGORY_ICON_NAMES = [
   "newspaper",
   "book-marked",
   "clapperboard",
+  "guitar",
   "palette",
   "lamp",
   "bath",
@@ -194,6 +197,47 @@ export const SHEET_GLYPH_NAMES: readonly CategoryIcon[] = [
   "heart-pulse",
   "gift",
   "receipt",
+  "star",
+] as const;
+
+// Items sheets catalogue physical possessions and assets — what you
+// own and what it's worth. Unlike the planner-leaning SHEET_GLYPH_NAMES,
+// this palette is concrete (electronics, furniture, vehicles, valuables)
+// because the sheet tab stands in for a thing, not a financial concept.
+// The SheetModal picks this set when the selected sheet type is "items"
+// via the descriptor's `glyphNames`.
+export const ITEMS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "package",
+  "home",
+  "building-2",
+  "car",
+  "car-front",
+  "bike",
+  "plane",
+  "ship",
+  "sofa",
+  "bed",
+  "lamp",
+  "tv",
+  "laptop",
+  "smartphone",
+  "headphones",
+  "camera",
+  "gamepad-2",
+  "washing-machine",
+  "watch",
+  "gem",
+  "guitar",
+  "shirt",
+  "glasses",
+  "dumbbell",
+  "book-open",
+  "palette",
+  "wrench",
+  "key",
+  "bitcoin",
+  "coins",
+  "trending-up",
   "star",
 ] as const;
 

@@ -264,7 +264,7 @@ export function SheetModal({
 
           <FormSection label={t("sheetModal.glyph")}>
             <GlyphGrid
-              icons={SHEET_GLYPH_NAMES}
+              icons={selectedType.glyphNames ?? SHEET_GLYPH_NAMES}
               value={glyph}
               onChange={setGlyph}
               size={8}

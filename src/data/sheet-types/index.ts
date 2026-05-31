@@ -1,6 +1,13 @@
 import type { Result } from "../validate/helpers";
 import type { SheetItemValidationContext } from "../validate/sheet-items";
-import type { Row, SheetGlyph, SheetItem, SheetType, UserData } from "../types";
+import type {
+  CategoryIcon,
+  Row,
+  SheetGlyph,
+  SheetItem,
+  SheetType,
+  UserData,
+} from "../types";
 import type { Action } from "../reducer";
 
 import {
@@ -31,6 +38,12 @@ export type SheetTypeDescriptor = {
   label: string;
   description: string;
   glyph: SheetGlyph;
+  // Curated glyph palette the SheetModal offers when this flavour is
+  // selected. Absent ⇒ fall back to the planner-leaning
+  // `SHEET_GLYPH_NAMES`. Item-tracking flavours override it with a
+  // possessions-oriented set so the picker matches what the sheet
+  // stands for (a thing, not a financial concept).
+  glyphNames?: readonly CategoryIcon[];
   // Mint the seed `SheetItem` a new Sheet of this flavour starts with.
   // `accountId` is only honoured by flavours that have a per-account
   // budget item; singleton flavours (Accounts, Items) ignore it.
