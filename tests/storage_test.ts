@@ -35,10 +35,12 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 53,
+    version: 54,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
+    salaries: [],
+    employers: [],
     companies: [],
     tags: [],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
@@ -120,6 +122,8 @@ describe("serializeUserData", () => {
         id: s.id,
       })),
       accounts: b.accounts,
+      salaries: b.salaries,
+      employers: b.employers,
       companies: b.companies,
       tags: b.tags,
       categories: b.categories,
@@ -155,12 +159,13 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 27)).toEqual([
+    expect(topKeys.slice(0, 29)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "companies",
       "companyCategories",
+      "employers",
       "hiddenPresetCategoryIds",
       "hiddenPresetCompanyCategoryIds",
       "hiddenPresetTypeIds",
@@ -173,6 +178,7 @@ describe("serializeUserData", () => {
       "primaryIncomeMerchants",
       "recurringDismissals",
       "renamePatterns",
+      "salaries",
       "seriesMatchRules",
       "seriesMetadata",
       "settings",

@@ -114,9 +114,10 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 53), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 54), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
-│   │   │                       #   ItemsView, SheetType, SheetGlyph
+│   │   │                       #   ItemsView, SalaryView, SheetType, SheetGlyph
+│   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
@@ -151,6 +152,7 @@ src/
 │   │   ├── budget.ts           # BUDGET_SHEET_DESCRIPTOR + createDefaultAccountBudget
 │   │   ├── accounts.ts         # ACCOUNTS_SHEET_DESCRIPTOR + createDefaultAccountsView
 │   │   ├── items.ts            # ITEMS_SHEET_DESCRIPTOR + createDefaultItemsView
+│   │   ├── salary.ts           # SALARY_SHEET_DESCRIPTOR + createDefaultSalaryView
 │   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
 │   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
@@ -189,6 +191,10 @@ src/
 │   ├── items/
 │   │   └── value.ts            # computeItemCurrentValue / isItemOwned for the
 │   │                           #   Items page (resale value + depreciation)
+│   ├── salary/
+│   │   ├── salary.ts           # brutto/netto/tax algebra + role-title resolution
+│   │   └── detection.ts        # detectSalaries (one candidate per month, prefers
+│   │                           #   recurring income; job-change segmentation)
 │   ├── achievements/      # the gamified "guided tour" system
 │   │   ├── catalog.ts          # achievement definitions + unlock predicates
 │   │   ├── derive.ts           # diff (prev, next) state → newly-unlocked ids
@@ -199,7 +205,7 @@ src/
 │   │   ├── item/               # AccountBudget item reducer (updateCell, bulk
 │   │   │                       #   patch, split, paste, drag-drop, hints,
 │   │   │                       #   primary-income shifts)
-│   │   ├── accounts.ts, sheets.ts, transfers.ts, history.ts,
+│   │   ├── accounts.ts, salary.ts, sheets.ts, transfers.ts, history.ts,
 │   │   │   history-primary-income.ts, categories-and-types.ts, items.ts,
 │   │   │   match-rules.ts, recurring.ts, series-metadata.ts, settings.ts,
 │   │   │   achievements.ts
@@ -207,14 +213,15 @@ src/
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
 │   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
 │   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
-│   │   │                       #   accountsView/itemsView) — cycle-free so the
-│   │   │                       #   sheet-type descriptors can import them
+│   │   │                       #   accountsView/itemsView/salaryView) — cycle-free
+│   │   │                       #   so the sheet-type descriptors can import them
+│   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (52) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (54) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v50 steps
+│   │   ├── modern.ts           # v31 → v53 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
