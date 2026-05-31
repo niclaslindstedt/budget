@@ -190,6 +190,16 @@ export function BudgetEditSeriesForm({
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">{t("editEntry.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={handlePickCompany}
+              onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">{t("editEntry.type")}</span>
             <TypePicker
               variant="field"
@@ -202,16 +212,6 @@ export function BudgetEditSeriesForm({
               hintTypeIds={
                 companyId ? (companyTypeHints.get(companyId) ?? []) : []
               }
-            />
-          </div>
-          <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">{t("editEntry.company")}</span>
-            <CompanyPicker
-              variant="field"
-              companies={companies}
-              selectedId={companyId}
-              onSelect={handlePickCompany}
-              onCreate={onCreateCompany}
             />
           </div>
           <label className="flex flex-col gap-1 sm:col-span-2">
