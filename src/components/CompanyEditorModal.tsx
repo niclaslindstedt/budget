@@ -1,6 +1,11 @@
 import { Building2 } from "lucide-react";
 
-import type { Category, Company, EntryType } from "../data/types";
+import type {
+  Category,
+  Company,
+  CompanyCategory,
+  EntryType,
+} from "../data/types";
 import { useT } from "../i18n";
 import { Modal } from "./Modal";
 import { CompanyEditor } from "./SettingsModal/CompaniesAdmin";
@@ -25,8 +30,12 @@ type Props = {
   companies: readonly Company[];
   types: readonly EntryType[];
   categories: readonly Category[];
+  companyCategories: readonly CompanyCategory[];
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompanyCategory: (
+    draft: Omit<CompanyCategory, "id">,
+  ) => CompanyCategory;
   onSubmit: (companyId: string, patch: Partial<Omit<Company, "id">>) => void;
   onClose: () => void;
 };
@@ -37,8 +46,10 @@ export function CompanyEditorModal({
   companies,
   types,
   categories,
+  companyCategories,
   onCreateType,
   onCreateCategory,
+  onCreateCompanyCategory,
   onSubmit,
   onClose,
 }: Props) {
@@ -62,8 +73,10 @@ export function CompanyEditorModal({
           existing={companies}
           types={types}
           categories={categories}
+          companyCategories={companyCategories}
           onCreateType={onCreateType}
           onCreateCategory={onCreateCategory}
+          onCreateCompanyCategory={onCreateCompanyCategory}
           submitLabel={t("common.save")}
           onCancel={onClose}
           onSubmit={(draft) => {

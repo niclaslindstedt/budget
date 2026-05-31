@@ -2,6 +2,7 @@ import {
   DEFAULT_CATEGORY_ID,
   PRESET_CATEGORY_IDS,
 } from "../presets/categories";
+import { PRESET_COMPANY_CATEGORY_IDS } from "../presets/company-categories";
 import { PRESET_ENTRY_TYPE_IDS } from "../presets/types";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
@@ -240,6 +241,54 @@ export function reduceCategoriesAndTypes(
       merchantHints: nextMerchantHints,
       matchRules: nextMatchRules,
       renamePatterns: nextRenamePatterns,
+    };
+  }
+  if (action.type === "addCompanyCategory") {
+    return {
+      ...state,
+      companyCategories: [...state.companyCategories, action.companyCategory],
+    };
+  }
+  if (action.type === "updateCompanyCategory") {
+    // Presets are immutable — Settings hides the Edit button for them
+    // and the action is a no-op if the id targets a preset.
+    if (PRESET_COMPANY_CATEGORY_IDS.has(action.companyCategoryId)) return state;
+    return {
+      ...state,
+      companyCategories: state.companyCategories.map((c) =>
+        c.id === action.companyCategoryId ? { ...c, ...action.patch } : c,
+      ),
+    };
+  }
+  if (action.type === "deleteCompanyCategory") {
+    // Presets are hide-only. Deleting a user category drops it from the
+    // list and strips its id from every company that referenced it —
+    // the company becomes unclassified (the field is optional, so no
+    // reassignment to a catch-all the way budget categories reassign
+    // their types).
+    if (PRESET_COMPANY_CATEGORY_IDS.has(action.companyCategoryId)) return state;
+    const id = action.companyCategoryId;
+    return {
+      ...state,
+      companyCategories: state.companyCategories.filter((c) => c.id !== id),
+      companies: state.companies.map((c) => {
+        if (c.companyCategoryId !== id) return c;
+        const { companyCategoryId: _drop, ...rest } = c;
+        void _drop;
+        return rest;
+      }),
+    };
+  }
+  if (action.type === "setPresetCompanyCategoryHidden") {
+    if (!PRESET_COMPANY_CATEGORY_IDS.has(action.presetId)) return state;
+    const current = state.hiddenPresetCompanyCategoryIds;
+    const isHidden = current.includes(action.presetId);
+    if (action.hidden === isHidden) return state;
+    return {
+      ...state,
+      hiddenPresetCompanyCategoryIds: action.hidden
+        ? [...current, action.presetId]
+        : current.filter((id) => id !== action.presetId),
     };
   }
   if (action.type === "addTag") {

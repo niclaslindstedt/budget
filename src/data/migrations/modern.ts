@@ -367,6 +367,21 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // validate fine and `validateSettings` rebuilds settings ignoring the
   // dropped knob — so the step is a plain version bump.
   49: (v49) => ({ ...v49, version: 50 }),
+
+  // v50 → v51: introduces user-curated `companyCategories` (merchant
+  // kinds the user can classify a company under — grocery stores,
+  // pharmacies, fuel …) plus `hiddenPresetCompanyCategoryIds`, and an
+  // optional `Company.companyCategoryId`. The runtime layers the
+  // built-in `PRESET_COMPANY_CATEGORIES` on top, so both arrays seed
+  // empty. Every new field is additive/absence-tolerant — a v50
+  // company simply lacks `companyCategoryId` and passes the v51
+  // validator unchanged — so the step is a plain additive bump.
+  50: (v50) => ({
+    ...v50,
+    version: 51,
+    companyCategories: [],
+    hiddenPresetCompanyCategoryIds: [],
+  }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

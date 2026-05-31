@@ -6,16 +6,28 @@
 // isn't in the catalog, so an unknown preset id renders as its slug
 // rather than crashing.
 
-import type { Category, EntryType } from "../data/types";
+import type { Category, CompanyCategory, EntryType } from "../data/types";
 import type { MessageKey, TFunction } from ".";
 
 const CATEGORY_PREFIX = "preset-cat-";
+const COMPANY_CATEGORY_PREFIX = "preset-company-cat-";
 const TYPE_PREFIX = "preset-type-";
 
 export function displayCategoryName(category: Category, t: TFunction): string {
   if (category.id.startsWith(CATEGORY_PREFIX)) {
     const slug = category.id.slice(CATEGORY_PREFIX.length);
     return t(`presetCategories.${slug}` as MessageKey);
+  }
+  return category.name;
+}
+
+export function displayCompanyCategoryName(
+  category: CompanyCategory,
+  t: TFunction,
+): string {
+  if (category.id.startsWith(COMPANY_CATEGORY_PREFIX)) {
+    const slug = category.id.slice(COMPANY_CATEGORY_PREFIX.length);
+    return t(`presetCompanyCategories.${slug}` as MessageKey);
   }
   return category.name;
 }

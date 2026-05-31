@@ -3,6 +3,7 @@ import type {
   Category,
   CommonSettings,
   Company,
+  CompanyCategory,
   DeviceSettings,
   EntryType,
   EntryTypeKind,
@@ -76,6 +77,29 @@ export type Action =
       // referential-integrity guards never trip on a dangling id.
       type: "deleteCompany";
       companyId: string;
+    }
+  | { type: "addCompanyCategory"; companyCategory: CompanyCategory }
+  | {
+      // Edit a user-defined company category by id. Patch shape mirrors
+      // the Category action; presets are immutable (no-op on a preset
+      // id).
+      type: "updateCompanyCategory";
+      companyCategoryId: string;
+      patch: Partial<Omit<CompanyCategory, "id">>;
+    }
+  | {
+      // Delete a user-defined company category. Cascades by stripping
+      // `Company.companyCategoryId` from every company that referenced
+      // it (the company becomes unclassified — no default reassignment,
+      // since the field is optional) so the validator's
+      // referential-integrity sweep never trips. Presets are hide-only.
+      type: "deleteCompanyCategory";
+      companyCategoryId: string;
+    }
+  | {
+      type: "setPresetCompanyCategoryHidden";
+      presetId: string;
+      hidden: boolean;
     }
   | { type: "addTag"; tag: Tag }
   | {

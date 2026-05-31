@@ -14,6 +14,7 @@ export type {
   Category,
   CategoryIcon,
   Company,
+  CompanyCategory,
   EntryType,
   EntryTypeKind,
   Subtype,

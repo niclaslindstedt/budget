@@ -4,6 +4,7 @@ import type {
   Category,
   CategoryIcon,
   Company,
+  CompanyCategory,
   EntryType,
   Item,
   LineItemLink,
@@ -76,7 +77,33 @@ export function validateCompany(raw: unknown, path: string): Result<Company> {
     : undefined;
   const value: Company = { id, name };
   if (cleanTypeIds && cleanTypeIds.length > 0) value.typeIds = cleanTypeIds;
+  // Company category reference. Accept a non-empty string straight
+  // through here; its existence against the known company-category set
+  // (preset ∪ user) is checked in `validate/index.ts` once that set is
+  // built, and a dangling reference is swept there — same deferred
+  // pattern as `typeIds`.
+  if (typeof raw.companyCategoryId === "string" && raw.companyCategoryId !== "")
+    value.companyCategoryId = raw.companyCategoryId;
   return { ok: true, value };
+}
+
+// Mirrors `validateCategory` — company categories share the
+// id/name/color/icon shape. Glyph is cosmetic and falls back to the
+// default rather than trapping the whole file.
+export function validateCompanyCategory(
+  raw: unknown,
+  path: string,
+): Result<CompanyCategory> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, color, icon } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  if (typeof color !== "string" || color === "")
+    return fail(`${path}.color`, "expected a non-empty string");
+  const safeIcon = validateEnum(icon, CATEGORY_ICONS, DEFAULT_SHEET_GLYPH);
+  return { ok: true, value: { id, name, color, icon: safeIcon } };
 }
 
 export function validateTag(raw: unknown, path: string): Result<Tag> {

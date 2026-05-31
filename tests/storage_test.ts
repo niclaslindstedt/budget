@@ -35,7 +35,7 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 50,
+    version: 51,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
@@ -48,6 +48,8 @@ function sampleData(): UserData {
     hiddenPresetTypeIds: [],
     presetTypeKindOverrides: {},
     hiddenPresetCategoryIds: [],
+    companyCategories: [],
+    hiddenPresetCompanyCategoryIds: [],
     transfers: [],
     history: {},
     historyImports: {},
@@ -127,6 +129,8 @@ describe("serializeUserData", () => {
       hiddenPresetTypeIds: b.hiddenPresetTypeIds,
       presetTypeKindOverrides: b.presetTypeKindOverrides,
       hiddenPresetCategoryIds: b.hiddenPresetCategoryIds,
+      companyCategories: b.companyCategories,
+      hiddenPresetCompanyCategoryIds: b.hiddenPresetCompanyCategoryIds,
       transfers: b.transfers,
       history: b.history,
       historyImports: b.historyImports,
@@ -151,12 +155,14 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 25)).toEqual([
+    expect(topKeys.slice(0, 27)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "companies",
+      "companyCategories",
       "hiddenPresetCategoryIds",
+      "hiddenPresetCompanyCategoryIds",
       "hiddenPresetTypeIds",
       "history",
       "historyImports",

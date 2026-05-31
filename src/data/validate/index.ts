@@ -1,10 +1,12 @@
 import { PRESET_CATEGORY_IDS } from "../presets/categories";
+import { PRESET_COMPANY_CATEGORY_IDS } from "../presets/company-categories";
 import { PRESET_ENTRY_TYPE_IDS } from "../presets/types";
 import { LATEST_VERSION } from "../migrations";
 import type {
   Account,
   Category,
   Company,
+  CompanyCategory,
   EntryType,
   HistoryEntry,
   HistoryImport,
@@ -25,6 +27,7 @@ import {
   validateAccount,
   validateCategory,
   validateCompany,
+  validateCompanyCategory,
   validateEntryType,
   validateItem,
   validateSubtype,
@@ -131,6 +134,36 @@ export function validateUserData(raw: unknown): Result<UserData> {
     ...seenCategoryIds,
   ]);
 
+  // Company categories (merchant kinds). Same preset-collision rule as
+  // budget categories; validated before the company-reference sweep
+  // below so a `Company.companyCategoryId` can be checked against the
+  // resolvable set.
+  const rawCompanyCategories = Array.isArray(raw.companyCategories)
+    ? raw.companyCategories
+    : [];
+  const companyCategories: CompanyCategory[] = [];
+  const seenCompanyCategoryIds = new Set<string>();
+  for (let i = 0; i < rawCompanyCategories.length; i++) {
+    const r = validateCompanyCategory(
+      rawCompanyCategories[i],
+      `companyCategories[${i}]`,
+    );
+    if (!r.ok) return r;
+    if (seenCompanyCategoryIds.has(r.value.id))
+      return fail(`companyCategories[${i}].id`, `duplicate id "${r.value.id}"`);
+    if (PRESET_COMPANY_CATEGORY_IDS.has(r.value.id))
+      return fail(
+        `companyCategories[${i}].id`,
+        `collides with preset id "${r.value.id}"`,
+      );
+    seenCompanyCategoryIds.add(r.value.id);
+    companyCategories.push(r.value);
+  }
+  const knownCompanyCategoryIds = new Set<string>([
+    ...PRESET_COMPANY_CATEGORY_IDS,
+    ...seenCompanyCategoryIds,
+  ]);
+
   const rawTypes = Array.isArray(raw.types) ? raw.types : [];
   const types: EntryType[] = [];
   const seenTypeIds = new Set<string>();
@@ -183,17 +216,26 @@ export function validateUserData(raw: unknown): Result<UserData> {
   }
   const knownItemIds: ReadonlySet<string> = seenItemIds;
 
-  // Sweep dangling manual type associations now that the known-type set
-  // exists (companies are validated before types). A company whose
-  // pinned type was later deleted simply drops that id; an empty list
-  // collapses back to absent.
+  // Sweep dangling company references now that the known-type and
+  // known-company-category sets exist (companies are validated first).
+  // A company whose pinned type was later deleted drops that id (an
+  // empty list collapses to absent); a company pointing at a
+  // company-category that no longer resolves drops `companyCategoryId`.
   for (let i = 0; i < companies.length; i++) {
     const c = companies[i];
-    if (!c.typeIds) continue;
-    const kept = c.typeIds.filter((id) => knownTypeIds.has(id));
-    if (kept.length === c.typeIds.length) continue;
-    companies[i] =
-      kept.length > 0 ? { ...c, typeIds: kept } : { id: c.id, name: c.name };
+    const keptTypeIds = c.typeIds?.filter((id) => knownTypeIds.has(id));
+    const typeIdsChanged =
+      c.typeIds !== undefined && keptTypeIds!.length !== c.typeIds.length;
+    const categoryDangling =
+      c.companyCategoryId !== undefined &&
+      !knownCompanyCategoryIds.has(c.companyCategoryId);
+    if (!typeIdsChanged && !categoryDangling) continue;
+    const next: Company = { id: c.id, name: c.name };
+    const finalTypeIds = typeIdsChanged ? keptTypeIds! : c.typeIds;
+    if (finalTypeIds && finalTypeIds.length > 0) next.typeIds = finalTypeIds;
+    if (!categoryDangling && c.companyCategoryId !== undefined)
+      next.companyCategoryId = c.companyCategoryId;
+    companies[i] = next;
   }
 
   const rawTransfers = Array.isArray(raw.transfers) ? raw.transfers : [];
@@ -377,6 +419,9 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const hiddenPresetCategoryIds = sanitizeStringArray(
     raw.hiddenPresetCategoryIds,
   ).filter((id) => PRESET_CATEGORY_IDS.has(id));
+  const hiddenPresetCompanyCategoryIds = sanitizeStringArray(
+    raw.hiddenPresetCompanyCategoryIds,
+  ).filter((id) => PRESET_COMPANY_CATEGORY_IDS.has(id));
   const presetTypeKindOverrides = validatePresetTypeKindOverrides(
     raw.presetTypeKindOverrides,
   );
@@ -429,6 +474,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       hiddenPresetTypeIds,
       presetTypeKindOverrides,
       hiddenPresetCategoryIds,
+      companyCategories,
+      hiddenPresetCompanyCategoryIds,
       transfers,
       history,
       historyImports,
