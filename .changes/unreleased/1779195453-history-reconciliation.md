@@ -6,7 +6,11 @@ Bank-history imports now reconcile with predicted budget rows. The
 app prompts before merging close matches (±7 days, ±1% or ±2 SEK)
 and offers to delete or move predictions that didn't post.
 Confirming a match carries the predicted row's description and type
-onto the imported entry so fine-tuned labels survive the merge.
+onto the imported entry so fine-tuned labels survive the merge. When
+the predicted row belongs to a recurring series, the imported entry
+keeps that series link too, so the transaction stays part of the
+series and a recurring entry can be tracked across all its past
+occurrences.
 Dismissing the dialog (×, Escape, or click-outside) cancels the
 import — nothing lands in the account history until you click
 **Apply** or **Skip all**. Months fully covered by imported history
