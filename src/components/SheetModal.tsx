@@ -200,6 +200,12 @@ export function SheetModal({
             </p>
           )}
 
+          {type === "items" && (
+            <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+              {t("sheetModal.itemsHint")}
+            </p>
+          )}
+
           {type === "budget" && (
             <FormSection label={t("sheetModal.account")}>
               {creatingAccount ? (

@@ -43,6 +43,7 @@ const items = {
   buttonDisabled: "Finish or clear the half-filled line item first.",
   // Edit-item modal
   editItemTitle: "Edit item",
+  newItemTitle: "New item",
   purchasePrice: "Purchase price",
   purchasePricePlaceholder: "e.g. 12 000",
   linkedTotal: "Linked line items: {amount}",

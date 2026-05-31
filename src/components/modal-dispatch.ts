@@ -40,7 +40,8 @@ export type ModalCommand =
   | { kind: "open-copy-row"; row: Row }
   | { kind: "open-correction-delete"; row: Row }
   | { kind: "open-edit-company"; companyId: string }
-  | { kind: "open-edit-item"; itemId: string };
+  | { kind: "open-edit-item"; itemId: string }
+  | { kind: "open-create-item" };
 
 export type ModalDispatch = (command: ModalCommand) => void;
 
@@ -83,6 +84,11 @@ export type ModalCommandHandlers = {
   // purchase price, depreciation, resale value, and disposal without
   // going through the per-entry line-items links modal.
   editItem: (itemId: string) => void;
+  // Open the item editor in create mode (blank fields). Fired by the
+  // "+ add item" button at the bottom of the Items sheet table, so a
+  // user can grow the owned-items catalog directly from its page rather
+  // than only via a line-item link on a budget row.
+  createItem: () => void;
 };
 
 // A subset of the handler table. AppShell supplies a base slice (the
@@ -162,6 +168,9 @@ export function applyModalCommand(
       return;
     case "open-edit-item":
       handlers.editItem(command.itemId);
+      return;
+    case "open-create-item":
+      handlers.createItem();
       return;
   }
 }

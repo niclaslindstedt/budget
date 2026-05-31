@@ -1,5 +1,6 @@
 import { newId } from "../sheet";
 import type { AccountsView } from "../types";
+import { validateAccountsView } from "../validate/sheet-items";
 
 import type { SheetTypeDescriptor } from "./index";
 
@@ -17,4 +18,8 @@ export const ACCOUNTS_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
   description: "Manage accounts and transfers between them.",
   glyph: "piggy-bank",
   createDefaultItem: () => createDefaultAccountsView(),
+  itemTypes: ["accountsView"],
+  validate: (raw, path) => validateAccountsView(raw, path),
+  // No `reduceItem` / `rowsForItem`: AccountsView is a data-light
+  // singleton that renders the global account list.
 };

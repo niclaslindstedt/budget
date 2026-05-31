@@ -76,69 +76,14 @@ _Currently empty._ Re-surveyed top-to-bottom 2026-05 (full refresh —
 see Sources). No single candidate gates the feature wave on its own.
 The persistence-engine and per-backend splits all landed; the
 type-safety, import-direction, and native-`<select>` sweeps came back
-clean (zero hits). The closest thing to a blocker is the
-**sheet-type-registry coverage** cluster in the 7–8 band, but it is
-deliberately deferred to land _with_ the first new sheet type rather
-than speculatively now. The multipliers below are worth landing
-before adding the second new sheet type; feature work can ship
-through them.
+clean (zero hits). The **sheet-type-registry coverage** cluster that
+used to sit in the 7–8 band landed 2026-05 with the Items sheet (see
+Landed), so the multiplier band is now empty too.
 
 ### Severity 7–8 — multipliers (land before the second new sheet type)
 
-- **Sheet-type registry doesn't cover validation, item-action
-  discrimination, or cross-sheet traversal** — the
-  `SHEET_TYPE_REGISTRY` (`src/data/sheet-types/`) landed for
-  `reduceItem` dispatch (see Landed), but three other places still
-  hard-code the sheet-item type literal and would each grow a new
-  arm per sheet type. Re-surveyed 2026-05; current evidence (grep
-  `"accountBudget"` across `src/data` + `src/storage` → 40 hits,
-  of which most are legitimately budget-scoped and stay put):
-  - **Validator dispatch** — `validateSheetItem()` in
-    `src/data/validate/sheet.ts:256-280` is a literal if-chain on
-    `type === "accountBudget"` / `"accountsView"`, threading four
-    `known*Ids` sets that `accountsView` ignores. Every new sheet
-    type adds an arm + its own context shape. (The `sheet-types/`
-    Landed note **deliberately deferred** folding validators into
-    the registry "until multiplied across 6+ flavours" — the
-    feature wave is that trigger.)
-  - **Item-action discrimination** — the budget descriptor's
-    `isBudgetItemAction()` predicate (`src/data/sheet-types/budget.ts`)
-    is a hand-maintained switch over budget action types; each new
-    sheet type writes its own discriminator and widens the central
-    `Action` union in `src/data/reducer.ts`.
-  - **Budget-only traversals masquerading as universal** — modules
-    at `src/data/` root that read `item.type === "accountBudget"`
-    despite not living under `budget/`: `search.ts:369`,
-    `achievements/catalog.ts:84`, `storage/backup-metadata.ts:17`.
-    (`payday` and `company-type-suggestions` were genuinely
-    budget-only and **moved into `src/data/budget/`** 2026-05 — see
-    Landed.) `search`, `achievements`, and
-    `backup-metadata` are conceptually cross-page (you'll want to
-    search / count / back up rows from every sheet type) and want a
-    registry callback (`rowsForBackup?` / `searchableRows?` /
-    `countableRows?` on the descriptor) so they don't silently
-    undercount once a second row-bearing sheet type exists.
-  - **Plan**: add optional descriptor fields to `SheetTypeDescriptor`
-    — `validate?(raw, path, ctx)`, `itemActionTypes?: readonly string[]`
-    (or `ownsAction?(action)`), and the row-accessor callbacks above.
-    `validateSheetItem` / the reducer walker / the cross-page
-    traversals walk the registry instead of branching on the literal.
-    The two existing types (budget + accounts) are the proof the seam
-    works; **land the validator + discriminator seam together with the
-    first new flavour**, using that flavour as the real second
-    consumer rather than building it speculatively against one type.
-  - **Risk**: medium. The validator is the single gate on load /
-    import — a wrong arm breaks file import, so the migration path
-    and round-trip need testing. Pure refactor only: no persisted-
-    shape change (the descriptor fields are code, the on-disk shape
-    is untouched).
-  - **Severity: 7.** The data-layer audit rated parts of this 9; that's
-    inflated — the app runs fine on two types today and the registry
-    already dispatches `reduceItem`, so nothing is _blocked_. But it
-    is the textbook multiplier: every one of the six new sheet types
-    threads through all three sub-points, so the recurring cost is
-    real and it's the highest-leverage thing to settle as the wave
-    starts.
+_(none pending — the sheet-type registry coverage cluster landed
+2026-05 with the Items sheet; see Landed.)_
 
 ### Severity 5–6 — friction
 
@@ -404,17 +349,6 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   `parseDecimal(text, lang)` would cover. Re-rate if
   thousands-separator support lands. **Severity: 3.**
 
-- **Cross-sheet row counters undercount once a second row-bearing
-  type exists** — folds into the sheet-type-registry cluster (7–8
-  band) but flagged separately because the fix is a one-field
-  descriptor callback, not the whole registry pass.
-  `achievements/catalog.ts:84` (`eachAccountBudget` traversal) and
-  `storage/backup-metadata.ts:17` (`entryCount` over accountBudget
-  rows only) silently ignore rows on any future sheet type, so a
-  savings / loans workspace would report incomplete achievement
-  progress and backup entry counts. **Severity: 3** — harmless today
-  (only budget has rows); land with the first new row-bearing flavour.
-
 ### Easy wins (mechanical, land regardless of rating)
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
@@ -457,6 +391,35 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 ---
 
 ## Landed
+
+- **Sheet-type registry now covers validation, item-action
+  discrimination, and cross-sheet row traversal** (2026-05): landed
+  with the Items sheet as the real second consumer, discharging the
+  whole severity 7–8 cluster. `SheetTypeDescriptor`
+  (`src/data/sheet-types/index.ts`) grew three fields — `validate(raw,
+path, ctx)`, `itemTypes: readonly SheetItem["type"][]`, and
+  `rowsForItem?(item)` — plus a fourth, `itemActionTypes`, exposing the
+  budget descriptor's owned action list. The per-flavour leaf
+  validators moved out of `validate/sheet.ts` into a new cycle-free
+  `validate/sheet-items.ts` (column/row/budget/accountsView/itemsView)
+  so the descriptors can import them without forming a
+  `sheet-types → validate/sheet → sheet-types` cycle; `validateSheetItem`
+  now resolves the descriptor by `raw.type` via `descriptorForItemType`
+  and delegates, replacing the literal if-chain. `isBudgetItemAction`
+  (`sheet-types/budget.ts`) is now a `Set.has` over the single
+  `BUDGET_ITEM_ACTION_TYPES` tuple that also feeds `itemActionTypes`, so
+  the dispatch guard and the registry view can't drift. The three
+  cross-page traversals route through registry helpers: `eachRow` in
+  `achievements/catalog.ts` and `entryCount` in
+  `storage/backup-metadata.ts` call `someSheetItemRow` /
+  `countSheetItemRows`, so a future row-bearing flavour is counted
+  automatically (this also absorbs the separate severity-3 "cross-sheet
+  row counters" nit). `search.ts`'s budget projection stays
+  budget-scoped — it reads date/description/amount columns + bank
+  history, which is intrinsically ledger-shaped, not a generic row
+  walk. Covered by `tests/items_sheet_test.ts` (round-trip + dispatch +
+  count) on top of the existing validator suite. Pure refactor — no
+  persisted-shape change.
 
 - **`migrateV24ToV25` 284-line monolith → named phases + characterization
   test** (2026-05): decomposed the single forward-only v24 → v25 migration

@@ -10,6 +10,8 @@ const sheetModal = {
   typeAccountsOverview: "Accounts overview",
   accountsHint:
     "The Accounts sheet is a workspace-wide dashboard. Manage accounts and transfers from there — no per-sheet account binding needed.",
+  itemsHint:
+    "The Items sheet lists everything you own, with what each thing cost and what it's worth now. Add items from there — no per-sheet account binding needed.",
   color: "Color",
   glyph: "Icon",
   account: "Account",

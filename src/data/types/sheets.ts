@@ -32,20 +32,34 @@ export type AccountsView = {
   type: "accountsView";
 };
 
+// Workspace-wide owned-items catalog sheet item. The Items sheet is a
+// singleton flavour that renders the global `UserData.items` catalog
+// (every physical thing the user owns) rather than tracking a single
+// account. Like `AccountsView` the item carries no data of its own —
+// it reads the shared catalog — so the shape exists only so future
+// per-sheet config (sort order, show-disposed toggle, …) lands here
+// without another migration.
+export type ItemsView = {
+  id: string;
+  type: "itemsView";
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
-// dashboard rendered by the Accounts sheet flavour. Future variants
-// (Graph, Note, …) slot in as additional cases without a migration of
-// the existing data because old blocks still match their own variant.
-export type SheetItem = AccountBudget | AccountsView;
+// dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
+// owned-items catalog rendered by the Items sheet flavour. Future
+// variants (Graph, Note, …) slot in as additional cases without a
+// migration of the existing data because old blocks still match their
+// own variant.
+export type SheetItem = AccountBudget | AccountsView | ItemsView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
-// right body — today the transactional ledger ("budget") and the
-// workspace-wide accounts dashboard ("accounts") are implemented.
-// Future planners (loan tracking, savings forecast, parental-leave
-// planner, …) slot in as additional literals without needing another
-// migration.
-export type SheetType = "budget" | "accounts";
+// right body — today the transactional ledger ("budget"), the
+// workspace-wide accounts dashboard ("accounts"), and the owned-items
+// catalog ("items") are implemented. Future planners (loan tracking,
+// savings forecast, parental-leave planner, …) slot in as additional
+// literals without needing another migration.
+export type SheetType = "budget" | "accounts" | "items";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

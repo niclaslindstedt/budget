@@ -40,8 +40,13 @@ import { SubtypePicker } from "./SubtypePicker";
 type Props = {
   open: boolean;
   // The item to edit. Null until a pill / line item resolves one — the
-  // modal renders nothing until then.
+  // modal renders nothing until then. In create mode (`item` null but
+  // `creating` true) the fields seed blank and Save mints a new item.
   item: Item | null;
+  // Create mode: render with blank fields and a "New item" title, and
+  // route Save to `onCreate` instead of `onSubmit`. The delete control
+  // is hidden. Fired by the Items sheet's "+ add item" button.
+  creating?: boolean;
   subtypes: readonly Subtype[];
   types: readonly EntryType[];
   categories: readonly Category[];
@@ -59,6 +64,10 @@ type Props = {
   // clears it (the reducer deletes the key). The host routes this to the
   // `updateItem` action.
   onSubmit: (itemId: string, patch: Partial<Omit<Item, "id">>) => void;
+  // Fires on Save in create mode with the assembled draft (no id yet).
+  // The host routes this to the `addItem` action. Required only when
+  // `creating` can be true.
+  onCreate?: (draft: Omit<Item, "id">) => void;
   onDelete: (itemId: string) => void;
   onClose: () => void;
 };
@@ -73,6 +82,7 @@ function seedAmount(value: number | undefined, settings: Settings): string {
 export function ItemEditorModal({
   open,
   item,
+  creating = false,
   subtypes,
   types,
   categories,
@@ -82,6 +92,7 @@ export function ItemEditorModal({
   onCreateType,
   onCreateCategory,
   onSubmit,
+  onCreate,
   onDelete,
   onClose,
 }: Props) {
@@ -101,24 +112,32 @@ export function ItemEditorModal({
   const [note, setNote] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useResetOnOpen(open, item?.id, () => {
-    setName(item?.name ?? "");
-    setSubtypeId(item?.subtypeId ?? null);
-    setPurchasePrice(seedAmount(item?.purchasePrice, settings));
-    setAcquiredAt(item?.acquiredAt ?? "");
-    const dep = item?.depreciation;
-    setDepreciates(dep !== undefined);
-    setRatePerYear(dep ? formatAmountForInput(dep.ratePerYear, settings) : "");
-    setFloor(dep?.floor !== undefined ? seedAmount(dep.floor, settings) : "");
-    setResaleValue(seedAmount(item?.resaleValue, settings));
-    setDisposed(item?.disposedAt !== undefined || item?.soldFor !== undefined);
-    setDisposedAt(item?.disposedAt ?? "");
-    setSoldFor(seedAmount(item?.soldFor, settings));
-    setNote(item?.note ?? "");
-    setConfirmDelete(false);
-  });
+  useResetOnOpen(
+    open,
+    item?.id ?? (creating ? "__create__" : undefined),
+    () => {
+      setName(item?.name ?? "");
+      setSubtypeId(item?.subtypeId ?? null);
+      setPurchasePrice(seedAmount(item?.purchasePrice, settings));
+      setAcquiredAt(item?.acquiredAt ?? "");
+      const dep = item?.depreciation;
+      setDepreciates(dep !== undefined);
+      setRatePerYear(
+        dep ? formatAmountForInput(dep.ratePerYear, settings) : "",
+      );
+      setFloor(dep?.floor !== undefined ? seedAmount(dep.floor, settings) : "");
+      setResaleValue(seedAmount(item?.resaleValue, settings));
+      setDisposed(
+        item?.disposedAt !== undefined || item?.soldFor !== undefined,
+      );
+      setDisposedAt(item?.disposedAt ?? "");
+      setSoldFor(seedAmount(item?.soldFor, settings));
+      setNote(item?.note ?? "");
+      setConfirmDelete(false);
+    },
+  );
 
-  if (!open || !item) return null;
+  if (!open || (!item && !creating)) return null;
 
   const trimmedName = name.trim();
   const canSubmit = trimmedName.length > 0;
@@ -129,7 +148,7 @@ export function ItemEditorModal({
   }
 
   function handleSubmit() {
-    if (!item || !canSubmit) return;
+    if (!canSubmit) return;
     const patch: Partial<Omit<Item, "id">> = {
       name: trimmedName,
       subtypeId: subtypeId ?? undefined,
@@ -162,7 +181,19 @@ export function ItemEditorModal({
       patch.soldFor = undefined;
     }
 
-    onSubmit(item.id, patch);
+    if (item) {
+      onSubmit(item.id, patch);
+      return;
+    }
+    // Create mode: drop every `undefined` so the new item is byte-clean
+    // (absent optional fields aren't stored), matching what a reload
+    // from storage produces. `name` is always present (canSubmit guard).
+    const draft: Omit<Item, "id"> = { name: trimmedName };
+    for (const [key, value] of Object.entries(patch)) {
+      if (key === "name" || value === undefined) continue;
+      (draft as Record<string, unknown>)[key] = value;
+    }
+    onCreate?.(draft);
   }
 
   const linkedHint =
@@ -191,7 +222,7 @@ export function ItemEditorModal({
     >
       <Modal.Header
         icon={<Package size={14} aria-hidden focusable={false} />}
-        title={t("items.editItemTitle")}
+        title={creating ? t("items.newItemTitle") : t("items.editItemTitle")}
         onClose={onClose}
       />
       <Modal.Body>
@@ -338,35 +369,37 @@ export function ItemEditorModal({
             />
           </label>
 
-          <div className="mt-1 border-t border-line pt-3">
-            {confirmDelete ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs text-danger">
-                  {t("items.deleteItemConfirm")}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    {t("common.cancel")}
-                  </Button>
-                  <Button variant="danger" onClick={() => onDelete(item.id)}>
-                    {t("items.deleteItem")}
-                  </Button>
+          {item && (
+            <div className="mt-1 border-t border-line pt-3">
+              {confirmDelete ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-danger">
+                    {t("items.deleteItemConfirm")}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setConfirmDelete(false)}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                    <Button variant="danger" onClick={() => onDelete(item.id)}>
+                      {t("items.deleteItem")}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-xs text-muted hover:text-danger"
-              >
-                <Trash2 size={14} aria-hidden focusable={false} />
-                {t("items.deleteItem")}
-              </button>
-            )}
-          </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-xs text-muted hover:text-danger"
+                >
+                  <Trash2 size={14} aria-hidden focusable={false} />
+                  {t("items.deleteItem")}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </Modal.Body>
       <Modal.Footer>

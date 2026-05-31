@@ -66,6 +66,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
+import { someSheetItemRow } from "../sheet-types";
 import type { Row, SheetItem, UserData } from "../types";
 import type { Achievement } from "./types";
 
@@ -76,6 +77,9 @@ import type { Achievement } from "./types";
 // reads when adding a new entry — same source of truth as the
 // achievements modal itself.
 
+// Budget-specific traversal: the `columns` / `rows.length` predicates
+// below are intrinsically about the ledger shape, so they stay scoped
+// to `accountBudget` items rather than walking the registry.
 function eachAccountBudget(
   state: UserData,
   fn: (item: Extract<SheetItem, { type: "accountBudget" }>) => boolean,
@@ -88,8 +92,13 @@ function eachAccountBudget(
   return false;
 }
 
+// Generic row predicate: routes through the sheet-type registry's
+// row accessor so a "does any row do X" check counts rows on every
+// row-bearing flavour, not just budgets. Today only budgets bear rows,
+// so the behaviour is identical — but a future row-bearing sheet type
+// is included automatically rather than being silently undercounted.
 function eachRow(state: UserData, fn: (row: Row) => boolean): boolean {
-  return eachAccountBudget(state, (item) => item.rows.some(fn));
+  return someSheetItemRow(state, fn);
 }
 
 const hasAnyUserRow = (s: UserData) =>

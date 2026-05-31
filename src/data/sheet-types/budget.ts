@@ -8,10 +8,39 @@ import {
   reduceAccountBudget,
 } from "../reducers/item";
 import { applyPrimaryIncomeShifts } from "../reducers/item/primary-income";
-import type { AccountBudget, Column, UserData } from "../types";
+import type { AccountBudget, Column, SheetItem, UserData } from "../types";
 import type { Action } from "../reducer";
+import { validateAccountBudget } from "../validate/sheet-items";
 
 import type { SheetTypeDescriptor } from "./index";
+
+// The action `type` literals the budget descriptor's `reduceItem`
+// claims. Declared as a tuple so the descriptor can both expose it via
+// `itemActionTypes` and reuse it as the dispatch guard below — the two
+// can no longer drift apart the way a separate hand-maintained switch
+// could.
+const BUDGET_ITEM_ACTION_TYPES = [
+  "updateCell",
+  "toggleRowTransfer",
+  "addRow",
+  "addRowsFromComplex",
+  "convertToRecurring",
+  "editSeries",
+  "propagateCellToFuture",
+  "deleteRows",
+  "bulkUpdate",
+  "bulkShiftToMonth",
+  "bulkCopyToMonths",
+  "bulkMakeRecurring",
+  "reorderColumns",
+  "splitRow",
+  "setRowLineItems",
+  "setRowFiscalMonthShift",
+] as const;
+
+const BUDGET_ITEM_ACTION_TYPE_SET: ReadonlySet<string> = new Set(
+  BUDGET_ITEM_ACTION_TYPES,
+);
 
 // Default column layout for a newly-minted budget block: a typed
 // ledger with date / description / type / amount / balance / done
@@ -38,27 +67,7 @@ export function createDefaultAccountBudget(
 }
 
 function isBudgetItemAction(action: Action): action is ItemAction {
-  switch (action.type) {
-    case "updateCell":
-    case "toggleRowTransfer":
-    case "addRow":
-    case "addRowsFromComplex":
-    case "convertToRecurring":
-    case "editSeries":
-    case "propagateCellToFuture":
-    case "deleteRows":
-    case "bulkUpdate":
-    case "bulkShiftToMonth":
-    case "bulkCopyToMonths":
-    case "bulkMakeRecurring":
-    case "reorderColumns":
-    case "splitRow":
-    case "setRowLineItems":
-    case "setRowFiscalMonthShift":
-      return true;
-    default:
-      return false;
-  }
+  return BUDGET_ITEM_ACTION_TYPE_SET.has(action.type);
 }
 
 // Budget-item dispatch tail. Reduces the targeted AccountBudget, then
@@ -181,5 +190,10 @@ export const BUDGET_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
   description: "Track money in and out, month by month.",
   glyph: "wallet",
   createDefaultItem: ({ accountId }) => createDefaultAccountBudget(accountId),
+  itemTypes: ["accountBudget"],
+  validate: (raw, path, ctx) => validateAccountBudget(raw, path, ctx),
   reduceItem: reduceBudgetItem,
+  itemActionTypes: BUDGET_ITEM_ACTION_TYPES,
+  rowsForItem: (item: SheetItem) =>
+    item.type === "accountBudget" ? item.rows : [],
 };
