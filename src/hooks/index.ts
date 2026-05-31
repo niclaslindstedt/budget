@@ -37,4 +37,5 @@ export { type ToastInput, type ToastKind, useToast } from "./useToast";
 export {
   useVirtualKeyboardInset,
   useVisualViewportHeight,
+  useVisualViewportOffsetTop,
 } from "./useVirtualKeyboardInset";
