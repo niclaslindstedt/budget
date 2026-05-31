@@ -1,0 +1,105 @@
+import type { SalaryCatalog } from "../en/salary";
+
+const salary: SalaryCatalog = {
+  // Page chrome
+  sheetTitle: "Lön",
+  findSalaries: "Hitta löner",
+  manageEmployers: "Arbetsgivare",
+  noSalaries:
+    "Inga löner än. Använd ”Hitta löner” för att hitta dem i din budget, eller lägg till en nedan.",
+  addSalary: "Lägg till lön",
+  select: "Markera",
+  cancelSelect: "Klar",
+  selected: "{count} markerade",
+
+  // Table
+  month: "Månad",
+  employer: "Arbetsgivare",
+  title: "Titel",
+  gross: "Brutto",
+  tax: "Skatt",
+  net: "Netto",
+  days: "Dagar",
+  actions: "Åtgärder",
+  yearTotal: "Totalt",
+  noEmployer: "Ingen arbetsgivare",
+  editAria: "Redigera lön för {month}",
+  deleteAria: "Ta bort lön för {month}",
+
+  // Absence-day badges
+  careOfChildShort: "VAB",
+  parentalLeaveShort: "Föräldraledig",
+  vacationShort: "Semester",
+  sickShort: "Sjuk",
+  daysValue: "{n} d",
+
+  // Edit modal
+  editTitle: "Redigera lön",
+  deleteTitle: "Ta bort lön",
+  deleteConfirm: "Ta bort lönen för {month}? Detta går inte att ångra.",
+  delete: "Ta bort",
+  grossLabel: "Brutto",
+  grossHint: "Det du tjänade före skatt. Skatten är brutto minus nettot.",
+  netLabel: "Netto",
+  netHint: "Beloppet som betalades in på ditt konto.",
+  taxLabel: "Skatt",
+  careOfChildDaysLabel: "VAB-dagar",
+  parentalLeaveDaysLabel: "Föräldralediga dagar",
+  vacationDaysLabel: "Semesterdagar",
+  sickDaysLabel: "Sjukdagar",
+  noteLabel: "Anteckning",
+  notePlaceholder: "Valfritt. T.ex. varför denna lön avviker från snittet.",
+
+  // Bulk edit
+  bulkTitle: "Redigera {count} löner",
+  bulkEmployerToggle: "Ange arbetsgivare",
+  bulkTaxRateToggle: "Ange skattesats",
+  bulkTaxRateHint:
+    "Procent av brutto som dras i skatt. Varje löns brutto räknas baklänges från dess eget netto.",
+  bulkTaxRatePlaceholder: "t.ex. 30",
+  apply: "Tillämpa",
+
+  // Find-salaries modal
+  findTitle: "Hitta löner",
+  findIntro:
+    "Dessa ser ut som löneutbetalningar i din budget. Lägg till de du vill behålla; släng resten.",
+  findNone:
+    "Inga troliga löner hittades. Markera en inkomstserie som din huvudlön i budgeten för bättre träffsäkerhet.",
+  likelyNewEmployer: "Trolig ny arbetsgivare",
+  add: "Lägg till",
+  discard: "Släng",
+  addAll: "Lägg till alla",
+  discardAll: "Släng alla",
+  confidenceHigh: "Trolig",
+  confidenceMedium: "Kanske",
+  confidenceLow: "Gissning",
+
+  // Employer management
+  employersTitle: "Arbetsgivare",
+  addEmployer: "Lägg till arbetsgivare",
+  employerName: "Namn",
+  employerNamePlaceholder: "Acme AB, …",
+  employerColor: "Färg",
+  employerGlyph: "Ikon",
+  saveEmployer: "Spara arbetsgivare",
+  deleteEmployer: "Ta bort arbetsgivare",
+  deleteEmployerConfirm:
+    "Ta bort {name}? Lönerna behåller sina data men förlorar arbetsgivaren.",
+  noEmployers: "Inga arbetsgivare än. Lägg till en för att märka dina löner.",
+  editEmployerAria: "Redigera {name}",
+  deleteEmployerAria: "Ta bort {name}",
+  roles: "Roller",
+  addRole: "Lägg till roll",
+  roleTitle: "Titel",
+  roleTitlePlaceholder: "Utvecklare, Chef, …",
+  roleStart: "Från",
+  roleEnd: "Till",
+  removeRole: "Ta bort roll",
+  noRoles: "Inga roller än.",
+
+  // Employer picker
+  pickEmployer: "Välj arbetsgivare",
+  newEmployer: "Ny arbetsgivare",
+};
+
+export default salary;

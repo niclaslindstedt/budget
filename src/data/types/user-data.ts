@@ -22,6 +22,7 @@ import type {
   SeriesMatchRule,
   SeriesMetadata,
 } from "./rules";
+import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
 import type { Sheet } from "./sheets";
 
@@ -32,10 +33,19 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 53;
+  version: 54;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
+  // Salary payments over time, rendered by the Salary sheet. Each
+  // entry is one paycheck (`net` is the bank deposit; `gross` the
+  // user-entered brutto). Populated manually or via the "Find salaries"
+  // detector that scans budget income. Empty on a fresh budget.
+  salaries: Salary[];
+  // Workplaces referenced from `Salary.employerId`. Each carries the
+  // roles (titles) held there over time. Entirely user-curated — no
+  // presets ship. Empty on a fresh budget.
+  employers: Employer[];
   // User-added tags (cross-cutting labels). Referenced from
   // `Row.tagIds` — a row can carry several. No presets ship; tags are
   // entirely user-curated through the inline create row on the

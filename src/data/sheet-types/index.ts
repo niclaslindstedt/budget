@@ -16,6 +16,7 @@ import {
 } from "./accounts";
 import { BUDGET_SHEET_DESCRIPTOR, createDefaultAccountBudget } from "./budget";
 import { ITEMS_SHEET_DESCRIPTOR, createDefaultItemsView } from "./items";
+import { SALARY_SHEET_DESCRIPTOR, createDefaultSalaryView } from "./salary";
 
 // Single source of truth for every Sheet flavour. Adding a new sheet
 // type (savings, loans, scenario, …) is one new file in this directory
@@ -89,6 +90,7 @@ export const SHEET_TYPE_REGISTRY: readonly SheetTypeDescriptor[] = [
   BUDGET_SHEET_DESCRIPTOR,
   ACCOUNTS_SHEET_DESCRIPTOR,
   ITEMS_SHEET_DESCRIPTOR,
+  SALARY_SHEET_DESCRIPTOR,
 ];
 
 // Set-shaped view for validators and any other consumer that needs an
@@ -166,4 +168,5 @@ export {
   createDefaultAccountBudget,
   createDefaultAccountsView,
   createDefaultItemsView,
+  createDefaultSalaryView,
 };

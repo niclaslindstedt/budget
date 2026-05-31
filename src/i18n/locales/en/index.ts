@@ -53,6 +53,7 @@ import transfer from "./transfer";
 import account from "./account";
 import accountsSheet from "./accountsSheet";
 import itemsSheet from "./itemsSheet";
+import salary from "./salary";
 import cutHistory from "./cutHistory";
 import sheetModal from "./sheetModal";
 import category from "./category";
@@ -127,6 +128,7 @@ export const en = {
   account,
   accountsSheet,
   itemsSheet,
+  salary,
   cutHistory,
   sheetModal,
   category,
