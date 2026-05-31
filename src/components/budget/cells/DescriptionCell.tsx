@@ -241,27 +241,21 @@ export function DescriptionCell({
           // popover closes — which is misleading because the row still
           // has no user-authored description.
           const fallback = isFallback || !hasValue;
-          // Line items are the most specific annotation, so they win the
-          // fallback slot: a row with line items but no user-authored
-          // description renders an item pill (the first line's item name,
-          // Package glyph for one, Boxes for many) ahead of the company
-          // pill / type-name fallback.
-          const showLineItemPill = fallback && hasLineItems;
+          // Line items are the most specific annotation, so an item pill
+          // wins the cell whenever the row has line items — even when a
+          // user description is set (the description stays editable in
+          // the popover). The pill shows the first line's item name, a
+          // Package glyph for one and Boxes for many.
+          const showLineItemPill = hasLineItems;
           const showCompanyPill = fallback && !showLineItemPill && !!company;
           const showTypeName =
             fallback && !showLineItemPill && !company && !!entryType;
-          // When BOTH a description and a company are set, prefix the
+          // When BOTH a description and a company are set (and no line
+          // items, which would take over the cell as a pill), prefix the
           // description text with a low-key Building2 glyph so the
-          // tagged-merchant state is visible at a glance even when the
-          // company name is hidden behind the description override.
-          // Suppressed when the row also has line items — the item glyph
-          // below stands in, and one leading glyph is enough.
+          // tagged-merchant state is visible at a glance.
           const showCompanyGlyph =
-            !fallback && hasValue && !!company && !hasLineItems;
-          // Same idea for line items: when the row has a user-authored
-          // description AND line items, prefix it with the item glyph
-          // (Package / Boxes) so the line-item state stays visible.
-          const showLineItemGlyph = !fallback && hasValue && hasLineItems;
+            !fallback && hasValue && !!company && !showLineItemPill;
           // Mirror the Building2 prefix with a Ban glyph when the row's
           // company is explicitly omitted, so the skipped state is
           // visible without having to tap the row open. `noCompany` and
@@ -381,22 +375,6 @@ export function DescriptionCell({
                       className="shrink-0"
                     />
                   )}
-                  {showLineItemGlyph &&
-                    (manyLineItems ? (
-                      <Boxes
-                        size={12}
-                        aria-hidden
-                        focusable={false}
-                        className="shrink-0"
-                      />
-                    ) : (
-                      <Package
-                        size={12}
-                        aria-hidden
-                        focusable={false}
-                        className="shrink-0"
-                      />
-                    ))}
                   {showOmittedGlyph && <OmittedGlyph />}
                   <span className="min-w-0 truncate">{displayValue}</span>
                 </span>
@@ -701,19 +679,20 @@ function CompanyPill({
 }
 
 // Outlined pill with the item glyph + the first line's item name,
-// shown inside the description cell when the row has line items but no
-// user-authored description. Mirrors `CompanyPill` — same outlined
-// theme-token styling — but the leading glyph encodes the count: a
-// `Package` for a single line item, `Boxes` for many (where the name
-// shown is the first added line item). Uses `--fg-bright` so the pill
-// stays high-contrast in both themes.
+// shown inside the description cell whenever the row has line items
+// (the user description, if any, stays editable in the popover).
+// Mirrors `CompanyPill`'s outlined shape but reads in the blue `--link`
+// token so item pills are visually distinct from the bright company
+// pill at a glance. The leading glyph encodes the count: a `Package`
+// for a single line item, `Boxes` for many (the name shown is the
+// first added line item).
 function LineItemPill({ name, many }: { name: string; many: boolean }) {
   return (
     <span
       className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
       style={{
-        borderColor: "var(--fg-bright)",
-        color: "var(--fg-bright)",
+        borderColor: "var(--link)",
+        color: "var(--link)",
       }}
     >
       {many ? (
