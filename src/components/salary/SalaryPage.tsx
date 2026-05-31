@@ -251,26 +251,16 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
               </button>
             </>
           ) : (
-            <>
+            hasSalaries && (
               <button
                 type="button"
-                onClick={() => setFindOpen(true)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-accent hover:bg-surface"
+                onClick={() => setSelectMode(true)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-fg hover:border-accent"
               >
-                <Search size={14} aria-hidden focusable={false} />
-                {t("salary.findSalaries")}
+                <CheckSquare size={14} aria-hidden focusable={false} />
+                {t("salary.select")}
               </button>
-              {hasSalaries && (
-                <button
-                  type="button"
-                  onClick={() => setSelectMode(true)}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-fg hover:border-accent"
-                >
-                  <CheckSquare size={14} aria-hidden focusable={false} />
-                  {t("salary.select")}
-                </button>
-              )}
-            </>
+            )
           )}
         </div>
 
