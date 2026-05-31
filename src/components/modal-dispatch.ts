@@ -38,7 +38,8 @@ export type ModalCommand =
   | { kind: "open-match-rule"; row: Row }
   | { kind: "open-edit-history"; row: Row }
   | { kind: "open-copy-row"; row: Row }
-  | { kind: "open-correction-delete"; row: Row };
+  | { kind: "open-correction-delete"; row: Row }
+  | { kind: "open-edit-company"; companyId: string };
 
 export type ModalDispatch = (command: ModalCommand) => void;
 
@@ -70,6 +71,11 @@ export type ModalCommandHandlers = {
   editHistory: (row: Row) => void;
   copyRow: (row: Row) => void;
   correctionDelete: (row: Row) => void;
+  // Open the company editor for an existing company. Fired by the
+  // long-press / right-click escape hatch on a budget row's company
+  // pill, so the user can rename a merchant (or re-pin its associated
+  // types) without detouring through Settings → Companies.
+  editCompany: (companyId: string) => void;
 };
 
 // A subset of the handler table. AppShell supplies a base slice (the
@@ -143,6 +149,9 @@ export function applyModalCommand(
       return;
     case "open-correction-delete":
       handlers.correctionDelete(command.row);
+      return;
+    case "open-edit-company":
+      handlers.editCompany(command.companyId);
       return;
   }
 }

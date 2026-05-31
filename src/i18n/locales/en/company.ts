@@ -8,6 +8,7 @@ const company = {
   omitCompany: "Omit company",
   omittedLabel: "Company omitted",
   newCompany: "New company",
+  editCompany: "Edit company",
   noCompaniesYet: "No companies yet.",
   name: "Name",
   namePlaceholder: "H&M",

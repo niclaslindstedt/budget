@@ -34,6 +34,7 @@ function makeHandlers(): ModalCommandHandlers {
     editHistory: vi.fn(),
     copyRow: vi.fn(),
     correctionDelete: vi.fn(),
+    editCompany: vi.fn(),
   };
 }
 
@@ -60,6 +61,7 @@ const cases: ReadonlyArray<[ModalCommand, keyof ModalCommandHandlers]> = [
   [{ kind: "open-edit-history", row: ROW }, "editHistory"],
   [{ kind: "open-copy-row", row: ROW }, "copyRow"],
   [{ kind: "open-correction-delete", row: ROW }, "correctionDelete"],
+  [{ kind: "open-edit-company", companyId: "c1" }, "editCompany"],
 ];
 
 describe("applyModalCommand", () => {

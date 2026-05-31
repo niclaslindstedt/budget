@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -17,6 +23,7 @@ import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
 import { CompanyPicker } from "../../CompanyPicker";
 import { FloatingPanel } from "../../FloatingPanel";
+import { useModalDispatch } from "../../modal-dispatch";
 import { CELL_BASE } from "./constants";
 
 // One owned-item line on a row, resolved + pre-formatted by `BudgetRow`
@@ -30,6 +37,9 @@ export type CellLineItem = {
   // Pre-formatted signed amount (e.g. "−1 200 kr"), ready to render.
   amount: string;
 };
+
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_PX = 8;
 
 // Both mobile and desktop drive the description cell through the same
 // `DescriptionPopover` trigger: it owns the type-name / company-pill /
@@ -54,6 +64,7 @@ export function DescriptionCell({
   lineItems,
   onChange,
   onCommit,
+  onOpenLineItems,
   onSetCompany,
   noCompany,
   onSetNoCompany,
@@ -97,6 +108,13 @@ export function DescriptionCell({
   lineItems?: readonly CellLineItem[];
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
+  // Pre-bound opener for the row's line-items modal (`open-line-items`),
+  // bound by `BudgetRow` against the row it owns. Fired by the
+  // long-press / right-click escape hatch on the line-item pill so the
+  // user can edit allocations without opening the entry "…" menu.
+  // Optional — when omitted (or the row has no line items) the gesture
+  // is a no-op.
+  onOpenLineItems?: () => void;
   // Pre-bound (no rowId) writer for the row's company. Wired by the
   // parent to dispatch `bulkUpdate` for budget rows and
   // `updateHistoryEntry` (also clearing `noCompany`) for synthesized
@@ -111,12 +129,88 @@ export function DescriptionCell({
   onCreateCompany?: (draft: Omit<Company, "id">) => Company;
 }) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const typeLabel = entryType ? displayTypeName(entryType, t) : "";
   const isFallback = placeholder !== undefined;
   const pickerEnabled = !!companies && !!onSetCompany && !!onCreateCompany;
   const hasLineItems = !!lineItems && lineItems.length > 0;
   const manyLineItems = hasLineItems && lineItems!.length > 1;
   const firstLineItemName = hasLineItems ? lineItems![0].name : "";
+
+  // Long-press / right-click on a pill opens the relevant editor without
+  // leaving the ledger: the company pill opens the company editor
+  // (`open-edit-company`), the line-item pill opens the line-items modal
+  // (`open-line-items`). A plain tap still opens the description popover.
+  // Each gesture is eligible only when its pill is actually rendered —
+  // the line-item pill wins the fallback slot when both exist (mirroring
+  // the trigger's render priority), so a long-press there edits line
+  // items, not the company.
+  const lineItemPillShown =
+    hasLineItems && !!onOpenLineItems && (isFallback || value.length === 0);
+  const companyPillShown =
+    !lineItemPillShown && !!company && (isFallback || value.length === 0);
+  const longPressKind: "company" | "lineItems" | null = lineItemPillShown
+    ? "lineItems"
+    : companyPillShown
+      ? "company"
+      : null;
+  const longPressTimer = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
+  const longPressStartX = useRef(0);
+  const longPressStartY = useRef(0);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const fireLongPress = useCallback(() => {
+    if (longPressKind === "lineItems") {
+      onOpenLineItems?.();
+    } else if (longPressKind === "company" && company) {
+      dispatchModal({ kind: "open-edit-company", companyId: company.id });
+    }
+  }, [longPressKind, company, onOpenLineItems, dispatchModal]);
+
+  const onPillPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (longPressKind === null || e.button !== 0) return;
+      longPressTriggered.current = false;
+      longPressStartX.current = e.clientX;
+      longPressStartY.current = e.clientY;
+      clearLongPress();
+      longPressTimer.current = window.setTimeout(() => {
+        longPressTriggered.current = true;
+        longPressTimer.current = null;
+        fireLongPress();
+      }, LONG_PRESS_MS);
+    },
+    [longPressKind, clearLongPress, fireLongPress],
+  );
+
+  const onPillPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (longPressTimer.current === null) return;
+      const dx = e.clientX - longPressStartX.current;
+      const dy = e.clientY - longPressStartY.current;
+      if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_PX) clearLongPress();
+    },
+    [clearLongPress],
+  );
+
+  const onPillContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (longPressKind === null) return;
+      e.preventDefault();
+      clearLongPress();
+      longPressTriggered.current = true;
+      fireLongPress();
+    },
+    [longPressKind, clearLongPress, fireLongPress],
+  );
+
   return (
     <td
       className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
@@ -226,7 +320,22 @@ export function DescriptionCell({
             <button
               ref={ref}
               type="button"
-              onClick={onClick}
+              onClick={() => {
+                // Pointerup fires before click — swallow the click that
+                // follows a long-press so the description popover doesn't
+                // also open on top of the company editor.
+                if (longPressTriggered.current) {
+                  longPressTriggered.current = false;
+                  return;
+                }
+                onClick();
+              }}
+              onPointerDown={onPillPointerDown}
+              onPointerMove={onPillPointerMove}
+              onPointerUp={clearLongPress}
+              onPointerCancel={clearLongPress}
+              onPointerLeave={clearLongPress}
+              onContextMenu={onPillContextMenu}
               className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 ${
                 hasContent
                   ? "justify-start text-left"

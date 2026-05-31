@@ -170,7 +170,7 @@ export function CompaniesAdmin({
   );
 }
 
-function CompanyEditor({
+export function CompanyEditor({
   initial,
   existing,
   types,
