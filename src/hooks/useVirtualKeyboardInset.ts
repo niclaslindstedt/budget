@@ -91,3 +91,40 @@ export function useVisualViewportHeight(): number {
 
   return height;
 }
+
+// How far the top of the visible viewport sits below the top of the
+// layout viewport, in CSS pixels — `0` when `visualViewport` is
+// unavailable or the viewports are aligned. On iOS the soft keyboard
+// doesn't shrink the layout viewport; it shrinks the *visual* viewport
+// and, when the focused field would otherwise sit under the keyboard,
+// scrolls it up so `offsetTop` becomes positive. A `position: fixed`
+// element (the fullscreen `Modal` overlay) stays anchored to the layout
+// viewport, so without compensating for this offset the shell's top
+// rides above the visible band (its header scrolls off-screen) and its
+// footer floats `offsetTop` pixels above the keyboard. The shell reads
+// this to translate itself down onto the visible band. Pairs with
+// `useVisualViewportHeight` (same events) so a render sees a consistent
+// top + height for the visible band.
+export function useVisualViewportOffsetTop(): number {
+  const [offsetTop, setOffsetTop] = useState(0);
+
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+
+    function update() {
+      if (!vv) return;
+      setOffsetTop(vv.offsetTop);
+    }
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  return offsetTop;
+}

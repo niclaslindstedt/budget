@@ -9,7 +9,12 @@ import {
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-import { useEscapeKey, useIsMobile, useVisualViewportHeight } from "../hooks";
+import {
+  useEscapeKey,
+  useIsMobile,
+  useVisualViewportHeight,
+  useVisualViewportOffsetTop,
+} from "../hooks";
 import { useT } from "../i18n";
 import { useBodyScrollLock } from "../utils/scroll-lock";
 
@@ -138,6 +143,7 @@ export function Modal({
 
   const isMobile = useIsMobile();
   const visualViewportHeight = useVisualViewportHeight();
+  const visualViewportOffsetTop = useVisualViewportOffsetTop();
 
   const shellRef = useRef<HTMLDivElement | null>(null);
   // The element that owned focus before the modal opened — restored
@@ -312,9 +318,27 @@ export function Modal({
   // Desktop / SSR report `0` (guarded below) and keep the CSS height.
   // `centered` modals float in the middle and are unaffected by the
   // bottom edge, so they opt out and keep their own height cap.
+  //
+  // The `translateY(offsetTop)` is what keeps the shell tracking the
+  // visible band when iOS shifts the visual viewport up to clear the
+  // soft keyboard. The shell is anchored to the LAYOUT viewport (`fixed
+  // inset-0`), which doesn't move with the keyboard, so pinning only the
+  // height would leave the shell's top above the visible band (its header
+  // scrolls off-screen) and its footer floating `offsetTop` pixels above
+  // the keyboard — the dead-space gap. Translating down by `offsetTop`
+  // realigns the shell's top with the visible top, so its pinned footer
+  // lands right on the keyboard. `offsetTop` is `0` when the keyboard is
+  // closed (or the field already sits above it), so this is a no-op in
+  // the common case.
   const shellStyle: React.CSSProperties | undefined =
     !centered && isMobile && visualViewportHeight > 0
-      ? { height: `min(100vh, ${visualViewportHeight}px)` }
+      ? {
+          height: `min(100vh, ${visualViewportHeight}px)`,
+          transform:
+            visualViewportOffsetTop > 0
+              ? `translateY(${visualViewportOffsetTop}px)`
+              : undefined,
+        }
       : undefined;
 
   // Portal to document.body so the modal escapes any `inert` ancestor —
