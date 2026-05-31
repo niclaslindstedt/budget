@@ -149,7 +149,12 @@ jobs:
     with:
       release_ref: ${{ needs.release.outputs.tag }}
     permissions:
-      contents: read
+      # pages.yml declares `contents: write` at the top level because its
+      # build job force-pushes the /branch/ slot to the `branch-deploy`
+      # orphan branch. A reusable workflow can't be granted fewer
+      # permissions than it requests, so granting only `contents: read`
+      # here fails the whole Release run at startup before any job runs.
+      contents: write
       pages: write
       id-token: write
     secrets: inherit
