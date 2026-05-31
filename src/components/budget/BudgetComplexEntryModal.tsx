@@ -335,6 +335,40 @@ export function BudgetComplexEntryModal({
       />
       <Modal.Body>
         <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("complex.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={handlePickCompany}
+              onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("complex.type")}</span>
+            <TypePicker
+              variant="field"
+              types={types}
+              categories={categories}
+              selectedId={typeId}
+              onSelect={setTypeId}
+              onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
+              hintTypeIds={
+                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">{t("complex.tags")}</span>
+            <TagsPicker
+              tags={tags}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+              onCreate={onCreateTag}
+            />
+          </div>
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">
               {t("complex.description")}
@@ -425,40 +459,6 @@ export function BudgetComplexEntryModal({
                 {t("complex.formulaEvaluatedHint")}
               </span>
             ) : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("complex.type")}</span>
-            <TypePicker
-              variant="field"
-              types={types}
-              categories={categories}
-              selectedId={typeId}
-              onSelect={setTypeId}
-              onCreate={onCreateType}
-              onCreateCategory={onCreateCategory}
-              hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
-              }
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("complex.company")}</span>
-            <CompanyPicker
-              variant="field"
-              companies={companies}
-              selectedId={companyId}
-              onSelect={handlePickCompany}
-              onCreate={onCreateCompany}
-            />
-          </div>
-          <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">{t("complex.tags")}</span>
-            <TagsPicker
-              tags={tags}
-              selectedIds={tagIds}
-              onChange={setTagIds}
-              onCreate={onCreateTag}
-            />
           </div>
           <div className="sm:col-span-2">
             <Checkbox

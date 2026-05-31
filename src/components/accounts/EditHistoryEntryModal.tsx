@@ -198,6 +198,20 @@ export function EditHistoryEntryModal({
         </fieldset>
         <div className="grid gap-3">
           <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("editHistory.company")}
+            </span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              noCompany={noCompany}
+              onSelect={handlePickCompany}
+              onOmitChange={setNoCompany}
+              onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">{t("editHistory.type")}</span>
             <TypePicker
               variant="field"
@@ -210,20 +224,6 @@ export function EditHistoryEntryModal({
               hintTypeIds={
                 companyId ? (companyTypeHints.get(companyId) ?? []) : []
               }
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("editHistory.company")}
-            </span>
-            <CompanyPicker
-              variant="field"
-              companies={companies}
-              selectedId={companyId}
-              noCompany={noCompany}
-              onSelect={handlePickCompany}
-              onOmitChange={setNoCompany}
-              onCreate={onCreateCompany}
             />
           </div>
           <div className="flex flex-col gap-1">

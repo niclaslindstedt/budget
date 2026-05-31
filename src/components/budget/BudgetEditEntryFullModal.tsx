@@ -348,6 +348,41 @@ export function BudgetEditEntryFullModal({
       />
       <Modal.Body>
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("editEntry.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={handlePickCompany}
+              onCreate={onCreateCompany}
+            />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("editEntry.type")}</span>
+            <TypePicker
+              variant="field"
+              types={types}
+              categories={categories}
+              selectedId={typeId}
+              onSelect={(v) => dispatch({ kind: "setTypeId", value: v })}
+              onCreate={onCreateType}
+              onCreateCategory={onCreateCategory}
+              amountSign={pickerSign}
+              hintTypeIds={
+                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+              }
+            />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1">
+            <span className="text-xs text-muted">{t("editEntry.tags")}</span>
+            <TagsPicker
+              tags={tags}
+              selectedIds={tagIds}
+              onChange={(ids) => dispatch({ kind: "setTagIds", value: ids })}
+              onCreate={onCreateTag}
+            />
+          </div>
           <label className="col-span-2 flex flex-col gap-1">
             <span className="text-xs text-muted">
               {t("editEntry.description")}
@@ -405,41 +440,6 @@ export function BudgetEditEntryFullModal({
               )}
             </div>
           )}
-          <div className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("editEntry.type")}</span>
-            <TypePicker
-              variant="field"
-              types={types}
-              categories={categories}
-              selectedId={typeId}
-              onSelect={(v) => dispatch({ kind: "setTypeId", value: v })}
-              onCreate={onCreateType}
-              onCreateCategory={onCreateCategory}
-              amountSign={pickerSign}
-              hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
-              }
-            />
-          </div>
-          <div className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("editEntry.company")}</span>
-            <CompanyPicker
-              variant="field"
-              companies={companies}
-              selectedId={companyId}
-              onSelect={handlePickCompany}
-              onCreate={onCreateCompany}
-            />
-          </div>
-          <div className="col-span-2 flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("editEntry.tags")}</span>
-            <TagsPicker
-              tags={tags}
-              selectedIds={tagIds}
-              onChange={(ids) => dispatch({ kind: "setTagIds", value: ids })}
-              onCreate={onCreateTag}
-            />
-          </div>
           <div className="col-span-2">
             <Checkbox
               checked={isTransfer}

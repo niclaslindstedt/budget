@@ -362,19 +362,16 @@ export function BudgetMatchRuleModal({
               placeholder={t("matchRule.patternPlaceholder")}
             />
           </label>
-          <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">
-              {t("matchRule.descriptionOptional")}
-            </span>
-            <ClearableInput
-              value={description}
-              onValueChange={(value) =>
-                dispatch({ kind: "setDescription", value })
-              }
-              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-              placeholder={t("matchRule.descriptionPlaceholder")}
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">{t("matchRule.company")}</span>
+            <CompanyPicker
+              variant="field"
+              companies={companies}
+              selectedId={companyId}
+              onSelect={(value) => dispatch({ kind: "setCompanyId", value })}
+              onCreate={onCreateCompany}
             />
-          </label>
+          </div>
           <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">{t("matchRule.type")}</span>
             <TypePicker
@@ -388,16 +385,6 @@ export function BudgetMatchRuleModal({
             />
           </div>
           <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs text-muted">{t("matchRule.company")}</span>
-            <CompanyPicker
-              variant="field"
-              companies={companies}
-              selectedId={companyId}
-              onSelect={(value) => dispatch({ kind: "setCompanyId", value })}
-              onCreate={onCreateCompany}
-            />
-          </div>
-          <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs text-muted">{t("matchRule.tags")}</span>
             <TagsPicker
               tags={tags}
@@ -406,6 +393,19 @@ export function BudgetMatchRuleModal({
               onCreate={onCreateTag}
             />
           </div>
+          <label className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs text-muted">
+              {t("matchRule.descriptionOptional")}
+            </span>
+            <ClearableInput
+              value={description}
+              onValueChange={(value) =>
+                dispatch({ kind: "setDescription", value })
+              }
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              placeholder={t("matchRule.descriptionPlaceholder")}
+            />
+          </label>
         </div>
 
         <fieldset className="mt-4 flex flex-col gap-3 rounded border border-line bg-surface-3 p-3">

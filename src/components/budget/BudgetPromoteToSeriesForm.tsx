@@ -115,6 +115,16 @@ export function BudgetPromoteToSeriesForm({
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">{t("editEntry.promoteIntro")}</p>
         <div className="mb-4 flex flex-col gap-1">
+          <span className="text-xs text-muted">{t("editEntry.company")}</span>
+          <CompanyPicker
+            variant="field"
+            companies={companies}
+            selectedId={companyId}
+            onSelect={handlePickCompany}
+            onCreate={onCreateCompany}
+          />
+        </div>
+        <div className="mb-4 flex flex-col gap-1">
           <span className="text-xs text-muted">{t("editEntry.type")}</span>
           <TypePicker
             variant="field"
@@ -127,16 +137,6 @@ export function BudgetPromoteToSeriesForm({
             hintTypeIds={
               companyId ? (companyTypeHints.get(companyId) ?? []) : []
             }
-          />
-        </div>
-        <div className="mb-4 flex flex-col gap-1">
-          <span className="text-xs text-muted">{t("editEntry.company")}</span>
-          <CompanyPicker
-            variant="field"
-            companies={companies}
-            selectedId={companyId}
-            onSelect={handlePickCompany}
-            onCreate={onCreateCompany}
           />
         </div>
         <BudgetRecurrenceForm

@@ -821,6 +821,18 @@ export function BudgetMetadataModal({
                 </label>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted">
+                    {t("metadata.companyLabel")}
+                  </span>
+                  <CompanyPicker
+                    variant="field"
+                    companies={companies}
+                    selectedId={splitState.draft.companyId}
+                    onSelect={handleSplitPickCompany}
+                    onCreate={onCreateCompany}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
                     {t("metadata.typeLabel")}
                   </span>
                   <TypePicker
@@ -842,18 +854,6 @@ export function BudgetMetadataModal({
                           [])
                         : []
                     }
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">
-                    {t("metadata.companyLabel")}
-                  </span>
-                  <CompanyPicker
-                    variant="field"
-                    companies={companies}
-                    selectedId={splitState.draft.companyId}
-                    onSelect={handleSplitPickCompany}
-                    onCreate={onCreateCompany}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -892,24 +892,6 @@ export function BudgetMetadataModal({
             ) : (
               <>
                 <div className="grid gap-3">
-                  <div ref={typeFieldRef} className="flex flex-col gap-1">
-                    <span className="text-xs text-muted">
-                      {t("metadata.typeLabel")}
-                    </span>
-                    <TypePicker
-                      variant="field"
-                      types={types}
-                      categories={categories}
-                      selectedId={typeId}
-                      onSelect={setTypeId}
-                      onCreate={onCreateType}
-                      onCreateCategory={onCreateCategory}
-                      amountSign={current.amount < 0 ? "negative" : "positive"}
-                      hintTypeIds={
-                        companyId ? (companyTypeHints.get(companyId) ?? []) : []
-                      }
-                    />
-                  </div>
                   <div ref={companyFieldRef} className="flex flex-col gap-1">
                     <span className="text-xs text-muted">
                       {t("metadata.companyLabel")}
@@ -928,6 +910,24 @@ export function BudgetMetadataModal({
                         ? t("metadata.noCompanyHint")
                         : t("metadata.companyHint")}
                     </span>
+                  </div>
+                  <div ref={typeFieldRef} className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">
+                      {t("metadata.typeLabel")}
+                    </span>
+                    <TypePicker
+                      variant="field"
+                      types={types}
+                      categories={categories}
+                      selectedId={typeId}
+                      onSelect={setTypeId}
+                      onCreate={onCreateType}
+                      onCreateCategory={onCreateCategory}
+                      amountSign={current.amount < 0 ? "negative" : "positive"}
+                      hintTypeIds={
+                        companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                      }
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-xs text-muted">
