@@ -40,7 +40,7 @@ function seriesRow(over: Partial<Row> = {}): Row {
 
 function baseState(over: Partial<UserData> = {}): UserData {
   return {
-    version: 52,
+    version: 53,
     sheets: [
       {
         id: "s",
