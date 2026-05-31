@@ -382,6 +382,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
     companyCategories: [],
     hiddenPresetCompanyCategoryIds: [],
   }),
+
+  // v51 → v52: grows `Item` with the inputs the future Item sheet needs —
+  // `purchasePrice`, a `depreciation` rule, a `resaleValue` override, and
+  // disposal (`disposedAt` / `soldFor`). Every new field is optional per
+  // item, so a v51 record simply lacks them and passes the v52 validator
+  // unchanged. Bare additive bump.
+  51: (v51) => ({ ...v51, version: 52 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

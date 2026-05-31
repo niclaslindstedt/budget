@@ -90,10 +90,6 @@ type Props = {
   // description popover. Undefined on every non-description column and
   // on rows with no line items.
   lineItems?: readonly CellLineItem[];
-  // Pre-bound opener for the row's line-items modal, passed only to the
-  // `description` column. Bound by `BudgetRow`; fires the long-press /
-  // right-click escape hatch on the line-item pill.
-  onOpenLineItems?: () => void;
   // True when the row carries an `amountFormula`. The amount cell
   // becomes read-only (the value comes from the formula resolver) and
   // surfaces a small `fx` glyph so the user can tell at a glance that
@@ -173,7 +169,6 @@ function CellImpl({
   descriptionPlaceholder,
   bankDescription,
   lineItems,
-  onOpenLineItems,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -253,7 +248,6 @@ function CellImpl({
               lineItems={lineItems}
               onChange={onChange}
               onCommit={onCommit}
-              onOpenLineItems={onOpenLineItems}
               onSetCompany={onSetCompany}
               noCompany={noCompany}
               onSetNoCompany={onSetNoCompany}
@@ -305,7 +299,6 @@ function CellImpl({
           lineItems={lineItems}
           onChange={onChange}
           onCommit={onCommit}
-          onOpenLineItems={onOpenLineItems}
           onSetCompany={onSetCompany}
           noCompany={noCompany}
           onSetNoCompany={onSetNoCompany}

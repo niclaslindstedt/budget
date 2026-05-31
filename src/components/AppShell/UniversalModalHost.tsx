@@ -12,6 +12,7 @@ import { BudgetTransferSearchModal } from "../budget/BudgetTransferSearchModal";
 import { ChangelogModal } from "../ChangelogModal";
 import { CompanyEditorModal } from "../CompanyEditorModal";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { ItemEditorModal } from "../ItemEditorModal";
 import { ConflictResolutionModal } from "../ConflictResolutionModal";
 import { DownloadModal } from "../DownloadModal";
 import { ReconnectCloudModal } from "../ReconnectCloudModal";
@@ -147,6 +148,12 @@ export function UniversalModalHost(props: Props) {
   // resolves it against the live `data.companies` so a concurrent rename
   // never edits a stale snapshot.
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null);
+  // Item editor opened from a budget row's line-item pill (single-item
+  // long-press) or by clicking a line item in the description popover.
+  // Holds the id of the item under edit; the modal resolves it against
+  // the live `data.items` so a concurrent change never edits a stale
+  // snapshot.
+  const [editItemId, setEditItemId] = useState<string | null>(null);
   const {
     achievementsModalOpen,
     setAchievementsModalOpen,
@@ -199,6 +206,7 @@ export function UniversalModalHost(props: Props) {
     openSyncDetails: () => setSyncDetailsOpen(true),
     openSettings: () => setSettingsOpen(true),
     editCompany: (companyId: string) => setEditCompanyId(companyId),
+    editItem: (itemId: string) => setEditItemId(itemId),
   });
   const {
     status,
@@ -277,8 +285,40 @@ export function UniversalModalHost(props: Props) {
     onCreateTag,
     onUpdateTag,
     onDeleteTag,
+    onCreateSubtype,
   } = taxonomyCrud;
   const { onEditMatchRule, onMoveMatchRule, onReapplyMatchRules } = matchRuleUi;
+
+  // Item resolved against live data so a concurrent change isn't edited
+  // stale, plus the sum of every line-item link pointing at it (across
+  // budget rows and bank history) shown as a hint in the editor. The
+  // traversal mirrors the cascade in the `deleteItem` reducer.
+  const editItem =
+    editItemId !== null
+      ? (data.items.find((it) => it.id === editItemId) ?? null)
+      : null;
+  let editItemLinkedTotal = 0;
+  if (editItemId !== null) {
+    for (const sheet of data.sheets) {
+      for (const sheetItem of sheet.items) {
+        if (sheetItem.type !== "accountBudget") continue;
+        for (const row of sheetItem.rows) {
+          for (const link of row.lineItems ?? []) {
+            if (link.itemId === editItemId)
+              editItemLinkedTotal += Math.abs(link.amount);
+          }
+        }
+      }
+    }
+    for (const entries of Object.values(data.history)) {
+      for (const entry of entries) {
+        for (const link of entry.lineItems ?? []) {
+          if (link.itemId === editItemId)
+            editItemLinkedTotal += Math.abs(link.amount);
+        }
+      }
+    }
+  }
 
   return (
     <>
@@ -480,6 +520,27 @@ export function UniversalModalHost(props: Props) {
         onCreateCompanyCategory={onCreateCompanyCategory}
         onSubmit={onUpdateCompany}
         onClose={() => setEditCompanyId(null)}
+      />
+      <ItemEditorModal
+        open={editItemId !== null}
+        item={editItem}
+        subtypes={data.subtypes}
+        types={allTypes(data)}
+        categories={allCategories(data)}
+        settings={effectiveSettings}
+        linkedTotal={editItemLinkedTotal}
+        onCreateSubtype={onCreateSubtype}
+        onCreateType={onCreateType}
+        onCreateCategory={onCreateCategory}
+        onSubmit={(itemId, patch) => {
+          dispatch({ type: "updateItem", itemId, patch });
+          setEditItemId(null);
+        }}
+        onDelete={(itemId) => {
+          dispatch({ type: "deleteItem", itemId });
+          setEditItemId(null);
+        }}
+        onClose={() => setEditItemId(null)}
       />
       <ChangelogModal
         open={changelogOpen}

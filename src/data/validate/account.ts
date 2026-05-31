@@ -7,6 +7,7 @@ import type {
   CompanyCategory,
   EntryType,
   Item,
+  ItemDepreciation,
   LineItemLink,
   Subtype,
   Tag,
@@ -204,9 +205,11 @@ export function validateSubtype(
 
 // An owned item. `subtypeId` is advisory — a deleted subtype shouldn't trap
 // the item, so a dangling reference is dropped silently (mirroring
-// `Row.companyId`). `acquiredAt` / `note` are free-form strings accepted
-// straight through; unknown fields are ignored so future per-item metadata
-// lands without a migration.
+// `Row.companyId`). `acquiredAt` / `disposedAt` / `note` are free-form
+// strings accepted straight through; `purchasePrice` / `resaleValue` /
+// `soldFor` are finite numbers; `depreciation` is parsed method-aware and
+// dropped whole if malformed (advisory, like a dangling subtype). Unknown
+// fields are ignored so future per-item metadata lands without a migration.
 export function validateItem(
   raw: unknown,
   path: string,
@@ -228,7 +231,39 @@ export function validateItem(
   if (typeof raw.acquiredAt === "string" && raw.acquiredAt !== "")
     item.acquiredAt = raw.acquiredAt;
   if (typeof raw.note === "string") item.note = raw.note;
+  if (
+    typeof raw.purchasePrice === "number" &&
+    Number.isFinite(raw.purchasePrice)
+  )
+    item.purchasePrice = raw.purchasePrice;
+  if (typeof raw.resaleValue === "number" && Number.isFinite(raw.resaleValue))
+    item.resaleValue = raw.resaleValue;
+  if (typeof raw.disposedAt === "string" && raw.disposedAt !== "")
+    item.disposedAt = raw.disposedAt;
+  if (typeof raw.soldFor === "number" && Number.isFinite(raw.soldFor))
+    item.soldFor = raw.soldFor;
+  const depreciation = validateItemDepreciation(raw.depreciation);
+  if (depreciation) item.depreciation = depreciation;
   return { ok: true, value: item };
+}
+
+// Parse a persisted depreciation rule, returning the cleaned value or
+// `undefined` when absent / malformed. Only the `percentPerYear` arm
+// exists today; an unknown `method` or a non-finite `ratePerYear` drops
+// the whole rule (the item falls back to "no depreciation"). `floor` is
+// carried only when finite.
+function validateItemDepreciation(raw: unknown): ItemDepreciation | undefined {
+  if (!isObject(raw)) return undefined;
+  if (raw.method !== "percentPerYear") return undefined;
+  if (typeof raw.ratePerYear !== "number" || !Number.isFinite(raw.ratePerYear))
+    return undefined;
+  const depreciation: ItemDepreciation = {
+    method: "percentPerYear",
+    ratePerYear: raw.ratePerYear,
+  };
+  if (typeof raw.floor === "number" && Number.isFinite(raw.floor))
+    depreciation.floor = raw.floor;
+  return depreciation;
 }
 
 // Inline line-item links on a row / history entry. Each link is independent

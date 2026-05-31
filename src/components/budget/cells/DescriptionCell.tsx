@@ -33,6 +33,9 @@ import { CELL_BASE } from "./constants";
 // lists the full set at the bottom of the description popover.
 export type CellLineItem = {
   id: string;
+  // The owned `Item` this line links to. Used to open the edit-item modal
+  // from the popover (and the single-item pill long-press).
+  itemId: string;
   name: string;
   // Pre-formatted signed amount (e.g. "−1 200 kr"), ready to render.
   amount: string;
@@ -64,7 +67,6 @@ export function DescriptionCell({
   lineItems,
   onChange,
   onCommit,
-  onOpenLineItems,
   onSetCompany,
   noCompany,
   onSetNoCompany,
@@ -108,13 +110,6 @@ export function DescriptionCell({
   lineItems?: readonly CellLineItem[];
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
-  // Pre-bound opener for the row's line-items modal (`open-line-items`),
-  // bound by `BudgetRow` against the row it owns. Fired by the
-  // long-press / right-click escape hatch on the line-item pill so the
-  // user can edit allocations without opening the entry "…" menu.
-  // Optional — when omitted (or the row has no line items) the gesture
-  // is a no-op.
-  onOpenLineItems?: () => void;
   // Pre-bound (no rowId) writer for the row's company. Wired by the
   // parent to dispatch `bulkUpdate` for budget rows and
   // `updateHistoryEntry` (also clearing `noCompany`) for synthesized
@@ -139,17 +134,24 @@ export function DescriptionCell({
 
   // Long-press / right-click on a pill opens the relevant editor without
   // leaving the ledger: the company pill opens the company editor
-  // (`open-edit-company`), the line-item pill opens the line-items modal
-  // (`open-line-items`). A plain tap still opens the description popover.
-  // Each gesture is eligible only when its pill is actually rendered —
-  // the line-item pill wins the fallback slot when both exist (mirroring
-  // the trigger's render priority), so a long-press there edits line
-  // items, not the company.
-  const lineItemPillShown =
-    hasLineItems && !!onOpenLineItems && (isFallback || value.length === 0);
+  // (`open-edit-company`), the line-item pill opens the edit-item modal
+  // (`open-edit-item`) for the linked item. A plain tap still opens the
+  // description popover.
+  //
+  // The line-item shortcut only fires when the row links exactly ONE
+  // item — there's a single unambiguous item to edit. A multi-item row's
+  // long-press falls through to a plain popover open, where every line
+  // item is listed and individually clickable so the user picks which
+  // one to edit. The links modal (re-allocating amounts) stays on the
+  // row "…" actions menu (`open-line-items`).
+  //
+  // The company pill only renders (and so only earns a long-press) when
+  // the row has no line items — line items always win the cell — so its
+  // eligibility mirrors `!hasLineItems`.
+  const singleLineItem = hasLineItems && lineItems!.length === 1;
   const companyPillShown =
-    !lineItemPillShown && !!company && (isFallback || value.length === 0);
-  const longPressKind: "company" | "lineItems" | null = lineItemPillShown
+    !hasLineItems && !!company && (isFallback || value.length === 0);
+  const longPressKind: "company" | "lineItems" | null = singleLineItem
     ? "lineItems"
     : companyPillShown
       ? "company"
@@ -167,12 +169,12 @@ export function DescriptionCell({
   }, []);
 
   const fireLongPress = useCallback(() => {
-    if (longPressKind === "lineItems") {
-      onOpenLineItems?.();
+    if (longPressKind === "lineItems" && hasLineItems) {
+      dispatchModal({ kind: "open-edit-item", itemId: lineItems![0].itemId });
     } else if (longPressKind === "company" && company) {
       dispatchModal({ kind: "open-edit-company", companyId: company.id });
     }
-  }, [longPressKind, company, onOpenLineItems, dispatchModal]);
+  }, [longPressKind, company, hasLineItems, lineItems, dispatchModal]);
 
   const onPillPointerDown = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -470,6 +472,7 @@ function DescriptionPopover({
   }) => React.ReactNode;
 }) {
   const t = useT();
+  const dispatchModal = useModalDispatch();
   const [open, setOpen] = useState(false);
   // Local draft so the textarea (and the trigger behind it) stay with
   // what the user typed even when the parent's `value` re-resolves to
@@ -581,22 +584,34 @@ function DescriptionPopover({
           <div className="border-t border-line bg-surface-3 px-2 py-1.5">
             <ul className="flex flex-col gap-0.5">
               {lineItems.map((li) => (
-                <li
-                  key={li.id}
-                  className="flex items-center justify-between gap-2 text-xs"
-                >
-                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                    <Package
-                      size={12}
-                      aria-hidden
-                      focusable={false}
-                      className="shrink-0 text-muted"
-                    />
-                    <span className="min-w-0 truncate text-fg">{li.name}</span>
-                  </span>
-                  <span className="shrink-0 font-mono tabular-nums text-muted">
-                    {li.amount}
-                  </span>
+                <li key={li.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      dispatchModal({
+                        kind: "open-edit-item",
+                        itemId: li.itemId,
+                      });
+                    }}
+                    aria-label={t("items.editItemAria", { name: li.name })}
+                    className="flex w-full cursor-pointer items-center justify-between gap-2 rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <Package
+                        size={12}
+                        aria-hidden
+                        focusable={false}
+                        className="shrink-0 text-muted"
+                      />
+                      <span className="min-w-0 truncate text-fg">
+                        {li.name}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono tabular-nums text-muted">
+                      {li.amount}
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

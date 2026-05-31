@@ -1,5 +1,25 @@
 import type { Action } from "../reducer";
-import type { UserData } from "../types";
+import type { Item, UserData } from "../types";
+
+// Apply an item patch, treating an explicit `undefined` value as "delete
+// this key" rather than "set the key to undefined". The edit modal clears
+// an optional field (disable depreciation, clear a price) by sending
+// `undefined`; deleting the key keeps the live item byte-identical to one
+// reloaded from storage — where absent optional fields simply aren't
+// present — so re-saves and round-trips don't drift.
+function applyItemPatch(item: Item, patch: Partial<Omit<Item, "id">>): Item {
+  const next: Item = { ...item };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) {
+      delete next[key as keyof Item];
+    } else {
+      // The patch is a typed `Partial<Item>`, so each value matches its
+      // key; the cast satisfies the index write the loop can't narrow.
+      (next as Record<string, unknown>)[key] = value;
+    }
+  }
+  return next;
+}
 
 // CRUD for the owned-items catalog (`UserData.items`) and the subtype
 // taxonomy tier (`UserData.subtypes`). Both are entirely user-curated — no
@@ -40,7 +60,7 @@ export function reduceItems(state: UserData, action: Action): UserData | null {
     return {
       ...state,
       items: state.items.map((it) =>
-        it.id === action.itemId ? { ...it, ...action.patch } : it,
+        it.id === action.itemId ? applyItemPatch(it, action.patch) : it,
       ),
     };
   }

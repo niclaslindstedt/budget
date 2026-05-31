@@ -112,20 +112,12 @@ function BudgetRowImpl({
       const sign = li.amount > 0 ? "+" : li.amount < 0 ? "−" : "";
       return {
         id: li.id,
+        itemId: li.itemId,
         name: itemsById.get(li.itemId)?.name ?? tr("cell.unknownItem"),
         amount: `${sign}${formatAmount(Math.abs(li.amount), settings)}`,
       };
     });
   }, [row.lineItems, itemsById, settings, tr]);
-  // Pre-bound opener for the row's line-items modal, handed to the
-  // description cell so a long-press / right-click on the line-item pill
-  // jumps straight into editing allocations. Mirrors the entry "…" menu's
-  // `open-line-items` dispatch; the AppShell handler applies the same
-  // transfer / correction guards.
-  const handleOpenLineItems = useCallback(
-    () => dispatchModal({ kind: "open-line-items", row }),
-    [dispatchModal, row],
-  );
   // The row's company → type hint ids, surfaced as the "Suggested" band
   // in the inline type picker. Empty when the row has no company.
   const typeHintIds = useMemo(
@@ -420,11 +412,6 @@ function BudgetRowImpl({
               : undefined
           }
           lineItems={col.type === "description" ? lineItems : undefined}
-          onOpenLineItems={
-            col.type === "description" && lineItems
-              ? handleOpenLineItems
-              : undefined
-          }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />
