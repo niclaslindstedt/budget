@@ -135,6 +135,19 @@ export type HistoryEntry = {
   // alongside the override in the edit modal.
   userDescription?: string;
   userTypeId?: string;
+  // Per-entry link to a recurring series (`Row.seriesId`). Stamped when
+  // a reconciliation match — silent rule-driven or user-confirmed —
+  // pairs this bank entry with a budget row that belongs to a series:
+  // the matched row is deleted as redundant, so without this the
+  // series connection would be lost. `synthesizeHistoryRow` propagates
+  // it onto the synthesized `HistoricRow.seriesId`, so the imported
+  // instance keeps showing as part of the series and the recurring
+  // entry can be tracked across all its historic occurrences. A
+  // grouping id with no registry — same shape as `Row.seriesId`, so
+  // the validator keeps any non-empty string rather than cross-checking
+  // it. Absent means the entry isn't tied to a series. Fill-blank only:
+  // a prior link is never overwritten by a later import.
+  userSeriesId?: string;
   // Per-entry override for `companyId`. Set by the per-entry edit
   // modal (pen button on a history row) and any inline editor that
   // exposes the company picker. Higher priority than `MatchRule.companyId`

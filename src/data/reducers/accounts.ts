@@ -120,6 +120,11 @@ export function reduceAccounts(
     // the modal. The modal only opens for residual unresolved pairs.
     const newlyAdded = merged.filter((e) => addedIds.has(e.id));
     const autoDeletedRowIds = new Set<string>();
+    // Series link learned from each silent match, keyed by the matched
+    // entry id. Stamped onto the entry below so the imported transaction
+    // keeps the recurring-series connection the deleted budget row used
+    // to carry — the modal path records the same link via `entryOverrides`.
+    const seriesLinkByEntryId = new Map<string, string>();
     if (state.seriesMatchRules.length > 0 && newlyAdded.length > 0) {
       for (const sheet of state.sheets) {
         for (const item of sheet.items) {
@@ -131,9 +136,21 @@ export function reduceAccounts(
             item.rows,
             item.columns,
           );
-          for (const m of matches) autoDeletedRowIds.add(m.rowId);
+          for (const m of matches) {
+            autoDeletedRowIds.add(m.rowId);
+            if (m.seriesId && !seriesLinkByEntryId.has(m.historyEntryId)) {
+              seriesLinkByEntryId.set(m.historyEntryId, m.seriesId);
+            }
+          }
         }
       }
+    }
+    if (seriesLinkByEntryId.size > 0) {
+      merged = merged.map((entry) => {
+        if (entry.userSeriesId !== undefined) return entry;
+        const sid = seriesLinkByEntryId.get(entry.id);
+        return sid ? { ...entry, userSeriesId: sid } : entry;
+      });
     }
     // Re-anchor the opening balance from the earliest entry in the
     // merged set so the running balance lines up with what the bank

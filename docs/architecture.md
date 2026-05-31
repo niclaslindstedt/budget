@@ -111,7 +111,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 52), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 53), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
@@ -448,6 +448,8 @@ type HistoryEntry = {
   // a history row and the inline cells.
   userDescription?: string;
   userTypeId?: string;
+  userSeriesId?: string; // recurring-series link kept when reconciliation
+  //                        matches the entry to a series budget row
   userCompanyId?: string;
   userTagIds?: string[]; // UNIONed with matching MatchRule.tagIds
   hintIgnored?: boolean; // opt this entry out of the merchant-hint step

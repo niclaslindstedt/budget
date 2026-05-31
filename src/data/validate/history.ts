@@ -77,6 +77,14 @@ export function validateHistoryEntry(
     // `MerchantHint` and `MatchRule`.
     if (knownTypeIds.has(raw.userTypeId)) entry.userTypeId = raw.userTypeId;
   }
+  if (raw.userSeriesId !== undefined && raw.userSeriesId !== null) {
+    // A grouping id with no registry — same shape as `Row.seriesId`, so
+    // keep any non-empty string rather than cross-checking it against
+    // existing series rows.
+    if (typeof raw.userSeriesId !== "string" || raw.userSeriesId === "")
+      return fail(`${path}.userSeriesId`, "expected a non-empty string");
+    entry.userSeriesId = raw.userSeriesId;
+  }
   if (raw.userCompanyId !== undefined && raw.userCompanyId !== null) {
     if (typeof raw.userCompanyId !== "string" || raw.userCompanyId === "")
       return fail(`${path}.userCompanyId`, "expected a non-empty string");
