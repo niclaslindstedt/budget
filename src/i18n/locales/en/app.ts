@@ -12,6 +12,7 @@ const app = {
   headerToolbar: "Budget actions",
   selectRows: "Select rows",
   exitSelectMode: "Exit select mode",
+  selectUnavailable: "Select rows isn’t available on this sheet",
   selectShort: "Select",
   undo: "Undo",
   undoShort: "Undo (⌘Z)",

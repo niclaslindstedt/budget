@@ -17,6 +17,9 @@ type Props = {
   canUndo: boolean;
   canRedo: boolean;
   selectMode: boolean;
+  // Some sheet types (accounts, items) have no select-many concept, so
+  // the toggle is disabled there rather than entering an empty mode.
+  selectSupported: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onToggleSelectMode: () => void;
@@ -48,6 +51,7 @@ export function BottomBar({
   canUndo,
   canRedo,
   selectMode,
+  selectSupported,
   onUndo,
   onRedo,
   onToggleSelectMode,
@@ -60,9 +64,11 @@ export function BottomBar({
 }: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
-  const selectLabel = selectMode
-    ? t("app.exitSelectMode")
-    : t("app.selectRows");
+  const selectLabel = !selectSupported
+    ? t("app.selectUnavailable")
+    : selectMode
+      ? t("app.exitSelectMode")
+      : t("app.selectRows");
 
   // Browser mode already gets a "hide on scroll" feel for free —
   // mobile Safari / Chrome's URL bar collapses on scroll down and
@@ -242,6 +248,7 @@ export function BottomBar({
           <button
             type="button"
             onClick={onToggleSelectMode}
+            disabled={!selectSupported}
             aria-pressed={selectMode}
             aria-label={selectLabel}
             title={selectLabel}
