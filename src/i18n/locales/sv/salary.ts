@@ -75,9 +75,17 @@ const salary: SalaryCatalog = {
   pickAccountPlaceholder: "Välj ett konto",
   noAccountsWithHistory:
     "Ingen importerad bankhistorik än. Importera ett kontoutdrag på Konto-sidan först.",
-  discoverySummary:
-    "{count} troliga lönemånader från {start} till {end}, cirka {amount} var.",
+  discoverySummary: "{count} troliga lönemånader från {start} till {end}.",
   discoveryNone: "Ingen återkommande lön hittades i kontots historik.",
+
+  // Cluster summary — löneperioder mellan höjningar / arbetsgivarbyten.
+  clustersTitle: "Löneperioder",
+  clustersHint:
+    "Varje period höll ungefär en lönenivå. Ett steg upp är en löneförhöjning eller titeländring; en bestående sänkning är oftast en ny arbetsgivare. Den här nivån är också utgångsvärdet som flaggar en låg månad som semester eller sjukfrånvaro.",
+  clusterSpanYears: "{count} år",
+  clusterSpanMonths: "{count} mån",
+  clusterPaychecksOne: "{count} lön",
+  clusterPaychecksOther: "{count} löner",
 
   // Year review step
   yearStepTitle: "Löner {year}",

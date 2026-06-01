@@ -75,9 +75,17 @@ const salary = {
   pickAccountPlaceholder: "Pick an account",
   noAccountsWithHistory:
     "No imported bank history yet. Import a statement on the Accounts page first.",
-  discoverySummary:
-    "{count} likely salary months from {start} to {end}, around {amount} each.",
+  discoverySummary: "{count} likely salary months from {start} to {end}.",
   discoveryNone: "No recurring salary found in this account’s history.",
+
+  // Cluster summary — pay periods between raises / employer changes.
+  clustersTitle: "Pay periods",
+  clustersHint:
+    "Each stretch held roughly one pay level. A step up is a raise or title change; a permanent drop is usually a new employer. This level is also the baseline that flags a light month as vacation or sick leave.",
+  clusterSpanYears: "{count} yr",
+  clusterSpanMonths: "{count} mo",
+  clusterPaychecksOne: "{count} paycheck",
+  clusterPaychecksOther: "{count} paychecks",
 
   // Year review step
   yearStepTitle: "Salaries in {year}",

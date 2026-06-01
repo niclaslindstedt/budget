@@ -3,7 +3,9 @@ import { Search } from "lucide-react";
 
 import {
   discoverSalaries,
+  summariseSalaryClusters,
   type DiscoveredSalary,
+  type SalaryCluster,
 } from "../../data/salary/discovery";
 import { withinSalaryTolerance } from "../../data/salary/detection";
 import { newId } from "../../data/sheet";
@@ -486,24 +488,115 @@ function AccountStep({
             {t("salary.discoveryNone")}
           </p>
         ) : (
-          <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-            {t("salary.discoverySummary", {
-              count: String(candidates.length),
-              start: formatMonthLabel(candidates[0].monthKey, lang),
-              end: formatMonthLabel(
-                candidates[candidates.length - 1].monthKey,
-                lang,
-              ),
-              amount: formatBalance(
-                discovery!.baselineByYear.get(candidates[0].year) ??
-                  candidates[0].net,
-                settings,
-              ),
-            })}
-          </p>
+          <ClusterSummary
+            discovery={discovery!}
+            settings={settings}
+            lang={lang}
+            t={t}
+          />
         ))}
     </div>
   );
+}
+
+type ClusterSummaryProps = {
+  discovery: ReturnType<typeof discoverSalaries>;
+  settings: Settings;
+  lang: ReturnType<typeof useLang>;
+  t: ReturnType<typeof useT>;
+};
+
+// Compose a cluster's calendar span as "1 yr 8 mo" / "5 mo". Years are
+// dropped when zero; months are kept whenever there are no years so a
+// short cluster never renders empty.
+function formatSpan(t: ReturnType<typeof useT>, spanMonths: number): string {
+  const years = Math.floor(spanMonths / 12);
+  const months = spanMonths % 12;
+  const parts: string[] = [];
+  if (years > 0)
+    parts.push(t("salary.clusterSpanYears", { count: String(years) }));
+  if (months > 0 || years === 0)
+    parts.push(t("salary.clusterSpanMonths", { count: String(months) }));
+  return parts.join(" ");
+}
+
+// Replaces the single "around 41K each" average with the actual pay
+// clusters — the stretches between raises / title changes / employer
+// changes. The cluster's baseline net is the same level that flags an
+// individual month as off (vacation / sick / bonus), so it doubles as a
+// legend for the per-month walk that follows.
+function ClusterSummary({ discovery, settings, lang, t }: ClusterSummaryProps) {
+  const candidates = discovery.candidates;
+  const clusters = useMemo(
+    () => summariseSalaryClusters(discovery),
+    [discovery],
+  );
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-muted">
+        {t("salary.discoverySummary", {
+          count: String(candidates.length),
+          start: formatMonthLabel(candidates[0].monthKey, lang),
+          end: formatMonthLabel(
+            candidates[candidates.length - 1].monthKey,
+            lang,
+          ),
+        })}
+      </p>
+
+      <p className="text-sm font-bold text-fg-bright">
+        {t("salary.clustersTitle")}
+      </p>
+
+      <ul className="flex flex-col gap-1.5">
+        {clusters.map((cl) => (
+          <Fragment key={cl.startMonthKey}>
+            {cl.transition !== "start" && (
+              <li className="flex items-center gap-2 pt-1 text-[10px] font-bold tracking-wider uppercase text-meta">
+                <span className="h-px flex-1 bg-line" />
+                {cl.transition === "raise"
+                  ? t("salary.raise")
+                  : t("salary.likelyNewEmployer")}
+                <span className="h-px flex-1 bg-line" />
+              </li>
+            )}
+            <li className="flex items-center justify-between gap-3 rounded border border-line bg-surface-2 px-3 py-2">
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate font-mono text-sm text-fg-bright">
+                  {clusterRangeLabel(cl, lang)}
+                </span>
+                <span className="font-mono text-xs text-muted">
+                  {formatSpan(t, cl.spanMonths)} ·{" "}
+                  {cl.paycheckCount === 1
+                    ? t("salary.clusterPaychecksOne", {
+                        count: String(cl.paycheckCount),
+                      })
+                    : t("salary.clusterPaychecksOther", {
+                        count: String(cl.paycheckCount),
+                      })}
+                </span>
+              </span>
+              <span className="shrink-0 font-mono tabular-nums text-sm text-fg">
+                ~{formatBalance(cl.baselineNet, settings)}
+              </span>
+            </li>
+          </Fragment>
+        ))}
+      </ul>
+
+      <p className="text-xs text-muted">{t("salary.clustersHint")}</p>
+    </div>
+  );
+}
+
+// "Jan 2021 – Aug 2022", or a single label when the cluster is one month.
+function clusterRangeLabel(
+  cl: SalaryCluster,
+  lang: ReturnType<typeof useLang>,
+): string {
+  const start = formatMonthLabel(cl.startMonthKey, lang);
+  if (cl.startMonthKey === cl.endMonthKey) return start;
+  return `${start} – ${formatMonthLabel(cl.endMonthKey, lang)}`;
 }
 
 type YearStepProps = {

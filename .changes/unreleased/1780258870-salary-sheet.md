@@ -4,7 +4,10 @@ type: Added
 
 A new **Salary** sheet type that shows your pay over time. **Find
 salaries** scans a chosen account's full bank history — even years back —
-finds your recurring paycheck and walks you through it year by year:
+finds your recurring paycheck and walks you through it. It opens with
+your **pay periods** — each stretch between raises, title changes, and
+employer changes, with its date range, length, and typical pay — instead
+of a single average that hides every change. Then it walks year by year:
 each year lists every detected paycheck with its bank description
 (unusual months flagged) so you can see exactly what you're adding, then
 accept them all or review each

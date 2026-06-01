@@ -65,6 +65,68 @@ export type DiscoveryResult = {
   baselineByYear: Map<string, number>;
 };
 
+// One pay cluster: a contiguous stretch of months that held roughly one
+// pay level. The boundary into a cluster is a sustained step — a rise
+// (a raise / title change) or a drop / sideways move (usually a new
+// employer, since an employer can't permanently cut your pay). Averaging
+// the whole history hides these; the cluster list surfaces them.
+export type SalaryCluster = {
+  startMonthKey: string; // "YYYY-MM" — first paycheck in the cluster
+  endMonthKey: string; // "YYYY-MM" — last paycheck in the cluster
+  // Calendar span start→end inclusive, in whole months (counts any
+  // skipped months in between, so it reads as a real tenure length).
+  spanMonths: number;
+  // Detected paychecks in the cluster (≤ spanMonths when months were
+  // missed in the imported history).
+  paycheckCount: number;
+  // The cluster's typical net — the segment median. This is the SAME
+  // baseline that flags an individual month as "off" (a light month is
+  // likely vacation / sick / unpaid leave; a heavy one a bonus), so the
+  // list and the per-month flag share one source of truth.
+  baselineNet: number;
+  // How this cluster began relative to the one before it. "start" is the
+  // first cluster; "raise" is a sustained step up; "change" is a drop or
+  // sideways move (a likely new employer).
+  transition: "start" | "raise" | "change";
+};
+
+// Roll the per-month candidates up into the clusters between pay changes.
+// Pure view over a `DiscoveryResult` — the segmentation was already done
+// by `assignEmployerGroups`; this just measures each segment.
+export function summariseSalaryClusters(
+  result: Pick<DiscoveryResult, "candidates" | "boundaries" | "raises">,
+): SalaryCluster[] {
+  const { candidates, boundaries, raises } = result;
+  if (candidates.length === 0) return [];
+  const raiseSet = new Set(raises);
+  const clusters: SalaryCluster[] = [];
+  for (let b = 0; b < boundaries.length; b++) {
+    const startIdx = boundaries[b];
+    const endIdx =
+      b + 1 < boundaries.length ? boundaries[b + 1] - 1 : candidates.length - 1;
+    const start = candidates[startIdx];
+    const end = candidates[endIdx];
+    clusters.push({
+      startMonthKey: start.monthKey,
+      endMonthKey: end.monthKey,
+      spanMonths: monthSpan(start.monthKey, end.monthKey),
+      paycheckCount: endIdx - startIdx + 1,
+      // Every member of a segment carries that segment's baseline.
+      baselineNet: start.baselineNet,
+      transition:
+        b === 0 ? "start" : raiseSet.has(startIdx) ? "raise" : "change",
+    });
+  }
+  return clusters;
+}
+
+// Inclusive whole-month distance between two "YYYY-MM" keys.
+function monthSpan(start: string, end: string): number {
+  const [sy, sm] = start.split("-").map(Number);
+  const [ey, em] = end.split("-").map(Number);
+  return (ey - sy) * 12 + (em - sm) + 1;
+}
+
 export type DiscoveryInput = {
   // The chosen account's full imported history (`data.history[id]`).
   entries: readonly HistoryEntry[];
