@@ -482,52 +482,52 @@ export function BudgetViewerModal({
         title={sheet.name}
         onClose={onClose}
       />
+      {!hasNoRows && (
+        <ModalSearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder={t("budget.viewerSearchPlaceholder")}
+          actions={
+            <ModalSearchControls
+              sort={{
+                order: sortOrder,
+                defaultOrder: settings.transactionSortOrder,
+                onToggle: () =>
+                  setSortOrder((o) =>
+                    o === "newestFirst" ? "oldestFirst" : "newestFirst",
+                  ),
+              }}
+              filters={[
+                ...(hasTransferRows
+                  ? [
+                      {
+                        key: "hideTransfers",
+                        label: t("budget.viewerFilterHideTransfers"),
+                        checked: hideTransfers,
+                        onChange: setHideTransfers,
+                      },
+                    ]
+                  : []),
+                ...(completedCol
+                  ? [
+                      {
+                        key: "hideUncompleted",
+                        label: t("budget.viewerFilterHideUncompleted"),
+                        checked: hideUncompleted,
+                        onChange: setHideUncompleted,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          }
+        />
+      )}
       <Modal.Body
         noPadding
         className="overflow-x-hidden"
         scrollRef={scrollBodyRef}
       >
-        {!hasNoRows && (
-          <ModalSearchBar
-            value={query}
-            onChange={setQuery}
-            placeholder={t("budget.viewerSearchPlaceholder")}
-            actions={
-              <ModalSearchControls
-                sort={{
-                  order: sortOrder,
-                  defaultOrder: settings.transactionSortOrder,
-                  onToggle: () =>
-                    setSortOrder((o) =>
-                      o === "newestFirst" ? "oldestFirst" : "newestFirst",
-                    ),
-                }}
-                filters={[
-                  ...(hasTransferRows
-                    ? [
-                        {
-                          key: "hideTransfers",
-                          label: t("budget.viewerFilterHideTransfers"),
-                          checked: hideTransfers,
-                          onChange: setHideTransfers,
-                        },
-                      ]
-                    : []),
-                  ...(completedCol
-                    ? [
-                        {
-                          key: "hideUncompleted",
-                          label: t("budget.viewerFilterHideUncompleted"),
-                          checked: hideUncompleted,
-                          onChange: setHideUncompleted,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            }
-          />
-        )}
         {hasNoRows ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("budget.viewerEmpty")}

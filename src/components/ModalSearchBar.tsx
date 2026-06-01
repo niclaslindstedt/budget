@@ -15,11 +15,14 @@ type Props = {
   actions?: React.ReactNode;
 };
 
-// Search input rendered at the top of a modal body. Sits in document
-// flow so it scrolls away with the content — that gives the
-// "disappears on scroll" effect for free using the Modal.Body's own
-// `overflow-y-auto` scroll, with no scroll-direction tracking needed.
-// Scrolling back to the top brings it into view again.
+// Search field shell rendered at the top of a modal. Placement decides
+// its scroll behaviour: dropped inside `Modal.Body` it sits in document
+// flow and scrolls away with the content; rendered as a sibling band
+// between `Modal.Header` and `Modal.Body` (the `shrink-0` keeps it from
+// compressing in the shell's flex column) it stays pinned so search is
+// reachable no matter how far the body has scrolled. `BudgetViewerModal`
+// and `HistoryModal` use the pinned-band placement; `AccountTransfersModal`
+// keeps it in flow.
 export function ModalSearchBar({
   value,
   onChange,
@@ -27,7 +30,7 @@ export function ModalSearchBar({
   actions,
 }: Props) {
   return (
-    <div className="border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
+    <div className="shrink-0 border-b border-line bg-surface-2 px-3 py-2 sm:px-4">
       <div className="flex items-stretch rounded border border-line bg-surface focus-within:border-accent">
         <div className="relative flex min-w-0 flex-1 items-center">
           <Search
