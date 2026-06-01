@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { findItemPurchaseCandidates } from "../src/data/items/find";
+import { normaliseDescription } from "../src/data/description-normaliser";
 import { DEFAULT_SETTINGS } from "../src/data/constants/defaults";
 import type { HistoryEntry, Settings, UserData } from "../src/data/types";
 
@@ -33,6 +34,7 @@ function workspace(
     companies: [],
     types: [],
     ignoredItemEntryIds: [],
+    itemFindExclusionPatterns: [],
     ...overrides,
   } as unknown as UserData;
 }
@@ -109,6 +111,32 @@ describe("findItemPurchaseCandidates", () => {
       { ignoredItemEntryIds: [ignored.id] },
     );
     const out = findItemPurchaseCandidates(data, settings());
+    expect(out.map((c) => c.entryId)).toEqual([keep.id]);
+  });
+
+  it("drops never-item types even when no allow-list is set", () => {
+    // The hard `NEVER_ITEM_TYPE_IDS` denylist (rent, utilities, …) wins
+    // over a scan-every-type run: a rent payment is obviously not a good.
+    const laptop = entry(-5000, { userTypeId: "preset-type-electronics" });
+    const rent = entry(-5000, { userTypeId: "preset-type-rent" });
+    const data = workspace({ acc: [laptop, rent] });
+    const out = findItemPurchaseCandidates(data, settings());
+    expect(out.map((c) => c.entryId)).toEqual([laptop.id]);
+  });
+
+  it("excludes entries matching an 'exclude similar' pattern", () => {
+    const a = entry(-5252, { description: "Brf Spillkråkan 3" });
+    const b = entry(-5252, { description: "BRF  Spillkråkan 3  2026" });
+    const keep = entry(-5000, { description: "Webhallen" });
+    const data = workspace(
+      { acc: [a, b, keep] },
+      {
+        itemFindExclusionPatterns: [normaliseDescription("Brf Spillkråkan 3")],
+      },
+    );
+    const out = findItemPurchaseCandidates(data, settings());
+    // Both rent rows collapse to the same normalised key and drop; the
+    // unrelated purchase survives.
     expect(out.map((c) => c.entryId)).toEqual([keep.id]);
   });
 

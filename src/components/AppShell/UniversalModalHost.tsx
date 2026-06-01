@@ -107,6 +107,7 @@ type Props = {
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
   onClearIgnoredItemEntries: () => void;
+  onClearItemFindExclusions: () => void;
   onSaveSettings: (draft: Settings) => void;
   onImport: (next: UserData) => void;
 };
@@ -133,6 +134,7 @@ export function UniversalModalHost(props: Props) {
     onClearRecurringDismissals,
     onClearTransferDismissals,
     onClearIgnoredItemEntries,
+    onClearItemFindExclusions,
     onSaveSettings,
     onImport,
   } = props;
@@ -473,6 +475,7 @@ export function UniversalModalHost(props: Props) {
         recurringDismissalCount={data.recurringDismissals.length}
         transferDismissalCount={data.transferCollapseDismissals.length}
         ignoredItemEntryCount={data.ignoredItemEntryIds.length}
+        itemFindExclusionCount={data.itemFindExclusionPatterns.length}
         data={data}
         onImport={onImport}
         adapter={adapter}
@@ -497,6 +500,7 @@ export function UniversalModalHost(props: Props) {
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
         onClearIgnoredItemEntries={onClearIgnoredItemEntries}
+        onClearItemFindExclusions={onClearItemFindExclusions}
         onCreateCategory={onCreateCategory}
         onUpdateCategory={onUpdateCategory}
         onDeleteCategory={onDeleteCategory}
@@ -573,6 +577,9 @@ export function UniversalModalHost(props: Props) {
         settings={effectiveSettings}
         onClose={() => setFindItemsOpen(false)}
         onIgnore={(entryId) => dispatch({ type: "ignoreItemEntry", entryId })}
+        onExcludeSimilar={(description) =>
+          dispatch({ type: "excludeSimilarItemEntries", description })
+        }
         onLinkLineItems={(accountId, entryId, lineItems) =>
           dispatch({
             type: "linkLineItemsToHistoryEntry",

@@ -410,6 +410,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // exports simply lack it and a fresh-empty default passes the v55
   // validator unchanged. Bare additive bump.
   54: (v54) => ({ ...v54, version: 55, ignoredItemEntryIds: [] }),
+
+  // v55 → v56: introduces `UserData.itemFindExclusionPatterns`, the
+  // normalised-description keys the user excluded from the Items sheet's
+  // "Find items" scan via "Exclude similar". Seeds empty; old exports
+  // simply lack it and a fresh-empty default passes the v56 validator
+  // unchanged. Bare additive bump.
+  55: (v55) => ({ ...v55, version: 56, itemFindExclusionPatterns: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

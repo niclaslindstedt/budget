@@ -424,6 +424,12 @@ const settings = {
     ignoredNone: "None ignored yet.",
     ignoredHint: "{n} ignored. Clear the list to see them again.",
     clearIgnored: "Clear list",
+    excludedTitle: "Excluded patterns",
+    excludedLabel: "Descriptions you excluded with “Exclude similar”",
+    excludedNone: "No patterns excluded yet.",
+    excludedHint:
+      "{n} excluded. Clear the list to scan matching transactions again.",
+    clearExcluded: "Clear list",
   },
   developer: {
     section: "Developer",

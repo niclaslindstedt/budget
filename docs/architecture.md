@@ -225,9 +225,9 @@ src/
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (55) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (56) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v55 steps
+│   │   ├── modern.ts           # v31 → v56 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -352,7 +352,7 @@ Each document carries its own `version` field. Top-level shape:
 
 ```ts
 type UserData = {
-  version: 55;
+  version: 56;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -399,6 +399,10 @@ type UserData = {
   // History-entry ids ignored from the Items sheet's "Find items" scan;
   // the scanner skips these (same shape/contract as recurringDismissals).
   ignoredItemEntryIds: string[];
+  // Normalised-description keys excluded from "Find items" via "Exclude
+  // similar"; the scanner drops every entry whose resolved description
+  // collapses to one of these (past + future imports).
+  itemFindExclusionPatterns: string[];
   // User-authored wildcard rules that relabel synthesized history rows.
   matchRules: MatchRule[];
   // Auto-reconciliation rules learned from "Apply to whole series" in

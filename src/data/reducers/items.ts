@@ -1,3 +1,7 @@
+import {
+  isNormalisedKeyMeaningful,
+  normaliseDescription,
+} from "../description-normaliser";
 import type { Action } from "../reducer";
 import type { Item, UserData } from "../types";
 
@@ -65,6 +69,24 @@ export function reduceItems(state: UserData, action: Action): UserData | null {
   if (action.type === "clearIgnoredItemEntries") {
     if (state.ignoredItemEntryIds.length === 0) return state;
     return { ...state, ignoredItemEntryIds: [] };
+  }
+  if (action.type === "excludeSimilarItemEntries") {
+    // Normalise the resolved label to a match key. A description that
+    // collapses to nothing meaningful (e.g. "ATM", a bare reference
+    // number) would match far too broadly, so it's a no-op — the
+    // per-entry "ignore" still covers that case. Dedup like the ignore
+    // allowlist.
+    const key = normaliseDescription(action.description);
+    if (!isNormalisedKeyMeaningful(key)) return state;
+    if (state.itemFindExclusionPatterns.includes(key)) return state;
+    return {
+      ...state,
+      itemFindExclusionPatterns: [...state.itemFindExclusionPatterns, key],
+    };
+  }
+  if (action.type === "clearItemFindExclusions") {
+    if (state.itemFindExclusionPatterns.length === 0) return state;
+    return { ...state, itemFindExclusionPatterns: [] };
   }
   if (action.type === "addItem") {
     return { ...state, items: [...state.items, action.item] };

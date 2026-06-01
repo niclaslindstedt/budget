@@ -112,6 +112,10 @@ type Props = {
   // Count of history entries the user ignored from the Items sheet's
   // "Find items" scan, surfaced (with a clear-all) in the Items tab.
   ignoredItemEntryCount: number;
+  // Count of "exclude similar" description patterns the user created in
+  // the Items sheet's "Find items" scan, surfaced (with a clear-all)
+  // alongside the ignored-entries count in the Items tab.
+  itemFindExclusionCount: number;
   // Pass-through for the embedded Import / Export controls — they
   // used to live next to the Save button in the header, now they sit
   // inside Storage so the connection and the data-movement actions
@@ -145,6 +149,7 @@ type Props = {
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
   onClearIgnoredItemEntries: () => void;
+  onClearItemFindExclusions: () => void;
   // Category / type admin. The list of presets lives in code
   // (`PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES`); the per-user
   // hide-toggles travel through `data.hiddenPresetCategoryIds` and
@@ -246,6 +251,7 @@ export function SettingsModal({
   recurringDismissalCount,
   transferDismissalCount,
   ignoredItemEntryCount,
+  itemFindExclusionCount,
   data,
   onImport,
   adapter,
@@ -267,6 +273,7 @@ export function SettingsModal({
   onClearRecurringDismissals,
   onClearTransferDismissals,
   onClearIgnoredItemEntries,
+  onClearItemFindExclusions,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
@@ -559,8 +566,10 @@ export function SettingsModal({
                 draft={draft}
                 data={data}
                 ignoredItemEntryCount={ignoredItemEntryCount}
+                itemFindExclusionCount={itemFindExclusionCount}
                 onUpdate={update}
                 onClearIgnoredItemEntries={onClearIgnoredItemEntries}
+                onClearItemFindExclusions={onClearItemFindExclusions}
               />
             )}
             {activeTab === "memory" && (

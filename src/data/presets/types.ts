@@ -989,6 +989,74 @@ export const DEFAULT_ITEM_FIND_TYPE_IDS: ReadonlyArray<string> = [
   "preset-type-accessories",
 ];
 
+// Preset types whose purchases are *never* a resaleable physical thing —
+// recurring housing / utility bills, transport and personal services,
+// insurance, dues, taxes, subscriptions, loan repayments, and
+// savings / investment transfers. The "Find items" scanner drops these
+// unconditionally, even when the user's `itemFindTypeIds` allow-list is
+// empty (scan-every-type mode): a rent payment or a Spotify charge is
+// obviously not an owned item, so surfacing it only makes the scan list
+// harder to clear. Distinct from `DEFAULT_ITEM_FIND_TYPE_IDS`, which is
+// a *starting* allow-list the user can edit — this denylist is a hard
+// floor the allow-list never overrides. Income types are already
+// excluded by the outflow-only gate, so they're omitted here.
+export const NEVER_ITEM_TYPE_IDS: ReadonlySet<string> = new Set([
+  // Housing & utilities
+  "preset-type-rent",
+  "preset-type-mortgage",
+  "preset-type-mortgage-interest",
+  "preset-type-home-insurance",
+  "preset-type-cleaning",
+  "preset-type-gas",
+  "preset-type-electricity",
+  "preset-type-heating",
+  "preset-type-water",
+  "preset-type-internet",
+  "preset-type-waste",
+  "preset-type-phone",
+  // Transport (services & consumables, never goods)
+  "preset-type-car-insurance",
+  "preset-type-vehicle-tax",
+  "preset-type-congestion-tax",
+  "preset-type-leasing",
+  "preset-type-parking",
+  "preset-type-public-transport",
+  "preset-type-taxi",
+  "preset-type-fuel",
+  // Health & personal services
+  "preset-type-healthcare",
+  "preset-type-health-insurance",
+  "preset-type-dentist",
+  "preset-type-gym",
+  "preset-type-therapy",
+  "preset-type-haircut",
+  "preset-type-childcare",
+  "preset-type-school",
+  // Dues, fees & loans
+  "preset-type-union-fee",
+  "preset-type-a-kassa",
+  "preset-type-csn",
+  "preset-type-housing-queue",
+  // Subscriptions
+  "preset-type-music-streaming",
+  "preset-type-tv-streaming",
+  "preset-type-audiobooks",
+  "preset-type-magazines",
+  "preset-type-newspaper",
+  "preset-type-subscription",
+  "preset-type-digital-services",
+  // Savings & investment (transfers, not purchases)
+  "preset-type-savings",
+  "preset-type-child-savings",
+  "preset-type-isk",
+  "preset-type-pension",
+  "preset-type-investment",
+  // Other non-goods
+  "preset-type-donation",
+  "preset-type-gambling",
+  "preset-type-allowance",
+]);
+
 export function visiblePresetTypes(
   hiddenIds: readonly string[],
   kindOverrides: Readonly<Record<string, EntryTypeKind>> = {},
