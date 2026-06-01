@@ -332,7 +332,7 @@ export function BudgetLineItemsModal({
                 </button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-xs text-muted">{t("items.item")}</span>
                   <ItemPicker
                     items={items}
