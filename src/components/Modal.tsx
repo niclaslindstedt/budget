@@ -72,6 +72,15 @@ function getFocusables(root: HTMLElement | null): HTMLElement[] {
 type LabelCtx = { id: string };
 const ModalLabelContext = createContext<LabelCtx | null>(null);
 
+// Shared handle on the scrolling `Modal.Body` element so `Modal.Header`
+// can scroll it back to the top when the header is tapped (an iOS
+// status-bar-tap-style affordance — handy for the long, read-only
+// viewers like BudgetViewerModal / HistoryModal). The root owns the ref
+// and the Body registers its scroll element into it; null when the modal
+// has no scrolling body, in which case the header tap is a no-op.
+const ModalBodyScrollContext =
+  createContext<React.MutableRefObject<HTMLDivElement | null> | null>(null);
+
 type RootProps = {
   open: boolean;
   onClose: () => void;
@@ -146,6 +155,10 @@ export function Modal({
   const visualViewportOffsetTop = useVisualViewportOffsetTop();
 
   const shellRef = useRef<HTMLDivElement | null>(null);
+  // Registered by `Modal.Body` so `Modal.Header` can scroll it to the
+  // top on click. Lives on the root so it's shared across the header /
+  // body siblings without the caller threading a ref between them.
+  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
   // The element that owned focus before the modal opened — restored
   // on close so tab order continues from where the user left it
   // (e.g. focus returns to the row's action button after the
@@ -400,7 +413,9 @@ export function Modal({
         style={shellStyle}
       >
         <ModalLabelContext.Provider value={{ id: labelledBy }}>
-          {children}
+          <ModalBodyScrollContext.Provider value={bodyScrollRef}>
+            {children}
+          </ModalBodyScrollContext.Provider>
         </ModalLabelContext.Provider>
       </div>
     </div>,
@@ -421,7 +436,20 @@ type HeaderProps = {
 
 function Header({ title, icon, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
+  const bodyScrollRef = useContext(ModalBodyScrollContext);
   const t = useT();
+
+  // Tapping the header scrolls the body back to the top — the same
+  // affordance as tapping the iOS status bar. A no-op when there's no
+  // scrolling body or it's already at the top. The close button stops
+  // propagation so dismissing never doubles as a scroll.
+  const scrollBodyToTop = useCallback(() => {
+    const el = bodyScrollRef?.current;
+    if (!el || el.scrollTop === 0) return;
+    const reduceMotion =
+      document.documentElement.getAttribute("data-reduce-motion") === "true";
+    el.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [bodyScrollRef]);
   // The padding-top is expressed as a Tailwind utility (not an inline
   // style) so the `@media (display-mode: standalone)` block in
   // `styles.css` can win the cascade and trim the extra `0.75rem` —
@@ -430,8 +458,15 @@ function Header({ title, icon, onClose }: HeaderProps) {
   // collapses to just `env(safe-area-inset-top)` in standalone PWAs so
   // it lines up with the gap the Dynamic Island leaves above itself.
   return (
+    // The header's `onClick` (scroll-to-top) is a pointer/touch-only
+    // convenience, mirroring tapping the iOS status bar. Keyboard users
+    // scroll the focused body natively, so the header deliberately stays
+    // out of the tab order rather than becoming a focusable control —
+    // there's no keyboard handler to pair with the click.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <header
       data-modal-header
+      onClick={scrollBodyToTop}
       className="flex shrink-0 items-center justify-between border-b border-line bg-surface-3 px-4 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]"
     >
       <h2
@@ -449,7 +484,10 @@ function Header({ title, icon, onClose }: HeaderProps) {
       </h2>
       <button
         type="button"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         aria-label={t("common.close")}
         className="-mr-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg sm:h-8 sm:w-8"
       >
@@ -483,10 +521,25 @@ function Body({
   noPadding = false,
   scrollRef,
 }: BodyProps) {
+  const bodyScrollRef = useContext(ModalBodyScrollContext);
+  // Register the scroll element with the root (so `Modal.Header` can
+  // scroll-to-top) while still forwarding it to the caller's `scrollRef`
+  // when one was supplied.
+  const setScrollEl = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (bodyScrollRef) bodyScrollRef.current = el;
+      if (typeof scrollRef === "function") scrollRef(el);
+      else if (scrollRef) {
+        (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current =
+          el;
+      }
+    },
+    [bodyScrollRef, scrollRef],
+  );
   const paddingClass = noPadding ? "" : "px-3 py-3 sm:px-4 sm:py-4";
   return (
     <div
-      ref={scrollRef}
+      ref={setScrollEl}
       data-modal-body
       className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${paddingClass} ${className}`
         .replace(/\s+/g, " ")
