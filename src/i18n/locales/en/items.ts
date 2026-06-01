@@ -63,6 +63,20 @@ const items = {
     "Delete this item? Its line-item links will be removed from every entry.",
   editItemAria: "Edit {name}",
   save: "Save",
+  // Receipt section in the edit-item modal
+  receipt: "Receipt",
+  receiptUpload: "Upload receipt",
+  receiptReplace: "Replace receipt",
+  receiptView: "View",
+  receiptRemove: "Remove",
+  receiptUploading: "Uploading…",
+  receiptUnsupported:
+    "Receipts need the local-folder or a cloud storage backend. Switch backends in Settings → Storage to attach one.",
+  receiptError: "Could not save the receipt. Please try again.",
+  receiptMissing: "Receipt file not found on this storage.",
+  // Subfolder name used by the type-folder naming pattern when an item
+  // has no type set.
+  receiptUncategorized: "Uncategorized",
   // Find items modal (scan bank history for likely purchases)
   find: {
     menu: "Find items",

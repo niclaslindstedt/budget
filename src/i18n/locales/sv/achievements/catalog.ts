@@ -307,6 +307,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "När du drar skickar Budget först eventuella osparade lokala ändringar till din molnbackend, sedan hämtas senaste kopian — så uppdateringar från en annan enhet eller en annan flik dyker upp utan att du laddar om sidan.",
   },
+  receiptKeeper: {
+    name: "Kvittosamlare",
+    condition: "Ladda upp ett kvitto till en sak du äger.",
+    learnMore:
+      "När du redigerar en sak kan du bifoga ett foto eller en PDF av kvittot. Det sparas som en fil i en kvittomapp i din lagring, namngett enligt mönstret du väljer under Inställningar → Saker, så att du hittar det senare. Tillgängligt för lokal mapp och molnlagring.",
+  },
   spellbinder: {
     name: "Trollkarl",
     condition: "Skriv din första beloppsformel.",

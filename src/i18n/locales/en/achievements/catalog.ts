@@ -311,6 +311,12 @@ const catalog = {
     learnMore:
       "When you pull, Budget flushes any unsaved local edits to your cloud backend first, then reads the latest copy back — so updates from another device or another tab show up without a reload.",
   },
+  receiptKeeper: {
+    name: "Receipt Keeper",
+    condition: "Upload a receipt to an item you own.",
+    learnMore:
+      "While editing an item, attach a photo or PDF of the receipt. It is saved as a file in a receipts folder on your storage, named from the pattern you pick in Settings → Items, so you can find it later. Available on the local-folder and cloud backends.",
+  },
   spellbinder: {
     name: "Spellbinder",
     condition: "Write your first amount formula.",

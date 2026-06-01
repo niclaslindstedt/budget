@@ -215,7 +215,21 @@ export type CommonSettings = {
   // types (`EntryType.id`s). Empty means "all types" — the scan is then
   // gated by `itemFindThreshold` alone. Edited in the Items settings tab.
   itemFindTypeIds: string[];
+  // Which preset names an item's uploaded receipt file. Picked in the
+  // Items settings tab; consumed by `buildReceiptPath` when a receipt
+  // is uploaded from the item editor. Defaults to `"name-date"`. See
+  // `src/data/items/receipt-name.ts` for what each preset produces.
+  receiptNamePattern: ReceiptNamePattern;
 };
+
+// Preset filename schemes for uploaded item receipts. `type-name-date`
+// files the receipt under a per-type subdirectory inside `receipts/`;
+// the other three are flat. The extension comes from the uploaded file.
+export type ReceiptNamePattern =
+  | "name"
+  | "name-date"
+  | "date-name"
+  | "type-name-date";
 
 export type TransactionSortOrder = "newestFirst" | "oldestFirst";
 

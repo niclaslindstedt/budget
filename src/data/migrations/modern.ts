@@ -417,6 +417,23 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // simply lack it and a fresh-empty default passes the v56 validator
   // unchanged. Bare additive bump.
   55: (v55) => ({ ...v55, version: 56, itemFindExclusionPatterns: [] }),
+
+  // v56 → v57: add `Settings.receiptNamePattern`, the preset that names
+  // an item's uploaded receipt file. Seed existing buckets with
+  // `"name-date"` (the default) so the choice is well-defined before
+  // the user opens the Items settings tab; the validator coerces an
+  // unknown value back to the same default.
+  56: (v56) => {
+    const settings = isObj(v56.settings) ? v56.settings : {};
+    return {
+      ...v56,
+      version: 57,
+      settings: {
+        ...settings,
+        receiptNamePattern: "name-date",
+      },
+    };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

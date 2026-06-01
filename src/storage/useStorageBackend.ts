@@ -26,6 +26,7 @@ import { withEncryption } from "./encrypting-adapter";
 import { serializeUserData } from "./file";
 import { createFolderAdapter } from "./folder-adapter";
 import { createGdriveAdapter } from "./gdrive-adapter";
+import { reencryptStorage } from "./reencrypt-storage";
 import {
   clearCloudMirrorBytes,
   createIdbAdapter,
@@ -705,7 +706,12 @@ export function useStorageBackend({
           : withEncryption(innerForNext, passwordRef);
       try {
         const snap = await current.load();
-        if (snap) await target.save(snap.text);
+        // Re-wrap the budget JSON AND every receipt file as one
+        // all-or-nothing unit: switching to plaintext decrypts the
+        // receipts, switching to encrypted re-encrypts them, and a
+        // failure mid-conversion rolls everything back so the
+        // preference below never flips on a half-converted backend.
+        if (snap) await reencryptStorage(current, target, snap.text);
       } catch (err) {
         log.error("encryption toggle: failed to re-wrap bytes", err);
         return;

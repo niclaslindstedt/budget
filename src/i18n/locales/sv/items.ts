@@ -63,6 +63,19 @@ const items: ItemsCatalog = {
     "Ta bort den här saken? Dess radkopplingar tas bort från alla poster.",
   editItemAria: "Redigera {name}",
   save: "Spara",
+  // Kvittosektion i redigera sak-modalen
+  receipt: "Kvitto",
+  receiptUpload: "Ladda upp kvitto",
+  receiptReplace: "Byt kvitto",
+  receiptView: "Visa",
+  receiptRemove: "Ta bort",
+  receiptUploading: "Laddar upp…",
+  receiptUnsupported:
+    "Kvitton kräver lagring i lokal mapp eller moln. Byt lagring under Inställningar → Lagring för att bifoga ett.",
+  receiptError: "Kunde inte spara kvittot. Försök igen.",
+  receiptMissing: "Kvittofilen hittades inte i den här lagringen.",
+  // Undermappens namn för typmapp-namnmönstret när en sak saknar typ.
+  receiptUncategorized: "Okategoriserat",
   // Hitta saker-modalen (skanna kontohistoriken efter troliga köp)
   find: {
     menu: "Hitta saker",

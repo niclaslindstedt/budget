@@ -1,12 +1,33 @@
 import { useMemo } from "react";
 
 import { getDefaultItemFindThreshold } from "../../../data/constants/currency";
+import {
+  RECEIPT_NAME_PATTERNS,
+  buildReceiptPath,
+} from "../../../data/items/receipt-name";
 import { allTypes } from "../../../data/presets/merge";
-import type { Settings, UserData } from "../../../data/types";
+import type {
+  ReceiptNamePattern,
+  Settings,
+  UserData,
+} from "../../../data/types";
 import { useT } from "../../../i18n";
 import { withCurrency } from "../../../utils/format";
+import { SelectPicker } from "../../form";
 import { TypeChip } from "../../TypePicker";
-import { Field, Section, type Update } from "./shared";
+import { Field, Preview, Section, type Update } from "./shared";
+
+// Label key per preset — kept explicit (not interpolated) so the typed
+// `t()` catalog still checks every key exists.
+const RECEIPT_PATTERN_LABEL: Record<
+  ReceiptNamePattern,
+  Parameters<ReturnType<typeof useT>>[0]
+> = {
+  name: "settings.items.receiptPatternName",
+  "name-date": "settings.items.receiptPatternNameDate",
+  "date-name": "settings.items.receiptPatternDateName",
+  "type-name-date": "settings.items.receiptPatternTypeNameDate",
+};
 
 export function ItemsTab({
   draft,
@@ -39,8 +60,39 @@ export function ItemsTab({
     onUpdate("itemFindTypeIds", [...next]);
   }
 
+  const receiptExample = buildReceiptPath({
+    pattern: draft.receiptNamePattern,
+    itemName: "iPhone 15 Pro",
+    itemId: "a1b2c3",
+    acquiredAt: "2024-01-15",
+    today: "2024-01-15",
+    extension: "jpg",
+    typeLabel: t("settings.items.receiptExampleType"),
+    uncategorizedLabel: t("items.receiptUncategorized"),
+    usedPaths: new Set(),
+  });
+
   return (
     <>
+      <Section title={t("settings.items.receiptTitle")}>
+        <p className="text-xs text-muted">{t("settings.items.receiptHint")}</p>
+        <Field label={t("settings.items.receiptPattern")}>
+          <SelectPicker
+            value={draft.receiptNamePattern}
+            options={RECEIPT_NAME_PATTERNS.map((p) => ({
+              value: p,
+              label: t(RECEIPT_PATTERN_LABEL[p]),
+            }))}
+            onChange={(v) =>
+              onUpdate("receiptNamePattern", v as ReceiptNamePattern)
+            }
+            ariaLabel={t("settings.items.receiptPattern")}
+            triggerClassName="field-input flex cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+          />
+          <Preview>{receiptExample}</Preview>
+        </Field>
+      </Section>
+
       <Section title={t("settings.items.scanTitle")}>
         <Field label={t("settings.items.threshold")}>
           <div className="flex items-center gap-2">

@@ -64,6 +64,7 @@ export const DROPBOX_APP_FOLDER = "budget.niclaslindstedt.se";
 export const DROPBOX_FILE_PATH = nsCloudPath("/budget.json");
 export const DROPBOX_BACKUPS_FOLDER = nsCloudPath("/backups");
 export const DROPBOX_BACKUPS_INDEX_PATH = `${DROPBOX_BACKUPS_FOLDER}/index.json`;
+export const DROPBOX_RECEIPTS_FOLDER = nsCloudPath("/receipts");
 
 // Web URL that opens the budget file's parent folder in Dropbox's web
 // UI with the file pre-selected for preview. Used by the cloud-sync
@@ -334,12 +335,78 @@ export function createDropboxAdapter(
     log,
   });
 
+  // Receipt files live under `/receipts/` inside the app folder.
+  // Dropbox auto-creates intermediate folders on upload, so the
+  // type-subdirectory pattern needs no separate folder call.
+  const receipts = {
+    async upload(path: string, blob: Blob): Promise<void> {
+      const args = {
+        path: `${DROPBOX_RECEIPTS_FOLDER}/${path}`,
+        mute: true,
+        mode: "overwrite",
+        autorename: false,
+      };
+      const buffer = await blob.arrayBuffer();
+      const res = await authedFetch(UPLOAD_ENDPOINT, (token) => ({
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Dropbox-API-Arg": JSON.stringify(args),
+          "Content-Type": "application/octet-stream",
+        },
+        body: buffer,
+      }));
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw new Error(`Dropbox receipt upload failed: ${res.status} ${body}`);
+      }
+    },
+
+    async download(path: string): Promise<Blob | null> {
+      const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Dropbox-API-Arg": JSON.stringify({
+            path: `${DROPBOX_RECEIPTS_FOLDER}/${path}`,
+          }),
+        },
+      }));
+      if (res.status === 409) return null;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw new Error(
+          `Dropbox receipt download failed: ${res.status} ${body}`,
+        );
+      }
+      return res.blob();
+    },
+
+    async remove(path: string): Promise<void> {
+      const res = await authedFetch(DELETE_ENDPOINT, (token) => ({
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: `${DROPBOX_RECEIPTS_FOLDER}/${path}` }),
+      }));
+      // 409 is Dropbox's "path not found" — treat as already gone.
+      if (res.status === 409) return;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw new Error(`Dropbox receipt delete failed: ${res.status} ${body}`);
+      }
+    },
+  };
+
   return {
     id: "dropbox",
     label: "Dropbox",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["backups"]),
+    capabilities: new Set(["backups", "receipts"]),
     backups,
+    receipts,
 
     load: () => loadFromDropbox(),
 

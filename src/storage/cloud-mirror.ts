@@ -217,6 +217,9 @@ export function withCloudMirror(
     saveDebounceMs: inner.saveDebounceMs,
     capabilities,
     backups: inner.backups,
+    // Receipts pass straight through the mirror — only the live budget
+    // bytes are mirrored for offline reads; receipt files are not.
+    receipts: inner.receipts,
 
     markSynced(snapshot: Snapshot): void {
       log.info(

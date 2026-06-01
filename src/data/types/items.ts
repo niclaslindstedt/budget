@@ -59,6 +59,14 @@ export type Item = {
   // Proceeds actually received at disposal. A finite number; may be 0 for a
   // give-away.
   soldFor?: number;
+  // Relative path (inside the active backend's `receipts/` folder) of
+  // the single receipt file attached to this item. Absent = no receipt.
+  // The file itself lives in the folder / cloud backend, not in the
+  // budget JSON, so it does NOT travel through export / import — only
+  // this reference does. On the browser (localStorage) backend the
+  // field is never written (no receipts capability); on a backend that
+  // lacks the referenced file the viewer degrades to "unavailable".
+  receiptPath?: string;
 };
 
 // Links part of one entry's amount to an owned `Item`. Stored inline on the
