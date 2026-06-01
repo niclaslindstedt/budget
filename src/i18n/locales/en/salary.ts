@@ -82,7 +82,6 @@ const salary = {
   clustersTitle: "Pay periods",
   clustersHint:
     "Each stretch held roughly one pay level. A step up is a raise or title change; a permanent drop is usually a new employer. This level is also the baseline that flags a light month as vacation or sick leave.",
-  clusterSpanYears: "{count} yr",
   clusterSpanMonths: "{count} mo",
   clusterPaychecksOne: "{count} paycheck",
   clusterPaychecksOther: "{count} paychecks",

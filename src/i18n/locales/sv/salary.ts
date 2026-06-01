@@ -82,7 +82,6 @@ const salary: SalaryCatalog = {
   clustersTitle: "Löneperioder",
   clustersHint:
     "Varje period höll ungefär en lönenivå. Ett steg upp är en löneförhöjning eller titeländring; en bestående sänkning är oftast en ny arbetsgivare. Den här nivån är också utgångsvärdet som flaggar en låg månad som semester eller sjukfrånvaro.",
-  clusterSpanYears: "{count} år",
   clusterSpanMonths: "{count} mån",
   clusterPaychecksOne: "{count} lön",
   clusterPaychecksOther: "{count} löner",

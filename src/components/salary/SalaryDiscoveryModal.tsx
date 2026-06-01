@@ -506,18 +506,11 @@ type ClusterSummaryProps = {
   t: ReturnType<typeof useT>;
 };
 
-// Compose a cluster's calendar span as "1 yr 8 mo" / "5 mo". Years are
-// dropped when zero; months are kept whenever there are no years so a
-// short cluster never renders empty.
+// Compose a cluster's calendar span as a plain month count ("14 mo") —
+// total months rather than a years-and-months breakdown, so every span
+// reads on one scale.
 function formatSpan(t: ReturnType<typeof useT>, spanMonths: number): string {
-  const years = Math.floor(spanMonths / 12);
-  const months = spanMonths % 12;
-  const parts: string[] = [];
-  if (years > 0)
-    parts.push(t("salary.clusterSpanYears", { count: String(years) }));
-  if (months > 0 || years === 0)
-    parts.push(t("salary.clusterSpanMonths", { count: String(months) }));
-  return parts.join(" ");
+  return t("salary.clusterSpanMonths", { count: String(spanMonths) });
 }
 
 // Replaces the single "around 41K each" average with the actual pay
