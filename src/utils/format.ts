@@ -371,6 +371,17 @@ export function formatMonthLabel(monthKey: string, lang?: Lang): string {
   return `${monthShort(lang, monthNum)} ${y}`;
 }
 
+// Month-key (`YYYY-MM`) rendered as the short month name alone, no
+// year — for tables already grouped under a year header (the salary
+// year table's month column), where repeating the year on every row
+// is redundant. Language-aware, mirroring `formatMonthLabel`.
+export function formatMonthName(monthKey: string, lang?: Lang): string {
+  if (typeof monthKey !== "string" || monthKey.length < 7) return "";
+  const monthNum = Number(monthKey.slice(5, 7));
+  if (!Number.isFinite(monthNum)) return "";
+  return monthShort(lang, monthNum);
+}
+
 // Day-only rendering for the mobile cell — month is conveyed by the
 // per-month colour applied to the cell text, so the digits stay
 // compact enough to share a row with description + amount + balance.

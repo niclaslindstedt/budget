@@ -123,6 +123,23 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   }
 }
 
+/* Salary header glyphs: in the mobile / landscape grid layout the gross
+   and net columns hit their 56px min-width floor (components.css), so
+   the cell number renders as flex content at the column's LEFT edge —
+   not the desktop right-aligned table-cell. The JSX `justify-end` on
+   those header spans then floats the glyph to the far right of the
+   padded track, leaving it stranded ~36px away from the number beneath
+   it. Pin every salary header glyph to flex-start at the grid
+   breakpoint so each glyph sits directly above its content. Unlayered
+   so it beats Tailwind's `justify-end` utility; desktop keeps the JSX
+   alignment (real table-cell, right-aligned numbers + labelled
+   headers). */
+@media (max-width: 720px), (max-height: 500px) {
+  .salary-table > thead > tr > th > span {
+    justify-content: flex-start;
+  }
+}
+
 /* Centered modals float in the middle of the viewport, so their
    header is never pinned to the top edge — the `env(safe-area-inset-top)`
    the default header padding (`pt-[calc(0.75rem+env(safe-area-inset-top))]`)
