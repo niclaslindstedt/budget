@@ -78,14 +78,14 @@ const salary: SalaryCatalog = {
     "{count} troliga lönemånader från {start} till {end}, cirka {amount} var.",
   discoveryNone: "Ingen återkommande lön hittades i kontots historik.",
 
-  // Year baseline step
+  // Year review step
   yearStepTitle: "Löner {year}",
   yearMonthsOne: "{count} månad hittad",
   yearMonthsOther: "{count} månader hittade",
-  yearFlagged: "{count} avviker från baslinjen",
-  yearBaselineLabel: "Baslinje (vanligt månadsnetto)",
-  yearBaselineHint:
-    "Den vanliga lönen i år. Månader som avviker markeras så att du kan titta närmare på dem.",
+  yearFlagged: "{count} ser ovanliga ut",
+  offBaselineTag: "Ovanlig",
+  yearReviewHint:
+    "Det här är lönerna vi hittade i år. Lägg till alla, eller granska var och en för att ändra beloppet, märka en arbetsgivare eller hoppa över.",
   reviewMonths: "Granska var och en",
   acceptYearOne: "Lägg till {count}",
   acceptYearOther: "Lägg till alla {count}",
@@ -94,7 +94,7 @@ const salary: SalaryCatalog = {
   monthProgress: "{index} av {total}",
   fromBank: "Från din bank",
   offAverageHint:
-    "Detta avviker från baslinjen — en bonus, ledighet eller löneökning?",
+    "Detta avviker från din vanliga lön — en bonus, ledighet eller löneökning?",
   accept: "Lägg till",
   skip: "Hoppa över",
   alreadyAccepted: "Tillagd — lägg till igen för att uppdatera.",
@@ -130,6 +130,7 @@ const salary: SalaryCatalog = {
   // Employer picker
   pickEmployer: "Välj arbetsgivare",
   newEmployer: "Ny arbetsgivare",
+  duplicateEmployer: "En arbetsgivare med detta namn finns redan.",
 };
 
 export default salary;
