@@ -86,6 +86,12 @@ export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 // namespaced — the parent already is.
 const GDRIVE_BACKUPS_FOLDER_NAME = "backups";
 
+// Name of the folder item receipts live inside, nested under the app
+// folder (so the layout is `My Drive/<app>/receipts/`). The
+// type-subdirectory name pattern nests one further level beneath it.
+// Not namespaced — the parent already is.
+const GDRIVE_RECEIPTS_FOLDER_NAME = "receipts";
+
 // Names the adapter looked for before the subfolder layout landed:
 // `budget.json` (or `budget-preview.json`) and `budget-backups` (or
 // `budget-backups-preview`) at the My Drive root. Used by the one-
@@ -561,12 +567,189 @@ export function createGdriveAdapter(
     log,
   });
 
+  // ---- Receipts ----------------------------------------------------
+  // Drive keys folders by id, so a `/`-separated receipt path resolves
+  // to a parent folder id (the receipts folder, optionally one type
+  // subfolder) plus a leaf filename. Folder ids are cached so repeat
+  // uploads into the same type folder skip the search round trips.
+  let cachedReceiptsFolderId: string | null = null;
+  const cachedReceiptSubfolderIds = new Map<string, string>();
+
+  async function ensureSubfolder(
+    parentId: string,
+    name: string,
+  ): Promise<string> {
+    const existing = await searchOne(
+      `name='${escapeDriveQuery(name)}' and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and '${parentId}' in parents and trashed=false`,
+    );
+    if (existing) return existing;
+    const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
+      method: "POST",
+      headers: { ...authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        mimeType: FOLDER_MIME_TYPE,
+        parents: [parentId],
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw gdriveError("receipts folder create", res.status, body);
+    }
+    const meta = (await res.json()) as DriveFile;
+    return meta.id;
+  }
+
+  async function ensureReceiptsFolder(): Promise<string> {
+    if (cachedReceiptsFolderId) return cachedReceiptsFolderId;
+    const appFolderId = await ensureAppFolder();
+    const id = await ensureSubfolder(appFolderId, GDRIVE_RECEIPTS_FOLDER_NAME);
+    cachedReceiptsFolderId = id;
+    return id;
+  }
+
+  // Resolve a receipt path to its parent folder id and leaf filename,
+  // creating the type subfolder when `create` is set. Returns null when
+  // a read-side lookup hits a missing subfolder.
+  async function resolveReceiptParent(
+    path: string,
+    create: boolean,
+  ): Promise<{ folderId: string; name: string } | null> {
+    const segments = path.split("/").filter((s) => s.length > 0);
+    if (segments.length === 0) return null;
+    const name = segments.pop() as string;
+    let folderId = await ensureReceiptsFolder();
+    for (const segment of segments) {
+      const cacheKey = `${folderId}/${segment}`;
+      const cached = cachedReceiptSubfolderIds.get(cacheKey);
+      if (cached) {
+        folderId = cached;
+        continue;
+      }
+      if (create) {
+        const sub = await ensureSubfolder(folderId, segment);
+        cachedReceiptSubfolderIds.set(cacheKey, sub);
+        folderId = sub;
+      } else {
+        const existing = await searchOne(
+          `name='${escapeDriveQuery(segment)}'` +
+            ` and mimeType='${FOLDER_MIME_TYPE}'` +
+            ` and '${folderId}' in parents and trashed=false`,
+        );
+        if (!existing) return null;
+        cachedReceiptSubfolderIds.set(cacheKey, existing);
+        folderId = existing;
+      }
+    }
+    return { folderId, name };
+  }
+
+  async function findInFolder(
+    folderId: string,
+    name: string,
+  ): Promise<string | null> {
+    const q =
+      `name='${escapeDriveQuery(name)}' and '${folderId}' in parents` +
+      ` and trashed=false`;
+    const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
+      q,
+    )}&spaces=drive&fields=files(id)`;
+    const res = await fetchImpl(url, { headers: authHeader() });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw gdriveError("receipt lookup", res.status, body);
+    }
+    const json = (await res.json()) as DriveListResponse;
+    return json.files?.[0]?.id ?? null;
+  }
+
+  const receipts = {
+    async upload(path: string, blob: Blob): Promise<void> {
+      const parent = await resolveReceiptParent(path, true);
+      if (!parent) throw new Error("receipts folder unavailable");
+      const contentType = blob.type || "application/octet-stream";
+      const existing = await findInFolder(parent.folderId, parent.name);
+      if (existing) {
+        const res = await fetchImpl(
+          `${DRIVE_UPLOAD_API}/${existing}?uploadType=media`,
+          { method: "PATCH", headers: { ...authHeader() }, body: blob },
+        );
+        if (!res.ok) {
+          const body = await res.text().catch(() => "<unreadable>");
+          throw gdriveError("receipt update", res.status, body);
+        }
+        return;
+      }
+      const meta = JSON.stringify({
+        name: parent.name,
+        parents: [parent.folderId],
+      });
+      const boundary = `budget-${randomBoundary()}`;
+      const pre =
+        `--${boundary}\r\n` +
+        `Content-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Type: ${contentType}\r\n\r\n`;
+      const post = `\r\n--${boundary}--`;
+      const body = new Blob([pre, blob, post]);
+      const res = await fetchImpl(
+        `${DRIVE_UPLOAD_API}?uploadType=multipart&fields=id`,
+        {
+          method: "POST",
+          headers: {
+            ...authHeader(),
+            "Content-Type": `multipart/related; boundary=${boundary}`,
+          },
+          body,
+        },
+      );
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw gdriveError("receipt create", res.status, body);
+      }
+    },
+
+    async download(path: string): Promise<Blob | null> {
+      const parent = await resolveReceiptParent(path, false);
+      if (!parent) return null;
+      const id = await findInFolder(parent.folderId, parent.name);
+      if (!id) return null;
+      const res = await fetchImpl(`${DRIVE_FILES_API}/${id}?alt=media`, {
+        headers: authHeader(),
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw gdriveError("receipt download", res.status, body);
+      }
+      return res.blob();
+    },
+
+    async remove(path: string): Promise<void> {
+      const parent = await resolveReceiptParent(path, false);
+      if (!parent) return;
+      const id = await findInFolder(parent.folderId, parent.name);
+      if (!id) return;
+      const res = await fetchImpl(`${DRIVE_FILES_API}/${id}`, {
+        method: "DELETE",
+        headers: authHeader(),
+      });
+      if (res.status === 404) return;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw gdriveError("receipt delete", res.status, body);
+      }
+    },
+  };
+
   return {
     id: "gdrive",
     label: "Google Drive",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["backups"]),
+    capabilities: new Set(["backups", "receipts"]),
     backups,
+    receipts,
     load,
     save,
   };

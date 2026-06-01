@@ -2,6 +2,7 @@ import { createLogger } from "../utils/logger";
 import type {
   AdapterCapability,
   BackupOps,
+  ReceiptOps,
   Snapshot,
   StorageAdapter,
 } from "./adapter";
@@ -22,6 +23,44 @@ const log = createLogger("encrypt");
 // but before the imperative re-wrap of existing storage has run.
 
 export type PasswordRef = { readonly current: string | null };
+
+// Receipts are binary, but the AES-GCM envelope (`crypto.ts`) operates
+// on text. We bridge by base64-encoding the bytes and prefixing the
+// blob's MIME type (so a decrypted receipt still opens as the right
+// image / PDF), then encrypting that string. The on-disk filename stays
+// the pattern-clean name either way — only the bytes become an
+// envelope, detected on read exactly like the budget JSON.
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function encryptBlob(blob: Blob, password: string): Promise<Blob> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const payload = `${blob.type}\n${bytesToBase64(bytes)}`;
+  const envelope = await encryptText(payload, password);
+  return new Blob([envelope], { type: "application/json" });
+}
+
+async function decryptBlob(blob: Blob, password: string): Promise<Blob> {
+  const text = await blob.text();
+  const payload = await decryptEnvelope(text, password);
+  const nl = payload.indexOf("\n");
+  const type = nl === -1 ? "" : payload.slice(0, nl);
+  const base64 = nl === -1 ? payload : payload.slice(nl + 1);
+  const bytes = base64ToBytes(base64);
+  return new Blob([bytes as BufferSource], type ? { type } : undefined);
+}
 
 export function withEncryption(
   inner: StorageAdapter,
@@ -67,6 +106,39 @@ export function withEncryption(
       }
     : undefined;
 
+  // Receipts ride the same envelope as the budget: encrypt on the way
+  // in when a password is held, detect-and-decrypt on the way out. A
+  // receipt written while encryption was off is a raw image / PDF —
+  // `download` returns it untouched so the transition window stays
+  // readable, mirroring the plaintext-leftover handling in `load`.
+  const wrappedReceipts: ReceiptOps | undefined = inner.receipts
+    ? {
+        async upload(path, blob) {
+          const password = passwordRef.current;
+          if (!password) {
+            await inner.receipts!.upload(path, blob);
+            return;
+          }
+          await inner.receipts!.upload(path, await encryptBlob(blob, password));
+        },
+        async download(path) {
+          const blob = await inner.receipts!.download(path);
+          if (!blob) return null;
+          // A raw image / PDF read as text won't parse as our envelope
+          // JSON, so `isEncryptedEnvelope` cleanly separates the two.
+          // Blob is immutable, so re-reading it after this is safe.
+          const text = await blob.text();
+          if (!isEncryptedEnvelope(text)) return blob;
+          const password = passwordRef.current;
+          if (!password) {
+            throw new Error("Receipt is encrypted; password is required");
+          }
+          return decryptBlob(blob, password);
+        },
+        remove: (path) => inner.receipts!.remove(path),
+      }
+    : undefined;
+
   // Forward every inner capability except `loadSync` — decryption is
   // async even when the inner backend can serve bytes synchronously,
   // so this wrapper never implements the sync fast path.
@@ -79,6 +151,7 @@ export function withEncryption(
     saveDebounceMs: inner.saveDebounceMs,
     capabilities,
     backups: wrappedBackups,
+    receipts: wrappedReceipts,
 
     // The hook hands us plaintext bytes here; the inner cache (in
     // `withCloudMirror`) expects the same envelope shape the cloud

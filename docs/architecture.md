@@ -114,7 +114,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 54), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 57), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
@@ -191,8 +191,10 @@ src/
 │   ├── items/
 │   │   ├── value.ts            # computeItemCurrentValue / isItemOwned for the
 │   │   │                       #   Items page (resale value + depreciation)
-│   │   └── find.ts             # findItemPurchaseCandidates — scans bank history
-│   │                           #   for likely item purchases (Find items modal)
+│   │   ├── find.ts             # findItemPurchaseCandidates — scans bank history
+│   │   │                       #   for likely item purchases (Find items modal)
+│   │   └── receipt-name.ts     # buildReceiptPath — preset-driven receipt filenames
+│   │                           #   (incl. the type-subfolder pattern) + extensionOf
 │   ├── salary/
 │   │   ├── salary.ts           # brutto/netto/tax algebra + role-title resolution
 │   │   ├── detection.ts        # detectSalaries (budget-row scoring, one candidate
@@ -225,9 +227,9 @@ src/
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (56) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (57) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v56 steps
+│   │   ├── modern.ts           # v31 → v57 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -255,6 +257,7 @@ src/
 │   ├── gdrive-adapter.ts      # Google Drive HTTP adapter + OAuth (PKCE)
 │   ├── oauth-pkce.ts          # shared PKCE helpers + redirect-URI derivation
 │   ├── encrypting-adapter.ts  # AES-GCM envelope wrapper around any adapter
+│   ├── reencrypt-storage.ts   # atomic budget+receipts re-wrap on encryption toggle
 │   ├── crypto.ts              # PBKDF2-SHA256 + AES-GCM primitives
 │   ├── cloud-mirror.ts        # offline mirror wrapper around a cloud adapter
 │   ├── cloud-link-types.ts    # in-flight cloud/folder link state types

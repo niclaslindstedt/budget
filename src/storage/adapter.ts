@@ -44,7 +44,13 @@ export type AdapterCapability =
   | "markSynced"
   // `backups` is implemented — sibling timestamped backups can be
   // listed, created, read, and removed.
-  | "backups";
+  | "backups"
+  // `receipts` is implemented — binary receipt files (one per owned
+  // item) can be uploaded, downloaded, and removed in a sibling
+  // `receipts/` folder. Present on the folder and cloud backends; the
+  // browser-localStorage adapter omits it (no sibling-file notion), so
+  // the receipt-upload UI gates on this tag.
+  | "receipts";
 
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
@@ -108,6 +114,38 @@ export type StorageAdapter = {
   // sibling folder there). Always present when the user can see a
   // "Backup" button in Settings.
   readonly backups?: BackupOps;
+
+  // Optional support for binary receipt files attached to owned items,
+  // stored in a sibling `receipts/` folder next to the live budget
+  // file. The folder and cloud backends implement this; the
+  // browser-localStorage adapter doesn't. Present iff `capabilities`
+  // carries `"receipts"`, which the receipt-upload UI gates on.
+  readonly receipts?: ReceiptOps;
+};
+
+// Binary-file operations for item receipts. Mirrors `BackupOps` but
+// carries `Blob`s rather than text, since a receipt is an image or PDF
+// rather than serialized JSON. `path` is relative to the backend's
+// `receipts/` folder and may contain a single subdirectory segment
+// (the type-subdirectory name pattern), e.g.
+// `"Electronics/iPhone 15 Pro - 2024-01-15.jpg"`. Adapters create any
+// intermediate folder on `upload`. The encrypting wrapper transparently
+// wraps these in the same AES-GCM envelope it uses for the budget when
+// a password is held, so a receipt is encrypted at rest exactly when
+// the budget is.
+export type ReceiptOps = {
+  // Write `blob` at `path`, overwriting any existing file there and
+  // creating the `receipts/` folder (and one intermediate subfolder)
+  // as needed. Re-uploading replaces the previous receipt for an item.
+  upload(path: string, blob: Blob): Promise<void>;
+  // Fetch the bytes at `path`, or null when no file exists there
+  // (deleted out-of-band, or referenced from a backend that never held
+  // it). The encrypting wrapper decrypts on the way out so callers see
+  // the original image / PDF bytes regardless of at-rest encryption.
+  download(path: string): Promise<Blob | null>;
+  // Remove the file at `path`. A missing file is treated as already
+  // gone (no throw).
+  remove(path: string): Promise<void>;
 };
 
 // One backup file's metadata, mirrored in the on-disk index so the

@@ -114,6 +114,10 @@ export const DEFAULT_SETTINGS: Settings = {
   // groceries and experiences. The Items settings tab lets the user
   // deselect any of these or add more.
   itemFindTypeIds: [...DEFAULT_ITEM_FIND_TYPE_IDS],
+  // Name an uploaded receipt "<item> - <acquired date>.<ext>" by
+  // default — descriptive and chronologically sortable. The Items
+  // settings tab lets the user pick another preset.
+  receiptNamePattern: "name-date",
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -172,6 +176,7 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   searchRanking: DEFAULT_SETTINGS.searchRanking,
   itemFindThreshold: DEFAULT_SETTINGS.itemFindThreshold,
   itemFindTypeIds: DEFAULT_SETTINGS.itemFindTypeIds,
+  receiptNamePattern: DEFAULT_SETTINGS.receiptNamePattern,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,

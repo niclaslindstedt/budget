@@ -410,6 +410,15 @@ const settings = {
     clearSeriesRules: "Clear auto-reconciliation",
   },
   items: {
+    receiptTitle: "Receipts",
+    receiptHint:
+      "When you attach a receipt to an item, it is saved as a file in a receipts folder on your storage. This sets how those files are named so they are easy to find. Available on the local folder and cloud backends.",
+    receiptPattern: "File naming",
+    receiptPatternName: "Item name",
+    receiptPatternNameDate: "Item name and date",
+    receiptPatternDateName: "Date and item name",
+    receiptPatternTypeNameDate: "Type folder, name and date",
+    receiptExampleType: "Electronics",
     scanTitle: "Find items",
     threshold: "Minimum amount",
     thresholdHint:

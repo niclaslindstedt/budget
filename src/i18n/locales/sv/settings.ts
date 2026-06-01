@@ -410,6 +410,15 @@ const settings: SettingsCatalog = {
     clearSeriesRules: "Rensa auto-avstämning",
   },
   items: {
+    receiptTitle: "Kvitton",
+    receiptHint:
+      "När du bifogar ett kvitto till en sak sparas det som en fil i en kvittomapp i din lagring. Det här styr hur filerna namnges så att de är lätta att hitta. Tillgängligt för lokal mapp och molnlagring.",
+    receiptPattern: "Filnamn",
+    receiptPatternName: "Sakens namn",
+    receiptPatternNameDate: "Sakens namn och datum",
+    receiptPatternDateName: "Datum och sakens namn",
+    receiptPatternTypeNameDate: "Typmapp, namn och datum",
+    receiptExampleType: "Elektronik",
     scanTitle: "Hitta saker",
     threshold: "Minsta belopp",
     thresholdHint:

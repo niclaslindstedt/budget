@@ -1,5 +1,6 @@
 import { CATEGORY_ICON_NAMES } from "../constants/taxonomy";
 import { DATE_FORMATS, SHORT_DATE_FORMATS } from "../constants/format";
+import { RECEIPT_NAME_PATTERNS } from "../items/receipt-name";
 import {
   BORDER_WIDTH_PRESETS,
   DENSITY_PRESETS,
@@ -16,6 +17,7 @@ import type {
   DensityPreset,
   FontFamilyId,
   RadiusPreset,
+  ReceiptNamePattern,
   ShortDateFormat,
   ThemePreset,
   ThousandsSeparator,
@@ -36,6 +38,8 @@ export const THEME_SET: ReadonlySet<ThemePreset> = new Set(THEMES);
 export const FONT_FAMILY_SET: ReadonlySet<FontFamilyId> = new Set(
   FONT_FAMILIES.map((f) => f.id),
 );
+export const RECEIPT_NAME_PATTERN_SET: ReadonlySet<ReceiptNamePattern> =
+  new Set(RECEIPT_NAME_PATTERNS);
 export const RADIUS_SET: ReadonlySet<RadiusPreset> = new Set(RADIUS_PRESETS);
 export const DENSITY_SET: ReadonlySet<DensityPreset> = new Set(DENSITY_PRESETS);
 export const BORDER_WIDTH_SET: ReadonlySet<BorderWidthPreset> = new Set(

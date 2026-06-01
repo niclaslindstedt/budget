@@ -20,6 +20,7 @@ const log = createLogger("folder");
 
 const DEFAULT_FILE_NAME = "budget.json";
 export const FOLDER_BACKUPS_DIR_NAME = "backups";
+export const FOLDER_RECEIPTS_DIR_NAME = "receipts";
 
 // Chrome reports filesystem errors as `DOMException` with these
 // names. We treat `NotAllowedError` (revoked by browser policy) and
@@ -139,12 +140,87 @@ export function createFolderAdapter(
     log,
   });
 
+  // Walk a `/`-separated receipt path to its parent directory handle,
+  // creating each segment when `create` is set, and return the parent
+  // handle plus the leaf filename. The receipts root is the first
+  // segment, then at most one type-subdirectory, then the file.
+  async function resolveReceiptParent(
+    path: string,
+    create: boolean,
+  ): Promise<{ dir: FileSystemDirectoryHandle; name: string } | null> {
+    const segments = path.split("/").filter((s) => s.length > 0);
+    if (segments.length === 0) return null;
+    const name = segments.pop() as string;
+    let dir: FileSystemDirectoryHandle;
+    try {
+      dir = await directoryHandle.getDirectoryHandle(FOLDER_RECEIPTS_DIR_NAME, {
+        create,
+      });
+      for (const segment of segments) {
+        dir = await dir.getDirectoryHandle(segment, { create });
+      }
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      if (isPermissionError(err)) onPermissionLost?.();
+      throw err;
+    }
+    return { dir, name };
+  }
+
+  const receipts = {
+    async upload(path: string, blob: Blob): Promise<void> {
+      const parent = await resolveReceiptParent(path, true);
+      if (!parent) throw new Error("receipts folder unavailable");
+      try {
+        const handle = await parent.dir.getFileHandle(parent.name, {
+          create: true,
+        });
+        const writable = await handle.createWritable({
+          keepExistingData: false,
+        });
+        await writable.write(blob);
+        await writable.close();
+      } catch (err) {
+        if (isPermissionError(err)) onPermissionLost?.();
+        throw err;
+      }
+    },
+
+    async download(path: string): Promise<Blob | null> {
+      const parent = await resolveReceiptParent(path, false);
+      if (!parent) return null;
+      try {
+        const handle = await parent.dir.getFileHandle(parent.name, {
+          create: false,
+        });
+        return await handle.getFile();
+      } catch (err) {
+        if (isNotFoundError(err)) return null;
+        if (isPermissionError(err)) onPermissionLost?.();
+        throw err;
+      }
+    },
+
+    async remove(path: string): Promise<void> {
+      const parent = await resolveReceiptParent(path, false);
+      if (!parent) return;
+      try {
+        await parent.dir.removeEntry(parent.name);
+      } catch (err) {
+        if (isNotFoundError(err)) return;
+        if (isPermissionError(err)) onPermissionLost?.();
+        throw err;
+      }
+    },
+  };
+
   return {
     id: "folder",
     label: "Local folder",
     saveDebounceMs: 500,
-    capabilities: new Set(["backups"]),
+    capabilities: new Set(["backups", "receipts"]),
     backups,
+    receipts,
 
     async load(): Promise<Snapshot | null> {
       log.info("load: start");
