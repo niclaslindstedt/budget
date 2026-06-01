@@ -234,7 +234,7 @@ export function BudgetLineItemsModal({
   const remainder = total - allocated;
   const remainderSign = remainder > 0 ? "+" : remainder < 0 ? "−" : "";
   const remainderBody = withCurrency(
-    formatNumber(Math.abs(remainder), settings),
+    formatNumber(Math.abs(remainder), settings, { neverAbbreviate: true }),
     settings,
   );
   // Surface an over-allocation explicitly: line items shouldn't exceed the
@@ -295,7 +295,7 @@ export function BudgetLineItemsModal({
 
   const totalSign = total > 0 ? "+" : total < 0 ? "−" : "";
   const totalBody = withCurrency(
-    formatNumber(Math.abs(total), settings),
+    formatNumber(Math.abs(total), settings, { neverAbbreviate: true }),
     settings,
   );
   const totalClass =

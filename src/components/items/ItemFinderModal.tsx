@@ -283,7 +283,9 @@ export function ItemFinderModal({
                               c.amount >= 0 ? "text-positive" : "text-negative"
                             }`}
                           >
-                            {formatAmount(c.amount, settings)}
+                            {formatAmount(c.amount, settings, {
+                              neverAbbreviate: true,
+                            })}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
