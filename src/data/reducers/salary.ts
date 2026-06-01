@@ -28,9 +28,6 @@ function applySalaryPatch(
 // presets — so there's no preset-immutability guard here. Mirrors the
 // account / item CRUD reducers.
 export function reduceSalary(state: UserData, action: Action): UserData | null {
-  if (action.type === "createSalary") {
-    return { ...state, salaries: [...state.salaries, action.salary] };
-  }
   if (action.type === "addSalaries") {
     if (action.salaries.length === 0) return state;
     return { ...state, salaries: [...state.salaries, ...action.salaries] };

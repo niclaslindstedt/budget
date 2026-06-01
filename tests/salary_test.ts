@@ -89,7 +89,7 @@ describe("Salary sheet type", () => {
   it("CRUD + cascade through the reducer", () => {
     let state = withSalarySheet();
     const salary: Salary = { id: "s1", date: "2026-03-25", net: 28000 };
-    state = reducer(state, { type: "createSalary", salary });
+    state = reducer(state, { type: "addSalaries", salaries: [salary] });
     expect(state.salaries).toHaveLength(1);
 
     state = reducer(state, {

@@ -5,9 +5,7 @@ const salary = {
   sheetTitle: "Salary",
   findSalaries: "Find salaries",
   manageEmployers: "Employers",
-  noSalaries:
-    "No salaries yet. Use “Find salaries” to detect them from your bank history, or add one below.",
-  addSalary: "Add salary",
+  noSalaries: "No salaries yet. Find them from your bank history below.",
   select: "Select",
   cancelSelect: "Done",
   selected: "{count} selected",

@@ -247,7 +247,6 @@ export type Action =
       date: string;
       amount: number;
     }
-  | { type: "createSalary"; salary: Salary }
   | {
       // Bulk-add salaries accepted from the "Find salaries" detector in
       // one pass so the page doesn't re-render between each insert.

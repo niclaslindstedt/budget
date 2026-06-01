@@ -4,14 +4,12 @@ import {
   CheckSquare,
   Layers,
   Pencil,
-  Plus,
   Search,
   Trash2,
   X,
 } from "lucide-react";
 
 import type { Action } from "../../data/reducer";
-import { newId } from "../../data/sheet";
 import type {
   Employer,
   Salary,
@@ -21,7 +19,6 @@ import type {
   UserData,
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import { todayIso } from "../../utils/date";
 import { formatMonthLabel } from "../../utils/format";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
@@ -42,19 +39,6 @@ type Props = {
   dispatch: (action: Action) => void;
 };
 
-// Apply a salary patch (undefined = drop the key) onto a draft, used to
-// build the object a brand-new salary is created from. Mirrors the
-// reducer's `applySalaryPatch` so create and edit treat the patch the
-// same way.
-function applyPatch(base: Salary, patch: Partial<Omit<Salary, "id">>): Salary {
-  const next: Salary = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) delete next[key as keyof Salary];
-    else (next as Record<string, unknown>)[key] = value;
-  }
-  return next;
-}
-
 export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
   const t = useT();
   const lang = useLang();
@@ -67,10 +51,7 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
   const [findOpen, setFindOpen] = useState(false);
   const [employersOpen, setEmployersOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [editing, setEditing] = useState<{
-    salary: Salary;
-    isNew: boolean;
-  } | null>(null);
+  const [editing, setEditing] = useState<Salary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Salary | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -159,25 +140,11 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
     setSelectedIds(new Set());
   }
 
-  function handleAddSalary() {
-    setEditing({
-      salary: { id: newId(), date: todayIso(), net: 0 },
-      isNew: true,
-    });
-  }
-
   function handleSaveSalary(
     salaryId: string,
     patch: Partial<Omit<Salary, "id">>,
   ) {
-    if (editing?.isNew) {
-      dispatch({
-        type: "createSalary",
-        salary: applyPatch(editing.salary, patch),
-      });
-    } else {
-      dispatch({ type: "updateSalary", salaryId, patch });
-    }
+    dispatch({ type: "updateSalary", salaryId, patch });
   }
 
   function handleAddDiscovered(salaries: Salary[]) {
@@ -282,8 +249,16 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
         </div>
 
         {!hasSalaries ? (
-          <div className="rounded border border-line bg-surface px-4 py-8 text-center text-sm text-muted">
-            {t("salary.noSalaries")}
+          <div className="flex flex-col items-center gap-4 rounded border border-line bg-surface px-4 py-8 text-center">
+            <p className="m-0 text-sm text-muted">{t("salary.noSalaries")}</p>
+            <button
+              type="button"
+              onClick={() => setFindOpen(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
+            >
+              <Search size={16} aria-hidden focusable={false} />
+              {t("salary.findSalaries")}
+            </button>
           </div>
         ) : (
           yearGroups.map(([year, salaries]) => (
@@ -298,28 +273,17 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
               onToggleSelect={toggleSelect}
               onEdit={(salaryId) => {
                 const s = data.salaries.find((x) => x.id === salaryId);
-                if (s) setEditing({ salary: s, isNew: false });
+                if (s) setEditing(s);
               }}
               onDelete={(salary) => setPendingDelete(salary)}
             />
           ))
         )}
-
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={handleAddSalary}
-            className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
-          >
-            <Plus size={16} aria-hidden focusable={false} />
-            {t("salary.addSalary")}
-          </button>
-        </div>
       </section>
 
       <SalaryEditModal
         open={editing !== null}
-        salary={editing?.salary ?? null}
+        salary={editing}
         employers={data.employers}
         settings={settings}
         onClose={() => setEditing(null)}
