@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Trash2 } from "lucide-react";
+import { Package } from "lucide-react";
 
 import type {
   Category,
@@ -44,8 +44,8 @@ type Props = {
   // `creating` true) the fields seed blank and Save mints a new item.
   item: Item | null;
   // Create mode: render with blank fields and a "New item" title, and
-  // route Save to `onCreate` instead of `onSubmit`. The delete control
-  // is hidden. Fired by the Items sheet's "+ add item" button.
+  // route Save to `onCreate` instead of `onSubmit`. Fired by the Items
+  // sheet's "+ add item" button.
   creating?: boolean;
   subtypes: readonly Subtype[];
   types: readonly EntryType[];
@@ -68,7 +68,6 @@ type Props = {
   // The host routes this to the `addItem` action. Required only when
   // `creating` can be true.
   onCreate?: (draft: Omit<Item, "id">) => void;
-  onDelete: (itemId: string) => void;
   onClose: () => void;
 };
 
@@ -93,7 +92,6 @@ export function ItemEditorModal({
   onCreateCategory,
   onSubmit,
   onCreate,
-  onDelete,
   onClose,
 }: Props) {
   const t = useT();
@@ -110,7 +108,6 @@ export function ItemEditorModal({
   const [disposedAt, setDisposedAt] = useState("");
   const [soldFor, setSoldFor] = useState("");
   const [note, setNote] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useResetOnOpen(
     open,
@@ -133,7 +130,6 @@ export function ItemEditorModal({
       setDisposedAt(item?.disposedAt ?? "");
       setSoldFor(seedAmount(item?.soldFor, settings));
       setNote(item?.note ?? "");
-      setConfirmDelete(false);
     },
   );
 
@@ -368,38 +364,6 @@ export function ItemEditorModal({
               className="field-input w-full min-w-0 resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
-
-          {item && (
-            <div className="mt-1 border-t border-line pt-3">
-              {confirmDelete ? (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs text-danger">
-                    {t("items.deleteItemConfirm")}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setConfirmDelete(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button variant="danger" onClick={() => onDelete(item.id)}>
-                      {t("items.deleteItem")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-xs text-muted hover:text-danger"
-                >
-                  <Trash2 size={14} aria-hidden focusable={false} />
-                  {t("items.deleteItem")}
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </Modal.Body>
       <Modal.Footer>

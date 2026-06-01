@@ -59,8 +59,6 @@ const items: ItemsCatalog = {
   itemNote: "Notering",
   itemNotePlaceholder: "t.ex. serienummer, skick",
   deleteItem: "Ta bort sak",
-  deleteItemConfirm:
-    "Ta bort den här saken? Dess radkopplingar tas bort från alla poster.",
   editItemAria: "Redigera {name}",
   save: "Spara",
   // Kvittosektion i redigera sak-modalen
