@@ -53,6 +53,19 @@ export function reduceItems(state: UserData, action: Action): UserData | null {
       }),
     };
   }
+  if (action.type === "ignoreItemEntry") {
+    // Append the history-entry id to the ignore allowlist the "Find
+    // items" scanner reads (dedup). Mirrors `dismissRecurringCandidate`.
+    if (state.ignoredItemEntryIds.includes(action.entryId)) return state;
+    return {
+      ...state,
+      ignoredItemEntryIds: [...state.ignoredItemEntryIds, action.entryId],
+    };
+  }
+  if (action.type === "clearIgnoredItemEntries") {
+    if (state.ignoredItemEntryIds.length === 0) return state;
+    return { ...state, ignoredItemEntryIds: [] };
+  }
   if (action.type === "addItem") {
     return { ...state, items: [...state.items, action.item] };
   }

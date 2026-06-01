@@ -205,6 +205,16 @@ export type CommonSettings = {
   // the Search settings tab so the user can re-weight what "relevant"
   // means for their own ledger. See `SearchRankingSettings`.
   searchRanking: SearchRankingSettings;
+  // Amount floor (in the user's currency units) for the Items sheet's
+  // "Find items" scan: a bank transaction whose `|amount|` clears this is
+  // offered as a likely item purchase. Seeded per-currency on first run
+  // (2000 kr / 200 € / 200 $) by `freshUserData`. Bounded `>= 0` by the
+  // validator. Edited in the Items settings tab.
+  itemFindThreshold: number;
+  // Optional restriction for the "Find items" scan to specific entry
+  // types (`EntryType.id`s). Empty means "all types" — the scan is then
+  // gated by `itemFindThreshold` alone. Edited in the Items settings tab.
+  itemFindTypeIds: string[];
 };
 
 export type TransactionSortOrder = "newestFirst" | "oldestFirst";

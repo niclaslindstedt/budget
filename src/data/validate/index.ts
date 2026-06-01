@@ -382,6 +382,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const transferCollapseDismissals = sanitizeStringArray(
     raw.transferCollapseDismissals,
   );
+  const ignoredItemEntryIds = sanitizeStringArray(raw.ignoredItemEntryIds);
 
   // User-authored wildcard match rules. Like merchant hints, each
   // rule is advisory and independent — a bogus entry is silently
@@ -519,6 +520,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       merchantHints,
       recurringDismissals,
       transferCollapseDismissals,
+      ignoredItemEntryIds,
       matchRules,
       seriesMatchRules,
       renamePatterns,

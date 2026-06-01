@@ -1,4 +1,5 @@
 import { DEFAULT_PERSISTED_SETTINGS } from "../data/constants/defaults";
+import { getDefaultItemFindThreshold } from "../data/constants/currency";
 import type { MigrationContext } from "../data/migrations";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
@@ -17,8 +18,13 @@ export function freshUserData(): UserData {
   // these arrays, so the user sees a full picker without any seeded
   // data living in their export.
   const sheet = createDefaultSheet("Budget");
+  // Detect the currency once so we can both apply its display fields and
+  // seed the "Find items" threshold from the same pick (200 for €/$,
+  // 2000 for kr, …) — a fresh dollar install shouldn't default to a
+  // 2000-unit floor.
+  const currency = detectInitialCurrency();
   return {
-    version: 54,
+    version: 55,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -41,6 +47,7 @@ export function freshUserData(): UserData {
     merchantHints: {},
     recurringDismissals: [],
     transferCollapseDismissals: [],
+    ignoredItemEntryIds: [],
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
@@ -55,7 +62,8 @@ export function freshUserData(): UserData {
     // of the persisted shape; the device buckets stay at defaults.
     settings: {
       ...DEFAULT_PERSISTED_SETTINGS,
-      ...detectInitialCurrency(),
+      ...currency,
+      itemFindThreshold: getDefaultItemFindThreshold(currency.currency),
       language: detectInitialLanguage(),
     },
   };

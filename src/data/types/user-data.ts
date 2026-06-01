@@ -33,7 +33,7 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 54;
+  version: 55;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -143,6 +143,11 @@ export type UserData = {
   // collapse modal. Same shape and contract as `recurringDismissals`:
   // detector reads it as an allowlist, settings UI offers a clear-all.
   transferCollapseDismissals: string[];
+  // History-entry ids the user ignored from the Items sheet's "Find
+  // items" scan. The scanner skips them so an entry the user decided
+  // isn't an item purchase never resurfaces. Same shape and contract as
+  // `recurringDismissals`; cleared via the Items settings tab.
+  ignoredItemEntryIds: string[];
   // Wildcard-pattern overlays for synthesized history rows. Each
   // rule is created from the history-row pattern button; the rule
   // labels every matching entry (past + future imports) with the

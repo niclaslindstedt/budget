@@ -63,6 +63,19 @@ const items: ItemsCatalog = {
     "Ta bort den här saken? Dess radkopplingar tas bort från alla poster.",
   editItemAria: "Redigera {name}",
   save: "Spara",
+  // Hitta saker-modalen (skanna kontohistoriken efter troliga köp)
+  find: {
+    menu: "Hitta saker",
+    title: "Hitta saker",
+    intro:
+      "De här transaktionerna ser ut som sakköp. Lägg till rader för att katalogisera vad du köpt, hoppa över för nu, eller ignorera en post för att sluta föreslå den.",
+    empty:
+      "Inga troliga sakköp hittades. Justera beloppet eller typfiltret under Inställningar → Saker, eller importera mer historik.",
+    addLineItems: "Lägg till rader",
+    skip: "Hoppa över för nu",
+    ignore: "Ignorera transaktionen",
+    linkedCount: "{n} kopplade",
+  },
 };
 
 export default items;

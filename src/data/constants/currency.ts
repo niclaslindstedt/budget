@@ -114,3 +114,24 @@ export const REGION_TO_CURRENCY_ID: Readonly<Record<string, string>> = {
   US: "dollar",
   CA: "dollar",
 };
+
+// Per-currency default amount floor for the Items sheet's "Find items"
+// scan, keyed by the currency symbol stored in `Settings.currency`. A
+// 2000 kr purchase and a 200 €/$ purchase are roughly the same "worth
+// cataloguing" bar. Anything not listed falls back to 2000 — the kr
+// default the app ships with.
+const ITEM_FIND_THRESHOLD_BY_SYMBOL: Readonly<Record<string, number>> = {
+  kr: 2000,
+  "€": 200,
+  $: 200,
+  "£": 150,
+  CHF: 200,
+};
+
+// Default "Find items" threshold for a currency symbol. Used to seed
+// `Settings.itemFindThreshold` on first run (from the detected currency)
+// and to power the "reset to default" affordance in the Items settings
+// tab.
+export function getDefaultItemFindThreshold(currencySymbol: string): number {
+  return ITEM_FIND_THRESHOLD_BY_SYMBOL[currencySymbol] ?? 2000;
+}

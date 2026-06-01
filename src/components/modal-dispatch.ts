@@ -41,7 +41,8 @@ export type ModalCommand =
   | { kind: "open-correction-delete"; row: Row }
   | { kind: "open-edit-company"; companyId: string }
   | { kind: "open-edit-item"; itemId: string }
-  | { kind: "open-create-item" };
+  | { kind: "open-create-item" }
+  | { kind: "open-find-items" };
 
 export type ModalDispatch = (command: ModalCommand) => void;
 
@@ -89,6 +90,10 @@ export type ModalCommandHandlers = {
   // user can grow the owned-items catalog directly from its page rather
   // than only via a line-item link on a budget row.
   createItem: () => void;
+  // Open the "Find items" modal, which scans bank history for likely
+  // item purchases and walks the user through cataloguing them. Fired
+  // from the Items sheet title "…" menu.
+  findItems: () => void;
 };
 
 // A subset of the handler table. AppShell supplies a base slice (the
@@ -171,6 +176,9 @@ export function applyModalCommand(
       return;
     case "open-create-item":
       handlers.createItem();
+      return;
+    case "open-find-items":
+      handlers.findItems();
       return;
   }
 }

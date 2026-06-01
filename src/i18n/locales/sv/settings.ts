@@ -13,6 +13,7 @@ const settings: SettingsCatalog = {
     companies: "Företag",
     tags: "Taggar",
     patterns: "Mönster",
+    items: "Saker",
     memory: "Minne",
     developer: "Utvecklare",
     logs: "Loggar",
@@ -407,6 +408,22 @@ const settings: SettingsCatalog = {
     seriesRulesHint:
       "Lärs in när du väljer ”Använd för hela serien” vid avstämning. Rensade regler frågar igen varje gång.",
     clearSeriesRules: "Rensa auto-avstämning",
+  },
+  items: {
+    scanTitle: "Hitta saker",
+    threshold: "Minsta belopp",
+    thresholdHint:
+      "Transaktioner på minst det här beloppet föreslås som troliga sakköp när du kör Hitta saker.",
+    resetThreshold: "Återställ till standard",
+    typeFilterTitle: "Begränsa till typer",
+    typeFilterHint:
+      "Valfritt. När du väljer en eller flera typer skannas bara transaktioner med de typerna. Lämna allt omarkerat för att skanna alla typer.",
+    noTypes: "Inga typer än.",
+    ignoredTitle: "Ignorerade köp",
+    ignoredLabel: "Transaktioner du markerat som inte en sak",
+    ignoredNone: "Inga ignorerade än.",
+    ignoredHint: "{n} ignorerade. Rensa listan för att se dem igen.",
+    clearIgnored: "Rensa lista",
   },
   developer: {
     section: "Utvecklare",

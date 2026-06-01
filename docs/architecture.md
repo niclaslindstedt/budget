@@ -189,8 +189,10 @@ src/
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
 │   ├── items/
-│   │   └── value.ts            # computeItemCurrentValue / isItemOwned for the
-│   │                           #   Items page (resale value + depreciation)
+│   │   ├── value.ts            # computeItemCurrentValue / isItemOwned for the
+│   │   │                       #   Items page (resale value + depreciation)
+│   │   └── find.ts             # findItemPurchaseCandidates — scans bank history
+│   │                           #   for likely item purchases (Find items modal)
 │   ├── salary/
 │   │   ├── salary.ts           # brutto/netto/tax algebra + role-title resolution
 │   │   └── detection.ts        # detectSalaries (one candidate per month, prefers
@@ -219,9 +221,9 @@ src/
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (54) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (55) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v53 steps
+│   │   ├── modern.ts           # v31 → v55 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -346,7 +348,7 @@ Each document carries its own `version` field. Top-level shape:
 
 ```ts
 type UserData = {
-  version: 52;
+  version: 55;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -390,6 +392,9 @@ type UserData = {
   recurringDismissals: string[];
   // Pair keys dismissed "Never" on the transfer-collapse modal.
   transferCollapseDismissals: string[];
+  // History-entry ids ignored from the Items sheet's "Find items" scan;
+  // the scanner skips these (same shape/contract as recurringDismissals).
+  ignoredItemEntryIds: string[];
   // User-authored wildcard rules that relabel synthesized history rows.
   matchRules: MatchRule[];
   // Auto-reconciliation rules learned from "Apply to whole series" in
