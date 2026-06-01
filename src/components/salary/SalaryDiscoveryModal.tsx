@@ -545,13 +545,20 @@ function YearStep({ step, boundaryMonths, settings, lang, t }: YearStepProps) {
                 </li>
               )}
               <li className="flex items-center justify-between gap-3 rounded border border-line bg-surface-2 px-3 py-2">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="font-mono text-sm text-fg-bright">
-                    {formatMonthLabel(c.monthKey, lang)}
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-fg-bright">
+                      {formatMonthLabel(c.monthKey, lang)}
+                    </span>
+                    {flagged && (
+                      <span className="shrink-0 rounded-full border border-line px-1.5 py-0.5 text-[10px] text-meta">
+                        {t("salary.offBaselineTag")}
+                      </span>
+                    )}
                   </span>
-                  {flagged && (
-                    <span className="shrink-0 rounded-full border border-line px-1.5 py-0.5 text-[10px] text-meta">
-                      {t("salary.offBaselineTag")}
+                  {c.description && (
+                    <span className="truncate font-mono text-xs text-muted">
+                      {c.description}
                     </span>
                   )}
                 </span>
