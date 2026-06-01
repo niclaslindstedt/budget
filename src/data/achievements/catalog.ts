@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   ArrowRightLeft,
   ArrowUpDown,
+  Banknote,
   Bookmark,
   BookOpen,
   Boxes,
@@ -507,6 +508,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.seriesMetadata],
       predicate: (prev, next) =>
         !hasPrimaryIncomeSeries(prev) && hasPrimaryIncomeSeries(next),
+    },
+  },
+  {
+    id: "showMeTheMoney",
+    tier: "intermediate",
+    glyph: Banknote,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.salaries],
+      predicate: (prev, next) =>
+        prev.salaries.length === 0 && next.salaries.length > 0,
     },
   },
   {

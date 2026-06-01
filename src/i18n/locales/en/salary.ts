@@ -6,7 +6,7 @@ const salary = {
   findSalaries: "Find salaries",
   manageEmployers: "Employers",
   noSalaries:
-    "No salaries yet. Use “Find salaries” to detect them from your budget, or add one below.",
+    "No salaries yet. Use “Find salaries” to detect them from your bank history, or add one below.",
   addSalary: "Add salary",
   select: "Select",
   cancelSelect: "Done",
@@ -59,20 +59,50 @@ const salary = {
   bulkTaxRatePlaceholder: "e.g. 30",
   apply: "Apply",
 
-  // Find-salaries modal
+  // Find-salaries guided walk
   findTitle: "Find salaries",
-  findIntro:
-    "These look like salary payments in your budget. Add the ones to keep; discard the rest.",
-  findNone:
-    "No likely salaries found. Mark an income series as your main salary in the budget to improve detection.",
   likelyNewEmployer: "Likely new employer",
   add: "Add",
-  discard: "Discard",
-  addAll: "Add all",
-  discardAll: "Discard all",
   confidenceHigh: "Likely",
   confidenceMedium: "Maybe",
   confidenceLow: "Guess",
+
+  // Account step
+  pickAccountTitle: "Which account does your salary land in?",
+  pickAccountHint:
+    "We’ll scan that account’s full bank history for likely paychecks — even years back, before you tagged anything.",
+  pickAccountPlaceholder: "Pick an account",
+  noAccountsWithHistory:
+    "No imported bank history yet. Import a statement on the Accounts page first.",
+  discoverySummary:
+    "{count} likely salary months from {start} to {end}, around {amount} each.",
+  discoveryNone: "No recurring salary found in this account’s history.",
+
+  // Year baseline step
+  yearStepTitle: "Salaries in {year}",
+  yearMonthsOne: "{count} month detected",
+  yearMonthsOther: "{count} months detected",
+  yearFlagged: "{count} look off the baseline",
+  yearBaselineLabel: "Baseline (typical monthly net)",
+  yearBaselineHint:
+    "The usual paycheck this year. Months that differ are flagged so you can give them a closer look.",
+  reviewMonths: "Review each",
+  acceptYearOne: "Accept {count}",
+  acceptYearOther: "Accept all {count}",
+
+  // Month step
+  monthProgress: "{index} of {total}",
+  fromBank: "From your bank",
+  offAverageHint:
+    "This differs from the baseline — a bonus, leave, or a raise?",
+  accept: "Accept",
+  skip: "Skip",
+  alreadyAccepted: "Accepted — accept again to update.",
+  alreadySkipped: "Skipped.",
+
+  // Summary step
+  readyToAddOne: "{count} salary ready to add.",
+  readyToAddOther: "{count} salaries ready to add.",
 
   // Employer management
   employersTitle: "Employers",

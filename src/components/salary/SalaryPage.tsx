@@ -10,11 +10,6 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  detectSalaries,
-  gatherSalaryDetectionRows,
-  type SalaryCandidate,
-} from "../../data/salary/detection";
 import type { Action } from "../../data/reducer";
 import { newId } from "../../data/sheet";
 import type {
@@ -35,8 +30,8 @@ import {
   SalaryBulkEditModal,
   type SalaryBulkApply,
 } from "./SalaryBulkEditModal";
+import { SalaryDiscoveryModal } from "./SalaryDiscoveryModal";
 import { SalaryEditModal } from "./SalaryEditModal";
-import { SalaryFindModal } from "./SalaryFindModal";
 import { SalaryYearTable } from "./SalaryYearTable";
 
 type Props = {
@@ -105,17 +100,16 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
     return [...groups.entries()];
   }, [data.salaries]);
 
-  // Detection result for the Find modal — recomputed when the ledger or
-  // the already-added salaries change so accepted ones drop off.
-  const detection = useMemo(() => {
-    const exclude = new Set<string>();
+  // Bank entries already backing a salary — passed to the discovery
+  // walk so an added paycheck isn't offered again. Keyed on
+  // `sourceHistoryId`; the modal pairs this with a month+net backstop
+  // since bank entry ids aren't stable across re-imports.
+  const excludeHistoryIds = useMemo(() => {
+    const set = new Set<string>();
     for (const s of data.salaries)
-      if (s.sourceRowId) exclude.add(s.sourceRowId);
-    return detectSalaries({
-      rows: gatherSalaryDetectionRows(data),
-      excludeSourceRowIds: exclude,
-    });
-  }, [data]);
+      if (s.sourceHistoryId) set.add(s.sourceHistoryId);
+    return set;
+  }, [data.salaries]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     {
@@ -174,14 +168,25 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
     }
   }
 
-  function handleAddCandidates(selected: SalaryCandidate[]) {
-    const salaries: Salary[] = selected.map((c) => ({
-      id: newId(),
-      date: c.date,
-      net: c.net,
-      sourceRowId: c.sourceRowId,
+  function handleAddDiscovered(salaries: Salary[]) {
+    // Belt-and-suspenders dedupe: drop any month already covered by an
+    // existing salary at the same net (±1%). Bank entry ids aren't
+    // stable across re-imports, so the `sourceHistoryId` exclusion in
+    // the walk can miss a re-imported paycheck — this catches it.
+    const existing = data.salaries.map((s) => ({
+      month: s.date.slice(0, 7),
+      net: s.net,
     }));
-    dispatch({ type: "addSalaries", salaries });
+    const fresh = salaries.filter((s) => {
+      const month = s.date.slice(0, 7);
+      return !existing.some(
+        (e) =>
+          e.month === month &&
+          Math.max(e.net, s.net) > 0 &&
+          Math.abs(e.net - s.net) / Math.max(e.net, s.net) <= 0.01,
+      );
+    });
+    if (fresh.length > 0) dispatch({ type: "addSalaries", salaries: fresh });
   }
 
   function handleBulkApply(args: SalaryBulkApply) {
@@ -317,13 +322,15 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
         onApply={handleBulkApply}
       />
 
-      <SalaryFindModal
+      <SalaryDiscoveryModal
         open={findOpen}
-        candidates={detection.candidates}
-        boundaries={detection.boundaries}
+        accounts={data.accounts}
+        history={data.history}
+        employers={data.employers}
         settings={settings}
+        excludeHistoryIds={excludeHistoryIds}
         onClose={() => setFindOpen(false)}
-        onAdd={handleAddCandidates}
+        onAdd={handleAddDiscovered}
       />
 
       <EmployerManageModal

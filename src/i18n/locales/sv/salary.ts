@@ -6,7 +6,7 @@ const salary: SalaryCatalog = {
   findSalaries: "Hitta löner",
   manageEmployers: "Arbetsgivare",
   noSalaries:
-    "Inga löner än. Använd ”Hitta löner” för att hitta dem i din budget, eller lägg till en nedan.",
+    "Inga löner än. Använd ”Hitta löner” för att hitta dem i din bankhistorik, eller lägg till en nedan.",
   addSalary: "Lägg till lön",
   select: "Markera",
   cancelSelect: "Klar",
@@ -59,20 +59,50 @@ const salary: SalaryCatalog = {
   bulkTaxRatePlaceholder: "t.ex. 30",
   apply: "Tillämpa",
 
-  // Find-salaries modal
+  // Find-salaries guided walk
   findTitle: "Hitta löner",
-  findIntro:
-    "Dessa ser ut som löneutbetalningar i din budget. Lägg till de du vill behålla; släng resten.",
-  findNone:
-    "Inga troliga löner hittades. Markera en inkomstserie som din huvudlön i budgeten för bättre träffsäkerhet.",
   likelyNewEmployer: "Trolig ny arbetsgivare",
   add: "Lägg till",
-  discard: "Släng",
-  addAll: "Lägg till alla",
-  discardAll: "Släng alla",
   confidenceHigh: "Trolig",
   confidenceMedium: "Kanske",
   confidenceLow: "Gissning",
+
+  // Account step
+  pickAccountTitle: "Vilket konto landar din lön på?",
+  pickAccountHint:
+    "Vi söker igenom kontots hela bankhistorik efter troliga löner — även flera år bakåt, innan du märkte något.",
+  pickAccountPlaceholder: "Välj ett konto",
+  noAccountsWithHistory:
+    "Ingen importerad bankhistorik än. Importera ett kontoutdrag på Konto-sidan först.",
+  discoverySummary:
+    "{count} troliga lönemånader från {start} till {end}, cirka {amount} var.",
+  discoveryNone: "Ingen återkommande lön hittades i kontots historik.",
+
+  // Year baseline step
+  yearStepTitle: "Löner {year}",
+  yearMonthsOne: "{count} månad hittad",
+  yearMonthsOther: "{count} månader hittade",
+  yearFlagged: "{count} avviker från baslinjen",
+  yearBaselineLabel: "Baslinje (vanligt månadsnetto)",
+  yearBaselineHint:
+    "Den vanliga lönen i år. Månader som avviker markeras så att du kan titta närmare på dem.",
+  reviewMonths: "Granska var och en",
+  acceptYearOne: "Lägg till {count}",
+  acceptYearOther: "Lägg till alla {count}",
+
+  // Month step
+  monthProgress: "{index} av {total}",
+  fromBank: "Från din bank",
+  offAverageHint:
+    "Detta avviker från baslinjen — en bonus, ledighet eller löneökning?",
+  accept: "Lägg till",
+  skip: "Hoppa över",
+  alreadyAccepted: "Tillagd — lägg till igen för att uppdatera.",
+  alreadySkipped: "Överhoppad.",
+
+  // Summary step
+  readyToAddOne: "{count} lön redo att läggas till.",
+  readyToAddOther: "{count} löner redo att läggas till.",
 
   // Employer management
   employersTitle: "Arbetsgivare",

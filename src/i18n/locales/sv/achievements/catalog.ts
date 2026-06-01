@@ -127,6 +127,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "När den 25:e infaller på en helg eller röd dag och banken betalar ut några dagar tidigare flyttas raden (och alla överföringar och utgifter samma dag) till nästa budgetmånad — så att april inte plötsligt suger åt sig majlönen. Ange ordinarie lönedag en gång så tillämpas kaskaden retroaktivt på varje förekomst i serien.",
   },
+  showMeTheMoney: {
+    name: "Visa mig pengarna",
+    condition: "Lägg till din första lön på Lön-sidan.",
+    learnMore:
+      "Hitta löner söker igenom ett valt kontos hela bankhistorik — även flera år bakåt, innan du märkte något — hittar din återkommande lön, fastställer en baslinje och går igenom den år för år så att du kan lägga till, redigera eller hoppa över varje månad.",
+  },
   secondDraft: {
     name: "Andra utkastet",
     condition: "Redigera en återkommande serie.",

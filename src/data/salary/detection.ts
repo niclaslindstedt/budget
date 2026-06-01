@@ -125,50 +125,68 @@ export function detectSalaries(input: DetectInput): DetectResult {
     };
   });
 
-  // Job-change segmentation. Walk the chronological net sequence,
-  // keeping a running average for the current run. A month within ±1 %
-  // of the run average extends it. A month that diverges only starts a
-  // NEW group when the divergence sustains for three consecutive months
-  // (the "3× new salary in a row" hint) — otherwise it's treated as an
-  // off-average blip (bonus, parental leave, VAB) and folded into the
-  // current group so a single odd paycheck never splits an employer.
-  const boundaries: number[] = [];
-  if (candidates.length > 0) {
-    boundaries.push(0);
-    let group = 0;
-    let runMean = candidates[0].net;
-    let runLen = 1;
-    candidates[0].employerGroup = 0;
-    for (let i = 1; i < candidates.length; i++) {
-      const net = candidates[i].net;
-      if (within1Pct(net, runMean)) {
-        runLen += 1;
-        runMean = (runMean * (runLen - 1) + net) / runLen;
-        candidates[i].employerGroup = group;
-        continue;
-      }
-      const next1 = candidates[i + 1]?.net;
-      const next2 = candidates[i + 2]?.net;
-      const sustained =
-        next1 !== undefined &&
-        next2 !== undefined &&
-        within1Pct(net, next1) &&
-        within1Pct(net, next2);
-      if (sustained) {
-        group += 1;
-        boundaries.push(i);
-        runMean = net;
-        runLen = 1;
-        candidates[i].employerGroup = group;
-      } else {
-        // Blip — keep it in the current group, don't disturb the run
-        // average (so a 2× bonus doesn't drag the steady-state up).
-        candidates[i].employerGroup = group;
-      }
-    }
+  const { groups, boundaries } = assignEmployerGroups(
+    candidates.map((c) => c.net),
+  );
+  for (let i = 0; i < candidates.length; i++) {
+    candidates[i].employerGroup = groups[i];
   }
 
   return { candidates, boundaries };
+}
+
+// Job-change segmentation over a chronological sequence of net amounts.
+// Walks the run keeping a running average. A month within ±1 % of the
+// run average extends it. A month that diverges only starts a NEW group
+// when the divergence sustains for three consecutive months (the "3×
+// new salary in a row" hint) — otherwise it's treated as an off-average
+// blip (bonus, parental leave, VAB) and folded into the current group
+// so a single odd paycheck never splits an employer.
+//
+// Returns a per-index `groups` array and the `boundaries` (indices where
+// a new group starts, always including 0 when there's at least one
+// entry). Shared by `detectSalaries` (budget-row scoring) and
+// `discoverSalaries` (bank-history scan) so both segment identically.
+export function assignEmployerGroups(nets: readonly number[]): {
+  groups: number[];
+  boundaries: number[];
+} {
+  const groups: number[] = new Array(nets.length).fill(0);
+  const boundaries: number[] = [];
+  if (nets.length === 0) return { groups, boundaries };
+
+  boundaries.push(0);
+  let group = 0;
+  let runMean = nets[0];
+  let runLen = 1;
+  for (let i = 1; i < nets.length; i++) {
+    const net = nets[i];
+    if (within1Pct(net, runMean)) {
+      runLen += 1;
+      runMean = (runMean * (runLen - 1) + net) / runLen;
+      groups[i] = group;
+      continue;
+    }
+    const next1 = nets[i + 1];
+    const next2 = nets[i + 2];
+    const sustained =
+      next1 !== undefined &&
+      next2 !== undefined &&
+      within1Pct(net, next1) &&
+      within1Pct(net, next2);
+    if (sustained) {
+      group += 1;
+      boundaries.push(i);
+      runMean = net;
+      runLen = 1;
+      groups[i] = group;
+    } else {
+      // Blip — keep it in the current group, don't disturb the run
+      // average (so a 2× bonus doesn't drag the steady-state up).
+      groups[i] = group;
+    }
+  }
+  return { groups, boundaries };
 }
 
 // Gather the budget income rows the detector scores, flattened across

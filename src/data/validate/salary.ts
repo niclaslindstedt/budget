@@ -96,5 +96,7 @@ export function validateSalary(
   if (typeof raw.note === "string" && raw.note !== "") salary.note = raw.note;
   if (typeof raw.sourceRowId === "string" && raw.sourceRowId !== "")
     salary.sourceRowId = raw.sourceRowId;
+  if (typeof raw.sourceHistoryId === "string" && raw.sourceHistoryId !== "")
+    salary.sourceHistoryId = raw.sourceHistoryId;
   return { ok: true, value: salary };
 }
