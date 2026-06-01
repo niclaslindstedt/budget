@@ -42,8 +42,9 @@ export type ItemPurchaseCandidate = {
 // inflow (selling the apartment, a tax refund) is never an item
 // purchase. Skips entries the user shelved (`hidden`), already collapsed
 // into a transfer, flagged as a transfer, or previously ignored. Sorted
-// by descending absolute amount so the biggest-ticket purchases (the
-// ones most worth cataloguing) come first.
+// by descending year first (this year before last year, …) then by
+// descending absolute amount within a year, so the most recent
+// big-ticket purchases — the ones most worth cataloguing — come first.
 export function findItemPurchaseCandidates(
   data: UserData,
   settings: Settings,
@@ -91,6 +92,14 @@ export function findItemPurchaseCandidates(
     }
   }
 
-  out.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  out.sort((a, b) => {
+    // Descending year (more recent first); ISO dates sort lexically, so
+    // the 4-char year prefix compares directly.
+    const yearA = a.date.slice(0, 4);
+    const yearB = b.date.slice(0, 4);
+    if (yearA !== yearB) return yearB.localeCompare(yearA);
+    // Within a year, biggest-ticket purchases first.
+    return Math.abs(b.amount) - Math.abs(a.amount);
+  });
   return out;
 }
