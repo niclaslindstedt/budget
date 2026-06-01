@@ -3,7 +3,12 @@ import type { CSSProperties } from "react";
 import { History } from "lucide-react";
 
 import { compareDateStrings } from "../../data/fiscal-month";
-import type { Account, HistoryEntry, Settings } from "../../data/types";
+import type {
+  Account,
+  HistoryEntry,
+  Settings,
+  TransactionSortOrder,
+} from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import {
   formatBalance,
@@ -16,6 +21,7 @@ import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
+import { ModalSearchControls } from "../ModalSearchControls";
 
 type Props = {
   open: boolean;
@@ -43,17 +49,26 @@ export function HistoryModal({
   const t = useT();
   const lang = useLang();
 
+  // Viewer-local sort order, seeded from the persisted preference and
+  // reset whenever the modal closes — viewing is ephemeral, so steering
+  // the order here never mutates the user's global setting. Mirrors the
+  // budget viewer's sort toggle.
+  const [sortOrder, setSortOrder] = useState<TransactionSortOrder>(
+    settings.transactionSortOrder,
+  );
   const allSortedEntries = useMemo(() => {
-    const order = settings.transactionSortOrder;
     return [...entries].sort((a, b) =>
-      compareDateStrings(a.date, b.date, order),
+      compareDateStrings(a.date, b.date, sortOrder),
     );
-  }, [entries, settings.transactionSortOrder]);
+  }, [entries, sortOrder]);
 
   const [query, setQuery] = useState("");
   useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
+    if (!open) {
+      setQuery("");
+      setSortOrder(settings.transactionSortOrder);
+    }
+  }, [open, settings.transactionSortOrder]);
   const accountSettings = useMemo(
     () =>
       account?.currency
@@ -168,6 +183,18 @@ export function HistoryModal({
           value={query}
           onChange={setQuery}
           placeholder={t("history.searchPlaceholder")}
+          actions={
+            <ModalSearchControls
+              sort={{
+                order: sortOrder,
+                defaultOrder: settings.transactionSortOrder,
+                onToggle: () =>
+                  setSortOrder((o) =>
+                    o === "newestFirst" ? "oldestFirst" : "newestFirst",
+                  ),
+              }}
+            />
+          }
         />
         {allSortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
