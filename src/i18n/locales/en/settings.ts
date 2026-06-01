@@ -413,11 +413,11 @@ const settings = {
     scanTitle: "Find items",
     threshold: "Minimum amount",
     thresholdHint:
-      "Transactions at or above this amount are offered as likely item purchases when you run Find items.",
+      "Money you spent at or above this amount is offered as a likely item purchase when you run Find items. Money coming in — a sale, a refund — is never offered.",
     resetThreshold: "Reset to default",
     typeFilterTitle: "Limit to types",
     typeFilterHint:
-      "Optional. When you pick one or more types, only transactions with those types are scanned. Leave all unselected to scan every type.",
+      "Only transactions with the selected types are scanned. Starts with durable goods that hold value — deselect any you don't want, or add more. Leave all unselected to scan every type.",
     noTypes: "No types yet.",
     ignoredTitle: "Ignored purchases",
     ignoredLabel: "Transactions you marked as not an item",

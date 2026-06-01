@@ -413,11 +413,11 @@ const settings: SettingsCatalog = {
     scanTitle: "Hitta saker",
     threshold: "Minsta belopp",
     thresholdHint:
-      "Transaktioner på minst det här beloppet föreslås som troliga sakköp när du kör Hitta saker.",
+      "Pengar du spenderat på minst det här beloppet föreslås som troliga sakköp när du kör Hitta saker. Pengar som kommer in – en försäljning, en återbetalning – föreslås aldrig.",
     resetThreshold: "Återställ till standard",
     typeFilterTitle: "Begränsa till typer",
     typeFilterHint:
-      "Valfritt. När du väljer en eller flera typer skannas bara transaktioner med de typerna. Lämna allt omarkerat för att skanna alla typer.",
+      "Bara transaktioner med de valda typerna skannas. Börjar med varaktiga prylar som behåller värde – avmarkera dem du inte vill ha, eller lägg till fler. Lämna allt omarkerat för att skanna alla typer.",
     noTypes: "Inga typer än.",
     ignoredTitle: "Ignorerade köp",
     ignoredLabel: "Transaktioner du markerat som inte en sak",

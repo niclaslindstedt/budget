@@ -38,7 +38,15 @@ function workspace(
 }
 
 function settings(overrides: Partial<Settings> = {}): Settings {
-  return { ...DEFAULT_SETTINGS, itemFindThreshold: 2000, ...overrides };
+  return {
+    ...DEFAULT_SETTINGS,
+    itemFindThreshold: 2000,
+    // Default to no type filter so the untyped fixtures below survive;
+    // DEFAULT_SETTINGS now seeds a durable-goods allow-list, exercised
+    // by its own test.
+    itemFindTypeIds: [],
+    ...overrides,
+  };
 }
 
 describe("findItemPurchaseCandidates", () => {
@@ -50,6 +58,28 @@ describe("findItemPurchaseCandidates", () => {
     const amounts = out.map((c) => c.amount).sort((a, b) => a - b);
     // -2500 and -2000 clear |amount| >= 2000; -1999 does not.
     expect(amounts).toEqual([-2500, -2000]);
+  });
+
+  it("excludes inflows — only money spent counts as a purchase", () => {
+    // A large positive amount (selling the apartment, a refund) is an
+    // inflow, never an item purchase.
+    const data = workspace({ acc: [entry(-5000), entry(5000), entry(9000)] });
+    const out = findItemPurchaseCandidates(data, settings());
+    expect(out.map((c) => c.amount)).toEqual([-5000]);
+  });
+
+  it("defaults to the durable-goods type allow-list", () => {
+    const electronics = entry(-5000, {
+      userTypeId: "preset-type-electronics",
+    });
+    const groceries = entry(-5000, { userTypeId: "preset-type-groceries" });
+    const data = workspace({ acc: [electronics, groceries] });
+    // DEFAULT_SETTINGS seeds the allow-list, so groceries drop out.
+    const out = findItemPurchaseCandidates(data, {
+      ...DEFAULT_SETTINGS,
+      itemFindThreshold: 2000,
+    });
+    expect(out.map((c) => c.entryId)).toEqual([electronics.id]);
   });
 
   it("sorts by descending absolute amount", () => {
