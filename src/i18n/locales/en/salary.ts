@@ -6,9 +6,9 @@ const salary = {
   findSalaries: "Find salaries",
   manageEmployers: "Employers",
   noSalaries: "No salaries yet. Find them from your bank history below.",
-  select: "Select",
-  cancelSelect: "Done",
   selected: "{count} selected",
+  selectAllInYear: "Select all in year",
+  deselectAllInYear: "Deselect all in year",
 
   // Table
   month: "Month",

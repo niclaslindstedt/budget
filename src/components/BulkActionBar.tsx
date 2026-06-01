@@ -6,17 +6,22 @@ import { useT } from "../i18n";
 type Props = {
   selectedCount: number;
   onEdit: () => void;
-  onMove: () => void;
-  onCopy: () => void;
+  // Move / copy are budget-only operations (they shift rows between
+  // months). Pages without that notion — the salary sheet, whose rows
+  // are pinned to their pay month — omit these so only Edit + Delete
+  // render.
+  onMove?: () => void;
+  onCopy?: () => void;
   onDelete: () => void;
   onCancel: () => void;
 };
 
-// The bulk-select toolbar: a live count followed by the four operations
-// that act on the current selection (edit / move / copy / delete) and a
+// The bulk-select toolbar: a live count followed by the operations that
+// act on the current selection (edit / move / copy / delete) and a
 // cancel that exits select mode. Presentational and page-agnostic — it
 // takes only a count and callbacks, so both the BottomBar (acting on the
-// active sheet) and the search modal drive the same widget.
+// active sheet) and the search modal drive the same widget. Move / copy
+// are optional so a page that can't relocate its rows hides them.
 export function BulkActionBar({
   selectedCount,
   onEdit,
@@ -42,22 +47,26 @@ export function BulkActionBar({
         ariaLabel={t("bulkBar.editSelected")}
         title={t("common.edit")}
       />
-      <BulkButton
-        tone="text-meta"
-        icon={<MoveRight size={16} aria-hidden focusable={false} />}
-        onClick={onMove}
-        disabled={disabled}
-        ariaLabel={t("bulkBar.moveSelected")}
-        title={t("bulkBar.move")}
-      />
-      <BulkButton
-        tone="text-link"
-        icon={<Copy size={16} aria-hidden focusable={false} />}
-        onClick={onCopy}
-        disabled={disabled}
-        ariaLabel={t("bulkBar.copySelected")}
-        title={t("bulkBar.copy")}
-      />
+      {onMove && (
+        <BulkButton
+          tone="text-meta"
+          icon={<MoveRight size={16} aria-hidden focusable={false} />}
+          onClick={onMove}
+          disabled={disabled}
+          ariaLabel={t("bulkBar.moveSelected")}
+          title={t("bulkBar.move")}
+        />
+      )}
+      {onCopy && (
+        <BulkButton
+          tone="text-link"
+          icon={<Copy size={16} aria-hidden focusable={false} />}
+          onClick={onCopy}
+          disabled={disabled}
+          ariaLabel={t("bulkBar.copySelected")}
+          title={t("bulkBar.copy")}
+        />
+      )}
       <BulkButton
         tone="text-danger"
         icon={<Trash2 size={16} aria-hidden focusable={false} />}

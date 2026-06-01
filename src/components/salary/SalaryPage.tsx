@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Briefcase,
-  CheckSquare,
-  Layers,
-  Pencil,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Briefcase, Pencil, Search } from "lucide-react";
 
 import type { Action } from "../../data/reducer";
 import type {
@@ -24,10 +16,8 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
 import { EmployerManageModal } from "./EmployerManageModal";
-import {
-  SalaryBulkEditModal,
-  type SalaryBulkApply,
-} from "./SalaryBulkEditModal";
+import { SalaryBulkEditModal } from "./SalaryBulkEditModal";
+import type { SalaryBulkApply } from "./SalaryBulkEditModal";
 import { SalaryDiscoveryModal } from "./SalaryDiscoveryModal";
 import { SalaryEditModal } from "./SalaryEditModal";
 import { SalaryYearTable } from "./SalaryYearTable";
@@ -37,9 +27,37 @@ type Props = {
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
+  // Select-many state lives in AppShell so the universal BottomBar can
+  // drive it (see `useSalaryBulkSelection`); the page only renders the
+  // checkboxes and the bulk modals it owns.
+  selectMode: boolean;
+  selectedIds: ReadonlySet<string>;
+  onToggleSelect: (salaryId: string) => void;
+  onToggleSelectMany: (salaryIds: string[], target: boolean) => void;
+  bulkEditOpen: boolean;
+  onCloseBulkEdit: () => void;
+  onApplyBulk: (args: SalaryBulkApply) => void;
+  bulkDeleteOpen: boolean;
+  onCloseBulkDelete: () => void;
+  onConfirmBulkDelete: () => void;
 };
 
-export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
+export function SalaryPage({
+  sheet,
+  data,
+  settings,
+  dispatch,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectMany,
+  bulkEditOpen,
+  onCloseBulkEdit,
+  onApplyBulk,
+  bulkDeleteOpen,
+  onCloseBulkDelete,
+  onConfirmBulkDelete,
+}: Props) {
   const t = useT();
   const lang = useLang();
   const dispatchModal = useModalDispatch();
@@ -50,14 +68,8 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
 
   const [findOpen, setFindOpen] = useState(false);
   const [employersOpen, setEmployersOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<Salary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Salary | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
 
   // Land at the top of the page when switching to this sheet.
   useEffect(() => {
@@ -126,20 +138,6 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
     },
   ];
 
-  function toggleSelect(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function exitSelect() {
-    setSelectMode(false);
-    setSelectedIds(new Set());
-  }
-
   function handleSaveSalary(
     salaryId: string,
     patch: Partial<Omit<Salary, "id">>,
@@ -168,28 +166,6 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
     if (fresh.length > 0) dispatch({ type: "addSalaries", salaries: fresh });
   }
 
-  function handleBulkApply(args: SalaryBulkApply) {
-    const ids = [...selectedIds];
-    if (args.setEmployer) {
-      dispatch({
-        type: "bulkUpdateSalaries",
-        ids,
-        patch: { employerId: args.employerId },
-      });
-    }
-    if (args.setTaxRate) {
-      dispatch({ type: "bulkSetSalaryTaxRate", ids, rate: args.rate });
-    }
-    exitSelect();
-  }
-
-  function handleBulkDelete() {
-    for (const id of selectedIds)
-      dispatch({ type: "deleteSalary", salaryId: id });
-    setPendingBulkDelete(false);
-    exitSelect();
-  }
-
   const hasSalaries = data.salaries.length > 0;
 
   return (
@@ -201,53 +177,6 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
       </header>
 
       <section className="mb-4" data-sheet-content>
-        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-          {selectMode ? (
-            <>
-              <span className="mr-auto text-xs text-muted">
-                {t("salary.selected", { count: String(selectedIds.size) })}
-              </span>
-              <button
-                type="button"
-                onClick={() => setBulkOpen(true)}
-                disabled={selectedIds.size === 0}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-fg hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Layers size={14} aria-hidden focusable={false} />
-                {t("salary.bulkEmployerToggle")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPendingBulkDelete(true)}
-                disabled={selectedIds.size === 0}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Trash2 size={14} aria-hidden focusable={false} />
-                {t("salary.delete")}
-              </button>
-              <button
-                type="button"
-                onClick={exitSelect}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-muted hover:text-fg"
-              >
-                <X size={14} aria-hidden focusable={false} />
-                {t("salary.cancelSelect")}
-              </button>
-            </>
-          ) : (
-            hasSalaries && (
-              <button
-                type="button"
-                onClick={() => setSelectMode(true)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-sm text-fg hover:border-accent"
-              >
-                <CheckSquare size={14} aria-hidden focusable={false} />
-                {t("salary.select")}
-              </button>
-            )
-          )}
-        </div>
-
         {!hasSalaries ? (
           <div className="flex flex-col items-center gap-4 rounded border border-line bg-surface px-4 py-8 text-center">
             <p className="m-0 text-sm text-muted">{t("salary.noSalaries")}</p>
@@ -270,7 +199,8 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
               settings={settings}
               selectMode={selectMode}
               selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
+              onToggleSelect={onToggleSelect}
+              onToggleSelectYear={onToggleSelectMany}
               onEdit={(salaryId) => {
                 const s = data.salaries.find((x) => x.id === salaryId);
                 if (s) setEditing(s);
@@ -292,11 +222,11 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
       />
 
       <SalaryBulkEditModal
-        open={bulkOpen}
+        open={bulkEditOpen}
         count={selectedIds.size}
         employers={data.employers}
-        onClose={() => setBulkOpen(false)}
-        onApply={handleBulkApply}
+        onClose={onCloseBulkEdit}
+        onApply={onApplyBulk}
       />
 
       <SalaryDiscoveryModal
@@ -350,17 +280,17 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
       />
 
       <ConfirmDialog
-        open={pendingBulkDelete}
+        open={bulkDeleteOpen}
         title={t("salary.deleteTitle")}
         description={t("salary.selected", { count: String(selectedIds.size) })}
         actions={[
           {
             label: t("salary.delete"),
             tone: "danger",
-            onSelect: handleBulkDelete,
+            onSelect: onConfirmBulkDelete,
           },
         ]}
-        onCancel={() => setPendingBulkDelete(false)}
+        onCancel={onCloseBulkDelete}
       />
     </section>
   );
