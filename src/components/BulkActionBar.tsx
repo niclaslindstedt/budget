@@ -34,9 +34,11 @@ export function BulkActionBar({
   const disabled = selectedCount === 0;
   return (
     <>
-      <span className="shrink-0 px-2 text-xs font-bold tracking-wider text-fg-bright tabular-nums uppercase">
+      <span
+        className="shrink-0 px-2 text-xs font-bold tracking-wider text-fg-bright tabular-nums uppercase"
+        aria-label={`${selectedCount} ${t("bulkBar.selectedSuffix")}`}
+      >
         {selectedCount}
-        <span className="ml-1 text-muted">{t("bulkBar.selectedSuffix")}</span>
       </span>
       <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
       <BulkButton

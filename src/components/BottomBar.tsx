@@ -206,45 +206,53 @@ export function BottomBar({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5 border-l border-line pl-1.5 sm:pl-2">
-          <button
-            type="button"
-            onClick={() => dispatchModal({ kind: "open-search" })}
-            aria-label={t("searchTransaction.open")}
-            title={t("searchTransaction.open")}
-            className={actionButton}
-          >
-            <Search size={16} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={onUndo}
-            disabled={!canUndo}
-            aria-label={t("app.undo")}
-            title={t("app.undoShort")}
-            className={actionButton}
-          >
-            <Undo2 size={16} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={onRedo}
-            disabled={!canRedo}
-            aria-label={t("app.redo")}
-            title={t("app.redoShort")}
-            className={actionButton}
-          >
-            <Redo2 size={16} aria-hidden focusable={false} />
-          </button>
-          <button
-            type="button"
-            onClick={() => dispatchModal({ kind: "open-action-history" })}
-            aria-label={t("app.actionHistory")}
-            title={t("app.actionHistory")}
-            className={actionButton}
-          >
-            <History size={16} aria-hidden focusable={false} />
-          </button>
-          <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
+          {/* In select mode the bulk action bar (with its own Cancel)
+              owns the left side; collapse the search / undo / redo /
+              history cluster so the toggle is the only thing left on the
+              right, freeing the tight bottom-bar width. */}
+          {!selectMode && (
+            <>
+              <button
+                type="button"
+                onClick={() => dispatchModal({ kind: "open-search" })}
+                aria-label={t("searchTransaction.open")}
+                title={t("searchTransaction.open")}
+                className={actionButton}
+              >
+                <Search size={16} aria-hidden focusable={false} />
+              </button>
+              <button
+                type="button"
+                onClick={onUndo}
+                disabled={!canUndo}
+                aria-label={t("app.undo")}
+                title={t("app.undoShort")}
+                className={actionButton}
+              >
+                <Undo2 size={16} aria-hidden focusable={false} />
+              </button>
+              <button
+                type="button"
+                onClick={onRedo}
+                disabled={!canRedo}
+                aria-label={t("app.redo")}
+                title={t("app.redoShort")}
+                className={actionButton}
+              >
+                <Redo2 size={16} aria-hidden focusable={false} />
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatchModal({ kind: "open-action-history" })}
+                aria-label={t("app.actionHistory")}
+                title={t("app.actionHistory")}
+                className={actionButton}
+              >
+                <History size={16} aria-hidden focusable={false} />
+              </button>
+              <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
+            </>
+          )}
           <button
             type="button"
             onClick={onToggleSelectMode}
