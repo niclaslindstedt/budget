@@ -84,10 +84,19 @@ function monthKeyOf(iso: string): string {
   return iso.slice(0, 7);
 }
 
-// Two net amounts are "the same salary" when within ±1 % of each other.
-function within1Pct(a: number, b: number): boolean {
+// How far a paycheck may drift from the running salary level and still
+// count as "the same salary". Month-to-month pay wobbles (overtime, a
+// partial-absence month, a reimbursement that rode along) routinely move
+// the net by a few percent without being a real change, so a tight band
+// would flag ordinary months as unusual and split a steady employer into
+// phantom segments. Only a sustained move beyond this band reads as a
+// genuine shift — a raise or a job change.
+export const SAME_SALARY_TOLERANCE = 0.1;
+
+// Two net amounts are "the same salary" when within the tolerance band.
+export function withinSalaryTolerance(a: number, b: number): boolean {
   if (a <= 0 || b <= 0) return false;
-  return Math.abs(a - b) / Math.max(a, b) <= 0.01;
+  return Math.abs(a - b) / Math.max(a, b) <= SAME_SALARY_TOLERANCE;
 }
 
 export function detectSalaries(input: DetectInput): DetectResult {
@@ -135,25 +144,30 @@ export function detectSalaries(input: DetectInput): DetectResult {
   return { candidates, boundaries };
 }
 
-// Job-change segmentation over a chronological sequence of net amounts.
-// Walks the run keeping a running average. A month within ±1 % of the
-// run average extends it. A month that diverges only starts a NEW group
-// when the divergence sustains for three consecutive months (the "3×
-// new salary in a row" hint) — otherwise it's treated as an off-average
-// blip (bonus, parental leave, VAB) and folded into the current group
-// so a single odd paycheck never splits an employer.
+// Job-change / raise segmentation over a chronological sequence of net
+// amounts. Walks the run keeping a running average. A month within the
+// salary tolerance of the run average extends it. A month that diverges
+// only starts a NEW group when the divergence sustains for three
+// consecutive months (the "3× new salary in a row" hint) — otherwise
+// it's treated as an off-average blip (bonus, parental leave, VAB) and
+// folded into the current group so a single odd paycheck never splits an
+// employer.
 //
-// Returns a per-index `groups` array and the `boundaries` (indices where
-// a new group starts, always including 0 when there's at least one
-// entry). Shared by `detectSalaries` (budget-row scoring) and
+// Returns a per-index `groups` array, the `boundaries` (indices where a
+// new group starts, always including 0 when there's at least one entry),
+// and `raises` (the subset of boundaries whose new level sits ABOVE the
+// previous run — a sustained pay rise rather than a drop or a sideways
+// move). Shared by `detectSalaries` (budget-row scoring) and
 // `discoverSalaries` (bank-history scan) so both segment identically.
 export function assignEmployerGroups(nets: readonly number[]): {
   groups: number[];
   boundaries: number[];
+  raises: number[];
 } {
   const groups: number[] = new Array(nets.length).fill(0);
   const boundaries: number[] = [];
-  if (nets.length === 0) return { groups, boundaries };
+  const raises: number[] = [];
+  if (nets.length === 0) return { groups, boundaries, raises };
 
   boundaries.push(0);
   let group = 0;
@@ -161,7 +175,7 @@ export function assignEmployerGroups(nets: readonly number[]): {
   let runLen = 1;
   for (let i = 1; i < nets.length; i++) {
     const net = nets[i];
-    if (within1Pct(net, runMean)) {
+    if (withinSalaryTolerance(net, runMean)) {
       runLen += 1;
       runMean = (runMean * (runLen - 1) + net) / runLen;
       groups[i] = group;
@@ -172,11 +186,14 @@ export function assignEmployerGroups(nets: readonly number[]): {
     const sustained =
       next1 !== undefined &&
       next2 !== undefined &&
-      within1Pct(net, next1) &&
-      within1Pct(net, next2);
+      withinSalaryTolerance(net, next1) &&
+      withinSalaryTolerance(net, next2);
     if (sustained) {
       group += 1;
       boundaries.push(i);
+      // A new level above the level we were holding is a raise; a drop or
+      // sideways move is left to read as a (possible) job change.
+      if (net > runMean) raises.push(i);
       runMean = net;
       runLen = 1;
       groups[i] = group;
@@ -186,7 +203,7 @@ export function assignEmployerGroups(nets: readonly number[]): {
       groups[i] = group;
     }
   }
-  return { groups, boundaries };
+  return { groups, boundaries, raises };
 }
 
 // Gather the budget income rows the detector scores, flattened across

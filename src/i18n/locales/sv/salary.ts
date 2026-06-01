@@ -62,6 +62,7 @@ const salary: SalaryCatalog = {
   // Find-salaries guided walk
   findTitle: "Hitta löner",
   likelyNewEmployer: "Trolig ny arbetsgivare",
+  raise: "Löneförhöjning",
   add: "Lägg till",
   confidenceHigh: "Trolig",
   confidenceMedium: "Kanske",

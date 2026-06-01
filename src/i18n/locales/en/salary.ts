@@ -62,6 +62,7 @@ const salary = {
   // Find-salaries guided walk
   findTitle: "Find salaries",
   likelyNewEmployer: "Likely new employer",
+  raise: "Raise",
   add: "Add",
   confidenceHigh: "Likely",
   confidenceMedium: "Maybe",
