@@ -7,7 +7,7 @@ import {
 } from "../../data/items/find";
 import { synthesizeHistoryRow } from "../../data/budget/synthesis";
 import { createDefaultAccountBudget } from "../../data/sheet-types/budget";
-import { allTypes } from "../../data/presets/merge";
+import { allCategories, allTypes } from "../../data/presets/merge";
 import type {
   Category,
   Column,
@@ -135,7 +135,7 @@ export function ItemFinderModal({
         data.merchantHints,
         data.matchRules,
         data.companies,
-        data.types,
+        allTypes(data),
       );
       return rows[0] ?? null;
     })();
@@ -277,7 +277,7 @@ export function ItemFinderModal({
         items={data.items}
         subtypes={data.subtypes}
         types={allTypes(data)}
-        categories={data.categories}
+        categories={allCategories(data)}
         onClose={() => setEditing(null)}
         onSubmit={(_rowId, lineItems) => {
           if (editing) {
