@@ -20,7 +20,10 @@ import {
   BudgetSplitEntryModal,
   type SplitSubmission,
 } from "../budget/BudgetSplitEntryModal";
-import { BudgetLineItemsModal } from "../budget/BudgetLineItemsModal";
+import {
+  BudgetLineItemsModal,
+  type ItemPriceUpdate,
+} from "../budget/BudgetLineItemsModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
@@ -371,11 +374,25 @@ export function BudgetModalHost(props: Props) {
   // backing `HistoryEntry`); user / correction rows route to
   // `setRowLineItems`. Mirrors `onSplitSubmit`'s kind branch.
   const onLineItemsSubmit = useCallback(
-    (rowId: string, lineItems: LineItemLink[], receiptPath?: string) => {
+    (
+      rowId: string,
+      lineItems: LineItemLink[],
+      itemPrices: ItemPriceUpdate[],
+      receiptPath?: string,
+    ) => {
       const row = lineItemsPrompt?.row;
       if (!row) {
         setLineItemsPrompt(null);
         return;
+      }
+      // The amount typed for each line item is the item's purchase price —
+      // write it onto the item (the link no longer carries a price).
+      for (const { itemId: linkedItemId, purchasePrice } of itemPrices) {
+        dispatch({
+          type: "updateItem",
+          itemId: linkedItemId,
+          patch: { purchasePrice },
+        });
       }
       // A changed receipt reference leaves the old file behind — delete
       // it best-effort once the new reference lands. `receiptPath`

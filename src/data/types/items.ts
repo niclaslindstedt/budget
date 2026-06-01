@@ -43,8 +43,9 @@ export type Item = {
   acquiredAt?: string;
   note?: string;
   // What the item cost ("bought for") — the depreciation base and the
-  // capital considered tied up in it. A finite number in the user's
-  // currency units (same convention as `LineItemLink.amount`).
+  // capital considered tied up in it. A finite, non-negative number in the
+  // user's currency units. Set either from the Items sheet editor or from
+  // the amount typed when a line item links a transaction to this item.
   purchasePrice?: number;
   // How the item loses value over time. Absent means it doesn't depreciate.
   depreciation?: ItemDepreciation;
@@ -61,18 +62,22 @@ export type Item = {
   soldFor?: number;
 };
 
-// Links part of one entry's amount to an owned `Item`. Stored inline on the
-// entry — `Row.lineItems` for user rows, `HistoryEntry.lineItems` for
-// imported transactions — exactly like `splits`, so a deleted entry takes its
-// links with it.
+// Links one entry to an owned `Item`. Stored inline on the entry —
+// `Row.lineItems` for user rows, `HistoryEntry.lineItems` for imported
+// transactions — exactly like `splits`, so a deleted entry takes its links
+// with it.
 //
-// Unlike `splits`, line items do NOT have to sum to the entry's amount: a
-// 20 000 purchase can carry a single 15 000 line item for the iPhone, leaving
-// a 5 000 "remainder" that is computed at render time and never stored. The
-// amount is a finite signed number in the same units as the row's amount.
+// The link carries NO price of its own: it is purely a connection between a
+// transaction and the thing it bought. What the item cost lives on the
+// `Item` itself (`Item.purchasePrice`) — the amount the user types when
+// adding the line item is written there. Display (the line-item pill /
+// popover) and the allocation "remainder" both read the price back off the
+// linked item, signed by the transaction's direction. Unlike `splits`, line
+// items do NOT have to sum to the entry's amount: a 20 000 purchase can carry
+// a single 15 000 item for the iPhone, leaving a 5 000 "remainder" that is
+// computed at render time and never stored.
 export type LineItemLink = {
   id: string;
   itemId: string;
-  amount: number;
   note?: string;
 };

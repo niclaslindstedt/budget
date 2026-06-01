@@ -558,6 +558,102 @@ export const MODERN_MIGRATIONS: MigrationTable = {
 
     return { ...v59, version: 60, salaries, employers };
   },
+
+  // v60 → v61: a line item no longer carries its own `amount` — it is now
+  // purely a link from a transaction to an owned `Item`, and what the item
+  // cost lives on the item (`Item.purchasePrice`). Fold each link's old
+  // amount onto its item: the first link that references an item whose
+  // `purchasePrice` is unset seeds the price from `Math.abs(amount)`
+  // (purchase prices are non-negative; the link amount was signed by the
+  // transaction's direction). Then strip `amount` off every link across
+  // both budget rows and bank history so the persisted shape matches the
+  // new type. Items already carrying a price are left untouched.
+  60: (v60) => {
+    const rawItems = Array.isArray(v60.items) ? v60.items : [];
+    // itemId → the price to seed, captured from the first link that names an
+    // item still lacking a `purchasePrice`.
+    const seededPrice = new Map<string, number>();
+    const hasPrice = new Set<string>();
+    for (const rawItem of rawItems) {
+      if (!isObj(rawItem) || typeof rawItem.id !== "string") continue;
+      if (
+        typeof rawItem.purchasePrice === "number" &&
+        Number.isFinite(rawItem.purchasePrice)
+      ) {
+        hasPrice.add(rawItem.id);
+      }
+    }
+
+    // Walk every inline `lineItems` array, recording a price for items that
+    // need one and returning the array with `amount` stripped from each link.
+    const stripLinks = (raw: unknown): unknown => {
+      if (!Array.isArray(raw)) return raw;
+      return raw.map((link) => {
+        if (!isObj(link)) return link;
+        const itemId =
+          typeof link.itemId === "string" ? link.itemId : undefined;
+        const amount =
+          typeof link.amount === "number" && Number.isFinite(link.amount)
+            ? link.amount
+            : undefined;
+        if (
+          itemId !== undefined &&
+          amount !== undefined &&
+          !hasPrice.has(itemId) &&
+          !seededPrice.has(itemId)
+        ) {
+          seededPrice.set(itemId, Math.abs(amount));
+        }
+        const { amount: _drop, ...rest } = link;
+        void _drop;
+        return rest;
+      });
+    };
+
+    const sheets = Array.isArray(v60.sheets)
+      ? v60.sheets.map((sheet) => {
+          if (!isObj(sheet) || !Array.isArray(sheet.items)) return sheet;
+          return {
+            ...sheet,
+            items: sheet.items.map((item) => {
+              if (!isObj(item) || !Array.isArray(item.rows)) return item;
+              return {
+                ...item,
+                rows: item.rows.map((row) => {
+                  if (!isObj(row) || row.lineItems === undefined) return row;
+                  return { ...row, lineItems: stripLinks(row.lineItems) };
+                }),
+              };
+            }),
+          };
+        })
+      : v60.sheets;
+
+    const history = isObj(v60.history)
+      ? Object.fromEntries(
+          Object.entries(v60.history).map(([accountId, entries]) => {
+            if (!Array.isArray(entries)) return [accountId, entries];
+            return [
+              accountId,
+              entries.map((entry) => {
+                if (!isObj(entry) || entry.lineItems === undefined)
+                  return entry;
+                return { ...entry, lineItems: stripLinks(entry.lineItems) };
+              }),
+            ];
+          }),
+        )
+      : v60.history;
+
+    const items = rawItems.map((item) => {
+      if (!isObj(item) || typeof item.id !== "string") return item;
+      const price = seededPrice.get(item.id);
+      if (price === undefined) return item;
+      return { ...item, purchasePrice: price };
+    });
+
+    return { ...v60, version: 61, sheets, history, items };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

@@ -156,7 +156,7 @@ describe("findItemPurchaseCandidates", () => {
     const data = workspace({
       acc: [
         entry(-5000, {
-          lineItems: [{ id: "l1", itemId: "i1", amount: -1500 }],
+          lineItems: [{ id: "l1", itemId: "i1" }],
         }),
       ],
     });

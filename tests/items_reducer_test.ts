@@ -95,15 +95,15 @@ describe("item reducer", () => {
           id: "r1",
           cells: {},
           lineItems: [
-            { id: "l1", itemId: "i1", amount: -15000 },
-            { id: "l2", itemId: "i2", amount: -500 },
+            { id: "l1", itemId: "i1" },
+            { id: "l2", itemId: "i2" },
           ],
         },
         {
           kind: "user",
           id: "r2",
           cells: {},
-          lineItems: [{ id: "l3", itemId: "i1", amount: -200 }],
+          lineItems: [{ id: "l3", itemId: "i1" }],
         },
       ],
       { items: [item, { id: "i2", name: "Case" }] },
@@ -112,9 +112,7 @@ describe("item reducer", () => {
     expect(next.items).toEqual([{ id: "i2", name: "Case" }]);
     const rows = firstBudgetRows(next);
     // r1 keeps the i2 link; r2's only link is dropped along with the field.
-    expect(rows[0].lineItems).toEqual([
-      { id: "l2", itemId: "i2", amount: -500 },
-    ]);
+    expect(rows[0].lineItems).toEqual([{ id: "l2", itemId: "i2" }]);
     expect(rows[1].lineItems).toBeUndefined();
   });
 });
@@ -132,10 +130,10 @@ describe("setRowLineItems", () => {
       sheetId,
       itemId,
       rowId: "r1",
-      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      lineItems: [{ id: "l1", itemId: "i1" }],
     });
     expect(firstBudgetRows(next)[0].lineItems).toEqual([
-      { id: "l1", itemId: "i1", amount: -15000 },
+      { id: "l1", itemId: "i1" },
     ]);
     next = reducer(next, {
       type: "setRowLineItems",
@@ -159,7 +157,7 @@ describe("setRowLineItems", () => {
       sheetId,
       itemId,
       rowId: "r1",
-      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      lineItems: [{ id: "l1", itemId: "i1" }],
       receiptPath: "Apple Store - 2026-06-01.jpg",
     });
     expect(firstBudgetRows(next)[0].receiptPath).toBe(
@@ -172,7 +170,7 @@ describe("setRowLineItems", () => {
       sheetId,
       itemId,
       rowId: "r1",
-      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      lineItems: [{ id: "l1", itemId: "i1" }],
       receiptPath: "",
     });
     expect(firstBudgetRows(next)[0].receiptPath).toBeUndefined();
@@ -199,7 +197,7 @@ describe("setRowLineItems", () => {
       sheetId,
       itemId,
       rowId: "r1",
-      lineItems: [{ id: "l1", itemId: "i1", amount: -100 }],
+      lineItems: [{ id: "l1", itemId: "i1" }],
     });
     expect(firstBudgetRows(next)[0].receiptPath).toBe("kept.jpg");
   });
@@ -219,11 +217,11 @@ describe("linkLineItemsToHistoryEntry", () => {
       type: "linkLineItemsToHistoryEntry",
       accountId: "acct1",
       entryId: "e1",
-      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      lineItems: [{ id: "l1", itemId: "i1" }],
       receiptPath: "Apple - 2026-06-01.jpg",
     });
     expect(next.history.acct1[0].lineItems).toEqual([
-      { id: "l1", itemId: "i1", amount: -15000 },
+      { id: "l1", itemId: "i1" },
     ]);
     expect(next.history.acct1[0].receiptPath).toBe("Apple - 2026-06-01.jpg");
     // Clearing the receipt (empty string) while keeping the links.
@@ -231,7 +229,7 @@ describe("linkLineItemsToHistoryEntry", () => {
       type: "linkLineItemsToHistoryEntry",
       accountId: "acct1",
       entryId: "e1",
-      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      lineItems: [{ id: "l1", itemId: "i1" }],
       receiptPath: "",
     });
     expect(next.history.acct1[0].receiptPath).toBeUndefined();
@@ -279,7 +277,7 @@ describe("validation", () => {
           kind: "user",
           id: "r1",
           cells: {},
-          lineItems: [{ id: "l1", itemId: "ghost", amount: -1 }],
+          lineItems: [{ id: "l1", itemId: "ghost" }],
         },
       ],
       { items: [{ id: "i1", name: "iPhone", subtypeId: "ghost-subtype" }] },

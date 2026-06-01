@@ -269,8 +269,10 @@ function validateItemDepreciation(raw: unknown): ItemDepreciation | undefined {
 // Inline line-item links on a row / history entry. Each link is independent
 // and advisory: a link whose `itemId` no longer resolves (the item was
 // deleted) is dropped rather than failing the load, and a malformed link is
-// skipped. No sum check — line items are a partial allocation. Returns the
-// cleaned array (possibly empty); callers persist it only when non-empty.
+// skipped. The link carries no price — what the item cost lives on the
+// `Item` (`purchasePrice`) — so any legacy `amount` field is ignored here
+// (the migration that dropped it folded each amount onto its item). Returns
+// the cleaned array (possibly empty); callers persist it only when non-empty.
 export function validateLineItemLinks(
   raw: unknown,
   knownItemIds: ReadonlySet<string>,
@@ -280,12 +282,11 @@ export function validateLineItemLinks(
   const seen = new Set<string>();
   for (const entry of raw) {
     if (!isObject(entry)) continue;
-    const { id, itemId, amount, note } = entry;
+    const { id, itemId, note } = entry;
     if (typeof id !== "string" || id === "") continue;
     if (seen.has(id)) continue;
     if (typeof itemId !== "string" || !knownItemIds.has(itemId)) continue;
-    if (typeof amount !== "number" || !Number.isFinite(amount)) continue;
-    const link: LineItemLink = { id, itemId, amount };
+    const link: LineItemLink = { id, itemId };
     if (typeof note === "string") link.note = note;
     seen.add(id);
     links.push(link);
