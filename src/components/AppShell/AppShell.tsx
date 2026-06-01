@@ -519,6 +519,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     salaries: data.salaries,
     dispatch,
   });
+  // Accounts / items pages have no row-level select-many — the toggle is
+  // disabled there instead of dropping into an empty selection mode.
+  const selectSupported = activeSheet.type === "budget" || isSalarySheet;
 
   const matchRuleUi = useMatchRuleUi({ data, activeItem, dispatch, toast });
   const { onMatchRuleRequest } = matchRuleUi;
@@ -819,7 +822,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                 handleUndo();
               }}
               onRedo={handleRedo}
-              selectMode={isSalarySheet ? salaryBulk.selectMode : selectMode}
+              selectSupported={selectSupported}
+              selectMode={
+                selectSupported &&
+                (isSalarySheet ? salaryBulk.selectMode : selectMode)
+              }
               onToggleSelectMode={
                 isSalarySheet
                   ? salaryBulk.onToggleSelectMode

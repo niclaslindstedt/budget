@@ -12,6 +12,7 @@ const app: AppCatalog = {
   headerToolbar: "Budgetåtgärder",
   selectRows: "Markera rader",
   exitSelectMode: "Avsluta markeringsläge",
+  selectUnavailable: "Markera rader är inte tillgängligt på det här bladet",
   selectShort: "Markera",
   undo: "Ångra",
   undoShort: "Ångra (⌘Z)",
