@@ -7,6 +7,7 @@ import {
 } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
 import { useBulkSelection } from "./hooks/useBulkSelection";
+import { useSalaryBulkSelection } from "./hooks/useSalaryBulkSelection";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
 import { useEditPrompts } from "./hooks/useEditPrompts";
@@ -510,6 +511,15 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onCopyRequest,
   } = bulkSelection;
 
+  // Salary sheets run their own select-many flow (employer / tax bulk
+  // edit + delete, no move / copy). The active sheet decides which of
+  // the two drives the BottomBar's select toggle + action bar.
+  const isSalarySheet = activeSheet.type === "salary";
+  const salaryBulk = useSalaryBulkSelection({
+    salaries: data.salaries,
+    dispatch,
+  });
+
   const matchRuleUi = useMatchRuleUi({ data, activeItem, dispatch, toast });
   const { onMatchRuleRequest } = matchRuleUi;
 
@@ -712,6 +722,16 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   data={data}
                   settings={effectiveSettings}
                   dispatch={dispatch}
+                  selectMode={salaryBulk.selectMode}
+                  selectedIds={salaryBulk.selectedIds}
+                  onToggleSelect={salaryBulk.onToggleSelect}
+                  onToggleSelectMany={salaryBulk.onToggleSelectMany}
+                  bulkEditOpen={salaryBulk.bulkEditOpen}
+                  onCloseBulkEdit={() => salaryBulk.setBulkEditOpen(false)}
+                  onApplyBulk={salaryBulk.onApplyBulk}
+                  bulkDeleteOpen={salaryBulk.bulkDeleteOpen}
+                  onCloseBulkDelete={() => salaryBulk.setBulkDeleteOpen(false)}
+                  onConfirmBulkDelete={salaryBulk.onConfirmBulkDelete}
                 />
               ) : (
                 <>
@@ -794,19 +814,30 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
               onSelectSheet={onSelectSheet}
               canUndo={canUndo}
               canRedo={canRedo}
-              selectMode={selectMode}
               onUndo={() => {
                 unlockAchievement("secondThoughts");
                 handleUndo();
               }}
               onRedo={handleRedo}
-              onToggleSelectMode={onToggleSelectMode}
-              bulkSelectedCount={selectedIds.size}
-              onBulkEdit={onBulkEdit}
-              onBulkMove={onBulkMove}
-              onBulkCopy={onBulkCopy}
-              onBulkDelete={onBulkDelete}
-              onBulkCancel={onCancelSelect}
+              selectMode={isSalarySheet ? salaryBulk.selectMode : selectMode}
+              onToggleSelectMode={
+                isSalarySheet
+                  ? salaryBulk.onToggleSelectMode
+                  : onToggleSelectMode
+              }
+              bulkSelectedCount={
+                isSalarySheet ? salaryBulk.selectedIds.size : selectedIds.size
+              }
+              onBulkEdit={isSalarySheet ? salaryBulk.onBulkEdit : onBulkEdit}
+              // Salaries are pinned to their pay month — no move / copy.
+              onBulkMove={isSalarySheet ? undefined : onBulkMove}
+              onBulkCopy={isSalarySheet ? undefined : onBulkCopy}
+              onBulkDelete={
+                isSalarySheet ? salaryBulk.onBulkDelete : onBulkDelete
+              }
+              onBulkCancel={
+                isSalarySheet ? salaryBulk.onCancelSelect : onCancelSelect
+              }
             />
           )}
         </div>

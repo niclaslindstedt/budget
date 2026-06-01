@@ -6,9 +6,9 @@ const salary: SalaryCatalog = {
   findSalaries: "Hitta löner",
   manageEmployers: "Arbetsgivare",
   noSalaries: "Inga löner än. Hitta dem i din bankhistorik nedan.",
-  select: "Markera",
-  cancelSelect: "Klar",
   selected: "{count} markerade",
+  selectAllInYear: "Markera alla i året",
+  deselectAllInYear: "Avmarkera alla i året",
 
   // Table
   month: "Månad",

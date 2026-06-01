@@ -23,8 +23,9 @@ type Props = {
 
   bulkSelectedCount: number;
   onBulkEdit: () => void;
-  onBulkMove: () => void;
-  onBulkCopy: () => void;
+  // Omitted on pages whose rows can't move between months (salary).
+  onBulkMove?: () => void;
+  onBulkCopy?: () => void;
   onBulkDelete: () => void;
   onBulkCancel: () => void;
 };
