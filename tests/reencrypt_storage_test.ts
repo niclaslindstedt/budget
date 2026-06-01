@@ -6,6 +6,7 @@ import type {
   StorageAdapter,
 } from "../src/storage/adapter";
 import {
+  extractPayslipPaths,
   extractReceiptPaths,
   reencryptStorage,
 } from "../src/storage/reencrypt-storage";
@@ -35,30 +36,48 @@ function fakeAdapter(opts?: {
   const store = new Map<string, string>();
   const uploads: string[] = [];
   const removes: string[] = [];
-  const receipts: ReceiptOps = {
-    async upload(path, blob) {
-      if (opts?.uploadFails?.(path)) throw new Error(`upload failed: ${path}`);
-      uploads.push(path);
-      store.set(path, await blob.text());
-    },
-    async download(path) {
-      const text = store.get(path);
-      return text === undefined ? null : new Blob([text]);
-    },
-    async remove(path) {
-      removes.push(path);
-      store.delete(path);
-    },
-  };
+  // Payslips ride the same parallel ops as receipts; give them their own
+  // in-memory store so a payslip conversion is observable independently.
+  const payslipStore = new Map<string, string>();
+  const payslipUploads: string[] = [];
+  function makeOps(s: Map<string, string>, up: string[]): ReceiptOps {
+    return {
+      async upload(path, blob) {
+        if (opts?.uploadFails?.(path))
+          throw new Error(`upload failed: ${path}`);
+        up.push(path);
+        s.set(path, await blob.text());
+      },
+      async download(path) {
+        const text = s.get(path);
+        return text === undefined ? null : new Blob([text]);
+      },
+      async remove(path) {
+        removes.push(path);
+        s.delete(path);
+      },
+    };
+  }
+  const receipts = makeOps(store, uploads);
+  const payslips = makeOps(payslipStore, payslipUploads);
   const save = vi.fn(async (text: string): Promise<Snapshot> => {
     if (opts?.saveFails) throw new Error("save failed");
     return { text };
   });
   const adapter = {
     receipts: opts?.noReceipts ? undefined : receipts,
+    payslips: opts?.noReceipts ? undefined : payslips,
     save,
   } as unknown as StorageAdapter;
-  return { adapter, store, uploads, removes, save };
+  return {
+    adapter,
+    store,
+    uploads,
+    removes,
+    save,
+    payslipStore,
+    payslipUploads,
+  };
 }
 
 describe("extractReceiptPaths", () => {
@@ -97,6 +116,49 @@ describe("extractReceiptPaths", () => {
     );
     expect(extractReceiptPaths(JSON.stringify({ sheets: "nope" }))).toEqual([]);
     expect(extractReceiptPaths(JSON.stringify({}))).toEqual([]);
+  });
+});
+
+describe("extractPayslipPaths", () => {
+  it("pulls payslipPath from each salary, skipping absent ones", () => {
+    const snapshot = JSON.stringify({
+      salaries: [
+        { id: "s1", payslipPath: "Acme - 2024-01.pdf" },
+        { id: "s2" },
+        { id: "s3", payslipPath: "Acme - 2024-02.pdf" },
+      ],
+    });
+    expect(extractPayslipPaths(snapshot)).toEqual([
+      "Acme - 2024-01.pdf",
+      "Acme - 2024-02.pdf",
+    ]);
+  });
+  it("tolerates malformed input", () => {
+    expect(extractPayslipPaths("not json")).toEqual([]);
+    expect(extractPayslipPaths(JSON.stringify({ salaries: "nope" }))).toEqual(
+      [],
+    );
+    expect(extractPayslipPaths(JSON.stringify({}))).toEqual([]);
+  });
+});
+
+describe("reencryptStorage — payslips", () => {
+  it("converts receipts and payslips, then saves once", async () => {
+    const snapshot = JSON.stringify({
+      history: { acct: [{ id: "1", receiptPath: "r.jpg" }] },
+      salaries: [{ id: "s1", payslipPath: "p.pdf" }],
+    });
+    const current = fakeAdapter();
+    current.store.set("r.jpg", "plain:r");
+    current.payslipStore.set("p.pdf", "plain:p");
+    const target = fakeAdapter();
+
+    await reencryptStorage(current.adapter, target.adapter, snapshot);
+
+    expect(target.uploads).toEqual(["r.jpg"]);
+    expect(target.payslipUploads).toEqual(["p.pdf"]);
+    expect(target.payslipStore.get("p.pdf")).toBe("plain:p");
+    expect(target.save).toHaveBeenCalledTimes(1);
   });
 });
 

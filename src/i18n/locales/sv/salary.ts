@@ -48,6 +48,19 @@ const salary: SalaryCatalog = {
   noteLabel: "Anteckning",
   notePlaceholder: "Valfritt. T.ex. varför denna lön avviker från snittet.",
 
+  // Payslip (lönerapport) attachment
+  payslip: "Lönerapport",
+  payslipUpload: "Ladda upp lönerapport",
+  payslipReplace: "Ersätt lönerapport",
+  payslipView: "Visa",
+  payslipRemove: "Ta bort",
+  payslipUploading: "Laddar upp…",
+  payslipUnsupported:
+    "Lönerapporter kräver lagring i en lokal mapp eller i molnet. Byt lagring i Inställningar → Lagring för att bifoga en.",
+  payslipError: "Kunde inte spara lönerapporten. Försök igen.",
+  payslipMissing: "Lönerapportfilen hittades inte i den här lagringen.",
+  payslipFallbackName: "Lönerapport",
+
   // Bulk edit
   bulkTitle: "Redigera {count} löner",
   bulkEmployerToggle: "Ange arbetsgivare",

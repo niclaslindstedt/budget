@@ -48,6 +48,19 @@ const salary = {
   noteLabel: "Note",
   notePlaceholder: "Optional. e.g. why this paycheck is off the average.",
 
+  // Payslip (lönerapport) attachment
+  payslip: "Payslip",
+  payslipUpload: "Upload payslip",
+  payslipReplace: "Replace payslip",
+  payslipView: "View",
+  payslipRemove: "Remove",
+  payslipUploading: "Uploading…",
+  payslipUnsupported:
+    "Payslips need the local-folder or a cloud storage backend. Switch backends in Settings → Storage to attach one.",
+  payslipError: "Could not save the payslip. Please try again.",
+  payslipMissing: "Payslip file not found on this storage.",
+  payslipFallbackName: "Payslip",
+
   // Bulk edit
   bulkTitle: "Edit {count} salaries",
   bulkEmployerToggle: "Set employer",

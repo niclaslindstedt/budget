@@ -50,7 +50,13 @@ export type AdapterCapability =
   // `receipts/` folder. Present on the folder and cloud backends; the
   // browser-localStorage adapter omits it (no sibling-file notion), so
   // the receipt-upload UI gates on this tag.
-  | "receipts";
+  | "receipts"
+  // `payslips` is implemented — binary payslip / lönerapport files (one
+  // per salary) can be uploaded, downloaded, and removed in a sibling
+  // `payslips/` folder. Mirrors `receipts` on every file-capable
+  // backend; the browser-localStorage adapter omits it, so the
+  // salary-payslip-upload UI gates on this tag.
+  | "payslips";
 
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
@@ -121,6 +127,17 @@ export type StorageAdapter = {
   // browser-localStorage adapter doesn't. Present iff `capabilities`
   // carries `"receipts"`, which the receipt-upload UI gates on.
   readonly receipts?: ReceiptOps;
+
+  // Optional support for binary payslip / lönerapport files attached to
+  // salaries, stored in a sibling `payslips/` folder next to the live
+  // budget file. Same `ReceiptOps` blob-folder contract as `receipts`
+  // (upload / download / remove a `Blob` at a relative path) — payslip
+  // paths are flat filenames, no subdirectory. Present iff
+  // `capabilities` carries `"payslips"`, which the payslip-upload UI
+  // gates on. The encrypting wrapper wraps these in the same AES-GCM
+  // envelope as receipts and the budget, so a payslip is encrypted at
+  // rest exactly when the budget is.
+  readonly payslips?: ReceiptOps;
 };
 
 // Binary-file operations for item receipts. Mirrors `BackupOps` but

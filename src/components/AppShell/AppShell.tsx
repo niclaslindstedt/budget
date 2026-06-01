@@ -51,7 +51,14 @@ import {
   userDataWithSavableRows,
 } from "../../data/budget/rows";
 import { findColumnByType } from "../../data/sheet";
-import type { AccountBudget, Row, Settings, UserData } from "../../data/types";
+import type {
+  AccountBudget,
+  Row,
+  Salary,
+  Settings,
+  UserData,
+} from "../../data/types";
+import { buildPayslipPath, extensionOf } from "../../data/salary/payslip-name";
 import { reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
@@ -75,6 +82,23 @@ type AppShellProps = {
   // showing on screen so the upload reflects the latest in-memory edits.
   currentDataRef: React.MutableRefObject<UserData | null>;
 };
+
+// Gather every payslip path already in use across all salaries, so a
+// fresh upload that would collide with another salary's payslip name
+// gets a disambiguating suffix rather than overwriting it. The current
+// salary's own path is excluded so replacing a payslip keeps the same
+// tidy name. Mirrors `collectReceiptPaths` in `BudgetModalHost`.
+function collectPayslipPaths(
+  data: UserData,
+  exclude: string | undefined,
+): Set<string> {
+  const paths = new Set<string>();
+  for (const salary of data.salaries) {
+    if (salary.payslipPath) paths.add(salary.payslipPath);
+  }
+  if (exclude) paths.delete(exclude);
+  return paths;
+}
 
 export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const {
@@ -519,6 +543,43 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     salaries: data.salaries,
     dispatch,
   });
+
+  // Payslip attachment, mirroring BudgetModalHost's receipt flow. The
+  // storage adapter lives here, so the upload/view callbacks are built
+  // here and threaded into SalaryPage → SalaryEditModal.
+  const canUploadPayslip = adapter?.capabilities.has("payslips") ?? false;
+  const onUploadPayslip = useCallback(
+    async (salary: Salary, file: File): Promise<string> => {
+      if (!adapter?.payslips) throw new Error("payslips unavailable");
+      const employerName = salary.employerId
+        ? data.employers.find((e) => e.id === salary.employerId)?.name
+        : undefined;
+      const path = buildPayslipPath({
+        employerName,
+        fallbackLabel: t("salary.payslipFallbackName"),
+        month: salary.date.slice(0, 7),
+        salaryId: salary.id,
+        extension: extensionOf(file.name),
+        usedPaths: collectPayslipPaths(data, salary.payslipPath),
+      });
+      await adapter.payslips.upload(path, file);
+      unlockAchievement("payslipKeeper");
+      return path;
+    },
+    [adapter, data, t],
+  );
+  const onViewPayslip = useCallback(
+    async (path: string): Promise<void> => {
+      if (!adapter?.payslips) throw new Error("payslips unavailable");
+      const blob = await adapter.payslips.download(path);
+      if (!blob) throw new Error("payslip missing");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      // Give the new tab time to read the blob before reclaiming it.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    [adapter],
+  );
   // Accounts / items pages have no row-level select-many — the toggle is
   // disabled there instead of dropping into an empty selection mode.
   const selectSupported = activeSheet.type === "budget" || isSalarySheet;
@@ -735,6 +796,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   bulkDeleteOpen={salaryBulk.bulkDeleteOpen}
                   onCloseBulkDelete={() => salaryBulk.setBulkDeleteOpen(false)}
                   onConfirmBulkDelete={salaryBulk.onConfirmBulkDelete}
+                  canUploadPayslip={canUploadPayslip}
+                  onUploadPayslip={onUploadPayslip}
+                  onViewPayslip={onViewPayslip}
                 />
               ) : (
                 <>

@@ -23,7 +23,7 @@ const ILLEGAL_SEGMENT_CHARS = /[/\\:*?"<>|]/g;
 // filesystem / API name limits (255 on most; stay well under).
 const MAX_SEGMENT_LENGTH = 80;
 
-function sanitizeSegment(value: string): string {
+export function sanitizeSegment(value: string): string {
   return value
     .replace(ILLEGAL_SEGMENT_CHARS, " ")
     .replace(/\s+/g, " ")

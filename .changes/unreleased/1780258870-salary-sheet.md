@@ -17,5 +17,8 @@ only flags a month when it strays more than 10% from your usual pay, and
 calls out a sustained pay rise as a "Raise" and a likely job change as a
 new employer). Tag each salary with an **employer** and role
 — add a new employer inline from the picker — and record taxes and
-absence days (parental leave, VAB, vacation, sick). Salaries are listed
-per year with gross and net totals.
+absence days (parental leave, VAB, vacation, sick). You can also attach
+a payslip (lönerapport) — a photo or PDF — to each salary; it is saved to
+a payslips folder on your storage and encrypted alongside the rest of
+your budget (available on the local-folder and cloud backends). Salaries
+are listed per year with gross and net totals.

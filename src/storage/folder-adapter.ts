@@ -21,6 +21,7 @@ const log = createLogger("folder");
 const DEFAULT_FILE_NAME = "budget.json";
 export const FOLDER_BACKUPS_DIR_NAME = "backups";
 export const FOLDER_RECEIPTS_DIR_NAME = "receipts";
+export const FOLDER_PAYSLIPS_DIR_NAME = "payslips";
 
 // Chrome reports filesystem errors as `DOMException` with these
 // names. We treat `NotAllowedError` (revoked by browser policy) and
@@ -214,13 +215,75 @@ export function createFolderAdapter(
     },
   };
 
+  // Resolve the `payslips/` folder handle, creating it on upload. Payslip
+  // paths are flat filenames (no type subdirectory), so there's no
+  // segment walk like `resolveReceiptParent` does.
+  async function resolvePayslipDir(
+    create: boolean,
+  ): Promise<FileSystemDirectoryHandle | null> {
+    try {
+      return await directoryHandle.getDirectoryHandle(
+        FOLDER_PAYSLIPS_DIR_NAME,
+        { create },
+      );
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      if (isPermissionError(err)) onPermissionLost?.();
+      throw err;
+    }
+  }
+
+  const payslips = {
+    async upload(path: string, blob: Blob): Promise<void> {
+      const dir = await resolvePayslipDir(true);
+      if (!dir) throw new Error("payslips folder unavailable");
+      try {
+        const handle = await dir.getFileHandle(path, { create: true });
+        const writable = await handle.createWritable({
+          keepExistingData: false,
+        });
+        await writable.write(blob);
+        await writable.close();
+      } catch (err) {
+        if (isPermissionError(err)) onPermissionLost?.();
+        throw err;
+      }
+    },
+
+    async download(path: string): Promise<Blob | null> {
+      const dir = await resolvePayslipDir(false);
+      if (!dir) return null;
+      try {
+        const handle = await dir.getFileHandle(path, { create: false });
+        return await handle.getFile();
+      } catch (err) {
+        if (isNotFoundError(err)) return null;
+        if (isPermissionError(err)) onPermissionLost?.();
+        throw err;
+      }
+    },
+
+    async remove(path: string): Promise<void> {
+      const dir = await resolvePayslipDir(false);
+      if (!dir) return;
+      try {
+        await dir.removeEntry(path);
+      } catch (err) {
+        if (isNotFoundError(err)) return;
+        if (isPermissionError(err)) onPermissionLost?.();
+        throw err;
+      }
+    },
+  };
+
   return {
     id: "folder",
     label: "Local folder",
     saveDebounceMs: 500,
-    capabilities: new Set(["backups", "receipts"]),
+    capabilities: new Set(["backups", "receipts", "payslips"]),
     backups,
     receipts,
+    payslips,
 
     async load(): Promise<Snapshot | null> {
       log.info("load: start");
