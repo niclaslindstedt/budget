@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { FileText, Package, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Package, Trash2 } from "lucide-react";
 
 import type {
   Category,
@@ -57,21 +57,6 @@ type Props = {
   // the item without it overwriting their own figure. Absent / 0 when no
   // links point at it.
   linkedTotal?: number;
-  // Whether the active storage backend can hold receipt files (local
-  // folder or cloud). False on the browser-localStorage backend, where
-  // the receipt section renders a muted "switch backends" hint instead
-  // of an upload control.
-  canUploadReceipt: boolean;
-  // Draft fields the host needs to compute a receipt's filename. Passed
-  // up on upload so the path reflects the in-progress edit (a renamed
-  // item names its receipt by the new name), not the last-saved item.
-  // Writes the file immediately and resolves the stored receipt path.
-  onUploadReceipt: (
-    file: File,
-    draft: { name: string; acquiredAt?: string; subtypeId?: string },
-  ) => Promise<string>;
-  // Download the receipt at `path` and open it (new tab / preview).
-  onViewReceipt: (path: string) => Promise<void>;
   onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -103,9 +88,6 @@ export function ItemEditorModal({
   categories,
   settings,
   linkedTotal,
-  canUploadReceipt,
-  onUploadReceipt,
-  onViewReceipt,
   onCreateSubtype,
   onCreateType,
   onCreateCategory,
@@ -129,14 +111,6 @@ export function ItemEditorModal({
   const [soldFor, setSoldFor] = useState("");
   const [note, setNote] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // Receipt path committed into the submit patch on Save. The file
-  // itself is written / read immediately against the backend; the
-  // reference rides the normal item save so a cancelled edit never
-  // leaves a dangling pointer (a cancelled upload only orphans bytes).
-  const [receiptPath, setReceiptPath] = useState<string | undefined>(undefined);
-  const [receiptBusy, setReceiptBusy] = useState(false);
-  const [receiptError, setReceiptError] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useResetOnOpen(
     open,
@@ -160,9 +134,6 @@ export function ItemEditorModal({
       setSoldFor(seedAmount(item?.soldFor, settings));
       setNote(item?.note ?? "");
       setConfirmDelete(false);
-      setReceiptPath(item?.receiptPath);
-      setReceiptBusy(false);
-      setReceiptError(false);
     },
   );
 
@@ -185,7 +156,6 @@ export function ItemEditorModal({
       purchasePrice: num(purchasePrice),
       resaleValue: num(resaleValue),
       note: note.trim() !== "" ? note.trim() : undefined,
-      receiptPath: receiptPath !== "" ? receiptPath : undefined,
     };
 
     // Depreciation: only persisted when enabled AND a finite rate is set.
@@ -225,42 +195,6 @@ export function ItemEditorModal({
     }
     onCreate?.(draft);
   }
-
-  async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    // Reset so picking the same file again still fires onChange.
-    e.target.value = "";
-    if (!file) return;
-    setReceiptBusy(true);
-    setReceiptError(false);
-    try {
-      const path = await onUploadReceipt(file, {
-        name: trimmedName || (item?.name ?? ""),
-        acquiredAt: acquiredAt !== "" ? acquiredAt : undefined,
-        subtypeId: subtypeId ?? undefined,
-      });
-      setReceiptPath(path);
-    } catch {
-      setReceiptError(true);
-    } finally {
-      setReceiptBusy(false);
-    }
-  }
-
-  async function handleViewReceipt() {
-    if (!receiptPath) return;
-    setReceiptError(false);
-    try {
-      await onViewReceipt(receiptPath);
-    } catch {
-      setReceiptError(true);
-    }
-  }
-
-  const receiptName =
-    receiptPath !== undefined && receiptPath !== ""
-      ? (receiptPath.split("/").pop() ?? receiptPath)
-      : null;
 
   const linkedHint =
     linkedTotal !== undefined && linkedTotal !== 0
@@ -434,69 +368,6 @@ export function ItemEditorModal({
               className="field-input w-full min-w-0 resize-none rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
-
-          <div className="flex flex-col gap-2 rounded border border-line bg-surface-3 p-3">
-            <span className="text-xs text-muted">{t("items.receipt")}</span>
-            {!canUploadReceipt ? (
-              <p className="text-xs text-muted">
-                {t("items.receiptUnsupported")}
-              </p>
-            ) : (
-              <>
-                {receiptName !== null && (
-                  <div className="flex items-center gap-2">
-                    <FileText
-                      size={14}
-                      aria-hidden
-                      focusable={false}
-                      className="shrink-0 text-muted"
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm text-fg">
-                      {receiptName}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleViewReceipt}
-                      className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:border-accent hover:text-accent"
-                    >
-                      {t("items.receiptView")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReceiptPath(undefined)}
-                      className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:border-danger hover:text-danger"
-                    >
-                      {t("items.receiptRemove")}
-                    </button>
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={handleFilePicked}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  disabled={receiptBusy}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex cursor-pointer items-center gap-1 self-start rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {receiptBusy
-                    ? t("items.receiptUploading")
-                    : receiptName !== null
-                      ? t("items.receiptReplace")
-                      : t("items.receiptUpload")}
-                </button>
-                {receiptError && (
-                  <p className="text-xs text-danger">
-                    {t("items.receiptError")}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
 
           {item && (
             <div className="mt-1 border-t border-line pt-3">

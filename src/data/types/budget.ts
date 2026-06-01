@@ -113,6 +113,19 @@ type RowBase = {
   // `synthesizeHistoryRow` and edited through the
   // `linkLineItemsToHistoryEntry` action. Not meaningful for `transfer` rows.
   lineItems?: LineItemLink[];
+  // Relative path (inside the active backend's `receipts/` folder) of the
+  // single receipt file attached to this transaction — proof of the
+  // purchase the line items above describe, so every linked item shares
+  // the one photo / PDF. Absent = no receipt. The file lives in the
+  // folder / cloud backend, not in the budget JSON, so it does NOT travel
+  // through export / import — only this reference does. Set on persisted
+  // `user` / `correction` rows directly; on synthesized `historic` rows it
+  // is propagated from the backing `HistoryEntry.receiptPath` by
+  // `synthesizeHistoryRow` and edited through `linkLineItemsToHistoryEntry`.
+  // On the browser (localStorage) backend it is never written (no receipts
+  // capability); on a backend missing the file the viewer degrades to
+  // "unavailable".
+  receiptPath?: string;
 };
 
 // Vanilla user-authored row. The default kind for anything in

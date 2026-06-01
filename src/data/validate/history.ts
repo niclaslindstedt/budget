@@ -200,6 +200,11 @@ export function validateHistoryEntry(
     const kept = validateLineItemLinks(raw.lineItems, knownItemIds);
     if (kept.length > 0) entry.lineItems = kept;
   }
+  // Receipt file reference for this transaction — see `HistoryEntry`.
+  // The file lives in the backend, not the JSON; a dangling path is
+  // tolerated by the viewer, so only empty / non-string drops here.
+  if (typeof raw.receiptPath === "string" && raw.receiptPath !== "")
+    entry.receiptPath = raw.receiptPath;
   return { ok: true, value: entry };
 }
 

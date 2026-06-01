@@ -309,9 +309,9 @@ const catalog: AchievementsCatalogEntries = {
   },
   receiptKeeper: {
     name: "Kvittosamlare",
-    condition: "Ladda upp ett kvitto till en sak du äger.",
+    condition: "Bifoga ett kvitto till ett köp.",
     learnMore:
-      "När du redigerar en sak kan du bifoga ett foto eller en PDF av kvittot. Det sparas som en fil i en kvittomapp i din lagring, namngett enligt mönstret du väljer under Inställningar → Saker, så att du hittar det senare. Tillgängligt för lokal mapp och molnlagring.",
+      "Öppna Prylar på ett köp och bifoga ett foto eller en PDF av kvittot — varje sak köpet betalade för delar det. Det sparas som en fil i en kvittomapp i din lagring, namngett enligt mönstret du väljer under Inställningar → Saker, så att du hittar det senare. Tillgängligt för lokal mapp och molnlagring.",
   },
   spellbinder: {
     name: "Trollkarl",

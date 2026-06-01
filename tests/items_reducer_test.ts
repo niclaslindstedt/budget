@@ -6,6 +6,7 @@ import { validateUserData } from "../src/data/validate";
 import type {
   AccountBudget,
   EntryType,
+  HistoryEntry,
   Item,
   Subtype,
   UserData,
@@ -144,6 +145,97 @@ describe("setRowLineItems", () => {
       lineItems: [],
     });
     expect(firstBudgetRows(next)[0].lineItems).toBeUndefined();
+  });
+
+  it("writes a receipt path alongside the links and clears it on empty string", () => {
+    const item: Item = { id: "i1", name: "iPhone" };
+    const data = seed([{ kind: "user", id: "r1", cells: {} }], {
+      items: [item],
+    });
+    const sheetId = data.sheets[0].id;
+    const itemId = data.sheets[0].items[0].id;
+    let next = reducer(data, {
+      type: "setRowLineItems",
+      sheetId,
+      itemId,
+      rowId: "r1",
+      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      receiptPath: "Apple Store - 2026-06-01.jpg",
+    });
+    expect(firstBudgetRows(next)[0].receiptPath).toBe(
+      "Apple Store - 2026-06-01.jpg",
+    );
+    // Re-submitting with an empty string clears the receipt but leaves
+    // the (re-sent) links in place.
+    next = reducer(next, {
+      type: "setRowLineItems",
+      sheetId,
+      itemId,
+      rowId: "r1",
+      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      receiptPath: "",
+    });
+    expect(firstBudgetRows(next)[0].receiptPath).toBeUndefined();
+    expect(firstBudgetRows(next)[0].lineItems).toHaveLength(1);
+  });
+
+  it("leaves the receipt path untouched when the action omits it", () => {
+    const item: Item = { id: "i1", name: "iPhone" };
+    const data = seed(
+      [
+        {
+          kind: "user",
+          id: "r1",
+          cells: {},
+          receiptPath: "kept.jpg",
+        },
+      ],
+      { items: [item] },
+    );
+    const sheetId = data.sheets[0].id;
+    const itemId = data.sheets[0].items[0].id;
+    const next = reducer(data, {
+      type: "setRowLineItems",
+      sheetId,
+      itemId,
+      rowId: "r1",
+      lineItems: [{ id: "l1", itemId: "i1", amount: -100 }],
+    });
+    expect(firstBudgetRows(next)[0].receiptPath).toBe("kept.jpg");
+  });
+});
+
+describe("linkLineItemsToHistoryEntry", () => {
+  it("writes links + receipt to the entry and clears each as instructed", () => {
+    const entry: HistoryEntry = {
+      id: "e1",
+      date: "2026-06-01",
+      amount: -15000,
+      description: "Apple",
+    };
+    const item: Item = { id: "i1", name: "iPhone" };
+    const data = seed([], { items: [item], history: { acct1: [entry] } });
+    let next = reducer(data, {
+      type: "linkLineItemsToHistoryEntry",
+      accountId: "acct1",
+      entryId: "e1",
+      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      receiptPath: "Apple - 2026-06-01.jpg",
+    });
+    expect(next.history.acct1[0].lineItems).toEqual([
+      { id: "l1", itemId: "i1", amount: -15000 },
+    ]);
+    expect(next.history.acct1[0].receiptPath).toBe("Apple - 2026-06-01.jpg");
+    // Clearing the receipt (empty string) while keeping the links.
+    next = reducer(next, {
+      type: "linkLineItemsToHistoryEntry",
+      accountId: "acct1",
+      entryId: "e1",
+      lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+      receiptPath: "",
+    });
+    expect(next.history.acct1[0].receiptPath).toBeUndefined();
+    expect(next.history.acct1[0].lineItems).toHaveLength(1);
   });
 });
 

@@ -10,11 +10,16 @@ import {
   reencryptStorage,
 } from "../src/storage/reencrypt-storage";
 
+// Receipts hang off transactions, so the snapshot models them as bank
+// history entries (one synthetic account). `extractReceiptPaths` reads
+// the same shape from budget rows too — see the dedicated test below.
 function snapshotWith(paths: (string | undefined)[]): string {
   return JSON.stringify({
-    items: paths.map((p, i) =>
-      p === undefined ? { id: `${i}` } : { id: `${i}`, receiptPath: p },
-    ),
+    history: {
+      acct: paths.map((p, i) =>
+        p === undefined ? { id: `${i}` } : { id: `${i}`, receiptPath: p },
+      ),
+    },
   });
 }
 
@@ -57,14 +62,40 @@ function fakeAdapter(opts?: {
 }
 
 describe("extractReceiptPaths", () => {
-  it("pulls receiptPath from each item, skipping absent ones", () => {
+  it("pulls receiptPath from each history entry, skipping absent ones", () => {
     expect(
       extractReceiptPaths(snapshotWith(["a.jpg", undefined, "b.pdf"])),
     ).toEqual(["a.jpg", "b.pdf"]);
   });
+  it("pulls receiptPath from budget rows and de-dupes across sources", () => {
+    const snapshot = JSON.stringify({
+      history: { acct: [{ id: "1", receiptPath: "shared.jpg" }] },
+      sheets: [
+        {
+          items: [
+            {
+              type: "accountBudget",
+              rows: [
+                { id: "r1", receiptPath: "row.pdf" },
+                { id: "r2", receiptPath: "shared.jpg" },
+                { id: "r3" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(extractReceiptPaths(snapshot).sort()).toEqual([
+      "row.pdf",
+      "shared.jpg",
+    ]);
+  });
   it("tolerates malformed input", () => {
     expect(extractReceiptPaths("not json")).toEqual([]);
-    expect(extractReceiptPaths(JSON.stringify({ items: "nope" }))).toEqual([]);
+    expect(extractReceiptPaths(JSON.stringify({ history: "nope" }))).toEqual(
+      [],
+    );
+    expect(extractReceiptPaths(JSON.stringify({ sheets: "nope" }))).toEqual([]);
     expect(extractReceiptPaths(JSON.stringify({}))).toEqual([]);
   });
 });

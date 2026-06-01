@@ -878,6 +878,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           itemId={itemId}
           activeItem={activeItem}
           dateCol={dateCol}
+          adapter={adapter}
           dispatch={dispatch}
           editPrompts={editPrompts}
           deletePrompts={deletePrompts}

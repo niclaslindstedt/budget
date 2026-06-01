@@ -4,24 +4,51 @@ import type { StorageAdapter } from "./adapter";
 
 const log = createLogger("reencrypt");
 
-// Pull every item's receipt path out of a serialized `UserData`
-// snapshot. The encryption-toggle re-wrap runs inside the storage hook,
-// which has no `UserData` value — only the bytes it just loaded — so the
-// authoritative list of receipt files to convert comes from parsing
-// those bytes. Tolerant of any shape drift: a missing / malformed
-// `items` array yields an empty list rather than throwing.
+// Pull every transaction's receipt path out of a serialized `UserData`
+// snapshot. Receipts hang off the purchase, so they live on bank-history
+// entries (`history[account][].receiptPath`) and on budget rows
+// (`sheets[].items[].rows[].receiptPath`). The encryption-toggle re-wrap
+// runs inside the storage hook, which has no `UserData` value — only the
+// bytes it just loaded — so the authoritative list of receipt files to
+// convert comes from parsing those bytes. Tolerant of any shape drift: a
+// missing / malformed branch contributes nothing rather than throwing.
 export function extractReceiptPaths(snapshotText: string): string[] {
   const parsed = safeJsonParse(snapshotText);
   if (typeof parsed !== "object" || parsed === null) return [];
-  const items = (parsed as { items?: unknown }).items;
-  if (!Array.isArray(items)) return [];
-  const paths: string[] = [];
-  for (const item of items) {
-    if (typeof item !== "object" || item === null) continue;
-    const path = (item as { receiptPath?: unknown }).receiptPath;
-    if (typeof path === "string" && path.length > 0) paths.push(path);
+  // De-dupe: a synthesized historic row and its backing entry could
+  // otherwise both surface the same path.
+  const paths = new Set<string>();
+
+  const addPath = (holder: unknown): void => {
+    if (typeof holder !== "object" || holder === null) return;
+    const path = (holder as { receiptPath?: unknown }).receiptPath;
+    if (typeof path === "string" && path.length > 0) paths.add(path);
+  };
+
+  const history = (parsed as { history?: unknown }).history;
+  if (typeof history === "object" && history !== null) {
+    for (const entries of Object.values(history as Record<string, unknown>)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) addPath(entry);
+    }
   }
-  return paths;
+
+  const sheets = (parsed as { sheets?: unknown }).sheets;
+  if (Array.isArray(sheets)) {
+    for (const sheet of sheets) {
+      if (typeof sheet !== "object" || sheet === null) continue;
+      const items = (sheet as { items?: unknown }).items;
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        if (typeof item !== "object" || item === null) continue;
+        const rows = (item as { rows?: unknown }).rows;
+        if (!Array.isArray(rows)) continue;
+        for (const row of rows) addPath(row);
+      }
+    }
+  }
+
+  return [...paths];
 }
 
 // Atomically migrate the bytes already in a backend from one encryption

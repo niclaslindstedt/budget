@@ -237,6 +237,12 @@ export function reduceHistory(
           // dispatcher's payload.
           next.lineItems = action.lineItems.map((l) => ({ ...l }));
         }
+        // Receipt path rides the same submit: an empty string clears it,
+        // `undefined` leaves the prior reference untouched.
+        if (action.receiptPath !== undefined) {
+          if (action.receiptPath === "") delete next.receiptPath;
+          else next.receiptPath = action.receiptPath;
+        }
         return next;
       },
     );

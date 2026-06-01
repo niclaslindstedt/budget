@@ -27,9 +27,7 @@ import { useChangelogState } from "./hooks/useChangelogState";
 import { useSettingsModal } from "./hooks/useSettingsModal";
 import { useSyncAutoOpens } from "./hooks/useSyncAutoOpens";
 import { unlock as unlockAchievement } from "../../data/achievements";
-import { buildReceiptPath, extensionOf } from "../../data/items/receipt-name";
 import { newId } from "../../data/sheet";
-import { todayIso } from "../../utils/date";
 import type { Action } from "../../data/reducer";
 import type {
   AccountBudget,
@@ -340,58 +338,6 @@ export function UniversalModalHost(props: Props) {
     }
   }
 
-  // Receipt upload is gated on the backend advertising the capability —
-  // present on the folder + cloud adapters, absent on browser-localStorage.
-  const canUploadReceipt = adapter?.capabilities.has("receipts") ?? false;
-
-  // Write a receipt file for the item under edit, naming it from the
-  // user's chosen pattern (resolving the item's type for the
-  // type-subfolder pattern) and returning the stored path the editor
-  // commits onto the item. The file write is immediate; the path rides
-  // the normal item save.
-  async function handleUploadReceipt(
-    file: File,
-    draft: { name: string; acquiredAt?: string; subtypeId?: string },
-  ): Promise<string> {
-    if (!adapter?.receipts) throw new Error("receipts unavailable");
-    let typeLabel: string | undefined;
-    if (draft.subtypeId !== undefined) {
-      const subtype = data.subtypes.find((s) => s.id === draft.subtypeId);
-      const type = subtype
-        ? allTypes(data).find((ty) => ty.id === subtype.typeId)
-        : undefined;
-      typeLabel = type?.name;
-    }
-    const usedPaths = new Set<string>();
-    for (const it of data.items) {
-      if (it.id !== editItemId && it.receiptPath) usedPaths.add(it.receiptPath);
-    }
-    const path = buildReceiptPath({
-      pattern: effectiveSettings.receiptNamePattern,
-      itemName: draft.name,
-      itemId: editItemId ?? newId(),
-      acquiredAt: draft.acquiredAt,
-      today: todayIso(),
-      extension: extensionOf(file.name),
-      typeLabel,
-      uncategorizedLabel: t("items.receiptUncategorized"),
-      usedPaths,
-    });
-    await adapter.receipts.upload(path, file);
-    unlockAchievement("receiptKeeper");
-    return path;
-  }
-
-  async function handleViewReceipt(path: string): Promise<void> {
-    if (!adapter?.receipts) throw new Error("receipts unavailable");
-    const blob = await adapter.receipts.download(path);
-    if (!blob) throw new Error("receipt missing");
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener");
-    // Give the new tab time to read the blob before reclaiming it.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  }
-
   return (
     <>
       <SheetModal
@@ -607,18 +553,10 @@ export function UniversalModalHost(props: Props) {
         categories={allCategories(data)}
         settings={effectiveSettings}
         linkedTotal={editItemLinkedTotal}
-        canUploadReceipt={canUploadReceipt}
-        onUploadReceipt={handleUploadReceipt}
-        onViewReceipt={handleViewReceipt}
         onCreateSubtype={onCreateSubtype}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
         onSubmit={(itemId, patch) => {
-          // Removing or replacing the receipt orphans the previous
-          // file — delete it best-effort once the new reference lands.
-          const prev = data.items.find((it) => it.id === itemId)?.receiptPath;
-          if (prev && prev !== patch.receiptPath && adapter?.receipts)
-            void adapter.receipts.remove(prev);
           dispatch({ type: "updateItem", itemId, patch });
           setEditItemId(null);
         }}
@@ -627,8 +565,6 @@ export function UniversalModalHost(props: Props) {
           setCreatingItem(false);
         }}
         onDelete={(itemId) => {
-          const prev = data.items.find((it) => it.id === itemId)?.receiptPath;
-          if (prev && adapter?.receipts) void adapter.receipts.remove(prev);
           dispatch({ type: "deleteItem", itemId });
           setEditItemId(null);
         }}
