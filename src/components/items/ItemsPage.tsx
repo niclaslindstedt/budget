@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   Coins,
+  DollarSign,
   Pencil,
   Plus,
   Sparkles,
@@ -168,7 +169,7 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
                     <span className="hidden md:inline">
                       {t("itemsSheet.purchaseValue")}
                     </span>
-                    <Coins
+                    <DollarSign
                       size={16}
                       className="inline-block shrink-0 text-accent md:hidden"
                       aria-hidden
