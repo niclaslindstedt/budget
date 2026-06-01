@@ -206,13 +206,7 @@ export function SheetModal({
             </p>
           )}
 
-          {type === "salary" && (
-            <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-              {t("sheetModal.salaryHint")}
-            </p>
-          )}
-
-          {type === "budget" && (
+          {(type === "budget" || type === "salary") && (
             <FormSection label={t("sheetModal.account")}>
               {creatingAccount ? (
                 <div className="flex flex-col gap-2 rounded border border-line bg-surface-2 p-3">
@@ -255,7 +249,9 @@ export function SheetModal({
                 />
               )}
               <p className="text-xs text-muted">
-                {t("sheetModal.accountHint")}
+                {type === "salary"
+                  ? t("sheetModal.salaryAccountHint")
+                  : t("sheetModal.accountHint")}
               </p>
             </FormSection>
           )}

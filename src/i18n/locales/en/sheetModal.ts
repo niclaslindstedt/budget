@@ -12,8 +12,8 @@ const sheetModal = {
     "The Accounts sheet is a workspace-wide dashboard. Manage accounts and transfers from there — no per-sheet account binding needed.",
   itemsHint:
     "The Items sheet lists everything you own, with what each thing cost and what it's worth now. Add items from there — no per-sheet account binding needed.",
-  salaryHint:
-    "The Salary sheet tracks your pay over time, by employer and year. Detect salaries from your budget with “Find salaries” — no per-sheet account binding needed.",
+  salaryAccountHint:
+    "The account your salary is paid into. “Find salaries” scans this account’s bank history for paychecks. Use one salary sheet per person, each bound to that person’s pay account.",
   color: "Color",
   glyph: "Icon",
   account: "Account",

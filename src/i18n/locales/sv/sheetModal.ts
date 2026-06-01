@@ -12,8 +12,8 @@ const sheetModal: SheetModalCatalog = {
     "Kontobladet är en arbetsytesövergripande översikt. Hantera konton och överföringar därifrån — ingen koppling per blad behövs.",
   itemsHint:
     "Prylbladet listar allt du äger, med vad varje sak kostade och vad den är värd nu. Lägg till prylar därifrån — ingen koppling per blad behövs.",
-  salaryHint:
-    "Lönebladet följer din lön över tid, per arbetsgivare och år. Hitta löner i din budget med ”Hitta löner” — ingen koppling per blad behövs.",
+  salaryAccountHint:
+    "Kontot din lön betalas in på. ”Hitta löner” söker igenom det här kontots bankhistorik efter löner. Använd ett löneblad per person, vart och ett kopplat till den personens lönekonto.",
   color: "Färg",
   glyph: "Ikon",
   account: "Konto",

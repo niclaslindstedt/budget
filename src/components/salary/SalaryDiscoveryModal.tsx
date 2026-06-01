@@ -22,7 +22,7 @@ import {
   formatMonthLabel,
   parseAmount,
 } from "../../utils/format";
-import { Button, SelectPicker, SignedAmountInput } from "../form";
+import { Button, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { EmployerPicker } from "./EmployerPicker";
 import {
@@ -32,6 +32,10 @@ import {
 
 type Props = {
   open: boolean;
+  // The account this salary sheet is bound to (its pay account), or
+  // null when the user hasn't picked one yet. The walk scans this
+  // account's history directly instead of asking which to scan.
+  accountId: string | null;
   accounts: readonly Account[];
   history: Record<string, HistoryEntry[]>;
   employers: readonly Employer[];
@@ -74,6 +78,7 @@ function confidenceLabel(t: ReturnType<typeof useT>, confidence: number) {
 
 export function SalaryDiscoveryModal({
   open,
+  accountId,
   accounts,
   history,
   employers,
@@ -86,8 +91,7 @@ export function SalaryDiscoveryModal({
   const t = useT();
   const lang = useLang();
 
-  const [phase, setPhase] = useState<"account" | "walk" | "done">("account");
-  const [accountId, setAccountId] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"intro" | "walk" | "done">("intro");
   const [stepIndex, setStepIndex] = useState(0);
   const [accepted, setAccepted] = useState<ReadonlyMap<string, Salary>>(
     new Map(),
@@ -101,18 +105,19 @@ export function SalaryDiscoveryModal({
   // Reset the whole session when the modal closes.
   useEffect(() => {
     if (open) return;
-    setPhase("account");
-    setAccountId(null);
+    setPhase("intro");
     setStepIndex(0);
     setAccepted(new Map());
     setSkipped(new Set());
   }, [open]);
 
-  // Only accounts with imported history can be scanned.
-  const scannableAccounts = useMemo(
-    () => accounts.filter((a) => (history[a.id] ?? []).length > 0),
-    [accounts, history],
+  // The bound account's display name and whether it has any imported
+  // history to scan.
+  const boundAccount = useMemo(
+    () => accounts.find((a) => a.id === accountId) ?? null,
+    [accounts, accountId],
   );
+  const hasHistory = accountId ? (history[accountId] ?? []).length > 0 : false;
 
   const discovery = useMemo(() => {
     if (!accountId) return null;
@@ -208,12 +213,12 @@ export function SalaryDiscoveryModal({
         setPhase("walk");
         setStepIndex(steps.length - 1);
       } else {
-        setPhase("account");
+        setPhase("intro");
       }
       return;
     }
     if (stepIndex === 0) {
-      setPhase("account");
+      setPhase("intro");
       return;
     }
     setStepIndex(stepIndex - 1);
@@ -299,15 +304,15 @@ export function SalaryDiscoveryModal({
         onClose={onClose}
       />
       <Modal.Body>
-        {phase === "account" && (
-          <AccountStep
-            scannableAccounts={scannableAccounts}
-            accountId={accountId}
+        {phase === "intro" && (
+          <IntroStep
+            accountName={boundAccount?.name ?? null}
+            hasBoundAccount={accountId !== null}
+            hasHistory={hasHistory}
             discovery={discovery}
             settings={settings}
             lang={lang}
             t={t}
-            onPick={setAccountId}
           />
         )}
 
@@ -354,7 +359,7 @@ export function SalaryDiscoveryModal({
         )}
       </Modal.Body>
       <Modal.Footer>
-        {phase === "account" && (
+        {phase === "intro" && (
           <>
             <Button variant="secondary" onClick={onClose}>
               {t("common.cancel")}
@@ -431,70 +436,65 @@ export function SalaryDiscoveryModal({
   );
 }
 
-type AccountStepProps = {
-  scannableAccounts: readonly Account[];
-  accountId: string | null;
+type IntroStepProps = {
+  accountName: string | null;
+  hasBoundAccount: boolean;
+  hasHistory: boolean;
   discovery: ReturnType<typeof discoverSalaries> | null;
   settings: Settings;
   lang: ReturnType<typeof useLang>;
   t: ReturnType<typeof useT>;
-  onPick: (id: string) => void;
 };
 
-function AccountStep({
-  scannableAccounts,
-  accountId,
+// Opening step of the walk. The salary account is now a sheet setting,
+// so instead of a picker this confirms which bound account is being
+// scanned and previews the pay clusters found in its history. It steers
+// the user to the sheet's edit modal when no account is bound yet, and
+// flags an account that has no imported history to scan.
+function IntroStep({
+  accountName,
+  hasBoundAccount,
+  hasHistory,
   discovery,
   settings,
   lang,
   t,
-  onPick,
-}: AccountStepProps) {
-  if (scannableAccounts.length === 0) {
+}: IntroStepProps) {
+  if (!hasBoundAccount) {
+    return (
+      <p className="px-1 py-6 text-center text-sm text-muted">
+        {t("salary.noBoundAccount")}
+      </p>
+    );
+  }
+  if (!hasHistory) {
     return (
       <p className="px-1 py-6 text-center text-sm text-muted">
         {t("salary.noAccountsWithHistory")}
       </p>
     );
   }
-  const options = scannableAccounts.map((a) => ({
-    value: a.id,
-    label: a.name,
-  }));
   const candidates = discovery?.candidates ?? [];
   return (
     <div className="flex flex-col gap-3">
       <div>
         <p className="mb-1 text-sm font-bold text-fg-bright">
-          {t("salary.pickAccountTitle")}
+          {t("salary.scanAccountTitle", { name: accountName ?? "" })}
         </p>
         <p className="text-xs text-muted">{t("salary.pickAccountHint")}</p>
       </div>
-      <SelectPicker
-        value={accountId ?? ""}
-        options={[
-          { value: "", label: t("salary.pickAccountPlaceholder") },
-          ...options,
-        ]}
-        onChange={(next) => {
-          if (next !== "") onPick(next);
-        }}
-        ariaLabel={t("salary.pickAccountTitle")}
-        panelClassName="max-h-64 overflow-y-auto"
-      />
-      {accountId &&
-        (candidates.length === 0 ? (
-          <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-            {t("salary.discoveryNone")}
-          </p>
-        ) : (
-          <ClusterSummary
-            discovery={discovery!}
-            settings={settings}
-            lang={lang}
-            t={t}
-          />
-        ))}
+      {candidates.length === 0 ? (
+        <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+          {t("salary.discoveryNone")}
+        </p>
+      ) : (
+        <ClusterSummary
+          discovery={discovery!}
+          settings={settings}
+          lang={lang}
+          t={t}
+        />
+      )}
     </div>
   );
 }

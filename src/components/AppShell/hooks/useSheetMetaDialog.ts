@@ -4,7 +4,12 @@ import type { ConfirmAction } from "../../ConfirmDialog";
 import type { SheetDraft } from "../../SheetModal";
 import type { Action } from "../../../data/reducer";
 import { createDefaultSheet, newId } from "../../../data/sheet";
-import type { Account, AccountBudget, Sheet } from "../../../data/types";
+import type {
+  Account,
+  AccountBudget,
+  Sheet,
+  SalaryView,
+} from "../../../data/types";
 import { useT } from "../../../i18n";
 import type { useToast } from "../../../hooks";
 
@@ -79,17 +84,20 @@ export function useSheetMetaDialog({
           sheetId: target.id,
           meta: draft,
         });
-        // Update the account binding on the sheet's budget item if it
-        // changed. Finding the first AccountBudget mirrors the picker
-        // in the view: the current UI exposes one block per sheet.
-        const budgetItem = target.items.find(
-          (it): it is AccountBudget => it.type === "accountBudget",
+        // Update the account binding on the sheet's account-bound item
+        // if it changed. Both the budget ledger (`accountBudget`) and
+        // the salary sheet (`salaryView`) carry an `accountId`; finding
+        // the first such item mirrors the picker in the view, which
+        // exposes one binding per sheet.
+        const accountItem = target.items.find(
+          (it): it is AccountBudget | SalaryView =>
+            it.type === "accountBudget" || it.type === "salaryView",
         );
-        if (budgetItem && budgetItem.accountId !== finalAccountId) {
+        if (accountItem && accountItem.accountId !== finalAccountId) {
           dispatch({
             type: "setItemAccount",
             sheetId: target.id,
-            itemId: budgetItem.id,
+            itemId: accountItem.id,
             accountId: finalAccountId,
           });
         }
