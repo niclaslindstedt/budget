@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Boxes, CopyX, Package, Plus, SkipForward, X } from "lucide-react";
 
 import {
@@ -6,6 +6,7 @@ import {
   type ItemPurchaseCandidate,
 } from "../../data/items/find";
 import { synthesizeHistoryRow } from "../../data/budget/synthesis";
+import { normaliseDescription } from "../../data/description-normaliser";
 import { createDefaultAccountBudget } from "../../data/sheet-types/budget";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import type {
@@ -71,6 +72,13 @@ function columnsForAccount(data: UserData, accountId: string): Column[] {
   return createDefaultAccountBudget(accountId).columns;
 }
 
+// How long the matching rows stay highlighted in red after "Exclude
+// similar" before the dispatch sweeps them from the scan. Long enough
+// to read which charges the pattern caught, short enough not to stall
+// the queue. The CSS transition on the row colours is shorter so the
+// red has faded in well before the timer fires.
+const EXCLUDE_HIGHLIGHT_MS = 650;
+
 // "Find items" walks the bank-history transactions that look like item
 // purchases one at a time, letting the user catalogue each into owned
 // `Item`s (add line items), leave it for next time (skip), or never see
@@ -105,11 +113,48 @@ export function ItemFinderModal({
   // The candidate whose line items are being edited, or null when the
   // embedded line-items modal is closed.
   const [editing, setEditing] = useState<ItemPurchaseCandidate | null>(null);
+  // Entry ids the user just excluded-similar, held briefly so the rows
+  // about to be swept flash red before the dispatch drops them from the
+  // scan. Without this the matching rows vanish instantly and the user
+  // never sees which charges the pattern caught.
+  const [excluding, setExcluding] = useState<ReadonlySet<string>>(new Set());
+  const excludeTimer = useRef<number | null>(null);
+  // The description whose exclusion is mid-flight (highlighting). Held so
+  // a second exclude click — or the modal closing — commits it instead of
+  // dropping it on the floor when the timer is replaced.
+  const pendingExclude = useRef<string | null>(null);
+
+  // Commit an in-flight exclusion immediately and tear down its timer.
+  // No-op when nothing is pending.
+  const flushPendingExclude = () => {
+    if (excludeTimer.current !== null) {
+      window.clearTimeout(excludeTimer.current);
+      excludeTimer.current = null;
+    }
+    if (pendingExclude.current !== null) {
+      onExcludeSimilar(pendingExclude.current);
+      pendingExclude.current = null;
+    }
+  };
 
   useResetOnOpen(open, undefined, () => {
+    // Reopening with an exclusion still highlighting: commit it so the
+    // pattern isn't silently dropped, then reset the session state.
+    flushPendingExclude();
     setSkipped(new Set());
     setEditing(null);
+    setExcluding(new Set());
   });
+
+  // Commit any pending exclusion on unmount so a closed modal doesn't
+  // drop the user's decision.
+  useEffect(
+    () => () => {
+      flushPendingExclude();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const typesById = useMemo(() => indexById(allTypes(data)), [data]);
 
@@ -120,6 +165,31 @@ export function ItemFinderModal({
     () => candidates.filter((c) => !skipped.has(c.entryId)),
     [candidates, skipped],
   );
+
+  // Flash every queued row matching the candidate's normalised
+  // description, then commit the exclusion once the highlight has read.
+  const handleExcludeSimilar = (candidate: ItemPurchaseCandidate) => {
+    // Commit any still-highlighting exclusion before starting a new one.
+    flushPendingExclude();
+    const key = normaliseDescription(candidate.description);
+    const matches = new Set(
+      queue
+        .filter((c) => normaliseDescription(c.description) === key)
+        .map((c) => c.entryId),
+    );
+    setExcluding(matches);
+    toast.push({
+      kind: "success",
+      message: t("items.find.excludedToast"),
+    });
+    pendingExclude.current = candidate.description;
+    excludeTimer.current = window.setTimeout(() => {
+      onExcludeSimilar(candidate.description);
+      pendingExclude.current = null;
+      setExcluding(new Set());
+      excludeTimer.current = null;
+    }, EXCLUDE_HIGHLIGHT_MS);
+  };
 
   if (!open) return null;
 
@@ -174,10 +244,15 @@ export function ItemFinderModal({
                     c.typeId !== undefined
                       ? (typesById.get(c.typeId) ?? null)
                       : null;
+                  const isExcluding = excluding.has(c.entryId);
                   return (
                     <li
                       key={c.entryId}
-                      className="flex flex-col gap-2 rounded border border-line bg-surface px-3 py-2 sm:flex-row sm:items-center"
+                      className={`flex flex-col gap-2 rounded border px-3 py-2 transition sm:flex-row sm:items-center ${
+                        isExcluding
+                          ? "pointer-events-none border-danger/60 bg-danger/10 opacity-70"
+                          : "border-line bg-surface"
+                      }`}
                     >
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -253,13 +328,7 @@ export function ItemFinderModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            onExcludeSimilar(c.description);
-                            toast.push({
-                              kind: "success",
-                              message: t("items.find.excludedToast"),
-                            });
-                          }}
+                          onClick={() => handleExcludeSimilar(c)}
                           aria-label={t("items.find.excludeSimilar")}
                           title={t("items.find.excludeSimilarHint")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"
