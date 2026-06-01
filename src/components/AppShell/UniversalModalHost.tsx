@@ -575,10 +575,6 @@ export function UniversalModalHost(props: Props) {
           dispatch({ type: "addItem", item: { id: newId(), ...draft } });
           setCreatingItem(false);
         }}
-        onDelete={(itemId) => {
-          dispatch({ type: "deleteItem", itemId });
-          setEditItemId(null);
-        }}
         onClose={() => {
           setEditItemId(null);
           setCreatingItem(false);

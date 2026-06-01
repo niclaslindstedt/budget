@@ -59,8 +59,6 @@ const items = {
   itemNote: "Note",
   itemNotePlaceholder: "e.g. serial number, condition",
   deleteItem: "Delete item",
-  deleteItemConfirm:
-    "Delete this item? Its line-item links will be removed from every entry.",
   editItemAria: "Edit {name}",
   save: "Save",
   // Receipt section in the edit-item modal
