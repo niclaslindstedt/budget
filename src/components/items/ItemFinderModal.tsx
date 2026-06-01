@@ -23,7 +23,10 @@ import { useResetOnOpen, useToast } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { indexById } from "../../utils/indexById";
 import { formatAmount, formatDate } from "../../utils/format";
-import { BudgetLineItemsModal } from "../budget/BudgetLineItemsModal";
+import {
+  BudgetLineItemsModal,
+  type ItemPriceUpdate,
+} from "../budget/BudgetLineItemsModal";
 import { TypeChip } from "../TypePicker";
 import { Button } from "../form";
 import { Modal } from "../Modal";
@@ -41,11 +44,14 @@ type Props = {
   onExcludeSimilar: (description: string) => void;
   // Commit the user's line-item links for a history entry. Mirrors the
   // historic-row branch of `BudgetModalHost`'s `onLineItemsSubmit` —
-  // routed by the host to `linkLineItemsToHistoryEntry`.
+  // routed by the host to `linkLineItemsToHistoryEntry`. `itemPrices`
+  // carries the purchase price typed for each linked item; the host writes
+  // each onto its `Item` (the link no longer stores a price).
   onLinkLineItems: (
     accountId: string,
     entryId: string,
     lineItems: LineItemLink[],
+    itemPrices: ItemPriceUpdate[],
   ) => void;
   // Item / taxonomy create-callbacks threaded straight to the embedded
   // line-items modal so the user can mint an `Item` (and its taxonomy)
@@ -388,9 +394,14 @@ export function ItemFinderModal({
         types={allTypes(data)}
         categories={allCategories(data)}
         onClose={() => setEditing(null)}
-        onSubmit={(_rowId, lineItems) => {
+        onSubmit={(_rowId, lineItems, itemPrices) => {
           if (editing) {
-            onLinkLineItems(editing.accountId, editing.entryId, lineItems);
+            onLinkLineItems(
+              editing.accountId,
+              editing.entryId,
+              lineItems,
+              itemPrices,
+            );
             // Drop the just-catalogued entry from the visible queue so it
             // doesn't reappear when the line-items modal closes.
             const entryId = editing.entryId;

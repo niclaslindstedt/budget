@@ -101,23 +101,6 @@ function BudgetRowImpl({
   const company = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
     : null;
-  // Resolve the row's line items to display-ready rows (item name +
-  // signed, currency-formatted amount) for the description cell's pill /
-  // glyph and popover list. Order follows `row.lineItems` so index 0 is
-  // the first added line — the name the "many" pill surfaces. Undefined
-  // when the row has none so the cell prop stays shallow-compare stable.
-  const lineItems = useMemo<readonly CellLineItem[] | undefined>(() => {
-    if (!row.lineItems || row.lineItems.length === 0) return undefined;
-    return row.lineItems.map((li) => {
-      const sign = li.amount > 0 ? "+" : li.amount < 0 ? "−" : "";
-      return {
-        id: li.id,
-        itemId: li.itemId,
-        name: itemsById.get(li.itemId)?.name ?? tr("cell.unknownItem"),
-        amount: `${sign}${formatAmount(Math.abs(li.amount), settings)}`,
-      };
-    });
-  }, [row.lineItems, itemsById, settings, tr]);
   // The row's company → type hint ids, surfaced as the "Suggested" band
   // in the inline type picker. Empty when the row has no company.
   const typeHintIds = useMemo(
@@ -185,6 +168,33 @@ function BudgetRowImpl({
       : typeof amountValue === "number" && amountValue < 0
         ? "negative"
         : "any";
+
+  // Resolve the row's line items to display-ready rows (item name +
+  // signed, currency-formatted price) for the description cell's pill /
+  // glyph and popover list. The price lives on the linked item now; the
+  // link only connects the row to it, so the amount shown is the item's
+  // `purchasePrice` rendered with the row's direction (a purchase shows
+  // the cost as an outflow). Order follows `row.lineItems` so index 0 is
+  // the first added line — the name the "many" pill surfaces. Undefined
+  // when the row has none so the cell prop stays shallow-compare stable.
+  const lineItems = useMemo<readonly CellLineItem[] | undefined>(() => {
+    if (!row.lineItems || row.lineItems.length === 0) return undefined;
+    const negative = !(typeof amountValue === "number" && amountValue > 0);
+    return row.lineItems.map((li) => {
+      const item = itemsById.get(li.itemId);
+      const price = item?.purchasePrice;
+      const amount =
+        price === undefined
+          ? ""
+          : `${negative ? "−" : "+"}${formatAmount(price, settings)}`;
+      return {
+        id: li.id,
+        itemId: li.itemId,
+        name: item?.name ?? tr("cell.unknownItem"),
+        amount,
+      };
+    });
+  }, [row.lineItems, itemsById, settings, tr, amountValue]);
 
   // Expose the row's ISO date so BudgetPage's scroll-to-today can target
   // it directly. Skipped when the date cell is empty or non-string.

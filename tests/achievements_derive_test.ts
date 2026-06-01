@@ -94,7 +94,7 @@ describe("deriveUnlocks", () => {
       {
         id: "r1",
         cells: { a: -20000 },
-        lineItems: [{ id: "l1", itemId: "i1", amount: -15000 }],
+        lineItems: [{ id: "l1", itemId: "i1" }],
       },
     ]);
     const fresh = deriveUnlocks(prev, next, {});
@@ -107,7 +107,7 @@ describe("deriveUnlocks", () => {
       {
         id: "r1",
         cells: {},
-        lineItems: [{ id: "l1", itemId: "i1", amount: -1 }],
+        lineItems: [{ id: "l1", itemId: "i1" }],
       },
     ]);
     const fresh = deriveUnlocks(prev, next, { itemized: 1 });

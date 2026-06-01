@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { migrate } from "../src/data/migrations";
+import { LATEST_VERSION, migrate } from "../src/data/migrations";
 
 // The v59 → v60 step moves the job title from a date-windowed role lookup
 // to an explicit `Salary.roleId`, and strips the dates off `Role`. The
@@ -48,7 +48,7 @@ describe("migration v59 → latest (salary roleId)", () => {
       employers: { roles: Record<string, unknown>[] }[];
       salaries: { id: string; roleId?: string }[];
     };
-    expect(data.version).toBe(60);
+    expect(data.version).toBe(LATEST_VERSION);
 
     const byId = Object.fromEntries(data.salaries.map((s) => [s.id, s]));
     expect(byId.s1.roleId).toBe("r1");

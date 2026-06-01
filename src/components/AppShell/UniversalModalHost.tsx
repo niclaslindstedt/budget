@@ -308,22 +308,22 @@ export function UniversalModalHost(props: Props) {
   const { onEditMatchRule, onMoveMatchRule, onReapplyMatchRules } = matchRuleUi;
 
   // Item resolved against live data so a concurrent change isn't edited
-  // stale, plus the sum of every line-item link pointing at it (across
-  // budget rows and bank history) shown as a hint in the editor. The
-  // traversal mirrors the cascade in the `deleteItem` reducer.
+  // stale, plus the count of line-item links pointing at it (across budget
+  // rows and bank history) shown as a hint in the editor — the price lives
+  // on the item itself, so the useful context is how many transactions link
+  // to it. The traversal mirrors the cascade in the `deleteItem` reducer.
   const editItem =
     editItemId !== null
       ? (data.items.find((it) => it.id === editItemId) ?? null)
       : null;
-  let editItemLinkedTotal = 0;
+  let editItemLinkCount = 0;
   if (editItemId !== null) {
     for (const sheet of data.sheets) {
       for (const sheetItem of sheet.items) {
         if (sheetItem.type !== "accountBudget") continue;
         for (const row of sheetItem.rows) {
           for (const link of row.lineItems ?? []) {
-            if (link.itemId === editItemId)
-              editItemLinkedTotal += Math.abs(link.amount);
+            if (link.itemId === editItemId) editItemLinkCount += 1;
           }
         }
       }
@@ -331,8 +331,7 @@ export function UniversalModalHost(props: Props) {
     for (const entries of Object.values(data.history)) {
       for (const entry of entries) {
         for (const link of entry.lineItems ?? []) {
-          if (link.itemId === editItemId)
-            editItemLinkedTotal += Math.abs(link.amount);
+          if (link.itemId === editItemId) editItemLinkCount += 1;
         }
       }
     }
@@ -563,7 +562,7 @@ export function UniversalModalHost(props: Props) {
         types={allTypes(data)}
         categories={allCategories(data)}
         settings={effectiveSettings}
-        linkedTotal={editItemLinkedTotal}
+        linkedCount={editItemLinkCount}
         onCreateSubtype={onCreateSubtype}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
@@ -589,14 +588,23 @@ export function UniversalModalHost(props: Props) {
         onExcludeSimilar={(description) =>
           dispatch({ type: "excludeSimilarItemEntries", description })
         }
-        onLinkLineItems={(accountId, entryId, lineItems) =>
+        onLinkLineItems={(accountId, entryId, lineItems, itemPrices) => {
+          // The typed amount is the item's purchase price — write it onto
+          // the item (the link no longer carries a price).
+          for (const { itemId: linkedItemId, purchasePrice } of itemPrices) {
+            dispatch({
+              type: "updateItem",
+              itemId: linkedItemId,
+              patch: { purchasePrice },
+            });
+          }
           dispatch({
             type: "linkLineItemsToHistoryEntry",
             accountId,
             entryId,
             lineItems,
-          })
-        }
+          });
+        }}
         onCreateItem={onCreateItem}
         onCreateSubtype={onCreateSubtype}
         onCreateType={onCreateType}

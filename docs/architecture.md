@@ -721,6 +721,12 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   rule (`ItemDepreciation`, percent-per-year), a `resaleValue` override,
   and disposal (`disposedAt` / `soldFor`). A bare version bump — every
   new field is optional per item, so a v51 record is absence-tolerant.
+- **v60 → v61** — drops `LineItemLink.amount`: a line item is now purely
+  a link from a transaction to an owned `Item`, and what the item cost
+  lives on the item (`Item.purchasePrice`). The migration folds each
+  link's old signed amount onto its item as a non-negative purchase price
+  (first link to name an unpriced item wins; pre-priced items untouched),
+  then strips `amount` off every link across budget rows and bank history.
 
 ## State management
 

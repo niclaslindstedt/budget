@@ -36,6 +36,16 @@ type LineDraft = {
   note: string;
 };
 
+// The amount typed for a line item is the item's purchase price, not a
+// property of the link. The modal hands these back alongside the links so
+// the host can write each onto its `Item` (`Item.purchasePrice`). The price
+// is the absolute value of the typed amount (purchase prices are
+// non-negative; the sign only drives the in-modal allocation maths).
+export type ItemPriceUpdate = {
+  itemId: string;
+  purchasePrice: number;
+};
+
 type Props = {
   open: boolean;
   row: Row | null;
@@ -49,13 +59,16 @@ type Props = {
   // Fires on confirm with the full desired set of links (a replacement,
   // not a delta). An empty array clears the row's line items. The host
   // routes this to `setRowLineItems` or `linkLineItemsToHistoryEntry`
-  // depending on the row kind. `receiptPath` carries the transaction's
-  // receipt reference alongside the links: an empty string clears it,
-  // `undefined` leaves it untouched (e.g. when the receipt section is
-  // not shown).
+  // depending on the row kind. `itemPrices` carries the purchase price the
+  // user typed for each linked item — the host writes each onto its `Item`
+  // (the link no longer stores a price). `receiptPath` carries the
+  // transaction's receipt reference alongside the links: an empty string
+  // clears it, `undefined` leaves it untouched (e.g. when the receipt
+  // section is not shown).
   onSubmit: (
     rowId: string,
     lineItems: LineItemLink[],
+    itemPrices: ItemPriceUpdate[],
     receiptPath?: string,
   ) => void;
   // Receipt wiring. Present only on the standalone line-items flow (the
@@ -127,19 +140,30 @@ export function BudgetLineItemsModal({
       : 0;
   const totalNegative = total <= 0;
 
+  const itemsById = useMemo(() => {
+    const map = new Map<string, Item>();
+    for (const it of items) map.set(it.id, it);
+    return map;
+  }, [items]);
+
   function seedLines(): LineDraft[] {
     const existing = row?.lineItems;
     if (existing && existing.length > 0) {
-      return existing.map((l) => ({
-        uiId: makeUiId(),
-        itemId: l.itemId,
-        amount:
-          l.amount === 0
-            ? ""
-            : formatAmountForInput(Math.abs(l.amount), settings),
-        negative: l.amount < 0 || (l.amount === 0 && totalNegative),
-        note: l.note ?? "",
-      }));
+      return existing.map((l) => {
+        // The price lives on the item now — seed the amount field from
+        // the linked item's `purchasePrice` so editing stays consistent.
+        const price = itemsById.get(l.itemId)?.purchasePrice;
+        return {
+          uiId: makeUiId(),
+          itemId: l.itemId,
+          amount:
+            price === undefined || price === 0
+              ? ""
+              : formatAmountForInput(Math.abs(price), settings),
+          negative: totalNegative,
+          note: l.note ?? "",
+        };
+      });
     }
     return [makeEmptyLine(totalNegative)];
   }
@@ -222,21 +246,24 @@ export function BudgetLineItemsModal({
 
   function handleSubmit() {
     if (!row || !canSubmit) return;
-    const payload: LineItemLink[] = completed.map((l) => {
-      const link: LineItemLink = {
-        id: newId(),
-        itemId: l.itemId as string,
-        amount: l.signed ?? 0,
-      };
+    const payload: LineItemLink[] = [];
+    const itemPrices: ItemPriceUpdate[] = [];
+    for (const l of completed) {
+      const itemId = l.itemId as string;
+      const link: LineItemLink = { id: newId(), itemId };
       const note = l.note.trim();
       if (note !== "") link.note = note;
-      return link;
-    });
+      payload.push(link);
+      // The typed amount is the item's purchase price (non-negative); the
+      // sign only matters for the allocation maths above. The last line to
+      // name a given item wins if it appears twice.
+      itemPrices.push({ itemId, purchasePrice: Math.abs(l.signed ?? 0) });
+    }
     // Empty string clears a previously-set receipt; only emit the
     // receipt argument when the section was available (otherwise leave
     // the field untouched by passing undefined).
     const receiptArg = onUploadReceipt ? (receiptPath ?? "") : undefined;
-    onSubmit(row.id, payload, receiptArg);
+    onSubmit(row.id, payload, itemPrices, receiptArg);
   }
 
   async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {

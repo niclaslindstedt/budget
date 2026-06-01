@@ -11,12 +11,7 @@ import type {
 } from "../data/types";
 import { useResetOnOpen } from "../hooks";
 import { useT } from "../i18n";
-import {
-  formatAmountForInput,
-  formatNumber,
-  parseAmount,
-  withCurrency,
-} from "../utils/format";
+import { formatAmountForInput, parseAmount } from "../utils/format";
 import { Button, Checkbox, ClearableInput, ClearableTextarea } from "./form";
 import { Modal } from "./Modal";
 import { SubtypePicker } from "./SubtypePicker";
@@ -51,12 +46,11 @@ type Props = {
   types: readonly EntryType[];
   categories: readonly Category[];
   settings: Settings;
-  // Sum of every line-item link's absolute amount that points at this
-  // item, across budget rows and bank history. Shown as a hint under the
-  // purchase-price field so the user can see what they've allocated to
-  // the item without it overwriting their own figure. Absent / 0 when no
-  // links point at it.
-  linkedTotal?: number;
+  // Count of line-item links that point at this item, across budget rows
+  // and bank history. Shown as a hint under the purchase-price field so the
+  // user can see how many transactions link to it (the price lives on the
+  // item, not the link). Absent / 0 when no links point at it.
+  linkedCount?: number;
   onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -86,7 +80,7 @@ export function ItemEditorModal({
   types,
   categories,
   settings,
-  linkedTotal,
+  linkedCount,
   onCreateSubtype,
   onCreateType,
   onCreateCategory,
@@ -193,10 +187,10 @@ export function ItemEditorModal({
   }
 
   const linkedHint =
-    linkedTotal !== undefined && linkedTotal !== 0
-      ? t("items.linkedTotal", {
-          amount: withCurrency(formatNumber(linkedTotal, settings), settings),
-        })
+    linkedCount !== undefined && linkedCount !== 0
+      ? linkedCount === 1
+        ? t("items.linkedCountOne", { count: linkedCount })
+        : t("items.linkedCountOther", { count: linkedCount })
       : null;
 
   const amountInputClass =
