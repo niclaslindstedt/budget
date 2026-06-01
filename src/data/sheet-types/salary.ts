@@ -6,12 +6,13 @@ import type { SheetTypeDescriptor } from "./index";
 
 // The Salary sheet renders the workspace-wide salary history
 // (`UserData.salaries` + `UserData.employers`) rather than a
-// per-account ledger, so the item carries no data of its own today —
-// the shape exists so future per-sheet config (default employer
-// filter, gross/net toggle, …) lands here without another migration.
-// Mirrors `accounts.ts` / `items.ts`.
-export function createDefaultSalaryView(): SalaryView {
-  return { id: newId(), type: "salaryView" };
+// per-account ledger. `accountId` binds the sheet to the bank account
+// the user's pay lands in so "Find salaries" scans that account's
+// history directly; nullable until the user picks one.
+export function createDefaultSalaryView(
+  accountId: string | null = null,
+): SalaryView {
+  return { id: newId(), type: "salaryView", accountId };
 }
 
 export const SALARY_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
@@ -19,9 +20,9 @@ export const SALARY_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
   label: "Salary",
   description: "See your salary over time, by employer and year.",
   glyph: "banknote",
-  createDefaultItem: () => createDefaultSalaryView(),
+  createDefaultItem: ({ accountId }) => createDefaultSalaryView(accountId),
   itemTypes: ["salaryView"],
-  validate: (raw, path) => validateSalaryView(raw, path),
+  validate: (raw, path, ctx) => validateSalaryView(raw, path, ctx),
   // No `reduceItem`: salary history is global state mutated by the
   // `createSalary` / `updateSalary` / `deleteSalary` (and employer)
   // actions in `reducers/salary.ts`, not per-item actions routed

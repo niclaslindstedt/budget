@@ -46,9 +46,19 @@ describe("Salary sheet type", () => {
   it("seeds a salaryView item from the registry factory", () => {
     const view = createDefaultSalaryView();
     expect(view.type).toBe("salaryView");
+    expect(view.accountId).toBeNull();
     const sheet = createDefaultSheet("Pay", null, { type: "salary" });
     expect(sheet.type).toBe("salary");
     expect(sheet.items[0].type).toBe("salaryView");
+  });
+
+  it("binds the salary sheet to an account via createDefaultSheet", () => {
+    const view = createDefaultSalaryView("acc-1");
+    expect(view.accountId).toBe("acc-1");
+    const sheet = createDefaultSheet("Pay", "acc-1", { type: "salary" });
+    const item = sheet.items[0];
+    expect(item.type).toBe("salaryView");
+    if (item.type === "salaryView") expect(item.accountId).toBe("acc-1");
   });
 
   it("round-trips salaries + employers and drops a dangling employerId", () => {

@@ -1,4 +1,3 @@
-import { updateAccountBudget } from "../sheet";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
 
@@ -46,15 +45,27 @@ export function reduceSheets(state: UserData, action: Action): UserData | null {
     return { ...state, activeSheetId: action.sheetId };
   }
   if (action.type === "setItemAccount") {
-    return {
-      ...state,
-      sheets: updateAccountBudget(
-        state.sheets,
-        action.sheetId,
-        action.itemId,
-        (item) => ({ ...item, accountId: action.accountId }),
-      ),
-    };
+    // Binds an account onto the sheet item that carries one — the
+    // per-account budget ledger (`accountBudget`) or the salary sheet's
+    // pay-account pointer (`salaryView`). Both flavours expose
+    // `accountId`; other item types ignore the action.
+    let changed = false;
+    const sheets = state.sheets.map((sheet) => {
+      if (sheet.id !== action.sheetId) return sheet;
+      let itemChanged = false;
+      const items = sheet.items.map((item) => {
+        if (item.id !== action.itemId) return item;
+        if (item.type !== "accountBudget" && item.type !== "salaryView")
+          return item;
+        if (item.accountId === action.accountId) return item;
+        itemChanged = true;
+        return { ...item, accountId: action.accountId };
+      });
+      if (!itemChanged) return sheet;
+      changed = true;
+      return { ...sheet, items };
+    });
+    return changed ? { ...state, sheets } : state;
   }
   return null;
 }

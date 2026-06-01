@@ -114,7 +114,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 57), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 58), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
@@ -230,9 +230,9 @@ src/
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (57) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (58) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v57 steps
+│   │   ├── modern.ts           # v31 → v58 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -522,9 +522,9 @@ type Sheet = {
   items: SheetItem[]; // typed blocks rendered inside the sheet
 };
 
-type SheetType = "budget" | "accounts" | "items";
+type SheetType = "budget" | "accounts" | "items" | "salary";
 type SheetGlyph = CategoryIcon; // reuses the glyph allowlist
-type SheetItem = AccountBudget | AccountsView | ItemsView;
+type SheetItem = AccountBudget | AccountsView | ItemsView | SalaryView;
 
 type AccountBudget = {
   id: string;
@@ -536,6 +536,11 @@ type AccountBudget = {
 
 type AccountsView = { id: string; type: "accountsView" }; // singleton dashboard
 type ItemsView = { id: string; type: "itemsView" }; // singleton owned-items catalog
+type SalaryView = {
+  id: string;
+  type: "salaryView";
+  accountId: string | null; // the pay account "Find salaries" scans, or null
+};
 
 type ColumnType =
   | "date"

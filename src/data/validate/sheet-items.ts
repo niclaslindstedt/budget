@@ -286,12 +286,29 @@ export function validateItemsView(
 export function validateSalaryView(
   raw: unknown,
   path: string,
+  ctx: SheetItemValidationContext,
 ): Result<SalaryView> {
   if (!isObject(raw)) return fail(path, "expected an object");
-  const { id, type } = raw;
+  const { id, type, accountId } = raw;
   if (typeof id !== "string" || id === "")
     return fail(`${path}.id`, "expected a non-empty string");
   if (type !== "salaryView")
     return fail(`${path}.type`, `expected "salaryView"`);
-  return { ok: true, value: { id, type: "salaryView" } };
+  // `accountId` is nullable so a salary sheet can exist before the user
+  // has bound a pay account. When it is a string, keep the "non-empty +
+  // must reference a known account" check so a typo or stale id is
+  // still caught — mirrors `validateAccountBudget`.
+  if (accountId !== null) {
+    if (typeof accountId !== "string" || accountId === "")
+      return fail(`${path}.accountId`, "expected a non-empty string or null");
+    if (!ctx.knownAccountIds.has(accountId))
+      return fail(
+        `${path}.accountId`,
+        `references unknown account "${accountId}"`,
+      );
+  }
+  return {
+    ok: true,
+    value: { id, type: "salaryView", accountId: accountId as string | null },
+  };
 }

@@ -15,6 +15,7 @@ import { newId } from "../../data/sheet";
 import type {
   Employer,
   Salary,
+  SalaryView,
   Settings,
   Sheet,
   UserData,
@@ -81,6 +82,13 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [sheet.id]);
+
+  // The account this salary sheet is bound to (where pay lands). The
+  // "Find salaries" walk scans its history directly; bound from the
+  // sheet's edit modal.
+  const salaryAccountId =
+    sheet.items.find((it): it is SalaryView => it.type === "salaryView")
+      ?.accountId ?? null;
 
   const employersById = useMemo(() => {
     const m = new Map<string, Employer>();
@@ -329,6 +337,7 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
 
       <SalaryDiscoveryModal
         open={findOpen}
+        accountId={salaryAccountId}
         accounts={data.accounts}
         history={data.history}
         employers={data.employers}

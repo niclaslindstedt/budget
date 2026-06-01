@@ -44,17 +44,19 @@ export type ItemsView = {
   type: "itemsView";
 };
 
-// Workspace-wide salary-history sheet item. The Salary sheet is a
-// singleton flavour that renders the global `UserData.salaries` /
-// `UserData.employers` collections (the user's salary over time)
-// rather than tracking a single account. Like `AccountsView` /
-// `ItemsView` it carries no data of its own — it reads the shared
-// collections — so the shape exists only so future per-sheet config
-// (default employer filter, gross/net toggle, …) lands here without
-// another migration.
+// Workspace-wide salary-history sheet item. The Salary sheet renders
+// the global `UserData.salaries` / `UserData.employers` collections
+// (the user's salary over time) rather than tracking a per-account
+// ledger. `accountId` ties the sheet to the bank account the user's
+// pay lands in — the "Find salaries" walk scans that account's history
+// instead of asking which account to scan every time, so multiple
+// salary sheets (one per person) each point at their own pay account.
+// Nullable so a salary sheet can exist before the user has bound a pay
+// account; the discovery walk then prompts them to set one.
 export type SalaryView = {
   id: string;
   type: "salaryView";
+  accountId: string | null;
 };
 
 // Discriminated union of everything a sheet can hold. `AccountBudget`

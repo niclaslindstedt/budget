@@ -68,11 +68,13 @@ const salary: SalaryCatalog = {
   confidenceMedium: "Kanske",
   confidenceLow: "Gissning",
 
-  // Account step
-  pickAccountTitle: "Vilket konto landar din lön på?",
+  // Intro step — lönekontot är en bladinställning, så detta bekräftar
+  // det kopplade kontot i stället för att välja ett.
+  scanAccountTitle: "Söker igenom {name}",
   pickAccountHint:
     "Vi söker igenom kontots hela bankhistorik efter troliga löner — även flera år bakåt, innan du märkte något.",
-  pickAccountPlaceholder: "Välj ett konto",
+  noBoundAccount:
+    "Det här lönebladet är inte kopplat till ett konto än. Öppna bladets ⋯-meny → Redigera blad och välj kontot din lön betalas in på.",
   noAccountsWithHistory:
     "Ingen importerad bankhistorik än. Importera ett kontoutdrag på Konto-sidan först.",
   discoverySummary: "{count} troliga lönemånader från {start} till {end}.",

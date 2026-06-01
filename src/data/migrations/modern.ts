@@ -434,6 +434,32 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       },
     };
   },
+
+  // v57 → v58: the Salary sheet now binds the bank account its pay
+  // lands in (`SalaryView.accountId`) so "Find salaries" scans that
+  // account directly instead of prompting for one each time. Seed every
+  // existing `salaryView` item with `accountId: null` (unbound) so the
+  // v58 validator accepts old exports; the user picks the account from
+  // the sheet's edit modal afterwards.
+  57: (v57) => {
+    const sheets = Array.isArray(v57.sheets) ? v57.sheets : [];
+    return {
+      ...v57,
+      version: 58,
+      sheets: sheets.map((raw) => {
+        if (!isObj(raw) || !Array.isArray(raw.items)) return raw;
+        return {
+          ...raw,
+          items: raw.items.map((rawItem) => {
+            if (!isObj(rawItem) || rawItem.type !== "salaryView")
+              return rawItem;
+            if ("accountId" in rawItem) return rawItem;
+            return { ...rawItem, accountId: null };
+          }),
+        };
+      }),
+    };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

@@ -68,11 +68,13 @@ const salary = {
   confidenceMedium: "Maybe",
   confidenceLow: "Guess",
 
-  // Account step
-  pickAccountTitle: "Which account does your salary land in?",
+  // Intro step — the salary account is a sheet setting, so this
+  // confirms the bound account rather than picking one.
+  scanAccountTitle: "Scanning {name}",
   pickAccountHint:
-    "We’ll scan that account’s full bank history for likely paychecks — even years back, before you tagged anything.",
-  pickAccountPlaceholder: "Pick an account",
+    "We’ll scan this account’s full bank history for likely paychecks — even years back, before you tagged anything.",
+  noBoundAccount:
+    "This salary sheet isn’t tied to an account yet. Open the sheet’s ⋯ menu → Edit sheet and pick the account your pay lands in.",
   noAccountsWithHistory:
     "No imported bank history yet. Import a statement on the Accounts page first.",
   discoverySummary: "{count} likely salary months from {start} to {end}.",

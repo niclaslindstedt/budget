@@ -33,6 +33,7 @@ import { todayIso } from "../../utils/date";
 import type { Action } from "../../data/reducer";
 import type {
   AccountBudget,
+  SalaryView,
   Settings,
   StoredUser,
   UserData,
@@ -399,7 +400,8 @@ export function UniversalModalHost(props: Props) {
         currentAccountId={
           sheetModal?.sheet
             ? (sheetModal.sheet.items.find(
-                (it): it is AccountBudget => it.type === "accountBudget",
+                (it): it is AccountBudget | SalaryView =>
+                  it.type === "accountBudget" || it.type === "salaryView",
               )?.accountId ?? null)
             : null
         }
