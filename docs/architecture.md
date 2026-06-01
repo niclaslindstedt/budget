@@ -200,7 +200,10 @@ src/
 │   │                           #   job-change segmentation)
 │   │   └── discovery.ts        # discoverSalaries — scans an account's full bank
 │   │                           #   history for the recurring paycheck; powers the
-│   │                           #   guided year-by-year Find salaries walk
+│   │                           #   guided year-by-year Find salaries walk.
+│   │                           #   summariseSalaryClusters rolls the months up
+│   │                           #   into pay periods between raises / employer
+│   │                           #   changes for the account-step summary
 │   ├── achievements/      # the gamified "guided tour" system
 │   │   ├── catalog.ts          # achievement definitions + unlock predicates
 │   │   ├── derive.ts           # diff (prev, next) state → newly-unlocked ids

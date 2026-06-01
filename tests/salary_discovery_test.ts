@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { discoverSalaries } from "../src/data/salary/discovery";
+import {
+  discoverSalaries,
+  summariseSalaryClusters,
+} from "../src/data/salary/discovery";
 import { SALARY_TYPE_ID } from "../src/data/salary/salary";
 import type { HistoryEntry } from "../src/data/types";
 
@@ -193,5 +196,64 @@ describe("salary discovery (bank-history scan)", () => {
     ];
     const { candidates } = discoverSalaries({ entries });
     expect(candidates).toHaveLength(0);
+  });
+});
+
+describe("salary clusters (pay periods between changes)", () => {
+  it("rolls a single steady run into one start cluster", () => {
+    const dates = monthlyDates(2021, 1, 24);
+    const entries = dates.map((d, i) => entry(`s${i}`, d, 30000, "ACME LÖN"));
+    const clusters = summariseSalaryClusters(discoverSalaries({ entries }));
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0]).toMatchObject({
+      startMonthKey: "2021-01",
+      endMonthKey: "2022-12",
+      spanMonths: 24,
+      paycheckCount: 24,
+      baselineNet: 30000,
+      transition: "start",
+    });
+  });
+
+  it("labels a sustained step up as a raise cluster", () => {
+    const dates = monthlyDates(2024, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`s${i}`, d, i < 6 ? 30000 : 35000, "ACME LÖN"),
+    );
+    const clusters = summariseSalaryClusters(discoverSalaries({ entries }));
+    expect(clusters.map((c) => c.transition)).toEqual(["start", "raise"]);
+    expect(clusters[1]).toMatchObject({
+      startMonthKey: "2024-07",
+      endMonthKey: "2024-12",
+      spanMonths: 6,
+      baselineNet: 35000,
+    });
+  });
+
+  it("labels a permanent drop as a likely employer change, not a raise", () => {
+    const dates = monthlyDates(2024, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`s${i}`, d, i < 6 ? 35000 : 30000, "ACME LÖN"),
+    );
+    const clusters = summariseSalaryClusters(discoverSalaries({ entries }));
+    expect(clusters.map((c) => c.transition)).toEqual(["start", "change"]);
+  });
+
+  it("counts the calendar span across a gap in the bank history", () => {
+    // A missed month (June) leaves 11 paychecks but a 12-month tenure.
+    const dates = monthlyDates(2023, 1, 12).filter(
+      (d) => !d.startsWith("2023-06"),
+    );
+    const entries = dates.map((d, i) => entry(`s${i}`, d, 30000, "ACME LÖN"));
+    const clusters = summariseSalaryClusters(discoverSalaries({ entries }));
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].paycheckCount).toBe(11);
+    expect(clusters[0].spanMonths).toBe(12);
+  });
+
+  it("returns nothing when there are no candidates", () => {
+    expect(
+      summariseSalaryClusters({ candidates: [], boundaries: [], raises: [] }),
+    ).toEqual([]);
   });
 });
