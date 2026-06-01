@@ -18,7 +18,7 @@ import type {
   Subtype,
   UserData,
 } from "../../data/types";
-import { useResetOnOpen } from "../../hooks";
+import { useResetOnOpen, useToast } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { indexById } from "../../utils/indexById";
 import { formatAmount, formatDate } from "../../utils/format";
@@ -91,6 +91,7 @@ export function ItemFinderModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const toast = useToast();
 
   // The candidate list is recomputed whenever the modal opens (cheap —
   // a single pass over history). `skipped` is session-local: a skipped
@@ -229,13 +230,17 @@ export function ItemFinderModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
                             setSkipped((prev) => {
                               const next = new Set(prev);
                               next.add(c.entryId);
                               return next;
-                            })
-                          }
+                            });
+                            toast.push({
+                              kind: "info",
+                              message: t("items.find.skippedToast"),
+                            });
+                          }}
                           aria-label={t("items.find.skip")}
                           title={t("items.find.skip")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-accent hover:text-accent"
@@ -248,7 +253,13 @@ export function ItemFinderModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onExcludeSimilar(c.description)}
+                          onClick={() => {
+                            onExcludeSimilar(c.description);
+                            toast.push({
+                              kind: "success",
+                              message: t("items.find.excludedToast"),
+                            });
+                          }}
                           aria-label={t("items.find.excludeSimilar")}
                           title={t("items.find.excludeSimilarHint")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"
@@ -257,7 +268,13 @@ export function ItemFinderModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onIgnore(c.entryId)}
+                          onClick={() => {
+                            onIgnore(c.entryId);
+                            toast.push({
+                              kind: "success",
+                              message: t("items.find.ignoredToast"),
+                            });
+                          }}
                           aria-label={t("items.find.ignore")}
                           title={t("items.find.ignore")}
                           className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"

@@ -91,6 +91,10 @@ const items: ItemsCatalog = {
     excludeSimilarHint:
       "Uteslut hädanefter alla transaktioner med liknande beskrivning",
     linkedCount: "{n} kopplade",
+    skippedToast: "Överhoppad — vi föreslår den igen vid nästa sökning",
+    ignoredToast: "Ignorerad — föreslår inte den här transaktionen igen",
+    excludedToast:
+      "Utesluter liknande transaktioner — ångra i Inställningar → Saker",
   },
 };
 

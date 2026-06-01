@@ -92,6 +92,9 @@ const items = {
     excludeSimilarHint:
       "Exclude every transaction with a similar description from now on",
     linkedCount: "{n} linked",
+    skippedToast: "Skipped — we'll suggest it again next scan",
+    ignoredToast: "Ignored — won't suggest this transaction again",
+    excludedToast: "Excluding similar transactions — undo in Settings → Items",
   },
 } as const;
 
