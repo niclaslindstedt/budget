@@ -5,7 +5,11 @@ import { roleForDate, salaryGross, salaryTax } from "../../data/salary/salary";
 import type { Employer, Salary, Settings } from "../../data/types";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
-import { formatBalance, formatMonthLabel } from "../../utils/format";
+import {
+  formatBalance,
+  formatMonthLabel,
+  formatMonthName,
+} from "../../utils/format";
 import { CategoryIconGlyph } from "../icons";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 
@@ -113,7 +117,7 @@ function SalaryRowImpl({
         </td>
       )}
       <td className="px-2.5 py-2 align-middle font-mono whitespace-nowrap text-fg-bright">
-        {formatMonthLabel(salary.date.slice(0, 7), lang)}
+        {formatMonthName(salary.date.slice(0, 7), lang)}
       </td>
       <td className="px-2.5 py-2 align-middle">
         {employer ? (
