@@ -12,16 +12,20 @@ export function ItemsTab({
   draft,
   data,
   ignoredItemEntryCount,
+  itemFindExclusionCount,
   onUpdate,
   onClearIgnoredItemEntries,
+  onClearItemFindExclusions,
 }: {
   draft: Settings;
   // Whole workspace — the optional scan allow-list lists preset +
   // user-added entry types via `allTypes`.
   data: UserData;
   ignoredItemEntryCount: number;
+  itemFindExclusionCount: number;
   onUpdate: Update;
   onClearIgnoredItemEntries: () => void;
+  onClearItemFindExclusions: () => void;
 }) {
   const t = useT();
   const types = useMemo(() => allTypes(data), [data]);
@@ -126,6 +130,27 @@ export function ItemsTab({
           {ignoredItemEntryCount === 0
             ? t("settings.items.ignoredNone")
             : t("settings.items.ignoredHint", { n: ignoredItemEntryCount })}
+        </p>
+      </Section>
+
+      <Section title={t("settings.items.excludedTitle")}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-fg">
+            {t("settings.items.excludedLabel")}
+          </span>
+          <button
+            type="button"
+            onClick={onClearItemFindExclusions}
+            disabled={itemFindExclusionCount === 0}
+            className="cursor-pointer rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("settings.items.clearExcluded")}
+          </button>
+        </div>
+        <p className="text-xs text-muted">
+          {itemFindExclusionCount === 0
+            ? t("settings.items.excludedNone")
+            : t("settings.items.excludedHint", { n: itemFindExclusionCount })}
         </p>
       </Section>
     </>

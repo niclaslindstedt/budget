@@ -24,7 +24,7 @@ export function freshUserData(): UserData {
   // 2000-unit floor.
   const currency = detectInitialCurrency();
   return {
-    version: 55,
+    version: 56,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
@@ -48,6 +48,7 @@ export function freshUserData(): UserData {
     recurringDismissals: [],
     transferCollapseDismissals: [],
     ignoredItemEntryIds: [],
+    itemFindExclusionPatterns: [],
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},

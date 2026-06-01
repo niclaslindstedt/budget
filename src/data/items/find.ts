@@ -5,11 +5,16 @@
 //
 // Pure: no React, no localStorage, no side effects. Fed the whole
 // `UserData` plus the resolved `Settings`, it emits a sorted list of
-// candidates the modal walks one at a time. The "ignore" allowlist
-// (`UserData.ignoredItemEntryIds`) is read here so an entry the user
-// decided isn't an item purchase never resurfaces.
+// candidates the modal walks one at a time. Three persisted opt-outs are
+// honoured here so a dismissed entry never resurfaces: the per-entry
+// "ignore" allowlist (`UserData.ignoredItemEntryIds`), the
+// normalised-description "exclude similar" patterns
+// (`UserData.itemFindExclusionPatterns`), and the hard `NEVER_ITEM_TYPE_IDS`
+// type denylist (rent, utilities, subscriptions — never resaleable goods).
 
 import { resolveEntryLabels } from "../budget/synthesis";
+import { normaliseDescription } from "../description-normaliser";
+import { NEVER_ITEM_TYPE_IDS } from "../presets/types";
 import type { Settings, UserData } from "../types";
 
 export type ItemPurchaseCandidate = {
@@ -55,6 +60,12 @@ export function findItemPurchaseCandidates(
       ? new Set(settings.itemFindTypeIds)
       : null;
   const ignored = new Set(data.ignoredItemEntryIds);
+  // Normalised-description keys the user excluded via "Exclude similar".
+  // An empty list short-circuits the per-entry normalise call below.
+  const excludedPatterns =
+    data.itemFindExclusionPatterns.length > 0
+      ? new Set(data.itemFindExclusionPatterns)
+      : null;
 
   const out: ItemPurchaseCandidate[] = [];
   for (const [accountId, entries] of Object.entries(data.history)) {
@@ -75,9 +86,16 @@ export function findItemPurchaseCandidates(
         data.companies,
         data.types,
       );
+      // Hard floor: types that are never a resaleable physical good
+      // (rent, utilities, subscriptions, …) are dropped regardless of
+      // the allow-list, so they can't clutter a scan-every-type run.
+      if (typeId !== null && NEVER_ITEM_TYPE_IDS.has(typeId)) continue;
       if (typeFilter && (typeId === null || !typeFilter.has(typeId))) {
         continue;
       }
+      // Drop entries whose resolved description matches a "similar"
+      // exclusion the user created (recurring charges, budget transfers).
+      if (excludedPatterns?.has(normaliseDescription(description))) continue;
 
       const candidate: ItemPurchaseCandidate = {
         accountId,

@@ -68,12 +68,15 @@ const items = {
     menu: "Find items",
     title: "Find items",
     intro:
-      "These transactions look like item purchases. Add line items to catalogue what you bought, skip for now, or ignore an entry to stop suggesting it.",
+      "These transactions look like item purchases. Add line items to catalogue what you bought, skip for now, ignore a single entry, or exclude every similar transaction at once.",
     empty:
       "No likely item purchases found. Adjust the amount or type filter in Settings → Items, or import more history.",
     addLineItems: "Add line items",
     skip: "Skip for now",
     ignore: "Ignore this transaction",
+    excludeSimilar: "Exclude similar transactions",
+    excludeSimilarHint:
+      "Exclude every transaction with a similar description from now on",
     linkedCount: "{n} linked",
   },
 } as const;

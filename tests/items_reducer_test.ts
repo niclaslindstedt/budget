@@ -147,6 +147,37 @@ describe("setRowLineItems", () => {
   });
 });
 
+describe("excludeSimilarItemEntries", () => {
+  it("appends the normalised description key, dedups, and ignores meaningless ones", () => {
+    const data = seed([]);
+    // A real merchant label collapses to a meaningful key and is stored.
+    let next = reducer(data, {
+      type: "excludeSimilarItemEntries",
+      description: "Brf Spillkråkan 3  2026-04-24",
+    });
+    expect(next.itemFindExclusionPatterns).toEqual(["brf spillkråkan 3"]);
+    // A cosmetic variant of the same charge collapses to the same key —
+    // no duplicate appended.
+    next = reducer(next, {
+      type: "excludeSimilarItemEntries",
+      description: "BRF SPILLKRÅKAN 3",
+    });
+    expect(next.itemFindExclusionPatterns).toEqual(["brf spillkråkan 3"]);
+    // A description that normalises to nothing meaningful is a no-op.
+    const after = reducer(next, {
+      type: "excludeSimilarItemEntries",
+      description: "12",
+    });
+    expect(after).toBe(next);
+  });
+
+  it("clears every excluded pattern", () => {
+    const data = seed([], { itemFindExclusionPatterns: ["brf spillkråkan 3"] });
+    const next = reducer(data, { type: "clearItemFindExclusions" });
+    expect(next.itemFindExclusionPatterns).toEqual([]);
+  });
+});
+
 describe("validation", () => {
   it("drops a line-item link whose item was deleted, drops a dangling item.subtypeId, and rejects a subtype with an unknown type", () => {
     // Dangling line-item itemId → link dropped.

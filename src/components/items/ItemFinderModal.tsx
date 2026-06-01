@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Boxes, Check, Package, SkipForward, X } from "lucide-react";
+import { Boxes, CopyX, Package, Plus, SkipForward, X } from "lucide-react";
 
 import {
   findItemPurchaseCandidates,
@@ -34,6 +34,10 @@ type Props = {
   onClose: () => void;
   // Persist a "never suggest this entry again" decision.
   onIgnore: (entryId: string) => void;
+  // Persist a "never suggest anything that looks like this" decision —
+  // the candidate's resolved description, normalised to a match key, so
+  // every similar charge (past + future) drops out of the scan.
+  onExcludeSimilar: (description: string) => void;
   // Commit the user's line-item links for a history entry. Mirrors the
   // historic-row branch of `BudgetModalHost`'s `onLineItemsSubmit` —
   // routed by the host to `linkLineItemsToHistoryEntry`.
@@ -78,6 +82,7 @@ export function ItemFinderModal({
   settings,
   onClose,
   onIgnore,
+  onExcludeSimilar,
   onLinkLineItems,
   onCreateItem,
   onCreateSubtype,
@@ -217,9 +222,9 @@ export function ItemFinderModal({
                         <button
                           type="button"
                           onClick={() => setEditing(c)}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded border border-accent bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent hover:bg-accent/20"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-xs font-bold text-page-bg hover:opacity-90"
                         >
-                          <Check size={12} aria-hidden focusable={false} />
+                          <Plus size={13} aria-hidden focusable={false} />
                           {t("items.find.addLineItems")}
                         </button>
                         <button
@@ -240,6 +245,15 @@ export function ItemFinderModal({
                             aria-hidden
                             focusable={false}
                           />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onExcludeSimilar(c.description)}
+                          aria-label={t("items.find.excludeSimilar")}
+                          title={t("items.find.excludeSimilarHint")}
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-line text-muted hover:border-danger hover:text-danger"
+                        >
+                          <CopyX size={12} aria-hidden focusable={false} />
                         </button>
                         <button
                           type="button"

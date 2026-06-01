@@ -424,6 +424,12 @@ const settings: SettingsCatalog = {
     ignoredNone: "Inga ignorerade än.",
     ignoredHint: "{n} ignorerade. Rensa listan för att se dem igen.",
     clearIgnored: "Rensa lista",
+    excludedTitle: "Uteslutna mönster",
+    excludedLabel: "Beskrivningar du uteslutit med ”Uteslut liknande”",
+    excludedNone: "Inga mönster uteslutna än.",
+    excludedHint:
+      "{n} uteslutna. Rensa listan för att skanna matchande transaktioner igen.",
+    clearExcluded: "Rensa lista",
   },
   developer: {
     section: "Utvecklare",

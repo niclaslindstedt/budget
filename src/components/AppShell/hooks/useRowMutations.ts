@@ -72,6 +72,7 @@ type Result = {
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
   onClearIgnoredItemEntries: () => void;
+  onClearItemFindExclusions: () => void;
   // Flip the `isTransfer` flag on a budget row, or on the underlying
   // `HistoryEntry` for a synthesized history row.
   onToggleRowTransfer: (row: Row) => void;
@@ -236,6 +237,10 @@ export function useRowMutations({
   );
   const onClearIgnoredItemEntries = useCallback(
     () => dispatch({ type: "clearIgnoredItemEntries" }),
+    [dispatch],
+  );
+  const onClearItemFindExclusions = useCallback(
+    () => dispatch({ type: "clearItemFindExclusions" }),
     [dispatch],
   );
 
@@ -452,6 +457,7 @@ export function useRowMutations({
     onClearRecurringDismissals,
     onClearTransferDismissals,
     onClearIgnoredItemEntries,
+    onClearItemFindExclusions,
     onToggleRowTransfer,
     onEditHistoryRequest,
     onUpdateHistoryEntry,

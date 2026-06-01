@@ -179,6 +179,18 @@ export type Action =
     }
   | { type: "clearIgnoredItemEntries" }
   | {
+      // Persist an "exclude similar" decision from the Items sheet's
+      // "Find items" scan. `description` is the candidate's resolved
+      // label; the reducer normalises it to a key (the same lossy
+      // `normaliseDescription` transform recurring detection uses) and
+      // appends it to `itemFindExclusionPatterns`, so every entry whose
+      // description collapses to that key — past and future — drops out
+      // of the scan in one tap. Cleared via `clearItemFindExclusions`.
+      type: "excludeSimilarItemEntries";
+      description: string;
+    }
+  | { type: "clearItemFindExclusions" }
+  | {
       // Save handler from the SettingsModal. `draft` is the flat
       // effective view the user edited; `scope` is which device
       // bucket they edited from (mobile when their viewport is below

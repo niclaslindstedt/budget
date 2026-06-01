@@ -33,7 +33,7 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 55;
+  version: 56;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -148,6 +148,14 @@ export type UserData = {
   // isn't an item purchase never resurfaces. Same shape and contract as
   // `recurringDismissals`; cleared via the Items settings tab.
   ignoredItemEntryIds: string[];
+  // Normalised-description keys the user excluded from the Items sheet's
+  // "Find items" scan via the "Exclude similar" button. Unlike
+  // `ignoredItemEntryIds` (one entry at a time), each key matches every
+  // entry whose resolved description collapses to it under
+  // `normaliseDescription` — past and future imports alike — so a
+  // recurring charge (rent, a budget transfer) is dismissed in one tap.
+  // Cleared via the Items settings tab.
+  itemFindExclusionPatterns: string[];
   // Wildcard-pattern overlays for synthesized history rows. Each
   // rule is created from the history-row pattern button; the rule
   // labels every matching entry (past + future imports) with the

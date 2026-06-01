@@ -315,6 +315,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onClearRecurringDismissals,
     onClearTransferDismissals,
     onClearIgnoredItemEntries,
+    onClearItemFindExclusions,
     onToggleRowTransfer,
     onEditHistoryRequest,
     onUpdateHistoryEntry,
@@ -851,6 +852,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           onClearRecurringDismissals={onClearRecurringDismissals}
           onClearTransferDismissals={onClearTransferDismissals}
           onClearIgnoredItemEntries={onClearIgnoredItemEntries}
+          onClearItemFindExclusions={onClearItemFindExclusions}
           onSaveSettings={onSaveSettings}
           onImport={onImport}
         />
