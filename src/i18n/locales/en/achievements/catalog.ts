@@ -132,6 +132,12 @@ const catalog = {
     learnMore:
       "When the 25th lands on a weekend or holiday and the bank pays out a few days early, the row (plus every transfer and expense dated the same day) shifts into the next fiscal month — so April doesn't accidentally absorb May's salary. Set the real payday once and the cascade applies retroactively to every occurrence in the series.",
   },
+  showMeTheMoney: {
+    name: "Show Me the Money",
+    condition: "Add your first salary on the Salary sheet.",
+    learnMore:
+      "Find salaries scans a chosen account's full bank history — even years back, before you tagged anything — finds your recurring paycheck, establishes a baseline, and walks you through it year by year so you can accept, edit, or skip each month.",
+  },
   secondDraft: {
     name: "Second Draft",
     condition: "Edit a recurring series.",

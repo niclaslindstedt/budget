@@ -195,8 +195,12 @@ src/
 │   │                           #   for likely item purchases (Find items modal)
 │   ├── salary/
 │   │   ├── salary.ts           # brutto/netto/tax algebra + role-title resolution
-│   │   └── detection.ts        # detectSalaries (one candidate per month, prefers
-│   │                           #   recurring income; job-change segmentation)
+│   │   ├── detection.ts        # detectSalaries (budget-row scoring, one candidate
+│   │                           #   per month) + assignEmployerGroups (shared
+│   │                           #   job-change segmentation)
+│   │   └── discovery.ts        # discoverSalaries — scans an account's full bank
+│   │                           #   history for the recurring paycheck; powers the
+│   │                           #   guided year-by-year Find salaries walk
 │   ├── achievements/      # the gamified "guided tour" system
 │   │   ├── catalog.ts          # achievement definitions + unlock predicates
 │   │   ├── derive.ts           # diff (prev, next) state → newly-unlocked ids

@@ -48,4 +48,12 @@ export type Salary = {
   // "Find salaries" flow. Used to dedupe so the same paycheck isn't
   // offered for adding twice.
   sourceRowId?: string;
+  // The bank `HistoryEntry` this salary was discovered from, when added
+  // via the explorative "Find salaries" walk that scans an account's
+  // imported history. Used to dedupe so the same paycheck isn't offered
+  // twice. Mirrors `sourceRowId` for the history-sourced path — at most
+  // one of the two is set, depending on which detector produced the
+  // candidate. Best-effort: bank entry ids aren't stable across
+  // re-imports, so the page pairs this with a month+net dedupe.
+  sourceHistoryId?: string;
 };
