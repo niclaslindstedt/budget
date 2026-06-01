@@ -660,6 +660,95 @@
       display: block;
       width: 100%;
     }
+
+    /* Salary table — per-year paycheck ledger. Mirrors the items
+       sheet's two-button swipe strip (edit / delete): desktop keeps the
+       inline icons; mobile converts the table to a block / per-row grid
+       so `position: relative` on `<tr>` establishes a containing block
+       the absolutely-positioned action cell anchors to. Without the grid
+       conversion the action cell auto-places into a non-existent column
+       track and wraps to a second row. The title / tax / days columns
+       drop on mobile (Tailwind `md:table-cell`); their landscape re-show
+       is overridden unlayered in chrome.css, mirroring the accounts bank
+       cell. */
+    .salary-table,
+    .salary-table > thead,
+    .salary-table > tbody,
+    .salary-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .salary-table > thead > tr,
+    .salary-table > tbody > tr {
+      /* month · flex employer · gross · net, each money column sized to
+         its content with a 56px floor. The title / tax / days columns
+         drop on mobile so only four tracks are needed; the action cell
+         sits outside the grid as an absolute overlay so it reserves no
+         track. */
+      display: grid;
+      grid-template-columns:
+        minmax(64px, max-content) minmax(0, 1fr)
+        minmax(56px, max-content) minmax(56px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    /* In select mode, prepend a 40px checkbox column so the rest of the
+       layout doesn't reflow (mirrors the budget sheet's `.is-selecting`). */
+    .salary-table.is-selecting > thead > tr,
+    .salary-table.is-selecting > tbody > tr {
+      grid-template-columns:
+        40px minmax(64px, max-content) minmax(0, 1fr)
+        minmax(56px, max-content) minmax(56px, max-content);
+    }
+    .salary-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .salary-table th,
+    .salary-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .salary-table th > *,
+    .salary-table td > * {
+      width: 100%;
+    }
+    .salary-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .salary-table > tbody > tr.is-swiped > td:not(.salary-action-cell) {
+      transform: translateX(-96px);
+    }
+    .salary-table > thead > tr > .salary-action-cell,
+    .salary-table > tbody > tr > .salary-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* 96px — two buttons (edit / delete) at a ~48px tap target each;
+         matches the cell's desktop `w-24` so the strip lines up. */
+      width: 96px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .salary-table > tbody > tr.is-swiped > .salary-action-cell {
+      transform: translateX(0);
+    }
+    .salary-table > tbody > tr > .salary-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .salary-table > tbody > tr > .salary-action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
   }
 
   /* Month-header rows pin below the sticky app header + column-header

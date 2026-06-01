@@ -91,7 +91,11 @@ export function SalaryYearTable({
         {year}
       </h3>
       <div className="overflow-clip rounded border border-line bg-surface">
-        <table className="salary-table w-full border-collapse text-sm md:text-[13px]">
+        <table
+          className={`salary-table w-full border-collapse text-sm md:text-[13px]${
+            selectMode ? " is-selecting" : ""
+          }`}
+        >
           <thead>
             <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
               {selectMode && (
@@ -160,7 +164,7 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="hidden px-2.5 py-2 text-left sm:table-cell"
+                className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
                 aria-label={t("salary.title")}
               >
                 <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -190,7 +194,7 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="hidden px-2.5 py-2 text-right sm:table-cell"
+                className="salary-secondary-cell hidden px-2.5 py-2 text-right md:table-cell"
                 aria-label={t("salary.tax")}
               >
                 <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
@@ -220,7 +224,7 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="hidden px-2.5 py-2 text-left md:table-cell"
+                className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
                 aria-label={t("salary.days")}
               >
                 <span className="inline-flex items-center gap-1.5 md:gap-2">
@@ -235,7 +239,7 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="w-24 px-2.5 py-2"
+                className="salary-action-cell w-24 px-2.5 py-2"
                 aria-label={t("salary.actions")}
               >
                 <span className="flex items-center justify-center gap-1.5 md:gap-2">
@@ -276,16 +280,16 @@ export function SalaryYearTable({
                 {t("salary.yearTotal")}
               </td>
               <td className="px-2.5 py-2" />
-              <td className="hidden px-2.5 py-2 sm:table-cell" />
+              <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
               <td className="px-2.5 py-2 text-right tabular-nums">
                 {formatBalance(totals.gross, settings)}
               </td>
-              <td className="hidden px-2.5 py-2 sm:table-cell" />
+              <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
               <td className="px-2.5 py-2 text-right tabular-nums">
                 {formatBalance(totals.net, settings)}
               </td>
-              <td className="hidden px-2.5 py-2 md:table-cell" />
-              <td className="px-2.5 py-2" />
+              <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
+              <td className="salary-action-cell px-2.5 py-2" />
             </tr>
           </tbody>
         </table>

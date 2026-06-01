@@ -12,6 +12,7 @@ import type {
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { formatMonthLabel } from "../../utils/format";
+import { ActiveRowProvider } from "../ActiveRowProvider";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
@@ -169,129 +170,138 @@ export function SalaryPage({
   const hasSalaries = data.salaries.length > 0;
 
   return (
-    <section>
-      <header className="mb-2 flex items-center justify-center md:mb-6">
-        <h2 className="m-0">
-          <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
-        </h2>
-      </header>
+    <ActiveRowProvider>
+      <section>
+        <header className="mb-2 flex items-center justify-center md:mb-6">
+          <h2 className="m-0">
+            <SheetTitleMenu sheetName={sheet.name} items={titleMenuItems} />
+          </h2>
+        </header>
 
-      <section className="mb-4" data-sheet-content>
-        {!hasSalaries ? (
-          <div className="flex flex-col items-center gap-4 rounded border border-line bg-surface px-4 py-8 text-center">
-            <p className="m-0 text-sm text-muted">{t("salary.noSalaries")}</p>
-            <button
-              type="button"
-              onClick={() => setFindOpen(true)}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
-            >
-              <Search size={16} aria-hidden focusable={false} />
-              {t("salary.findSalaries")}
-            </button>
-          </div>
-        ) : (
-          yearGroups.map(([year, salaries]) => (
-            <SalaryYearTable
-              key={year}
-              year={year}
-              salaries={salaries}
-              employersById={employersById}
-              settings={settings}
-              selectMode={selectMode}
-              selectedIds={selectedIds}
-              onToggleSelect={onToggleSelect}
-              onToggleSelectYear={onToggleSelectMany}
-              onEdit={(salaryId) => {
-                const s = data.salaries.find((x) => x.id === salaryId);
-                if (s) setEditing(s);
-              }}
-              onDelete={(salary) => setPendingDelete(salary)}
-            />
-          ))
-        )}
-      </section>
+        <section className="mb-4" data-sheet-content>
+          {!hasSalaries ? (
+            <div className="flex flex-col items-center gap-4 rounded border border-line bg-surface px-4 py-8 text-center">
+              <p className="m-0 text-sm text-muted">{t("salary.noSalaries")}</p>
+              <button
+                type="button"
+                onClick={() => setFindOpen(true)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
+              >
+                <Search size={16} aria-hidden focusable={false} />
+                {t("salary.findSalaries")}
+              </button>
+            </div>
+          ) : (
+            yearGroups.map(([year, salaries]) => (
+              <SalaryYearTable
+                key={year}
+                year={year}
+                salaries={salaries}
+                employersById={employersById}
+                settings={settings}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                onToggleSelect={onToggleSelect}
+                onToggleSelectYear={onToggleSelectMany}
+                onEdit={(salaryId) => {
+                  const s = data.salaries.find((x) => x.id === salaryId);
+                  if (s) setEditing(s);
+                }}
+                onDelete={(salary) => setPendingDelete(salary)}
+              />
+            ))
+          )}
+        </section>
 
-      <SalaryEditModal
-        open={editing !== null}
-        salary={editing}
-        employers={data.employers}
-        settings={settings}
-        onClose={() => setEditing(null)}
-        onSave={handleSaveSalary}
-        onCreateEmployer={handleCreateEmployer}
-      />
+        <SalaryEditModal
+          open={editing !== null}
+          salary={editing}
+          employers={data.employers}
+          settings={settings}
+          onClose={() => setEditing(null)}
+          onSave={handleSaveSalary}
+          onCreateEmployer={handleCreateEmployer}
+        />
 
-      <SalaryBulkEditModal
-        open={bulkEditOpen}
-        count={selectedIds.size}
-        employers={data.employers}
-        onClose={onCloseBulkEdit}
-        onApply={onApplyBulk}
-      />
+        <SalaryBulkEditModal
+          open={bulkEditOpen}
+          count={selectedIds.size}
+          employers={data.employers}
+          onClose={onCloseBulkEdit}
+          onApply={onApplyBulk}
+        />
 
-      <SalaryDiscoveryModal
-        open={findOpen}
-        accountId={salaryAccountId}
-        accounts={data.accounts}
-        history={data.history}
-        employers={data.employers}
-        settings={settings}
-        excludeHistoryIds={excludeHistoryIds}
-        onClose={() => setFindOpen(false)}
-        onAdd={handleAddDiscovered}
-        onCreateEmployer={handleCreateEmployer}
-      />
+        <SalaryDiscoveryModal
+          open={findOpen}
+          accountId={salaryAccountId}
+          accounts={data.accounts}
+          history={data.history}
+          employers={data.employers}
+          settings={settings}
+          excludeHistoryIds={excludeHistoryIds}
+          onClose={() => setFindOpen(false)}
+          onAdd={handleAddDiscovered}
+          onCreateEmployer={handleCreateEmployer}
+        />
 
-      <EmployerManageModal
-        open={employersOpen}
-        employers={data.employers}
-        onClose={() => setEmployersOpen(false)}
-        onCreate={(employer) => dispatch({ type: "createEmployer", employer })}
-        onUpdate={(employerId, patch) =>
-          dispatch({ type: "updateEmployer", employerId, patch })
-        }
-        onDelete={(employerId) =>
-          dispatch({ type: "deleteEmployer", employerId })
-        }
-      />
+        <EmployerManageModal
+          open={employersOpen}
+          employers={data.employers}
+          onClose={() => setEmployersOpen(false)}
+          onCreate={(employer) =>
+            dispatch({ type: "createEmployer", employer })
+          }
+          onUpdate={(employerId, patch) =>
+            dispatch({ type: "updateEmployer", employerId, patch })
+          }
+          onDelete={(employerId) =>
+            dispatch({ type: "deleteEmployer", employerId })
+          }
+        />
 
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title={t("salary.deleteTitle")}
-        description={
-          pendingDelete
-            ? t("salary.deleteConfirm", {
-                month: formatMonthLabel(pendingDelete.date.slice(0, 7), lang),
-              })
-            : null
-        }
-        actions={[
-          {
-            label: t("salary.delete"),
-            tone: "danger",
-            onSelect: () => {
-              if (pendingDelete)
-                dispatch({ type: "deleteSalary", salaryId: pendingDelete.id });
-              setPendingDelete(null);
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          title={t("salary.deleteTitle")}
+          description={
+            pendingDelete
+              ? t("salary.deleteConfirm", {
+                  month: formatMonthLabel(pendingDelete.date.slice(0, 7), lang),
+                })
+              : null
+          }
+          actions={[
+            {
+              label: t("salary.delete"),
+              tone: "danger",
+              onSelect: () => {
+                if (pendingDelete)
+                  dispatch({
+                    type: "deleteSalary",
+                    salaryId: pendingDelete.id,
+                  });
+                setPendingDelete(null);
+              },
             },
-          },
-        ]}
-        onCancel={() => setPendingDelete(null)}
-      />
+          ]}
+          onCancel={() => setPendingDelete(null)}
+        />
 
-      <ConfirmDialog
-        open={bulkDeleteOpen}
-        title={t("salary.deleteTitle")}
-        description={t("salary.selected", { count: String(selectedIds.size) })}
-        actions={[
-          {
-            label: t("salary.delete"),
-            tone: "danger",
-            onSelect: onConfirmBulkDelete,
-          },
-        ]}
-        onCancel={onCloseBulkDelete}
-      />
-    </section>
+        <ConfirmDialog
+          open={bulkDeleteOpen}
+          title={t("salary.deleteTitle")}
+          description={t("salary.selected", {
+            count: String(selectedIds.size),
+          })}
+          actions={[
+            {
+              label: t("salary.delete"),
+              tone: "danger",
+              onSelect: onConfirmBulkDelete,
+            },
+          ]}
+          onCancel={onCloseBulkDelete}
+        />
+      </section>
+    </ActiveRowProvider>
   );
 }
