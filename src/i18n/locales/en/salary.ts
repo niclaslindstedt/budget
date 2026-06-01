@@ -78,14 +78,14 @@ const salary = {
     "{count} likely salary months from {start} to {end}, around {amount} each.",
   discoveryNone: "No recurring salary found in this account’s history.",
 
-  // Year baseline step
+  // Year review step
   yearStepTitle: "Salaries in {year}",
   yearMonthsOne: "{count} month detected",
   yearMonthsOther: "{count} months detected",
-  yearFlagged: "{count} look off the baseline",
-  yearBaselineLabel: "Baseline (typical monthly net)",
-  yearBaselineHint:
-    "The usual paycheck this year. Months that differ are flagged so you can give them a closer look.",
+  yearFlagged: "{count} look unusual",
+  offBaselineTag: "Unusual",
+  yearReviewHint:
+    "These are the paychecks we found this year. Accept them all, or review each to edit the amount, tag an employer, or skip it.",
   reviewMonths: "Review each",
   acceptYearOne: "Accept {count}",
   acceptYearOther: "Accept all {count}",
@@ -94,7 +94,7 @@ const salary = {
   monthProgress: "{index} of {total}",
   fromBank: "From your bank",
   offAverageHint:
-    "This differs from the baseline — a bonus, leave, or a raise?",
+    "This differs from your usual paycheck — a bonus, leave, or a raise?",
   accept: "Accept",
   skip: "Skip",
   alreadyAccepted: "Accepted — accept again to update.",
@@ -130,6 +130,7 @@ const salary = {
   // Employer picker
   pickEmployer: "Pick employer",
   newEmployer: "New employer",
+  duplicateEmployer: "An employer with this name already exists.",
 } as const;
 
 export type SalaryCatalog = Widen<typeof salary>;

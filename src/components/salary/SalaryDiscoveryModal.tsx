@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { Fragment, useEffect, useMemo, useReducer, useState } from "react";
 import { Search } from "lucide-react";
 
 import {
@@ -38,6 +38,7 @@ type Props = {
   excludeHistoryIds: ReadonlySet<string>;
   onClose: () => void;
   onAdd: (salaries: Salary[]) => void;
+  onCreateEmployer: (employer: Employer) => void;
 };
 
 // One stop in the guided walk: a per-year baseline checkpoint or a
@@ -47,7 +48,11 @@ type Step =
   | {
       kind: "year";
       year: string;
+      // Internal reference only: the typical monthly net for the year,
+      // used to flag the months that look off. Never shown as an
+      // editable field and never written onto any salary.
       baseline: number;
+      months: DiscoveredSalary[];
       monthCount: number;
       flaggedCount: number;
       nextYearStep: number; // index of the next year step (or steps.length)
@@ -74,6 +79,7 @@ export function SalaryDiscoveryModal({
   excludeHistoryIds,
   onClose,
   onAdd,
+  onCreateEmployer,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -85,9 +91,6 @@ export function SalaryDiscoveryModal({
     new Map(),
   );
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
-  const [yearBaselineOverrides, setYearBaselineOverrides] = useState<
-    ReadonlyMap<string, number>
-  >(new Map());
   const [form, dispatchForm] = useReducer(
     salaryDiscoveryReducer,
     EMPTY_DISCOVERY_FORM,
@@ -101,7 +104,6 @@ export function SalaryDiscoveryModal({
     setStepIndex(0);
     setAccepted(new Map());
     setSkipped(new Set());
-    setYearBaselineOverrides(new Map());
   }, [open]);
 
   // Only accounts with imported history can be scanned.
@@ -133,10 +135,7 @@ export function SalaryDiscoveryModal({
     let ordinal = 0;
     for (const year of years) {
       const months = byYear.get(year)!;
-      const baseline =
-        yearBaselineOverrides.get(year) ??
-        discovery.baselineByYear.get(year) ??
-        0;
+      const baseline = discovery.baselineByYear.get(year) ?? 0;
       const flaggedCount = months.filter(
         (c) => !within1Pct(c.net, baseline),
       ).length;
@@ -145,6 +144,7 @@ export function SalaryDiscoveryModal({
         kind: "year",
         year,
         baseline,
+        months,
         monthCount: months.length,
         flaggedCount,
         nextYearStep: 0, // patched below once the year's months are in
@@ -157,7 +157,7 @@ export function SalaryDiscoveryModal({
         out.length;
     }
     return { steps: out, totalMonths: ordinal };
-  }, [discovery, yearBaselineOverrides]);
+  }, [discovery]);
 
   const current = phase === "walk" ? steps[stepIndex] : undefined;
 
@@ -274,16 +274,6 @@ export function SalaryDiscoveryModal({
     advanceTo(step.nextYearStep);
   }
 
-  function setYearBaseline(year: string, value: string) {
-    const parsed = parseAmount(value);
-    setYearBaselineOverrides((prev) => {
-      const next = new Map(prev);
-      if (parsed === null || parsed <= 0) next.delete(year);
-      else next.set(year, parsed);
-      return next;
-    });
-  }
-
   function handleAdd() {
     const salaries = [...accepted.values()];
     if (salaries.length > 0) onAdd(salaries);
@@ -320,14 +310,10 @@ export function SalaryDiscoveryModal({
         {phase === "walk" && current?.kind === "year" && (
           <YearStep
             step={current}
+            boundaryMonths={boundaryMonths}
             settings={settings}
+            lang={lang}
             t={t}
-            onBaselineChange={(v) => setYearBaseline(current.year, v)}
-            baselineText={
-              yearBaselineOverrides.has(current.year)
-                ? String(yearBaselineOverrides.get(current.year))
-                : String(current.baseline)
-            }
           />
         )}
 
@@ -349,6 +335,7 @@ export function SalaryDiscoveryModal({
             onEmployerChange={(v) =>
               dispatchForm({ kind: "setEmployer", value: v })
             }
+            onCreateEmployer={onCreateEmployer}
           />
         )}
 
@@ -517,21 +504,20 @@ function AccountStep({
 
 type YearStepProps = {
   step: Extract<Step, { kind: "year" }>;
+  boundaryMonths: ReadonlySet<string>;
   settings: Settings;
+  lang: ReturnType<typeof useLang>;
   t: ReturnType<typeof useT>;
-  baselineText: string;
-  onBaselineChange: (value: string) => void;
 };
 
-function YearStep({
-  step,
-  settings,
-  t,
-  baselineText,
-  onBaselineChange,
-}: YearStepProps) {
+// The per-year checkpoint. Instead of an editable "baseline" field
+// (which read as if it would overwrite every salary), this lists every
+// paycheck detected for the year so the user can see exactly what
+// "Accept all" will add. The baseline stays internal — it only decides
+// which rows get the "off baseline" tag.
+function YearStep({ step, boundaryMonths, settings, lang, t }: YearStepProps) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div>
         <p className="mb-1 text-sm font-bold text-fg-bright">
           {t("salary.yearStepTitle", { year: step.year })}
@@ -545,20 +531,40 @@ function YearStep({
             : ""}
         </p>
       </div>
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">
-          {t("salary.yearBaselineLabel")}
-        </span>
-        <SignedAmountInput
-          value={baselineText}
-          negative={false}
-          onValueChange={onBaselineChange}
-          onToggleSign={() => {}}
-          settings={settings}
-          ariaLabel={t("salary.yearBaselineLabel")}
-        />
-      </label>
-      <p className="text-xs text-muted">{t("salary.yearBaselineHint")}</p>
+
+      <ul className="flex flex-col gap-1.5">
+        {step.months.map((c) => {
+          const flagged = !within1Pct(c.net, step.baseline);
+          return (
+            <Fragment key={c.monthKey}>
+              {boundaryMonths.has(c.monthKey) && (
+                <li className="flex items-center gap-2 pt-1 text-[10px] font-bold tracking-wider uppercase text-meta">
+                  <span className="h-px flex-1 bg-line" />
+                  {t("salary.likelyNewEmployer")}
+                  <span className="h-px flex-1 bg-line" />
+                </li>
+              )}
+              <li className="flex items-center justify-between gap-3 rounded border border-line bg-surface-2 px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="font-mono text-sm text-fg-bright">
+                    {formatMonthLabel(c.monthKey, lang)}
+                  </span>
+                  {flagged && (
+                    <span className="shrink-0 rounded-full border border-line px-1.5 py-0.5 text-[10px] text-meta">
+                      {t("salary.offBaselineTag")}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 font-mono tabular-nums text-sm text-fg">
+                  {formatBalance(c.net, settings)}
+                </span>
+              </li>
+            </Fragment>
+          );
+        })}
+      </ul>
+
+      <p className="text-xs text-muted">{t("salary.yearReviewHint")}</p>
     </div>
   );
 }
@@ -578,6 +584,7 @@ type MonthStepProps = {
   onNetChange: (value: string) => void;
   onToggleSign: () => void;
   onEmployerChange: (value: string | undefined) => void;
+  onCreateEmployer: (employer: Employer) => void;
 };
 
 function MonthStep({
@@ -595,6 +602,7 @@ function MonthStep({
   onNetChange,
   onToggleSign,
   onEmployerChange,
+  onCreateEmployer,
 }: MonthStepProps) {
   const offAverage = !within1Pct(candidate.net, candidate.baselineNet);
   return (
@@ -656,6 +664,7 @@ function MonthStep({
           value={form.employerId}
           employers={employers}
           onChange={onEmployerChange}
+          onCreate={onCreateEmployer}
         />
       </label>
 

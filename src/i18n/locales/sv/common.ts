@@ -8,6 +8,7 @@ const common: CommonCatalog = {
   deleteRow: "Ta bort rad",
   edit: "Redigera",
   add: "Lägg till",
+  create: "Skapa",
   remove: "Ta bort",
   open: "Öppna",
   apply: "Använd",

@@ -25,6 +25,7 @@ type Props = {
   settings: Settings;
   onClose: () => void;
   onSave: (salaryId: string, patch: Partial<Omit<Salary, "id">>) => void;
+  onCreateEmployer: (employer: Employer) => void;
 };
 
 const NUMBER_INPUT_CLASS =
@@ -51,6 +52,7 @@ export function SalaryEditModal({
   settings,
   onClose,
   onSave,
+  onCreateEmployer,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -124,6 +126,7 @@ export function SalaryEditModal({
               value={employerId}
               employers={employers}
               onChange={setEmployerId}
+              onCreate={onCreateEmployer}
             />
           </FormSection>
 

@@ -8,6 +8,7 @@ const common = {
   deleteRow: "Delete row",
   edit: "Edit",
   add: "Add",
+  create: "Create",
   remove: "Remove",
   open: "Open",
   apply: "Apply",

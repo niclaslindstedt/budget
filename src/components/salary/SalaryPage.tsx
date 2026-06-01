@@ -59,6 +59,10 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
   const lang = useLang();
   const dispatchModal = useModalDispatch();
 
+  function handleCreateEmployer(employer: Employer) {
+    dispatch({ type: "createEmployer", employer });
+  }
+
   const [findOpen, setFindOpen] = useState(false);
   const [employersOpen, setEmployersOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -312,6 +316,7 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
         settings={settings}
         onClose={() => setEditing(null)}
         onSave={handleSaveSalary}
+        onCreateEmployer={handleCreateEmployer}
       />
 
       <SalaryBulkEditModal
@@ -331,6 +336,7 @@ export function SalaryPage({ sheet, data, settings, dispatch }: Props) {
         excludeHistoryIds={excludeHistoryIds}
         onClose={() => setFindOpen(false)}
         onAdd={handleAddDiscovered}
+        onCreateEmployer={handleCreateEmployer}
       />
 
       <EmployerManageModal
