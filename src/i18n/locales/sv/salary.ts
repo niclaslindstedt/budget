@@ -5,9 +5,7 @@ const salary: SalaryCatalog = {
   sheetTitle: "Lön",
   findSalaries: "Hitta löner",
   manageEmployers: "Arbetsgivare",
-  noSalaries:
-    "Inga löner än. Använd ”Hitta löner” för att hitta dem i din bankhistorik, eller lägg till en nedan.",
-  addSalary: "Lägg till lön",
+  noSalaries: "Inga löner än. Hitta dem i din bankhistorik nedan.",
   select: "Markera",
   cancelSelect: "Klar",
   selected: "{count} markerade",

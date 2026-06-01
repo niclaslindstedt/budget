@@ -24,7 +24,7 @@ export const SALARY_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
   itemTypes: ["salaryView"],
   validate: (raw, path, ctx) => validateSalaryView(raw, path, ctx),
   // No `reduceItem`: salary history is global state mutated by the
-  // `createSalary` / `updateSalary` / `deleteSalary` (and employer)
+  // `addSalaries` / `updateSalary` / `deleteSalary` (and employer)
   // actions in `reducers/salary.ts`, not per-item actions routed
   // through the registry tail. And no `rowsForItem`: the collection
   // isn't row-shaped.
