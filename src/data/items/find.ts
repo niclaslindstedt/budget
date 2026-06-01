@@ -37,10 +37,13 @@ export type ItemPurchaseCandidate = {
 };
 
 // Find the bank transactions that look like item purchases under the
-// user's current threshold + type filter. Skips entries the user shelved
-// (`hidden`), already collapsed into a transfer, flagged as a transfer,
-// or previously ignored. Sorted by descending absolute amount so the
-// biggest-ticket purchases (the ones most worth cataloguing) come first.
+// user's current threshold + type filter. A purchase is money leaving
+// the account, so only outflows (negative amounts) qualify — a large
+// inflow (selling the apartment, a tax refund) is never an item
+// purchase. Skips entries the user shelved (`hidden`), already collapsed
+// into a transfer, flagged as a transfer, or previously ignored. Sorted
+// by descending absolute amount so the biggest-ticket purchases (the
+// ones most worth cataloguing) come first.
 export function findItemPurchaseCandidates(
   data: UserData,
   settings: Settings,
@@ -59,6 +62,9 @@ export function findItemPurchaseCandidates(
       if (entry.collapsedIntoTransferId) continue;
       if (entry.isTransfer) continue;
       if (ignored.has(entry.id)) continue;
+      // Outflows only — money you spent. A positive amount is an inflow
+      // (a sale, a refund), never a purchase.
+      if (entry.amount >= 0) continue;
       if (Math.abs(entry.amount) < threshold) continue;
 
       const { description, typeId } = resolveEntryLabels(

@@ -970,6 +970,25 @@ export function isPresetTypeId(id: string): boolean {
   return PRESET_ENTRY_TYPE_IDS.has(id);
 }
 
+// Default allow-list for the Items sheet's "Find items" scan — the
+// preset types whose purchases tend to be durable physical things that
+// hold resale value (electronics, furniture, tools, …). Consumables
+// (groceries, restaurants), experiences (travel, events), and services
+// are deliberately left out: you can't sell last month's lunch. Seeds
+// `Settings.itemFindTypeIds` on a fresh install; the Items settings tab
+// lets the user deselect any of these or add more, so it's a starting
+// point, not a hard rule.
+export const DEFAULT_ITEM_FIND_TYPE_IDS: ReadonlyArray<string> = [
+  "preset-type-electronics",
+  "preset-type-furniture",
+  "preset-type-appliances",
+  "preset-type-tools",
+  "preset-type-kitchenware",
+  "preset-type-art",
+  "preset-type-decor",
+  "preset-type-accessories",
+];
+
 export function visiblePresetTypes(
   hiddenIds: readonly string[],
   kindOverrides: Readonly<Record<string, EntryTypeKind>> = {},

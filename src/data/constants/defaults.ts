@@ -1,3 +1,4 @@
+import { DEFAULT_ITEM_FIND_TYPE_IDS } from "../presets/types";
 import { DEFAULT_CUSTOM_THEME } from "../themes";
 import type {
   AccountsDownloadPrefs,
@@ -109,7 +110,10 @@ export const DEFAULT_SETTINGS: Settings = {
   // kr default; `freshUserData` overrides this from the detected
   // currency on a brand-new install.
   itemFindThreshold: 2000,
-  itemFindTypeIds: [],
+  // Seeded to durable, resellable goods so the first scan skips
+  // groceries and experiences. The Items settings tab lets the user
+  // deselect any of these or add more.
+  itemFindTypeIds: [...DEFAULT_ITEM_FIND_TYPE_IDS],
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
