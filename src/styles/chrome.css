@@ -108,6 +108,37 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .items-table .hidden.md\:inline {
     display: none;
   }
+  /* Salary table: unlike the budget / accounts / items sheets it has no
+     swipe strip, so it stays a plain `display: table` on phones (no grid
+     conversion) and its header glyphs align over their columns at every
+     width. Keep the header glyph-only on landscape phones for visual
+     parity with the other three sheet tables — Tailwind's `md:inline`
+     would otherwise re-show the labels at width ≥ 768px. */
+  .salary-table .hidden.md\:inline {
+    display: none;
+  }
+}
+
+/* Salary table on portrait phones. It stays a plain `display: table`
+   (no swipe strip, so no grid conversion), which means nothing absorbs
+   overflow when the month and both numeric columns are all
+   `whitespace-nowrap` and amounts render in full ("$53 000" rather than
+   a compact "53K"). Two unlayered tweaks keep every column — including
+   the trailing inline actions — inside a narrow viewport:
+     1. trim the actions column from its desktop `w-24` to the two
+        buttons' own width (the spare ~32px is what pushed it off-edge);
+     2. densify the inter-column gutters (vertical padding untouched).
+   Unlayered so both beat Tailwind's `w-24` / `px-2.5` utilities. */
+@media (max-width: 639.98px) {
+  .salary-table thead th:last-child,
+  .salary-table tbody td:last-child {
+    width: auto;
+  }
+  .salary-table th,
+  .salary-table td {
+    padding-left: 0.375rem;
+    padding-right: 0.375rem;
+  }
 }
 
 /* Centered modals float in the middle of the viewport, so their

@@ -91,7 +91,7 @@ export function SalaryYearTable({
         {year}
       </h3>
       <div className="overflow-clip rounded border border-line bg-surface">
-        <table className="accounts-table w-full border-collapse text-sm md:text-[13px]">
+        <table className="salary-table w-full border-collapse text-sm md:text-[13px]">
           <thead>
             <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
               {selectMode && (
