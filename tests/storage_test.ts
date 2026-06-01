@@ -35,10 +35,11 @@ function sampleData(): UserData {
     },
   ];
   return {
-    version: 58,
+    version: 59,
     sheets: [a, b],
     activeSheetId: b.id,
     accounts: [{ id: accountId, name: "Default" }],
+    taxProfiles: [],
     salaries: [],
     employers: [],
     companies: [],
@@ -124,6 +125,7 @@ describe("serializeUserData", () => {
         id: s.id,
       })),
       accounts: b.accounts,
+      taxProfiles: b.taxProfiles,
       salaries: b.salaries,
       employers: b.employers,
       companies: b.companies,
@@ -163,7 +165,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 31)).toEqual([
+    expect(topKeys.slice(0, 32)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -191,6 +193,7 @@ describe("serializeUserData", () => {
       "sheets",
       "subtypes",
       "tags",
+      "taxProfiles",
       "transferCollapseDismissals",
       "transfers",
       "types",

@@ -2,7 +2,8 @@
 // just the brutto/netto/tax algebra and the role-title resolution the
 // Salary sheet and its modals share.
 
-import type { Employer, Role, Salary } from "../types";
+import { grossFromNetMonthly } from "../tax/engine";
+import type { Employer, Role, Salary, TaxParams } from "../types";
 
 // The built-in "Salary" income entry-type id. Rows carrying it are the
 // strongest non-flag signal that an income is a paycheck, so the
@@ -23,6 +24,39 @@ export function salaryGross(salary: Salary): number {
 export function salaryTax(salary: Salary): number {
   if (salary.gross === undefined) return 0;
   return Math.max(0, salary.gross - salary.net);
+}
+
+// The gross to display for a salary plus whether it's an estimate. An
+// entered gross always wins (the user's number is authoritative); when
+// it's absent and a tax profile is bound, the gross is back-calculated
+// from the net deposit using that profile's rules for the paycheck's
+// own tax year (so a 2023 paycheck uses 2023 rules). With no profile we
+// fall back to the net deposit, the pre-tax-calc behaviour. `params` is
+// the resolved profile's `TaxParams`, or null when the sheet has no
+// profile bound.
+export function resolveSalaryGross(
+  salary: Salary,
+  params: TaxParams | null,
+): { gross: number; estimated: boolean } {
+  if (salary.gross !== undefined)
+    return { gross: salary.gross, estimated: false };
+  if (params) {
+    const year = Number(salary.date.slice(0, 4));
+    const { grossMonthly } = grossFromNetMonthly(salary.net, params, year);
+    return { gross: Math.round(grossMonthly), estimated: true };
+  }
+  return { gross: salary.net, estimated: false };
+}
+
+// The tax + gross to display, estimate-aware. Tax is always gross − net
+// (clamped at zero), matching `salaryTax`'s contract — for an estimated
+// gross this is the estimated withholding.
+export function resolveSalary(
+  salary: Salary,
+  params: TaxParams | null,
+): { gross: number; tax: number; estimated: boolean } {
+  const { gross, estimated } = resolveSalaryGross(salary, params);
+  return { gross, tax: Math.max(0, gross - salary.net), estimated };
 }
 
 // Derive the brutto from a net deposit and a tax rate expressed as a

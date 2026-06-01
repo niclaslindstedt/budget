@@ -57,6 +57,11 @@ export type SalaryView = {
   id: string;
   type: "salaryView";
   accountId: string | null;
+  // The reusable tax profile (`UserData.taxProfiles`) used to estimate
+  // a paycheck's gross from its net deposit when the user hasn't entered
+  // the gross. Absent ⇒ no estimation (the net doubles as the gross and
+  // tax shows 0, the pre-tax-calc behaviour).
+  taxProfileId?: string;
 };
 
 // Discriminated union of everything a sheet can hold. `AccountBudget`

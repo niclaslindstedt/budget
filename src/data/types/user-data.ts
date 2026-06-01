@@ -25,6 +25,7 @@ import type {
 import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
 import type { Sheet } from "./sheets";
+import type { TaxProfile } from "../tax/types";
 
 // Top-level persisted blob for one signed-in user. Holds everything
 // that user owns: their sheets, the categories they've defined, and
@@ -33,10 +34,17 @@ import type { Sheet } from "./sheets";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 58;
+  version: 59;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
+  // Reusable, named tax-input bundles (municipality, church membership,
+  // age, income kind, country). Referenced from `SalaryView.taxProfileId`
+  // so several salary sheets can share one profile. The Salary page uses
+  // the referenced profile to estimate a paycheck's gross from its net
+  // deposit when the user hasn't entered the gross. Empty on a fresh
+  // budget; entirely user-curated.
+  taxProfiles: TaxProfile[];
   // Salary payments over time, rendered by the Salary sheet. Each
   // entry is one paycheck (`net` is the bank deposit; `gross` the
   // user-entered brutto). Populated manually or via the "Find salaries"

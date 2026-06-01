@@ -12,7 +12,13 @@ import {
   SHEET_TYPE_REGISTRY,
   getSheetTypeDescriptor,
 } from "../data/sheet-types";
-import type { Account, Sheet, SheetGlyph, SheetType } from "../data/types";
+import type {
+  Account,
+  Sheet,
+  SheetGlyph,
+  SheetType,
+  TaxProfile,
+} from "../data/types";
 import { useDesktopAutoFocus, type FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { tintBorder, tintFill } from "../utils/tint";
@@ -21,6 +27,7 @@ import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableInput, ClearableTextarea, FormSection } from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
+import { TaxProfilePicker } from "./salary/TaxProfilePicker";
 import { CategoryIconGlyph } from "./icons";
 
 export type { SheetDraft } from "../data/action-payloads";
@@ -37,6 +44,17 @@ type Props = {
   // null for a new sheet) — used to seed the account picker so an
   // edit doesn't appear to wipe the account on open.
   currentAccountId: string | null;
+  // The tax profile bound to the sheet's salary item (or null) — seeds
+  // the tax-profile picker on a salary sheet so an edit doesn't appear
+  // to wipe it on open.
+  currentTaxProfileId: string | null;
+  // The reusable tax-profile library, offered by the picker on salary
+  // sheets.
+  taxProfiles: TaxProfile[];
+  // Persist a freshly-created profile to the library immediately (so it
+  // survives even if the sheet edit is cancelled), mirroring how the
+  // employer picker creates an employer on the spot.
+  onCreateTaxProfile: (profile: TaxProfile) => void;
   accounts: Account[];
   canDelete: boolean;
   // True when the workspace already contains an Accounts sheet (other
@@ -57,6 +75,9 @@ export function SheetModal({
   open,
   sheet,
   currentAccountId,
+  currentTaxProfileId,
+  taxProfiles,
+  onCreateTaxProfile,
   accounts,
   canDelete,
   accountsSheetTaken = false,
@@ -74,6 +95,7 @@ export function SheetModal({
   const [typeOpen, setTypeOpen] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [taxProfileId, setTaxProfileId] = useState<string | null>(null);
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
@@ -93,7 +115,8 @@ export function SheetModal({
     setAccountOpen(false);
     setCreatingAccount(false);
     setNewAccountName("");
-  }, [open, sheet, currentAccountId]);
+    setTaxProfileId(currentTaxProfileId);
+  }, [open, sheet, currentAccountId, currentTaxProfileId]);
 
   useEffect(() => {
     if (creatingAccount) newAccountInputRef.current?.focus();
@@ -133,6 +156,7 @@ export function SheetModal({
         creatingAccount && trimmedNewAccount !== null
           ? trimmedNewAccount
           : null,
+      taxProfileId: type === "salary" ? taxProfileId : null,
     });
     onClose();
   }
@@ -253,6 +277,18 @@ export function SheetModal({
                   ? t("sheetModal.salaryAccountHint")
                   : t("sheetModal.accountHint")}
               </p>
+            </FormSection>
+          )}
+
+          {type === "salary" && (
+            <FormSection label={t("tax.label")}>
+              <TaxProfilePicker
+                value={taxProfileId}
+                profiles={taxProfiles}
+                onPick={setTaxProfileId}
+                onCreate={onCreateTaxProfile}
+              />
+              <p className="text-xs text-muted">{t("tax.sheetHint")}</p>
             </FormSection>
           )}
 

@@ -79,6 +79,40 @@ export function reduceSalary(state: UserData, action: Action): UserData | null {
       ),
     };
   }
+  if (action.type === "createTaxProfile") {
+    return { ...state, taxProfiles: [...state.taxProfiles, action.profile] };
+  }
+  if (action.type === "updateTaxProfile") {
+    return {
+      ...state,
+      taxProfiles: state.taxProfiles.map((p) =>
+        p.id === action.profileId ? { ...p, ...action.patch } : p,
+      ),
+    };
+  }
+  if (action.type === "deleteTaxProfile") {
+    // Cascading detach: drop `taxProfileId` on every salary sheet's
+    // `salaryView` item that referenced this profile so the sheets keep
+    // rendering (they just stop estimating gross) rather than dangling.
+    // Mirrors `deleteEmployer`'s salary-detach pass.
+    const id = action.profileId;
+    return {
+      ...state,
+      taxProfiles: state.taxProfiles.filter((p) => p.id !== id),
+      sheets: state.sheets.map((sheet) => {
+        let changed = false;
+        const items = sheet.items.map((item) => {
+          if (item.type !== "salaryView" || item.taxProfileId !== id)
+            return item;
+          changed = true;
+          const { taxProfileId: _drop, ...rest } = item;
+          void _drop;
+          return rest;
+        });
+        return changed ? { ...sheet, items } : sheet;
+      }),
+    };
+  }
   if (action.type === "deleteEmployer") {
     // Cascading detach: clear `employerId` on every salary that
     // referenced this employer so the salaries keep rendering as

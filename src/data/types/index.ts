@@ -84,3 +84,12 @@ export type {
 } from "./rules";
 
 export type { StoredUser, UserData, UsersFile } from "./user-data";
+
+export type {
+  SwedishTaxParams,
+  TaxCalculator,
+  TaxCountry,
+  TaxParams,
+  TaxProfile,
+  TaxResult,
+} from "../tax/types";

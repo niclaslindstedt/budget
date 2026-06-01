@@ -157,6 +157,7 @@ const hasEstimateRow = (s: UserData) =>
   );
 const hasMultipleSheetTabs = (s: UserData) => s.sheets.length > 1;
 const hasAccount = (s: UserData) => s.accounts.length > 0;
+const hasTaxProfile = (s: UserData) => s.taxProfiles.length > 0;
 const hasLinkedSheet = (s: UserData) =>
   eachAccountBudget(
     s,
@@ -522,6 +523,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.salaries],
       predicate: (prev, next) =>
         prev.salaries.length === 0 && next.salaries.length > 0,
+    },
+  },
+  {
+    id: "taxEstimator",
+    tier: "intermediate",
+    glyph: Calculator,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.taxProfiles],
+      predicate: (prev, next) => !hasTaxProfile(prev) && hasTaxProfile(next),
     },
   },
   {

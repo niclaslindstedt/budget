@@ -17,6 +17,9 @@ export type SheetDraft = {
   // optional account id; future flavours can grow their own branches
   // without affecting the existing shape.
   accountId: string | null;
+  // The tax profile bound to a salary sheet's `salaryView` item. `null`
+  // = no profile (don't estimate gross). Ignored for non-salary sheets.
+  taxProfileId: string | null;
   // When set, the parent should mint a new Account by this name and
   // attach it to the budget. Lets the user create both a sheet and
   // the account it lives on in a single round-trip through the

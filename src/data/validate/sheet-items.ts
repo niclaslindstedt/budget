@@ -33,6 +33,7 @@ export type SheetItemValidationContext = {
   knownCompanyIds: ReadonlySet<string>;
   knownTagIds: ReadonlySet<string>;
   knownItemIds: ReadonlySet<string>;
+  knownTaxProfileIds: ReadonlySet<string>;
 };
 
 const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
@@ -314,8 +315,21 @@ export function validateSalaryView(
         `references unknown account "${accountId}"`,
       );
   }
-  return {
-    ok: true,
-    value: { id, type: "salaryView", accountId: accountId as string | null },
+  const view: SalaryView = {
+    id,
+    type: "salaryView",
+    accountId: accountId as string | null,
   };
+  // Drop a dangling `taxProfileId` silently — a deleted profile
+  // shouldn't trap the sheet; the page just stops estimating. Same
+  // contract as `accountId` on `accountBudget`.
+  const { taxProfileId } = raw;
+  if (
+    typeof taxProfileId === "string" &&
+    taxProfileId !== "" &&
+    ctx.knownTaxProfileIds.has(taxProfileId)
+  ) {
+    view.taxProfileId = taxProfileId;
+  }
+  return { ok: true, value: view };
 }

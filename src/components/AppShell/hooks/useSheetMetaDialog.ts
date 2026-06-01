@@ -101,6 +101,23 @@ export function useSheetMetaDialog({
             accountId: finalAccountId,
           });
         }
+        // Update the salary sheet's tax-profile binding if it changed.
+        // Kept separate from `setItemAccount` (which is account-specific
+        // by contract) — only the `salaryView` item carries a profile.
+        const salaryItem = target.items.find(
+          (it): it is SalaryView => it.type === "salaryView",
+        );
+        if (
+          salaryItem &&
+          (salaryItem.taxProfileId ?? null) !== draft.taxProfileId
+        ) {
+          dispatch({
+            type: "setSalaryTaxProfile",
+            sheetId: target.id,
+            itemId: salaryItem.id,
+            taxProfileId: draft.taxProfileId,
+          });
+        }
       } else {
         const sheet = createDefaultSheet(draft.name, finalAccountId, {
           type: draft.type,
@@ -109,6 +126,22 @@ export function useSheetMetaDialog({
           description: draft.description,
         });
         dispatch({ type: "addSheet", sheet });
+        // Bind the chosen tax profile onto the fresh salary sheet's
+        // item. The sheet object is in hand here, so its item id is
+        // known without a re-lookup against the store.
+        if (draft.type === "salary" && draft.taxProfileId) {
+          const salaryItem = sheet.items.find(
+            (it): it is SalaryView => it.type === "salaryView",
+          );
+          if (salaryItem) {
+            dispatch({
+              type: "setSalaryTaxProfile",
+              sheetId: sheet.id,
+              itemId: salaryItem.id,
+              taxProfileId: draft.taxProfileId,
+            });
+          }
+        }
       }
     },
     [dispatch, sheetModal],
