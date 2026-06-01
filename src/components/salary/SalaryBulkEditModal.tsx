@@ -25,6 +25,7 @@ type Props = {
   employers: readonly Employer[];
   onClose: () => void;
   onApply: (args: SalaryBulkApply) => void;
+  onCreateEmployer: (employer: Employer) => void;
 };
 
 export function SalaryBulkEditModal({
@@ -33,6 +34,7 @@ export function SalaryBulkEditModal({
   employers,
   onClose,
   onApply,
+  onCreateEmployer,
 }: Props) {
   const t = useT();
   const [employerEnabled, setEmployerEnabled] = useState(false);
@@ -91,6 +93,7 @@ export function SalaryBulkEditModal({
             value={employerId}
             employers={employers}
             onChange={setEmployerId}
+            onCreate={onCreateEmployer}
           />
         </Toggle>
 
