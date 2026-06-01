@@ -663,11 +663,10 @@ function YearStep({
                       </span>
                     )}
                   </span>
-                  {c.description && (
-                    <span className="truncate font-mono text-xs text-muted">
-                      {c.description}
-                    </span>
-                  )}
+                  <span className="truncate font-mono text-xs text-muted">
+                    <span className="text-meta">{c.date}</span>
+                    {c.description ? ` ${c.description}` : ""}
+                  </span>
                 </span>
                 <span className="shrink-0 font-mono tabular-nums text-sm text-fg">
                   {formatBalance(c.net, settings)}
