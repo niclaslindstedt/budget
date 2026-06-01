@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 
 import { computeItemCurrentValue, isItemOwned } from "../../data/items/value";
-import type { Settings, Sheet, UserData } from "../../data/types";
+import { allTypes } from "../../data/presets/merge";
+import type { EntryType, Settings, Sheet, UserData } from "../../data/types";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance } from "../../utils/format";
@@ -51,6 +52,23 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [data.items],
   );
+
+  // Resolve each item's type through its subtype anchor
+  // (`item.subtypeId → subtype.typeId → type`) so the row glyph + colour
+  // come from the type, not a generic box. Built once per data change and
+  // looked up per row; an unclassified item (no subtype, or a dangling
+  // reference) resolves to null and the row falls back to the package box.
+  const typeForItem = useMemo(() => {
+    const typesById = new Map<string, EntryType>();
+    for (const type of allTypes(data)) typesById.set(type.id, type);
+    const subtypesById = new Map(data.subtypes.map((s) => [s.id, s]));
+    return (subtypeId: string | undefined): EntryType | null => {
+      if (subtypeId === undefined) return null;
+      const subtype = subtypesById.get(subtypeId);
+      if (subtype === undefined) return null;
+      return typesById.get(subtype.typeId) ?? null;
+    };
+  }, [data]);
 
   // Footer totals across the visible items — an at-a-glance "net worth
   // in stuff" figure, mirroring the accounts page's balance roll-up.
@@ -209,6 +227,7 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
                     key={item.id}
                     item={item}
                     settings={settings}
+                    entryType={typeForItem(item.subtypeId)}
                     todayIso={today}
                     onEditItem={(itemId) =>
                       dispatchModal({ kind: "open-edit-item", itemId })
