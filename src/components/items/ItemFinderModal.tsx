@@ -21,7 +21,7 @@ import type {
 import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { indexById } from "../../utils/indexById";
-import { formatAmount, formatShortDate } from "../../utils/format";
+import { formatAmount, formatDate } from "../../utils/format";
 import { BudgetLineItemsModal } from "../budget/BudgetLineItemsModal";
 import { TypeChip } from "../TypePicker";
 import { Button } from "../form";
@@ -188,11 +188,7 @@ export function ItemFinderModal({
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
                           <span className="font-mono text-path">
-                            {formatShortDate(
-                              c.date,
-                              settings.shortDateFormat,
-                              lang,
-                            )}
+                            {formatDate(c.date, settings.dateFormat, lang)}
                           </span>
                           {type && (
                             <>
