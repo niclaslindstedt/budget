@@ -1,4 +1,14 @@
 import { useMemo } from "react";
+import {
+  Banknote,
+  Briefcase,
+  CalendarClock,
+  CalendarDays,
+  Receipt,
+  Tag,
+  Wallet,
+  Wrench,
+} from "lucide-react";
 
 import { salaryGross } from "../../data/salary/salary";
 import type { Employer, Salary, Settings } from "../../data/types";
@@ -116,41 +126,130 @@ export function SalaryYearTable({
                   </button>
                 </th>
               )}
-              <th scope="col" className="px-2.5 py-2 text-left">
-                {t("salary.month")}
+              <th
+                scope="col"
+                className="px-2.5 py-2 text-left"
+                aria-label={t("salary.month")}
+              >
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
+                  <CalendarDays
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">{t("salary.month")}</span>
+                </span>
               </th>
-              <th scope="col" className="px-2.5 py-2 text-left">
-                {t("salary.employer")}
+              <th
+                scope="col"
+                className="px-2.5 py-2 text-left"
+                aria-label={t("salary.employer")}
+              >
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
+                  <Briefcase
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">
+                    {t("salary.employer")}
+                  </span>
+                </span>
               </th>
               <th
                 scope="col"
                 className="hidden px-2.5 py-2 text-left sm:table-cell"
+                aria-label={t("salary.title")}
               >
-                {t("salary.title")}
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
+                  <Tag
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">{t("salary.title")}</span>
+                </span>
               </th>
-              <th scope="col" className="px-2.5 py-2 text-right">
-                {t("salary.gross")}
+              <th
+                scope="col"
+                className="px-2.5 py-2 text-right"
+                aria-label={t("salary.gross")}
+              >
+                <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                  <Banknote
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">{t("salary.gross")}</span>
+                </span>
               </th>
               <th
                 scope="col"
                 className="hidden px-2.5 py-2 text-right sm:table-cell"
+                aria-label={t("salary.tax")}
               >
-                {t("salary.tax")}
+                <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                  <Receipt
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">{t("salary.tax")}</span>
+                </span>
               </th>
-              <th scope="col" className="px-2.5 py-2 text-right">
-                {t("salary.net")}
+              <th
+                scope="col"
+                className="px-2.5 py-2 text-right"
+                aria-label={t("salary.net")}
+              >
+                <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                  <Wallet
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">{t("salary.net")}</span>
+                </span>
               </th>
               <th
                 scope="col"
                 className="hidden px-2.5 py-2 text-left md:table-cell"
+                aria-label={t("salary.days")}
               >
-                {t("salary.days")}
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
+                  <CalendarClock
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">{t("salary.days")}</span>
+                </span>
               </th>
               <th
                 scope="col"
                 className="w-24 px-2.5 py-2"
                 aria-label={t("salary.actions")}
-              />
+              >
+                <span className="flex items-center justify-center gap-1.5 md:gap-2">
+                  <Wrench
+                    size={16}
+                    className="shrink-0 text-accent"
+                    aria-hidden
+                    focusable={false}
+                  />
+                  <span className="hidden md:inline">
+                    {t("salary.actions")}
+                  </span>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
