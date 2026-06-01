@@ -1,18 +1,23 @@
 import { memo, useRef, useState } from "react";
 import { Package, Pencil, Trash2 } from "lucide-react";
 
-import type { Item, Settings } from "../../data/types";
+import type { EntryType, Item, Settings } from "../../data/types";
 import { computeItemCurrentValue } from "../../data/items/value";
 import type { FloatingPlacement } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
+import { CategoryIconGlyph } from "../icons";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 
 type Props = {
   item: Item;
   settings: Settings;
+  // The item's resolved type (via subtype → type), or null when the item
+  // is unclassified. Drives the row glyph + its colour; a null type falls
+  // back to the neutral package box.
+  entryType: EntryType | null;
   // Today's ISO date, passed down so every row shares one value (and the
   // parent can memoize current-value math against it).
   todayIso: string;
@@ -32,6 +37,7 @@ const DESCRIPTION_POPOVER_PLACEMENT: FloatingPlacement = {
 function ItemRowImpl({
   item,
   settings,
+  entryType,
   todayIso,
   onEditItem,
   onDeleteItem,
@@ -82,8 +88,13 @@ function ItemRowImpl({
         <span
           aria-hidden
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-muted"
+          style={entryType ? { color: entryType.color } : undefined}
         >
-          <Package size={14} aria-hidden focusable={false} />
+          {entryType ? (
+            <CategoryIconGlyph name={entryType.glyph} size={14} />
+          ) : (
+            <Package size={14} aria-hidden focusable={false} />
+          )}
         </span>
       </td>
       <td className="px-2.5 py-2 align-middle">
