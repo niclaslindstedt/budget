@@ -668,14 +668,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             on the inner wrapper lets `Skip to content`-style jumps move
             focus into the panel without it being part of the normal
             keyboard tour. */}
-          <main data-budget-main className="flex-1 [overflow-x:clip]">
+          <main
+            data-budget-main
+            className="flex flex-1 flex-col [overflow-x:clip]"
+          >
             <div
               ref={sheetPanelRef}
               role="tabpanel"
               id={`sheet-tabpanel-${activeSheet.id}`}
               aria-labelledby={`sheet-tab-${activeSheet.id}`}
               tabIndex={-1}
-              className="h-full will-change-transform"
+              className="flex-1 will-change-transform"
             >
               {status.kind === "loading" ? (
                 <AppLoading />
