@@ -59,15 +59,58 @@ describe("salary discovery (bank-history scan)", () => {
     expect(baselineByYear.get("2020")).toBe(30000);
   });
 
-  it("segments a sustained raise into a new employer group", () => {
+  it("segments a sustained raise into a new group and flags it as a raise", () => {
     const dates = monthlyDates(2024, 1, 12);
     const entries = dates.map((d, i) =>
       entry(`s${i}`, d, i < 6 ? 30000 : 35000, "ACME PAYROLL"),
     );
-    const { candidates, boundaries } = discoverSalaries({ entries });
+    const { candidates, boundaries, raises } = discoverSalaries({ entries });
     expect(candidates).toHaveLength(12);
     expect(boundaries).toEqual([0, 6]);
+    // The upward step is reported as a raise.
+    expect(raises).toEqual([6]);
     expect(candidates[6].employerGroup).toBe(1);
+  });
+
+  it("reports a sustained pay drop as a boundary but not a raise", () => {
+    const dates = monthlyDates(2024, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`s${i}`, d, i < 6 ? 35000 : 30000, "ACME PAYROLL"),
+    );
+    const { boundaries, raises } = discoverSalaries({ entries });
+    expect(boundaries).toEqual([0, 6]);
+    expect(raises).toEqual([]);
+  });
+
+  it("keeps months within 10% in one segment and off none as unusual", () => {
+    // Real-world wobble: a steady ~40k paycheck that drifts a few percent
+    // each month (overtime, a partial absence). All within 10%, so it
+    // stays one segment, surfaces no raise, and confidence holds.
+    const dates = monthlyDates(2021, 1, 7);
+    const nets = [41000, 41000, 41000, 40000, 40000, 38000, 38000];
+    const entries = dates.map((d, i) =>
+      entry(`s${i}`, d, nets[i], "ACME PAYROLL"),
+    );
+    const { candidates, boundaries, raises } = discoverSalaries({ entries });
+    expect(candidates).toHaveLength(7);
+    expect(boundaries).toEqual([0]);
+    expect(raises).toEqual([]);
+    // The lowest month (38k vs the ~39.7k segment median) is within 10%,
+    // so it isn't penalised as off-baseline.
+    expect(candidates[6].confidence).toBe(candidates[0].confidence);
+  });
+
+  it("penalises a month more than 10% off its segment baseline", () => {
+    const dates = monthlyDates(2024, 1, 5);
+    // One isolated 60k bonus month against a steady 30k baseline — a blip
+    // (not three in a row), so it stays in the group but loses confidence.
+    const nets = [30000, 30000, 60000, 30000, 30000];
+    const entries = dates.map((d, i) =>
+      entry(`s${i}`, d, nets[i], "ACME PAYROLL"),
+    );
+    const { candidates, boundaries } = discoverSalaries({ entries });
+    expect(boundaries).toEqual([0]);
+    expect(candidates[2].confidence).toBeLessThan(candidates[0].confidence);
   });
 
   it("ignores a one-off non-salary deposit (different description)", () => {

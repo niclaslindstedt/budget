@@ -5,6 +5,7 @@ import {
   discoverSalaries,
   type DiscoveredSalary,
 } from "../../data/salary/discovery";
+import { withinSalaryTolerance } from "../../data/salary/detection";
 import { newId } from "../../data/sheet";
 import type {
   Account,
@@ -48,10 +49,6 @@ type Step =
   | {
       kind: "year";
       year: string;
-      // Internal reference only: the typical monthly net for the year,
-      // used to flag the months that look off. Never shown as an
-      // editable field and never written onto any salary.
-      baseline: number;
       months: DiscoveredSalary[];
       monthCount: number;
       flaggedCount: number;
@@ -59,9 +56,12 @@ type Step =
     }
   | { kind: "month"; candidate: DiscoveredSalary; ordinal: number };
 
-function within1Pct(a: number, b: number): boolean {
-  if (a <= 0 || b <= 0) return false;
-  return Math.abs(a - b) / Math.max(a, b) <= 0.01;
+// A month looks off when its net strays more than the salary tolerance
+// from its own segment's baseline. Comparing against the segment (not
+// the whole-year median) keeps the months on either side of a mid-year
+// raise from flagging each other — each is normal for its own level.
+function isOffBaseline(c: DiscoveredSalary): boolean {
+  return !withinSalaryTolerance(c.net, c.baselineNet);
 }
 
 function confidenceLabel(t: ReturnType<typeof useT>, confidence: number) {
@@ -135,15 +135,11 @@ export function SalaryDiscoveryModal({
     let ordinal = 0;
     for (const year of years) {
       const months = byYear.get(year)!;
-      const baseline = discovery.baselineByYear.get(year) ?? 0;
-      const flaggedCount = months.filter(
-        (c) => !within1Pct(c.net, baseline),
-      ).length;
+      const flaggedCount = months.filter(isOffBaseline).length;
       const yearStepIndex = out.length;
       out.push({
         kind: "year",
         year,
-        baseline,
         months,
         monthCount: months.length,
         flaggedCount,
@@ -161,14 +157,20 @@ export function SalaryDiscoveryModal({
 
   const current = phase === "walk" ? steps[stepIndex] : undefined;
 
-  // New-employer separators: the month that starts each non-first group.
-  const boundaryMonths = useMemo(() => {
-    const set = new Set<string>();
-    if (!discovery) return set;
+  // Segment separators: the month that starts each non-first group, and
+  // the subset of those that are a sustained raise (so the walk can label
+  // a pay rise "Raise" instead of "Likely new employer").
+  const { boundaryMonths, raiseMonths } = useMemo(() => {
+    const boundary = new Set<string>();
+    const raise = new Set<string>();
+    if (!discovery) return { boundaryMonths: boundary, raiseMonths: raise };
     for (const bi of discovery.boundaries.slice(1)) {
-      set.add(discovery.candidates[bi].monthKey);
+      boundary.add(discovery.candidates[bi].monthKey);
     }
-    return set;
+    for (const ri of discovery.raises) {
+      raise.add(discovery.candidates[ri].monthKey);
+    }
+    return { boundaryMonths: boundary, raiseMonths: raise };
   }, [discovery]);
 
   // Seed the per-month form whenever the active month step changes.
@@ -311,6 +313,7 @@ export function SalaryDiscoveryModal({
           <YearStep
             step={current}
             boundaryMonths={boundaryMonths}
+            raiseMonths={raiseMonths}
             settings={settings}
             lang={lang}
             t={t}
@@ -323,6 +326,7 @@ export function SalaryDiscoveryModal({
             ordinal={current.ordinal}
             total={totalMonths}
             isNewEmployer={boundaryMonths.has(current.candidate.monthKey)}
+            isRaise={raiseMonths.has(current.candidate.monthKey)}
             accepted={accepted.has(current.candidate.monthKey)}
             skipped={skipped.has(current.candidate.monthKey)}
             form={form}
@@ -505,6 +509,7 @@ function AccountStep({
 type YearStepProps = {
   step: Extract<Step, { kind: "year" }>;
   boundaryMonths: ReadonlySet<string>;
+  raiseMonths: ReadonlySet<string>;
   settings: Settings;
   lang: ReturnType<typeof useLang>;
   t: ReturnType<typeof useT>;
@@ -515,7 +520,14 @@ type YearStepProps = {
 // paycheck detected for the year so the user can see exactly what
 // "Accept all" will add. The baseline stays internal — it only decides
 // which rows get the "off baseline" tag.
-function YearStep({ step, boundaryMonths, settings, lang, t }: YearStepProps) {
+function YearStep({
+  step,
+  boundaryMonths,
+  raiseMonths,
+  settings,
+  lang,
+  t,
+}: YearStepProps) {
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -534,13 +546,15 @@ function YearStep({ step, boundaryMonths, settings, lang, t }: YearStepProps) {
 
       <ul className="flex flex-col gap-1.5">
         {step.months.map((c) => {
-          const flagged = !within1Pct(c.net, step.baseline);
+          const flagged = isOffBaseline(c);
           return (
             <Fragment key={c.monthKey}>
               {boundaryMonths.has(c.monthKey) && (
                 <li className="flex items-center gap-2 pt-1 text-[10px] font-bold tracking-wider uppercase text-meta">
                   <span className="h-px flex-1 bg-line" />
-                  {t("salary.likelyNewEmployer")}
+                  {raiseMonths.has(c.monthKey)
+                    ? t("salary.raise")
+                    : t("salary.likelyNewEmployer")}
                   <span className="h-px flex-1 bg-line" />
                 </li>
               )}
@@ -581,6 +595,7 @@ type MonthStepProps = {
   ordinal: number;
   total: number;
   isNewEmployer: boolean;
+  isRaise: boolean;
   accepted: boolean;
   skipped: boolean;
   form: { netText: string; negative: boolean; employerId: string | undefined };
@@ -599,6 +614,7 @@ function MonthStep({
   ordinal,
   total,
   isNewEmployer,
+  isRaise,
   accepted,
   skipped,
   form,
@@ -611,7 +627,7 @@ function MonthStep({
   onEmployerChange,
   onCreateEmployer,
 }: MonthStepProps) {
-  const offAverage = !within1Pct(candidate.net, candidate.baselineNet);
+  const offAverage = isOffBaseline(candidate);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between text-xs text-muted">
@@ -629,7 +645,7 @@ function MonthStep({
       {isNewEmployer && (
         <div className="flex items-center gap-2 text-[10px] font-bold tracking-wider uppercase text-meta">
           <span className="h-px flex-1 bg-line" />
-          {t("salary.likelyNewEmployer")}
+          {isRaise ? t("salary.raise") : t("salary.likelyNewEmployer")}
           <span className="h-px flex-1 bg-line" />
         </div>
       )}

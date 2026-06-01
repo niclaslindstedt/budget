@@ -22,7 +22,7 @@ import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
 } from "../description-normaliser";
-import { assignEmployerGroups } from "./detection";
+import { assignEmployerGroups, withinSalaryTolerance } from "./detection";
 import { SALARY_TYPE_ID } from "./salary";
 import type { HistoryEntry } from "../types";
 import { todayIso } from "../../utils/date";
@@ -57,6 +57,10 @@ export type DiscoveryResult = {
   // Candidate indices where a new employer group starts (always
   // includes 0 when there is at least one candidate).
   boundaries: number[];
+  // The subset of `boundaries` whose new level is a sustained increase —
+  // a raise — rather than a drop or a job change to lower pay. Lets the
+  // walk label the transition "Raise" instead of "new employer".
+  raises: number[];
   // Median net per year — seeds the per-year baseline-confirm step.
   baselineByYear: Map<string, number>;
 };
@@ -75,13 +79,6 @@ export type DiscoveryInput = {
 // stays comfortably in this band; small steady inflows (child benefit,
 // a fixed savings transfer) fall out so they don't masquerade as pay.
 const SALARY_BAND = 0.5;
-
-// Two nets are "the same salary" when within ±1 % — mirrors the
-// segmentation tolerance in `detection.ts`.
-function within1Pct(a: number, b: number): boolean {
-  if (a <= 0 || b <= 0) return false;
-  return Math.abs(a - b) / Math.max(a, b) <= 0.01;
-}
 
 // The description shown for a discovered paycheck: the raw bank text when
 // present, otherwise the user-added description (a manually-entered
@@ -112,6 +109,7 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
   const empty: DiscoveryResult = {
     candidates: [],
     boundaries: [],
+    raises: [],
     baselineByYear: new Map(),
   };
 
@@ -177,7 +175,7 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
   // 3. Chronological order, then segment by amount drift.
   const months = [...byMonth.keys()].sort();
   const winners = months.map((m) => byMonth.get(m)!);
-  const { groups, boundaries } = assignEmployerGroups(
+  const { groups, boundaries, raises } = assignEmployerGroups(
     winners.map((e) => e.amount),
   );
 
@@ -203,7 +201,7 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
     let confidence = base;
     if (typedSalary) {
       confidence = Math.max(base, 0.9);
-    } else if (!within1Pct(entry.amount, baselineNet)) {
+    } else if (!withinSalaryTolerance(entry.amount, baselineNet)) {
       confidence = base * 0.7;
     }
     return {
@@ -231,5 +229,5 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
   for (const [y, nets] of yearNets)
     baselineByYear.set(y, Math.round(median(nets)));
 
-  return { candidates, boundaries, baselineByYear };
+  return { candidates, boundaries, raises, baselineByYear };
 }
