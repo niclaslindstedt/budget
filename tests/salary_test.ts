@@ -6,7 +6,8 @@ import {
 } from "../src/data/salary/detection";
 import {
   grossFromNetAndRate,
-  roleForDate,
+  roleDateRange,
+  roleForSalary,
   salaryGross,
   salaryTax,
 } from "../src/data/salary/salary";
@@ -119,6 +120,72 @@ describe("Salary sheet type", () => {
     state = reducer(state, { type: "deleteSalary", salaryId: "s1" });
     expect(state.salaries).toHaveLength(0);
   });
+
+  it("bulk-sets a job title by minting / reusing an employer role", () => {
+    let state = withSalarySheet({
+      employers: [{ id: "e1", name: "Acme", roles: [] }],
+      salaries: [
+        { id: "s1", date: "2026-01-25", net: 30000, employerId: "e1" },
+        { id: "s2", date: "2026-02-25", net: 30000, employerId: "e1" },
+      ],
+    });
+
+    state = reducer(state, {
+      type: "bulkSetSalaryRole",
+      ids: ["s1", "s2"],
+      title: "Developer",
+    });
+    // One role is minted and both salaries point at it.
+    expect(state.employers[0].roles).toHaveLength(1);
+    const roleId = state.employers[0].roles[0].id;
+    expect(state.employers[0].roles[0].title).toBe("Developer");
+    expect(state.salaries[0].roleId).toBe(roleId);
+    expect(state.salaries[1].roleId).toBe(roleId);
+
+    // Re-applying the same title (case-insensitive) reuses the role.
+    state = reducer(state, {
+      type: "bulkSetSalaryRole",
+      ids: ["s1"],
+      title: "developer",
+    });
+    expect(state.employers[0].roles).toHaveLength(1);
+    expect(state.salaries[0].roleId).toBe(roleId);
+
+    // A blank title clears the role on the selection.
+    state = reducer(state, {
+      type: "bulkSetSalaryRole",
+      ids: ["s1"],
+      title: "  ",
+    });
+    expect(state.salaries[0].roleId).toBeUndefined();
+    expect(state.salaries[1].roleId).toBe(roleId);
+  });
+
+  it("drops a salary's roleId when its employer changes", () => {
+    let state = withSalarySheet({
+      employers: [
+        { id: "e1", name: "Acme", roles: [{ id: "r1", title: "Dev" }] },
+        { id: "e2", name: "Globex", roles: [] },
+      ],
+      salaries: [
+        {
+          id: "s1",
+          date: "2026-01-25",
+          net: 30000,
+          employerId: "e1",
+          roleId: "r1",
+        },
+      ],
+    });
+    state = reducer(state, {
+      type: "updateSalary",
+      salaryId: "s1",
+      patch: { employerId: "e2" },
+    });
+    expect(state.salaries[0].employerId).toBe("e2");
+    // The role belonged to the old employer, so it's dropped.
+    expect(state.salaries[0].roleId).toBeUndefined();
+  });
 });
 
 describe("salary helpers", () => {
@@ -137,24 +204,52 @@ describe("salary helpers", () => {
     expect(salaryTax(s)).toBe(3000);
   });
 
-  it("resolves the role covering a date", () => {
+  it("resolves the role a salary points at", () => {
     const employer: Employer = {
       id: "e1",
       name: "Acme",
       roles: [
-        {
-          id: "r1",
-          title: "Developer",
-          startDate: "2020-01-01",
-          endDate: "2022-12-31",
-        },
-        { id: "r2", title: "Lead", startDate: "2023-01-01" },
+        { id: "r1", title: "Developer" },
+        { id: "r2", title: "Lead" },
       ],
     };
-    expect(roleForDate(employer, "2021-06-15")?.title).toBe("Developer");
-    expect(roleForDate(employer, "2024-06-15")?.title).toBe("Lead");
-    expect(roleForDate(employer, "2019-01-01")).toBeUndefined();
-    expect(roleForDate(undefined, "2024-06-15")).toBeUndefined();
+    const dev: Salary = {
+      id: "s1",
+      date: "2021-06-15",
+      net: 100,
+      roleId: "r1",
+    };
+    const lead: Salary = {
+      id: "s2",
+      date: "2024-06-15",
+      net: 200,
+      roleId: "r2",
+    };
+    const untitled: Salary = { id: "s3", date: "2019-01-01", net: 50 };
+    expect(roleForSalary(dev, employer)?.title).toBe("Developer");
+    expect(roleForSalary(lead, employer)?.title).toBe("Lead");
+    expect(roleForSalary(untitled, employer)).toBeUndefined();
+    expect(roleForSalary(lead, undefined)).toBeUndefined();
+    // A dangling reference resolves to nothing.
+    expect(roleForSalary({ ...dev, roleId: "gone" }, employer)).toBeUndefined();
+  });
+
+  it("derives a role's date span from the salaries referencing it", () => {
+    const salaries: Salary[] = [
+      { id: "s1", date: "2021-03-15", net: 100, roleId: "r1" },
+      { id: "s2", date: "2021-01-15", net: 100, roleId: "r1" },
+      { id: "s3", date: "2021-06-15", net: 100, roleId: "r1" },
+      { id: "s4", date: "2022-01-15", net: 100, roleId: "r2" },
+    ];
+    expect(roleDateRange("r1", salaries)).toEqual({
+      start: "2021-01-15",
+      end: "2021-06-15",
+    });
+    expect(roleDateRange("r2", salaries)).toEqual({
+      start: "2022-01-15",
+      end: "2022-01-15",
+    });
+    expect(roleDateRange("none", salaries)).toBeNull();
   });
 });
 

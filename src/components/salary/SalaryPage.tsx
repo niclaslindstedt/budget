@@ -274,6 +274,7 @@ export function SalaryPage({
         <EmployerManageModal
           open={employersOpen}
           employers={data.employers}
+          salaries={data.salaries}
           onClose={() => setEmployersOpen(false)}
           onCreate={(employer) =>
             dispatch({ type: "createEmployer", employer })

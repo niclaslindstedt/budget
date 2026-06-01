@@ -469,6 +469,95 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // it needs no migration — a v58 salary sheet simply lacks it and
   // estimates nothing until the user picks a profile. Bare additive bump.
   58: (v58) => ({ ...v58, version: 59, taxProfiles: [] }),
+
+  // v59 → v60: the job title a paycheck was paid under moves from a
+  // date-windowed lookup to an explicit `Salary.roleId` reference, and
+  // `Role` loses its `startDate` / `endDate` (a role's span is now
+  // derived from the salaries that point at it). Resolve each salary's
+  // role with the old date-window rule one last time and pin it as a
+  // `roleId`, then strip the dates off every role. A salary whose date
+  // fell outside every role window simply gets no `roleId` (no title),
+  // matching the pre-migration display.
+  59: (v59) => {
+    const rawEmployers = Array.isArray(v59.employers) ? v59.employers : [];
+    // employerId → its date-windowed roles, kept only long enough to
+    // resolve each salary's `roleId` before the dates are dropped.
+    const roleWindows = new Map<
+      string,
+      Array<{ id: string; startDate?: string; endDate?: string }>
+    >();
+    for (const rawEmployer of rawEmployers) {
+      if (!isObj(rawEmployer) || typeof rawEmployer.id !== "string") continue;
+      const roles = Array.isArray(rawEmployer.roles) ? rawEmployer.roles : [];
+      const windows: Array<{
+        id: string;
+        startDate?: string;
+        endDate?: string;
+      }> = [];
+      for (const rawRole of roles) {
+        if (!isObj(rawRole) || typeof rawRole.id !== "string") continue;
+        windows.push({
+          id: rawRole.id,
+          startDate:
+            typeof rawRole.startDate === "string"
+              ? rawRole.startDate
+              : undefined,
+          endDate:
+            typeof rawRole.endDate === "string" ? rawRole.endDate : undefined,
+        });
+      }
+      roleWindows.set(rawEmployer.id, windows);
+    }
+
+    const resolveRoleId = (
+      employerId: string | undefined,
+      date: string,
+    ): string | undefined => {
+      if (employerId === undefined) return undefined;
+      const windows = roleWindows.get(employerId);
+      if (!windows) return undefined;
+      // Mirror the old `roleForDate`: the covering role with the latest
+      // start wins (the most recent promotion).
+      let best: { id: string; startDate?: string } | undefined;
+      for (const w of windows) {
+        if (w.startDate !== undefined && date < w.startDate) continue;
+        if (w.endDate !== undefined && date > w.endDate) continue;
+        if (
+          best === undefined ||
+          (w.startDate ?? "") > (best.startDate ?? "")
+        ) {
+          best = w;
+        }
+      }
+      return best?.id;
+    };
+
+    const rawSalaries = Array.isArray(v59.salaries) ? v59.salaries : [];
+    const salaries = rawSalaries.map((raw) => {
+      if (!isObj(raw) || typeof raw.date !== "string") return raw;
+      const employerId =
+        typeof raw.employerId === "string" ? raw.employerId : undefined;
+      const roleId = resolveRoleId(employerId, raw.date);
+      if (roleId === undefined) return raw;
+      return { ...raw, roleId };
+    });
+
+    const employers = rawEmployers.map((raw) => {
+      if (!isObj(raw) || !Array.isArray(raw.roles)) return raw;
+      return {
+        ...raw,
+        roles: raw.roles.map((rawRole) => {
+          if (!isObj(rawRole)) return rawRole;
+          const { startDate: _s, endDate: _e, ...rest } = rawRole;
+          void _s;
+          void _e;
+          return rest;
+        }),
+      };
+    });
+
+    return { ...v59, version: 60, salaries, employers };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

@@ -1,6 +1,7 @@
-import { grossFromNetAndRate } from "../salary/salary";
+import { findRoleByTitle, grossFromNetAndRate } from "../salary/salary";
+import { newId } from "../sheet";
 import type { Action } from "../reducer";
-import type { Salary, UserData } from "../types";
+import type { Employer, Role, Salary, UserData } from "../types";
 
 // Apply a salary patch, treating an explicit `undefined` value as
 // "delete this key" rather than "set the key to undefined" — so
@@ -8,6 +9,10 @@ import type { Salary, UserData } from "../types";
 // keeps the live salary byte-identical to one reloaded from storage,
 // where absent optional fields simply aren't present. Mirrors
 // `applyItemPatch` in `reducers/items.ts`.
+//
+// Invariant: a `roleId` belongs to the salary's employer, so changing
+// `employerId` (when the patch doesn't itself set a `roleId`) drops the
+// now-orphaned role reference rather than leaving it dangling.
 function applySalaryPatch(
   salary: Salary,
   patch: Partial<Omit<Salary, "id">>,
@@ -19,6 +24,13 @@ function applySalaryPatch(
     } else {
       (next as Record<string, unknown>)[key] = value;
     }
+  }
+  if (
+    "employerId" in patch &&
+    patch.employerId !== salary.employerId &&
+    !("roleId" in patch)
+  ) {
+    delete next.roleId;
   }
   return next;
 }
@@ -66,6 +78,60 @@ export function reduceSalary(state: UserData, action: Action): UserData | null {
           ? { ...s, gross: grossFromNetAndRate(s.net, action.rate) }
           : s,
       ),
+    };
+  }
+  if (action.type === "bulkSetSalaryRole") {
+    const ids = new Set(action.ids);
+    if (ids.size === 0) return state;
+    const title = action.title.trim();
+
+    // Clearing the title: drop `roleId` on every selected salary, no
+    // employer touched.
+    if (title === "") {
+      return {
+        ...state,
+        salaries: state.salaries.map((s) =>
+          ids.has(s.id) ? applySalaryPatch(s, { roleId: undefined }) : s,
+        ),
+      };
+    }
+
+    // For each distinct employer in the selection, reuse a matching role
+    // or mint one. `roleByEmployer` records the resolved role id so every
+    // selected salary on that employer points at the same role.
+    const employersById = new Map(state.employers.map((e) => [e.id, e]));
+    const roleByEmployer = new Map<string, string>();
+    const newRoles = new Map<string, Role[]>();
+    for (const s of state.salaries) {
+      if (!ids.has(s.id) || s.employerId === undefined) continue;
+      if (roleByEmployer.has(s.employerId)) continue;
+      const employer = employersById.get(s.employerId);
+      if (!employer) continue;
+      const existing = findRoleByTitle(employer, title);
+      if (existing) {
+        roleByEmployer.set(s.employerId, existing.id);
+      } else {
+        const role: Role = { id: newId(), title };
+        roleByEmployer.set(s.employerId, role.id);
+        newRoles.set(s.employerId, [...employer.roles, role]);
+      }
+    }
+
+    const employers: Employer[] =
+      newRoles.size === 0
+        ? state.employers
+        : state.employers.map((e) =>
+            newRoles.has(e.id) ? { ...e, roles: newRoles.get(e.id)! } : e,
+          );
+
+    return {
+      ...state,
+      employers,
+      salaries: state.salaries.map((s) => {
+        if (!ids.has(s.id) || s.employerId === undefined) return s;
+        const roleId = roleByEmployer.get(s.employerId);
+        return roleId === undefined ? s : applySalaryPatch(s, { roleId });
+      }),
     };
   }
   if (action.type === "createEmployer") {

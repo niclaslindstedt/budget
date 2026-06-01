@@ -7,9 +7,11 @@ import {
   SHEET_COLORS,
   SHEET_GLYPH_NAMES,
 } from "../../data/constants/taxonomy";
+import { roleDateRange } from "../../data/salary/salary";
 import { newId } from "../../data/sheet";
-import type { CategoryIcon, Employer, Role } from "../../data/types";
-import { useT } from "../../i18n";
+import type { CategoryIcon, Employer, Role, Salary } from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import { formatMonthLabel } from "../../utils/format";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button, ClearableInput, FormSection } from "../form";
@@ -20,18 +22,15 @@ import { Modal } from "../Modal";
 type Props = {
   open: boolean;
   employers: readonly Employer[];
+  // The full salary list — a role carries no dates of its own, so its
+  // span is derived from the salaries that reference it.
+  salaries: readonly Salary[];
   onClose: () => void;
   onCreate: (employer: Employer) => void;
   onUpdate: (employerId: string, patch: Partial<Omit<Employer, "id">>) => void;
   onDelete: (employerId: string) => void;
 };
 
-// Native <input type="date"> keeps its intrinsic width on iOS WebKit and
-// won't shrink to a `w-full` container, so it overflows the modal. Match
-// the rest of the app: omit `w-full` and let the control size to its
-// content. (See the items edit-modal date-overflow fix.)
-const DATE_INPUT_CLASS =
-  "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 const TEXT_INPUT_CLASS =
   "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
@@ -66,6 +65,7 @@ function editorFor(employer: Employer): EditorState {
 export function EmployerManageModal({
   open,
   employers,
+  salaries,
   onClose,
   onCreate,
   onUpdate,
@@ -102,15 +102,11 @@ export function EmployerManageModal({
     if (!editor) return;
     const name = editor.name.trim();
     if (name === "") return;
-    // Drop blank-title roles and normalise empty date strings to absent.
+    // Drop blank-title roles; a role is just an id + title now (its span
+    // is derived from the salaries that reference it).
     const roles: Role[] = editor.roles
       .filter((r) => r.title.trim() !== "")
-      .map((r) => {
-        const role: Role = { id: r.id, title: r.title.trim() };
-        if (r.startDate) role.startDate = r.startDate;
-        if (r.endDate) role.endDate = r.endDate;
-        return role;
-      });
+      .map((r) => ({ id: r.id, title: r.title.trim() }));
     const patch = { name, color: editor.color, glyph: editor.glyph, roles };
     if (editor.id) onUpdate(editor.id, patch);
     else onCreate({ id: newId(), ...patch });
@@ -212,38 +208,7 @@ export function EmployerManageModal({
                         <Trash2 size={14} aria-hidden focusable={false} />
                       </button>
                     </div>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <label className="flex flex-col gap-1">
-                        <span className="text-xs text-muted">
-                          {t("salary.roleStart")}
-                        </span>
-                        <input
-                          type="date"
-                          value={role.startDate ?? ""}
-                          onChange={(e) =>
-                            updateRole(role.id, {
-                              startDate: e.target.value || undefined,
-                            })
-                          }
-                          className={DATE_INPUT_CLASS}
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1">
-                        <span className="text-xs text-muted">
-                          {t("salary.roleEnd")}
-                        </span>
-                        <input
-                          type="date"
-                          value={role.endDate ?? ""}
-                          onChange={(e) =>
-                            updateRole(role.id, {
-                              endDate: e.target.value || undefined,
-                            })
-                          }
-                          className={DATE_INPUT_CLASS}
-                        />
-                      </label>
-                    </div>
+                    <RoleSpan role={role} salaries={salaries} />
                   </div>
                 ))}
                 <button
@@ -365,4 +330,28 @@ export function EmployerManageModal({
       />
     </Modal>
   );
+}
+
+// A role's effective span, derived from the salaries that reference it.
+// Read-only: the role itself stores no dates, so this just narrates the
+// range the assigned paychecks span (or a hint when none point at it).
+function RoleSpan({
+  role,
+  salaries,
+}: {
+  role: Role;
+  salaries: readonly Salary[];
+}) {
+  const t = useT();
+  const lang = useLang();
+  const range = roleDateRange(role.id, salaries);
+  if (range === null) {
+    return (
+      <span className="text-xs text-muted">{t("salary.roleRangeEmpty")}</span>
+    );
+  }
+  const start = formatMonthLabel(range.start.slice(0, 7), lang);
+  const end = formatMonthLabel(range.end.slice(0, 7), lang);
+  const text = start === end ? start : t("salary.roleRange", { start, end });
+  return <span className="text-xs text-muted">{text}</span>;
 }
