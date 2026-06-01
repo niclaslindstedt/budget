@@ -206,6 +206,8 @@ src/
 │   │                           #   summariseSalaryClusters rolls the months up
 │   │                           #   into pay periods between raises / employer
 │   │                           #   changes for the account-step summary
+│   │   └── payslip-name.ts     # buildPayslipPath — flat "Employer - YYYY-MM"
+│   │                           #   payslip filenames (+ re-exports extensionOf)
 │   ├── achievements/      # the gamified "guided tour" system
 │   │   ├── catalog.ts          # achievement definitions + unlock predicates
 │   │   ├── derive.ts           # diff (prev, next) state → newly-unlocked ids

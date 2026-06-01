@@ -41,6 +41,13 @@ type Props = {
   bulkDeleteOpen: boolean;
   onCloseBulkDelete: () => void;
   onConfirmBulkDelete: () => void;
+  // Payslip attachment, threaded from AppShell where the storage adapter
+  // lives. `canUploadPayslip` gates the control on a backend that
+  // advertises the `payslips` capability; the callbacks write / read the
+  // file through that adapter for the given salary.
+  canUploadPayslip: boolean;
+  onUploadPayslip: (salary: Salary, file: File) => Promise<string>;
+  onViewPayslip: (path: string) => Promise<void>;
 };
 
 export function SalaryPage({
@@ -58,6 +65,9 @@ export function SalaryPage({
   bulkDeleteOpen,
   onCloseBulkDelete,
   onConfirmBulkDelete,
+  canUploadPayslip,
+  onUploadPayslip,
+  onViewPayslip,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -221,6 +231,11 @@ export function SalaryPage({
           onClose={() => setEditing(null)}
           onSave={handleSaveSalary}
           onCreateEmployer={handleCreateEmployer}
+          canUploadPayslip={canUploadPayslip}
+          onUploadPayslip={
+            editing ? (file) => onUploadPayslip(editing, file) : undefined
+          }
+          onViewPayslip={onViewPayslip}
         />
 
         <SalaryBulkEditModal

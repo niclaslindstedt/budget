@@ -56,4 +56,11 @@ export type Salary = {
   // candidate. Best-effort: bank entry ids aren't stable across
   // re-imports, so the page pairs this with a month+net dedupe.
   sourceHistoryId?: string;
+  // Relative path (inside the active backend's `payslips/` folder) of
+  // the single payslip / lönerapport file attached to this salary —
+  // proof of the paycheck, kept for the record. Mirrors `Row.receiptPath`
+  // on the budget side: encrypted at rest exactly when the budget is,
+  // and the file itself does not travel through JSON export / import —
+  // only the reference path does. Absent means no payslip.
+  payslipPath?: string;
 };

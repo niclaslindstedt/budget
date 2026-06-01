@@ -1,6 +1,6 @@
 import { createLogger } from "../utils/logger";
 import { safeJsonParse } from "../utils/json";
-import type { StorageAdapter } from "./adapter";
+import type { ReceiptOps, StorageAdapter } from "./adapter";
 
 const log = createLogger("reencrypt");
 
@@ -51,6 +51,26 @@ export function extractReceiptPaths(snapshotText: string): string[] {
   return [...paths];
 }
 
+// Pull every salary's payslip path out of a serialized `UserData`
+// snapshot. Payslips hang off the salary (`salaries[].payslipPath`).
+// Same rationale and tolerance as `extractReceiptPaths` — the re-wrap
+// runs on bytes, not a `UserData` value, so the authoritative list
+// comes from parsing those bytes.
+export function extractPayslipPaths(snapshotText: string): string[] {
+  const parsed = safeJsonParse(snapshotText);
+  if (typeof parsed !== "object" || parsed === null) return [];
+  const paths = new Set<string>();
+  const salaries = (parsed as { salaries?: unknown }).salaries;
+  if (Array.isArray(salaries)) {
+    for (const salary of salaries) {
+      if (typeof salary !== "object" || salary === null) continue;
+      const path = (salary as { payslipPath?: unknown }).payslipPath;
+      if (typeof path === "string" && path.length > 0) paths.add(path);
+    }
+  }
+  return [...paths];
+}
+
 // Atomically migrate the bytes already in a backend from one encryption
 // mode to another when the user toggles encryption. `current` reads
 // through the old wrapper (decrypting if it was on); `target` writes
@@ -76,13 +96,14 @@ export async function reencryptStorage(
   target: StorageAdapter,
   snapshotText: string,
 ): Promise<void> {
-  const converted: { path: string; blob: Blob }[] = [];
+  // Each converted file remembers the `current`-side ops it came from so
+  // rollback restores it through the exact same backend folder.
+  const converted: { ops: ReceiptOps; path: string; blob: Blob }[] = [];
 
   async function rollback(): Promise<void> {
-    if (!current.receipts) return;
-    for (const { path, blob } of converted) {
+    for (const { ops, path, blob } of converted) {
       try {
-        await current.receipts.upload(path, blob);
+        await ops.upload(path, blob);
       } catch (err) {
         // Best-effort — a file we can't restore stays in the new mode,
         // but it still self-describes on read, so log and press on so
@@ -92,18 +113,27 @@ export async function reencryptStorage(
     }
   }
 
-  if (current.receipts && target.receipts) {
-    const paths = extractReceiptPaths(snapshotText);
-    log.info(`reencrypt: ${paths.length} receipt(s) to convert`);
+  // One conversion pass over a blob-folder ops pair (receipts or
+  // payslips): download each file through `current`, re-upload through
+  // `target`, remembering the original bytes so a later failure can roll
+  // the whole batch back to its source mode.
+  async function convertPass(
+    currentOps: ReceiptOps | undefined,
+    targetOps: ReceiptOps | undefined,
+    paths: string[],
+    label: string,
+  ): Promise<void> {
+    if (!currentOps || !targetOps) return;
+    log.info(`reencrypt: ${paths.length} ${label}(s) to convert`);
     for (const path of paths) {
       try {
-        const blob = await current.receipts.download(path);
+        const blob = await currentOps.download(path);
         if (!blob) {
           log.warn(`reencrypt: ${path} missing — skipping`);
           continue;
         }
-        await target.receipts.upload(path, blob);
-        converted.push({ path, blob });
+        await targetOps.upload(path, blob);
+        converted.push({ ops: currentOps, path, blob });
       } catch (err) {
         log.error(`reencrypt: failed on ${path} — rolling back`, err);
         await rollback();
@@ -112,10 +142,23 @@ export async function reencryptStorage(
     }
   }
 
+  await convertPass(
+    current.receipts,
+    target.receipts,
+    extractReceiptPaths(snapshotText),
+    "receipt",
+  );
+  await convertPass(
+    current.payslips,
+    target.payslips,
+    extractPayslipPaths(snapshotText),
+    "payslip",
+  );
+
   try {
     await target.save(snapshotText);
   } catch (err) {
-    log.error("reencrypt: budget save failed — rolling back receipts", err);
+    log.error("reencrypt: budget save failed — rolling back files", err);
     await rollback();
     throw err;
   }

@@ -313,6 +313,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna Prylar på ett köp och bifoga ett foto eller en PDF av kvittot — varje sak köpet betalade för delar det. Det sparas som en fil i en kvittomapp i din lagring, namngett enligt mönstret du väljer under Inställningar → Saker, så att du hittar det senare. Tillgängligt för lokal mapp och molnlagring.",
   },
+  payslipKeeper: {
+    name: "Lönerapportsamlare",
+    condition: "Bifoga en lönerapport till en lön.",
+    learnMore:
+      "Öppna en lön på Lön-bladet och bifoga ett foto eller en PDF av lönerapporten. Den sparas som en fil i en lönerapportmapp i din lagring, namngiven efter arbetsgivaren och lönemånaden, så att du hittar den senare. Tillgängligt för lokal mapp och molnlagring.",
+  },
   spellbinder: {
     name: "Trollkarl",
     condition: "Skriv din första beloppsformel.",

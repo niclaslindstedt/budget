@@ -106,38 +106,46 @@ export function withEncryption(
       }
     : undefined;
 
-  // Receipts ride the same envelope as the budget: encrypt on the way
-  // in when a password is held, detect-and-decrypt on the way out. A
-  // receipt written while encryption was off is a raw image / PDF —
-  // `download` returns it untouched so the transition window stays
-  // readable, mirroring the plaintext-leftover handling in `load`.
-  const wrappedReceipts: ReceiptOps | undefined = inner.receipts
-    ? {
-        async upload(path, blob) {
-          const password = passwordRef.current;
-          if (!password) {
-            await inner.receipts!.upload(path, blob);
-            return;
-          }
-          await inner.receipts!.upload(path, await encryptBlob(blob, password));
-        },
-        async download(path) {
-          const blob = await inner.receipts!.download(path);
-          if (!blob) return null;
-          // A raw image / PDF read as text won't parse as our envelope
-          // JSON, so `isEncryptedEnvelope` cleanly separates the two.
-          // Blob is immutable, so re-reading it after this is safe.
-          const text = await blob.text();
-          if (!isEncryptedEnvelope(text)) return blob;
-          const password = passwordRef.current;
-          if (!password) {
-            throw new Error("Receipt is encrypted; password is required");
-          }
-          return decryptBlob(blob, password);
-        },
-        remove: (path) => inner.receipts!.remove(path),
-      }
-    : undefined;
+  // Binary blob-folder ops (receipts, payslips) ride the same envelope
+  // as the budget: encrypt on the way in when a password is held,
+  // detect-and-decrypt on the way out. A file written while encryption
+  // was off is a raw image / PDF — `download` returns it untouched so
+  // the transition window stays readable, mirroring the plaintext-
+  // leftover handling in `load`. `kind` only flavours the error message.
+  function wrapBlobOps(
+    ops: ReceiptOps | undefined,
+    kind: string,
+  ): ReceiptOps | undefined {
+    if (!ops) return undefined;
+    return {
+      async upload(path, blob) {
+        const password = passwordRef.current;
+        if (!password) {
+          await ops.upload(path, blob);
+          return;
+        }
+        await ops.upload(path, await encryptBlob(blob, password));
+      },
+      async download(path) {
+        const blob = await ops.download(path);
+        if (!blob) return null;
+        // A raw image / PDF read as text won't parse as our envelope
+        // JSON, so `isEncryptedEnvelope` cleanly separates the two.
+        // Blob is immutable, so re-reading it after this is safe.
+        const text = await blob.text();
+        if (!isEncryptedEnvelope(text)) return blob;
+        const password = passwordRef.current;
+        if (!password) {
+          throw new Error(`${kind} is encrypted; password is required`);
+        }
+        return decryptBlob(blob, password);
+      },
+      remove: (path) => ops.remove(path),
+    };
+  }
+
+  const wrappedReceipts = wrapBlobOps(inner.receipts, "Receipt");
+  const wrappedPayslips = wrapBlobOps(inner.payslips, "Payslip");
 
   // Forward every inner capability except `loadSync` — decryption is
   // async even when the inner backend can serve bytes synchronously,
@@ -152,6 +160,7 @@ export function withEncryption(
     capabilities,
     backups: wrappedBackups,
     receipts: wrappedReceipts,
+    payslips: wrappedPayslips,
 
     // The hook hands us plaintext bytes here; the inner cache (in
     // `withCloudMirror`) expects the same envelope shape the cloud
