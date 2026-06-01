@@ -131,6 +131,18 @@ describe("salary discovery (bank-history scan)", () => {
     expect(candidates.every((c) => c.net === 15000)).toBe(true);
   });
 
+  it("carries the bank description so the user can eyeball the deposit", () => {
+    const dates = monthlyDates(2024, 1, 4);
+    const entries = dates.map((d, i) =>
+      entry(`s${i}`, d, 30000, "ACME PAYROLL LÖN"),
+    );
+    const { candidates } = discoverSalaries({ entries });
+    expect(candidates).toHaveLength(4);
+    expect(candidates.every((c) => c.description === "ACME PAYROLL LÖN")).toBe(
+      true,
+    );
+  });
+
   it("returns nothing when there's no recurring deposit", () => {
     const entries = [
       entry("a", "2024-01-10", 30000, "ONE OFF"),

@@ -32,7 +32,11 @@ export type DiscoveredSalary = {
   year: string; // "YYYY" — drives the per-year stepping
   date: string; // the winning deposit's date
   net: number; // the deposit that landed (netto)
-  description: string; // the winning entry's raw bank description
+  // The winning entry's bank description, so the user can eyeball whether
+  // this is really the salary deposit. Falls back to the user-added
+  // description when the bank text is empty (e.g. a manually-entered
+  // history row carries only `userDescription`).
+  description: string;
   sourceHistoryId: string; // the HistoryEntry this was discovered from
   confidence: number; // 0..1
   // Job-change segment index (same contract as `SalaryCandidate`):
@@ -77,6 +81,15 @@ const SALARY_BAND = 0.5;
 function within1Pct(a: number, b: number): boolean {
   if (a <= 0 || b <= 0) return false;
   return Math.abs(a - b) / Math.max(a, b) <= 0.01;
+}
+
+// The description shown for a discovered paycheck: the raw bank text when
+// present, otherwise the user-added description (a manually-entered
+// history row may carry only `userDescription`).
+function displayDescription(entry: HistoryEntry): string {
+  if (entry.description.trim()) return entry.description;
+  const user = entry.userDescription?.trim();
+  return user ? entry.userDescription! : entry.description;
 }
 
 function entryTypedAsSalary(entry: HistoryEntry): boolean {
@@ -198,7 +211,7 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
       year: months[i].slice(0, 4),
       date: entry.date,
       net: entry.amount,
-      description: entry.description,
+      description: displayDescription(entry),
       sourceHistoryId: entry.id,
       confidence,
       employerGroup: groups[i],
