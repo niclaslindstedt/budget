@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { resolveSalary, roleForDate } from "../../data/salary/salary";
+import { resolveSalary, roleForSalary } from "../../data/salary/salary";
 import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
@@ -83,7 +83,7 @@ function SalaryRowImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
-  const title = roleForDate(employer, salary.date)?.title;
+  const title = roleForSalary(salary, employer)?.title;
   // Bulk-select mode suppresses the per-row swipe so the gesture doesn't
   // fight the select tap, matching the budget sheet.
   const { swiped, setSwiped, touchHandlers } = useRowSwipe({

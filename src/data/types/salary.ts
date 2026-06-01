@@ -1,17 +1,14 @@
 import type { CategoryIcon } from "./categories";
 
-// A role (job title) held at an Employer over a date range. A salary's
-// displayed title is resolved by finding the role whose
-// `[startDate, endDate]` window covers the salary's payment date — so a
-// promotion is a new role rather than a field rewritten on every
-// paycheck. Both dates are optional: an undefined `startDate` means
-// "from the beginning of time", an undefined `endDate` means "still
-// ongoing".
+// A role (job title) held at an Employer. A salary points at the role it
+// was paid under via `Salary.roleId` — so a promotion is a new role the
+// later paychecks reference, not a field rewritten on every one. The role
+// itself carries no dates: a role's effective span is derived from the
+// min/max payment date of the salaries that reference it (see
+// `roleDateRange` in `data/salary/salary.ts`).
 export type Role = {
   id: string;
   title: string;
-  startDate?: string; // ISO yyyy-mm-dd
-  endDate?: string; // ISO yyyy-mm-dd
 };
 
 // A workplace the user has drawn salary from. Lives at the UserData
@@ -38,6 +35,11 @@ export type Salary = {
   date: string; // ISO payment date — drives the per-year grouping
   net: number; // netto: the bank deposit
   gross?: number; // brutto: entered or derived; tax = gross - net
+  // The job title held for this paycheck — a reference into the
+  // employer's `roles`. Cleared automatically when the salary's employer
+  // changes (a role belongs to exactly one employer), and dropped by the
+  // validator if it dangles. Absent means no title recorded.
+  roleId?: string;
   employerId?: string; // reference into UserData.employers
   careOfChildDays?: number; // VAB — vård av barn
   parentalLeaveDays?: number;

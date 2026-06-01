@@ -96,7 +96,11 @@ export function validateUserData(raw: unknown): Result<UserData> {
     seenEmployerIds.add(r.value.id);
     employers.push(r.value);
   }
-  const knownEmployerIds: ReadonlySet<string> = seenEmployerIds;
+  // employerId → its role ids, so a salary's `roleId` can be checked
+  // against the roles that actually live on its employer.
+  const roleIdsByEmployer = new Map<string, ReadonlySet<string>>(
+    employers.map((e) => [e.id, new Set(e.roles.map((r) => r.id))]),
+  );
 
   const rawSalaries = Array.isArray(raw.salaries) ? raw.salaries : [];
   const salaries: Salary[] = [];
@@ -105,7 +109,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
     const r = validateSalary(
       rawSalaries[i],
       `salaries[${i}]`,
-      knownEmployerIds,
+      roleIdsByEmployer,
     );
     if (!r.ok) return r;
     if (seenSalaryIds.has(r.value.id))

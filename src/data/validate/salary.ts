@@ -1,10 +1,9 @@
 import type { CategoryIcon, Employer, Role, Salary } from "../types";
 import { CATEGORY_ICONS, fail, isObject, type Result } from "./helpers";
 
-// ISO yyyy-mm-dd shape check shared by salary `date` and role
-// start/end dates. Lenient on the tail so a stored timestamp
-// (yyyy-mm-ddThh:…) still passes — the date prefix is all the salary
-// surfaces read.
+// ISO yyyy-mm-dd shape check for a salary `date`. Lenient on the tail so
+// a stored timestamp (yyyy-mm-ddThh:…) still passes — the date prefix is
+// all the salary surfaces read.
 function isIsoDate(v: unknown): v is string {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v);
 }
@@ -24,10 +23,7 @@ function validateRole(raw: unknown): Role | null {
   const { id, title } = raw;
   if (typeof id !== "string" || id === "") return null;
   if (typeof title !== "string") return null;
-  const role: Role = { id, title };
-  if (isIsoDate(raw.startDate)) role.startDate = raw.startDate;
-  if (isIsoDate(raw.endDate)) role.endDate = raw.endDate;
-  return role;
+  return { id, title };
 }
 
 export function validateEmployer(raw: unknown, path: string): Result<Employer> {
@@ -61,14 +57,16 @@ export function validateEmployer(raw: unknown, path: string): Result<Employer> {
   return { ok: true, value: employer };
 }
 
-// Validate one Salary. `knownEmployerIds` drops a dangling
-// `employerId` (a deleted employer) silently — the salary stays, just
-// unassigned — mirroring how dangling type / company references are
-// swept on budget rows.
+// Validate one Salary. `roleIdsByEmployer` maps each known employer id to
+// the set of role ids it carries; a dangling `employerId` (a deleted
+// employer) drops the assignment silently — the salary stays, just
+// unassigned — and a `roleId` that doesn't resolve on the salary's own
+// employer is dropped the same way (mirroring how dangling type / company
+// references are swept on budget rows).
 export function validateSalary(
   raw: unknown,
   path: string,
-  knownEmployerIds: ReadonlySet<string>,
+  roleIdsByEmployer: ReadonlyMap<string, ReadonlySet<string>>,
 ): Result<Salary> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, date, net } = raw;
@@ -83,9 +81,19 @@ export function validateSalary(
   if (
     typeof raw.employerId === "string" &&
     raw.employerId !== "" &&
-    knownEmployerIds.has(raw.employerId)
+    roleIdsByEmployer.has(raw.employerId)
   ) {
     salary.employerId = raw.employerId;
+    // A `roleId` only resolves against the salary's own employer's roles;
+    // drop it otherwise (deleted role, or a stale ref left after the
+    // employer changed).
+    if (
+      typeof raw.roleId === "string" &&
+      raw.roleId !== "" &&
+      roleIdsByEmployer.get(raw.employerId)?.has(raw.roleId)
+    ) {
+      salary.roleId = raw.roleId;
+    }
   }
   if (isDayCount(raw.careOfChildDays))
     salary.careOfChildDays = raw.careOfChildDays;

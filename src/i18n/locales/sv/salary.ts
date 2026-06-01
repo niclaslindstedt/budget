@@ -64,6 +64,10 @@ const salary: SalaryCatalog = {
   // Bulk edit
   bulkTitle: "Redigera {count} löner",
   bulkEmployerToggle: "Ange arbetsgivare",
+  bulkRoleToggle: "Ange jobbtitel",
+  bulkRoleHint:
+    "Pekar varje vald lön mot denna titel hos sin arbetsgivare och skapar rollen om den är ny. Lämna tomt för att ta bort titeln.",
+  bulkRolePlaceholder: "Utvecklare, Chef, …",
   bulkTaxRateToggle: "Ange skattesats",
   bulkTaxRateHint:
     "Procent av brutto som dras i skatt. Varje löns brutto räknas baklänges från dess eget netto.",
@@ -143,8 +147,8 @@ const salary: SalaryCatalog = {
   addRole: "Lägg till roll",
   roleTitle: "Titel",
   roleTitlePlaceholder: "Utvecklare, Chef, …",
-  roleStart: "Från",
-  roleEnd: "Till",
+  roleRange: "{start} – {end}",
+  roleRangeEmpty: "Inte kopplad till någon lön än",
   removeRole: "Ta bort roll",
   noRoles: "Inga roller än.",
 

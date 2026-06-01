@@ -122,6 +122,11 @@ export function useSalaryBulkSelection({ salaries, dispatch }: Params): Result {
           patch: { employerId: args.employerId },
         });
       }
+      // Role after employer: `bulkSetSalaryRole` resolves the title
+      // against each salary's (possibly just-changed) employer.
+      if (args.setRole) {
+        dispatch({ type: "bulkSetSalaryRole", ids, title: args.roleTitle });
+      }
       if (args.setTaxRate) {
         dispatch({ type: "bulkSetSalaryTaxRate", ids, rate: args.rate });
       }

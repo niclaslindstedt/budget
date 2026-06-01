@@ -283,6 +283,17 @@ export type Action =
       ids: string[];
       rate: number;
     }
+  | {
+      // Set the job title on many salaries. For each distinct employer
+      // among the selection, find-or-create a role with `title` and
+      // point those salaries' `roleId` at it; a blank title clears the
+      // role instead. Salaries with no employer are skipped (a role
+      // belongs to an employer). The role carries no dates — its span is
+      // derived from the salaries that reference it.
+      type: "bulkSetSalaryRole";
+      ids: string[];
+      title: string;
+    }
   | { type: "createEmployer"; employer: Employer }
   | {
       // Edit an employer by id (name, color, glyph, and the full

@@ -74,35 +74,54 @@ export function salaryYear(salary: Salary): string {
   return salary.date.slice(0, 4);
 }
 
-// The role active at a given date for an employer: the role whose
-// `[startDate, endDate]` window covers `date`. An undefined `startDate`
-// means "from the beginning", an undefined `endDate` means "ongoing".
-// When several roles overlap the date, the one with the latest start
-// wins (the most recent promotion). Returns undefined when no role
-// covers the date.
-export function roleForDate(
+// The role a salary was paid under: the entry in its employer's `roles`
+// matching `salary.roleId`. Returns undefined when the salary has no
+// role pinned, no employer, or the reference dangles.
+export function roleForSalary(
+  salary: Salary,
   employer: Employer | undefined,
-  date: string,
 ): Role | undefined {
-  if (!employer) return undefined;
-  let best: Role | undefined;
-  for (const role of employer.roles) {
-    if (role.startDate !== undefined && date < role.startDate) continue;
-    if (role.endDate !== undefined && date > role.endDate) continue;
-    if (best === undefined || (role.startDate ?? "") > (best.startDate ?? "")) {
-      best = role;
-    }
-  }
-  return best;
+  if (!employer || salary.roleId === undefined) return undefined;
+  return employer.roles.find((r) => r.id === salary.roleId);
 }
 
 // Convenience: the job title to show for a salary, resolved from its
-// employer's role covering the payment date.
+// employer's pinned role.
 export function titleForSalary(
   salary: Salary,
   employersById: ReadonlyMap<string, Employer>,
 ): string | undefined {
   if (!salary.employerId) return undefined;
-  const role = roleForDate(employersById.get(salary.employerId), salary.date);
-  return role?.title;
+  return roleForSalary(salary, employersById.get(salary.employerId))?.title;
+}
+
+// The effective date span of a role, derived from the salaries that
+// reference it: the earliest and latest payment date among them. Returns
+// null when no salary points at the role (a freshly-added title not yet
+// assigned to any paycheck). ISO `start`/`end` may be equal (one salary).
+export function roleDateRange(
+  roleId: string,
+  salaries: readonly Salary[],
+): { start: string; end: string } | null {
+  let start: string | undefined;
+  let end: string | undefined;
+  for (const s of salaries) {
+    if (s.roleId !== roleId) continue;
+    if (start === undefined || s.date < start) start = s.date;
+    if (end === undefined || s.date > end) end = s.date;
+  }
+  if (start === undefined || end === undefined) return null;
+  return { start, end };
+}
+
+// Find an existing role on `employer` whose title matches `title`
+// (trimmed, case-insensitive), or undefined when none does. Used by the
+// bulk "set job title" flow to reuse a role instead of spawning a
+// duplicate every time the same title is applied.
+export function findRoleByTitle(
+  employer: Employer,
+  title: string,
+): Role | undefined {
+  const needle = title.trim().toLowerCase();
+  return employer.roles.find((r) => r.title.trim().toLowerCase() === needle);
 }

@@ -114,7 +114,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 59, incl. taxProfiles),
+│   │   ├── user-data.ts        # UserData (version 60, incl. taxProfiles),
 │   │   │                       #   StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, SheetType, SheetGlyph
@@ -245,7 +245,7 @@ src/
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (59) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (60) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
 │   │   ├── modern.ts           # v31 → v58 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers

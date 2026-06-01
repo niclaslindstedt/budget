@@ -64,6 +64,10 @@ const salary = {
   // Bulk edit
   bulkTitle: "Edit {count} salaries",
   bulkEmployerToggle: "Set employer",
+  bulkRoleToggle: "Set job title",
+  bulkRoleHint:
+    "Points every selected salary at this title on its employer, creating the role if it's new. Leave blank to clear the title.",
+  bulkRolePlaceholder: "Developer, Manager, …",
   bulkTaxRateToggle: "Set tax rate",
   bulkTaxRateHint:
     "Percent of gross withheld as tax. Each salary's gross is back-calculated from its own net deposit.",
@@ -143,8 +147,8 @@ const salary = {
   addRole: "Add role",
   roleTitle: "Title",
   roleTitlePlaceholder: "Developer, Manager, …",
-  roleStart: "From",
-  roleEnd: "To",
+  roleRange: "{start} – {end}",
+  roleRangeEmpty: "Not assigned to any salary yet",
   removeRole: "Remove role",
   noRoles: "No roles yet.",
 
