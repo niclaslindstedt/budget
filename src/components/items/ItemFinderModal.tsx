@@ -110,6 +110,14 @@ export function ItemFinderModal({
     [open, data, settings],
   );
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
+  // Entries whose line items the user just saved this session. The
+  // scanner keeps an entry with existing line items in the candidate set
+  // (a big purchase may have one item linked and more to add), so without
+  // this the just-catalogued row reappears in the queue the moment the
+  // line-items modal closes. Session-local like `skipped`: it drops the
+  // row from the visible queue now but the entry resurfaces next time the
+  // modal opens, so the user can keep adding items to it later.
+  const [linked, setLinked] = useState<ReadonlySet<string>>(new Set());
   // The candidate whose line items are being edited, or null when the
   // embedded line-items modal is closed.
   const [editing, setEditing] = useState<ItemPurchaseCandidate | null>(null);
@@ -142,6 +150,7 @@ export function ItemFinderModal({
     // pattern isn't silently dropped, then reset the session state.
     flushPendingExclude();
     setSkipped(new Set());
+    setLinked(new Set());
     setEditing(null);
     setExcluding(new Set());
   });
@@ -158,12 +167,16 @@ export function ItemFinderModal({
 
   const typesById = useMemo(() => indexById(allTypes(data)), [data]);
 
-  // Entries the user hasn't skipped this session and that still match
-  // (the ignore decisions already dropped from `candidates`). Skipping
-  // is the only session-local filter applied on top.
+  // Entries the user hasn't skipped or just catalogued this session and
+  // that still match (the ignore decisions already dropped from
+  // `candidates`). Skipping and saving line items are the session-local
+  // filters applied on top.
   const queue = useMemo(
-    () => candidates.filter((c) => !skipped.has(c.entryId)),
-    [candidates, skipped],
+    () =>
+      candidates.filter(
+        (c) => !skipped.has(c.entryId) && !linked.has(c.entryId),
+      ),
+    [candidates, skipped, linked],
   );
 
   // Flash every queued row matching the candidate's normalised
@@ -378,6 +391,14 @@ export function ItemFinderModal({
         onSubmit={(_rowId, lineItems) => {
           if (editing) {
             onLinkLineItems(editing.accountId, editing.entryId, lineItems);
+            // Drop the just-catalogued entry from the visible queue so it
+            // doesn't reappear when the line-items modal closes.
+            const entryId = editing.entryId;
+            setLinked((prev) => {
+              const next = new Set(prev);
+              next.add(entryId);
+              return next;
+            });
           }
           setEditing(null);
         }}
