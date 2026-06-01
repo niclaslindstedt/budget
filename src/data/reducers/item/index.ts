@@ -456,18 +456,36 @@ export function reduceAccountBudget(
       let changed = false;
       const rows = item.rows.map((r) => {
         if (r.id !== action.rowId) return r;
+        const next = { ...r };
+        let rowChanged = false;
         // An empty set means "clear the line items" — drop the field so a
         // row never persists an empty `lineItems: []` (mirrors `tagIds`).
         if (action.lineItems.length === 0) {
-          if (r.lineItems === undefined) return r;
-          const next = { ...r };
-          delete next.lineItems;
-          changed = true;
-          return next;
+          if (next.lineItems !== undefined) {
+            delete next.lineItems;
+            rowChanged = true;
+          }
+        } else {
+          // Defensive copy so the reducer never holds the dispatcher's array.
+          next.lineItems = action.lineItems.map((l) => ({ ...l }));
+          rowChanged = true;
         }
+        // Receipt path rides the same submit: an empty string clears it,
+        // `undefined` leaves the prior reference untouched.
+        if (action.receiptPath !== undefined) {
+          if (action.receiptPath === "") {
+            if (next.receiptPath !== undefined) {
+              delete next.receiptPath;
+              rowChanged = true;
+            }
+          } else if (next.receiptPath !== action.receiptPath) {
+            next.receiptPath = action.receiptPath;
+            rowChanged = true;
+          }
+        }
+        if (!rowChanged) return r;
         changed = true;
-        // Defensive copy so the reducer never holds the dispatcher's array.
-        return { ...r, lineItems: action.lineItems.map((l) => ({ ...l })) };
+        return next;
       });
       if (!changed) return item;
       return { ...item, rows };

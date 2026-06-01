@@ -242,8 +242,6 @@ export function validateItem(
     item.disposedAt = raw.disposedAt;
   if (typeof raw.soldFor === "number" && Number.isFinite(raw.soldFor))
     item.soldFor = raw.soldFor;
-  if (typeof raw.receiptPath === "string" && raw.receiptPath !== "")
-    item.receiptPath = raw.receiptPath;
   const depreciation = validateItemDepreciation(raw.depreciation);
   if (depreciation) item.depreciation = depreciation;
   return { ok: true, value: item };

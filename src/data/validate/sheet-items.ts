@@ -80,6 +80,7 @@ export function validateRow(
     companyId,
     tagIds,
     lineItems,
+    receiptPath,
     fiscalMonthShift,
   } = raw;
   if (typeof id !== "string" || id === "")
@@ -181,6 +182,12 @@ export function validateRow(
     const kept = validateLineItemLinks(lineItems, knownItemIds);
     if (kept.length > 0) row.lineItems = kept;
   }
+  // The receipt file reference for the purchase this row records — see
+  // `Row.receiptPath`. The file lives in the backend, not the JSON, so a
+  // dangling path (file gone) is tolerated by the viewer rather than the
+  // validator; only the empty / non-string cases drop here.
+  if (typeof receiptPath === "string" && receiptPath !== "")
+    row.receiptPath = receiptPath;
   if (fiscalMonthShift !== undefined) {
     if (fiscalMonthShift !== 1 && fiscalMonthShift !== -1)
       return fail(`${path}.fiscalMonthShift`, "expected -1 or 1");

@@ -140,6 +140,10 @@ export type ItemAction =
       itemId: string;
       rowId: string;
       lineItems: LineItemLink[];
+      // Receipt file reference for the purchase, set alongside the line
+      // items in the same modal. An empty string clears it; `undefined`
+      // leaves whatever was there untouched.
+      receiptPath?: string;
     }
   | {
       // Set / clear the manual fiscal-month override on a single row.

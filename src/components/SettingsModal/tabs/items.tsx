@@ -62,9 +62,9 @@ export function ItemsTab({
 
   const receiptExample = buildReceiptPath({
     pattern: draft.receiptNamePattern,
-    itemName: "iPhone 15 Pro",
-    itemId: "a1b2c3",
-    acquiredAt: "2024-01-15",
+    companyName: t("settings.items.receiptExampleCompany"),
+    entryId: "a1b2c3",
+    entryDate: "2024-01-15",
     today: "2024-01-15",
     extension: "jpg",
     typeLabel: t("settings.items.receiptExampleType"),

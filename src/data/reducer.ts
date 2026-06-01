@@ -166,6 +166,10 @@ export type Action =
       accountId: string;
       entryId: string;
       lineItems: LineItemLink[];
+      // Receipt file reference for the purchase, set alongside the line
+      // items in the same modal. An empty string clears it; `undefined`
+      // leaves whatever was there untouched.
+      receiptPath?: string;
     }
   | {
       // Persist an "ignore" decision from the Items sheet's "Find items"

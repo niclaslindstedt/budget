@@ -45,41 +45,44 @@ export function extensionOf(filename: string): string {
 
 export type BuildReceiptPathOpts = {
   pattern: ReceiptNamePattern;
-  // The item's display name — the primary token in every pattern.
-  itemName: string;
-  // The item id, used only to disambiguate a name collision with
-  // another item's receipt.
-  itemId: string;
-  // ISO acquired date ("YYYY-MM-DD…"); the date token falls back to
+  // The transaction's company (merchant) name — the primary token in
+  // every pattern. The caller resolves it from the row's company and
+  // falls back to the transaction description, then to "" (which the
+  // builder turns into the literal "receipt").
+  companyName: string;
+  // The transaction (row / history-entry) id, used only to disambiguate
+  // a name collision with another transaction's receipt.
+  entryId: string;
+  // ISO transaction date ("YYYY-MM-DD…"); the date token falls back to
   // `today` when absent.
-  acquiredAt?: string;
-  // ISO date used when `acquiredAt` is absent (pass the caller's today).
+  entryDate?: string;
+  // ISO date used when `entryDate` is absent (pass the caller's today).
   today: string;
   // Lower-case extension without the dot (from `extensionOf`). "" omits
   // the extension entirely.
   extension: string;
-  // Resolved type / category label for the `type-name-date` pattern's
-  // subdirectory. Absent ⇒ unclassified, filed under `uncategorizedLabel`.
+  // Resolved type label for the `type-name-date` pattern's subdirectory.
+  // Absent ⇒ unclassified, filed under `uncategorizedLabel`.
   typeLabel?: string;
-  // i18n fallback subfolder name for an unclassified item.
+  // i18n fallback subfolder name for an unclassified transaction.
   uncategorizedLabel: string;
-  // The receipt paths already used by OTHER items, so a duplicate name
-  // gets an id suffix rather than overwriting an unrelated item's file.
+  // The receipt paths already used by OTHER transactions, so a duplicate
+  // name gets an id suffix rather than overwriting an unrelated file.
   usedPaths: ReadonlySet<string>;
 };
 
 // Build the relative receipt path (inside the backend's `receipts/`
-// folder) for an item, per the user's chosen preset. The result may
-// contain a single subdirectory segment (the `type-name-date` preset);
-// every segment is sanitized, and a short id suffix is appended when the
-// name would collide with another item's receipt so two same-named
-// items never fight over one file.
+// folder) for a transaction, per the user's chosen preset. The result
+// may contain a single subdirectory segment (the `type-name-date`
+// preset); every segment is sanitized, and a short id suffix is appended
+// when the name would collide with another transaction's receipt so two
+// same-merchant purchases never fight over one file.
 export function buildReceiptPath(opts: BuildReceiptPathOpts): string {
   const {
     pattern,
-    itemName,
-    itemId,
-    acquiredAt,
+    companyName,
+    entryId,
+    entryDate,
     today,
     extension,
     typeLabel,
@@ -87,8 +90,8 @@ export function buildReceiptPath(opts: BuildReceiptPathOpts): string {
     usedPaths,
   } = opts;
 
-  const name = sanitizeSegment(itemName) || "receipt";
-  const date = (acquiredAt && acquiredAt.slice(0, 10)) || today.slice(0, 10);
+  const name = sanitizeSegment(companyName) || "receipt";
+  const date = (entryDate && entryDate.slice(0, 10)) || today.slice(0, 10);
   const ext = extension ? `.${extension}` : "";
 
   let dir = "";
@@ -114,7 +117,7 @@ export function buildReceiptPath(opts: BuildReceiptPathOpts): string {
   const prefix = dir ? `${dir}/` : "";
   const candidate = `${prefix}${stem}${ext}`;
   if (usedPaths.has(candidate)) {
-    return `${prefix}${stem} (${itemId.slice(0, 6)})${ext}`;
+    return `${prefix}${stem} (${entryId.slice(0, 6)})${ext}`;
   }
   return candidate;
 }

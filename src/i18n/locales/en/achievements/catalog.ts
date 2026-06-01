@@ -313,9 +313,9 @@ const catalog = {
   },
   receiptKeeper: {
     name: "Receipt Keeper",
-    condition: "Upload a receipt to an item you own.",
+    condition: "Attach a receipt to a purchase.",
     learnMore:
-      "While editing an item, attach a photo or PDF of the receipt. It is saved as a file in a receipts folder on your storage, named from the pattern you pick in Settings → Items, so you can find it later. Available on the local-folder and cloud backends.",
+      "Open Line items on a purchase and attach a photo or PDF of the receipt — every item that purchase paid for shares it. It is saved as a file in a receipts folder on your storage, named from the pattern you pick in Settings → Items, so you can find it later. Available on the local-folder and cloud backends.",
   },
   spellbinder: {
     name: "Spellbinder",

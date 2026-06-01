@@ -201,6 +201,16 @@ export type HistoryEntry = {
   // / empty means no line items. Independent of `splits`: a split entry can
   // still carry line items on the unsplit total.
   lineItems?: LineItemLink[];
+  // Relative path (inside the active backend's `receipts/` folder) of the
+  // single receipt file attached to this transaction — proof of the
+  // purchase its line items describe, shared by every item they link.
+  // Absent = no receipt. The file lives in the folder / cloud backend,
+  // not in the budget JSON, so it does NOT travel through export / import
+  // — only this reference does. `synthesizeHistoryRow` propagates it onto
+  // the synthesized row's `Row.receiptPath`; it is edited through the
+  // `linkLineItemsToHistoryEntry` action. Never written on the browser
+  // (localStorage) backend (no receipts capability).
+  receiptPath?: string;
 };
 
 // Per-account metadata recorded each time the user imports a file.

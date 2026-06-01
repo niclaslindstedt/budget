@@ -24,8 +24,11 @@ import { BudgetLineItemsModal } from "../budget/BudgetLineItemsModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
+import { buildReceiptPath, extensionOf } from "../../data/items/receipt-name";
 import { findColumnByType } from "../../data/sheet";
+import { todayIso } from "../../utils/date";
 import type { Action } from "../../data/reducer";
+import type { StorageAdapter } from "../../storage/adapter";
 import type {
   AccountBudget,
   Category,
@@ -46,6 +49,33 @@ import type { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { usePromptDerivations } from "./hooks/usePromptDerivations";
 import type { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
 
+// Gather every receipt path already in use across all transactions
+// (bank history + budget rows), so a fresh upload that would collide
+// with another transaction's receipt name gets a disambiguating suffix
+// rather than overwriting it. The current transaction's own path is
+// excluded so replacing a receipt keeps the same tidy name.
+function collectReceiptPaths(
+  data: UserData,
+  exclude: string | undefined,
+): Set<string> {
+  const paths = new Set<string>();
+  for (const entries of Object.values(data.history)) {
+    for (const entry of entries) {
+      if (entry.receiptPath) paths.add(entry.receiptPath);
+    }
+  }
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      for (const row of item.rows) {
+        if (row.receiptPath) paths.add(row.receiptPath);
+      }
+    }
+  }
+  if (exclude) paths.delete(exclude);
+  return paths;
+}
+
 type Props = {
   data: UserData;
   effectiveSettings: Settings;
@@ -63,6 +93,11 @@ type Props = {
   itemId: string;
   activeItem: AccountBudget;
   dateCol: Column | undefined;
+  // Active storage adapter, threaded down so the line-items modal can
+  // read / write receipt files. Null before a backend resolves; receipt
+  // controls only appear when it advertises the `receipts` capability
+  // (folder + cloud backends, never browser-localStorage).
+  adapter: StorageAdapter | null;
   dispatch: (action: Action) => void;
   editPrompts: ReturnType<typeof useEditPrompts>;
   deletePrompts: ReturnType<typeof useDeletePrompts>;
@@ -94,6 +129,7 @@ export function BudgetModalHost(props: Props) {
     itemId,
     activeItem,
     dateCol,
+    adapter,
     dispatch,
     editPrompts,
     deletePrompts,
@@ -335,11 +371,23 @@ export function BudgetModalHost(props: Props) {
   // backing `HistoryEntry`); user / correction rows route to
   // `setRowLineItems`. Mirrors `onSplitSubmit`'s kind branch.
   const onLineItemsSubmit = useCallback(
-    (rowId: string, lineItems: LineItemLink[]) => {
+    (rowId: string, lineItems: LineItemLink[], receiptPath?: string) => {
       const row = lineItemsPrompt?.row;
       if (!row) {
         setLineItemsPrompt(null);
         return;
+      }
+      // A changed receipt reference leaves the old file behind — delete
+      // it best-effort once the new reference lands. `receiptPath`
+      // undefined means the section wasn't shown (leave the field alone).
+      const prev = row.receiptPath;
+      if (
+        prev &&
+        receiptPath !== undefined &&
+        prev !== receiptPath &&
+        adapter?.receipts
+      ) {
+        void adapter.receipts.remove(prev);
       }
       if (row.kind === "historic" && activeItem.accountId) {
         dispatch({
@@ -347,6 +395,7 @@ export function BudgetModalHost(props: Props) {
           accountId: activeItem.accountId,
           entryId: row.historyEntryId,
           lineItems,
+          receiptPath,
         });
         setLineItemsPrompt(null);
         return;
@@ -357,6 +406,7 @@ export function BudgetModalHost(props: Props) {
         itemId,
         rowId,
         lineItems,
+        receiptPath,
       });
       setLineItemsPrompt(null);
     },
@@ -366,8 +416,76 @@ export function BudgetModalHost(props: Props) {
       itemId,
       lineItemsPrompt,
       activeItem.accountId,
+      adapter,
       setLineItemsPrompt,
     ],
+  );
+
+  // Receipt upload is gated on the backend advertising the capability —
+  // present on the folder + cloud adapters, absent on browser-localStorage.
+  const canUploadReceipt = adapter?.capabilities.has("receipts") ?? false;
+
+  // Write a receipt file for the prompted transaction, naming it from the
+  // user's chosen pattern off the row's company (falling back to the
+  // description), its type (for the type-subfolder pattern) and its date,
+  // and return the stored path the modal commits onto the row / entry.
+  const onUploadReceipt = useCallback(
+    async (file: File): Promise<string> => {
+      const row = lineItemsPrompt?.row;
+      if (!row || !adapter?.receipts) throw new Error("receipts unavailable");
+      const company = row.companyId
+        ? data.companies.find((c) => c.id === row.companyId)
+        : undefined;
+      const descCol = findColumnByType(activeItem.columns, "description");
+      const description =
+        descCol && typeof row.cells[descCol.id] === "string"
+          ? (row.cells[descCol.id] as string)
+          : "";
+      const typeLabel = row.typeId
+        ? types.find((ty) => ty.id === row.typeId)?.name
+        : undefined;
+      const entryDate =
+        dateCol && typeof row.cells[dateCol.id] === "string"
+          ? (row.cells[dateCol.id] as string)
+          : undefined;
+      const path = buildReceiptPath({
+        pattern: effectiveSettings.receiptNamePattern,
+        companyName: company?.name ?? description,
+        entryId: row.id,
+        entryDate,
+        today: todayIso(),
+        extension: extensionOf(file.name),
+        typeLabel,
+        uncategorizedLabel: t("items.receiptUncategorized"),
+        usedPaths: collectReceiptPaths(data, row.receiptPath),
+      });
+      await adapter.receipts.upload(path, file);
+      unlockAchievement("receiptKeeper");
+      return path;
+    },
+    [
+      lineItemsPrompt,
+      adapter,
+      data,
+      activeItem.columns,
+      types,
+      dateCol,
+      effectiveSettings.receiptNamePattern,
+      t,
+    ],
+  );
+
+  const onViewReceipt = useCallback(
+    async (path: string): Promise<void> => {
+      if (!adapter?.receipts) throw new Error("receipts unavailable");
+      const blob = await adapter.receipts.download(path);
+      if (!blob) throw new Error("receipt missing");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      // Give the new tab time to read the blob before reclaiming it.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    [adapter],
   );
   const onSaveEditRow = useCallback(
     (rowId: string, patch: EditRowPatch, scope: EditRowScope) => {
@@ -596,6 +714,9 @@ export function BudgetModalHost(props: Props) {
         categories={categories}
         onClose={() => setLineItemsPrompt(null)}
         onSubmit={onLineItemsSubmit}
+        canUploadReceipt={canUploadReceipt}
+        onUploadReceipt={onUploadReceipt}
+        onViewReceipt={onViewReceipt}
         onCreateItem={onCreateItem}
         onCreateSubtype={onCreateSubtype}
         onCreateType={onCreateType}
