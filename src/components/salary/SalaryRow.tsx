@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { roleForDate, salaryGross, salaryTax } from "../../data/salary/salary";
-import type { Employer, Salary, Settings } from "../../data/types";
+import { resolveSalary, roleForDate } from "../../data/salary/salary";
+import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatMonthLabel } from "../../utils/format";
@@ -13,6 +13,8 @@ type Props = {
   salary: Salary;
   employer: Employer | undefined;
   settings: Settings;
+  // Tax params from the sheet's profile, or null for no estimation.
+  taxParams: TaxParams | null;
   selectMode: boolean;
   selected: boolean;
   onToggleSelect: (salaryId: string) => void;
@@ -68,6 +70,7 @@ function SalaryRowImpl({
   salary,
   employer,
   settings,
+  taxParams,
   selectMode,
   selected,
   onToggleSelect,
@@ -86,6 +89,11 @@ function SalaryRowImpl({
   // tap elsewhere only retracts the swipe instead of also firing the
   // control underneath.
   useClaimActiveRow(salary.id, swiped, () => setSwiped(false));
+  const { gross, tax, estimated } = resolveSalary(salary, taxParams);
+  // Estimated gross / tax render muted + italic with a "≈" prefix and a
+  // tooltip, so an estimate is visually distinct from an entered figure.
+  const estTitle = estimated ? t("tax.estimatedTitle") : undefined;
+  const estClass = estimated ? "text-muted italic" : "text-fg";
 
   return (
     <tr
@@ -130,11 +138,19 @@ function SalaryRowImpl({
       <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle text-fg md:table-cell">
         {title ?? <span className="text-muted">—</span>}
       </td>
-      <td className="px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-fg tabular-nums">
-        {formatBalance(salaryGross(salary), settings)}
+      <td
+        className={`px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
+        title={estTitle}
+      >
+        {estimated && `${t("tax.estimatedBadge")} `}
+        {formatBalance(gross, settings)}
       </td>
-      <td className="salary-secondary-cell hidden px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell">
-        {formatBalance(salaryTax(salary), settings)}
+      <td
+        className="salary-secondary-cell hidden px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell"
+        title={estTitle}
+      >
+        {estimated && `${t("tax.estimatedBadge")} `}
+        {formatBalance(tax, settings)}
       </td>
       <td className="px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-fg-bright tabular-nums">
         {formatBalance(salary.net, settings)}

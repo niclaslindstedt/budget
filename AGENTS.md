@@ -137,6 +137,15 @@ src/
 │       │   AccountCutHistoryModal.tsx
 │       ├── AccountReconciliationModal.tsx (post-import flow)
 │       └── AccountTransferCollapseModal.tsx (cross-account pair collapse)
+│   ├── items/                # items page — owned-items catalog
+│   │   └── ItemsPage.tsx, ItemModal.tsx, FindItemsModal.tsx, …
+│   └── salary/               # salary page — per-person salary history
+│       ├── SalaryPage.tsx       # page root — per-year salary tables
+│       ├── SalaryYearTable.tsx, SalaryRow.tsx, SalaryEditModal.tsx
+│       ├── SalaryDiscoveryModal.tsx, SalaryBulkEditModal.tsx
+│       ├── EmployerPicker.tsx, EmployerManageModal.tsx
+│       └── TaxProfileModal.tsx, TaxProfilePicker.tsx, MunicipalityPicker.tsx
+│                              #   tax profile editor + pickers (estimate gross)
 ├── data/
 │   ├── types.ts            # Budget, Sheet, Column, Row, CellValue
 │   ├── constants/          # topical constants — storage / defaults /
@@ -148,9 +157,16 @@ src/
 │   │   ├── rows.ts             # budget-row algebra (sort, balances, series, …)
 │   │   ├── synthesis.ts        # synthesized rows (transfers, history)
 │   │   └── export.ts           # CSV/XLSX export builder
-│   └── accounts/
-│       ├── balance.ts          # account-level aggregation
-│       └── export.ts           # accounts JSON export builder
+│   ├── accounts/
+│   │   ├── balance.ts          # account-level aggregation
+│   │   └── export.ts           # accounts JSON export builder
+│   ├── salary/              # salary algebra (brutto/netto/tax, estimate)
+│   │   ├── salary.ts           # resolveSalary / resolveSalaryGross + role math
+│   │   └── detection.ts, discovery.ts
+│   └── tax/                 # country-pluggable income-tax engine
+│       ├── types.ts, engine.ts # country-agnostic registry + net→gross inversion
+│       └── se/                 # ALL Sweden-specific rules (constants,
+│                               #   municipalities, swedishCalculator)
 ├── hooks/
 │   ├── useChangelogAutoOpen.ts # gate the "What's new" popup per APP_VERSION
 │   ├── useEscapeKey.ts          # close-on-Escape listener
@@ -354,9 +370,9 @@ switches between, and reorders from the `BottomBar`. Sheet metadata
 (name, glyph, color, description, type) is edited through `SheetModal`,
 opened by the "…" button on the active sheet's title via
 `SheetTitleMenu`. The persisted `SheetType` literal — currently
-`"budget" | "accounts"` — selects which **page** renders inside the
-active sheet. Future page types (savings, loans, utility tools) extend
-the union.
+`"budget" | "accounts" | "items" | "salary"` — selects which **page**
+renders inside the active sheet. Future page types (savings, loans,
+utility tools) extend the union.
 
 **Rule:** only the universal Sheet abstraction — the type, the tab
 strip, the meta-edit modal, the title menu, the swipe-between-sheets

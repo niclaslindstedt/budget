@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Banknote, FileText } from "lucide-react";
 
-import type { Employer, Salary, Settings } from "../../data/types";
-import { salaryTax } from "../../data/salary/salary";
+import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
+import { resolveSalary } from "../../data/salary/salary";
 import { useLang, useT } from "../../i18n";
 import {
   formatBalance,
@@ -23,6 +23,8 @@ type Props = {
   salary: Salary | null;
   employers: readonly Employer[];
   settings: Settings;
+  // Tax params from the sheet's profile, or null for no estimation.
+  taxParams: TaxParams | null;
   onClose: () => void;
   onSave: (salaryId: string, patch: Partial<Omit<Salary, "id">>) => void;
   onCreateEmployer: (employer: Employer) => void;
@@ -58,6 +60,7 @@ export function SalaryEditModal({
   salary,
   employers,
   settings,
+  taxParams,
   onClose,
   onSave,
   onCreateEmployer,
@@ -109,9 +112,23 @@ export function SalaryEditModal({
   const parsedNet = parseAmount(netText);
   const parsedGross = parseAmount(grossText);
   const net = parsedNet ?? salary.net;
-  // Live tax preview from the two amounts the user has typed.
+  // Estimate gross from the currently-typed net via the tax profile, so
+  // the gross field shows a live placeholder and the tax preview has a
+  // figure even before the user types a gross. Force estimation by
+  // dropping any stored gross on the synthetic salary.
+  const estimate = resolveSalary(
+    { ...salary, net, gross: undefined },
+    taxParams,
+  );
+  const estimatedGross = estimate.estimated ? estimate.gross : null;
+  // Live tax preview: the typed gross wins; otherwise the estimate (when
+  // a profile is bound); otherwise gross − net with no gross is zero.
   const previewTax =
-    parsedGross !== null ? Math.max(0, parsedGross - net) : salaryTax(salary);
+    parsedGross !== null
+      ? Math.max(0, parsedGross - net)
+      : estimatedGross !== null
+        ? Math.max(0, estimatedGross - net)
+        : 0;
 
   function handleSave() {
     if (!salary) return;
@@ -200,9 +217,16 @@ export function SalaryEditModal({
               inputMode="decimal"
               value={grossText}
               onValueChange={setGrossText}
+              placeholder={
+                estimatedGross !== null ? String(estimatedGross) : undefined
+              }
               className={NUMBER_INPUT_CLASS}
             />
-            <span className="text-xs text-muted">{t("salary.grossHint")}</span>
+            <span className="text-xs text-muted">
+              {estimatedGross !== null
+                ? t("tax.estimatedTitle")
+                : t("salary.grossHint")}
+            </span>
           </FormSection>
 
           <div className="flex items-baseline justify-between gap-3 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">

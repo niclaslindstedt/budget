@@ -22,6 +22,7 @@ import type {
   Sheet,
   Subtype,
   Tag,
+  TaxProfile,
   Transfer,
   UserData,
 } from "../types";
@@ -53,6 +54,7 @@ import {
 } from "./rules";
 import { validateSettings } from "./settings";
 import { validateSheet } from "./sheet";
+import { validateTaxProfile } from "./tax";
 
 export type { Result } from "./helpers";
 
@@ -290,6 +292,23 @@ export function validateUserData(raw: unknown): Result<UserData> {
     transfers.push(r.value);
   }
 
+  // Tax profiles are validated before sheets so a salary sheet's
+  // `taxProfileId` can be checked against the resolvable set (a dangling
+  // reference is dropped rather than rejecting the file) — exactly as
+  // employers precede salaries.
+  const rawTaxProfiles = Array.isArray(raw.taxProfiles) ? raw.taxProfiles : [];
+  const taxProfiles: TaxProfile[] = [];
+  const seenTaxProfileIds = new Set<string>();
+  for (let i = 0; i < rawTaxProfiles.length; i++) {
+    const r = validateTaxProfile(rawTaxProfiles[i], `taxProfiles[${i}]`);
+    if (!r.ok) return r;
+    if (seenTaxProfileIds.has(r.value.id))
+      return fail(`taxProfiles[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenTaxProfileIds.add(r.value.id);
+    taxProfiles.push(r.value);
+  }
+  const knownTaxProfileIds: ReadonlySet<string> = seenTaxProfileIds;
+
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
   for (let i = 0; i < raw.sheets.length; i++) {
@@ -301,6 +320,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       knownCompanyIds,
       knownTagIds,
       knownItemIds,
+      knownTaxProfileIds,
     );
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
@@ -504,6 +524,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       sheets,
       activeSheetId,
       accounts,
+      taxProfiles,
       salaries,
       employers,
       companies,

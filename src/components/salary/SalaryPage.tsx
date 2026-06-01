@@ -87,12 +87,22 @@ export function SalaryPage({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [sheet.id]);
 
-  // The account this salary sheet is bound to (where pay lands). The
-  // "Find salaries" walk scans its history directly; bound from the
-  // sheet's edit modal.
-  const salaryAccountId =
-    sheet.items.find((it): it is SalaryView => it.type === "salaryView")
-      ?.accountId ?? null;
+  // The salary item — carries both the bound pay account (scanned by
+  // "Find salaries") and the tax profile used to estimate gross.
+  const salaryItem = sheet.items.find(
+    (it): it is SalaryView => it.type === "salaryView",
+  );
+  const salaryAccountId = salaryItem?.accountId ?? null;
+
+  // Resolve the tax params from the sheet's profile, if any. Passed down
+  // so rows / totals / the edit modal can estimate gross from net.
+  const taxParams = useMemo(() => {
+    if (!salaryItem?.taxProfileId) return null;
+    return (
+      data.taxProfiles.find((p) => p.id === salaryItem.taxProfileId)?.params ??
+      null
+    );
+  }, [data.taxProfiles, salaryItem?.taxProfileId]);
 
   const employersById = useMemo(() => {
     const m = new Map<string, Employer>();
@@ -209,6 +219,7 @@ export function SalaryPage({
                 salaries={salaries}
                 employersById={employersById}
                 settings={settings}
+                taxParams={taxParams}
                 selectMode={selectMode}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}
@@ -228,6 +239,7 @@ export function SalaryPage({
           salary={editing}
           employers={data.employers}
           settings={settings}
+          taxParams={taxParams}
           onClose={() => setEditing(null)}
           onSave={handleSaveSalary}
           onCreateEmployer={handleCreateEmployer}

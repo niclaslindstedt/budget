@@ -351,6 +351,17 @@ export function UniversalModalHost(props: Props) {
               )?.accountId ?? null)
             : null
         }
+        currentTaxProfileId={
+          sheetModal?.sheet
+            ? (sheetModal.sheet.items.find(
+                (it): it is SalaryView => it.type === "salaryView",
+              )?.taxProfileId ?? null)
+            : null
+        }
+        taxProfiles={data.taxProfiles}
+        onCreateTaxProfile={(profile) =>
+          dispatch({ type: "createTaxProfile", profile })
+        }
         accounts={data.accounts}
         canDelete={data.sheets.length > 1}
         // The Accounts flavour is a singleton. The picker greys it out

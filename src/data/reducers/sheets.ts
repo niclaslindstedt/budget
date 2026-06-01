@@ -67,5 +67,33 @@ export function reduceSheets(state: UserData, action: Action): UserData | null {
     });
     return changed ? { ...state, sheets } : state;
   }
+  if (action.type === "setSalaryTaxProfile") {
+    // Binds (or clears) the tax profile on a salary sheet's `salaryView`
+    // item. `null` clears it; other item types ignore the action. Same
+    // map-and-guard shape as `setItemAccount`, writing `taxProfileId`.
+    let changed = false;
+    const sheets = state.sheets.map((sheet) => {
+      if (sheet.id !== action.sheetId) return sheet;
+      let itemChanged = false;
+      const items = sheet.items.map((item) => {
+        if (item.id !== action.itemId || item.type !== "salaryView")
+          return item;
+        const current = item.taxProfileId;
+        const next = action.taxProfileId ?? undefined;
+        if (current === next) return item;
+        itemChanged = true;
+        if (next === undefined) {
+          const { taxProfileId: _drop, ...rest } = item;
+          void _drop;
+          return rest;
+        }
+        return { ...item, taxProfileId: next };
+      });
+      if (!itemChanged) return sheet;
+      changed = true;
+      return { ...sheet, items };
+    });
+    return changed ? { ...state, sheets } : state;
+  }
   return null;
 }

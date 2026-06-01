@@ -10,8 +10,8 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { salaryGross } from "../../data/salary/salary";
-import type { Employer, Salary, Settings } from "../../data/types";
+import { resolveSalary } from "../../data/salary/salary";
+import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
 import { useT } from "../../i18n";
 import { formatBalance } from "../../utils/format";
 import { monthColorVar } from "../../utils/monthColor";
@@ -23,6 +23,8 @@ type Props = {
   salaries: readonly Salary[];
   employersById: ReadonlyMap<string, Employer>;
   settings: Settings;
+  // Tax params from the sheet's profile, or null for no estimation.
+  taxParams: TaxParams | null;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   onToggleSelect: (salaryId: string) => void;
@@ -39,6 +41,7 @@ export function SalaryYearTable({
   salaries,
   employersById,
   settings,
+  taxParams,
   selectMode,
   selectedIds,
   onToggleSelect,
@@ -52,11 +55,11 @@ export function SalaryYearTable({
     let gross = 0;
     let net = 0;
     for (const s of salaries) {
-      gross += salaryGross(s);
+      gross += resolveSalary(s, taxParams).gross;
       net += s.net;
     }
     return { gross, net };
-  }, [salaries]);
+  }, [salaries, taxParams]);
 
   // Drives the year header's "select all" tri-state checkbox, mirroring
   // the budget month table's per-month select-all.
@@ -267,6 +270,7 @@ export function SalaryYearTable({
                     : undefined
                 }
                 settings={settings}
+                taxParams={taxParams}
                 selectMode={selectMode}
                 selected={selectedIds.has(salary.id)}
                 onToggleSelect={onToggleSelect}

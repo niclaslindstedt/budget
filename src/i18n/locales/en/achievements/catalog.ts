@@ -138,6 +138,12 @@ const catalog = {
     learnMore:
       "Find salaries scans a chosen account's full bank history — even years back, before you tagged anything — finds your recurring paycheck, establishes a baseline, and walks you through it year by year so you can accept, edit, or skip each month.",
   },
+  taxEstimator: {
+    name: "Tax Estimator",
+    condition: "Create a tax profile on a salary sheet.",
+    learnMore:
+      "A tax profile (municipality, church membership, age, income type) lets the Salary sheet estimate each paycheck's gross from its net deposit using Swedish tax rules — so a salary you only know the net of still shows a gross and a tax. Type the exact gross any time to override the estimate.",
+  },
   secondDraft: {
     name: "Second Draft",
     condition: "Edit a recurring series.",

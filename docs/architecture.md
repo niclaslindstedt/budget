@@ -114,7 +114,8 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 58), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 59, incl. taxProfiles),
+│   │   │                       #   StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
@@ -208,6 +209,17 @@ src/
 │   │                           #   changes for the account-step summary
 │   │   └── payslip-name.ts     # buildPayslipPath — flat "Employer - YYYY-MM"
 │   │                           #   payslip filenames (+ re-exports extensionOf)
+│   ├── tax/                # country-pluggable income-tax engine (estimate gross
+│   │   │                   #   from a net deposit). No SE figure leaks outside se/
+│   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,
+│   │   │                       #   TaxCalculator (country-agnostic)
+│   │   ├── engine.ts           # registry + getTaxCalculator + net→gross bisection
+│   │   │                       #   (grossFromNetMonthly / netFromGrossMonthly)
+│   │   └── se/                 # ALL Sweden-specific rules live here
+│   │       ├── index.ts        # swedishCalculator — grundavdrag, kommunal/statlig,
+│   │       │                   #   jobbskatteavdrag, pensionsavgift, kyrkoavgift
+│   │       ├── constants.ts    # per-year pbb / ibb / skiktgräns (2022–2026)
+│   │       └── municipalities.ts # ~290 kommuner + combined per-year rates
 │   ├── achievements/      # the gamified "guided tour" system
 │   │   ├── catalog.ts          # achievement definitions + unlock predicates
 │   │   ├── derive.ts           # diff (prev, next) state → newly-unlocked ids
@@ -229,10 +241,11 @@ src/
 │   │   │                       #   accountsView/itemsView/salaryView) — cycle-free
 │   │   │                       #   so the sheet-type descriptors can import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
+│   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (58) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (59) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
 │   │   ├── modern.ts           # v31 → v58 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
@@ -542,6 +555,16 @@ type SalaryView = {
   id: string;
   type: "salaryView";
   accountId: string | null; // the pay account "Find salaries" scans, or null
+  taxProfileId?: string; // a UserData.taxProfiles entry → estimate gross from net
+};
+
+// Reusable tax-input bundle on UserData.taxProfiles, referenced by
+// SalaryView.taxProfileId. Country-pluggable; the calculator lives under
+// src/data/tax/<country>/.
+type TaxProfile = {
+  id: string;
+  name: string;
+  params: TaxParams; // discriminated by `country` ("SE" today)
 };
 
 type ColumnType =

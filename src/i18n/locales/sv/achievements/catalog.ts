@@ -133,6 +133,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Hitta löner söker igenom ett valt kontos hela bankhistorik — även flera år bakåt, innan du märkte något — hittar din återkommande lön, fastställer en baslinje och går igenom den år för år så att du kan lägga till, redigera eller hoppa över varje månad.",
   },
+  taxEstimator: {
+    name: "Skatteberäknare",
+    condition: "Skapa en skatteprofil på en lönesida.",
+    learnMore:
+      "En skatteprofil (kommun, kyrkomedlemskap, ålder, inkomsttyp) låter Lön-sidan uppskatta varje lönebeskeds bruttolön från nettoinsättningen med svenska skatteregler — så att en lön där du bara känner till nettot ändå visar brutto och skatt. Ange exakt bruttolön när som helst för att åsidosätta uppskattningen.",
+  },
   secondDraft: {
     name: "Andra utkastet",
     condition: "Redigera en återkommande serie.",

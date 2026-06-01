@@ -460,6 +460,15 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       }),
     };
   },
+
+  // v58 → v59: introduces `UserData.taxProfiles`, the reusable tax-input
+  // bundles the Salary sheet uses to estimate a paycheck's gross from its
+  // net deposit. Seeds empty; old exports simply lack it and a
+  // fresh-empty default passes the v59 validator unchanged.
+  // `SalaryView.taxProfileId` is an optional field on existing items, so
+  // it needs no migration — a v58 salary sheet simply lacks it and
+  // estimates nothing until the user picks a profile. Bare additive bump.
+  58: (v58) => ({ ...v58, version: 59, taxProfiles: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

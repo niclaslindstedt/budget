@@ -41,6 +41,7 @@ export function validateSheet(
   knownCompanyIds: ReadonlySet<string>,
   knownTagIds: ReadonlySet<string>,
   knownItemIds: ReadonlySet<string>,
+  knownTaxProfileIds: ReadonlySet<string>,
 ): Result<Sheet> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, name, items } = raw;
@@ -56,6 +57,7 @@ export function validateSheet(
     knownCompanyIds,
     knownTagIds,
     knownItemIds,
+    knownTaxProfileIds,
   };
 
   const validatedItems: SheetItem[] = [];

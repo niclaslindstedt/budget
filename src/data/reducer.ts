@@ -18,6 +18,7 @@ import type {
   Sheet,
   Subtype,
   Tag,
+  TaxProfile,
   Transfer,
   UserData,
 } from "./types";
@@ -295,6 +296,29 @@ export type Action =
       // salary that referenced it (the salary becomes unassigned).
       type: "deleteEmployer";
       employerId: string;
+    }
+  | { type: "createTaxProfile"; profile: TaxProfile }
+  | {
+      // Edit a tax profile by id (name and/or params).
+      type: "updateTaxProfile";
+      profileId: string;
+      patch: Partial<Omit<TaxProfile, "id">>;
+    }
+  | {
+      // Delete a tax profile. Cascades by clearing `taxProfileId` on
+      // every salary sheet's `salaryView` item that referenced it, so
+      // those sheets fall back to "no estimate" rather than dangling.
+      type: "deleteTaxProfile";
+      profileId: string;
+    }
+  | {
+      // Bind (or clear) the tax profile on a salary sheet's `salaryView`
+      // item. `null` clears it. Mirrors `setItemAccount` but writes the
+      // tax-profile pointer rather than the account.
+      type: "setSalaryTaxProfile";
+      sheetId: string;
+      itemId: string;
+      taxProfileId: string | null;
     }
   | { type: "createTransfer"; transfer: Transfer }
   | {
