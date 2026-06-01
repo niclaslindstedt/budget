@@ -178,24 +178,24 @@ export function HistoryModal({
         title={t("history.titleAccount", { name: account?.name ?? "" })}
         onClose={onCancel}
       />
+      <ModalSearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder={t("history.searchPlaceholder")}
+        actions={
+          <ModalSearchControls
+            sort={{
+              order: sortOrder,
+              defaultOrder: settings.transactionSortOrder,
+              onToggle: () =>
+                setSortOrder((o) =>
+                  o === "newestFirst" ? "oldestFirst" : "newestFirst",
+                ),
+            }}
+          />
+        }
+      />
       <Modal.Body noPadding className="overflow-x-hidden">
-        <ModalSearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder={t("history.searchPlaceholder")}
-          actions={
-            <ModalSearchControls
-              sort={{
-                order: sortOrder,
-                defaultOrder: settings.transactionSortOrder,
-                onToggle: () =>
-                  setSortOrder((o) =>
-                    o === "newestFirst" ? "oldestFirst" : "newestFirst",
-                  ),
-              }}
-            />
-          }
-        />
         {allSortedEntries.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             {t("history.noEntries")}
