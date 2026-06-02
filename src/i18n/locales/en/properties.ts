@@ -27,6 +27,12 @@ const properties = {
   paymentsCountOther: "{count} payments",
   principalTotal: "Principal",
   interestTotal: "Interest",
+  balanceShort: "Balance",
+  loanShort: "Loan",
+  rateShort: "Rate",
+  rateResetsOne: "resets monthly",
+  rateResetsOther: "resets every {count} mo",
+  nextRateChangeShort: "Next change",
 
   // Property editor modal.
   newPropertyTitle: "New property",
@@ -53,6 +59,17 @@ const properties = {
   editMortgageTitle: "Edit mortgage",
   mortgageNameLabel: "Name",
   mortgageNamePlaceholder: "SBAB loan 1…",
+  loanAmountLabel: "Loan amount",
+  loanAmountPlaceholder: "The sum you borrowed",
+  currentBalanceLabel: "Current balance",
+  currentBalancePlaceholder: "What's left to pay",
+  interestRateLabel: "Interest rate (%)",
+  interestRatePlaceholder: "e.g. 3.45",
+  rateChangeMonthsLabel: "Rate resets every (months)",
+  rateChangeMonthsPlaceholder: "e.g. 3",
+  rateChangeMonthsHint:
+    "How often the interest rate is renegotiated — 3 for a variable rate, 12 for a 1-year fixed term.",
+  nextRateChangeLabel: "Next rate change",
   accountLabel: "Account",
   accountHint:
     "The account this loan is paid from. “Find payments” scans this account's bank history for the recurring charge.",

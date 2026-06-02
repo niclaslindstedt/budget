@@ -52,10 +52,25 @@ export type MortgagePayment = {
 // bank account whose history "Find mortgage payments" scans for this
 // loan's recurring charge; nullable until the user picks one (mirrors
 // `SalaryView.accountId`).
+//
+// The loan-terms fields below are all manually entered and all optional —
+// a mortgage can exist with just a name and have its terms filled in
+// later. `currentBalance` is recorded directly (not derived from
+// `loanAmount` minus the amortisation legs) so a user who tracks the loan
+// without importing payments still sees an accurate outstanding figure.
+// The interest fields describe a fixed-rate (Swedish "bindningstid")
+// period: `interestRate` is the current annual rate, `rateChangeMonths`
+// is how often it resets, and `nextRateChangeDate` is when the next reset
+// lands.
 export type Mortgage = {
   id: string;
   name: string; // user label, e.g. "SBAB loan 1"
   accountId?: string | null; // bank account scanned for payments
+  loanAmount?: number; // the sum originally borrowed
+  currentBalance?: number; // outstanding balance now (manually recorded)
+  interestRate?: number; // current annual interest rate, as a percent (3.45 ⇒ 3.45%)
+  rateChangeMonths?: number; // how often the rate resets, in months
+  nextRateChangeDate?: string; // ISO yyyy-mm-dd of the next rate change
   payments: MortgagePayment[];
 };
 

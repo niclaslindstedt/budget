@@ -2,9 +2,10 @@ import { useRef, useState } from "react";
 import { Check, ChevronDown, Landmark, Wallet } from "lucide-react";
 
 import { newId } from "../../data/sheet";
-import type { Account, Mortgage } from "../../data/types";
+import type { Account, Mortgage, Settings } from "../../data/types";
 import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
+import { formatAmountForInput, parseAmount } from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
 import { Button, ClearableInput } from "../form";
 import { FloatingPanel } from "../FloatingPanel";
@@ -22,15 +23,22 @@ type Props = {
   // The mortgage to edit, or null in create mode.
   mortgage: Mortgage | null;
   accounts: readonly Account[];
+  settings: Settings;
   onClose: () => void;
   onSubmit: (mortgageId: string, patch: Partial<Omit<Mortgage, "id">>) => void;
   onCreate: (mortgage: Mortgage) => void;
 };
 
+function seedAmount(value: number | undefined, settings: Settings): string {
+  if (value === undefined) return "";
+  return formatAmountForInput(Math.abs(value), settings);
+}
+
 export function MortgageEditorModal({
   open,
   mortgage,
   accounts,
+  settings,
   onClose,
   onSubmit,
   onCreate,
@@ -39,11 +47,27 @@ export function MortgageEditorModal({
   const [name, setName] = useState("");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [loanAmount, setLoanAmount] = useState("");
+  const [currentBalance, setCurrentBalance] = useState("");
+  const [interestRate, setInterestRate] = useState("");
+  const [rateChangeMonths, setRateChangeMonths] = useState("");
+  const [nextRateChangeDate, setNextRateChangeDate] = useState("");
 
   useResetOnOpen(open, mortgage?.id ?? "__create__", () => {
     setName(mortgage?.name ?? "");
     setAccountId(mortgage?.accountId ?? null);
     setAccountOpen(false);
+    setLoanAmount(seedAmount(mortgage?.loanAmount, settings));
+    setCurrentBalance(seedAmount(mortgage?.currentBalance, settings));
+    setInterestRate(
+      mortgage?.interestRate !== undefined ? String(mortgage.interestRate) : "",
+    );
+    setRateChangeMonths(
+      mortgage?.rateChangeMonths !== undefined
+        ? String(mortgage.rateChangeMonths)
+        : "",
+    );
+    setNextRateChangeDate(mortgage?.nextRateChangeDate ?? "");
   });
 
   if (!open) return null;
@@ -51,19 +75,57 @@ export function MortgageEditorModal({
   const trimmedName = name.trim();
   const canSubmit = trimmedName.length > 0;
 
+  // Parse a non-negative number (amount, interest %, or month count), or
+  // undefined when blank / unparseable so the field clears on save.
+  function num(text: string): number | undefined {
+    const parsed = parseAmount(text);
+    return parsed === null ? undefined : Math.abs(parsed);
+  }
+
+  function buildTerms(): Partial<Omit<Mortgage, "id">> {
+    return {
+      loanAmount: num(loanAmount),
+      currentBalance: num(currentBalance),
+      interestRate: num(interestRate),
+      rateChangeMonths: num(rateChangeMonths),
+      nextRateChangeDate:
+        nextRateChangeDate !== "" ? nextRateChangeDate : undefined,
+    };
+  }
+
   function handleSubmit() {
     if (!canSubmit) return;
     if (mortgage) {
-      onSubmit(mortgage.id, { name: trimmedName, accountId });
+      onSubmit(mortgage.id, {
+        name: trimmedName,
+        accountId,
+        ...buildTerms(),
+      });
       return;
     }
-    onCreate({
+    // Create mode: drop every `undefined` so the new mortgage is byte-clean
+    // (absent optional fields aren't stored).
+    const fresh: Mortgage = {
       id: newId(),
       name: trimmedName,
       accountId,
       payments: [],
-    });
+    };
+    const terms = buildTerms();
+    if (terms.loanAmount !== undefined) fresh.loanAmount = terms.loanAmount;
+    if (terms.currentBalance !== undefined)
+      fresh.currentBalance = terms.currentBalance;
+    if (terms.interestRate !== undefined)
+      fresh.interestRate = terms.interestRate;
+    if (terms.rateChangeMonths !== undefined)
+      fresh.rateChangeMonths = terms.rateChangeMonths;
+    if (terms.nextRateChangeDate !== undefined)
+      fresh.nextRateChangeDate = terms.nextRateChangeDate;
+    onCreate(fresh);
   }
+
+  const fieldClass =
+    "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
   return (
     <Modal
@@ -91,7 +153,74 @@ export function MortgageEditorModal({
               value={name}
               onValueChange={setName}
               placeholder={t("properties.mortgageNamePlaceholder")}
-              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.loanAmountLabel")}
+            </span>
+            <ClearableInput
+              value={loanAmount}
+              onValueChange={setLoanAmount}
+              inputMode="decimal"
+              placeholder={t("properties.loanAmountPlaceholder")}
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.currentBalanceLabel")}
+            </span>
+            <ClearableInput
+              value={currentBalance}
+              onValueChange={setCurrentBalance}
+              inputMode="decimal"
+              placeholder={t("properties.currentBalancePlaceholder")}
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.interestRateLabel")}
+            </span>
+            <ClearableInput
+              value={interestRate}
+              onValueChange={setInterestRate}
+              inputMode="decimal"
+              placeholder={t("properties.interestRatePlaceholder")}
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.rateChangeMonthsLabel")}
+            </span>
+            <ClearableInput
+              value={rateChangeMonths}
+              onValueChange={setRateChangeMonths}
+              inputMode="numeric"
+              placeholder={t("properties.rateChangeMonthsPlaceholder")}
+              className={fieldClass}
+            />
+            <p className="m-0 text-xs text-muted">
+              {t("properties.rateChangeMonthsHint")}
+            </p>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.nextRateChangeLabel")}
+            </span>
+            <input
+              type="date"
+              value={nextRateChangeDate}
+              onChange={(e) => setNextRateChangeDate(e.target.value)}
+              className={fieldClass}
             />
           </label>
 

@@ -231,6 +231,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           open={editingMortgage !== null || creatingMortgageFor !== null}
           mortgage={editingMortgage?.mortgage ?? null}
           accounts={data.accounts}
+          settings={settings}
           onClose={() => {
             setEditingMortgage(null);
             setCreatingMortgageFor(null);

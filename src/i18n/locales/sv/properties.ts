@@ -27,6 +27,12 @@ const properties: PropertiesCatalog = {
   paymentsCountOther: "{count} betalningar",
   principalTotal: "Amortering",
   interestTotal: "Ränta",
+  balanceShort: "Skuld",
+  loanShort: "Lån",
+  rateShort: "Ränta",
+  rateResetsOne: "ändras varje månad",
+  rateResetsOther: "ändras var {count}:e mån",
+  nextRateChangeShort: "Nästa ändring",
 
   // Property editor modal.
   newPropertyTitle: "Ny fastighet",
@@ -53,6 +59,17 @@ const properties: PropertiesCatalog = {
   editMortgageTitle: "Redigera bolån",
   mortgageNameLabel: "Namn",
   mortgageNamePlaceholder: "SBAB lån 1…",
+  loanAmountLabel: "Lånebelopp",
+  loanAmountPlaceholder: "Summan du lånade",
+  currentBalanceLabel: "Nuvarande skuld",
+  currentBalancePlaceholder: "Vad som är kvar att betala",
+  interestRateLabel: "Räntesats (%)",
+  interestRatePlaceholder: "t.ex. 3,45",
+  rateChangeMonthsLabel: "Räntan ändras var (månad)",
+  rateChangeMonthsPlaceholder: "t.ex. 3",
+  rateChangeMonthsHint:
+    "Hur ofta räntan omförhandlas — 3 för rörlig ränta, 12 för 1 års bindningstid.",
+  nextRateChangeLabel: "Nästa ränteändring",
   accountLabel: "Konto",
   accountHint:
     "Kontot det här lånet betalas från. ”Hitta betalningar” söker igenom kontots bankhistorik efter den återkommande dragningen.",
