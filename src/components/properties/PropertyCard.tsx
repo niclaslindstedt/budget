@@ -2,7 +2,7 @@ import { Home, Pencil, Plus, Search, TrendingUp, Trash2 } from "lucide-react";
 
 import type { Account, Mortgage, Property, Settings } from "../../data/types";
 import { useT } from "../../i18n";
-import { formatBalance } from "../../utils/format";
+import { formatBalance, formatNumber } from "../../utils/format";
 
 // One property's block on the Properties page: its name, what it cost,
 // its current value (the latest recorded snapshot), and the mortgages
@@ -192,6 +192,12 @@ function MortgageRow({
   const count = mortgage.payments.length;
   const principal = mortgage.payments.reduce((s, p) => s + p.principal, 0);
   const interest = mortgage.payments.reduce((s, p) => s + p.interest, 0);
+  const hasTerms =
+    mortgage.loanAmount !== undefined ||
+    mortgage.currentBalance !== undefined ||
+    mortgage.interestRate !== undefined ||
+    mortgage.rateChangeMonths !== undefined ||
+    mortgage.nextRateChangeDate !== undefined;
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
@@ -208,6 +214,54 @@ function MortgageRow({
             </>
           )}
         </span>
+        {hasTerms && (
+          <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+            {mortgage.currentBalance !== undefined && (
+              <span>
+                {t("properties.balanceShort")}{" "}
+                <span className="tabular-nums text-fg">
+                  {formatBalance(mortgage.currentBalance, settings)}
+                </span>
+              </span>
+            )}
+            {mortgage.loanAmount !== undefined && (
+              <span>
+                {t("properties.loanShort")}{" "}
+                <span className="tabular-nums text-fg">
+                  {formatBalance(mortgage.loanAmount, settings)}
+                </span>
+              </span>
+            )}
+            {mortgage.interestRate !== undefined && (
+              <span>
+                {t("properties.rateShort")}{" "}
+                <span className="tabular-nums text-fg">
+                  {formatNumber(mortgage.interestRate, settings, {
+                    neverAbbreviate: true,
+                  })}
+                  %
+                </span>
+              </span>
+            )}
+            {mortgage.rateChangeMonths !== undefined && (
+              <span>
+                {mortgage.rateChangeMonths === 1
+                  ? t("properties.rateResetsOne")
+                  : t("properties.rateResetsOther", {
+                      count: mortgage.rateChangeMonths,
+                    })}
+              </span>
+            )}
+            {mortgage.nextRateChangeDate !== undefined && (
+              <span>
+                {t("properties.nextRateChangeShort")}{" "}
+                <span className="tabular-nums text-fg">
+                  {mortgage.nextRateChangeDate}
+                </span>
+              </span>
+            )}
+          </span>
+        )}
       </span>
       {count > 0 && (
         <span className="text-xs text-muted">

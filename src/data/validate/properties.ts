@@ -79,6 +79,17 @@ function validateMortgage(
   ) {
     mortgage.accountId = raw.accountId;
   }
+  // Loan terms — all manually entered and optional. A malformed value is
+  // dropped (the field stays absent) rather than rejecting the mortgage.
+  if (isFiniteNumber(raw.loanAmount)) mortgage.loanAmount = raw.loanAmount;
+  if (isFiniteNumber(raw.currentBalance))
+    mortgage.currentBalance = raw.currentBalance;
+  if (isFiniteNumber(raw.interestRate))
+    mortgage.interestRate = raw.interestRate;
+  if (isFiniteNumber(raw.rateChangeMonths))
+    mortgage.rateChangeMonths = raw.rateChangeMonths;
+  if (isIsoDate(raw.nextRateChangeDate))
+    mortgage.nextRateChangeDate = raw.nextRateChangeDate;
   if (Array.isArray(raw.payments)) {
     const seen = new Set<string>();
     for (const rawPayment of raw.payments) {
