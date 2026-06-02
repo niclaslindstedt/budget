@@ -25,10 +25,10 @@ type Props = {
   onToggleSelect: (salaryId: string) => void;
   onEdit: (salaryId: string) => void;
   onDelete: (salary: Salary) => void;
-  // Whether the active storage backend can serve payslip files — gates
-  // the "View payslip" entry in the row's "…" menu.
-  canViewPayslip: boolean;
-  onViewPayslip: (salary: Salary) => void;
+  // Whether the active storage backend can hold payslip files — gates the
+  // payslip entry in the row's "…" menu (upload / view / replace / remove).
+  canManagePayslip: boolean;
+  onManagePayslip: (salary: Salary) => void;
 };
 
 // One small pill per non-zero absence-day count, so an off-average
@@ -85,8 +85,8 @@ function SalaryRowImpl({
   onToggleSelect,
   onEdit,
   onDelete,
-  canViewPayslip,
-  onViewPayslip,
+  canManagePayslip,
+  onManagePayslip,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -217,8 +217,8 @@ function SalaryRowImpl({
           </button>
           <SalaryEntryActionsMenu
             salary={salary}
-            canViewPayslip={canViewPayslip}
-            onViewPayslip={onViewPayslip}
+            canManagePayslip={canManagePayslip}
+            onManagePayslip={onManagePayslip}
             onAction={() => setSwiped(false)}
           />
         </div>

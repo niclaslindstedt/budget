@@ -65,6 +65,7 @@ const items: ItemsCatalog = {
   // Kvittosektion i redigera sak-modalen
   receipt: "Kvitto",
   receiptUpload: "Ladda upp kvitto",
+  viewReceipt: "Visa kvitto",
   receiptReplace: "Byt kvitto",
   receiptView: "Visa",
   receiptRemove: "Ta bort",

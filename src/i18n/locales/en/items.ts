@@ -62,9 +62,11 @@ const items = {
   deleteItem: "Delete item",
   editItemAria: "Edit {name}",
   save: "Save",
-  // Receipt section in the edit-item modal
+  // Receipt attachment — shared modal opened from the item row "…" menu.
   receipt: "Receipt",
   receiptUpload: "Upload receipt",
+  // Item row "…" menu label when the linked purchase already has a receipt.
+  viewReceipt: "View receipt",
   receiptReplace: "Replace receipt",
   receiptView: "View",
   receiptRemove: "Remove",

@@ -31,10 +31,10 @@ type Props = {
   onToggleSelectYear: (salaryIds: string[], target: boolean) => void;
   onEdit: (salaryId: string) => void;
   onDelete: (salary: Salary) => void;
-  // Whether the active storage backend can serve payslip files — gates
-  // the "View payslip" entry in each row's "…" menu.
-  canViewPayslip: boolean;
-  onViewPayslip: (salary: Salary) => void;
+  // Whether the active storage backend can hold payslip files — gates the
+  // payslip entry in each row's "…" menu (upload / view / replace / remove).
+  canManagePayslip: boolean;
+  onManagePayslip: (salary: Salary) => void;
 };
 
 // One table per calendar year, mirroring the budget page's per-month
@@ -52,8 +52,8 @@ export function SalaryYearTable({
   onToggleSelectYear,
   onEdit,
   onDelete,
-  canViewPayslip,
-  onViewPayslip,
+  canManagePayslip,
+  onManagePayslip,
 }: Props) {
   const t = useT();
 
@@ -282,8 +282,8 @@ export function SalaryYearTable({
                 onToggleSelect={onToggleSelect}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                canViewPayslip={canViewPayslip}
-                onViewPayslip={onViewPayslip}
+                canManagePayslip={canManagePayslip}
+                onManagePayslip={onManagePayslip}
               />
             ))}
             <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">

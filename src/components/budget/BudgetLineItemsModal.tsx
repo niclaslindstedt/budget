@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { Boxes, FileText, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Boxes, Plus, Trash2 } from "lucide-react";
 
 import { findColumnByType, newId } from "../../data/sheet";
 import type {
@@ -61,29 +61,14 @@ type Props = {
   // routes this to `setRowLineItems` or `linkLineItemsToHistoryEntry`
   // depending on the row kind. `itemPrices` carries the purchase price the
   // user typed for each linked item — the host writes each onto its `Item`
-  // (the link no longer stores a price). `receiptPath` carries the
-  // transaction's receipt reference alongside the links: an empty string
-  // clears it, `undefined` leaves it untouched (e.g. when the receipt
-  // section is not shown).
+  // (the link no longer stores a price). The transaction's receipt is no
+  // longer edited here: it's managed from the linked item's "…" menu on the
+  // Items sheet, so this submit never touches `receiptPath`.
   onSubmit: (
     rowId: string,
     lineItems: LineItemLink[],
     itemPrices: ItemPriceUpdate[],
-    receiptPath?: string,
   ) => void;
-  // Receipt wiring. Present only on the standalone line-items flow (the
-  // row "…" menu); absent in the embedded "Find items" usage, where the
-  // whole receipt section is hidden. When `onUploadReceipt` is given but
-  // `canUploadReceipt` is false (browser-localStorage backend), the
-  // section shows a muted "switch backends" hint instead of the control.
-  canUploadReceipt?: boolean;
-  // Write the picked file to the backend (naming it from the
-  // transaction's company / type / date, resolved by the host) and
-  // resolve the stored receipt path. The file write is immediate; the
-  // reference rides the normal save.
-  onUploadReceipt?: (file: File) => Promise<string>;
-  // Download the receipt at `path` and open it (new tab / preview).
-  onViewReceipt?: (path: string) => Promise<void>;
   onCreateItem: (draft: Omit<Item, "id">) => Item;
   onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
@@ -111,9 +96,6 @@ export function BudgetLineItemsModal({
   categories,
   onClose,
   onSubmit,
-  canUploadReceipt = false,
-  onUploadReceipt,
-  onViewReceipt,
   onCreateItem,
   onCreateSubtype,
   onCreateType,
@@ -169,24 +151,9 @@ export function BudgetLineItemsModal({
   }
 
   const [lines, setLines] = useState<LineDraft[]>(seedLines);
-  // Receipt path committed alongside the links on confirm. The file is
-  // written / read immediately against the backend; the reference rides
-  // the normal save so a cancelled edit never leaves a dangling pointer
-  // (a cancelled upload only orphans bytes). `undefined` after seeding
-  // means "no receipt"; "" is never stored here (we drop straight to
-  // undefined on remove).
-  const [receiptPath, setReceiptPath] = useState<string | undefined>(
-    row?.receiptPath,
-  );
-  const [receiptBusy, setReceiptBusy] = useState(false);
-  const [receiptError, setReceiptError] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useResetOnOpen(open, row?.id, () => {
     setLines(seedLines());
-    setReceiptPath(row?.receiptPath);
-    setReceiptBusy(false);
-    setReceiptError(false);
   });
 
   if (!open || !row) return null;
@@ -259,38 +226,7 @@ export function BudgetLineItemsModal({
       // name a given item wins if it appears twice.
       itemPrices.push({ itemId, purchasePrice: Math.abs(l.signed ?? 0) });
     }
-    // Empty string clears a previously-set receipt; only emit the
-    // receipt argument when the section was available (otherwise leave
-    // the field untouched by passing undefined).
-    const receiptArg = onUploadReceipt ? (receiptPath ?? "") : undefined;
-    onSubmit(row.id, payload, itemPrices, receiptArg);
-  }
-
-  async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    // Reset so picking the same file again still fires onChange.
-    e.target.value = "";
-    if (!file || !onUploadReceipt) return;
-    setReceiptBusy(true);
-    setReceiptError(false);
-    try {
-      const path = await onUploadReceipt(file);
-      setReceiptPath(path);
-    } catch {
-      setReceiptError(true);
-    } finally {
-      setReceiptBusy(false);
-    }
-  }
-
-  async function handleViewReceipt() {
-    if (!receiptPath || !onViewReceipt) return;
-    setReceiptError(false);
-    try {
-      await onViewReceipt(receiptPath);
-    } catch {
-      setReceiptError(true);
-    }
+    onSubmit(row.id, payload, itemPrices);
   }
 
   const totalSign = total > 0 ? "+" : total < 0 ? "−" : "";
@@ -300,11 +236,6 @@ export function BudgetLineItemsModal({
   );
   const totalClass =
     total > 0 ? "text-positive" : total < 0 ? "text-negative" : "text-fg";
-
-  const receiptName =
-    receiptPath !== undefined && receiptPath !== ""
-      ? (receiptPath.split("/").pop() ?? receiptPath)
-      : null;
 
   return (
     <Modal
@@ -444,71 +375,6 @@ export function BudgetLineItemsModal({
                 : t("items.remainderHint")}
             </p>
           </div>
-
-          {onUploadReceipt && (
-            <div className="flex flex-col gap-2 rounded border border-line bg-surface-3 p-3">
-              <span className="text-xs text-muted">{t("items.receipt")}</span>
-              {!canUploadReceipt ? (
-                <p className="text-xs text-muted">
-                  {t("items.receiptUnsupported")}
-                </p>
-              ) : (
-                <>
-                  {receiptName !== null && (
-                    <div className="flex items-center gap-2">
-                      <FileText
-                        size={14}
-                        aria-hidden
-                        focusable={false}
-                        className="shrink-0 text-muted"
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm text-fg">
-                        {receiptName}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleViewReceipt}
-                        className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:border-accent hover:text-accent"
-                      >
-                        {t("items.receiptView")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setReceiptPath(undefined)}
-                        className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:border-danger hover:text-danger"
-                      >
-                        {t("items.receiptRemove")}
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={handleFilePicked}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    disabled={receiptBusy}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex cursor-pointer items-center gap-1 self-start rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {receiptBusy
-                      ? t("items.receiptUploading")
-                      : receiptName !== null
-                        ? t("items.receiptReplace")
-                        : t("items.receiptUpload")}
-                  </button>
-                  {receiptError && (
-                    <p className="text-xs text-danger">
-                      {t("items.receiptError")}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
 
           {halfDone && (
             <p className="text-xs text-danger">
