@@ -134,17 +134,17 @@ export function ItemsPage({
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     {
-      key: "find-items",
-      icon: <Sparkles size={16} aria-hidden focusable={false} />,
-      label: t("items.find.menu"),
-      onClick: () => dispatchModal({ kind: "open-find-items" }),
-    },
-    {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
       label: t("sheet.editSheet"),
       onClick: () =>
         dispatchModal({ kind: "open-edit-sheet", sheetId: sheet.id }),
+    },
+    {
+      key: "find-items",
+      icon: <Sparkles size={16} aria-hidden focusable={false} />,
+      label: t("items.find.menu"),
+      onClick: () => dispatchModal({ kind: "open-find-items" }),
     },
   ];
 
