@@ -568,15 +568,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     },
     [adapter, data, t],
   );
-  const onViewPayslip = useCallback(
-    async (path: string): Promise<void> => {
+  // Download the payslip blob and hand it to the in-app viewer. We do
+  // NOT `window.open` a `blob:` URL here: on iOS that hangs on a blank
+  // page inside in-app browsers and standalone PWAs, and opening a
+  // window after this `await` loses the user-gesture so the popup is
+  // blocked. SalaryEditModal renders the blob inline instead.
+  const onDownloadPayslip = useCallback(
+    async (path: string): Promise<Blob> => {
       if (!adapter?.payslips) throw new Error("payslips unavailable");
       const blob = await adapter.payslips.download(path);
       if (!blob) throw new Error("payslip missing");
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      // Give the new tab time to read the blob before reclaiming it.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return blob;
     },
     [adapter],
   );
@@ -798,7 +800,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onConfirmBulkDelete={salaryBulk.onConfirmBulkDelete}
                   canUploadPayslip={canUploadPayslip}
                   onUploadPayslip={onUploadPayslip}
-                  onViewPayslip={onViewPayslip}
+                  onDownloadPayslip={onDownloadPayslip}
                 />
               ) : (
                 <>

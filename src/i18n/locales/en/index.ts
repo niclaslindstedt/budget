@@ -80,6 +80,7 @@ import presetCategories from "./presetCategories";
 import presetCompanyCategories from "./presetCompanyCategories";
 import presetTypes from "./presetTypes";
 import download from "./download";
+import attachment from "./attachment";
 
 export const en = {
   common,
@@ -156,6 +157,7 @@ export const en = {
   presetCompanyCategories,
   presetTypes,
   download,
+  attachment,
 } as const;
 
 export type Catalog = Widen<typeof en>;
