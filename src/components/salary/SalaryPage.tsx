@@ -47,7 +47,7 @@ type Props = {
   // file through that adapter for the given salary.
   canUploadPayslip: boolean;
   onUploadPayslip: (salary: Salary, file: File) => Promise<string>;
-  onViewPayslip: (path: string) => Promise<void>;
+  onDownloadPayslip: (path: string) => Promise<Blob>;
 };
 
 export function SalaryPage({
@@ -67,7 +67,7 @@ export function SalaryPage({
   onConfirmBulkDelete,
   canUploadPayslip,
   onUploadPayslip,
-  onViewPayslip,
+  onDownloadPayslip,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -247,7 +247,7 @@ export function SalaryPage({
           onUploadPayslip={
             editing ? (file) => onUploadPayslip(editing, file) : undefined
           }
-          onViewPayslip={onViewPayslip}
+          onDownloadPayslip={onDownloadPayslip}
         />
 
         <SalaryBulkEditModal

@@ -78,6 +78,7 @@ import presetCategories from "./presetCategories";
 import presetCompanyCategories from "./presetCompanyCategories";
 import presetTypes from "./presetTypes";
 import download from "./download";
+import attachment from "./attachment";
 
 export const sv: Catalog = {
   common,
@@ -154,4 +155,5 @@ export const sv: Catalog = {
   presetCompanyCategories,
   presetTypes,
   download,
+  attachment,
 };
