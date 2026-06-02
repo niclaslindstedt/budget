@@ -1,6 +1,6 @@
 ---
 name: dependabot
-description: "Use when the user wants to clear out the open Dependabot PRs — \"do the dependabot PRs\", \"update the deps\", \"merge dependabot\". Consolidates every open Dependabot bump into ONE branch + PR, resolves the peer-dependency fallout the bumps trigger (Vite / ESLint / TypeScript / React majors drag transitive tooling with them), gets the full CI chain green, then closes the superseded Dependabot PRs. Manual playbook — not part of the `maintenance` umbrella."
+description: 'Use when the user wants to clear out the open Dependabot PRs — "do the dependabot PRs", "update the deps", "merge dependabot". Consolidates every open Dependabot bump into ONE branch + PR, resolves the peer-dependency fallout the bumps trigger (Vite / ESLint / TypeScript / React majors drag transitive tooling with them), gets the full CI chain green, then closes the superseded Dependabot PRs. Manual playbook — not part of the `maintenance` umbrella.'
 ---
 
 # Clearing the Dependabot queue
@@ -113,7 +113,7 @@ is preserved and the diff stays about versions:
 "no-useless-assignment": "off",   // new in @eslint/js v10 recommended
 ```
 
-Discover *which* rules are new by counting failures by ruleId rather
+Discover _which_ rules are new by counting failures by ruleId rather
 than scrolling 120 messages:
 
 ```
@@ -127,7 +127,7 @@ them deliberately later.
 
 `@vite-pwa/assets-generator` going major regenerates `favicon.ico` with
 slightly different bytes, so `make icons-check` fails. Regenerate and
-commit — the committed icons are *supposed* to track the generator:
+commit — the committed icons are _supposed_ to track the generator:
 
 ```
 make icons && make icons-check
@@ -150,7 +150,7 @@ Map each `@vN → @vM` from the corresponding PR title. No install needed.
 
 ## 7. Verify, ship, close
 
-Run the exact PR-gating chain (e2e is *not* in it — it runs on push to
+Run the exact PR-gating chain (e2e is _not_ in it — it runs on push to
 `main`, so skip the slow Playwright install for the PR):
 
 ```
@@ -175,7 +175,7 @@ reopen for the same version.
 ## Bumps-in-the-road checklist
 
 - Stale `package-lock.json` → misleading ERESOLVE. `rm -rf node_modules
-  package-lock.json` before trusting the trace.
+package-lock.json` before trusting the trace.
 - Missing `src/generated/*` → "Cannot find module". Run `make codegen`
   before `tsc`.
 - `@vitejs/plugin-react` / `vite-plugin-pwa` / `@vite-pwa/assets-generator`
