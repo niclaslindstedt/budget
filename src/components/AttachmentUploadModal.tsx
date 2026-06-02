@@ -289,8 +289,11 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
   const atMin = scaleRef.current <= MIN_SCALE;
   const atMax = scaleRef.current >= MAX_SCALE;
   const gesturing = touch.current.mode !== "idle" || mouse.current.dragging;
+  const zoomPct = Math.round(scaleRef.current * 100);
+  // 44px tap targets (Apple HIG minimum) so the controls are reliably
+  // hittable on touch — the gesture path is a bonus on top of these.
   const btn =
-    "inline-flex h-9 w-9 items-center justify-center rounded-full text-fg transition-colors hover:text-accent disabled:cursor-default disabled:opacity-40";
+    "inline-flex h-11 w-11 items-center justify-center rounded-full text-fg transition-colors hover:bg-surface-2 hover:text-accent disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-fg";
 
   return (
     // The container is a zoom/pan gesture surface, not a control — the
@@ -327,7 +330,7 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
           transition: gesturing ? "none" : "transform 120ms ease-out",
         }}
       />
-      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-surface/90 px-1.5 py-1 shadow-lg backdrop-blur">
+      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-line bg-surface-3/95 p-1 shadow-lg backdrop-blur">
         <button
           type="button"
           onClick={() => zoomFromCentre(1 / ZOOM_STEP)}
@@ -336,18 +339,14 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
           title={t("attachment.zoomOut")}
           className={btn}
         >
-          <ZoomOut size={16} aria-hidden focusable={false} />
+          <ZoomOut size={18} aria-hidden focusable={false} />
         </button>
-        <button
-          type="button"
-          onClick={reset}
-          disabled={atMin}
-          aria-label={t("attachment.resetZoom")}
-          title={t("attachment.resetZoom")}
-          className={btn}
+        <span
+          className="min-w-[3.25rem] text-center text-xs font-medium tabular-nums text-fg"
+          aria-hidden
         >
-          <Maximize2 size={16} aria-hidden focusable={false} />
-        </button>
+          {zoomPct}%
+        </span>
         <button
           type="button"
           onClick={() => zoomFromCentre(ZOOM_STEP)}
@@ -356,7 +355,18 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
           title={t("attachment.zoomIn")}
           className={btn}
         >
-          <ZoomIn size={16} aria-hidden focusable={false} />
+          <ZoomIn size={18} aria-hidden focusable={false} />
+        </button>
+        <span className="mx-0.5 h-6 w-px bg-line" aria-hidden />
+        <button
+          type="button"
+          onClick={reset}
+          disabled={atMin}
+          aria-label={t("attachment.fitToPage")}
+          title={t("attachment.fitToPage")}
+          className={btn}
+        >
+          <Maximize2 size={18} aria-hidden focusable={false} />
         </button>
       </div>
     </div>

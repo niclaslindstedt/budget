@@ -6,6 +6,7 @@ const attachment: AttachmentCatalog = {
   zoomIn: "Zooma in",
   zoomOut: "Zooma ut",
   resetZoom: "Återställ zoom",
+  fitToPage: "Anpassa till sidan",
   dropTitle: "Dra och släpp en fil här",
   dropHint: "eller klicka för att bläddra",
   dropTypes: "Bilder eller PDF",

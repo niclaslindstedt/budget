@@ -6,6 +6,7 @@ const attachment = {
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
   resetZoom: "Reset zoom",
+  fitToPage: "Fit to page",
   // Drag-and-drop upload zone + controls in the shared attachment modal.
   dropTitle: "Drag & drop a file here",
   dropHint: "or click to browse",
