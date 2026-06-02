@@ -272,25 +272,6 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 3–4 — nits with leverage
 
-- **Page-specific `useSalaryBulkSelection.ts` lives in
-  `src/components/AppShell/hooks/`** next to the budget
-  `useBulkSelection.ts`, and AppShell swaps between the two on an
-  `isSalarySheet` check before threading the result into `BottomBar`.
-  `AGENTS.md` puts page-specific code in the per-page directory
-  (`src/components/salary/`) with the page-name prefix; this hook is
-  salary-only. (Several other `AppShell/hooks/` members are budget-only —
-  `useComplexEntry`, `useMatchRuleUi`, `useTransferFlow`,
-  `useRowMutations` — but those are consumed by the budget modal host the
-  shell already owns; the salary bulk-selection hook is the clearest
-  standalone misplacement.)
-  - **Plan**: move `useSalaryBulkSelection.ts` to `src/components/salary/`
-    (AppShell already imports `SalaryPage` from that directory as the
-    router, so the import direction is consistent) and update the import.
-    Leave the `isSalarySheet` swap in AppShell or push it behind a small
-    selector.
-  - **Risk**: low — module relocation + import update, no behaviour change.
-  - **Severity: 4.**
-
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
   `src/storage/gdrive-adapter.ts` 765 lines) — each `create*Adapter()`
@@ -430,6 +411,26 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Page-specific `useSalaryBulkSelection.ts` relocated to
+  `src/components/salary/`** (2026-06): the salary-only bulk-selection
+  hook lived under `src/components/AppShell/hooks/` next to the budget
+  `useBulkSelection.ts`, violating the `AGENTS.md` rule that
+  page-specific code belongs in the per-page directory with the
+  page-name prefix. `git mv`d it into `src/components/salary/`
+  (AppShell already imports `SalaryPage` from there as the router, so
+  the import direction is consistent), fixed the four internal relative
+  imports (`../../data/achievements`, `../../data/reducer`,
+  `../../data/types`, `./SalaryBulkEditModal`), and pointed AppShell's
+  import at `../salary/useSalaryBulkSelection`. The `isSalarySheet`
+  swap stays in AppShell — the BottomBar that owns the select toggle is
+  rendered there. Pure module relocation, no behaviour change; fast
+  loop + build + icons-check green, all 1267 tests pass. **Was
+  severity 4 (easy-win-flavoured).** The other budget-only
+  `AppShell/hooks/` members (`useComplexEntry`, `useMatchRuleUi`,
+  `useTransferFlow`, `useRowMutations`) stay put — they're consumed by
+  the budget modal host the shell already owns, not standalone
+  misplacements.
 
 - **Inlined pointer long-press state machine → `useLongPress` hook**
   (2026-06): the `LONG_PRESS_MS = 450` constant + the

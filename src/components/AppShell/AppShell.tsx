@@ -7,7 +7,7 @@ import {
 } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
 import { useBulkSelection } from "./hooks/useBulkSelection";
-import { useSalaryBulkSelection } from "./hooks/useSalaryBulkSelection";
+import { useSalaryBulkSelection } from "../salary/useSalaryBulkSelection";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
 import { useEditPrompts } from "./hooks/useEditPrompts";
