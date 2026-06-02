@@ -21,6 +21,7 @@ absence days (parental leave, VAB, vacation, sick). You can also attach
 a payslip (lönerapport) — a photo or PDF — to each salary from the row's
 "…" menu: drag and drop (or browse to) the file, preview it in the app,
 and replace or remove it later. It is saved to a payslips folder on your
-storage and encrypted alongside the rest of your budget (available on the
-local-folder and cloud backends). Salaries are listed per year with gross
-and net totals.
+storage (available on the local-folder and cloud backends) as a plain
+file — payslips are never encrypted, so if you'd rather not place them in
+a cloud backend, just don't attach them. Salaries are listed per year
+with gross and net totals.

@@ -9,8 +9,9 @@ import { withEncryption } from "../src/storage/encrypting-adapter";
 import { isEncryptedEnvelope } from "../src/storage/crypto";
 
 // Minimal inner adapter exposing an in-memory receipt store. The
-// encrypting wrapper sits on top; the tests assert what lands in the
-// inner store (ciphertext vs raw) and what the wrapper hands back.
+// encrypting wrapper sits on top; the tests assert that receipts and
+// payslips pass through unencrypted — only the budget JSON and backups
+// ride the AES-GCM envelope.
 function innerAdapter() {
   const store = new Map<string, Blob>();
   const payslipStore = new Map<string, Blob>();
@@ -44,7 +45,7 @@ function innerAdapter() {
 }
 
 describe("encrypting adapter — receipts", () => {
-  it("stores ciphertext and round-trips the original bytes + type", async () => {
+  it("stores raw bytes and round-trips them even with a password held", async () => {
     const inner = innerAdapter();
     const wrapped = withEncryption(inner.adapter, { current: "hunter2" });
 
@@ -53,9 +54,12 @@ describe("encrypting adapter — receipts", () => {
     });
     await wrapped.receipts!.upload("a.png", original);
 
-    // On disk the bytes are an encrypted envelope, not the raw image.
+    // On disk the bytes are the raw image, not an encrypted envelope.
     const stored = inner.store.get("a.png")!;
-    expect(isEncryptedEnvelope(await stored.text())).toBe(true);
+    expect(isEncryptedEnvelope(await stored.text())).toBe(false);
+    expect(new Uint8Array(await stored.arrayBuffer())).toEqual(
+      new Uint8Array([1, 2, 3, 255, 0, 42]),
+    );
 
     const back = await wrapped.receipts!.download("a.png");
     expect(back).not.toBeNull();
@@ -65,21 +69,7 @@ describe("encrypting adapter — receipts", () => {
     );
   });
 
-  it("passes a raw (pre-encryption) receipt through on download untouched", async () => {
-    const inner = innerAdapter();
-    // Simulate a receipt written while encryption was off.
-    inner.store.set(
-      "b.pdf",
-      new Blob([new Uint8Array([9, 9, 9])], { type: "application/pdf" }),
-    );
-    const wrapped = withEncryption(inner.adapter, { current: "hunter2" });
-    const back = await wrapped.receipts!.download("b.pdf");
-    expect(new Uint8Array(await back!.arrayBuffer())).toEqual(
-      new Uint8Array([9, 9, 9]),
-    );
-  });
-
-  it("writes plaintext when no password is held", async () => {
+  it("writes raw bytes when no password is held", async () => {
     const inner = innerAdapter();
     const wrapped = withEncryption(inner.adapter, { current: null });
     const original = new Blob([new Uint8Array([7, 7])]);
@@ -93,7 +83,7 @@ describe("encrypting adapter — receipts", () => {
 });
 
 describe("encrypting adapter — payslips", () => {
-  it("wraps payslips in the same envelope and round-trips them", async () => {
+  it("stores payslips as raw bytes and round-trips them", async () => {
     const inner = innerAdapter();
     const wrapped = withEncryption(inner.adapter, { current: "hunter2" });
 
@@ -103,7 +93,7 @@ describe("encrypting adapter — payslips", () => {
     await wrapped.payslips!.upload("Acme - 2024-01.pdf", original);
 
     const stored = inner.payslipStore.get("Acme - 2024-01.pdf")!;
-    expect(isEncryptedEnvelope(await stored.text())).toBe(true);
+    expect(isEncryptedEnvelope(await stored.text())).toBe(false);
 
     const back = await wrapped.payslips!.download("Acme - 2024-01.pdf");
     expect(back!.type).toBe("application/pdf");

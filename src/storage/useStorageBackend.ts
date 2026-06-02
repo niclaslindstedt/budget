@@ -26,7 +26,6 @@ import { withEncryption } from "./encrypting-adapter";
 import { serializeUserData } from "./file";
 import { createFolderAdapter } from "./folder-adapter";
 import { createGdriveAdapter } from "./gdrive-adapter";
-import { reencryptStorage } from "./reencrypt-storage";
 import {
   clearCloudMirrorBytes,
   createIdbAdapter,
@@ -668,12 +667,13 @@ export function useStorageBackend({
     [disconnectCloud],
   );
 
-  // Flip the per-user encryption preference, re-wrapping the bytes
-  // already in the active backend so the next load isn't reading the
-  // wrong envelope. Reads through the *current* preference and writes
-  // through the *new* one. Backend choice (local vs Dropbox vs
+  // Flip the per-user encryption preference, re-wrapping the budget
+  // JSON already in the active backend so the next load isn't reading
+  // the wrong envelope. Reads through the *current* preference and
+  // writes through the *new* one. Backend choice (local vs Dropbox vs
   // Google Drive) is independent — encryption is just whether the
-  // adapter wraps with `withEncryption` on top.
+  // adapter wraps with `withEncryption` on top. Receipts and payslips
+  // are never encrypted, so the toggle doesn't touch them.
   const setEncryptionMode = useCallback(
     async (next: EncryptionMode) => {
       if (auth.kind !== "signed-in") return;
@@ -705,15 +705,15 @@ export function useStorageBackend({
           ? innerForNext
           : withEncryption(innerForNext, passwordRef);
       try {
+        // Re-wrap only the budget JSON: read it through the current
+        // preference and re-save through the new one (switching to
+        // plaintext decrypts, switching to encrypted re-encrypts).
+        // Receipts and payslips are never encrypted, so there's nothing
+        // to convert for them — the toggle leaves those files alone.
         const snap = await current.load();
-        // Re-wrap the budget JSON AND every receipt file as one
-        // all-or-nothing unit: switching to plaintext decrypts the
-        // receipts, switching to encrypted re-encrypts them, and a
-        // failure mid-conversion rolls everything back so the
-        // preference below never flips on a half-converted backend.
-        if (snap) await reencryptStorage(current, target, snap.text);
+        if (snap) await target.save(snap.text);
       } catch (err) {
-        log.error("encryption toggle: failed to re-wrap bytes", err);
+        log.error("encryption toggle: failed to re-wrap budget bytes", err);
         return;
       }
       setEncryption(userId, next);

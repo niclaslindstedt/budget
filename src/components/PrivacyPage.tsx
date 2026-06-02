@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 // the wording is edited — the value renders verbatim at the top of
 // the page and is the only line readers have to look at to see how
 // fresh the policy is.
-const LAST_UPDATED = "2026-05-24";
+const LAST_UPDATED = "2026-06-02";
 
 export function PrivacyPage() {
   return (
@@ -135,6 +135,15 @@ export function PrivacyPage() {
               by default, plaintext if you opted out of encryption.
             </li>
             <li>
+              <strong className="text-fg-bright">Receipts and payslips.</strong>{" "}
+              If you attach a receipt or payslip image / PDF, it is uploaded to
+              a <code className="text-meta">receipts/</code> or{" "}
+              <code className="text-meta">payslips/</code> folder as a plain
+              file — these are <em>never</em> encrypted, regardless of your
+              encryption setting. If you would rather not place them in Dropbox,
+              simply don&apos;t attach them.
+            </li>
+            <li>
               <strong className="text-fg-bright">Who can see the bytes.</strong>{" "}
               Only you and Dropbox. The project authors do not run any server
               that observes your traffic.
@@ -188,6 +197,14 @@ export function PrivacyPage() {
               otherwise write to{" "}
               <code className="mx-1 text-meta">localStorage</code> — encrypted
               by default, plaintext if you opted out of encryption.
+            </li>
+            <li>
+              <strong className="text-fg-bright">Receipts and payslips.</strong>{" "}
+              If you attach a receipt or payslip image / PDF, it is uploaded
+              alongside <code className="text-meta">budget.json</code> as a
+              plain file — these are <em>never</em> encrypted, regardless of
+              your encryption setting. If you would rather not place them in
+              Google Drive, simply don&apos;t attach them.
             </li>
             <li>
               <strong className="text-fg-bright">Token lifetime.</strong> The
