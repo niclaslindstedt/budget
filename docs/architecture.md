@@ -278,8 +278,7 @@ src/
 │   ├── dropbox-adapter.ts     # Dropbox HTTP adapter + OAuth (PKCE)
 │   ├── gdrive-adapter.ts      # Google Drive HTTP adapter + OAuth (PKCE)
 │   ├── oauth-pkce.ts          # shared PKCE helpers + redirect-URI derivation
-│   ├── encrypting-adapter.ts  # AES-GCM envelope wrapper around any adapter
-│   ├── reencrypt-storage.ts   # atomic budget+receipts re-wrap on encryption toggle
+│   ├── encrypting-adapter.ts  # AES-GCM envelope wrapper around any adapter (budget + backups; receipts/payslips pass through)
 │   ├── crypto.ts              # PBKDF2-SHA256 + AES-GCM primitives
 │   ├── cloud-mirror.ts        # offline mirror wrapper around a cloud adapter
 │   ├── cloud-link-types.ts    # in-flight cloud/folder link state types

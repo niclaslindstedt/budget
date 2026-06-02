@@ -134,9 +134,9 @@ export type StorageAdapter = {
   // (upload / download / remove a `Blob` at a relative path) — payslip
   // paths are flat filenames, no subdirectory. Present iff
   // `capabilities` carries `"payslips"`, which the payslip-upload UI
-  // gates on. The encrypting wrapper wraps these in the same AES-GCM
-  // envelope as receipts and the budget, so a payslip is encrypted at
-  // rest exactly when the budget is.
+  // gates on. Like receipts, payslips are stored as raw image / PDF
+  // bytes — the encrypting wrapper passes them through untouched, so
+  // they are never encrypted at rest regardless of the budget's mode.
   readonly payslips?: ReceiptOps;
 };
 
@@ -146,10 +146,10 @@ export type StorageAdapter = {
 // `receipts/` folder and may contain a single subdirectory segment
 // (the type-subdirectory name pattern), e.g.
 // `"Electronics/iPhone 15 Pro - 2024-01-15.jpg"`. Adapters create any
-// intermediate folder on `upload`. The encrypting wrapper transparently
-// wraps these in the same AES-GCM envelope it uses for the budget when
-// a password is held, so a receipt is encrypted at rest exactly when
-// the budget is.
+// intermediate folder on `upload`. These files are stored as raw image
+// / PDF bytes and are never encrypted — the encrypting wrapper passes
+// them straight through. A user who doesn't want their receipts in the
+// cloud simply doesn't upload them.
 export type ReceiptOps = {
   // Write `blob` at `path`, overwriting any existing file there and
   // creating the `receipts/` folder (and one intermediate subfolder)
@@ -157,8 +157,8 @@ export type ReceiptOps = {
   upload(path: string, blob: Blob): Promise<void>;
   // Fetch the bytes at `path`, or null when no file exists there
   // (deleted out-of-band, or referenced from a backend that never held
-  // it). The encrypting wrapper decrypts on the way out so callers see
-  // the original image / PDF bytes regardless of at-rest encryption.
+  // it). The bytes are the original image / PDF — receipts are stored
+  // unencrypted, so there's nothing to decrypt on the way out.
   download(path: string): Promise<Blob | null>;
   // Remove the file at `path`. A missing file is treated as already
   // gone (no throw).
