@@ -263,7 +263,8 @@ src/
 │   ├── normalize.ts       # trim/validate helpers for user-typed names
 │   ├── settings.ts        # device-scope split (mobile vs desktop) helpers
 │   ├── themes.ts          # theme presets + custom-theme defaults
-│   └── action-payloads.ts # reducer action payload shapes (no runtime deps)
+│   ├── action-payloads.ts # reducer action payload shapes (no runtime deps)
+│   └── action-summary.ts  # describeActionSubject: action → history subject (cross-page)
 ├── storage/
 │   ├── adapter.ts             # StorageAdapter interface + Snapshot / error types
 │   ├── local.ts               # bootstrap helpers — freshUserData() + parse

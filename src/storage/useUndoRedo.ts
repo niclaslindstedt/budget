@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useReducer, useRef } from "react";
 
 import type { UserData } from "../data/types";
+import type { ActionSubject } from "../data/action-summary";
 
 // Maximum number of past states retained in the undo stack. Each
 // entry is a `UserData` reference; structural sharing in the reducer
@@ -24,6 +25,10 @@ type HistoryState = {
 type HistoryEntryInternal = {
   state: UserData;
   actionType: string;
+  // Human-readable subject of the action (the named object or a count),
+  // resolved at dispatch time by `describeActionSubject`. Undefined for
+  // actions with no nameable target and for the seed entry.
+  subject?: ActionSubject;
   timestamp: number;
 };
 
@@ -101,6 +106,7 @@ function initialHistoryState(seed: UserData): HistoryState {
 // entry by its position in `historyEntries`.
 export type ActionHistoryEntry = {
   actionType: string;
+  subject?: ActionSubject;
   timestamp: number;
 };
 
@@ -114,6 +120,7 @@ export type UndoRedo = {
   appendEntry: (entry: {
     state: UserData;
     actionType: string;
+    subject?: ActionSubject;
     timestamp: number;
   }) => void;
   // Replace the timeline with a fresh seed anchored at `seed`. Called
@@ -174,7 +181,12 @@ export function useUndoRedo(params: {
   historyStateRef.current = historyState;
 
   const appendEntry = useCallback(
-    (entry: { state: UserData; actionType: string; timestamp: number }) => {
+    (entry: {
+      state: UserData;
+      actionType: string;
+      subject?: ActionSubject;
+      timestamp: number;
+    }) => {
       historyDispatch({ kind: "append", entry });
     },
     [],
@@ -214,6 +226,7 @@ export function useUndoRedo(params: {
     () =>
       historyState.entries.map((entry) => ({
         actionType: entry.actionType,
+        subject: entry.subject,
         timestamp: entry.timestamp,
       })),
     [historyState.entries],
