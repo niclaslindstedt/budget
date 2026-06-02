@@ -256,6 +256,7 @@ export function SalaryPage({
           employers={data.employers}
           onClose={onCloseBulkEdit}
           onApply={onApplyBulk}
+          onCreateEmployer={handleCreateEmployer}
         />
 
         <SalaryDiscoveryModal
