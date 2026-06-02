@@ -22,6 +22,7 @@ export {
 export { useIdleSignOut } from "./useIdleSignOut";
 export { useIsMobile } from "./useIsMobile";
 export { useIsStandalone } from "./useIsStandalone";
+export { type UseLongPressOptions, useLongPress } from "./useLongPress";
 export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
 export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
