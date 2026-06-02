@@ -113,15 +113,31 @@ function SalaryRowImpl({
     >
       {selectMode && (
         <td className="w-10 px-2.5 py-2 text-center align-middle">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect(salary.id)}
-            className="h-4 w-4 accent-accent"
-            aria-label={t("salary.editAria", {
-              month: formatMonthLabel(salary.date.slice(0, 7), lang),
-            })}
-          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(salary.id);
+            }}
+            className={`inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 ${
+              selected ? "text-accent" : "text-muted"
+            }`}
+            aria-label={t(
+              selected ? "salary.deselectRowAria" : "salary.selectRowAria",
+              { month: formatMonthLabel(salary.date.slice(0, 7), lang) },
+            )}
+            aria-pressed={selected}
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${
+                selected
+                  ? "border-accent bg-accent text-page-bg"
+                  : "border-muted"
+              }`}
+            >
+              {selected ? "✓" : ""}
+            </span>
+          </button>
         </td>
       )}
       <td className="px-2.5 py-2 align-middle font-mono whitespace-nowrap text-fg-bright">

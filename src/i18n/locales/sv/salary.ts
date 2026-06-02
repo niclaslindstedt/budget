@@ -23,6 +23,8 @@ const salary: SalaryCatalog = {
   noEmployer: "Ingen arbetsgivare",
   editAria: "Redigera lön för {month}",
   deleteAria: "Ta bort lön för {month}",
+  selectRowAria: "Markera {month}",
+  deselectRowAria: "Avmarkera {month}",
 
   // Absence-day badges
   careOfChildShort: "VAB",

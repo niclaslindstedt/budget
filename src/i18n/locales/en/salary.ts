@@ -23,6 +23,8 @@ const salary = {
   noEmployer: "No employer",
   editAria: "Edit salary for {month}",
   deleteAria: "Delete salary for {month}",
+  selectRowAria: "Select {month}",
+  deselectRowAria: "Deselect {month}",
 
   // Absence-day badges
   careOfChildShort: "VAB",
